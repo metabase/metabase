@@ -41,32 +41,33 @@
   (reduce append-part (str "ee/workspace/" id) (map str path)))
 
 (deftest workspace-endpoints-require-superuser-test
-  (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
-    (testing "GET /api/ee/workspace requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "ee/workspace"))))
+  (ws.tu/without-workspace-isolation
+   (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
+     (testing "GET /api/ee/workspace requires superuser"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :get 403 "ee/workspace"))))
 
-    (testing "GET /api/ee/workspace/:id requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "")))))
+     (testing "GET /api/ee/workspace/:id requires superuser"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "")))))
 
-    (testing "POST /api/ee/workspace requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 "ee/workspace"
-                                   {:name "Unauthorized Workspace"}))))
+     (testing "POST /api/ee/workspace requires superuser"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :post 403 "ee/workspace"
+                                    {:name "Unauthorized Workspace"}))))
 
-    (testing "PUT /api/ee/workspace/:id requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
-                                   {:name "Updated"}))))
+     (testing "PUT /api/ee/workspace/:id requires superuser"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :put 403 (ws-url (:id workspace) "")
+                                    {:name "Updated"}))))
 
-    (testing "DELETE /api/ee/workspace/:id requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) "")))))
+     (testing "DELETE /api/ee/workspace/:id requires superuser"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :delete 403 (ws-url (:id workspace) "")))))
 
-    (testing "POST /api/ee/workspace/:id/promote requires superuser"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge")))))))
+     (testing "POST /api/ee/workspace/:id/promote requires superuser"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :post 403 (ws-url (:id workspace) "/merge"))))))))
 
 (deftest workspace-crud-flow-test
   (let [workspace-name (str "Workspace " (random-uuid))
@@ -123,13 +124,14 @@
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
-    (ws.tu/with-workspaces! [workspace {:name "Archive Cleanup Fail Test"}]
-      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_database _workspace]
-                                    (throw (ex-info "Simulated cleanup failure" {:test true})))]
-        (is (some? (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))))
-        (is (some? (t2/select-one-fn :archived_at :model/Workspace :id (:id workspace)))
-            "Workspace should have archived_at set despite cleanup failure")))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Archive Cleanup Fail Test"}]
+       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                   (fn [_database _workspace]
+                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
+         (is (some? (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))))
+         (is (some? (t2/select-one-fn :archived_at :model/Workspace :id (:id workspace)))
+             "Workspace should have archived_at set despite cleanup failure"))))))
 
 (deftest ^:parallel delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
@@ -973,26 +975,27 @@
           #_(is (re-find #"Cannot add transforms that depend on saved questions" response)))))))
 
 (deftest rename-workspace-test
-  (testing "POST /api/ee/workspace/:id/name updates the workspace name"
-    (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
-      (let [response (mt/user-http-request :crowberto :put 200 (ws-url (:id workspace))
-                                           {:name "Updated Name"})]
-        (is (= "Updated Name"
-               (:name response)
-               (t2/select-one-fn :name :model/Workspace :id (:id workspace)))))))
+  (ws.tu/without-workspace-isolation
+   (testing "POST /api/ee/workspace/:id/name updates the workspace name"
+     (ws.tu/with-workspaces! [workspace {:name "Original Name"}]
+       (let [response (mt/user-http-request :crowberto :put 200 (ws-url (:id workspace))
+                                            {:name "Updated Name"})]
+         (is (= "Updated Name"
+                (:name response)
+                (t2/select-one-fn :name :model/Workspace :id (:id workspace)))))))
 
-  (testing "Requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :put 403 (ws-url (:id workspace))
-                                   {:name "Should Fail"})))))
+   (testing "Requires superuser"
+     (ws.tu/with-workspaces! [workspace {:name "Permission Test"}]
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :put 403 (ws-url (:id workspace))
+                                    {:name "Should Fail"})))))
 
-  (testing "Cannot rename an archived workspace"
-    (ws.tu/with-workspaces! [workspace {:name "Archived"}]
-      (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
-      (is (= "Cannot update an archived workspace"
-             (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
-                                   {:name "Should Fail"}))))))
+   (testing "Cannot rename an archived workspace"
+     (ws.tu/with-workspaces! [workspace {:name "Archived"}]
+       (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
+       (is (= "Cannot update an archived workspace"
+              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
+                                    {:name "Should Fail"})))))))
 
 (deftest add-transform-rejects-card-dependencies-to-existing-workspace-test
   (testing "Cannot add transforms with card dependencies to existing workspace"
@@ -1144,97 +1147,102 @@
 
 (deftest get-workspace-transforms-test
   (testing "GET /api/ee/workspace/:id/transform"
-    (ws.tu/with-workspaces! [workspace {:name "List Transforms Test"}]
-      (mt/with-temp [:model/WorkspaceTransform tx1  {:name         "Transform 1"
-                                                     :workspace_id (:id workspace)}
-                     :model/WorkspaceTransform tx2  {:name         "Transform 2"
-                                                     :workspace_id (:id workspace)}
-                     :model/Transform          _tx3 {:name "Global Transform"}]
-        (testing "returns transforms in workspace"
-          (is (=? {:transforms [{:ref_id (:ref_id tx1)}
-                                {:ref_id (:ref_id tx2)}]}
-                  (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform")))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "/transform")))))))
-    (testing "returns empty list when no transforms"
-      (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
-        (is (= {:transforms []}
-               (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform"))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "List Transforms Test"}]
+       (mt/with-temp [:model/WorkspaceTransform tx1  {:name         "Transform 1"
+                                                      :workspace_id (:id workspace)}
+                      :model/WorkspaceTransform tx2  {:name         "Transform 2"
+                                                      :workspace_id (:id workspace)}
+                      :model/Transform          _tx3 {:name "Global Transform"}]
+         (testing "returns transforms in workspace"
+           (is (=? {:transforms [{:ref_id (:ref_id tx1)}
+                                 {:ref_id (:ref_id tx2)}]}
+                   (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform")))))
+         (testing "requires superuser"
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403 (ws-url (:id workspace) "/transform"))))))))
+    (ws.tu/without-workspace-isolation
+     (testing "returns empty list when no transforms"
+       (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
+         (is (= {:transforms []}
+                (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/transform")))))))
     (testing "returns 404 for non-existent workspace"
       (is (= "Not found."
              (mt/user-http-request :crowberto :get 404 "ee/workspace/999999/transform"))))))
 
 (deftest get-workspace-transform-by-id-test
   (testing "GET /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
-      (mt/with-temp [:model/WorkspaceTransform transform {:name         "My Transform"
-                                                          :description  "Test description"
-                                                          :workspace_id (:id workspace1)}]
-        (testing "returns specific transform"
-          (is (=? {:ref_id      (:ref_id transform)
-                   :name        "My Transform"
-                   :description "Test description"}
-                  (mt/user-http-request :crowberto :get 200
-                                        (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))))))
-        (testing "returns 404 if transform not in workspace"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :get 404
-                                       (ws-url (:id workspace2) (str "/transform/" (:ref_id transform)))))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403
-                                       (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))))))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                              workspace2 {:name "Workspace 2"}]
+       (mt/with-temp [:model/WorkspaceTransform transform {:name         "My Transform"
+                                                           :description  "Test description"
+                                                           :workspace_id (:id workspace1)}]
+         (testing "returns specific transform"
+           (is (=? {:ref_id      (:ref_id transform)
+                    :name        "My Transform"
+                    :description "Test description"}
+                   (mt/user-http-request :crowberto :get 200
+                                         (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))))))
+         (testing "returns 404 if transform not in workspace"
+           (is (= "Not found."
+                  (mt/user-http-request :crowberto :get 404
+                                        (ws-url (:id workspace2) (str "/transform/" (:ref_id transform)))))))
+         (testing "requires superuser"
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :get 403
+                                        (ws-url (:id workspace1) (str "/transform/" (:ref_id transform))))))))))))
 
 (deftest update-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
-      (mt/with-temp [:model/WorkspaceTransform transform {:name         "Original Name"
-                                                          :description  "Original description"
-                                                          :workspace_id (:id workspace1)}]
-        (testing "updates transform"
-          (is (=? {:ref_id      (:ref_id transform)
-                   :name        "Updated Name"
-                   :description "Updated description"}
-                  (mt/user-http-request :crowberto :put 200
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                              workspace2 {:name "Workspace 2"}]
+       (mt/with-temp [:model/WorkspaceTransform transform {:name         "Original Name"
+                                                           :description  "Original description"
+                                                           :workspace_id (:id workspace1)}]
+         (testing "updates transform"
+           (is (=? {:ref_id      (:ref_id transform)
+                    :name        "Updated Name"
+                    :description "Updated description"}
+                   (mt/user-http-request :crowberto :put 200
+                                         (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))
+                                         {:name        "Updated Name"
+                                          :description "Updated description"})))
+           (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :ref_id (:ref_id transform)))))
+         (testing "returns 404 if transform not in workspace"
+           (is (= "Not found."
+                  (mt/user-http-request :crowberto :put 404
+                                        (ws-url (:id workspace2) (str "/transform/" (:ref_id transform)))
+                                        {:name "Should Fail"}))))
+         (testing "requires superuser"
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :put 403
                                         (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))
-                                        {:name        "Updated Name"
-                                         :description "Updated description"})))
-          (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :ref_id (:ref_id transform)))))
-        (testing "returns 404 if transform not in workspace"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :put 404
-                                       (ws-url (:id workspace2) (str "/transform/" (:ref_id transform)))
-                                       {:name "Should Fail"}))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :put 403
-                                       (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))
-                                       {:name "Should Fail"}))))))))
+                                        {:name "Should Fail"})))))))))
 
 (deftest delete-workspace-transform-test
   (testing "DELETE /api/ee/workspace/:id/transform/:txid"
-    (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
-                             workspace2 {:name "Workspace 2"}]
-      (mt/with-temp [:model/WorkspaceTransform transform1 {:name         "Transform in WS1"
-                                                           :workspace_id (:id workspace1)}
-                     :model/WorkspaceTransform transform2 {:name         "To Delete"
-                                                           :workspace_id (:id workspace1)}]
-        (testing "returns 404 if transform not in workspace"
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :delete 404
-                                       (ws-url (:id workspace2) (str "/transform/" (:ref_id transform1)))))))
-        (testing "requires superuser"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :delete 403
-                                       (ws-url (:id workspace1) (str "/transform/" (:ref_id transform1)))))))
-        (testing "deletes transform"
-          (is (nil? (mt/user-http-request :crowberto :delete 204
-                                          (ws-url (:id workspace1) (str "/transform/" (:ref_id transform2))))))
-          (is (some? (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id transform1))))
-          (is (nil? (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id transform2)))))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace1 {:name "Workspace 1"}
+                              workspace2 {:name "Workspace 2"}]
+       (mt/with-temp [:model/WorkspaceTransform transform1 {:name         "Transform in WS1"
+                                                            :workspace_id (:id workspace1)}
+                      :model/WorkspaceTransform transform2 {:name         "To Delete"
+                                                            :workspace_id (:id workspace1)}]
+         (testing "returns 404 if transform not in workspace"
+           (is (= "Not found."
+                  (mt/user-http-request :crowberto :delete 404
+                                        (ws-url (:id workspace2) (str "/transform/" (:ref_id transform1)))))))
+         (testing "requires superuser"
+           (is (= "You don't have permissions to do that."
+                  (mt/user-http-request :rasta :delete 403
+                                        (ws-url (:id workspace1) (str "/transform/" (:ref_id transform1)))))))
+         (testing "deletes transform"
+           (is (nil? (mt/user-http-request :crowberto :delete 204
+                                           (ws-url (:id workspace1) (str "/transform/" (:ref_id transform2))))))
+           (is (some? (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id transform1))))
+           (is (nil? (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id transform2))))))))))
 
 (deftest run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run"

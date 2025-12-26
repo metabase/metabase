@@ -116,3 +116,15 @@
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))
+
+(defmacro without-workspace-isolation
+  "Execute body with workspace isolation initialization disabled.
+   Workspaces created within will reach :ready status but cannot use
+   [[ws.isolation/with-workspace-isolation]].
+
+   Use this for tests that need workspaces but don't need actual database isolation,
+   such as API listing tests. This significantly speeds up test execution by skipping
+   expensive database isolation setup (creating schema, user, roles, permissions)."
+  [& body]
+  `(binding [ws.isolation/*skip-workspace-isolation* true]
+     ~@body))

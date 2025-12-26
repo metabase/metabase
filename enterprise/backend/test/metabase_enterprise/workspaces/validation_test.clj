@@ -23,22 +23,25 @@
 
 (deftest find-downstream-problems-empty-workspace-test
   (testing "find-downstream-problems returns empty for workspace with no transforms"
-    (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
-      (is (= [] (ws.validation/find-downstream-problems (:id workspace) nil))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Empty Workspace"}]
+       (is (= [] (ws.validation/find-downstream-problems (:id workspace) nil)))))))
 
 (deftest problems-endpoint-returns-empty-for-new-workspace-test
   (testing "GET /api/ee/workspace/:id/problems returns empty list for workspace with no transforms"
-    (ws.tu/with-workspaces! [workspace {:name "Test Workspace"}]
-      (let [response (mt/user-http-request :crowberto :get 200
-                                           (str "ee/workspace/" (:id workspace) "/problem"))]
-        (is (= [] response))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Test Workspace"}]
+       (let [response (mt/user-http-request :crowberto :get 200
+                                            (str "ee/workspace/" (:id workspace) "/problem"))]
+         (is (= [] response)))))))
 
 (deftest problems-endpoint-requires-superuser-test
   (testing "GET /api/ee/workspace/:id/problems requires superuser"
-    (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403
-                                   (str "ee/workspace/" (:id workspace) "/problem")))))))
+    (ws.tu/without-workspace-isolation
+     (ws.tu/with-workspaces! [workspace {:name "Private Workspace"}]
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :get 403
+                                    (str "ee/workspace/" (:id workspace) "/problem"))))))))
 
 (deftest problems-endpoint-404-for-nonexistent-workspace-test
   (testing "GET /api/ee/workspace/:id/problems returns 404 for non-existent workspace"

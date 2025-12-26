@@ -93,14 +93,18 @@
         (str/includes? msg "UNIQUE"))))
 
 (defn- run-workspace-setup!
-  "Background job: runs isolation, grants. Updates status to :ready when done."
+  "Background job: runs isolation, grants. Updates status to :ready when done.
+   If [[ws.isolation/*skip-workspace-isolation*]] is true, skips isolation setup
+   but still transitions workspace to :ready status."
   [{ws-id :id :as workspace} database]
   (try
     (ws.log/track! ws-id :workspace-setup
-      (let [isolation-details (ws.log/track! ws-id :database-isolation
-                                (ws.isolation/ensure-database-isolation! workspace database))]
-        (t2/update! :model/Workspace ws-id (merge (select-keys isolation-details [:schema :database_details])
-                                                  {:status :ready}))))
+      (if ws.isolation/*skip-workspace-isolation*
+        (t2/update! :model/Workspace ws-id {:status :ready})
+        (let [isolation-details (ws.log/track! ws-id :database-isolation
+                                  (ws.isolation/ensure-database-isolation! workspace database))]
+          (t2/update! :model/Workspace ws-id (merge (select-keys isolation-details [:schema :database_details])
+                                                    {:status :ready})))))
     (catch Exception e
       (log/error e "Failed to setup workspace")
       (throw e))))
