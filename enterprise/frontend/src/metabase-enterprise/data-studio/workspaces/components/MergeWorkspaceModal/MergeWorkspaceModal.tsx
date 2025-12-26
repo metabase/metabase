@@ -285,6 +285,7 @@ const DiffView = ({
   workspaceId: WorkspaceId;
 }) => {
   const metadata = useSelector(getMetadata);
+  const isNewTransform = transform.global_id == null;
 
   const [fetchWorkspaceTransform, workspaceTransformResult] =
     useLazyGetWorkspaceTransformQuery();
@@ -292,11 +293,11 @@ const DiffView = ({
     useLazyGetTransformQuery();
 
   useEffect(() => {
+    fetchWorkspaceTransform({
+      workspaceId,
+      transformId: transform.ref_id,
+    });
     if (transform.global_id) {
-      fetchWorkspaceTransform({
-        workspaceId,
-        transformId: transform.ref_id,
-      });
       fetchGlobalTransform(transform.global_id);
     }
   }, [
@@ -308,9 +309,11 @@ const DiffView = ({
   ]);
 
   const isLoading =
-    workspaceTransformResult.isLoading || globalTransformResult.isLoading;
+    workspaceTransformResult.isLoading ||
+    (!isNewTransform && globalTransformResult.isLoading);
   const hasError =
-    workspaceTransformResult.error || globalTransformResult.error;
+    workspaceTransformResult.error ||
+    (!isNewTransform && globalTransformResult.error);
 
   const oldSource = globalTransformResult.data
     ? getSourceCode(globalTransformResult.data, metadata)
@@ -385,17 +388,18 @@ const TransformListItem = ({
   workspaceId: WorkspaceId;
 }) => {
   const metadata = useSelector(getMetadata);
+  const isNewTransform = transform.global_id == null;
   const [fetchWorkspaceTransform, workspaceTransformResult] =
     useLazyGetWorkspaceTransformQuery();
   const [fetchGlobalTransform, globalTransformResult] =
     useLazyGetTransformQuery();
 
   useEffect(() => {
+    fetchWorkspaceTransform({
+      workspaceId,
+      transformId: transform.ref_id,
+    });
     if (transform.global_id) {
-      fetchWorkspaceTransform({
-        workspaceId,
-        transformId: transform.ref_id,
-      });
       fetchGlobalTransform(transform.global_id);
     }
   }, [
@@ -413,8 +417,17 @@ const TransformListItem = ({
     ? getSourceCode(workspaceTransformResult.data, metadata)
     : "";
 
-  const stats =
-    oldSource && newSource ? computeDiffStats(oldSource, newSource) : null;
+  const stats = useMemo(() => {
+    if (isNewTransform && newSource) {
+      // For new transforms, count all lines as additions
+      const lineCount = newSource.split("\n").length;
+      return { additions: lineCount, deletions: 0 };
+    }
+    if (oldSource && newSource) {
+      return computeDiffStats(oldSource, newSource);
+    }
+    return null;
+  }, [isNewTransform, oldSource, newSource]);
 
   return (
     <Flex
@@ -462,13 +475,18 @@ export const ReviewChangesModal = ({
     [workspaceTransforms],
   );
 
+  const newTransforms = useMemo(
+    () => workspaceTransforms.filter((t) => t.global_id == null),
+    [workspaceTransforms],
+  );
+
   const [selectedTransformId, setSelectedTransformId] = useState<
     string | "overview"
   >("overview");
 
   const selectedTransform =
     selectedTransformId !== "overview"
-      ? updatedTransforms.find((t) => t.ref_id === selectedTransformId)
+      ? workspaceTransforms.find((t) => t.ref_id === selectedTransformId)
       : null;
 
   const handleSubmit = async (values: MergeWorkspaceFormValues) => {
@@ -537,26 +555,54 @@ export const ReviewChangesModal = ({
                   <Icon name="document" size={14} c="text-medium" />
                   <Text>{t`Overview`}</Text>
                 </Flex>
-                <Text
-                  px="md"
-                  py="sm"
-                  fz="xs"
-                  fw={700}
-                  tt="uppercase"
-                  lts="0.5px"
-                  c="text-medium"
-                >
-                  {t`Modified transforms`}
-                </Text>
-                {updatedTransforms.map((transform) => (
-                  <TransformListItem
-                    key={transform.ref_id}
-                    transform={transform}
-                    isSelected={selectedTransformId === transform.ref_id}
-                    onClick={() => setSelectedTransformId(transform.ref_id)}
-                    workspaceId={workspaceId}
-                  />
-                ))}
+                {newTransforms.length > 0 && (
+                  <>
+                    <Text
+                      px="md"
+                      py="sm"
+                      fz="xs"
+                      fw={700}
+                      tt="uppercase"
+                      lts="0.5px"
+                      c="text-medium"
+                    >
+                      {t`New transforms`}
+                    </Text>
+                    {newTransforms.map((transform) => (
+                      <TransformListItem
+                        key={transform.ref_id}
+                        transform={transform}
+                        isSelected={selectedTransformId === transform.ref_id}
+                        onClick={() => setSelectedTransformId(transform.ref_id)}
+                        workspaceId={workspaceId}
+                      />
+                    ))}
+                  </>
+                )}
+                {updatedTransforms.length > 0 && (
+                  <>
+                    <Text
+                      px="md"
+                      py="sm"
+                      fz="xs"
+                      fw={700}
+                      tt="uppercase"
+                      lts="0.5px"
+                      c="text-medium"
+                    >
+                      {t`Modified transforms`}
+                    </Text>
+                    {updatedTransforms.map((transform) => (
+                      <TransformListItem
+                        key={transform.ref_id}
+                        transform={transform}
+                        isSelected={selectedTransformId === transform.ref_id}
+                        onClick={() => setSelectedTransformId(transform.ref_id)}
+                        workspaceId={workspaceId}
+                      />
+                    ))}
+                  </>
+                )}
               </Box>
               <Box flex={1} miw={0} style={{ overflow: "auto" }}>
                 {selectedTransformId === "overview" ? (
@@ -564,7 +610,7 @@ export const ReviewChangesModal = ({
                     commitMessageLength={values.commit_message?.length}
                     hasCommitMessageError={!!errors.commit_message}
                     workspaceId={workspaceId}
-                    transformCount={updatedTransforms.length}
+                    transformCount={workspaceTransforms.length}
                   />
                 ) : selectedTransform ? (
                   <DiffView

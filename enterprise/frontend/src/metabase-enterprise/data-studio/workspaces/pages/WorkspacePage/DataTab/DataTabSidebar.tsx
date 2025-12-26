@@ -17,8 +17,10 @@ type DataTabSidebarProps = {
   workspaceTransforms: WorkspaceTransformItem[];
   dbTransforms: Transform[];
   selectedTableId?: TableId | null;
+  runningTransforms?: Set<string>;
   onTransformClick?: (transform: WorkspaceTransformItem) => void;
   onTableSelect?: (table: OpenTable) => void;
+  onRunTransform?: (transform: WorkspaceTransformItem) => void;
 };
 
 export const DataTabSidebar = ({
@@ -26,8 +28,10 @@ export const DataTabSidebar = ({
   workspaceTransforms,
   dbTransforms,
   selectedTableId,
+  runningTransforms,
   onTransformClick,
   onTableSelect,
+  onRunTransform,
 }: DataTabSidebarProps) => {
   const { hasTransformEdits } = useWorkspace();
   return (
@@ -65,8 +69,14 @@ export const DataTabSidebar = ({
                 transform={workspaceTransform}
                 tableId={tableId ?? undefined}
                 isSelected={tableId === selectedTableId}
+                isRunning={
+                  workspaceTransform
+                    ? runningTransforms?.has(workspaceTransform.ref_id)
+                    : false
+                }
                 onTransformClick={onTransformClick}
                 onTableClick={onTableSelect}
+                onRunTransform={onRunTransform}
               />
             );
           })}

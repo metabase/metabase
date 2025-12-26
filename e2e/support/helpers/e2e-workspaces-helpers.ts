@@ -34,7 +34,11 @@ export const Workspaces = {
   },
 
   getWorkspaceItem(name: string | RegExp) {
-    return Workspaces.getWorkspacesSection().findByRole("button", { name });
+    return Workspaces.getWorkspacesSection().find(`button[name="${name}"]`);
+  },
+
+  getWorkspaceItemStatus(name: string | RegExp) {
+    return Workspaces.getWorkspaceItem(name).findByTestId("workspace-status");
   },
 
   getWorkspaceItemActions(name: string | RegExp) {
@@ -47,6 +51,10 @@ export const Workspaces = {
 
   getMergeWorkspaceButton() {
     return cy.findByRole("button", { name: /Merge/ });
+  },
+
+  getWorkspaceDatabaseSelect() {
+    return cy.findByPlaceholderText("Select a database");
   },
 
   getRunWorkspaceButton() {
