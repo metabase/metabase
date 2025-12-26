@@ -437,6 +437,83 @@
                                                    field-metadata)))
                                          :semantic_type)))))))))
 
+(deftest model-metadata-not-overwritten-when-query-run-directly-test
+  (testing "Model result_metadata customizations should not be silently overwritten when running a query directly (#26755)"
+    (mt/with-test-user :crowberto
+      (mt/with-temp
+        [:model/Card model {:type          :model
+                            :dataset_query (mt/mbql-query orders
+                                             {:aggregation [[:count] [:sum $total]]
+                                              :breakout    [!month.created_at]})}]
+        (let [original-metadata (t2/select-one-fn :result_metadata :model/Card :id (:id model))
+              custom-metadata   (mapv (fn [col]
+                                        (case (:name col)
+                                          "count" (assoc col
+                                                         :display_name "My Custom Count"
+                                                         :description "A custom description"
+                                                         :semantic_type :type/Quantity)
+                                          "sum"   (assoc col
+                                                         :display_name "My Custom Sum"
+                                                         :description "Sum description"
+                                                         :visibility_type :details-only)
+                                          col))
+                                      original-metadata)]
+          (t2/update! :model/Card (:id model) {:result_metadata custom-metadata})
+          (is (= ["Created At: Month" "My Custom Count" "My Custom Sum"]
+                 (mapv :display_name (t2/select-one-fn :result_metadata :model/Card :id (:id model)))))
+          (qp/process-query
+           (assoc (:dataset_query model)
+                  :info {:card-id (:id model)}))
+          (let [final-metadata (t2/select-one-fn :result_metadata :model/Card :id (:id model))
+                count-col      (first (filter #(= "count" (:name %)) final-metadata))
+                sum-col        (first (filter #(= "sum" (:name %)) final-metadata))]
+            (testing "display_name is preserved"
+              (is (= "My Custom Count" (:display_name count-col)))
+              (is (= "My Custom Sum" (:display_name sum-col))))
+            (testing "description is preserved"
+              (is (= "A custom description" (:description count-col)))
+              (is (= "Sum description" (:description sum-col))))
+            (testing "semantic_type is preserved"
+              (is (= :type/Quantity (:semantic_type count-col))))
+            (testing "visibility_type is preserved"
+              (is (= :details-only (:visibility_type sum-col))))))))))
+
+(deftest model-metadata-preserved-when-query-columns-change-test
+  (testing "When a model's query changes, existing column customizations are preserved and new columns get computed metadata (#26755)"
+    (mt/with-test-user :crowberto
+      (mt/with-temp
+        [:model/Card model {:type          :model
+                            :dataset_query (mt/mbql-query orders
+                                             {:aggregation [[:count]]
+                                              :breakout    [!month.created_at]})}]
+        (let [original-metadata (t2/select-one-fn :result_metadata :model/Card :id (:id model))
+              custom-metadata   (mapv (fn [col]
+                                        (if (= "count" (:name col))
+                                          (assoc col :display_name "My Custom Count" :description "Keep me")
+                                          col))
+                                      original-metadata)]
+          (t2/update! :model/Card (:id model) {:result_metadata custom-metadata})
+          (is (= "My Custom Count"
+                 (:display_name (first (filter #(= "count" (:name %))
+                                               (t2/select-one-fn :result_metadata :model/Card :id (:id model)))))))
+          (qp/process-query
+           (assoc (mt/mbql-query orders
+                    {:aggregation [[:count] [:sum $total]]
+                     :breakout    [!month.created_at]})
+                  :info {:card-id (:id model)}))
+          (let [final-metadata (t2/select-one-fn :result_metadata :model/Card :id (:id model))
+                count-col      (first (filter #(= "count" (:name %)) final-metadata))
+                sum-col        (first (filter #(= "sum" (:name %)) final-metadata))]
+            (testing "existing column customizations are preserved"
+              (is (= "My Custom Count" (:display_name count-col)))
+              (is (= "Keep me" (:description count-col))))
+            (testing "new column gets computed metadata (not nil)"
+              (is (some? sum-col))
+              (is (string? (:display_name sum-col))))
+            (testing "new column does not inherit customizations from other columns"
+              (is (not= "My Custom Count" (:display_name sum-col)))
+              (is (nil? (:description sum-col))))))))))
+
 (deftest ^:parallel skip-results-metadata-test
   (let [query (mt/mbql-query venues {:limit 1})]
     (is (=? {:status :completed
