@@ -5,7 +5,8 @@
    [metabase.test :as mt]
    [metabase.upload.core :as upload]
    [metabase.upload.impl-test :as upload-test]
-   [metabase.warehouse-schema-rest.api.table-test :as oss-test]))
+   [metabase.warehouse-schema-rest.api.table-test :as oss-test]
+   [toucan2.core :as t2]))
 
 (def list-url "ee/upload-management/tables")
 
@@ -34,7 +35,32 @@
                      (->> result
                           (filter #(= (:db_id %) (mt/id)))  ; prevent stray tables from affecting unit test results
                           (map #(select-keys % [:name :display_name :id :entity_type :schema :usage_count]))
-                          set))))))))))
+                          set))))))))
+
+    (testing "Tables from attached DWH databases should not be duplicated"
+      (mt/with-premium-features #{:upload-management :attached-dwh}
+        (mt/with-temp [:model/Database dwh-db {:is_attached_dwh true}
+                       :model/Table table1 {:db_id (:id dwh-db)
+                                            :is_upload true
+                                            :active true
+                                            :name "upload_table_1"
+                                            :display_name "Upload Table 1"}
+                       :model/Table table2 {:db_id (:id dwh-db)
+                                            :is_upload true
+                                            :active true
+                                            :name "upload_table_2"
+                                            :display_name "Upload Table 2"}]
+          (let [result (mt/user-http-request :rasta :get 200 list-url)
+                filtered-result (filter #(= (:db_id %) (:id dwh-db)) result)
+                table-ids (map :id filtered-result)]
+            (testing "each table appears only once in the results"
+              (is (= (count table-ids) (count (distinct table-ids)))
+                  "Table IDs should not be duplicated"))
+            (testing "both tables are present"
+              (is (some #{(:id table1)} table-ids))
+              (is (some #{(:id table2)} table-ids)))
+            (testing "exactly two tables are returned for this database"
+              (is (= 2 (count filtered-result)))))))))
 
 (defn- delete-url [table-id]
   (str "ee/upload-management/tables/" table-id))
