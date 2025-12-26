@@ -284,9 +284,12 @@ export function getSingleSeriesDimensionsAndMetrics(
 
   // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
   // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
-  const metricColumns = cols.filter((col) => isMetric(col));
+  // columns with binning_info are always dimensions (they represent categorical buckets)
+  const metricColumns = cols.filter(
+    (col) => isMetric(col) && !col.binning_info,
+  );
   const dimensionNotMetricColumns = cols.filter(
-    (col) => isDimension(col) && !isMetric(col),
+    (col) => isDimension(col) && (!isMetric(col) || col.binning_info),
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
