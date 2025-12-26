@@ -107,6 +107,12 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task     (task! (start-maildev/start-maildev!))}
 
+  start-python-runner
+  {:doc      "Start python-runner container with internal Moto S3 server for Python transforms"
+   :examples [["./bin/mage start-python-runner" "start python-runner with internal S3"]]
+   :requires [[mage.start-python-runner :as start-python-runner]]
+   :task     (task! (start-python-runner/start-python-runner!))}
+
   start-db
   {:doc        "Start a db on a default port in docker"
    :examples   [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
