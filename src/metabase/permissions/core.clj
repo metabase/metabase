@@ -38,6 +38,7 @@
 (p/import-vars
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
+  other-new-perms
   disable-perms-cache
   download-perms-level
   full-db-permission-for-user
