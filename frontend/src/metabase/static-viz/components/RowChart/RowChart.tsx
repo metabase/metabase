@@ -5,7 +5,7 @@ import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import { MIN_BAR_HEIGHT, RowChart } from "metabase/visualizations/shared/components/RowChart";
 import type {
   FontStyle,
   TextWidthMeasurer,
@@ -26,6 +26,7 @@ import {
   getAxesVisibility,
   getLabelledSeries,
   getLabels,
+  getShouldGroupRemainingValues,
   getXValueRange,
 } from "metabase/visualizations/visualizations/RowChart/utils/settings";
 
@@ -84,6 +85,7 @@ export const StaticRowChart = ({
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
+  const shouldGroupRemainingValues = getShouldGroupRemainingValues(settings);
 
   const tickFormatters = getFormatters(chartColumns, settings);
 
@@ -103,7 +105,18 @@ export const StaticRowChart = ({
   });
 
   const legendHeight = legend != null ? legend.height + CHART_PADDING : 0;
-  const fullChartHeight = height + legendHeight;
+  const seriesCountPerValue = Math.max(series.length, 1);
+  const singleValueHeight =
+    stackOffset != null
+      ? MIN_BAR_HEIGHT
+      : MIN_BAR_HEIGHT * seriesCountPerValue;
+
+  const desiredChartHeight = groupedData.length * singleValueHeight;
+  const axisBuffer = MIN_BAR_HEIGHT * 2;
+  const chartHeight = shouldGroupRemainingValues
+    ? height
+    : Math.max(height, desiredChartHeight + axisBuffer);
+  const fullChartHeight = chartHeight + legendHeight;
 
   return (
     <svg
@@ -123,9 +136,10 @@ export const StaticRowChart = ({
       <Group top={legendHeight}>
         <RowChart
           width={width}
-          height={height}
+          height={chartHeight}
           data={groupedData}
           trimData={trimData}
+          shouldGroupRemainingValues={shouldGroupRemainingValues}
           series={series}
           seriesColors={seriesColors}
           goal={goal}
