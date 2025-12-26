@@ -6,7 +6,7 @@ import Color from "color";
 import { alpha } from "metabase/lib/colors";
 import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
-const CELL_ALPHA = 0.65;
+const CELL_ALPHA = 1;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
 
