@@ -141,7 +141,7 @@ export function compileFormatter(
     }
 
     const scale = getColorScale(
-      [min, max],
+      [min, 100],
       format.colors.map((c) => {
         const color = Color(c);
         const alpha = color.alpha();

@@ -119,6 +119,27 @@ describe("compileFormatter", () => {
     expect(formatter("food")).toBe(null);
     expect(formatter("foo ")).toBe(null);
   });
+
+  it("properly detect not scientific notation", () => {
+    const formatter = compileFormatter(
+      {
+        columns: ["A"],
+        type: "range",
+        colors: ["transparent", "#C8B4DA"],
+        min_type: null,
+        max_type: null,
+        min_value: 0,
+        max_value: 100,
+      },
+      "A",
+      {
+        A: [0, 1000000],
+      },
+    );
+
+    expect(formatter(0)).toBe("rgba(200, 180, 218, 0)");
+    expect(formatter(1)).toBe("rgba(200, 180, 218, 0.0075)");
+  });
 });
 
 describe("canCompareSubstrings", () => {
