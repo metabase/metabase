@@ -328,3 +328,27 @@
           (is (= original-jvm-locale (Locale/getDefault)))))
 
       (is (= original-jvm-locale (Locale/getDefault))))))
+
+(deftest datetime-with-time-semantic-type-formats-as-datetime-test
+  (testing "DateTime fields with Time semantic types should format as full datetime, not just time (#58361)"
+    (mt/with-temporary-setting-values [site-locale "en"
+                                       custom-formatting nil]
+      (let [test-datetime "2014-04-01T08:30:00"]
+        (testing "A DateTime with CreationTime semantic type should show full datetime"
+          (let [col {:base_type      :type/DateTime
+                     :effective_type :type/DateTime
+                     :semantic_type  :type/CreationTime}]
+            (is (= "April 1, 2014, 8:30 AM"
+                   (format-temporal-str "UTC" test-datetime col)))))
+        (testing "A DateTime with CancelationTime semantic type should show full datetime"
+          (let [col {:base_type      :type/DateTime
+                     :effective_type :type/DateTime
+                     :semantic_type  :type/CancelationTime}]
+            (is (= "April 1, 2014, 8:30 AM"
+                   (format-temporal-str "UTC" test-datetime col)))))
+        (testing "But a true Time type should still show only time"
+          (let [col {:base_type      :type/Time
+                     :effective_type :type/Time
+                     :semantic_type  :type/CreationTime}]
+            (is (= "8:30 AM"
+                   (format-temporal-str "UTC" test-datetime col)))))))))

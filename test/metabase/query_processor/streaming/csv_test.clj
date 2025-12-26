@@ -146,3 +146,33 @@
           results (qp/process-query (assoc (mt/native-query {:query query}) :middleware {:format-rows? false}))]
       (is (= [["2020-06-03" "2020-06-03T23:41:23"]]
              (csv-export (mt/rows results)))))))
+
+(deftest datetime-with-time-semantic-type-csv-export-test
+  (testing "CSV exports preserve full datetime even when semantic type is a Time type (#58361)"
+    (mt/test-drivers (mt/normal-drivers)
+      ;; Query the USERS table which has a LAST_LOGIN field that is a DateTime
+      ;; We'll manually override the semantic type to CreationTime to simulate the bug scenario
+      (let [query (mt/mbql-query users
+                    {:fields   [[:field (mt/id :users :id) nil]
+                                [:field (mt/id :users :last_login) nil]]
+                     :order-by [[:asc [:field (mt/id :users :id) nil]]]
+                     :limit    1})
+            ;; Process query with format_rows true (as in CSV exports)
+            result (mt/user-http-request :crowberto :post 200 "dataset/csv"
+                                         {:query       query
+                                          :format_rows true
+                                          :visualization_settings
+                                          {:column_settings
+                                           {{:name "LAST_LOGIN"}
+                                            {:semantic_type :type/CreationTime}}}})]
+        (let [rows (parse-and-sort-csv result)]
+          (testing "The datetime field should contain full date and time, not just time"
+            (is (= 1 (count rows)))
+            (let [[id last-login] (first rows)]
+              (is (= "1" id))
+              ;; The formatted datetime should contain the date (April 1, 2014)
+              ;; and not be just the time (8:30 AM)
+              (is (re-find #"April.*2014" last-login)
+                  (str "Expected full datetime with date, but got: " last-login))
+              (is (re-find #"8:30" last-login)
+                  (str "Expected time portion to be present, but got: " last-login)))))))))
