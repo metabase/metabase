@@ -1,7 +1,6 @@
 (ns metabase.analyze.fingerprint.fingerprinters
   "Non-identifying fingerprinters for various field types."
   (:require
-   [bigml.histogram.core :as hist]
    [java-time.api :as t]
    [kixi.stats.core :as stats]
    [kixi.stats.math :as math]
@@ -14,11 +13,13 @@
    [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
-   (com.bigml.histogram Histogram)
-   (com.clearspring.analytics.stream.cardinality HyperLogLogPlus)
    (java.time ZoneOffset)
    (java.time.chrono ChronoLocalDateTime ChronoZonedDateTime)
-   (java.time.temporal Temporal)))
+   (java.time.temporal Temporal)
+   (org.apache.commons.codec.digest MurmurHash2)
+   (org.apache.commons.math3.stat.descriptive SummaryStatistics)
+   (org.apache.datasketches.hll HllSketch)
+   (org.apache.datasketches.kll KllDoublesSketch)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,13 +51,17 @@
     ([_ _] (reduced init))))
 
 (defn- cardinality
-  "Transducer that sketches cardinality using HyperLogLog++.
-   https://research.google.com/pubs/pub40671.html"
-  ([] (HyperLogLogPlus. 14 25))
-  ([^HyperLogLogPlus acc] (.cardinality acc))
-  ([^HyperLogLogPlus acc x]
-   (.offer acc x)
-   acc))
+  "Transducer that sketches cardinality using DataSketches' HyperLogLog implementation."
+  ([] (HllSketch.))
+  ([^HllSketch acc] (Math/round (.getEstimate acc)))
+  ([^HllSketch acc x]
+   ;; Hashing is implemented in this way to ensure better overlap with results that the previously used
+   ;; HyperLogLogPlus implementation produced.
+   (let [h (cond (string? x) (MurmurHash2/hash64 ^String x)
+                 (bytes? x) (MurmurHash2/hash64 ^bytes x (alength ^bytes x))
+                 :else (hash x))]
+     (.update acc ^long h)
+     acc)))
 
 (defmacro robust-map
   "Wrap each map value in try-catch block."
@@ -237,11 +242,17 @@
    (robust-fuse {:earliest earliest
                  :latest   latest})))
 
-(defn- histogram
-  "Transducer that summarizes numerical data with a histogram."
-  ([] (hist/create))
-  ([^Histogram histogram] histogram)
-  ([^Histogram histogram x] (hist/insert-simple! histogram x)))
+(deftype ^:private DistributionHolder [^SummaryStatistics summary, ^KllDoublesSketch kll])
+
+(defn- distribution
+  "Transducer that summarizes numerical data with SummaryStatistics and KllDoublesSketch."
+  ([] (DistributionHolder. (SummaryStatistics.) (KllDoublesSketch/newHeapInstance)))
+  ([^DistributionHolder holder] holder)
+  ([^DistributionHolder holder x]
+   (let [d (double x)]
+     (.addValue ^SummaryStatistics (.summary holder) d)
+     (.update ^KllDoublesSketch (.kll holder) d)
+     holder)))
 
 (defprotocol ^:private INumberCoerceable
   "Protocol for converting objects to a java.lang.Number."
@@ -259,16 +270,19 @@
 
 (deffingerprinter :type/Number
   (redux/post-complete
-   ((comp (map ->number) (filter u/real-number?)) histogram)
-   (fn [h]
-     (let [{q1 0.25 q3 0.75} (hist/percentiles h 0.25 0.75)]
+   ((comp (map ->number) (filter u/real-number?)) distribution)
+   (fn [^DistributionHolder h]
+     (let [^SummaryStatistics summary (.summary h)
+           ^KllDoublesSketch kll      (.kll h)
+           n                          (.getN summary)]
        (robust-map
-        :min (hist/minimum h)
-        :max (hist/maximum h)
-        :avg (hist/mean h)
-        :sd  (some-> h hist/variance math/sqrt)
-        :q1  q1
-        :q3  q3)))))
+        :min (.getMinItem kll)
+        :max (.getMaxItem kll)
+        ;; Ensure we don't get ##NaN in avg/sd
+        :avg (when (pos? n) (.getMean summary))
+        :sd  (when (pos? n) (math/sqrt (.getVariance summary)))
+        :q1  (.getQuantile kll 0.25)
+        :q3  (.getQuantile kll 0.75))))))
 
 (defn- valid-serialized-json?
   "Is x a serialized JSON dictionary or array. Hueristically recognize maps and arrays. Uses the following strategies:
