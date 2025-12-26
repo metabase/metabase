@@ -475,6 +475,3 @@
                       (assoc :use-m2m true
                              :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))
-
-(deftest new-test-test
-  (is (= 1 2) "This is a placeholder test to verify that the driver test suite is being executed."))
