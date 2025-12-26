@@ -3,6 +3,7 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
+import { uuid } from "metabase/lib/uuid";
 import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";

@@ -360,26 +360,24 @@ export const TransformTab = ({
           </Group>
 
           <Group>
-            <Group>
-              {isSaved && (
-                <WorkspaceRunButton
-                  id={transform.id}
-                  run={buttonRun}
-                  isDisabled={hasChanges || isDisabled}
-                  onRun={handleRun}
-                />
-              )}
+            {isSaved && (
+              <WorkspaceRunButton
+                id={transform.id}
+                run={buttonRun}
+                isDisabled={hasChanges || isDisabled}
+                onRun={handleRun}
+              />
+            )}
 
-              {isSaved && (
-                <SaveTransformButton
-                  databaseId={databaseId}
-                  workspaceId={workspaceId}
-                  editedTransform={editedTransform}
-                  transform={transform}
-                  isArchived={isDisabled}
-                />
-              )}
-            </Group>
+            {isSaved && (
+              <SaveTransformButton
+                databaseId={databaseId}
+                workspaceId={workspaceId}
+                editedTransform={editedTransform}
+                transform={transform}
+                isArchived={isDisabled}
+              />
+            )}
 
             {!isSaved && transform.id < 0 && (
               <Button
@@ -390,12 +388,12 @@ export const TransformTab = ({
               >{t`Save`}</Button>
             )}
 
-            {!isSaved && transform.id >= 0 && hasChanges && (
+            {!isSaved && transform.id >= 0 && (
               <Button
                 leftSection={<Icon name="check" />}
                 size="sm"
-                variant="filled"
-                disabled={isDisabled || isCheckoutDisabled}
+                variant={hasChanges ? "filled" : "default"}
+                disabled={isDisabled || isCheckoutDisabled || !hasChanges}
                 onClick={handleSaveExternalTransform}
               >{t`Save`}</Button>
             )}
