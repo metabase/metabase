@@ -1443,3 +1443,7 @@
                     {:name "products",   :schema "PUBLIC", :description nil}
                     {:name "reviews",    :schema "PUBLIC", :description nil}}}
                  (driver/describe-database :snowflake db))))))))
+
+(deftest snowflake-tests-run-conditionally-test
+  (is (= 1 2)
+      "The snowflake-tests-run-conditionally-test test ran."))
