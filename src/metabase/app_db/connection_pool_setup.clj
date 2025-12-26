@@ -135,7 +135,20 @@
    "maxPoolSize"
    (or (config/config-int :mb-application-db-max-connection-pool-size)
        ;; 15 is the c3p0 default but it's always nice to be explicit in case that changes
-       15)})
+       15)
+
+   "unreturnedConnectionTimeout"
+   (or (config/config-int :mb-application-db-unreturned-connection-timeout)
+       ;; we set an unreturnedConnectionTimeout for data warehouses, via
+       ;; `(driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)`, which defaults to the same
+       ;; 5 minute value as the query timeout. But for the application DB this is not nearly so safe, as we don't
+       ;; have a fixed maximum possible time a query could take, and e.g. `copy-to-h2` can easily take more than this.
+       ;;
+       ;; Let's default to 1 hour. Note that as discussed at
+       ;; https://www.mchange.com/projects/c3p0/#unreturnedConnectionTimeout
+       ;; this is a *backstop*; as it says there, "it's better to be neurotic about closing your Connections in
+       ;; the first place."
+       3600)})
 
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
