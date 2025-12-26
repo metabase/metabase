@@ -1,0 +1,20 @@
+name: A Test
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 2
+    steps:
+      - name: Foo
+        id: foo
+        run: |
+          echo 42
+          exit 1;
+        continue-on-error: true
+      - name: Bar
+        run: echo ${{ steps.foo.outcome }}
+      - name: Baz
+        run: echo ${{ steps.foo.conclusion }}
