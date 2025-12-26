@@ -23,7 +23,7 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import type { DatasetColumn, DatasetData } from "metabase-types/api/dataset";
 
-import { ScalarContainer } from "./Scalar.styled";
+import { ScalarValueContainer } from "./ScalarValueContainer";
 import { scalarToBarTransform } from "./scalars-bar-transform";
 
 const PADDING = 32;
@@ -206,9 +206,8 @@ export class Scalar extends Component<
 
     return (
       <ScalarWrapper>
-        <ScalarContainer
+        <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
-          data-testid="scalar-container"
           tooltip={fullScalarValue}
           alwaysShowTooltip={fullScalarValue !== displayValue}
           isClickable={isClickable}
@@ -223,7 +222,7 @@ export class Scalar extends Component<
               width={Math.max(width - PADDING, 0)}
             />
           </span>
-        </ScalarContainer>
+        </ScalarValueContainer>
       </ScalarWrapper>
     );
   }
