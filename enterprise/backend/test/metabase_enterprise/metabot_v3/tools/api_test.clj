@@ -14,7 +14,6 @@
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -287,7 +286,7 @@
                       :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
-                  response)))))))
+                  (update-in response [:structured_output :query] lib-be/normalize-query))))))))
 
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}
