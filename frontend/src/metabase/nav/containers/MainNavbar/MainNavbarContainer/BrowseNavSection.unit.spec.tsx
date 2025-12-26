@@ -7,7 +7,7 @@ import {
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseNavSection } from "./BrowseNavSection";
@@ -169,7 +169,7 @@ describe("BrowseNavSection", () => {
 
 interface SetupOpts {
   isEmbeddingIframe?: boolean;
-  entityTypes?: EmbeddingEntityType[];
+  entityTypes?: ModularEmbeddingEntityType[];
   isAdmin?: boolean;
 }
 
