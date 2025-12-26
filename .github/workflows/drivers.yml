@@ -6,6 +6,22 @@ on:
       skip:
         type: boolean
         default: false
+      # Cloud driver file change flags (from paths-filter)
+      athena-changed:
+        type: boolean
+        default: false
+      bigquery-changed:
+        type: boolean
+        default: false
+      databricks-changed:
+        type: boolean
+        default: false
+      redshift-changed:
+        type: boolean
+        default: false
+      snowflake-changed:
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -18,6 +34,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.check-branch-and-files-changed.outputs.skip }}
+      # Cloud driver run decisions
+      athena-should-run: ${{ steps.cloud-drivers.outputs.athena-should-run }}
+      bigquery-should-run: ${{ steps.cloud-drivers.outputs.bigquery-should-run }}
+      databricks-should-run: ${{ steps.cloud-drivers.outputs.databricks-should-run }}
+      redshift-should-run: ${{ steps.cloud-drivers.outputs.redshift-should-run }}
+      snowflake-should-run: ${{ steps.cloud-drivers.outputs.snowflake-should-run }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,10 +67,40 @@ jobs:
             fi
           fi
         shell: bash
+      - name: Determine which cloud drivers should run
+        id: cloud-drivers
+        env:
+          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:all-cloud-drivers') }}
+          ATHENA_CHANGED: ${{ inputs.athena-changed }}
+          BIGQUERY_CHANGED: ${{ inputs.bigquery-changed }}
+          DATABRICKS_CHANGED: ${{ inputs.databricks-changed }}
+          REDSHIFT_CHANGED: ${{ inputs.redshift-changed }}
+          SNOWFLAKE_CHANGED: ${{ inputs.snowflake-changed }}
+        run: |
+          # Cloud drivers run if: master/release OR label present OR files changed
+          should_run() {
+            local driver=$1
+            local changed_var="${driver^^}_CHANGED"  # uppercase
+            [[ "${IS_MASTER_OR_RELEASE}" == "true" ]] || \
+            [[ "${HAS_LABEL}" == "true" ]] || \
+            [[ "${!changed_var}" == "true" ]]
+          }
+
+          for driver in athena bigquery databricks redshift snowflake; do
+            if should_run "$driver"; then
+              echo "${driver}-should-run=true" >> "$GITHUB_OUTPUT"
+              echo "${driver}: should run"
+            else
+              echo "${driver}-should-run=false" >> "$GITHUB_OUTPUT"
+              echo "${driver}: skip"
+            fi
+          done
+        shell: bash
 
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -88,7 +140,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -297,7 +349,7 @@ jobs:
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -335,7 +387,7 @@ jobs:
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -965,7 +1017,7 @@ jobs:
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1045,7 +1097,7 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
