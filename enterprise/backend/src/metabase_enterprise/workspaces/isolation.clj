@@ -15,13 +15,6 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]))
 
-(def ^:dynamic *skip-workspace-isolation*
-  "For testing only. When true, workspace initialization skips the expensive database
-   isolation setup (creating schema, user, roles, permissions). Workspaces will reach
-   :ready status but [[with-workspace-isolation]] will throw. Cleanup is also skipped
-   since there are no isolation resources to destroy."
-  false)
-
 ;;;; Delegation to driver methods
 ;; The actual multimethod implementations are now in the individual driver files.
 ;; These functions dispatch through the driver multimethods.
@@ -58,8 +51,7 @@
   [workspace thunk]
   (when-not (:database_details workspace)
     (throw (ex-info (str "Workspace isolation was not initialized. "
-                         "If this is a test, ensure you're not using without-workspace-isolation "
-                         "for tests that need isolation.")
+                         "If this is a test, ensure the workspace was created with isolation enabled.")
                     {:workspace-id (:id workspace)})))
   (driver/with-swapped-connection-details (:database_id workspace)
     (:database_details workspace)

@@ -19,7 +19,7 @@
     (let [mp          (mt/metadata-provider)
           query-a     (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           query-b     (lib/query mp (lib.metadata/table mp (mt/id :products)))
-          workspace   (ws.tu/create-ready-ws! "Test Workspace" {:isolation? false})
+          workspace   (ws.tu/create-provisional-ws! "Test Workspace")
           grant-calls (atom [])]
       ;; Set up mock BEFORE calling add-to-changeset! since it calls sync-transform-dependencies! internally
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
@@ -66,7 +66,7 @@
   (testing "sync-transform-dependencies! is idempotent"
     (let [mp        (mt/metadata-provider)
           query     (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          workspace (ws.tu/create-ready-ws! "Test Workspace" {:isolation? false})]
+          workspace (ws.tu/create-provisional-ws! "Test Workspace")]
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
         (let [wt (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
                                               :transform nil

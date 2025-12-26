@@ -93,18 +93,14 @@
         (str/includes? msg "UNIQUE"))))
 
 (defn- run-workspace-setup!
-  "Background job: runs isolation, grants. Updates status to :ready when done.
-   If [[ws.isolation/*skip-workspace-isolation*]] is true, skips isolation setup
-   but still transitions workspace to :ready status."
+  "Background job: runs isolation, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database]
   (try
     (ws.log/track! ws-id :workspace-setup
-      (if ws.isolation/*skip-workspace-isolation*
-        (t2/update! :model/Workspace ws-id {:status :ready})
-        (let [isolation-details (ws.log/track! ws-id :database-isolation
-                                  (ws.isolation/ensure-database-isolation! workspace database))]
-          (t2/update! :model/Workspace ws-id (merge (select-keys isolation-details [:schema :database_details])
-                                                    {:status :ready})))))
+      (let [isolation-details (ws.log/track! ws-id :database-isolation
+                                (ws.isolation/ensure-database-isolation! workspace database))]
+        (t2/update! :model/Workspace ws-id (merge (select-keys isolation-details [:schema :database_details])
+                                                  {:status :ready}))))
     (catch Exception e
       (log/error e "Failed to setup workspace")
       (throw e))))
@@ -128,7 +124,7 @@
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
     (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
-      (quick-task/submit-task! (bound-fn [] (run-workspace-setup! <> database))))))
+      (quick-task/submit-task! #(run-workspace-setup! <> database)))))
 
 (defn- create-uninitialized-workspace!
   "Create a workspace with a provisional database_id but no isolation resources.
