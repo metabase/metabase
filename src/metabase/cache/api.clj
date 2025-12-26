@@ -196,7 +196,7 @@
                                        :with-overrides? (= include :overrides)})]
     {:status (if (= cnt -1) 404 200)
      :body   {:count   cnt
-              :message (case [(= include :overrides) (if (pos? cnt) 1 cnt)]
+              :message (condp = [(= include :overrides) (if (pos? cnt) 1 cnt)]
                          [true -1]  (tru "Could not find any questions for the criteria you specified.")
                          [true 0]   (tru "No cached results to clear.")
                          [true 1]   (trun "Cleared a cached result." "Cleared {0} cached results." cnt)
