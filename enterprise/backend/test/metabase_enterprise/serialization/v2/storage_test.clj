@@ -22,6 +22,17 @@
                :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
+(deftest escape-segment-test
+  (testing "escape-segment handles slashes and whitespace"
+    (is (= "normal-name" (storage/escape-segment "normal-name")))
+    (is (= "Company__SLASH__organization" (storage/escape-segment "Company/organization")))
+    (is (= "path__BACKSLASH__to__BACKSLASH__file" (storage/escape-segment "path\\to\\file")))
+    (is (= "trimmed" (storage/escape-segment "  trimmed  ")))
+    (is (= "A Description in a database" (storage/escape-segment "A Description in a database    ")))
+    (is (= "leading and trailing" (storage/escape-segment "  leading and trailing  ")))
+    (is (= "tabs" (storage/escape-segment "\ttabs\t"))
+        "Tabs and other whitespace should be trimmed")))
+
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
@@ -147,6 +158,28 @@
                                                 "databases" "My Company Data"
                                                 "tables"    "Customers"
                                                 "fields"    "Company__SLASH__organization website.yaml"))
+                       (update :visibility_type keyword)
+                       (update :base_type       keyword))))))))))
+
+(deftest trailing-spaces-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database    db    {:name "Test Database"}
+                         :model/Table       table {:name "Test Table" :db_id (:id db)}
+                         :model/Field       field {:name "A Description in a database    " :table_id (:id table)}]
+        (let [export (into [] (extract/extract {:no-settings true}))]
+          (storage/store! export dump-dir)
+          (testing "field names with trailing spaces should be trimmed in filenames"
+            (is (= #{["A Description in a database.yaml"]}
+                   (file-set (io/file dump-dir "databases" "Test Database" "tables" "Test Table" "fields")))
+                "Trailing spaces in field names should be trimmed"))
+
+          (testing "the Field was properly exported"
+            (is (= (ts/extract-one "Field" (:id field))
+                   (-> (yaml/from-file (io/file dump-dir
+                                                "databases" "Test Database"
+                                                "tables"    "Test Table"
+                                                "fields"    "A Description in a database.yaml"))
                        (update :visibility_type keyword)
                        (update :base_type       keyword))))))))))
 
