@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import Button from "metabase/common/components/Button";
 import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
@@ -86,12 +87,19 @@ function CreateCollectionForm({
   showCollectionPicker = true,
   showAuthorityLevelPicker = true,
 }: Props) {
+  const { data: initialCollection } = useGetCollectionQuery(
+    initialCollectionId != null ? { id: initialCollectionId } : skipToken,
+  );
+
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
       parent_id: initialCollectionId,
+
+      // Namespace is used for hiding the authority level picker.
+      namespace: initialCollection?.namespace ?? null,
     }),
-    [initialCollectionId],
+    [initialCollectionId, initialCollection?.namespace],
   );
 
   return (
@@ -100,43 +108,55 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={onSubmit}
     >
-      {({ dirty, setFieldValue }) => (
-        <Form>
-          <FormInput
-            name="name"
-            title={t`Name`}
-            placeholder={t`My new fantastic collection`}
-            data-autofocus
-          />
-          <FormTextArea
-            name="description"
-            title={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-            nullable
-            optional
-          />
-          {showCollectionPicker && (
-            <FormCollectionPicker
-              name="parent_id"
-              setNamespace={(namespace) =>
-                setFieldValue("namespace", namespace)
-              }
-              title={t`Collection it's saved in`}
-              filterPersonalCollections={filterPersonalCollections}
-              entityType="collection"
-              savingModel="collection"
+      {({ dirty, setFieldValue, values }) => {
+        // Populate the namespace for initial collection.
+        // Otherwise, use the value from the collection picker.
+        const namespace =
+          values.parent_id === initialCollectionId
+            ? initialCollection?.namespace
+            : values.namespace;
+
+        return (
+          <Form>
+            <FormInput
+              name="name"
+              title={t`Name`}
+              placeholder={t`My new fantastic collection`}
+              data-autofocus
             />
-          )}
-          {showAuthorityLevelPicker && <FormAuthorityLevelField />}
-          <FormFooter>
-            <FormErrorMessage inline />
-            {!!onCancel && (
-              <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+            <FormTextArea
+              name="description"
+              title={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+              nullable
+              optional
+            />
+            {showCollectionPicker && (
+              <FormCollectionPicker
+                name="parent_id"
+                setNamespace={(namespace) =>
+                  setFieldValue("namespace", namespace)
+                }
+                title={t`Collection it's saved in`}
+                filterPersonalCollections={filterPersonalCollections}
+                entityType="collection"
+                savingModel="collection"
+              />
             )}
-            <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
-          </FormFooter>
-        </Form>
-      )}
+            {showAuthorityLevelPicker &&
+              namespace !== "shared-tenant-collection" && (
+                <FormAuthorityLevelField />
+              )}
+            <FormFooter>
+              <FormErrorMessage inline />
+              {!!onCancel && (
+                <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
+              )}
+              <FormSubmitButton title={t`Create`} disabled={!dirty} primary />
+            </FormFooter>
+          </Form>
+        );
+      }}
     </FormProvider>
   );
 }

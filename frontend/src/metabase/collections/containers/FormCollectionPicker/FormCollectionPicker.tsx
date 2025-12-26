@@ -158,8 +158,8 @@ function FormCollectionPicker({
     ({ id, namespace }: CollectionPickerItem) => {
       if (namespace) {
         setNamespace?.(namespace);
-        setCollectionNamespace(namespace);
       }
+
       setCollectionNamespace(namespace ?? null);
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
