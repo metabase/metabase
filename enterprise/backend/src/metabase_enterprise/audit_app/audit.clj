@@ -23,31 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- running-from-jar?
-  "Returns true iff we are running from a jar.
-
-  .getResource will return a java.net.URL, and those start with \"jar:\" if and only if the app is running from a jar.
-
-  More info: https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Thread.html"
-  []
-  (= "jar" (.. (Thread/currentThread)
-               getContextClassLoader
-               (getResource ".keep-me")
-               getProtocol)))
-
-(defn- get-jar-path
-  "Returns the path to the currently running jar file.
-
-  More info: https://stackoverflow.com/questions/320542/how-to-get-the-path-of-a-running-jar-file"
-  []
-  (assert (running-from-jar?) "Can only get-jar-path when running from a jar.")
-  (-> (class {})
-      (.getProtectionDomain)
-      (.getCodeSource)
-      (.getLocation)
-      (.toURI) ;; avoid problems with special characters in path.
-      (.getPath)))
-
+;; todo: use u.files to get the resources here
 (defn copy-from-jar!
   "Recursively copies a subdirectory (at resource-path) from the jar at jar-path into out-dir.
 
@@ -210,8 +186,8 @@
   (let [ia-dir (instance-analytics-plugin-dir plugins-dir)]
     (when (fs/exists? (u.files/relative-path ia-dir))
       (fs/delete-tree (u.files/relative-path ia-dir)))
-    (if (running-from-jar?)
-      (let [path-to-jar (get-jar-path)]
+    (if (u.files/running-from-jar?)
+      (let [path-to-jar (u.files/get-jar-path)]
         (log/info "The app is running from a jar, starting copy...")
         (log/info (str "Copying " path-to-jar "::" jar-resource-path " -> " plugins-dir))
         (copy-from-jar! path-to-jar jar-resource-path plugins-dir)
