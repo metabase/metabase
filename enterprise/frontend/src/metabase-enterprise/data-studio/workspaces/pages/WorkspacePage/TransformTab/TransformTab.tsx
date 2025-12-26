@@ -417,7 +417,10 @@ export const TransformTab = ({
       </Stack>
 
       {editedTransform && (
-        <Box flex="1">
+        <Box
+          flex="1 1 auto"
+          style={{ overflow: "auto", "--native-query-editor-flex": "1 1 auto" }}
+        >
           <TransformEditor
             disabled={!isEditable}
             source={editedTransform.source}

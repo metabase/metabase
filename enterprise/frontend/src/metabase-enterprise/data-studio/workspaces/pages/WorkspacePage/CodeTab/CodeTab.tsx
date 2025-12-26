@@ -119,7 +119,7 @@ export const CodeTab = ({
 
             return (
               <TransformListItem
-                key={transform.ref_id}
+                key={transform.ref_id ?? transform.id}
                 name={transform.name}
                 icon="pivot_table"
                 fw={600}

@@ -302,7 +302,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   useEffect(() => {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
-      setTab((prevTab) => (prevTab === "setup" ? prevTab : activeTab.id));
+      setTab(activeTab.id);
     }
   }, [id, activeTab, setTab]);
 
@@ -822,7 +822,11 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 )}
               </Tabs.Panel>
 
-              <Tabs.Panel value={`transform-${activeTransform?.id}`} h="100%">
+              <Tabs.Panel
+                value={`transform-${activeTransform?.id}`}
+                h="100%"
+                style={{ overflow: "auto" }}
+              >
                 {openedTabs.length === 0 ||
                 !activeTransform ||
                 !activeEditedTransform ? (
