@@ -1155,12 +1155,15 @@ describe("issue 36161", () => {
   });
 
   it("should allow to override metadata for custom columns (metabase#36161)", () => {
-    H.visitModel(ORDERS_MODEL_ID);
-    cy.wait("@dataset");
+    cy.log("Go straight to model query definition");
+    cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+    H.tableInteractiveBody().should("be.visible").and("contain", "37.65");
 
-    H.openQuestionActions("Edit query definition");
+    cy.log("Deselect all columns (except for ID)");
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").click();
+
+    cy.log("Add two custom columns based on the ID");
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
     H.popover().button("Done").click();
@@ -1169,6 +1172,8 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
+
+    cy.log("Rename custom columns");
     cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
@@ -1176,6 +1181,7 @@ describe("issue 36161", () => {
     H.renameColumn("ID3", "ID3 custom");
     H.saveMetadataChanges();
 
+    cy.log("Assert that the renamed columns appear in filter options");
     H.openNotebook();
     H.getNotebookStep("data").button("Filter").click();
     H.popover().within(() => {
