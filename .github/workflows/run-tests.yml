@@ -29,6 +29,12 @@ jobs:
       embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
+      # Cloud driver file changes
+      driver_athena: ${{ steps.changes.outputs.driver_athena }}
+      driver_bigquery: ${{ steps.changes.outputs.driver_bigquery }}
+      driver_databricks: ${{ steps.changes.outputs.driver_databricks }}
+      driver_redshift: ${{ steps.changes.outputs.driver_redshift }}
+      driver_snowflake: ${{ steps.changes.outputs.driver_snowflake }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -74,6 +80,11 @@ jobs:
     secrets: inherit
     with:
       skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+      athena-changed: ${{ needs.files-changed.outputs.driver_athena == 'true' }}
+      bigquery-changed: ${{ needs.files-changed.outputs.driver_bigquery == 'true' }}
+      databricks-changed: ${{ needs.files-changed.outputs.driver_databricks == 'true' }}
+      redshift-changed: ${{ needs.files-changed.outputs.driver_redshift == 'true' }}
+      snowflake-changed: ${{ needs.files-changed.outputs.driver_snowflake == 'true' }}
 
   frontend-tests:
     needs: files-changed
