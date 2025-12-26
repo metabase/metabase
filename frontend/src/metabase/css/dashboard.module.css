@@ -146,6 +146,22 @@
   :global(.dc-chart .y-axis-label) {
     fill: var(--mb-color-text-dark);
   }
+
+  /* ensure dashboard cards and visualizations have proper dimensions for printing */
+  :global([data-testid="dashcard"]) {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ensure the parent flex containers maintain their heights for print */
+  :global([data-testid="dashcard"] > div) {
+    height: 100% !important;
+  }
+
+  /* ensure visualization containers have explicit height for chart rendering */
+  :global(.CardVisualization) {
+    height: 100% !important;
+  }
 }
 
 @page {
