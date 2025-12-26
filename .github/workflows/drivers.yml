@@ -100,7 +100,7 @@ jobs:
 
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -140,7 +140,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -349,7 +349,7 @@ jobs:
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -387,7 +387,7 @@ jobs:
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1017,7 +1017,7 @@ jobs:
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1097,7 +1097,7 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && needs.determine-driver-skips.outputs.skip != 'true' && needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
