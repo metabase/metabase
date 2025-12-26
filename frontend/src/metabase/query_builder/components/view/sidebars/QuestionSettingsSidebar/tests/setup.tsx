@@ -30,6 +30,7 @@ export interface SetupOpts {
   settings?: Settings;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   dbHasModelPersistence?: boolean;
+  dbSupportsModelPersistence?: boolean;
 }
 
 export const setup = async ({
@@ -37,6 +38,7 @@ export const setup = async ({
   settings = createMockSettings(),
   enterprisePlugins,
   dbHasModelPersistence = true,
+  dbSupportsModelPersistence = true,
 }: SetupOpts) => {
   const currentUser = createMockUser();
   setupCardEndpoints(card);
@@ -48,13 +50,20 @@ export const setup = async ({
     }),
   ]);
 
-  setupDatabaseEndpoints(
-    createSampleDatabase({
-      settings: {
-        "persist-models-enabled": dbHasModelPersistence,
-      },
-    }),
-  );
+  const database = createSampleDatabase({
+    settings: {
+      "persist-models-enabled": dbHasModelPersistence,
+    },
+  });
+
+  // If database doesn't support model persistence, remove the persist-models feature
+  if (!dbSupportsModelPersistence) {
+    database.features = database.features?.filter(
+      (f) => f !== "persist-models",
+    );
+  }
+
+  setupDatabaseEndpoints(database);
 
   const state = createMockState({
     currentUser,
