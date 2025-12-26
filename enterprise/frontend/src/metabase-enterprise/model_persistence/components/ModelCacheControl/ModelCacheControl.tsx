@@ -38,11 +38,19 @@ export function ModelCacheToggle({
   const modelId = model.id();
   const userCanPersist = model.canManageDB();
   const canPersistDatabase = database?.settings?.["persist-models-enabled"];
+  const databaseSupportsPersistence =
+    database?.features?.includes("persist-models");
 
-  if (!canPersistDatabase || !userCanPersist) {
-    const tooltipLabel = !canPersistDatabase
-      ? t`Model persistence is disabled for this database`
-      : t`You don't have permission to modify model persistence`;
+  if (!userCanPersist || !databaseSupportsPersistence || !canPersistDatabase) {
+    let tooltipLabel;
+
+    if (!userCanPersist) {
+      tooltipLabel = t`You don't have permission to modify model persistence`;
+    } else if (!databaseSupportsPersistence) {
+      tooltipLabel = t`Model persistence is not supported for this database`;
+    } else {
+      tooltipLabel = t`Model persistence is disabled for this database`;
+    }
 
     return (
       <Tooltip label={tooltipLabel}>
