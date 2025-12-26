@@ -122,7 +122,7 @@ export const settings = {
           getIn(col, ["fingerprint", "global", "distinct-count"]),
         );
 
-        let rows: DatasetColumn[];
+        let rows;
         let columns: DatasetColumn[];
 
         if (dimensions.length === 0) {
