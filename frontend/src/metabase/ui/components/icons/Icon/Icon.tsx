@@ -5,6 +5,8 @@ import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
+import { isProduction } from "metabase/env";
+
 import { Tooltip } from "../../overlays/Tooltip";
 
 import type { IconName } from "./icons";
@@ -33,7 +35,11 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
   }: IconProps,
   ref,
 ) {
-  const IconComponent = (Icons[name] ?? Icons["unknown"]).component;
+  const iconEntry = Icons[name];
+  if (!iconEntry && !isProduction) {
+    throw new Error(`Unknown icon: "${name}"`);
+  }
+  const IconComponent = (iconEntry ?? Icons["unknown"]).component;
 
   const icon = (
     <Box
