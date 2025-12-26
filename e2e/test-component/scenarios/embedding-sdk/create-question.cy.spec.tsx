@@ -101,6 +101,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
 
     getSdkRoot().findByText(expectedQuestionName).should("be.visible");
+    getSdkRoot().findByTestId("visualization-root").should("be.visible");
   });
 
   it("can save a question in a dashboard", () => {
