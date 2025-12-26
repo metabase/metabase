@@ -7,6 +7,7 @@ import type {
   PythonTransformTableAliases,
   TransformTagId,
 } from "metabase-types/api";
+import { copyLayoutParams } from "echarts/types/src/util/layout";
 
 const { H } = cy;
 const { DataStudio, Workspaces } = H;
@@ -32,6 +33,9 @@ describe("scenarios > data studio > workspaces", () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
+    cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
+      "runTransform",
+    );
     // cy.intercept("PUT", "/api/field/*").as("updateField");
     // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
     // cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
@@ -48,22 +52,24 @@ describe("scenarios > data studio > workspaces", () => {
   // });
 
   it("should be able to create, navigate, archive, unarchive, rename, and delete workspaces", () => {
-    Workspaces.visitDataStudio();
+    Workspaces.visitWorkspaces();
+    Workspaces.getWorkspacesPage()
+      .findByText("No active workspaces")
+      .should("be.visible");
 
+    cy.log("Properly shows empty state.");
     Workspaces.getWorkspacesSection()
       .findByText("No workspaces yet")
       .should("be.visible");
 
     createWorkspace();
-    cy.wait("@createWorkspace").then((interception) => {
-      const workspaceName = interception.response?.body?.name;
-      // Backend returns randomized name.
-      cy.wrap(workspaceName).as("workspaceNameA");
-    });
+    registerWorkspaceAliasName("workspaceNameA");
 
+    cy.log("Navigates to available workspace page.");
+    Workspaces.visitWorkspaces();
     cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
 
-    cy.log("shows workspace name");
+    cy.log("Shows workspace name");
     cy.get("@workspaceNameA").then((workspaceName) => {
       Workspaces.getWorkspaceNameInput().should("have.value", workspaceName);
     });
@@ -93,11 +99,7 @@ describe("scenarios > data studio > workspaces", () => {
 
     createWorkspace();
     // Workspaces.getNewWorkspaceButton().click();
-    cy.wait("@createWorkspace").then((interception) => {
-      const workspaceName = interception.response?.body?.name;
-      // Backend returns randomized name.
-      cy.wrap(workspaceName).as("workspaceNameB");
-    });
+    registerWorkspaceAliasName("workspaceNameB");
     cy.get("@workspaceNameB").then((workspaceNameB: string) => {
       Workspaces.getWorkspaceNameInput().should("have.value", workspaceNameB);
 
@@ -151,37 +153,40 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
-  it("should be able to check out exisitng transform into a new workspace from the transform page", () => {
+  it("should be able to check out existing transform into a new workspace from the transform page", () => {
+    cy.log("Prepare available transforms: MBQL, Python, SQL");
     const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
-
+    const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
     createTransforms({ visit: true });
 
+    cy.log("Create a workspace, open transform page in it");
     cy.findByRole("button", { name: /Edit transform/ }).click();
     H.popover().within(() => {
       cy.findByText("No workspaces yet").should("be.visible");
       cy.findByText("New workspace").should("be.visible").click();
     });
-
-    Workspaces.getNewWorkspaceNameInput().should("have.value", "New workspace");
-    Workspaces.getNewWorkspaceDatabaseInput().should(
-      "have.value",
-      "Writable Postgres12",
-    );
-    H.modal().findByText("Create").click();
+    registerWorkspaceAliasName("workspaceA");
 
     cy.location("pathname").should("match", /data-studio\/workspaces\/\d+/);
-    Workspaces.getWorkspaceNameInput().should("have.value", "New workspace");
+    cy.get("@workspaceA").then((workspaceName) => {
+      Workspaces.getWorkspaceNameInput().should("have.value", workspaceName);
+    });
 
+    cy.log("No transforms are checked out yet");
     Workspaces.getWorkspacePage()
       .findByText("Workspace is empty")
-      .should("not.exist");
+      .should("be.visible");
     Workspaces.getMainlandTransforms()
       .findByText("Python transform")
       .should("be.visible");
     Workspaces.getMainlandTransforms()
       .findByText("MBQL transform")
-      .should("not.exist");
-    Workspaces.getWorkspaceTransforms()
+      .should("be.visible")
+      .realHover();
+    H.tooltip()
+      .findByText(/This transform cannot be edited/i)
+      .should("be.visible");
+    Workspaces.getMainlandTransforms()
       .findByText("SQL transform")
       .should("be.visible")
       .click();
@@ -189,22 +194,24 @@ describe("scenarios > data studio > workspaces", () => {
     Workspaces.getWorkspaceContent().within(() => {
       H.tabsShouldBe("SQL transform", ["Setup", "Agent Chat", "SQL transform"]);
     });
-    Workspaces.getMergeWorkspaceButton().should("be.enabled");
-    Workspaces.getRunWorkspaceButton().should("be.enabled");
-    Workspaces.getTransformTargetButton().should("be.enabled");
-    Workspaces.getRunTransformButton().should("be.enabled");
-    Workspaces.getSaveTransformButton().should("be.disabled");
+    cy.log("UI Controls are hidden/disabled until changes are made");
+    Workspaces.getMergeWorkspaceButton().should("be.disabled");
+    Workspaces.getTransformTargetButton().should("not.exist");
+    Workspaces.getRunTransformButton().should("not.exist");
+    Workspaces.getSaveTransformButton().should("not.exist");
 
     H.NativeEditor.type(" LIMIT 2");
+
+    cy.log("UI Controls are enabled after changes");
     Workspaces.getMergeWorkspaceButton().should("be.disabled");
-    Workspaces.getRunWorkspaceButton().should("be.disabled");
-    Workspaces.getTransformTargetButton().should("be.disabled");
-    Workspaces.getRunTransformButton().should("be.disabled");
+    Workspaces.getTransformTargetButton().should("not.exist");
+    Workspaces.getRunTransformButton().should("not.exist");
     Workspaces.getSaveTransformButton().should("be.enabled").click();
 
+    cy.log(
+      "Merge/Run controls are enabled after transform is saved to a workspace",
+    );
     Workspaces.getMergeWorkspaceButton().should("be.enabled");
-    Workspaces.getRunWorkspaceButton().should("be.enabled");
-    Workspaces.getTransformTargetButton().should("be.enabled");
     Workspaces.getSaveTransformButton().should("be.disabled");
     Workspaces.getRunTransformButton().should("be.enabled").click();
 
@@ -230,20 +237,16 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    Workspaces.getWorkspaceSidebar().within(() => {
-      cy.findByRole("tab", { name: "Data" }).click();
-      cy.findByLabelText(/mb__isolation_/)
-        .should("be.visible")
-        .click();
-    });
+    cy.findByLabelText(targetTable).should("be.visible").click();
+    cy.wait("@runTransform");
 
     Workspaces.getWorkspaceContent().within(() => {
-      H.tabsShouldBe(/mb__isolation_/, [
+      H.tabsShouldBe(targetTable, [
         "Setup",
         "Agent Chat",
         "SQL transform",
         sourceTable,
-        /mb__isolation_/,
+        targetTable,
       ]);
       H.assertTableData({
         columns: ["Name", "Score"],
@@ -257,16 +260,20 @@ describe("scenarios > data studio > workspaces", () => {
     });
 
     Workspaces.getMergeWorkspaceButton().click();
+    Workspaces.getMergeCommitInput().type("Merge transform");
+    H.modal().findByRole("button", { name: /Merge/ }).click();
 
-    cy.findByRole("link", { name: /SQL transform/ }).click();
+    Transforms.list()
+      .findByRole("row", { name: /SQL transform/ })
+      .click();
     H.NativeEditor.value().should(
       "eq",
       'SELECT * FROM "Schema A"."Animals" LIMIT 2',
     );
     Transforms.runTab().click();
     runTransformAndWaitForSuccess();
-    Transforms.targetTab().click();
-    getTableLink().should("contain.text", "transform_table").click();
+    Transforms.settingsTab().click();
+    getTableLink().should("contain.text", TARGET_TABLE).click();
 
     H.assertTableData({
       columns: ["Name", "Score"],
@@ -278,29 +285,15 @@ describe("scenarios > data studio > workspaces", () => {
     H.tableInteractiveBody().findByText("Cow").should("not.exist");
     H.tableInteractiveBody().findByText("30").should("not.exist");
   });
-
-  // it("should be able to check out existing transform into a new workspace from the workspace page", () => {
-  //   createTransforms({ visit: true });
-  // });
 });
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
-  // H.modal().findByText("Create new workspace").should("be.visible");
-  // Workspaces.getNewWorkspaceNameInput().clear().type(name);
-  // Workspaces.getNewWorkspaceDatabaseInput().click();
-  // H.popover().within(() => {
-  //   // cy.findByText("Internal Metabase Database").should("not.exist"); // TODO: uncomment once it works
-  //   // cy.findByText("Sample Database").should("not.exist"); // TODO: uncomment once it works
-  //   cy.findByText("Writable Postgres12").should("be.visible").click();
-  // });
-  // H.modal().findByText("Create").click();
 }
 
 function createTransforms({ visit }: { visit?: boolean } = {}) {
   createMbqlTransform({
     targetTable: TARGET_TABLE,
-    visitTransform: true,
   });
 
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
@@ -388,4 +381,12 @@ function getRunButton(options: { timeout?: number } = {}) {
 function verifyAndCloseToast(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().icon("close").click({ force: true });
+}
+
+function registerWorkspaceAliasName(name: string) {
+  cy.wait("@createWorkspace").then((interception) => {
+    const workspaceName = interception.response?.body?.name;
+    // Backend returns randomized name.
+    cy.wrap(workspaceName).as(name);
+  });
 }

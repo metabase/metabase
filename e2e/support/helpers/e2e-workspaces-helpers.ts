@@ -9,6 +9,10 @@ export const Workspaces = {
     return cy.visit("/data-studio");
   },
 
+  visitWorkspaces() {
+    return cy.visit("/data-studio/workspaces");
+  },
+
   visitTransformListPage() {
     return cy.visit("/data-studio/transforms");
   },
@@ -53,14 +57,14 @@ export const Workspaces = {
     return cy.findByRole("button", { name: /Merge/ });
   },
 
-  getWorkspaceDatabaseSelect() {
-    return cy.findByPlaceholderText("Select a database");
+  getMergeCommitInput() {
+    return cy.findByPlaceholderText(
+      "Describe the changes you made in this workspace...",
+    );
   },
 
-  getRunWorkspaceButton() {
-    return Workspaces.getWorkspacePage().findByRole("button", {
-      name: /Run transforms/,
-    });
+  getWorkspaceDatabaseSelect() {
+    return cy.findByPlaceholderText("Select a database");
   },
 
   getTransformTargetButton() {
@@ -69,7 +73,7 @@ export const Workspaces = {
 
   getRunTransformButton() {
     return Workspaces.getWorkspaceContent().findByRole("button", {
-      name: /Run/,
+      name: /Run now/,
     });
   },
 
