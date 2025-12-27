@@ -926,7 +926,7 @@
   (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS;")]
     (is (= "Created At is Jan 1 – Dec 31, 2023"
            (lib/display-name query [:= {:lib/uuid "79e513f8-af80-4c15-96b6-e72eff7f37cc"}
-                                    [:field {:effective-type :type/Integer
+                                    [:field {:effective-type :type/DateTime
                                              :base-type      :type/DateTime
                                              :temporal-unit  :year
                                              :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
