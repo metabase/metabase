@@ -381,15 +381,27 @@ describe("issue 51020", () => {
         .click();
       H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findByPlaceholderText("Search…").type("foo");
+        /**
+         * Without this wait, typing speed causes flakiness: fast typing switches to search tab
+         * before picker content loads, so no folder is selected and "Everywhere" toggle doesn't appear.
+         * Slow typing allows content to load first, selecting a folder, making the toggle appear.
+         */
+        cy.findByTestId("single-picker-view").should("be.visible");
+        cy.get('[type="search"]').type("foo");
+        cy.findByText("Everywhere").click();
         cy.findByText("Foo").click();
       });
+
       cy.findByTestId("run-button").click();
       cy.wait("@dataset");
+      // this interceptor must be here, because there might be other /recents requests at the moment.
+      cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+        "saveModelRecents",
+      );
       cy.button("Save").click();
-      H.modal()
-        .findByLabelText("Name")
-        .type("{backspace}{backspace}{backspace}Model 51020");
+      // Wait for recents API to complete before typing to avoid form reinitialization race condition
+      cy.wait("@saveModelRecents");
+      H.modal().findByLabelText("Name").clear().type("Model 51020");
       H.modal().button("Save").click();
       cy.wait("@createCard");
       cy.wait("@getCard");
@@ -399,10 +411,14 @@ describe("issue 51020", () => {
       H.miniPickerBrowseAll().click();
       H.entityPickerModalTab("Data").click();
       H.entityPickerModalItem(1, "Model 51020").click();
-      H.saveQuestion("Question 51020", undefined, {
-        tab: "Browse",
-        path: ["Our analytics"],
-      });
+      H.saveQuestion(
+        "Question 51020",
+        { waitForRecents: true },
+        {
+          tab: "Browse",
+          path: ["Our analytics"],
+        },
+      );
 
       setupDashboard({
         modelName: "Model 51020",

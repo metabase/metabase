@@ -297,11 +297,21 @@ export function saveQuestion(
     idAlias = "questionId",
     shouldReplaceOriginalQuestion = false,
     shouldSaveAsNewQuestion = false,
+    waitForRecents = false,
   } = {},
   pickEntityOptions = null,
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
+  if (waitForRecents) {
+    cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+      "saveQuestionRecents",
+    );
+  }
   cy.findByTestId("qb-header").button("Save").click();
+  if (waitForRecents) {
+    // Wait for recents API to complete before typing to avoid form reinitialization race condition
+    cy.wait("@saveQuestionRecents");
+  }
   if (shouldReplaceOriginalQuestion) {
     modal().within(() => {
       cy.log("Ensure that 'Replace original question' is checked");
