@@ -210,7 +210,11 @@
   (lib/update-options
    field-ref #(-> %
                   (assoc ::source-table (source-table query path col)
-                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) (:lib/source-column-alias col)))
+                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col)
+                                                              (if (and (= 1 (count (:stages query)))
+                                                                       (or (:fk-field-id col) (:lib/original-fk-field-id col)))
+                                                                ((some-fn :lib/original-name :name) col)
+                                                                (:lib/source-column-alias col))))
                   (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
