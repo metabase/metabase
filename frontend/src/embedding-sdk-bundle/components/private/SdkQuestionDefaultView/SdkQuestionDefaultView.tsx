@@ -11,6 +11,7 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
 import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion";
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
@@ -86,6 +87,7 @@ export const SdkQuestionDefaultView = ({
     originalQuestion,
     isSaveEnabled,
     withDownloads,
+    targetCollection,
     onReset,
     onNavigateBack,
   } = useSdkQuestionContext();
@@ -153,6 +155,11 @@ export const SdkQuestionDefaultView = ({
     onReset,
   ]);
 
+  const { canWrite: canWriteToTargetCollection } = useCollectionData(
+    targetCollection,
+    { skip: !isSaveEnabled },
+  );
+
   if (
     !isEditorOpen &&
     (isLocaleLoading || isQuestionLoading || isQueryResultLoading)
@@ -169,7 +176,11 @@ export const SdkQuestionDefaultView = ({
   }
 
   const showSaveButton =
-    shouldShowSaveButton({ question, originalQuestion }) && isSaveEnabled;
+    shouldShowSaveButton({
+      question,
+      originalQuestion,
+      canWriteToTargetCollection,
+    }) && isSaveEnabled;
 
   return (
     <FlexibleSizeComponent
