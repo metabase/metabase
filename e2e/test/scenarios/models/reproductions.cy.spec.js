@@ -509,25 +509,25 @@ describe("filtering based on the remapped column name should result in a correct
       H.visitQuestion(id);
 
       // Turn the question into a model
-      cy.request("PUT", `/api/card/${id}`, { type: "model" });
+      cy.request("PUT", `/api/card/${id}`, { type: "model" }).then(() => {
+        // Let's go straight to the model metadata editor
+        cy.visit(`/model/${id}/columns`);
+        cy.findByText("Database column this maps to").should("be.visible");
 
-      // Let's go straight to the model metadata editor
-      cy.visit(`/model/${id}/columns`);
-      cy.findByText("Database column this maps to").should("be.visible");
+        // The first column `ID` is automatically selected
+        H.mapColumnTo({ table: "Orders", column: "ID" });
+        cy.findByText("ALIAS_CREATED_AT").click();
 
-      // The first column `ID` is automatically selected
-      H.mapColumnTo({ table: "Orders", column: "ID" });
-      cy.findByText("ALIAS_CREATED_AT").click();
+        H.mapColumnTo({ table: "Orders", column: "Created At" });
 
-      H.mapColumnTo({ table: "Orders", column: "Created At" });
+        // Make sure the column name updated before saving
+        cy.findByDisplayValue("Created At");
 
-      // Make sure the column name updated before saving
-      cy.findByDisplayValue("Created At");
+        cy.button("Save changes").click();
+        cy.wait("@updateModel");
 
-      cy.button("Save changes").click();
-      cy.wait("@updateModel");
-
-      H.visitModel(id);
+        H.visitModel(id);
+      });
     });
   });
 
