@@ -335,6 +335,62 @@ export const LEGEND_SETTINGS = {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
     hidden: true,
   },
+  "legend.position": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Legend position`;
+    },
+    widget: "select",
+    index: 0,
+    default: "auto",
+    props: {
+      options: [
+        {
+          get name() {
+            return t`Auto`;
+          },
+          value: "auto",
+        },
+        {
+          get name() {
+            return t`Top`;
+          },
+          value: "top",
+        },
+        {
+          get name() {
+            return t`Bottom`;
+          },
+          value: "bottom",
+        },
+        {
+          get name() {
+            return t`Right`;
+          },
+          value: "right",
+        },
+        {
+          get name() {
+            return t`Left`;
+          },
+          value: "left",
+        },
+        {
+          get name() {
+            return t`None`;
+          },
+          value: "none",
+        },
+      ],
+    },
+    getHidden: (series, settings, { transformedSeries } = {}) => {
+      // Hide if there are 0 or 1 series (no legend would be shown anyway)
+      const seriesCount = transformedSeries?.length ?? series.length;
+      return seriesCount <= 1;
+    },
+  },
 };
 
 export const TOOLTIP_SETTINGS = {
