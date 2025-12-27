@@ -485,7 +485,7 @@ const STRING = defineClauses(
     path: {
       displayName: "path",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the pathname from a URL. E.g., \`${'path("https://www.example.com/path/to/page.html?key1=value)'}\` would return \`${"/path/to/page.html"}\`.`,
       args: () => [
@@ -606,7 +606,7 @@ const STRING = defineClauses(
     domain: {
       displayName: "domain",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the domain name (eg. \`"metabase"\`) from a URL or email`,
       args: () => [
@@ -621,7 +621,7 @@ const STRING = defineClauses(
     subdomain: {
       displayName: "subdomain",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the first subdomain (eg. \`"status"\` from \`"status.metabase.com"\`, \`""\` from \`"bbc.co.uk"\`) from a URL. Ignores \`"www"\`.`,
       args: () => [
@@ -636,7 +636,7 @@ const STRING = defineClauses(
     host: {
       displayName: "host",
       type: "string",
-      requiresFeature: "regex",
+      requiresFeature: "regex/lookaheads-and-lookbehinds",
       description: () =>
         t`Extracts the host (domain name and TLD, eg. \`"metabase.com"\` from \`"status.metabase.com"\`) from a URL or email`,
       args: () => [

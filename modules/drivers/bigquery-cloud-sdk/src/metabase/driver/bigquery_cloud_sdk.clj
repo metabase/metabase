@@ -775,30 +775,31 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
-                              :describe-fields                  true
-                              :nested-fields                    true
+                              :database-routing                 true
                               :datetime-diff                    true
+                              :describe-fields                  true
+                              :expression-literals              true
                               :expressions                      true
+                              :expressions/date                 true
+                              :expressions/float                true
+                              :expressions/integer              true
+                              :expressions/text                 true
+                              :identifiers-with-spaces          true
+                              :metadata/key-constraints         false
+                              :metadata/table-existence-check   true
+                              :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
-                              ;; we can't support `alter table .. rename ..`  in general
-                              ;; since it won't work for streaming tables
+                              :regex/lookaheads-and-lookbehinds false
+                              ;; we can't support `alter table .. rename ..` in general since it won't work for
+                              ;; streaming tables
                               :rename                           false
-                              :metadata/key-constraints         false
-                              :identifiers-with-spaces          true
-                              :expressions/integer              true
-                              :expressions/float                true
-                              :expressions/date                 true
-                              :expressions/text                 true
-                              :split-part                       true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
                               :set-timezone                     true
-                              :expression-literals              true
-                              :database-routing                 true
-                              :metadata/table-existence-check   true
+                              :split-part                       true
                               :transforms/python                true
                               :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
