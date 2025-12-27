@@ -934,7 +934,7 @@ String used to seed the private key used to validate JWT messages. A hexadecimal
 - Default: `true`
 - [Configuration file name](./config-file.md): `jwt-user-provisioning-enabled`
 
-When a user logs in via JWT, create a Metabase account for them automatically if they don't have one.
+When a user logs in via JWT, create a Metabase account for them automatically if they don't have one, or reactivate their existing account.
 
 ### `MB_LANDING_PAGE`
 
@@ -1606,8 +1606,7 @@ Is SAML Single Log Out enabled?
 - Default: `true`
 - [Configuration file name](./config-file.md): `saml-user-provisioning-enabled`
 
-When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
-don't have one.
+When a user logs in via SAML, create a Metabase account for them automatically if they don't have one, or reactivate their existing account.
 
 ### `MB_SCIM_ENABLED`
 
