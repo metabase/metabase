@@ -8,6 +8,7 @@ import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
+import { useSetting } from "metabase/common/hooks/use-setting";
 import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
@@ -24,9 +25,11 @@ import { Box, Popover, UnstyledButton } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
 import type { State } from "metabase-types/store";
+
+const DEFAULT_UNAGGREGATED_ROW_LIMIT = 2000;
+const DEFAULT_AGGREGATED_ROW_LIMIT = 10000;
 
 import QuestionRowCountS from "./QuestionRowCount.module.css";
 
@@ -70,6 +73,13 @@ const mapDispatchToProps = {
   onChangeLimit: setLimit,
 };
 
+function hasAggregations(question: Question): boolean {
+  const query = question.query();
+  const stageIndex = -1; // last stage
+  const aggregations = Lib.aggregations(query, stageIndex);
+  return aggregations.length > 0;
+}
+
 function QuestionRowCount({
   question,
   result,
@@ -81,14 +91,28 @@ function QuestionRowCount({
   const [opened, { close, toggle }] = useDisclosure(false);
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const formatNumber = useNumberFormatter();
+
+  // Get configured row limits from settings
+  const unaggregatedRowLimit = useSetting("unaggregated-query-row-limit");
+  const aggregatedRowLimit = useSetting("aggregated-query-row-limit");
+
+  // Determine the effective max row limit based on whether the query has aggregations
+  const maxRowLimit = useMemo(() => {
+    const isAggregated = hasAggregations(question);
+    if (isAggregated) {
+      return aggregatedRowLimit ?? DEFAULT_AGGREGATED_ROW_LIMIT;
+    }
+    return unaggregatedRowLimit ?? DEFAULT_UNAGGREGATED_ROW_LIMIT;
+  }, [question, unaggregatedRowLimit, aggregatedRowLimit]);
+
   const message = useMemo(() => {
     if (isNative) {
       return isResultDirty ? "" : getRowCountMessage(result, formatNumber);
     }
     return isResultDirty
-      ? getLimitMessage(question, result, formatNumber)
+      ? getLimitMessage(question, result, formatNumber, maxRowLimit)
       : getRowCountMessage(result, formatNumber);
-  }, [question, result, isResultDirty, isNative, formatNumber]);
+  }, [question, result, isResultDirty, isNative, formatNumber, maxRowLimit]);
 
   const handleLimitChange = (limit: number) => {
     onChangeLimit(limit > 0 ? limit : null);
@@ -135,6 +159,7 @@ function QuestionRowCount({
           limit={limit}
           onChangeLimit={handleLimitChange}
           onClose={close}
+          maxRowLimit={maxRowLimit}
         />
       </Popover.Dropdown>
     </Popover>
@@ -176,10 +201,11 @@ function getLimitMessage(
   question: Question,
   result: Dataset,
   formatNumber: NumberFormatter,
+  maxRowLimit: number,
 ): string {
   const limit = Lib.currentLimit(question.query(), -1);
   const isValidLimit =
-    typeof limit === "number" && limit > 0 && limit < HARD_ROW_LIMIT;
+    typeof limit === "number" && limit > 0 && limit < maxRowLimit;
 
   if (isValidLimit) {
     return t`Show ${formatRowCount(limit, formatNumber)}`;
@@ -190,11 +216,11 @@ function getLimitMessage(
 
   if (hasValidRowCount) {
     // The query has been altered but we might still have the old result set,
-    // so show that instead of a generic HARD_ROW_LIMIT
+    // so show that instead of a generic maxRowLimit
     return t`Showing ${formatRowCount(result.row_count, formatNumber)}`;
   }
 
-  return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
+  return t`Showing first ${formatRowCount(maxRowLimit, formatNumber)} rows`;
 }
 
 function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
