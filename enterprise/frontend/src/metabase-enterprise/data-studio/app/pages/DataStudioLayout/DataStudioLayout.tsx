@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
@@ -76,6 +76,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
+  const isGitSettingsVisible = PLUGIN_REMOTE_SYNC.useGitSettingsVisible();
+  const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -146,6 +148,25 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         )}
       </Stack>
       <Stack gap="0.75rem">
+        {isGitSettingsVisible && (
+          <Tooltip
+            label={t`Set up git sync`}
+            position="right"
+            openDelay={TOOLTIP_OPEN_DELAY}
+            disabled={isNavbarOpened}
+          >
+            <UnstyledButton
+              className={S.tab}
+              onClick={() => setIsGitSettingsOpen(true)}
+              p="0.5rem"
+              bdrs="md"
+              aria-label={t`Set up git sync`}
+            >
+              <FixedSizeIcon name="gear" className={S.icon} />
+              {isNavbarOpened && <Text lh="sm">{t`Set up git sync`}</Text>}
+            </UnstyledButton>
+          </Tooltip>
+        )}
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Jobs`}
@@ -171,6 +192,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           showLabel={isNavbarOpened}
         />
       </Stack>
+      <PLUGIN_REMOTE_SYNC.GitSettingsModal
+        isOpen={isGitSettingsOpen}
+        onClose={() => setIsGitSettingsOpen(false)}
+      />
     </Stack>
   );
 }

@@ -20,12 +20,18 @@ export interface GitSyncAppBarControlsProps {
   fullWidth?: boolean;
 }
 
+export interface GitSettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   GitSyncAppBarControls:
     PluginPlaceholder as ComponentType<GitSyncAppBarControlsProps>,
+  GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
@@ -37,6 +43,7 @@ const getDefaultPluginRemoteSync = () => ({
     progressModal: null,
   }),
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
+  useGitSettingsVisible: () => false,
   useHasLibraryDirtyChanges: () => false,
 });
 
@@ -45,6 +52,7 @@ export const PLUGIN_REMOTE_SYNC: {
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType<GitSyncAppBarControlsProps>;
+  GitSettingsModal: ComponentType<GitSettingsModalProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
@@ -59,6 +67,7 @@ export const PLUGIN_REMOTE_SYNC: {
     isVisible: boolean;
     currentBranch: string | null | undefined;
   };
+  useGitSettingsVisible: () => boolean;
   useHasLibraryDirtyChanges: () => boolean;
 } = getDefaultPluginRemoteSync();
 
