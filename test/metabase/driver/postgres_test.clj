@@ -1049,6 +1049,25 @@
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
 
+(deftest filtering-on-enum-from-source-bad-effective-type-test
+  (mt/test-driver
+    :postgres
+    (do-with-enums-db!
+     (fn [enums-db]
+       (mt/with-db enums-db
+         (testing "filtering on enum column should cast properly (#67440)"
+           (let [mp (-> (mt/metadata-provider)
+                        (lib.tu/merged-mock-metadata-provider
+                         {:fields [{:id (mt/id :birds :status)
+                                    :effective-type :type/Text}]}))
+                 query (as-> (lib/query mp (lib.metadata/table mp (mt/id :birds))) $q
+                         (lib/filter $q (lib/= (m/find-first (comp #{"status"} :name)
+                                                             (lib/filterable-columns $q))
+                                               "good bird")))
+                 sql (:query (qp.compile/compile query))]
+             (is (re-find #"CAST" sql))
+             (is (some? (mt/rows (qp/process-query query)))))))))))
+
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
