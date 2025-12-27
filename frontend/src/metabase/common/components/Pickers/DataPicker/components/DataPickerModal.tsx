@@ -82,7 +82,7 @@ export const DataPickerModal = ({
   onClose,
   shouldDisableItem,
   options,
-  models,
+  models = ["card", "dataset", "metric", "table"],
 }: Props) => {
   options = {
     ...OPTIONS,
@@ -219,19 +219,17 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Data`,
-        models: [
-          "card" as const,
-          "dataset" as const,
-          "metric" as const,
-          "table" as const,
-        ],
+        models,
         folderModels: ["collection", "dashboard", "schema", "database"],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value}
-            models={QUESTION_PICKER_MODELS}
+            models={[
+              ...models,
+              ...(models.includes("card") ? ["dashboard" as const] : []),
+            ]}
             options={options}
             path={questionsPath}
             shouldShowItem={shouldShowItem}
