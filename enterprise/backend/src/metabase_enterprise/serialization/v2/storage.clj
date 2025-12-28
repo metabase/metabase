@@ -50,6 +50,11 @@
         opts     (-> (serdes/storage-base-context)
                      (assoc :root-dir root-dir))]
     (doseq [entity stream]
+      ;; Check for thread interruption (e.g., HTTP request cancelled).
+      ;; Uses .isInterrupted to preserve the flag for downstream cleanup.
+      (when (.isInterrupted (Thread/currentThread))
+        (log/info "Serialization export cancelled by client")
+        (throw (InterruptedException. "Serialization export cancelled")))
       (cond
         (instance? Exception entity)
         (swap! report update :errors conj entity)
