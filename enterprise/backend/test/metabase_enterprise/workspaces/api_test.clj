@@ -93,11 +93,11 @@
 
     (testing "workspace can be archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
-        (is (= "archived" (:status updated)))))
+        (is (= :archived (:status updated)))))
 
     (testing "workspace can be unarchived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/unarchive"))]
-        (is (= "ready" (:status updated)))))
+        (is (= :ready (:status updated)))))
 
     (testing "workspace cannot be deleted if it is not archived"
       (let [message (mt/user-http-request :crowberto :delete 400 (str "ee/workspace/" workspace-id))]
@@ -105,7 +105,7 @@
 
     (testing "workspace can be deleted if it is archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
-        (is (= "archived" (:status updated))))
+        (is (= :archived (:status updated))))
       (let [response (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" workspace-id))]
         (is (= {:ok true} response))
         ;; todo: check the schema / tables and user are gone
@@ -1112,7 +1112,7 @@
       ;; database_id is set to provisional default, but status is uninitialized
       (is (=? {:status "uninitialized" :database_id pos-int?} ws))
       (testing "can be archived and deleted"
-        (is (= "archived" (:status (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
+        (is (= :archived (:status (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
         (is (= {:ok true} (mt/user-http-request :crowberto :delete 200 (ws-url ws-id))))
         (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))
 

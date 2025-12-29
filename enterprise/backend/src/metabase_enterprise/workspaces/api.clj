@@ -97,7 +97,8 @@
    [:id ::ws.t/appdb-id]
    [:database_id ::ws.t/appdb-id]
    [:name :string]
-   [:status ::status]])
+   [:status ::status]
+   [:updated_at ms/TemporalInstant]])
 
 (api.macros/defendpoint :get "/" :- [:map {:closed true}
                                      [:items [:sequential WorkspaceListing]]
@@ -106,7 +107,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :name :database_id :status]
+  {:items  (t2/select [:model/Workspace :id :name :database_id :status :updated_at]
                       (cond-> {:order-by [[:created_at :desc]]}
                         (request/limit) (sql.helpers/limit (request/limit))
                         (request/offset) (sql.helpers/offset (request/offset))))
@@ -820,8 +821,6 @@
        :errors    errors
        :workspace {:id ws-id, :name (:name ws)}}
       (when-not (seq errors)
-        ;; Archive the workspace and then delete it
-        (ws.model/archive! ws)
         (ws.model/delete! ws)))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/merge"

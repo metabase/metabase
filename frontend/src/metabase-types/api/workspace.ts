@@ -25,6 +25,7 @@ export type WorkspaceItem = {
   name: string;
   database_id: DatabaseId;
   status: WorkspaceSetupStatus;
+  updated_at?: string;
 };
 
 export type WorkspaceListResponse = {
