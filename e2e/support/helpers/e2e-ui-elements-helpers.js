@@ -307,41 +307,6 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
-/**
- * @deprecated Use `moveDnDKitElementByAlias` instead.
- * Otherwise, the chain will be broken due to "element was removed from the DOM" error
- */
-export const moveDnDKitElement = (
-  element,
-  { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
-) => {
-  element
-    .trigger("pointerdown", 0, 0, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    // This initial move needs to be greater than the activation constraint
-    // of the pointer sensor
-    .trigger("pointermove", 20, 20, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200)
-    .trigger("pointermove", horizontal, vertical, {
-      force: true,
-      isPrimary: true,
-      button: 0,
-    })
-    .wait(200);
-
-  onBeforeDragEnd?.();
-
-  cy.document().trigger("pointerup").wait(200);
-};
-
 export const moveDnDKitListElement = (
   dataTestId,
   { startIndex, dropIndex, onBeforeDragEnd = () => {} } = {},
@@ -364,7 +329,9 @@ export const moveDnDKitListElement = (
       return { dragPoint, dropPoint, dragEl };
     })
     .then(({ dragPoint, dropPoint, dragEl }) => {
-      moveDnDKitElement(cy.wrap(dragEl), {
+      cy.wrap(dragEl).as("dragElement");
+
+      moveDnDKitElementByAlias("@dragElement", {
         vertical: dropPoint.clientY - dragPoint.clientY,
         horizontal: dropPoint.clientX - dragPoint.clientX,
         onBeforeDragEnd,
