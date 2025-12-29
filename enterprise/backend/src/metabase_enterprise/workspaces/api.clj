@@ -650,7 +650,7 @@
   (api/check (transforms.util/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
-    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
                       (api/check-400 (not= :archived (:status <>)) "Cannot create transforms in an archived workspace"))
           ;; TODO why 400 here and 403 in the validation route? T_T
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
