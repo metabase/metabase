@@ -24,8 +24,8 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { Flex, Stack } from "metabase/ui";
-import type { EnterpriseSettings } from "metabase-types/api";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 export type JWTFormValues = Pick<
   EnterpriseSettings,

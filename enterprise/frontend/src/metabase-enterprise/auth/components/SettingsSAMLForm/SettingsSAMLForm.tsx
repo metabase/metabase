@@ -31,8 +31,8 @@ import {
 } from "metabase/forms";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
-import type { EnterpriseSettings } from "metabase-types/api";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
   EnterpriseSettings,
