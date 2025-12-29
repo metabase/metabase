@@ -1010,6 +1010,7 @@
            collections
            config
            driver
+           embedding
            events
            lib
            models

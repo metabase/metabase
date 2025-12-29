@@ -254,7 +254,8 @@
          result-attachments
          html-contents]     (reduce
                              (fn [[merged-attachments result-attachments html-contents] part]
-                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true})
+                               (let [{:keys [attachments content]} (render-part timezone part {:channel.render/include-title? true
+                                                                                               :channel.render/disable-links? (boolean (:disable_links dashboard_subscription))})
                                      result-attachment             (email.result-attachment/result-attachment part)]
                                  [(merge merged-attachments attachments)
                                   (into result-attachments result-attachment)
