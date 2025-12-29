@@ -25,6 +25,7 @@
    [:channel.render/include-buttons?           {:description "default: false", :optional true} :boolean]
    [:channel.render/include-title?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-description?       {:description "default: false", :optional true} :boolean]
+   [:channel.render/disable-links?             {:description "default: false", :optional true} :boolean]
    [:channel.render/include-inline-parameters? {:description "default: false", :optional true} :boolean]])
 
 (defn- card-href
@@ -51,10 +52,11 @@
                       [:tr
                        [:td {:style (style/style {:padding :0
                                                   :margin  :0})}
-                        [:a {:style  (style/style (style/header-style))
-                             :href   title-href
-                             :target "_blank"
-                             :rel    "noopener noreferrer"}
+                        [:a (cond-> {:style  (style/style (style/header-style))
+                                     :target "_blank"
+                                     :rel    "noopener noreferrer"}
+                              (not (:channel.render/disable-links? options))
+                              (assoc :href title-href))
                          (h card-name)]]
                        [:td {:style (style/style {:text-align :right})}
                         (when (:channel.render/include-buttons? options)
@@ -200,13 +202,14 @@
                         ;; Provide a horizontal scrollbar for tables that overflow container width.
                         ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
                         [:div
-                         [:a {:href        attachment-href
-                              :target      "_blank"
-                              :rel         "noopener noreferrer"
-                              :style       (style/style
-                                            (style/section-style)
-                                            {:display         :block
-                                             :text-decoration :none})}
+                         [:a (cond-> {:target      "_blank"
+                                      :rel         "noopener noreferrer"
+                                      :style       (style/style
+                                                    (style/section-style)
+                                                    {:display         :block
+                                                     :text-decoration :none})}
+                               (not (:channel.render/disable-links? options))
+                               (assoc :href attachment-href))
                           title
                           description
                           (when (seq inline-parameters)

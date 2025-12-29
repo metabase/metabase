@@ -236,6 +236,17 @@ export const setup = async (
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
     createMockSearchResult({
+      id: 306,
+      model: "metric",
+      name: "Fanny",
+      collection: {
+        // @ts-expect-error - can be null in search results
+        id: null,
+        // @ts-expect-error - can be null in search results
+        name: null,
+      },
+    }),
+    createMockSearchResult({
       id: 401,
       model: "table",
       name: "wickham",
@@ -244,7 +255,8 @@ export const setup = async (
       collection: {
         // @ts-expect-error - can be null in search results
         id: null,
-        name: "",
+        // @ts-expect-error - can be null in search results
+        name: null,
       },
     }),
   ]);
