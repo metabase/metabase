@@ -436,6 +436,32 @@ describe("scenarios > data studio > measures > queries", () => {
       });
       verifyScalarValue("2,531");
     });
+
+    it("should be possible to join on a measure in a follow up stage", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+
+      useMeasure(() => {
+        breakout("Created At");
+
+        H.getNotebookStep("summarize").button("Join data").click();
+        H.popover().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Orders").click();
+        });
+
+        H.popover().findByText("Table Measure").click();
+        H.popover().findByText("Total").click();
+      });
+
+      verifyRowValues([["April 2022", "52.76", "8685"]]);
+    });
   });
 
   describe("measure refs", () => {
