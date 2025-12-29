@@ -49,7 +49,7 @@ Familiarize yourself with Mantine's Layout components. You can often save a lot 
 
 ## Colors
 
-You may not define new bespoke colors or use any color literals like `black` or `white`. Colors can be referenced directly in components using mantine color props like `c="text-primary"` or in css modules using variables `color: var(--mb-color-text-primary);` Using these colors ensures consistent visual design and user experience across both dark and light modes. The full pallette is defined in `metabase/lib/colors.ts`.
+You may not define new bespoke colors or use any color literals like `black` or `white`. Colors can be referenced directly in components using mantine color props like `c="text-primary"` or in css modules using variables `color: var(--mb-color-text-primary);` Using these colors ensures consistent visual design and user experience across both dark and light modes. The full palette is defined in `metabase/lib/colors.ts`.
 
 ## Unit testing
 
