@@ -227,17 +227,25 @@ export const useSaveQuestionContext = () => {
 
 /**
  * Patches form values when `nextValues` change asynchronously (e.g., after API calls).
- * Only applies updates to fields whose values differ from the initial ones,
- * avoiding overwriting user input. This is intentional, since patching unchanged
- * fields makes no sense — the user may have already modified them.
+ *
+ * Terminology:
+ * - "changed": nextValues differs from prevValues (new data arrived)
+ * - "untouched": formValues[key] === prevValues[key] (user hasn't edited this field)
+ * - "modified": formValues[key] !== prevValues[key] (user has edited this field)
+ *
+ * For each changed field:
+ * - If untouched → apply the new value (safe to update)
+ * - If modified → preserve user's input (don't overwrite)
+ *
  * Uses deep comparison to correctly handle nested object values.
  */
-const FormValuesPatcher = <T extends object>({
+export const FormValuesPatcher = <T extends object>({
   nextValues,
   children,
 }: PropsWithChildren<{ nextValues: T }>) => {
   const { values: formValues, setValues } = useFormikContext<T>();
   const prevValues = usePrevious(nextValues);
+
   useEffect(() => {
     if (!prevValues || isEqual(nextValues, prevValues)) {
       return;
@@ -245,6 +253,12 @@ const FormValuesPatcher = <T extends object>({
     const patches: Partial<T> = {};
     for (const key of Object.keys(nextValues) as (keyof T)[]) {
       if (isEqual(formValues[key], prevValues[key])) {
+        /**
+         * While comparison is deep, patching is shallow.
+         * This works for SaveQuestionForm since all fields are primitives. If reused with nested
+         * objects, consider implementing deep/recursive patching to preserve user edits
+         * within nested structures.
+         */
         patches[key] = nextValues[key];
       }
     }
