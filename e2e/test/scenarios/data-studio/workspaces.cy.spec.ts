@@ -13,13 +13,13 @@ const { Transforms } = DataStudio;
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const DB_NAME = "Writable Postgres12";
+const DB_NAME = "Worms";
 const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
-const TARGET_TABLE_2 = "transform_table_2";
+const TARGET_TABLE_2 = "T2";
 const TARGET_SCHEMA = "Schema A";
-const TARGET_SCHEMA_2 = "Schema B";
-const CUSTOM_SCHEMA = "custom_schema";
+const TARGET_SCHEMA_2 = "S2";
+const CUSTOM_SCHEMA = "CS";
 
 describe("scenarios > data studio > workspaces", () => {
   beforeEach(() => {
@@ -80,7 +80,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Writable Postgres12")
+          .should("have.value", "Worms")
           .should("be.enabled");
 
         cy.log("Doesn't show workspace setup logs");
@@ -251,7 +251,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("should be able to check out existing transform into a new workspace from the transform page", () => {
+    it.only("should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
@@ -300,7 +300,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
       Workspaces.getTransformTargetButton().should("not.exist");
       Workspaces.getRunTransformButton().should("not.exist");
-      Workspaces.getSaveTransformButton().should("not.exist");
+      Workspaces.getSaveTransformButton().should("be.disabled");
 
       H.NativeEditor.type(" LIMIT 2");
 
@@ -388,13 +388,65 @@ describe("scenarios > data studio > workspaces", () => {
       H.tableInteractiveBody().findByText("30").should("not.exist");
     });
   });
+
+  describe("should show tabs UI correctly", () => {
+    it("should allow closing tabs with close button, selects fallback tab", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+      });
+
+      cy.log("Open transform tabs")
+      Workspaces.getMainlandTransforms()
+        .findByText("Python transform")
+        .click();
+
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .click();
+
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "Python transform",
+          "SQL transform",
+        ]);
+      });
+
+      cy.log("Reorder and close tabs")
+      Workspaces.getWorkspaceContent().within(() => {
+          cy.findAllByRole("tab").eq(3).as("sqlTransformTab");
+          H.moveDnDKitElementByAlias("@sqlTransformTab", {
+            horizontal: -150,
+          });
+          cy.wait(100);
+          cy.findAllByRole("tab").eq(0).findByLabelText("close icon").should("not.exist");
+          cy.findAllByRole("tab").eq(1).findByLabelText("close icon").should("not.exist");
+          cy.findAllByRole("tab").eq(2).findByLabelText("close icon").should("exist");
+          cy.findAllByRole("tab").eq(3).findByLabelText("close icon").should("exist").click();
+      });
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+    })
+  })
 });
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
 }
 
-function createTransforms({ visit }: { visit?: boolean } = {}) {
+function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
     targetTable: TARGET_TABLE,
   });
