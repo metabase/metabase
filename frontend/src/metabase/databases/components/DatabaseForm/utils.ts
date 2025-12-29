@@ -2,7 +2,7 @@ import { useContext } from "react";
 
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { useFormErrorMessage } from "metabase/forms";
-import type { DatabaseData, Engine, EngineField } from "metabase-types/api";
+import type { DatabaseData, Engine } from "metabase-types/api";
 
 import { FormDirtyStateContext } from "./context";
 
@@ -33,16 +33,3 @@ export const getEngineKey = (
 export const useIsFormDirty = () => {
   return useContext(FormDirtyStateContext);
 };
-
-export function getFlattenedFieldsList(engine: Engine): EngineField[] {
-  const fields = engine["details-fields"] ?? [];
-  const flattenedFields = fields.flatMap((field) => {
-    if (field.type === "group") {
-      return field.fields;
-    }
-
-    return field;
-  });
-
-  return flattenedFields;
-}

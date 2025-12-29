@@ -78,7 +78,9 @@ function shouldShowFieldInAdvancedMode(
   return isAdvanced || !ADVANCED_FIELDS.includes(field.name);
 }
 
-function getFlattenedFields(fields: DatabaseFieldOrGroup[]): EngineField[] {
+export function getFlattenedFields(
+  fields: DatabaseFieldOrGroup[],
+): EngineField[] {
   return fields.reduce<EngineField[]>((acc, field) => {
     if (isDatabaseFieldGroup(field)) {
       acc.push(...field.fields);

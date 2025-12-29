@@ -2,6 +2,7 @@ import { useFormikContext } from "formik";
 
 import type {
   DatabaseData,
+  DatabaseFieldGroup,
   DatabaseFieldOrGroup,
   Engine,
   EngineField,
@@ -47,14 +48,18 @@ export function DatabaseFormBodyDetails({
     );
   }
 
+  function renderGroup(group: DatabaseFieldGroup) {
+    const key = group.fields.map((field) => field.name).join("-");
+    return (
+      <CustomContainer key={key} containerStyle={group["container-style"]}>
+        {group.fields.map(renderField)}
+      </CustomContainer>
+    );
+  }
+
   return fields.map((field) => {
     if (isDatabaseFieldGroup(field)) {
-      const key = field.fields.map((field) => field.name).join("-");
-      return (
-        <CustomContainer key={key} containerStyle={field["container-style"]}>
-          {field.fields.map(renderField)}
-        </CustomContainer>
-      );
+      return renderGroup(field);
     }
 
     return renderField(field);

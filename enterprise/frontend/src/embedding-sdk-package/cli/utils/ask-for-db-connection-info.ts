@@ -6,8 +6,11 @@ import fileSelector from "inquirer-file-selector";
 import toggle from "inquirer-toggle";
 import { match } from "ts-pattern";
 
-import { getFlattenedFieldsList } from "metabase/databases/components/DatabaseForm/utils";
-import type { Engine, EngineField } from "metabase-types/api";
+import type {
+  DatabaseFieldOrGroup,
+  Engine,
+  EngineField,
+} from "metabase-types/api";
 
 import { CLI_SHOWN_DB_FIELDS } from "../constants/database";
 
@@ -25,7 +28,7 @@ EventEmitter.defaultMaxListeners = 500;
 export async function askForDatabaseConnectionInfo(options: Options) {
   const { engine, engineKey } = options;
 
-  const fields = getFlattenedFieldsList(engine);
+  const fields = getFlattenedFields(engine["details-fields"] ?? []);
 
   const connection: Record<string, string | boolean | number> = {};
 
@@ -155,3 +158,16 @@ const askSectionChoice = async (field: EngineField) => {
     });
   }
 };
+
+export function getFlattenedFields(
+  fields: DatabaseFieldOrGroup[],
+): EngineField[] {
+  return fields.reduce<EngineField[]>((acc, field) => {
+    if (field.type === "group") {
+      acc.push(...field.fields);
+    } else {
+      acc.push(field);
+    }
+    return acc;
+  }, []);
+}
