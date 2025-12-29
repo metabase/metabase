@@ -85,19 +85,9 @@ export const SaveQuestionProvider = ({
       ? currentUser.personal_collection_id
       : userTargetCollection;
 
-  const [hasLoadedRecentItems, setHasLoadedRecentItems] = useState(false);
-  const { data: recentItems, isLoading } = useListRecentsQuery(
-    { context: ["selections"] },
-    { skip: hasLoadedRecentItems },
-  );
-  // We need to stop refetching recent items as the user makes selections in the ui that could cause a refetch
-  // This causes new initial values getting calculated, which combined with Formik's `enableReinitialize`
-  // prop, results in a dirty form getting values replaced within initial state.
-  useEffect(() => {
-    if (!isLoading) {
-      setHasLoadedRecentItems(true);
-    }
-  }, [isLoading]);
+  const { data: recentItems } = useListRecentsQuery({
+    context: ["selections"],
+  });
 
   const lastSelectedEntityModel = useMemo(() => {
     return recentItems?.find(
