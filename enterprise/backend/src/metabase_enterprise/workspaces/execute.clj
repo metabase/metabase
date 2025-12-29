@@ -46,10 +46,10 @@
 (defn- remap-sql-source [table-mapping source]
   (let [remapping (reduce
                    (fn [remapping [[_ source-schema source-table] {target-schema :schema, target-table :table}]]
-                     (-> remapping
-                         (assoc-in [:schemas source-schema] target-schema)
-                         (assoc-in [:tables {:schema source-schema
-                                             :table  source-table}] target-table)))
+                     (assoc-in remapping [:tables {:schema source-schema
+                                                   :table  source-table}]
+                               {:schema target-schema
+                                :table  target-table}))
                    {:schemas {}
                     :tables  {}}
                    ;; Strip out the numeric keys (table ids)
