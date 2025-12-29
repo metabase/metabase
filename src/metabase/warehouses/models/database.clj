@@ -485,7 +485,7 @@
    :id
    {:default []}))
 
-(defn pk-fields
+(defn id-fields
   "Return all `Fields` that are valid FK targets for this `database`.
    This includes PK fields and fields that are currently FK targets.
 

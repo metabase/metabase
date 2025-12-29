@@ -880,7 +880,7 @@
                                    :semantic_type :type/FK
                                    :fk_target_field_id nationality-id  ; FK to non-PK field!
                                    :base_type :type/Integer}]
-      (let [result-fields (database/pk-fields {:id db-id})
+      (let [result-fields (database/id-fields {:id db-id})
             result-field-ids (set (map :id result-fields))]
         (testing "includes PK fields"
           (is (contains? result-field-ids country-pk-id))
@@ -888,7 +888,7 @@
         (testing "includes non-PK FK target field"
           (is (contains? result-field-ids nationality-id))))))
 
-  (testing "pk-fields excludes inactive fields"
+  (testing "id-fields excludes inactive fields"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
                    :model/Field {active-pk-id :id} {:table_id table-id
@@ -901,6 +901,6 @@
                                                        :semantic_type :type/PK
                                                        :base_type :type/Integer
                                                        :active false}]
-      (let [result-fields (database/pk-fields {:id db-id})]
+      (let [result-fields (database/id-fields {:id db-id})]
         (is (= #{active-pk-id}
                (set (map :id result-fields))))))))

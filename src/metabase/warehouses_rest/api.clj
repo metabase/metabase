@@ -809,7 +809,7 @@
                                            [api/read-check mi/can-read?])]
     (db-perm-check (get-database id {:include-editable-data-model? true}))
     (sort-by (comp u/lower-case-en :name :table)
-             (filter field-perm-check (-> (database/pk-fields {:id id})
+             (filter field-perm-check (-> (database/id-fields {:id id})
                                           (t2/hydrate :table))))))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
