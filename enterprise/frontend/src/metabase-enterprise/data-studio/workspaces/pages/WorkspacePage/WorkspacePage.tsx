@@ -311,7 +311,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     }
   }, [id, activeTab, setTab]);
 
-  const isArchived = workspace?.archived_at != null;
+  const isArchived = workspace?.status === "archived";
 
   useEffect(() => {
     // Scroll to active tab on change.

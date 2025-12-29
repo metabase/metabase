@@ -103,6 +103,7 @@
                                                   {:status :ready}))))
     (catch Exception e
       (log/error e "Failed to setup workspace")
+      (t2/update! :model/Workspace ws-id {:status :setup-failed})
       (throw e))))
 
 (defn initialize-workspace!

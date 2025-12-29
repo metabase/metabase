@@ -93,11 +93,11 @@
 
     (testing "workspace can be archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
-        (is (some? (:archived_at updated)))))
+        (is (= :archived (:status updated)))))
 
     (testing "workspace can be unarchived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/unarchive"))]
-        (is (nil? (:archived_at updated)))))
+        (is (= :ready (:status updated)))))
 
     (testing "workspace cannot be deleted if it is not archived"
       (let [message (mt/user-http-request :crowberto :delete 400 (str "ee/workspace/" workspace-id))]
@@ -105,7 +105,7 @@
 
     (testing "workspace can be deleted if it is archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
-        (is (some? (:archived_at updated))))
+        (is (= :archived (:status updated))))
       (let [response (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" workspace-id))]
         (is (= {:ok true} response))
         ;; todo: check the schema / tables and user are gone
@@ -128,8 +128,8 @@
                                   (fn [_database _workspace]
                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
         (is (some? (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))))
-        (is (some? (t2/select-one-fn :archived_at :model/Workspace :id (:id workspace)))
-            "Workspace should have archived_at set despite cleanup failure")))))
+        (is (= :archived (t2/select-one-fn :status :model/Workspace :id (:id workspace)))
+            "Workspace should have status :archived despite cleanup failure")))))
 
 (deftest ^:parallel delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
@@ -541,7 +541,7 @@
           (testing "Workspace is not archived nor deleted"
             (let [ws-after (t2/select-one :model/Workspace :id ws-id)]
               (is (some? ws-after))
-              (is (empty? (:archived_at ws-after))))))))))
+              (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
   (testing "GET /api/ee/transform/:id/merge-history"
@@ -715,7 +715,7 @@
 (deftest create-workspace-transform-archived-test
   (testing "Cannot create transform in archived workspace"
     (ws.tu/with-workspaces! [workspace {:name "Archived"}]
-      (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
+      (t2/update! :model/Workspace (:id workspace) {:status :archived})
       (is (= "Cannot create transforms in an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
                                    {:name   "Should Fail"
@@ -766,7 +766,7 @@
               (is (= response (mt/user-http-request :crowberto :get 200 (ws-url ws-id "transform" (:ref_id response)))))))
 
           (testing "Cannot add transforms to archived workspace"
-            (t2/update! :model/Workspace ws-id {:archived_at (OffsetDateTime/now)})
+            (t2/update! :model/Workspace ws-id {:status :archived})
             (is (= "Cannot create transforms in an archived workspace"
                    (mt/user-http-request :crowberto :post 400 (ws-url ws-id "/transform")
                                          {:name   "Should Fail"
@@ -993,7 +993,7 @@
 
   (testing "Cannot rename an archived workspace"
     (ws.tu/with-workspaces! [workspace {:name "Archived"}]
-      (t2/update! :model/Workspace (:id workspace) {:archived_at :%now})
+      (t2/update! :model/Workspace (:id workspace) {:status :archived})
       (is (= "Cannot update an archived workspace"
              (mt/user-http-request :crowberto :put 400 (ws-url (:id workspace))
                                    {:name "Should Fail"}))))))
@@ -1116,7 +1116,7 @@
       ;; database_id is set to provisional default, but status is uninitialized
       (is (=? {:status "uninitialized" :database_id pos-int?} ws))
       (testing "can be archived and deleted"
-        (is (some? (:archived_at (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
+        (is (= :archived (:status (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
         (is (= {:ok true} (mt/user-http-request :crowberto :delete 200 (ws-url ws-id))))
         (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))
 

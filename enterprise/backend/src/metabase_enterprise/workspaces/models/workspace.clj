@@ -9,17 +9,22 @@
 
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
+(def workspace-statuses
+  "Set of valid workspace statuses."
+  #{:uninitialized :pending :ready :setup-failed :archived}
+  #_#{:enum :uninitialized :database-not-read :graph-not-ready :ready})
+
 (t2/deftransforms :model/Workspace
   {:graph            mi/transform-json
    :database_details mi/transform-encrypted-json
-   :status           mi/transform-keyword})
+   :status           (mi/transform-validator mi/transform-keyword (partial mi/assert-enum workspace-statuses))})
 
 (doto :model/Workspace
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
 (defn archive!
-  "Archive a workspace. Destroys database isolation resources (best-effort), revokes access grants, sets archived_at.
+  "Archive a workspace. Destroys database isolation resources (best-effort), revokes access grants, sets status to :archived.
    Cleanup failures are logged but don't block archiving - the workspace can be unarchived to retry cleanup,
    or deleted once the underlying permission issues are resolved."
   [{workspace-id :id :as workspace}]
@@ -34,11 +39,11 @@
       ;; Mark all inputs as un-granted since the user may have been dropped
       (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
                   {:access_granted false})))
-  (t2/update! :model/Workspace workspace-id {:archived_at [:now]}))
+  (t2/update! :model/Workspace workspace-id {:status :archived}))
 
 (defn unarchive!
   "Unarchive a workspace. Re-initializes database isolation resources, re-grants read access
-   to source tables, and clears archived_at.
+   to source tables, and changes status back to :ready.
    Cannot unarchive an uninitialized workspace (no isolation resources to restore)."
   [workspace]
   (when (= :uninitialized (:status workspace))
@@ -47,7 +52,7 @@
         isolation-result (ws.isolation/ensure-database-isolation! workspace database)
         workspace-id     (:id workspace)
         _                (t2/update! :model/Workspace workspace-id
-                                     (merge {:archived_at nil}
+                                     (merge {:status :ready}
                                             (select-keys isolation-result [:schema :database_details])))
         ;; Re-fetch workspace to get updated database_details and schema for granting permissions
         updated-ws       (t2/select-one :model/Workspace workspace-id)]
