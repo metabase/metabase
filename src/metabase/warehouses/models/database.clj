@@ -486,11 +486,23 @@
    {:default []}))
 
 (defn pk-fields
-  "Return all the primary key `Fields` associated with this `database`."
+  "Return all `Fields` that are valid FK targets for this `database`.
+   This includes PK fields and fields that are currently FK targets.
+
+   NOTE: The fk_target_field_id subquery is a quick fix for #35199.
+   Ideally we should have a :type/UniqueKey semantic type that sync
+   sets on unique columns, and filter on that instead."
   [{:keys [id]}]
   (let [table-ids (t2/select-pks-set 'Table, :db_id id, :active true)]
     (when (seq table-ids)
-      (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb/isa :type/PK)))))
+      (t2/select 'Field
+                 {:where [:and
+                          [:in :table_id table-ids]
+                          [:= :active true]
+                          [:or
+                           (mdb/isa :semantic_type :type/PK)
+                           [:in :id {:select [:fk_target_field_id]
+                                     :from [:metabase_field]}]]]}))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 

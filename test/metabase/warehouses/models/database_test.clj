@@ -848,3 +848,59 @@
                                              default-permission-mapping
                                              :id)
                        db-id))))))
+
+;;; ---------------------------------------- id-fields tests ----------------------------------------
+
+(deftest id-fields-test
+  (testing "id-fields returns PK fields and non-PK fields that are FK targets (issue #35199)"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   ;; country table with PK (country_id) and non-PK unique column (nationality_id)
+                   :model/Table {country-table-id :id} {:db_id db-id :name "country"}
+                   :model/Field {country-pk-id :id} {:table_id country-table-id
+                                                     :name "country_id"
+                                                     :semantic_type :type/PK
+                                                     :base_type :type/Integer}
+                   :model/Field {nationality-id :id} {:table_id country-table-id
+                                                      :name "nationality_id"
+                                                      :semantic_type nil  ; NOT a PK
+                                                      :base_type :type/Integer}
+                   ;; person table with FKs to both columns
+                   :model/Table {person-table-id :id} {:db_id db-id :name "person"}
+                   :model/Field {person-pk-id :id} {:table_id person-table-id
+                                                    :name "person_id"
+                                                    :semantic_type :type/PK
+                                                    :base_type :type/Integer}
+                   :model/Field _ {:table_id person-table-id
+                                   :name "country_id"
+                                   :semantic_type :type/FK
+                                   :fk_target_field_id country-pk-id
+                                   :base_type :type/Integer}
+                   :model/Field _ {:table_id person-table-id
+                                   :name "nationality_id"
+                                   :semantic_type :type/FK
+                                   :fk_target_field_id nationality-id  ; FK to non-PK field!
+                                   :base_type :type/Integer}]
+      (let [result-fields (database/pk-fields {:id db-id})
+            result-field-ids (set (map :id result-fields))]
+        (testing "includes PK fields"
+          (is (contains? result-field-ids country-pk-id))
+          (is (contains? result-field-ids person-pk-id)))
+        (testing "includes non-PK FK target field"
+          (is (contains? result-field-ids nationality-id))))))
+
+  (testing "pk-fields excludes inactive fields"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/Field {active-pk-id :id} {:table_id table-id
+                                                    :name "id"
+                                                    :semantic_type :type/PK
+                                                    :base_type :type/Integer
+                                                    :active true}
+                   :model/Field {_inactive-pk-id :id} {:table_id table-id
+                                                       :name "old_id"
+                                                       :semantic_type :type/PK
+                                                       :base_type :type/Integer
+                                                       :active false}]
+      (let [result-fields (database/pk-fields {:id db-id})]
+        (is (= #{active-pk-id}
+               (set (map :id result-fields))))))))

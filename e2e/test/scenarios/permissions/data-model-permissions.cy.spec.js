@@ -126,6 +126,28 @@ describe("scenarios > admin > permissions", () => {
       .should("have.attr", "placeholder", "Field access denied")
       .and("have.value", "");
   });
+
+  it("shows FK target correctly when target is not a PK field (metabase#35199)", () => {
+    // Set up an FK relationship to a non-PK field
+    // First, create the FK relationship: ORDERS.QUANTITY -> PRODUCTS.RATING (non-PK)
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      semantic_type: "type/FK",
+      fk_target_field_id: SAMPLE_DATABASE.PRODUCTS.RATING,
+    });
+
+    // Visit the data model page for the FK field
+    H.DataModel.visit({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.QUANTITY,
+    });
+
+    // The FK target picker should show the target field name, not "Field access denied"
+    H.DataModel.FieldSection.getSemanticTypeFkTarget()
+      .should("not.have.attr", "placeholder", "Field access denied")
+      .should("have.value", "Products → Rating");
+  });
 });
 
 function savePermissionsGraph() {

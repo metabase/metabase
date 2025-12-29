@@ -1331,6 +1331,40 @@ databaseChangeLog:
             tableName: pulse
             columnName: disable_links
 
+  # Add index on fk_target_field_id for faster lookup of FK targets (#35199)
+  - changeSet:
+      id: v58.2025-12-29T16:00:00
+      author: metamben
+      dbms: postgresql
+      comment: Add partial index on metabase_field.fk_target_field_id for faster FK target lookup
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_metabase_field_fk_target_field_id
+              ON metabase_field (fk_target_field_id)
+              WHERE fk_target_field_id IS NOT NULL;
+      rollback:
+        - dropIndex:
+            tableName: metabase_field
+            indexName: idx_metabase_field_fk_target_field_id
+
+  - changeSet:
+      id: v58.2025-12-29T16:00:01
+      author: metamben
+      dbms: mysql,mariadb,h2
+      comment: Add index on metabase_field.fk_target_field_id for faster FK target lookup
+      changes:
+        - createIndex:
+            tableName: metabase_field
+            indexName: idx_metabase_field_fk_target_field_id
+            columns:
+              - column:
+                  name: fk_target_field_id
+      rollback:
+        - dropIndex:
+            tableName: metabase_field
+            indexName: idx_metabase_field_fk_target_field_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
