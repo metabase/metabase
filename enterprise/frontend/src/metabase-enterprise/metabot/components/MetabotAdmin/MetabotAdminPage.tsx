@@ -93,9 +93,14 @@ export function MetabotAdminPage() {
 
           <MetabotVerifiedContentConfigurationPane metabot={metabot} />
 
-          {isEmbedMetabot && (
-            <MetabotCollectionConfigurationPane metabot={metabot} />
-          )}
+          <MetabotCollectionConfigurationPane
+            metabot={metabot}
+            title={
+              isEmbedMetabot
+                ? undefined
+                : t`Collection for natural language querying`
+            }
+          />
 
           <MetabotPromptSuggestionPane metabot={metabot} />
         </SettingsSection>
@@ -186,8 +191,10 @@ function MetabotVerifiedContentConfigurationPane({
 
 function MetabotCollectionConfigurationPane({
   metabot,
+  title,
 }: {
   metabot: MetabotInfo;
+  title?: string;
 }) {
   const metabotId = metabot.id;
   const metabotName = metabot.name;
@@ -230,13 +237,12 @@ function MetabotCollectionConfigurationPane({
     }
   };
 
+  const defaultTitle = c("{0} is the name of an AI assistant")
+    .t`Collection ${metabotName} can use`;
+
   return (
     <Box>
-      <SettingHeader
-        id="allow-metabot"
-        title={c("{0} is the name of an AI assistant")
-          .t`Collection ${metabotName} can use`}
-      />
+      <SettingHeader id="allow-metabot" title={title ?? defaultTitle} />
       <CollectionInfo collection={collection} />
       <Flex gap="md" mt="md">
         <Button onClick={open} leftSection={isUpdating && <Loader size="xs" />}>
