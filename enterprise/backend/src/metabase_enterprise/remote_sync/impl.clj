@@ -221,6 +221,8 @@
                                                                        [:= :rso.model_id :c.id]]]
                                                                :where [:= :location "/"]})
                                                     (map #(str "collections/" (:entity_id %))))
+                    _ (prn models)
+                    _ (prn top-level-removed-prefixes)
                     written-version (source/store! models top-level-removed-prefixes snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
