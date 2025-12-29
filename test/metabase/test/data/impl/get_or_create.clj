@@ -12,6 +12,7 @@
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
@@ -116,29 +117,135 @@
 (defonce ^:private reference-sync-durations
   (delay (edn/read-string (slurp "test_resources/sync-durations.edn"))))
 
+;;; -------------------------------------------------- Fake Sync --------------------------------------------------
+;; For drivers with slow network sync (e.g., Redshift), we can skip sync-database! and directly insert
+;; Table/Field rows from the dbdef. This saves ~10 minutes per test run.
+
+(defn- insert-fake-table!
+  "Insert a Table row from a TableDefinition, returning the inserted table."
+  [driver db {:keys [table-name table-comment]} database-name]
+  (let [schema         (sql.tx/session-schema driver)
+        qualified-name (tx/db-qualified-table-name database-name table-name)]
+    (first
+     (t2/insert-returning-instances! :model/Table
+                                     {:db_id               (:id db)
+                                      :name                qualified-name
+                                      :schema              schema
+                                      :display_name        (humanization/name->human-readable-name :simple table-name)
+                                      :description         table-comment
+                                      :active              true
+                                      :visibility_type     nil
+                                      :initial_sync_status "complete"
+                                      :field_order         "database"}))))
+
+(defn- insert-fake-field!
+  "Insert a Field row from a FieldDefinition, returning the inserted field."
+  [driver table position {:keys [field-name base-type semantic-type visibility-type
+                                 effective-type coercion-strategy field-comment fk]}
+   & {:keys [pk?]}]
+  (let [database-type (sql.tx/field-base-type->sql-type driver base-type)
+        ;; Set semantic type based on context
+        semantic-type (cond
+                        pk?        :type/PK
+                        (some? fk) :type/FK
+                        :else      semantic-type)]
+    (first
+     (t2/insert-returning-instances! :model/Field
+                                     {:table_id          (:id table)
+                                      :name              field-name
+                                      :display_name      (humanization/name->human-readable-name :simple field-name)
+                                      :database_type     database-type
+                                      :base_type         base-type
+                                      :effective_type    (or effective-type base-type)
+                                      :semantic_type     semantic-type
+                                      :coercion_strategy coercion-strategy
+                                      :visibility_type   (or visibility-type :normal)
+                                      :description       field-comment
+                                      :position          position
+                                      :database_position position
+                                      :active            true}))))
+
+(defn- insert-pk-field!
+  "Insert the auto-generated PK field (id) for a table."
+  [driver table]
+  (let [pk-field-name (sql.tx/pk-field-name driver)
+        pk-base-type  (tx/id-field-type driver)]
+    (insert-fake-field! driver table 0
+                        {:field-name pk-field-name
+                         :base-type  pk-base-type}
+                        :pk? true)))
+
+(defn- resolve-fk-relationships!
+  "Second pass: resolve FK relationships by setting fk_target_field_id on FK fields."
+  [table-name->table {:keys [table-definitions]}]
+  (doseq [{:keys [table-name field-definitions]} table-definitions
+          :let [table (get table-name->table table-name)]
+          {:keys [field-name fk]} field-definitions
+          :when fk]
+    (let [target-table-name (if (keyword? fk) (name fk) fk)
+          target-table      (get table-name->table target-table-name)
+          target-pk-field   (when target-table
+                              (t2/select-one :model/Field
+                                             :table_id (:id target-table)
+                                             :semantic_type :type/PK))
+          source-field      (t2/select-one :model/Field
+                                           :table_id (:id table)
+                                           :%lower.name (u/lower-case-en field-name))]
+      (when (and source-field target-pk-field)
+        (t2/update! :model/Field (:id source-field)
+                    {:fk_target_field_id (:id target-pk-field)})))))
+
+(defn- fake-sync-database!
+  "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
+   This skips network calls entirely, which is useful for slow remote databases like Redshift."
+  [driver {:keys [database-name table-definitions] :as database-definition} db]
+  (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
+  ;; First pass: insert all tables and their fields
+  (let [table-name->table
+        (into {}
+              (for [{:keys [table-name field-definitions] :as table-def} table-definitions]
+                (let [table (insert-fake-table! driver db table-def database-name)]
+                  ;; Insert PK field first (position 0)
+                  (insert-pk-field! driver table)
+                  ;; Insert other fields with positions starting at 1
+                  (dorun
+                   (map-indexed
+                    (fn [idx field-def]
+                      (insert-fake-field! driver table (inc idx) field-def))
+                    field-definitions))
+                  [table-name table])))]
+    ;; Second pass: resolve FK relationships
+    (resolve-fk-relationships! table-name->table database-definition)))
+
+;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
+
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
   (assert (= (humanization/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
-      (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
-                                   "NONE")
-            full-sync?         (= database-name "test-data")]
-        (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
-                           (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
-          ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-          ;;
-          ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
-          ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
-          ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
-          ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
-          (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
-            (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
-          ;; add extra metadata for fields
-          (try
-            (add-extra-metadata! database-definition db)
-            (catch Throwable e
-              (log/error e "Error adding extra metadata"))))))
+      (if (tx/use-fake-sync? driver)
+        ;; Use fake sync - directly insert Table/Field rows from dbdef, skipping network calls
+        (fake-sync-database! driver database-definition db)
+        ;; Original sync path - call sync-database! against the actual database
+        (let [reference-duration (or (some-> (get @reference-sync-durations database-name) u/format-nanoseconds)
+                                     "NONE")
+              full-sync?         (= database-name "test-data")]
+          (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
+                             (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
+            ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
+            ;;
+            ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
+            ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
+            ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
+            ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
+            (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
+              (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
+            ;; add extra metadata for fields
+            (try
+              (add-extra-metadata! database-definition db)
+              (catch Throwable e
+                (log/error e "Error adding extra metadata")))))))
     (catch Throwable e
       (let [message (format "Failed to sync test database %s: %s" (pr-str database-name) (ex-message e))
             e       (ex-info message
