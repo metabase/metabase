@@ -235,7 +235,7 @@
           y-type (lib.schema.expression/type-of y)]
       [tag opts
        (add-type-info x {:base-type x-type :effective-type x-type})
-       (add-type-info y {:base-type y-type :effective-type x-type})])
+       (add-type-info y {:base-type y-type :effective-type y-type})])
 
     ;; field and literal
     [(tag :guard #{:= :!= :< :> :<= :>=}) opts field (x :guard raw-value?)]
