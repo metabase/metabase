@@ -159,7 +159,7 @@
                 (str "Products related table should have " expected-products-field-count
                      " fields (only its own fields, not implicitly joinable fields)"))))))))
 
-(defn- pmbql-measure-definition
+(defn- measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [table-id field-id]
   (let [mp (mt/metadata-provider)
@@ -168,7 +168,7 @@
         field (lib.metadata/field mp field-id)]
     (lib/aggregate query (lib/sum field))))
 
-(defn- pmbql-segment-definition
+(defn- segment-definition
   "Create an MBQL5 segment definition with a filter."
   [table-id field-id value]
   (let [mp (mt/metadata-provider)
@@ -179,7 +179,7 @@
 
 (deftest get-table-details-with-measures-test
   (testing "get-table-details returns measures when with_measures is true"
-    (let [measure-def (pmbql-measure-definition (mt/id :orders) (mt/id :orders :total))]
+    (let [measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))]
       (mt/with-temp [:model/Measure {measure-id :id} {:name       "Total Revenue"
                                                       :table_id   (mt/id :orders)
                                                       :definition measure-def}]
@@ -203,7 +203,7 @@
 
 (deftest get-table-details-with-segments-test
   (testing "get-table-details returns segments when with_segments is true"
-    (let [segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
+    (let [segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 100)]
       (mt/with-temp [:model/Segment {segment-id :id} {:name       "High Value Orders"
                                                       :table_id   (mt/id :orders)
                                                       :definition segment-def}]
@@ -227,8 +227,8 @@
 
 (deftest get-table-details-measures-scoped-to-table-test
   (testing "get-table-details only returns measures for the requested table, not other tables"
-    (let [orders-measure-def (pmbql-measure-definition (mt/id :orders) (mt/id :orders :total))
-          products-measure-def (pmbql-measure-definition (mt/id :products) (mt/id :products :price))]
+    (let [orders-measure-def (measure-definition (mt/id :orders) (mt/id :orders :total))
+          products-measure-def (measure-definition (mt/id :products) (mt/id :products :price))]
       (mt/with-temp [:model/Measure {orders-measure-id :id} {:name       "Orders Total"
                                                              :table_id   (mt/id :orders)
                                                              :definition orders-measure-def}
@@ -251,7 +251,7 @@
           ;; Create a metric query that's directly based on a table
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
-          segment-def (pmbql-segment-definition (mt/id :orders) (mt/id :orders :total) 50)]
+          segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 50)]
       (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
                                                   :database_id   (mt/id)
                                                   :name          "Total Orders"

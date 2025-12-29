@@ -248,24 +248,26 @@
                                                                 :filters   filters
                                                                 :group_by  breakouts}
                                               :conversation_id conversation-id})
-              query-id (-> response :structured_output :query_id)]
+              query-id (-> response :structured_output :query_id)
+              expected-query (mt/$ids :products
+                               {:database (mt/id)
+                                :lib/type :mbql/query
+                                :stages [{:lib/type :mbql.stage/mbql
+                                          :source-table $$products
+                                          :aggregation [[:metric {} metric-id]]
+                                          :breakout [[:field {:temporal-unit :week} %created_at]
+                                                     [:field {:temporal-unit :day} %created_at]]
+                                          :filters [[:> {} [:field {} %id] 50]
+                                                    [:= {} [:field {} %title] "3" "4"]
+                                                    [:!= {} [:field {} %rating] 3 4]
+                                                    [:= {} [:get-month {} [:field {} %created_at]] 4 5 9]
+                                                    [:!= {} [:get-day {} [:field {} %created_at]] 14 15 19]
+                                                    [:= {} [:get-day-of-week {} [:field {} %created_at] :iso] 1 7]
+                                                    [:= {} [:get-year {} [:field {} %created_at]] 2008]]}]})]
           (is (=? {:structured_output
                    {:type "query"
                     :query_id string?
-                    :query {:database (mt/id)
-                            :lib/type :mbql/query
-                            :stages [{:lib/type :mbql.stage/mbql
-                                      :source-table (mt/id :products)
-                                      :aggregation [[:metric {} metric-id]]
-                                      :breakout [[:field {:temporal-unit :week} (mt/id :products :created_at)]
-                                                 [:field {:temporal-unit :day} (mt/id :products :created_at)]]
-                                      :filters [[:> {} [:field {} (mt/id :products :id)] 50]
-                                                [:= {} [:field {} (mt/id :products :title)] "3" "4"]
-                                                [:!= {} [:field {} (mt/id :products :rating)] 3 4]
-                                                [:= {} [:get-month {} [:field {} (mt/id :products :created_at)]] 4 5 9]
-                                                [:!= {} [:get-day {} [:field {} (mt/id :products :created_at)]] 14 15 19]
-                                                [:= {} [:get-day-of-week {} [:field {} (mt/id :products :created_at)] :iso] 1 7]
-                                                [:= {} [:get-year {} [:field {} (mt/id :products :created_at)]] 2008]]}]}
+                    :query expected-query
                     :result_columns
                     [{:field_id (str "q" query-id "-0")
                       :name "CREATED_AT"
