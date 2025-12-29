@@ -160,7 +160,11 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error, { id, collection_id }) => {
-        const tags = [listTag("transform"), idTag("transform", id)];
+        const tags = [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("revision"),
+        ];
         if (collection_id != null) {
           tags.push(idTag("collection", collection_id));
         }

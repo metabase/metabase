@@ -15,6 +15,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Card,
@@ -33,14 +34,35 @@ import { PaneHeader } from "metabase-enterprise/data-studio/common/components/Pa
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
+import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
-import { type TreeNode, getCollectionNodeId } from "./types";
+import { CollectionRowMenu } from "./CollectionRowMenu";
+import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
 const getNodeId = (node: TreeNode) => node.id;
 const getSubRows = (node: TreeNode) => node.children;
 const isFilterable = (node: TreeNode) => node.nodeType === "transform";
 
+const countTransforms = (node: TreeNode): number => {
+  if (!node.children) {
+    return 0;
+  }
+  return node.children.reduce((count, child) => {
+    if (child.nodeType === "transform") {
+      return count + 1;
+    }
+    return count + countTransforms(child);
+  }, 0);
+};
+
+const NODE_ICON_COLORS: Record<TreeNode["nodeType"], string> = {
+  folder: "text-medium",
+  transform: "brand",
+  library: "text-dark",
+};
+
+const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
 const globalFilterFn = (
   row: { original: TreeNode },
   _columnId: string,
@@ -87,10 +109,19 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
   const isLoading = isLoadingCollections || isLoadingTransforms;
   const error = collectionsError ?? transformsError;
 
-  const treeData = useMemo(
-    () => buildTreeData(collections, transforms),
-    [collections, transforms],
-  );
+  const treeData = useMemo(() => {
+    const data = buildTreeData(collections, transforms);
+    if (PLUGIN_TRANSFORMS_PYTHON.isEnabled) {
+      data.push({
+        id: "library",
+        name: t`Python library`,
+        nodeType: "library",
+        icon: "snippet",
+        url: Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH }),
+      });
+    }
+    return data;
+  }, [collections, transforms]);
 
   const defaultExpanded = useMemo(
     () => getDefaultExpandedIds(targetCollectionId, targetCollection),
@@ -109,9 +140,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
           <EntityNameCell
             data-testid="tree-node-name"
             icon={row.original.icon}
-            iconColor={
-              row.original.nodeType === "folder" ? "text-medium" : "brand"
-            }
+            iconColor={getNodeIconColor(row.original)}
             name={row.original.name}
           />
         ),
@@ -141,6 +170,20 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             <Ellipsified>{row.original.target.name}</Ellipsified>
           ) : null,
       },
+      {
+        id: "actions",
+        header: "",
+        width: 48,
+        enableSorting: false,
+        cell: ({ row }) =>
+          isCollectionNode(row.original) ? (
+            <CollectionRowMenu
+              collectionId={row.original.collectionId}
+              collectionName={row.original.name}
+              transformCount={countTransforms(row.original)}
+            />
+          ) : null,
+      },
     ],
     [],
   );
@@ -156,9 +199,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     (row: Row<TreeNode>) => {
       if (row.original.nodeType === "transform" && row.original.transformId) {
         navigateToTransform(row.original.transformId);
+      } else if (row.original.nodeType === "library" && row.original.url) {
+        dispatch(push(row.original.url));
       }
     },
-    [navigateToTransform],
+    [navigateToTransform, dispatch],
   );
 
   const treeTableInstance = useTreeTableInstance({
@@ -184,9 +229,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         row.original.transformId
       ) {
         navigateToTransform(row.original.transformId);
+      } else if (row.original.nodeType === "library" && row.original.url) {
+        dispatch(push(row.original.url));
       }
     },
-    [navigateToTransform],
+    [navigateToTransform, dispatch],
   );
 
   useEffect(() => {

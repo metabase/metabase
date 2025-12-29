@@ -31,12 +31,14 @@ export interface TreeNodeData {
 export interface TreeTableColumnSizingDef {
   /** Column ID is required for TreeTable columns. */
   id: string;
-  /** Fixed width in pixels. Column does NOT stretch. */
-  width?: number;
+  /** Fixed width in pixels, or 'auto' (measures content via DOM) */
+  width?: number | "auto";
   /** Minimum width: pixels or 'auto' (measures content via DOM). */
   minWidth?: number | "auto";
   /** Maximum width in pixels. Only applies to stretching columns. */
   maxWidth?: number;
+  /** Extra pixels added to measured width. Only applies when width or minWidth is 'auto'. */
+  widthPadding?: number;
 }
 
 /**

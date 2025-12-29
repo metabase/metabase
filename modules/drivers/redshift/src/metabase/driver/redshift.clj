@@ -34,23 +34,24 @@
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation       true
-                              :describe-fields                true
-                              :describe-fks                   true
-                              :rename                         true
-                              :atomic-renames                 true
-                              :expression-literals            true
-                              :identifiers-with-spaces        false
-                              :uuid-type                      false
-                              :nested-field-columns           false
-                              :test/jvm-timezone-setting      false
-                              :database-routing               true
-                              :metadata/table-existence-check true
-                              :transforms/python              true
-                              :transforms/table               true
-                              :describe-default-expr          false
-                              :describe-is-generated          false
-                              :describe-is-nullable           false}]
+(doseq [[feature supported?] {:atomic-renames                   true
+                              :connection-impersonation         true
+                              :database-routing                 true
+                              :describe-default-expr            false
+                              :describe-fields                  true
+                              :describe-fks                     true
+                              :describe-is-generated            false
+                              :describe-is-nullable             false
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/table-existence-check   true
+                              :nested-field-columns             false
+                              :regex/lookaheads-and-lookbehinds false
+                              :rename                           true
+                              :test/jvm-timezone-setting        false
+                              :transforms/python                true
+                              :transforms/table                 true
+                              :uuid-type                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -223,6 +224,19 @@
         (str/starts-with? stn "tinytext")   :type/Text
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
+
+        ;; Iceberg table types - https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+        (= stn "string")                    :type/Text
+        (= stn "boolean")                   :type/Boolean
+        (= stn "long")                      :type/BigInteger
+        (str/starts-with? stn "decimal(")   :type/Decimal
+        (= stn "binary")                    :type/*
+        (= stn "date")                      :type/Date
+        (= stn "timestamp")                 :type/DateTime
+        (= stn "timestamptz")               :type/DateTimeWithTZ
+
+        ;; MySQL federated table enum types
+        (str/starts-with? stn "enum(")      :type/Text
 
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
