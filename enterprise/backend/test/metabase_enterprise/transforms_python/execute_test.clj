@@ -127,3 +127,45 @@
                       (testing "Transform run should have timeout status"
                         (is (= :timeout run-status)
                             "Transform run status should be :timeout when Python script times out")))))))))))))
+
+(deftest python-transform-unresolved-source-table-test
+  (testing "Python transform execution throws when source table cannot be resolved"
+    (mt/test-drivers #{:postgres}
+      (mt/with-premium-features #{:transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (with-transform-cleanup! [target {:type   "table"
+                                              :schema schema
+                                              :name   "unresolved_test"}]
+              (mt/with-temp [:model/Transform transform {:name   "Transform with unresolved ref"
+                                                         :source {:type          "python"
+                                                                  :body          "def transform(input): return input"
+                                                                  :source-tables {"input" {:database_id (mt/id)
+                                                                                           :schema      schema
+                                                                                           :table       "nonexistent_table"}}}
+                                                         :target (assoc target :database (mt/id))}]
+                (testing "Execution throws with informative error message"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"Tables not found:.*nonexistent_table"
+                       (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))))
+
+(deftest python-transform-unresolved-source-table-no-schema-test
+  (testing "Python transform error message omits schema when nil"
+    (mt/test-drivers #{:postgres}
+      (mt/with-premium-features #{:transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target {:type   "table"
+                                            :schema nil
+                                            :name   "unresolved_no_schema_test"}]
+            (mt/with-temp [:model/Transform transform {:name   "Transform with unresolved ref no schema"
+                                                       :source {:type          "python"
+                                                                :body          "def transform(input): return input"
+                                                                :source-tables {"input" {:database_id (mt/id)
+                                                                                         :schema      nil
+                                                                                         :table       "missing_table"}}}
+                                                       :target (assoc target :database (mt/id))}]
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"Tables not found: missing_table"
+                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual}))))))))))

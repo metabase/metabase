@@ -541,3 +541,31 @@
                 (let [updated-rows (transforms.tu/table-rows table-name)]
                   (is (= [["Alice" "Bob"] ["Bob" "Alice"]] updated-rows)
                       "Updated data should show Alice/Bob with friends instead of ages"))))))))))
+
+(deftest create-python-transform-with-table-ref-source-test
+  (testing "Creating a Python transform with name-based source table refs is allowed"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [target {:type   "table"
+                                            :schema (get-test-schema)
+                                            :name   "table_ref_test"}]
+            (let [;; Use a name-based ref instead of table ID
+                  source-tables {"input" {:database_id (mt/id)
+                                          :schema      (get-test-schema)
+                                          :table       "transforms_products"}}
+                  transform-payload {:name   "Transform with table ref"
+                                     :source {:type          "python"
+                                              :body          "def transform(input):\n    return input"
+                                              :source-tables source-tables}
+                                     :target (assoc target :database (mt/id))}
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+              (testing "Transform is created successfully"
+                (is (integer? (:id response)))
+                (is (= "python" (:source_type response))))
+
+              ;; currently not allowed and used on UI so we're still converting this back to integer
+              #_(testing "Source tables are preserved in response"
+                  (is (map? (get-in response [:source :source-tables :input])))
+                  (is (= "transforms_products"
+                         (get-in response [:source :source-tables :input :table])))))))))))
