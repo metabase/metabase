@@ -1,74 +1,110 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { initializePlugin as initializeDependenciesPlugin } from "metabase-enterprise/dependencies";
+import { initializePlugin as initializeFeatureLevelPermissionsPlugin } from "metabase-enterprise/feature_level_permissions";
+import { initializePlugin as initializeRemoteSyncPlugin } from "metabase-enterprise/remote_sync";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { initializePlugin as initializeTransformsPlugin } from "metabase-enterprise/transforms";
 import {
-  PLUGIN_DEPENDENCIES,
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
-  PLUGIN_REMOTE_SYNC,
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
-import { createMockUser } from "metabase-types/api/mocks";
+  createMockCollection,
+  createMockSettings,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { DataStudioLayout } from "./DataStudioLayout";
 
-// Mock CollectionSyncStatusBadge to simplify the test
-jest.mock(
-  "metabase-enterprise/remote_sync/components/SyncedCollectionsSidebarSection/CollectionSyncStatusBadge",
-  () => ({
-    CollectionSyncStatusBadge: () => (
-      <div data-testid="sync-status-badge">Badge</div>
-    ),
-  }),
-);
+// Mock hasPremiumFeature to enable specific features
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: jest.fn(),
+}));
 
-// Store original plugin values
-const originalGitSettingsModal = PLUGIN_REMOTE_SYNC.GitSettingsModal;
-const originalGitSyncAppBarControls = PLUGIN_REMOTE_SYNC.GitSyncAppBarControls;
-const originalUseGitSyncVisible = PLUGIN_REMOTE_SYNC.useGitSyncVisible;
-const originalUseGitSettingsVisible = PLUGIN_REMOTE_SYNC.useGitSettingsVisible;
-const originalUseHasLibraryDirtyChanges =
-  PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges;
-const originalDependenciesIsEnabled = PLUGIN_DEPENDENCIES.isEnabled;
-const originalCanAccessDataModel =
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel;
-const originalCanAccessTransforms = PLUGIN_TRANSFORMS.canAccessTransforms;
+const mockHasPremiumFeature = hasPremiumFeature as jest.MockedFunction<
+  typeof hasPremiumFeature
+>;
 
-// Mock functions
-const mockUseGitSyncVisible = jest.fn();
-const mockUseGitSettingsVisible = jest.fn();
-const mockUseHasLibraryDirtyChanges = jest.fn();
+// Configure which features are enabled
+mockHasPremiumFeature.mockImplementation((feature) => {
+  const enabledFeatures = ["remote_sync", "advanced_permissions"];
+  return enabledFeatures.includes(feature);
+});
 
-// Mock components for the plugin
-const MockGitSettingsModal = ({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) =>
-  isOpen ? (
-    <div data-testid="git-settings-modal">
-      <button onClick={onClose} data-testid="close-modal-button">
-        Close Modal
-      </button>
-    </div>
-  ) : null;
+// Initialize enterprise plugins (uses mocked hasPremiumFeature)
+initializeRemoteSyncPlugin();
+initializeFeatureLevelPermissionsPlugin();
+initializeTransformsPlugin();
+initializeDependenciesPlugin();
 
-const MockGitSyncAppBarControls = () => (
-  <div data-testid="git-sync-app-bar-controls">Git Sync Controls</div>
-);
+interface SetupEndpointsOpts {
+  isNavbarOpened?: boolean;
+  remoteSyncEnabled?: boolean;
+  remoteSyncBranch?: string | null;
+  remoteSyncType?: "read-only" | "read-write";
+  hasDirtyChanges?: boolean;
+}
 
 const setupEndpoints = ({
   isNavbarOpened = true,
-}: { isNavbarOpened?: boolean } = {}) => {
-  // Mock collection tree endpoint
-  fetchMock.get("path:/api/collection/tree", []);
+  remoteSyncEnabled = false,
+  remoteSyncBranch = null,
+  remoteSyncType = "read-write",
+  hasDirtyChanges = false,
+}: SetupEndpointsOpts = {}) => {
+  // Mock session properties for settings (used by useAdminSetting and useSetting)
+  setupPropertiesEndpoints(
+    createMockSettings({
+      "remote-sync-enabled": remoteSyncEnabled,
+      "remote-sync-branch": remoteSyncBranch,
+      "remote-sync-type": remoteSyncType,
+    }),
+  );
+
+  // Mock settings details endpoint
+  setupSettingsEndpoints([]);
+
+  // Mock collection tree endpoint (used by useHasLibraryDirtyChanges)
+  fetchMock.get("path:/api/collection/tree", () => {
+    if (hasDirtyChanges) {
+      return [
+        createMockCollection({
+          id: 1,
+          name: "Library",
+          type: "library",
+        }),
+      ];
+    }
+    return [];
+  });
+
+  // Mock remote sync dirty endpoint (used by useRemoteSyncDirtyState)
+  fetchMock.get("path:/api/ee/remote-sync/dirty", () => {
+    if (hasDirtyChanges) {
+      return {
+        dirty: [{ id: 1, model: "card", collection_id: 1 }],
+      };
+    }
+    return { dirty: [] };
+  });
+
+  // Mock remote sync current task endpoint (used by useSyncStatus)
+  fetchMock.get("path:/api/ee/remote-sync/current-task", {
+    status: 404,
+    body: { message: "No current task" },
+  });
+
+  // Mock remote sync branches endpoint (used by GitSyncControls)
+  fetchMock.get("path:/api/ee/remote-sync/branches", {
+    branches: remoteSyncBranch ? [remoteSyncBranch] : [],
+  });
 
   // Mock user key value endpoint for sidebar state
-  // The API returns the value directly, not wrapped in an object
   fetchMock.get(
     "express:/api/user-key-value/namespace/data_studio/key/isNavbarOpened",
     new Response(JSON.stringify(isNavbarOpened), {
@@ -86,14 +122,29 @@ const setupEndpoints = ({
 
 const createStoreState = ({
   isAdmin = true,
+  remoteSyncEnabled = false,
+  remoteSyncBranch = null as string | null,
+  remoteSyncType = "read-write" as "read-only" | "read-write",
+  canAccessDataModel = true,
 }: {
   isAdmin?: boolean;
+  remoteSyncEnabled?: boolean;
+  remoteSyncBranch?: string | null;
+  remoteSyncType?: "read-only" | "read-write";
+  canAccessDataModel?: boolean;
 } = {}) => {
   return createMockState({
-    currentUser: createMockUser({ is_superuser: isAdmin }),
+    currentUser: createMockUser({
+      is_superuser: isAdmin,
+      permissions: {
+        can_access_data_model: canAccessDataModel,
+        can_access_db_details: false,
+      },
+    }),
     settings: mockSettings({
-      "remote-sync-enabled": true,
-      "remote-sync-type": "read-write",
+      "remote-sync-enabled": remoteSyncEnabled,
+      "remote-sync-branch": remoteSyncBranch,
+      "remote-sync-type": remoteSyncType,
     }),
   });
 };
@@ -113,32 +164,47 @@ const setup = ({
   hasDirtyChanges = false,
   isNavbarOpened = true,
 }: SetupOpts = {}) => {
-  setupEndpoints({ isNavbarOpened });
+  // Derive API state from the visibility flags
+  // useGitSyncVisible returns isVisible when: isAdmin && remoteSyncEnabled && currentBranch && syncType === "read-write"
+  // useGitSettingsVisible returns true when: isAdmin && !remoteSyncEnabled
+  let remoteSyncEnabled: boolean;
+  let remoteSyncBranch: string | null;
+  const remoteSyncType = "read-write" as const;
 
-  // Setup plugin hooks mocks
-  mockUseGitSyncVisible.mockReturnValue(isGitSyncVisible);
-  mockUseGitSettingsVisible.mockReturnValue(isGitSettingsVisible);
-  mockUseHasLibraryDirtyChanges.mockReturnValue(hasDirtyChanges);
+  if (isGitSyncVisible) {
+    // Git sync visible requires: enabled + branch + admin + read-write
+    remoteSyncEnabled = true;
+    remoteSyncBranch = "main";
+  } else if (isGitSettingsVisible) {
+    // Git settings visible requires: admin + NOT enabled
+    remoteSyncEnabled = false;
+    remoteSyncBranch = null;
+  } else {
+    // Neither visible - could be enabled with no branch, or not admin
+    remoteSyncEnabled = true;
+    remoteSyncBranch = null;
+  }
 
-  // Setup plugin mocks
-  PLUGIN_REMOTE_SYNC.GitSettingsModal = MockGitSettingsModal;
-  PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = MockGitSyncAppBarControls;
-  PLUGIN_REMOTE_SYNC.useGitSyncVisible = mockUseGitSyncVisible;
-  PLUGIN_REMOTE_SYNC.useGitSettingsVisible = mockUseGitSettingsVisible;
-  PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = mockUseHasLibraryDirtyChanges;
-
-  // Setup feature permissions to return simple values
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel = () => isAdmin;
-  PLUGIN_TRANSFORMS.canAccessTransforms = () => false;
-  PLUGIN_DEPENDENCIES.isEnabled = false;
+  setupEndpoints({
+    isNavbarOpened,
+    remoteSyncEnabled,
+    remoteSyncBranch,
+    remoteSyncType,
+    hasDirtyChanges,
+  });
 
   renderWithProviders(
     <DataStudioLayout>
       <div data-testid="content">Content</div>
     </DataStudioLayout>,
     {
-      storeInitialState: createStoreState({ isAdmin }),
-      // Don't use withRouter - it causes rendering issues in tests
+      storeInitialState: createStoreState({
+        isAdmin,
+        remoteSyncEnabled,
+        remoteSyncBranch,
+        remoteSyncType,
+        canAccessDataModel: isAdmin,
+      }),
       withRouter: false,
     },
   );
@@ -149,24 +215,9 @@ describe("DataStudioLayout", () => {
     fetchMock.removeRoutes();
     fetchMock.clearHistory();
     jest.clearAllMocks();
-    // Suppress console.error for router warnings
-    jest.spyOn(console, "error").mockImplementation(() => {});
-    // Suppress console.warn for selector warnings
-    jest.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    // Restore original plugin implementations
-    PLUGIN_REMOTE_SYNC.GitSettingsModal = originalGitSettingsModal;
-    PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = originalGitSyncAppBarControls;
-    PLUGIN_REMOTE_SYNC.useGitSyncVisible = originalUseGitSyncVisible;
-    PLUGIN_REMOTE_SYNC.useGitSettingsVisible = originalUseGitSettingsVisible;
-    PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges =
-      originalUseHasLibraryDirtyChanges;
-    PLUGIN_DEPENDENCIES.isEnabled = originalDependenciesIsEnabled;
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel =
-      originalCanAccessDataModel;
-    PLUGIN_TRANSFORMS.canAccessTransforms = originalCanAccessTransforms;
     jest.restoreAllMocks();
   });
 
@@ -204,7 +255,9 @@ describe("DataStudioLayout", () => {
       await userEvent.click(gitSettingsButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-settings-modal")).toBeInTheDocument();
+        expect(
+          screen.getByText("Set up remote sync for your Library"),
+        ).toBeInTheDocument();
       });
     });
 
@@ -220,16 +273,17 @@ describe("DataStudioLayout", () => {
       await userEvent.click(gitSettingsButton);
 
       await waitFor(() => {
-        expect(screen.getByTestId("git-settings-modal")).toBeInTheDocument();
+        expect(
+          screen.getByText("Set up remote sync for your Library"),
+        ).toBeInTheDocument();
       });
 
-      // Close the modal
-      const closeButton = screen.getByTestId("close-modal-button");
-      await userEvent.click(closeButton);
+      // Close the modal by pressing escape
+      await userEvent.keyboard("{Escape}");
 
       await waitFor(() => {
         expect(
-          screen.queryByTestId("git-settings-modal"),
+          screen.queryByText("Set up remote sync for your Library"),
         ).not.toBeInTheDocument();
       });
     });
@@ -264,9 +318,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(
-        screen.getByTestId("git-sync-app-bar-controls"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("git-sync-controls")).toBeInTheDocument();
     });
 
     it("should not render GitSyncAppBarControls when sidebar is collapsed", async () => {
@@ -276,9 +328,7 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(
-        screen.queryByTestId("git-sync-app-bar-controls"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("git-sync-controls")).not.toBeInTheDocument();
     });
 
     it("should render content area", async () => {
