@@ -54,8 +54,12 @@ jobs:
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
-      # Quarantine conflict detection
-      quarantine-conflict: ${{ steps.driver-decisions.outputs.quarantine-conflict }}
+      # Per-driver quarantine conflict flags (for cloud drivers with file change tracking)
+      athena-quarantine-conflict: ${{ steps.driver-decisions.outputs.athena-quarantine-conflict }}
+      bigquery-quarantine-conflict: ${{ steps.driver-decisions.outputs.bigquery-quarantine-conflict }}
+      databricks-quarantine-conflict: ${{ steps.driver-decisions.outputs.databricks-quarantine-conflict }}
+      redshift-quarantine-conflict: ${{ steps.driver-decisions.outputs.redshift-quarantine-conflict }}
+      snowflake-quarantine-conflict: ${{ steps.driver-decisions.outputs.snowflake-quarantine-conflict }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -69,43 +73,26 @@ jobs:
         run: |
           # All decision logic is in mage - it analyzes module dependencies,
           # branch context, labels, and file changes to decide what runs.
-          ./bin/mage -driver-decisions \
-            --git-ref="${{ github.event.pull_request.base.ref || 'master' }}" \
-            --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}" \
-            --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}" \
-            --skip="${{ inputs.skip }}" \
-            --athena-changed="${{ inputs.athena-changed }}" \
-            --bigquery-changed="${{ inputs.bigquery-changed }}" \
-            --databricks-changed="${{ inputs.databricks-changed }}" \
-            --redshift-changed="${{ inputs.redshift-changed }}" \
-            --snowflake-changed="${{ inputs.snowflake-changed }}" \
-            | tee /dev/stderr \
-            | grep -E "^([a-z]+-should-run|quarantine-conflict)=" >> $GITHUB_OUTPUT
+          MAGE_ARGS=(
+            --git-ref="${{ github.event.pull_request.base.ref || 'master' }}"
+            --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
+            --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+            --skip="${{ inputs.skip }}"
+            --athena-changed="${{ inputs.athena-changed }}"
+            --bigquery-changed="${{ inputs.bigquery-changed }}"
+            --databricks-changed="${{ inputs.databricks-changed }}"
+            --redshift-changed="${{ inputs.redshift-changed }}"
+            --snowflake-changed="${{ inputs.snowflake-changed }}"
+          )
+          # First call: show human-readable output for debugging
+          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"
+          # Second call: output only key=value lines for GITHUB_OUTPUT
+          ./bin/mage -driver-decisions "${MAGE_ARGS[@]}" --github-output-only >> $GITHUB_OUTPUT
         shell: bash
-
-  # This job fails if you changed files in a quarantined driver without adding the break-quarantine label.
-  # This prevents accidentally merging changes without running the driver's tests.
-  check-quarantine-conflicts:
-    needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.quarantine-conflict != '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fail due to quarantine conflict
-        run: |
-          echo "::error::Quarantined driver(s) have file changes but tests will NOT run!"
-          echo ""
-          echo "The following quarantined drivers have file changes:"
-          echo "${{ needs.determine-driver-skips.outputs.quarantine-conflict }}" | tr ',' '\n' | while read driver; do
-            echo "  • $driver"
-            echo "    Add label 'break-quarantine-$driver' to run tests for this driver"
-          done
-          echo ""
-          echo "Without running tests, you won't know if your changes break the driver!"
-          exit 1
 
   be-tests-athena-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.athena-should-run == 'true' || needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -122,6 +109,16 @@ jobs:
       MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
     name: Athena
     steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.athena-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::Athena driver is quarantined but you changed files in modules/drivers/athena/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run Athena tests, add the label: break-quarantine-athena"
+        echo ""
+        echo "If you merge without testing, you risk breaking the Athena driver!"
+        exit 1
     - uses: actions/checkout@v4
     - name: Test Athena driver
       id: test-driver
@@ -145,7 +142,7 @@ jobs:
 
   be-tests-bigquery-cloud-sdk-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.bigquery-should-run == 'true' || needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -173,6 +170,16 @@ jobs:
       MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON_ROUTING }}
     name: BigQuery ${{ matrix.job.name }}
     steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.bigquery-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::BigQuery driver is quarantined but you changed files in modules/drivers/bigquery-cloud-sdk/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run BigQuery tests, add the label: break-quarantine-bigquery"
+        echo ""
+        echo "If you merge without testing, you risk breaking the BigQuery driver!"
+        exit 1
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -354,7 +361,7 @@ jobs:
 
   be-tests-databricks-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -369,6 +376,16 @@ jobs:
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks
     steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run Databricks tests, add the label: break-quarantine-databricks"
+        echo ""
+        echo "If you merge without testing, you risk breaking the Databricks driver!"
+        exit 1
     - uses: actions/checkout@v4
     - name: Test Databricks driver
       id: test-driver
@@ -392,7 +409,7 @@ jobs:
 
   be-tests-databricks-multi-catalog-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.databricks-should-run == 'true' || needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -408,6 +425,16 @@ jobs:
       MB_DATABRICKS_TEST_OAUTH_SECRET: ${{ secrets.MB_DATABRICKS_JDBC_TEST_OAUTH_SECRET }}
     name: Databricks (Multi-Catalog)
     steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.databricks-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::Databricks driver is quarantined but you changed files in modules/drivers/databricks/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run Databricks tests, add the label: break-quarantine-databricks"
+        echo ""
+        echo "If you merge without testing, you risk breaking the Databricks driver!"
+        exit 1
     - uses: actions/checkout@v4
     - name: Test Databricks driver with multi-catalog
       id: test-driver
@@ -1023,7 +1050,7 @@ jobs:
 
   be-tests-redshift-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.redshift-should-run == 'true' || needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1068,6 +1095,16 @@ jobs:
       MB_REDSHIFT_TEST_PASSWORD: ${{ secrets.MB_REDSHIFT_TEST_PASSWORD }}
     name: ${{ matrix.job.name }}
     steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.redshift-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::Redshift driver is quarantined but you changed files in modules/drivers/redshift/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run Redshift tests, add the label: break-quarantine-redshift"
+        echo ""
+        echo "If you merge without testing, you risk breaking the Redshift driver!"
+        exit 1
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -1103,7 +1140,7 @@ jobs:
 
   be-tests-snowflake-ee:
     needs: determine-driver-skips
-    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' }}
+    if: ${{ needs.determine-driver-skips.outputs.snowflake-should-run == 'true' || needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -1141,6 +1178,16 @@ jobs:
       MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     name: Snowflake ${{ matrix.job.name }}
     steps:
+    - name: Fail on quarantine conflict
+      if: ${{ needs.determine-driver-skips.outputs.snowflake-quarantine-conflict == 'true' }}
+      run: |
+        echo "::error::Snowflake driver is quarantined but you changed files in modules/drivers/snowflake/"
+        echo ""
+        echo "Your changes will NOT be tested because the driver is currently quarantined."
+        echo "To run Snowflake tests, add the label: break-quarantine-snowflake"
+        echo ""
+        echo "If you merge without testing, you risk breaking the Snowflake driver!"
+        exit 1
     - uses: actions/checkout@v4
     - name: Setup python-runner
       if: ${{ matrix.job.needs-python-runner == true }}
@@ -1424,7 +1471,6 @@ jobs:
   drivers-tests-result:
     needs:
       # if you add a driver job, you must add it to this list for it to be a required check
-      - check-quarantine-conflicts
       - be-tests-h2
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee
