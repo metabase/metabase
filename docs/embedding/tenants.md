@@ -6,13 +6,15 @@ title: Tenants
 
 {% include plans-blockquote.html feature="Tenants" is_plural=true %}
 
-Tenants simplify user provisioning and configuration, especially in embedding contexts.
+A Tenant is a named set of attributes you can assign to a user to isolate them from other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants. 
+
+The big advantage of grouping users into tenants is that you can use the same content and group permissions for all tenants, so you don't have to create all new stuff for each tenant, and each tenant only ever sees their own data.
 
 You can use tenants to:
 
-- simplify bulk permissions through tenant groups and attributes
-- create collections of shared assets to avoid duplicating dashboards,
-- and provision tenants with SSO.
+- Simplify bulk permissions through tenant groups and attributes.
+- Create collections of shared assets to avoid duplicating dashboards.
+- Provision tenants with SSO.
 
 To get started with tenants:
 
@@ -28,13 +30,13 @@ You can also
 
 **Tenant** is an abstraction representing groups of users that share some properties but should be isolated from other users. For example, if you're building a SaaS app with embedded Metabase dashboards, the customers of your SaaS are tenants.
 
-While working with tenants in Metabase, you'll encounter different user and group types, and some some special collection types. Let's establish some terminology.
+While working with tenants in Metabase, you'll encounter different user and group types, and some special collection types. Let's establish some terminology.
 
 ### User types
 
-- **Tenant users** are the end users. In a B2B SaaS context, these are the your customer's user. Usually they will be interacting with Metabase through an intermediate app (for example, through an embedded dashboard).
+- **Tenant users** are the end users. In a B2B SaaS context, these are the your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
 
-- **Internal users** are Metabase users who don't belong to any tenant. Think Metabase admins, or devs building the dashboards that will be shared with tenants.
+- **Internal users** are "normal" Metabase users who don't belong to any tenant. Think Metabase admins, or devs building the dashboards that will be shared with tenants.
 
 ### Group types
 
@@ -44,7 +46,7 @@ Tenant users and and internal users can be organized into Metabase [groups](LINK
 
 - **All tenant users** is a special group representing all individual end users across all tenants.
 
-  This group can be used to [configure permissions](LINK) for tenant users. If you need more granular permission controls within each tenant, you can also created tenant groups.
+  This group can be used to [configure permissions](LINK) for all tenant users. If you need more granular permission controls within each tenant, you can also create tenant groups.
 
 - **Tenant groups** can be used to create additional permission levels for tenant users.
 
@@ -60,19 +62,19 @@ Tenant users and and internal users can be organized into Metabase [groups](LINK
 
   For example, you might have a special group for your internal group "Analytics developers" who only have access to create dashboards that will be later shared with tenants, but don't have full admin access to your whole Metabase.
 
-Tenant users can't be added to internal user groups, and internal users can't be added to tenant groups.
+Tenant users are completely isolated from internal users: tenant users can't be added to internal user groups, and internal users can't be added to tenant groups.
 
 ### Collection types
 
-Collections in Metabase is where you put charts, dashboard, and models. They also serve as an organizational unit for permission management: if a certain group of people should have access to a certain set of assets, you should put those assets into a collection.
+Collections are like folders that can contain charts, dashboard, and models. They also serve as an organizational unit for permission management: if a certain group of people should have access to a certain set of assets, you should put those assets into a collection.
 
 [SCREENSHOT]
 
 - **Shared collections** contain dashboards and charts that are shared between all tenants.
 
-  For example, every tenant of a recruiting app should be able to see number of job applications by date. you can create a [Metabase question](LINK) for "Count of applications by date" and save it into a shared collection.
+  For example, every tenant of a recruiting app should be able to see the number of job applications by date. You can create a [Metabase question](LINK) for "Count of applications by date" and save it into a shared collection.
 
-  You'll need to [configure appropriate data permissions](LINK) so that each tenant only sees _their_ job applications, and not _everyone's_ job applications (that would be bad).
+  You'll need to [configure data permissions](LINK) so that each tenant only sees _their_ job applications, and not _everyone's_ job applications (that would be bad).
 
   You can create many shared collections (or no shared collections at all, for that matter). For example, you can have a shared collection for analytics around recruitment and a separate shared collection for analytics around interviews.
 
@@ -80,9 +82,9 @@ Collections in Metabase is where you put charts, dashboard, and models. They als
 
 - **Tenant collections** are collection specific to each tenant. They are created automatically for each tenant.
 
-  If you have special customers with bespoke analytics that only this customer gets, you can put those bespoke dashboards and charts into the tenant's collection. For tenant's end users, tenant collections can also serve as a place to create and save new questions that can be shared with other tenant users (but not with users from other tenants).
+  If you have special customers with bespoke analytics that only this customer gets, you can put those bespoke dashboards and charts into the tenant's collection. Tenant collections can also serve as a place for the tenant users to create and save new questions that can be shared with their fellow tenant users (but not with users from other tenants).
 
-- **Internal collections**. Internal collections are exclusively an internal user concern. This is where you can put the stuff that you don't want your end users to see (dashboards in development, internal metrics, maybe even analytics _about_ your tenants). Tenant users will never have access to internal collections.
+- **Internal collections**. Internal collections are exclusively an internal user concern. These are "normal" collections where you and other users internal to your Metabase can put the stuff that you don't want your end users to see (dashboards in development, internal metrics, maybe even analytics _about_ your tenants). Tenant users can't access any internal collections.
 
 - **Personal collection**. Every Metabase user, including tenant users, gets a personal collection - their own space to save new questions and dashboards (of course, if they otherwise have the permissions to build and save new questions).
 
@@ -98,7 +100,7 @@ You can create and manage you tenants exclusively through Metabase UI, or, if th
 2. Click on the **gear** icon above the list of people.
 3. Choose **Multi-tenant strategy**.
 
-Changing to multi-tenant strategy will enable special [user types](LINK) and [collection types](LINK). You'll be able to create new tenants, tenant groups, and collection, and you'll get some additional options in People and Permissions admin settings.
+Changing Metabase to multi-tenant strategy enables special [user](LINK) and [collection](LINK) types. You can create new tenants, tenant groups, and collection, and you get some additional admin settings in the People and Permissions tabs.
 
 If you have an existing permissions and collection setup that you'd like to translate to use tenants, see [Changing tenant strategy](LINK).
 
@@ -120,7 +122,7 @@ You can avoid manually setting up tenants in Metabase by [provisioning tenants w
 
 ## Create tenant groups
 
-Tenant groups are groups that are applicable across tenants. For example, you can have tenant groups "Basic users" and "Premium users", and every tenant will be able to user those groups. Groups can be used to configure permissions.
+Tenant groups are applicable across tenants. For example, you can have tenant groups "Basic users" and "Premium users", and every tenant will be able to use those groups. Groups can be used to configure permissions so that, among the tenant's users, some get Basic permissions while others get Premium.
 
 To create a tenant group:
 
@@ -276,8 +278,8 @@ Permissions are granted to groups. Which permissions are available to each group
 
 ### Tenant user collection permissions
 
-- For **internal collection**, tenant users will have **No** access.
-- For **shared collections**, tenant users can only have **View** or **No** access. This means that at _most_, tenant users can can see existing entities but not create new ones.
+- For **internal collections**, tenant users will have **No** access.
+- For **shared collections**, tenant users can only have **View** or **No** access. This means that at _most_, tenant users can see existing entities but not create new ones.
 
   Different tenant groups can have different levels access to different shared collections. For example, you can have a "Basic analytics" shared collection viewable by all users, and "Advanced analytics" collection only viewable by tenant group "Premium users".
 
@@ -303,7 +305,7 @@ To configure access to shared collections for tenant and internal groups, go to 
 
 You can configure access for each shared collections and their subcollections for both internal and external users. See general docs on [collection permissions](LINK).
 
-Special **Root shared collection** controls who has access to _all_ shared collections. For example, if you want to make sure you internal users don't have access to any tenant shared collections, you can revoke permissions from Root shared collection.
+Special **Root shared collection** controls who has access to _all_ shared collections. For example, if you want to make sure your internal users don't have access to any tenant shared collections, you can revoke permissions from the Root shared collection.
 
 When configuring permissions, remember that in Metabase, all permissions are additive, so if someone is a member of two different groups, they will be granted the _most_ permissive access. In particular, if "All tenant users" has "View" access to a shared collection, but another tenant group has "No" access to that collection specified in the permission settings, the users of the tenant group will still get "View" access because they have it via the "All tenant groups". If you're using tenant groups, we recommend revoking access for "All tenant users" and configuring access on group-by-group basis.
 
