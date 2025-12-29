@@ -71,6 +71,27 @@ export const isSettingHiddenOnDashboards = (
   return vizSettingDefinition.dashboard === false;
 };
 
+/**
+ * Filters out visualization settings that should not be persisted in dashcards.
+ * Settings with `dashboard: false` are hidden from dashboard UI and should not
+ * be saved to avoid overriding the card's settings (like graph.dimensions, graph.metrics).
+ */
+export function sanitizeDashcardSettings(
+  settings: VisualizationSettings,
+  vizSettingsDefs: Record<
+    string,
+    VisualizationSettingDefinition<unknown, unknown>
+  >,
+): VisualizationSettings {
+  return Object.fromEntries(
+    Object.entries(settings).filter(([key]) => {
+      const settingDef = vizSettingsDefs[key];
+      // Keep the setting if it doesn't have dashboard: false
+      return !settingDef || !isSettingHiddenOnDashboards(settingDef);
+    }),
+  );
+}
+
 export function extendCardWithDashcardSettings(
   card: Card | VirtualCard,
   dashcardSettings?: VisualizationSettings,
