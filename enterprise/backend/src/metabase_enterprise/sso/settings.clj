@@ -23,7 +23,7 @@
   (mr/validator GroupMappings))
 
 (defsetting saml-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via SAML, create a Metabase account for them automatically if they don''t have one, or reactivate their existing account.")
+  (deferred-tru "Determines what happens when a user logs in via SAML and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-saml
@@ -35,14 +35,14 @@
   :audit   :getter)
 
 (defsetting jwt-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via JWT, create a Metabase account for them automatically if they don''t have one, or reactivate their existing account.")
+  (deferred-tru "Determines what happens when a user logs in via JWT and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :feature :sso-jwt
   :audit   :getter)
 
 (defsetting ldap-user-provisioning-enabled?
-  (deferred-tru "When a user logs in via LDAP, create a Metabase account for them automatically if they don''t have one, or reactivate their existing account.")
+  (deferred-tru "Determines what happens when a user logs in via LDAP and doesn''t have a Metabase account.")
   :type    :boolean
   :default true
   :audit   :getter)
