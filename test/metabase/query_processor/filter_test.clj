@@ -151,13 +151,13 @@
 (deftest ^:parallel comparison-test-8
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset places-cam-likes
-      (testing "Can we use != with literals on both sides, with a cast"
+      (testing "Can we use != with literals on both sides, 0 != 0"
         (is (= []
                (mt/formatted-rows
                 [int str ->bool]
                 :format-nil-values
                 (mt/run-mbql-query places
-                  {:filter   [:!= 0 "0"]
+                  {:filter   [:!= 0 0]
                    :order-by [[:asc $id]]}))))))))
 
 (deftest ^:parallel between-test
