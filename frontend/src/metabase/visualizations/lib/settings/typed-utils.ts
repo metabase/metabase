@@ -83,13 +83,10 @@ export function sanitizeDashcardSettings(
     VisualizationSettingDefinition<unknown, unknown>
   >,
 ): VisualizationSettings {
-  return Object.fromEntries(
-    Object.entries(settings).filter(([key]) => {
-      const settingDef = vizSettingsDefs[key];
-      // Keep the setting if it doesn't have dashboard: false
-      return !settingDef || !isSettingHiddenOnDashboards(settingDef);
-    }),
-  );
+  return _.pick(settings, (_, key) => {
+    const settingDef = vizSettingsDefs[key];
+    return !settingDef || !isSettingHiddenOnDashboards(settingDef);
+  });
 }
 
 export function extendCardWithDashcardSettings(
