@@ -1,4 +1,5 @@
 import { t } from "ttag";
+
 import { useGetSettingsQuery } from "metabase/api";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
 
@@ -32,9 +33,9 @@ export function provisioningOptions(
   label: string,
 ): { label: string; value: string }[] {
   // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-  const trueLabel = t`Enabled: When a user logs in via ${label}, Metabase automatically creates an account for them if they don't have one, or reactivates their existing deactivated account.`;
+  const trueLabel = t`Enabled: When a user logs in via ${label}, Metabase automatically creates an account for them if they don't have one, or reactivates their existing account.`;
   // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings
-  const falseLabel = t`Disabled: Only users with active Metabase accounts can log in.`;
+  const falseLabel = t`Disabled: Only users with active Metabase accounts can log in using ${label}.`;
   return [
     { value: "true", label: trueLabel },
     { value: "false", label: falseLabel },
