@@ -27,21 +27,21 @@
     (when (mr/validate [:re token-check/RemoteCheckedToken] token)
       (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
             stats (token-check/metering-stats)]
-        (http/post (metering-url token token-check/token-check-url)
-                   {:body (json/encode (merge stats
-                                              {:site-uuid site-uuid
-                                               :mb-version (:tag config/mb-version-info)}))
-                    :content-type :json
-                    :throw-exceptions false})))))
+        (try
+          (http/post (metering-url token token-check/token-check-url)
+                     {:body (json/encode (merge stats
+                                                {:site-uuid site-uuid
+                                                 :mb-version (:tag config/mb-version-info)}))
+                      :content-type :json
+                      :throw-exceptions false})
+          (catch Throwable e
+            (log/error e "Error sending metering events")))))))
 
 (task/defjob ^{:doc "Send metering events for billing purposes"}
   SendMeteringEvents
   [_]
   (log/debug "Running metering events task")
-  (try
-    (send-metering-events!)
-    (catch Throwable e
-      (log/error e "Error sending metering events"))))
+  (send-metering-events!))
 
 (def ^:private job-key "metabase.task.send-metering.job")
 (def ^:private trigger-key "metabase.task.send-metering.trigger")
