@@ -35,7 +35,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private RemoteCheckedToken
+(def RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})$")
 
@@ -48,7 +48,7 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def ^:private ^String token-check-url
+(def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
   (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
