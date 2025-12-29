@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useEffect } from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
@@ -8,6 +8,7 @@ import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -46,33 +47,15 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
   });
   const isNavbarOpened = _isNavbarOpened !== false;
 
-  useEffect(() => {
-    function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
-      // Don't handle shortcuts when typing in input fields
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      // Handle Cmd/Ctrl + . to toggle
-      if (e.key === "." && (e.ctrlKey || e.metaKey)) {
-        setIsNavbarOpened(!isNavbarOpened);
-      }
-      // Handle [ to toggle (open/close)
-      if (e.key === "[") {
-        setIsNavbarOpened(!isNavbarOpened);
-      }
-    }
-
-    window.addEventListener("keydown", handleSidebarKeyboardShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleSidebarKeyboardShortcut);
-    };
-  }, [isNavbarOpened, setIsNavbarOpened]);
+  useRegisterShortcut(
+    [
+      {
+        id: "toggle-navbar",
+        perform: () => setIsNavbarOpened(!isNavbarOpened),
+      },
+    ],
+    [isNavbarOpened, setIsNavbarOpened],
+  );
 
   return isLoading ? (
     <Center h="100%">
