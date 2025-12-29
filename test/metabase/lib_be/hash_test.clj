@@ -383,10 +383,7 @@
       query-with-coalesce-expression
       query-with-concat-expression)))
 
-;; Test demonstrating that maps under :any typed schema positions don't get sorted,
-;; causing different hashes when key order varies. This test should FAIL until we
-;; add a post-processing step to sort all maps recursively.
-(deftest ^:parallel maps-under-any-schema-not-sorted-test
+(deftest ^:parallel maps-under-any-schema-are-sorted-test
   (testing "Maps nested under :any typed schema positions should be sorted for consistent hashing"
     (testing "field ref options inside :+ args (uses [:+ {:min 2} :any])"
       ;; The :+ clause schema uses [:+ {:min 2} :any] for its args, so the options

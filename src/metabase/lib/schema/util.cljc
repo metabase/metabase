@@ -187,10 +187,7 @@
                                  stage-keys-with-clauses)
                    ;; Also handle join conditions
                    joins (update :joins (fn [joins]
-                                          (mapv (fn [join]
-                                                  (cond-> join
-                                                    (:conditions join)
-                                                    (update :conditions replace-in-clauses)))
+                                          (mapv #(m/update-existing % :conditions replace-in-clauses)
                                                 joins))))]
       result)))
 

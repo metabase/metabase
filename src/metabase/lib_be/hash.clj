@@ -33,12 +33,18 @@
       lib.schema.util/remove-lib-uuids
       (lib.schema.util/sorted-maps lib.schema.common/unfussy-sorted-map)))
 
+(mu/defn query->hash-input :- :map
+  "Normalize and strip `query` to the canonical form used for hashing."
+  [query :- :map]
+  (-> query
+      (cond-> (not= (keyword (:type query)) :internal)
+        (as-> $query (lib-be.models.transforms/normalize-query nil $query {:strict? true})))
+      encode))
+
 (mu/defn query-hash :- bytes?
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   ^bytes [query :- :map]
   (-> query
-      (cond-> (not= (keyword (:type query)) :internal)
-        (as-> $query (lib-be.models.transforms/normalize-query nil $query {:strict? true})))
-      encode
+      query->hash-input
       json/encode
       buddy-hash/sha3-256))
