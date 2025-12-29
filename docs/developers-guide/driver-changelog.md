@@ -4,6 +4,13 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.57.8
+
+- Added the new `:regex/lookaheads-and-lookbehinds` driver feature flag; by default this is true for all drivers that
+  support `:regex` and false for all drivers that do not. If your driver supports regular expressions but does not
+  support lookaheads or lookbehinds, add a `metabase.driver/database-supports?` method implementation -- see the
+  `:bigquery-cloud-sdk` driver for example.
+
 ## Metabase 0.57.0
 
 - `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
