@@ -443,11 +443,11 @@
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
-      (is (= {:name   "categories"
-              :schema "PUBLIC"
-              :fields #{{:name                       "id"
+      (is (=? {:name   "categories"
+               :schema "PUBLIC"
+               :fields [{:name                       "id"
                          :database-type              "NUMBER"
-                         :base-type                  :type/Number
+                         :base-type                  :type/BigInteger
                          :pk?                        true
                          :database-position          0
                          :database-is-auto-increment true
@@ -461,8 +461,9 @@
                          :database-is-auto-increment false
                          :database-is-nullable       false
                          :database-required          true
-                         :json-unfolding             false}}}
-             (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories))))))))
+                         :json-unfolding             false}]}
+              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
+                  (update :fields (partial sort-by :name))))))))
 
 (deftest ^:sequential describe-table-fks-test
   (mt/test-driver :snowflake

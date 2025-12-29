@@ -1,6 +1,6 @@
 (ns metabase.driver.snowflake
   "Snowflake Driver."
-  (:refer-clojure :exclude [select-keys not-empty get-in])
+  (:refer-clojure :exclude [select-keys not-empty get-in mapv])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -32,7 +32,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [select-keys not-empty get-in]]
+   [metabase.util.performance :refer [select-keys not-empty get-in mapv]]
    [ring.util.codec :as codec])
   (:import
    (java.io File)
@@ -674,6 +674,19 @@
                           ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1706220295862639?thread_ts=1706156558.940489&cid=C04DN5VRQM6
                           ;; for more info.
                           (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
+
+(defmethod sql-jdbc.sync/describe-table-fields :snowflake
+  [driver conn table database]
+  ;; Snowflake doesn't have a specific `BIGINTEGER` type, and uses `NUMBER` instead; however the JDBC Type comes back
+  ;; as `java.sql.Types/BIGINT`, so if we see this we want to treat that column as `:type/BigInteger` so it can be
+  ;; eligable for UNIX timestamp casting and what not (#63600)
+  (letfn [(fix-col [col]
+            (cond-> col
+              (and (= (:database-type col) "NUMBER")
+                   (= (:jdbc-type col) java.sql.Types/BIGINT))
+              (assoc :base-type :type/BigInteger)))]
+    (mapv fix-col
+          ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table database))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
