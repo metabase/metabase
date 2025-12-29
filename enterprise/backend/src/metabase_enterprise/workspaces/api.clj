@@ -341,7 +341,7 @@
         _         (api/check-400 (not= :archived (:status workspace)) "Cannot update an archived workspace")
         data      (cond-> {}
                     database_id (-> (u/prog1
-                                      (api/check-400 (= :uninitialized (:status workspace))
+                                      (api/check-400 (= :uninitialized (keyword (:status workspace)))
                                                      "Can only set database_id on uninitialized workspace")
                                       (check-transforms-enabled! database_id))
                                     (assoc :database_id database_id))
@@ -800,8 +800,7 @@
           [:op [:enum :create :delete :update :noop]]
           [:global_id {:optional true} [:maybe ::ws.t/appdb-id]]
           [:ref_id ::ws.t/ref-id]]]]
-       [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]
-       [:archived_at [:maybe :any]]]
+       [:workspace [:map [:id ::ws.t/appdb-id] [:name :string]]]]
       ;; error message from check-404 or check-400
       :string]
   "This will:

@@ -21,9 +21,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -93,11 +91,11 @@
 
     (testing "workspace can be archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/archive"))]
-        (is (= :archived (:status updated)))))
+        (is (= "archived" (:status updated)))))
 
     (testing "workspace can be unarchived"
       (let [updated (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/unarchive"))]
-        (is (= :ready (:status updated)))))
+        (is (= "ready" (:status updated)))))
 
     (testing "workspace cannot be deleted if it is not archived"
       (let [message (mt/user-http-request :crowberto :delete 400 (ws-url workspace-id))]
@@ -105,7 +103,7 @@
 
     (testing "workspace can be deleted if it is archived"
       (let [updated (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/archive"))]
-        (is (= :archived (:status updated))))
+        (is (= "archived" (:status updated))))
       (let [response (mt/user-http-request :crowberto :delete 200 (ws-url workspace-id))]
         (is (= {:ok true} response))
         ;; todo: check the schema / tables and user are gone
@@ -586,7 +584,7 @@
                  (mt/user-http-request :rasta :get 403
                                        (str "ee/transform/" (:id x1) "/merge-history")))))))))
 
-(deftest merge-single-transfom-failure-test
+(deftest merge-single-transform-failure-test
   (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
                  :model/Transform x1 {:name        "Upstream Transform 1"
                                       :description "Original description 2"
@@ -1113,10 +1111,10 @@
   (testing "Workspace can be created without database_id (uses provisional default)"
     (let [{ws-id :id :as ws} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                    {:name "uninitialized-lifecycle"})]
-      ;; database_id is set to provisional default, but status is uninitialized
+      ;; database_id is set to provisional default, but :status is uninitialized
       (is (=? {:status "uninitialized" :database_id pos-int?} ws))
       (testing "can be archived and deleted"
-        (is (= :archived (:status (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
+        (is (= "archived" (:status (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
         (is (= {:ok true} (mt/user-http-request :crowberto :delete 200 (ws-url ws-id))))
         (is (not (t2/exists? :model/Workspace :id ws-id)))))))
 
@@ -1135,7 +1133,7 @@
                                                       :name     "init_transform_output"}})]
         (is (some? (:ref_id transform)))
         (let [ws (ws.tu/ws-ready ws)]
-          (is (=? {:status      :ready
+          (is (=? {:status      "ready"
                    :database_id (mt/id)}
                   ws))))))
   (testing "PUT database_id fails on already initialized workspace"
