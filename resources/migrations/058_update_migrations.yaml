@@ -4536,6 +4536,41 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_transform_ref_target_db_id
 
+  - changeSet:
+      id: v58.2025-12-29T18:30:00
+      author: qnkhuat
+      comment: Mark archived workspaces with archived status
+      changes:
+        - sql:
+            sql: UPDATE workspace SET status = 'archived' WHERE archived_at IS NOT NULL
+            splitStatements: false
+      rollback:
+        - sql:
+            sql: UPDATE workspace SET status = 'ready' WHERE status = 'archived'
+            splitStatements: false
+
+  - changeSet:
+      id: v58.2025-12-29T18:31:00
+      author: qnkhuat
+      comment: Drop archived_at column from workspace
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: archived_at
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when (and if) the workspace was archived
+                  constraints:
+                    nullable: true
+        - sql:
+            sql: UPDATE workspace SET archived_at = current_timestamp WHERE status = 'archived'
+            splitStatements: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

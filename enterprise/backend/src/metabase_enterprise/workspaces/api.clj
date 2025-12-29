@@ -34,7 +34,7 @@
 
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
-(mr/def ::status [:enum :uninitialized :pending :ready] #_[:enum :uninitialized :database-not-read :graph-not-ready :ready])
+(mr/def ::status (into [:enum] ws.model/workspace-statuses))
 
 (def ^:private Workspace
   [:map
@@ -44,8 +44,7 @@
    [:database_id ::ws.t/appdb-id]
    [:status ::status]
    [:created_at ms/TemporalInstant]
-   [:updated_at ms/TemporalInstant]
-   [:archived_at [:maybe :any]]])
+   [:updated_at ms/TemporalInstant]])
 
 ;; Transform-related schemas (adapted from transforms/api.clj)
 ;; TODO we should reuse these schemas, by exposing common types from the transforms module. they *can* match exactly.
@@ -89,7 +88,7 @@
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn- ws->response [ws]
-  (select-keys ws [:id :name :collection_id :database_id :status :created_at :updated_at :archived_at]))
+  (select-keys ws [:id :name :collection_id :database_id :status :created_at :updated_at]))
 
 ;;; routes
 
@@ -98,7 +97,7 @@
    [:id ::ws.t/appdb-id]
    [:database_id ::ws.t/appdb-id]
    [:name :string]
-   [:archived :boolean]])
+   [:status ::status]])
 
 (api.macros/defendpoint :get "/" :- [:map {:closed true}
                                      [:items [:sequential WorkspaceListing]]
@@ -107,7 +106,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :name :database_id [[:not= nil :archived_at] :archived]]
+  {:items  (t2/select [:model/Workspace :id :name :database_id :status]
                       (cond-> {:order-by [[:created_at :desc]]}
                         (request/limit) (sql.helpers/limit (request/limit))
                         (request/offset) (sql.helpers/offset (request/offset))))
@@ -338,7 +337,7 @@
                                   [:name {:optional true} [:string {:min 1}]]
                                   [:database_id {:optional true} ::ws.t/appdb-id]]]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        _         (api/check-400 (nil? (:archived_at workspace)) "Cannot update an archived workspace")
+        _         (api/check-400 (not= :archived (:status workspace)) "Cannot update an archived workspace")
         data      (cond-> {}
                     database_id (-> (u/prog1
                                       (api/check-400 (= :uninitialized (:status workspace))
@@ -359,7 +358,7 @@
    _query-params
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
-    (api/check-400 (nil? (:archived_at ws)) "You cannot archive an archived workspace")
+    (api/check-400 (not= :archived (:status ws)) "You cannot archive an archived workspace")
     (ws.model/archive! ws)
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
@@ -370,7 +369,7 @@
    _query-params
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
-    (api/check-400 (some? (:archived_at ws)) "You cannot unarchive a workspace that is not archived")
+    (api/check-400 (= :archived (:status ws)) "You cannot unarchive a workspace that is not archived")
     (ws.model/unarchive! ws)
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
@@ -380,7 +379,7 @@
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id ws-id))]
-    (api/check-400 (some? (:archived_at ws)) "You cannot delete a workspace without first archiving it")
+    (api/check-400 (= :archived (:status ws)) "You cannot delete a workspace without first archiving it")
     (ws.model/delete! ws)
     {:ok true}))
 
@@ -439,7 +438,7 @@
    {:keys [stale_only]} :- [:map [:stale_only {:optional true} [:or [:= 1] :boolean]]]]
   (let [workspace (t2/select-one :model/Workspace :id ws-id)]
     (api/check-404 workspace)
-    (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
+    (api/check-400 (not= :archived (:status workspace)) "Cannot execute archived workspace")
     (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
@@ -643,7 +642,7 @@
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
-                      (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
+                      (api/check-400 (not= :archived (:status <>)) "Cannot create transforms in an archived workspace"))
           ;; TODO why 400 here and 403 in the validation route? T_T
           _         (api/check-400 (not (internal-target-conflict? id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
@@ -748,7 +747,7 @@
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
-    (api/check-400 (nil? (:archived_at workspace)) "Cannot execute archived workspace")
+    (api/check-400 (not= :archived (:status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
     (ws.impl/run-transform! workspace transform)))
 
@@ -809,7 +808,7 @@
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
                            (api/check-404 <>)
-                           (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
+                           (api/check-400 (not= :archived (:status <>)) "Cannot merge an archived workspace"))
         {:keys [merged
                 errors]} (-> (ws.merge/merge-workspace! ws api/*current-user-id* commit-message)
                              (update :errors
@@ -817,15 +816,12 @@
                                                         (update :error (fn [e] (.getMessage ^Throwable e)))
                                                         (set/rename-keys {:error :message})))))]
     (u/prog1
-      {:merged      merged
-       :errors      errors
-       :workspace   {:id ws-id, :name (:name ws)}
-       :archived_at (when-not (seq errors)
-                      ;; TODO call a ws.common method, which can handle the clean-up too
-                      (t2/update! :model/Workspace :id ws-id {:archived_at [:now]})
-                      (t2/select-one-fn :archived_at [:model/Workspace :archived_at] :id ws-id))}
+      {:merged    merged
+       :errors    errors
+       :workspace {:id ws-id, :name (:name ws)}}
       (when-not (seq errors)
-        ;; Most of the APIs and the FE are not respecting when a Workspace is archived yet.
+        ;; Archive the workspace and then delete it
+        (ws.model/archive! ws)
         (ws.model/delete! ws)))))
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/merge"
