@@ -35,7 +35,7 @@ Legacy code uses `metabase/entities` to load data. These entity loaders are depr
 
 ## UI Library
 
-Our UI library in `metabase/ui` is built on top of [`Mantine`](https://mantine.dev/core/package/). You should almost always prefer using mantine components above anything else in the codebase. We have a lot of customization on top of mantine, but no business logic should leak into the `metabase/ui` folder. It should remain purely display-level.
+Our UI library in `metabase/ui` is built on top of [`Mantine`](https://mantine.dev/core/package/). You should almost always prefer using mantine components above anything else in the codebase. We have a lot of customization on top of mantine, but no business logic should leak into the `metabase/ui` folder. It should remain purely display-level. All components added to the UI library must have a storybook file to demonstrate usage.
 
 ## Styling
 
@@ -47,6 +47,9 @@ Other patterns, such as emotion styled components and global utility CSS classes
 
 Familiarize yourself with Mantine's Layout components. You can often save a lot of CSS with built-in components like [`Center`](https://mantine.dev/core/center/) and [`SimpleGrid`](https://mantine.dev/core/simple-grid/)
 
+## Colors
+
+You may not define new bespoke colors or use any color literals like `black` or `white`. Colors can be referenced directly in components using mantine color props like `c="text-primary"` or in css modules using variables `color: var(--mb-color-text-primary);` Using these colors ensures consistent visual design and user experience across both dark and light modes. The full pallette is defined in `metabase/lib/colors.ts`.
 
 ## Unit testing
 
