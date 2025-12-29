@@ -125,12 +125,13 @@
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
   `deps.edn`."
-  [git-ref]
+  [git-ref verbose?]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
                     (str/includes? filename "modules/drivers/"))
-            (printf "Running driver tests because %s was changed\n" (pr-str filename))
-            (flush)
+            (when verbose?
+              (printf "Running driver tests because %s was changed\n" (pr-str filename))
+              (flush))
             filename))
         (u/updated-files (or git-ref "master"))))
 
@@ -170,7 +171,7 @@
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
     (print-updated-and-unaffected-modules deps updated drivers-affected?)
     (u/exit (cond
-              (changes-important-file-for-drivers? git-ref) 1
+              (changes-important-file-for-drivers? git-ref true) 1
               drivers-affected? 1
               :else 0))))
 
@@ -205,6 +206,36 @@
    :sqlite
    :sqlserver
    :vertica])
+
+(def ^:private driver-directory->drivers
+  "Maps driver directory names to the driver keyword(s) they correspond to.
+   Most directories map to a single driver, but some (like mongo) map to multiple test jobs."
+  {"athena" [:athena]
+   "bigquery-cloud-sdk" [:bigquery]
+   "clickhouse" [:clickhouse]
+   "databricks" [:databricks]
+   "druid" [:druid]
+   "druid-jdbc" [:druid-jdbc]
+   "mongo" [:mongo :mongo-ssl :mongo-sharded-cluster]
+   "oracle" [:oracle]
+   "presto-jdbc" [:presto-jdbc]
+   "redshift" [:redshift]
+   "snowflake" [:snowflake]
+   "sparksql" [:sparksql]
+   "sqlite" [:sqlite]
+   "sqlserver" [:sqlserver]
+   "starburst" [:starburst]
+   "vertica" [:vertica]})
+
+(defn- drivers-with-file-changes
+  "Returns a set of driver keywords that have file changes in modules/drivers/<driver>/."
+  [git-ref]
+  (let [updated-files (u/updated-files (or git-ref "master"))]
+    (into #{}
+          (mapcat (fn [filename]
+                    (when-let [[_ dir-name] (re-matches #"modules/drivers/([^/]+)/.*" filename)]
+                      (get driver-directory->drivers dir-name))))
+          updated-files)))
 
 ;;; driver quarantine
 
@@ -321,12 +352,13 @@
        --snowflake-changed=false"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
+        git-ref (get options :git-ref "master")
         cloud-driver-changes {:athena (parse-bool (:athena-changed options))
                               :bigquery (parse-bool (:bigquery-changed options))
                               :databricks (parse-bool (:databricks-changed options))
                               :redshift (parse-bool (:redshift-changed options))
                               :snowflake (parse-bool (:snowflake-changed options))}
-        ctx {:git-ref (get options :git-ref "master")
+        ctx {:git-ref git-ref
              :is-master-or-release (parse-bool (:is-master-or-release options))
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
@@ -334,24 +366,26 @@
              :verbose? (not github-output-only?)}
         quarantined (quarantined-drivers)
         updated-files (remove-non-driver-test-namespaces
-                       (u/updated-files (:git-ref ctx)))
+                       (u/updated-files git-ref))
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-module-affected? updated)
-        important-file-changed? (changes-important-file-for-drivers? (:git-ref ctx))
+        important-file-changed? (changes-important-file-for-drivers? git-ref (not github-output-only?))
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
                           (assoc (driver-decision driver ctx effective-driver-affected? quarantined)
                                  :driver driver))
                         all-drivers)
+        ;; Detect file changes for ALL drivers (not just cloud ones)
+        drivers-changed (drivers-with-file-changes git-ref)
         ;; Check for quarantined drivers with file changes but no break-quarantine label
         quarantined-with-changes (into #{}
                                        (filter (fn [driver]
                                                  (and (contains? quarantined driver)
-                                                      (get cloud-driver-changes driver)
+                                                      (contains? drivers-changed driver)
                                                       (not (contains? (:pr-labels ctx)
                                                                       (break-quarantine-label driver))))))
-                                       (keys cloud-driver-changes))]
+                                       all-drivers)]
 
     (when-not github-output-only?
       ;; Print module analysis summary
@@ -360,6 +394,7 @@
       (println "Changed modules:" (pr-str updated))
       (println "Driver module affected:" driver-affected?)
       (println "Important file changed:" (boolean important-file-changed?))
+      (println "Drivers with file changes:" (pr-str drivers-changed))
       (println "")
 
       ;; Print human-readable decision summary
