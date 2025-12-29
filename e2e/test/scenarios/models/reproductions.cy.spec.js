@@ -505,29 +505,26 @@ describe("filtering based on the remapped column name should result in a correct
           'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
       },
     }).then(({ body: { id } }) => {
-      // Visit the question to first load metadata
-      H.visitQuestion(id);
-
       // Turn the question into a model
-      cy.request("PUT", `/api/card/${id}`, { type: "model" }).then(() => {
-        // Let's go straight to the model metadata editor
-        cy.visit(`/model/${id}/columns`);
-        cy.findByText("Database column this maps to").should("be.visible");
+      cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
-        // The first column `ID` is automatically selected
-        H.mapColumnTo({ table: "Orders", column: "ID" });
-        cy.findByText("ALIAS_CREATED_AT").click();
+      // Let's go straight to the model metadata editor
+      cy.visit(`/model/${id}/columns`);
+      cy.findByText("Database column this maps to").should("be.visible");
 
-        H.mapColumnTo({ table: "Orders", column: "Created At" });
+      // The first column `ID` is automatically selected
+      H.mapColumnTo({ table: "Orders", column: "ID" });
+      cy.findByText("ALIAS_CREATED_AT").click();
 
-        // Make sure the column name updated before saving
-        cy.findByDisplayValue("Created At");
+      H.mapColumnTo({ table: "Orders", column: "Created At" });
 
-        cy.button("Save changes").click();
-        cy.wait("@updateModel");
+      // Make sure the column name updated before saving
+      cy.findByDisplayValue("Created At");
 
-        H.visitModel(id);
-      });
+      cy.button("Save changes").click();
+      cy.wait("@updateModel");
+
+      H.visitModel(id);
     });
   });
 
