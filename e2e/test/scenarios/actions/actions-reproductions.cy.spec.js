@@ -386,7 +386,7 @@ describe("issue 51020", () => {
          * before picker content loads, so no folder is selected and "Everywhere" toggle doesn't appear.
          */
         cy.findByTestId("single-picker-view").should("be.visible");
-        cy.get('[type="search"]').type("foo");
+        cy.findByRole("searchbox").type("foo");
         cy.findByText("Everywhere").click();
         cy.findByText("Foo").click();
       });
