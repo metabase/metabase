@@ -39,7 +39,7 @@ describe("scenarios > visualizations > funnel chart", () => {
           .should("have.text", name);
 
         H.getDraggableElements().first().as("dragElement");
-        H.moveDnDKitElementByAlias("dragElement", {
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 100,
         });
 
