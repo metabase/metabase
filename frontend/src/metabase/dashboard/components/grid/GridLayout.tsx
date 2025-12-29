@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   type ItemCallback,
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
-import _ from "underscore";
 
 import { useMantineTheme } from "metabase/ui";
 
@@ -121,26 +120,10 @@ export function GridLayout<T extends { id: number | null }>(
     [marginMap, currentBreakpoint],
   );
 
-  const previousLayoutRef = useRef<ReactGridLayout.Layout[]>();
-  const layout = useMemo(() => {
-    const layoutFromProp = layouts[currentBreakpoint];
-    const previousLayout = previousLayoutRef.current;
-    if (
-      previousLayout !== undefined &&
-      _.isEqual(layoutFromProp, previousLayout)
-    ) {
-      return previousLayout;
-    }
-    // Once `localLayout` is set, use it instead of the prop layout.
-    // The prop layout includes all cards (visible and hidden), causing
-    // incorrect y/height calculations. `localLayout` only includes visible cards.
-    // return localLayout || layoutFromProp;
-    return localLayout || layoutFromProp;
-  }, [layouts, currentBreakpoint, localLayout]);
-
-  useEffect(() => {
-    previousLayoutRef.current = layout;
-  });
+  const layout = useMemo(
+    () => layouts[currentBreakpoint],
+    [layouts, currentBreakpoint],
+  );
 
   const cols = useMemo(
     () => columnsMap[currentBreakpoint],
@@ -179,13 +162,18 @@ export function GridLayout<T extends { id: number | null }>(
   );
 
   const height = useMemo(() => {
-    let lowestLayoutCellPoint = Math.max(...layout.map((l) => l.y + l.h));
+    // Once `localLayout` is set, use it instead of the prop layout.
+    // The prop layout includes all cards (visible and hidden), causing
+    // incorrect y/height calculations. `localLayout` only includes visible cards.
+    let lowestLayoutCellPoint = Math.max(
+      ...(localLayout ?? layout).map((l) => l.y + l.h),
+    );
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
     const [_horizontalMargin, verticalMargin] = margin;
     return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
-  }, [cellSize.height, layout, margin, isEditing]);
+  }, [localLayout, layout, isEditing, margin, cellSize.height]);
 
   const background = useMemo(
     () =>
