@@ -73,11 +73,10 @@ function TemporalUnitDropdown({
   onChange,
 }: TemporalUnitDropdownProps) {
   const selectedUnitsSet = new Set(selectedUnits);
-  const isDisabledDeselection = selectedUnits.length <= 1;
 
   const handleAllToggle = () => {
     if (isAll) {
-      onChange([availableUnits[0]]);
+      onChange([]);
     } else {
       onChange(availableUnits);
     }
@@ -109,13 +108,11 @@ function TemporalUnitDropdown({
       <Divider />
       {availableUnits.map((unit) => {
         const isSelected = selectedUnitsSet.has(unit);
-        const isDisabled = isSelected && isDisabledDeselection;
 
         return (
           <label key={unit} className={S.label}>
             <Checkbox
               checked={isSelected}
-              disabled={isDisabled}
               onChange={() => handleUnitToggle(unit)}
             />
             <Text ml="sm" c="inherit">

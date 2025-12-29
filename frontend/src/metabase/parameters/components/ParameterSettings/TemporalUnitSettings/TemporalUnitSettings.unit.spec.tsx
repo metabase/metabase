@@ -104,15 +104,4 @@ describe("TemporalUnitSettings", () => {
       Lib.availableTemporalUnits(),
     );
   });
-
-  it("should preserve 1 unit when deselecting all the units", async () => {
-    const { onChangeTemporalUnits } = setup({
-      parameter: createMockParameter({
-        type: "temporal-unit",
-      }),
-    });
-    await userEvent.click(await screen.findByText("All"));
-    await userEvent.click(await screen.findByLabelText("Select all"));
-    expect(onChangeTemporalUnits).toHaveBeenCalledWith(["minute"]);
-  });
 });

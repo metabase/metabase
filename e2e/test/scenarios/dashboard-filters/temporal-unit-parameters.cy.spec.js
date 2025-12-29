@@ -823,14 +823,12 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByLabelText("Select all").click();
         cy.findByLabelText("Month").click();
         cy.findByLabelText("Year").click();
-        cy.findByLabelText("Minute").click();
       });
       H.dashboardParametersDoneButton().click();
       H.saveDashboard();
 
       H.filterWidget().click();
       H.popover().within(() => {
-        cy.findByText("Minute").should("not.exist");
         cy.findByText("Day").should("not.exist");
         cy.findByText("Month").should("be.visible");
         cy.findByText("Year").should("be.visible").click();
