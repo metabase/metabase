@@ -6,6 +6,7 @@ import fileSelector from "inquirer-file-selector";
 import toggle from "inquirer-toggle";
 import { match } from "ts-pattern";
 
+import { getFlattenedFieldsList } from "metabase/databases/components/DatabaseForm/utils";
 import type { Engine, EngineField } from "metabase-types/api";
 
 import { CLI_SHOWN_DB_FIELDS } from "../constants/database";
@@ -24,7 +25,7 @@ EventEmitter.defaultMaxListeners = 500;
 export async function askForDatabaseConnectionInfo(options: Options) {
   const { engine, engineKey } = options;
 
-  const fields = engine["details-fields"] ?? [];
+  const fields = getFlattenedFieldsList(engine);
 
   const connection: Record<string, string | boolean | number> = {};
 
