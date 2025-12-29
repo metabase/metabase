@@ -381,6 +381,9 @@
                                  (:schema table)
                                  (:name table)
                                  read-user-name))]
+    (when-not read-user-name
+      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+                      {:workspace-id (:id workspace) :step :grant})))
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

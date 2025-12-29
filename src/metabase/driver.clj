@@ -1846,7 +1846,19 @@
 
 (defmulti check-isolation-permissions
   "Check if database connection has sufficient permissions for workspace isolation.
-   Runs test operations in a transaction that is always rolled back.
+
+   Rather than directly checking permissions, this method performs the actual isolation
+   operations (init workspace, grant access, destroy resources) in a test workspace
+   because:
+
+   1. Some databases don't provide reliable APIs to check permissions a priori.
+   2. Keeping static permission checks in sync with the actual operations is error-prone.
+   3. A database user might have the necessary workspace permissions even if they
+      lack the introspection permissions to query permission tables.
+
+   Isolation operations run in a transaction that is always rolled back (for databases
+   that support transactional DDL), or are manually cleaned up immediately after testing
+   (for databases where transactions don't work, like BigQuery).
 
    `test-table` is an optional {:schema ... :name ...} map used to test GRANT SELECT.
    If nil, the grant test is skipped.
