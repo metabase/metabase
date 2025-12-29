@@ -115,7 +115,8 @@
                            t/local-date
                            str)})
 
-(defn- stats-for-token-request
+(defn metering-stats
+  "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
@@ -158,10 +159,9 @@
 (defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params     (merge (stats-for-token-request)
-                                              {:site-uuid  site-uuid
-                                               :mb-version (:tag config/mb-version-info)})
-                     :throw-exceptions   false
+          (http/get {:query-params {:site-uuid site-uuid
+                                    :mb-version (:tag config/mb-version-info)}
+                     :throw-exceptions false
                      ;; socket is data transfer, connection is handshake and create connection timeout
                      :socket-timeout     5000     ;; in milliseconds
                      :connection-timeout 2000     ;; in milliseconds
