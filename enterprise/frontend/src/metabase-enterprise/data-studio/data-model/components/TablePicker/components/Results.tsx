@@ -538,7 +538,14 @@ const ResultsItem = ({
         />
       </Box>
 
-      <Flex align="center" py="xs" w="100%" pl={indent} gap="sm">
+      <Flex
+        align="center"
+        py="xs"
+        pl={indent}
+        gap="sm"
+        flex={1}
+        style={{ overflow: "hidden" }}
+      >
         <Flex align="flex-start" gap="xs" className={S.content}>
           <Flex align="center" gap="xs">
             <Box

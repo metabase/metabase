@@ -11,8 +11,10 @@
 ;;; ---------------------------------------------------- Schemas ----------------------------------------------------
 
 (mr/def ::tool-request
-  "Base schema for all tool requests. Contains the conversation ID."
-  [:map [:conversation_id ms/UUIDString]])
+  "Base schema for all tool requests. Contains the conversation ID and optional profile ID."
+  [:map
+   [:conversation_id ms/UUIDString]
+   [:profile_id {:optional true} [:maybe :string]]])
 
 (def ^:private request-transformer
   "Transformer for encoding tool request arguments (snake_case -> kebab-case)."
@@ -36,8 +38,8 @@
     - `:handler` - Function to call with encoded arguments (receives args map with :metabot-id)
 
   The handler receives a single map argument containing the encoded args plus `:metabot-id`
-  (extracted from the request). For no-args tools, the handler receives just `{:metabot-id ...}`."
-  [{:keys [arguments conversation_id] :as body}
+  and `:profile-id` (extracted from the request body)."
+  [{:keys [arguments conversation_id profile_id] :as body}
    request
    {:keys [api-name args-schema result-schema handler]}]
   (metabot-v3.context/log (assoc body :api api-name) :llm.log/llm->be)
@@ -45,7 +47,8 @@
         encoded-args (cond-> (if args-schema
                                (mc/encode args-schema arguments request-transformer)
                                {})
-                       metabot-id (assoc :metabot-id metabot-id))
+                       metabot-id (assoc :metabot-id metabot-id)
+                       profile_id (assoc :profile-id profile_id))
         raw-result   (handler encoded-args)
         result       (if result-schema
                        (mc/decode result-schema raw-result response-transformer)
@@ -61,7 +64,7 @@
   - Encoding arguments from snake_case to kebab-case (via `:tool-api-request` transformer)
   - Decoding results from kebab-case to snake_case (via `:tool-api-response` transformer)
   - Attaching `conversation_id` to responses
-  - Extracting `:metabot-id` from the request and including it in the args map
+  - Extracting `:metabot-id` and `:profile-id` from the request body and including them in the args map
 
   Options:
     :args-schema    - Malli schema for arguments (optional - omit for no-args tools)

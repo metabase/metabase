@@ -89,7 +89,9 @@
                        (setTransactionIsolation [level]
                          (vswap! connection-option-calls conj [:setTransactionIsolation level]))
                        (setHoldability [holdability]
-                         (vswap! connection-option-calls conj [:setHoldability holdability])))]
+                         (vswap! connection-option-calls conj [:setHoldability holdability]))
+                       (setNetworkTimeout [executor timeout-ms]
+                         (vswap! connection-option-calls conj [:setNetworkTimeout timeout-ms])))]
         (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                       (fn [driver db options]
                         (if (:keep-open? options)
@@ -118,7 +120,8 @@
                  (let [calls @connection-option-calls]
                    (is (some #(= [:setReadOnly true] %) calls))
                    (is (some #(= [:setAutoCommit true] %) calls))
-                   (is (some #(= (first %) :setHoldability) calls))))))))))))
+                   (is (some #(= (first %) :setHoldability) calls))
+                   (is (some #(= (first %) :setNetworkTimeout) calls))))))))))))
 
 (deftest is-conn-open-test
   (testing "is-conn-open with valid check"

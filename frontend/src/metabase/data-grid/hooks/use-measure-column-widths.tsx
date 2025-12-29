@@ -41,14 +41,9 @@ export const useMeasureColumnWidths = <TData, TValue>(
   ) => React.ReactElement,
 ) => {
   const measureColumnWidths = useCallback(
-    (
-      onMeasured: (columnSizingState: ColumnSizingState) => void,
-      skipColumnIds: string[] = [],
-    ) => {
+    (onMeasured: (columnSizingState: ColumnSizingState) => void) => {
       const measureRoot = createMeasurementContainer();
       let measureRootTree: Root | undefined = undefined;
-
-      const skipColumnIdsSet = new Set(skipColumnIds);
 
       const onMeasureHeaderRender = (div: HTMLDivElement) => {
         if (div === null) {
@@ -107,7 +102,6 @@ export const useMeasureColumnWidths = <TData, TValue>(
           {table
             .getHeaderGroups()
             .flatMap((headerGroup) => headerGroup.headers)
-            .filter((header) => !skipColumnIdsSet.has(header.column.id))
             .map((header) => {
               const headerCell = flexRender(
                 header.column.columnDef.header,
@@ -138,11 +132,7 @@ export const useMeasureColumnWidths = <TData, TValue>(
                   (rowIndex) => {
                     const cell = rows[rowIndex]
                       .getVisibleCells()
-                      .find(
-                        (cell) =>
-                          cell.column.id === columnOptions.id &&
-                          !skipColumnIdsSet.has(cell.column.id),
-                      );
+                      .find((cell) => cell.column.id === columnOptions.id);
 
                     if (!cell) {
                       return null;
