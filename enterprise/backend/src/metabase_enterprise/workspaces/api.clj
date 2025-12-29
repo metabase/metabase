@@ -628,10 +628,18 @@
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
 
-(api.macros/defendpoint :post "/:id/transform"
+(defn- attach-isolated-target [{:keys [workspace_id ref_id] :as ws-transform}]
+  (let [{:keys [db_id isolated_schema isolated_table]}
+        (t2/select-one :model/WorkspaceOutput :workspace_id workspace_id :ref_id ref_id)]
+    (assoc ws-transform :target_isolated {:type     "table"
+                                          :database db_id
+                                          :schema   isolated_schema
+                                          :name     isolated_table})))
+
+(api.macros/defendpoint :post "/:ws-id/transform"
   :- WorkspaceTransform
   "Add another transform to the Changeset. This could be a fork of an existing global transform, or something new."
-  [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]
+  [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
    _query-params
    body :- [:map #_{:closed true}
             [:name :string]
@@ -642,20 +650,20 @@
   (api/check (transforms.util/check-feature-enabled body)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
-    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id id))
+    (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
                       (api/check-400 (nil? (:archived_at <>)) "Cannot create transforms in an archived workspace"))
           ;; TODO why 400 here and 403 in the validation route? T_T
-          _         (api/check-400 (not (internal-target-conflict? id (:target body)))
+          _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
           global-id (:global_id body (:id body))
           ;; For uninitialized workspaces, preserve the target database from the request body
           ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
-          ;; For initialized workspaces, ensure the target database matches the workspace's database
+          ;; For initialized workspaces, ensure the target database matches the workspace database
           body      (-> body (dissoc :global_id)
                         (cond-> (not= :uninitialized (:status workspace))
                           (update :target assoc :database (:database_id workspace))))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
-      (select-malli-keys WorkspaceTransform workspace-transform-alias transform))))
+      (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
 
 ;; TODO Confirm precisely which fields are needed by the FE
 (def ^:private WorkspaceTransformListing
@@ -688,7 +696,8 @@
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
   (-> (select-model-malli-keys :model/WorkspaceTransform WorkspaceTransform workspace-transform-alias)
       (t2/select-one :ref_id tx-id :workspace_id ws-id)
-      api/check-404))
+      api/check-404
+      attach-isolated-target))
 
 (api.macros/defendpoint :get "/:id/transform/:tx-id" :- WorkspaceTransform
   "Get a specific transform in a workspace."

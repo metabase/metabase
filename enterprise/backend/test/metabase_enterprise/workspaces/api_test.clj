@@ -754,10 +754,14 @@
                                                            :query (mt/mbql-query venues)}
                                                   :target {:type "table"
                                                            :name "new_transform_output"}})]
-              (is (=? {:ref_id       string?
-                       :global_id    nil?
-                       :name         "New Transform"
-                       :target_stale true}
+              (is (=? {:ref_id          string?
+                       :global_id       nil?
+                       :name            "New Transform"
+                       :target_stale    true
+                       :target_isolated {:type     "table"
+                                         :database pos-int?
+                                         :schema   string?
+                                         :name     string?}}
                       response))
               (is (= response (mt/user-http-request :crowberto :get 200 (ws-url ws-id "transform" (:ref_id response)))))))
 
