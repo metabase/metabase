@@ -92,21 +92,21 @@
               (mt/user-http-request :crowberto :get 200 (ws-url workspace-id)))))
 
     (testing "workspace can be archived"
-      (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
+      (let [updated (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/archive"))]
         (is (= :archived (:status updated)))))
 
     (testing "workspace can be unarchived"
-      (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/unarchive"))]
+      (let [updated (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/unarchive"))]
         (is (= :ready (:status updated)))))
 
     (testing "workspace cannot be deleted if it is not archived"
-      (let [message (mt/user-http-request :crowberto :delete 400 (str "ee/workspace/" workspace-id))]
+      (let [message (mt/user-http-request :crowberto :delete 400 (ws-url workspace-id))]
         (is (= "You cannot delete a workspace without first archiving it" message))))
 
     (testing "workspace can be deleted if it is archived"
-      (let [updated (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" workspace-id "/archive"))]
+      (let [updated (mt/user-http-request :crowberto :post 200 (ws-url workspace-id "/archive"))]
         (is (= :archived (:status updated))))
-      (let [response (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" workspace-id))]
+      (let [response (mt/user-http-request :crowberto :delete 200 (ws-url workspace-id))]
         (is (= {:ok true} response))
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
@@ -118,7 +118,7 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
-        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
         (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
@@ -127,7 +127,7 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (throw (ex-info "Simulated cleanup failure" {:test true})))]
-        (is (some? (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))))
+        (is (some? (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))))
         (is (= :archived (t2/select-one-fn :status :model/Workspace :id (:id workspace)))
             "Workspace should have status :archived despite cleanup failure")))))
 
@@ -138,8 +138,8 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
-        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
-        (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" (:id workspace)))
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+        (mt/user-http-request :crowberto :delete 200 (ws-url (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
 
 (deftest ^:parallel merge-workspace-calls-destroy-isolation-test
@@ -149,32 +149,32 @@
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
                                   (fn [_database _workspace]
                                     (reset! called? true))]
-        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/merge"))
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
         (is @called? "destroy-workspace-isolation! should be called when merging")))))
 
 (deftest unarchive-workspace-calls-ensure-isolation-test
   (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
-      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
       (testing "ensure-database-isolation! should be called when unarchiving"
         (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
                                     (fn [_workspace _database]
                                       (reset! called? true)
                                       {:schema "test_schema" :database_details {}})]
-          (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
           (is @called?))))))
 
 (deftest unarchive-workspace-calls-sync-grant-accesses-test
   (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
-      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
       (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
                                   (fn [_workspace]
                                     (reset! called? true)
                                     nil)]
-        (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
         (is @called? "sync-grant-accesses! should be called when unarchiving")))))
 
 (deftest archive-unarchive-access-granted-test
@@ -187,14 +187,14 @@
                                                   :table          "test_table"
                                                   :access_granted true}]
         (testing "Archive resets access_granted to false"
-          (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
           (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))))
 
         (testing "Unarchive re-grants access and sets access_granted to true"
           (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
                                       (fn [_database _workspace tables]
                                         (reset! granted-tables tables))]
-            (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/unarchive"))
+            (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
             (is (= [{:schema nil :name "test_table"}] @granted-tables)
                 "grant-read-access-to-tables! should be called with the input tables")
             (is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))
@@ -208,7 +208,7 @@
 
   (testing "Cannot merge an already archived workspace"
     (ws.tu/with-workspaces! [workspace {:name "Archived Workspace"}]
-      (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" (:id workspace) "/archive"))
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
       (is (= "Cannot merge an archived workspace"
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/merge")))))))
 
@@ -324,11 +324,11 @@
             ;; Update transform names
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :put 200
-                                  (ws-url ws-id (str "/transform/" ws-x-1-id))
+                                  (ws-url ws-id "/transform" ws-x-1-id)
                                   {:name "UPDATED 1"})
             {ws-x-2-id :ref_id :as ws-x-2}
             (mt/user-http-request :crowberto :put 200
-                                  (ws-url ws-id (str "/transform/" ws-x-2-id))
+                                  (ws-url ws-id "/transform" ws-x-2-id)
                                   {:name "UPDATED 2"})]
 
         (testing "Base: Workspace transforms are updated"
@@ -401,11 +401,11 @@
             ;; Update transform names
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :put 200
-                                  (ws-url ws-id (str "/transform/" ws-x-1-id))
+                                  (ws-url ws-id "/transform" ws-x-1-id)
                                   {:name "UPDATED 1"})
             {ws-x-2-id :ref_id :as ws-x-2}
             (mt/user-http-request :crowberto :put 200
-                                  (ws-url ws-id (str "/transform/" ws-x-2-id))
+                                  (ws-url ws-id "/transform" ws-x-2-id)
                                   {:name "UPDATED 2"})]
 
         (testing "Base: Workspace transforms are updated"
@@ -488,15 +488,15 @@
           ;; Update transform names
           {ws-x-1-id :ref_id :as ws-x-1}
           (mt/user-http-request :crowberto :put 200
-                                (ws-url ws-id (str "/transform/" ws-x-1-id))
+                                (ws-url ws-id "/transform" ws-x-1-id)
                                 {:name "UPDATED 1"})
           {ws-x-2-id :ref_id :as ws-x-2}
           (mt/user-http-request :crowberto :put 200
-                                (ws-url ws-id (str "/transform/" ws-x-2-id))
+                                (ws-url ws-id "/transform" ws-x-2-id)
                                 {:name "UPDATED 2"})]
       (testing "Merging first of 2 workspace transfroms"
         (let [commit-msg "Single transform merge 1"
-              resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id (str "/transform/" ws-x-1-id "/merge"))
+              resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform" ws-x-1-id "/merge")
                                          {:commit-message commit-msg})
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
           (testing "Response"
@@ -525,7 +525,7 @@
                         (t2/select-one :model/WorkspaceMerge
                                        :id (:workspace_merge_id merge-transform)))))))))
       (testing "Merging last workspace transfrom"
-        (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id (str "/transform/" ws-x-2-id "/merge")))
+        (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform" ws-x-2-id "/merge"))
               remaining (t2/select :model/WorkspaceTransform :workspace_id ws-id)]
           (testing "Response"
             (is (empty? (:errors resp)))
@@ -605,12 +605,12 @@
                                        (select-keys x1 [:name :description :source :target])))
 
           _ (mt/user-http-request :crowberto :post 204
-                                  (ws-url ws-id (str "/transform/" ws-x-1-id "/archive")))]
+                                  (ws-url ws-id "/transform" ws-x-1-id "/archive"))]
       (testing "Failure on merge"
         (with-redefs [transforms.api/delete-transform! (fn [& _args]
                                                          (throw (Exception. "boom")))]
           (let [resp (mt/user-http-request :crowberto :post 500
-                                           (ws-url ws-id (str "/transform/" ws-x-1-id "/merge")))]
+                                           (ws-url ws-id "/transform" ws-x-1-id "/merge"))]
             (testing "Response"
               (is (=? {:op "delete"
                        :global_id (:id x1)
@@ -655,11 +655,11 @@
                                          (select-keys x2 [:name :description :source :target])))
             ;; Update first
             _  (mt/user-http-request :crowberto :put 200
-                                     (ws-url ws-id (str "/transform/" ws-x-1-id))
+                                     (ws-url ws-id "/transform" ws-x-1-id)
                                      {:name "UPDATED 1"})
             ;; Archive second
             _ (mt/user-http-request :crowberto :post 204
-                                    (ws-url ws-id (str "/transform/" ws-x-2-id "/archive")))
+                                    (ws-url ws-id "/transform" ws-x-2-id "/archive"))
             ;; And add _workspace only transform_
             {ws-x-3-id :ref_id :as ws-x-3}
             (mt/user-http-request :crowberto :post 200
@@ -1181,15 +1181,15 @@
                    :name        "My Transform"
                    :description "Test description"}
                   (mt/user-http-request :crowberto :get 200
-                                        (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))))))
+                                        (ws-url (:id workspace1) "/transform" (:ref_id transform))))))
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :get 404
-                                       (ws-url (:id workspace2) (str "/transform/" (:ref_id transform)))))))
+                                       (ws-url (:id workspace2) "/transform" (:ref_id transform))))))
         (testing "requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403
-                                       (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))))))))))
+                                       (ws-url (:id workspace1) "/transform" (:ref_id transform))))))))))
 
 (deftest update-workspace-transform-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid"
@@ -1203,19 +1203,19 @@
                    :name        "Updated Name"
                    :description "Updated description"}
                   (mt/user-http-request :crowberto :put 200
-                                        (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))
+                                        (ws-url (:id workspace1) "/transform" (:ref_id transform))
                                         {:name        "Updated Name"
                                          :description "Updated description"})))
           (is (= "Updated Name" (t2/select-one-fn :name :model/WorkspaceTransform :ref_id (:ref_id transform)))))
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :put 404
-                                       (ws-url (:id workspace2) (str "/transform/" (:ref_id transform)))
+                                       (ws-url (:id workspace2) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))
         (testing "requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403
-                                       (ws-url (:id workspace1) (str "/transform/" (:ref_id transform)))
+                                       (ws-url (:id workspace1) "/transform" (:ref_id transform))
                                        {:name "Should Fail"}))))))))
 
 (deftest delete-workspace-transform-test
@@ -1229,14 +1229,14 @@
         (testing "returns 404 if transform not in workspace"
           (is (= "Not found."
                  (mt/user-http-request :crowberto :delete 404
-                                       (ws-url (:id workspace2) (str "/transform/" (:ref_id transform1)))))))
+                                       (ws-url (:id workspace2) "/transform" (:ref_id transform1))))))
         (testing "requires superuser"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403
-                                       (ws-url (:id workspace1) (str "/transform/" (:ref_id transform1)))))))
+                                       (ws-url (:id workspace1) "/transform" (:ref_id transform1))))))
         (testing "deletes transform"
           (is (nil? (mt/user-http-request :crowberto :delete 204
-                                          (ws-url (:id workspace1) (str "/transform/" (:ref_id transform2))))))
+                                          (ws-url (:id workspace1) "/transform" (:ref_id transform2)))))
           (is (t2/exists? :model/WorkspaceTransform :ref_id (:ref_id transform1)))
           (is (not (t2/exists? :model/WorkspaceTransform :ref_id (:ref_id transform2)))))))))
 
@@ -1405,7 +1405,7 @@
                      (map :id
                           (:transforms
                            (mt/user-http-request :crowberto :get 200
-                                                 (ws-url (:id ws1) (str "/external/transform?database-id=" db-2))))))))))))))
+                                                 (ws-url (:id ws1) (str "external/transform?database-id=" db-2))))))))))))))
 
 ;;; ---------------------------------------- Table ID Fallback Tests ----------------------------------------
 ;; These tests verify that when WorkspaceOutput rows have null table IDs (e.g., because sync
