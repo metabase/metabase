@@ -90,11 +90,7 @@
 (comment
   (unaffected-modules (dependencies) '#{enterprise/billing}))
 
-(defn- skip-driver-tests? [deps modules]
-  (let [unaffected (unaffected-modules deps modules)]
-    (contains? unaffected 'driver)))
-
-(defn- print-updated-and-unaffected-modules [deps updated]
+(defn- print-updated-and-unaffected-modules [deps updated driver-module-affected?]
   (let [unaffected (unaffected-modules deps updated)]
     (println "These modules have changed:" (pr-str updated))
     (println)
@@ -105,16 +101,17 @@
     (println "(By unaffected, this means these modules do not have a direct or indirect dependency on the modules that have been changed.)")
     (println)
     (println)
-    (println (if (skip-driver-tests? deps updated)
-               (c/green "Driver tests " (c/bold "CAN be skipped") "")
-               (c/red "Driver tests " (c/bold "MUST be run") ".")))))
+    (println (if driver-module-affected?
+               (c/red "Driver tests " (c/bold "MUST be run") ".")
+               (c/green "Driver tests " (c/bold "CAN be skipped") "")))))
 
 (defn cli-print-affected-modules
   [[git-ref, :as _command-line-args]]
-  (let [deps       (dependencies)
-        updated    (updated-modules git-ref)
-        affected   (affected-modules deps updated)]
-    (print-updated-and-unaffected-modules deps updated)
+  (let [deps                    (dependencies)
+        updated                 (updated-modules git-ref)
+        affected                (affected-modules deps updated)
+        driver-module-affected? (not (contains? (unaffected-modules deps updated) 'driver))]
+    (print-updated-and-unaffected-modules deps updated driver-module-affected?)
     (println)
     (println)
     (println "You can run tests for these modules and all downstream modules as follows:")
@@ -134,7 +131,7 @@
             (printf "Running driver tests because %s was changed\n" (pr-str filename))
             (flush)
             filename))
-        (u/updated-clojure-files (or git-ref "master"))))
+        (u/updated-files (or git-ref "master"))))
 
 (defn- remove-non-driver-test-namespaces [files]
   (into []
@@ -149,6 +146,12 @@
                     filename)))
         files))
 
+(defn- driver-module-affected?
+  "Returns true if the driver module is affected by the changed modules."
+  [deps modules]
+  (let [unaffected (unaffected-modules deps modules)]
+    (not (contains? unaffected 'driver))))
+
 (defn cli-can-skip-driver-tests
   "Exits with zero status code if we can skip driver tests, nonzero if we cannot.
 
@@ -156,14 +159,201 @@
 
     ./bin/mage can-skip-driver-tests [git-ref]"
   [[git-ref, :as _arguments]]
-  (let [deps          (dependencies)
-        git-ref       (or git-ref "master")
-        updated-files (remove-non-driver-test-namespaces (u/updated-files git-ref))
-        updated       (updated-files->updated-modules updated-files)
-        skip-tests?   (skip-driver-tests? deps updated)]
+  (let [deps              (dependencies)
+        git-ref           (or git-ref "master")
+        updated-files     (remove-non-driver-test-namespaces (u/updated-files git-ref))
+        updated           (updated-files->updated-modules updated-files)
+        drivers-affected? (driver-module-affected? deps updated)]
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
-    (print-updated-and-unaffected-modules deps updated)
+    (print-updated-and-unaffected-modules deps updated drivers-affected?)
     (u/exit (cond
-              (not skip-tests?)                             1
               (changes-important-file-for-drivers? git-ref) 1
+              drivers-affected?                             1
               :else                                         0))))
+
+;;;; =============================================================================
+;;;; Driver test decisions - consolidated logic for which drivers to run
+;;;; =============================================================================
+
+(def ^:private cloud-drivers
+  "Drivers that run on cloud infrastructure and require secrets. These are more
+   expensive to run, so we skip them on PRs unless specifically needed."
+  #{:athena :bigquery :databricks :redshift :snowflake})
+
+(def ^:private all-drivers
+  "All driver test jobs in drivers.yml, in order."
+  [:h2
+   :athena
+   :bigquery
+   :clickhouse
+   :databricks
+   :druid
+   :druid-jdbc
+   :mongo
+   :mongo-ssl
+   :mongo-sharded-cluster
+   :mysql-mariadb
+   :oracle
+   :postgres
+   :presto-jdbc
+   :redshift
+   :snowflake
+   :sparksql
+   :sqlite
+   :sqlserver
+   :vertica])
+
+(defn- parse-bool
+  "Parse a string boolean from CLI args. Returns true for 'true', false otherwise."
+  [s]
+  (= (str/lower-case (str s)) "true"))
+
+(defn- parse-labels
+  "Parse comma-separated labels string into a set of label strings."
+  [labels-str]
+  (if (str/blank? labels-str)
+    #{}
+    (into #{} (map str/trim) (str/split labels-str #","))))
+
+(defn- parse-driver-decisions-args
+  "Parse CLI arguments into a context map.
+
+   Expected format:
+     --git-ref=master
+     --is-master-or-release=true
+     --pr-labels=ci:all-cloud-drivers,some-other-label
+     --skip=false
+     --athena-changed=false
+     --bigquery-changed=false
+     --databricks-changed=false
+     --redshift-changed=false
+     --snowflake-changed=false"
+  [args]
+  (let [arg-map (into {}
+                      (keep (fn [arg]
+                              (when-let [[_ k v] (re-matches #"--([^=]+)=(.*)" arg)]
+                                [(keyword k) v])))
+                      args)
+        labels  (parse-labels (:pr-labels arg-map))]
+    {:git-ref              (get arg-map :git-ref "master")
+     :is-master-or-release (parse-bool (:is-master-or-release arg-map))
+     :pr-labels            labels
+     :skip                 (parse-bool (:skip arg-map))
+     :cloud-driver-changes {:athena    (parse-bool (:athena-changed arg-map))
+                            :bigquery  (parse-bool (:bigquery-changed arg-map))
+                            :databricks (parse-bool (:databricks-changed arg-map))
+                            :redshift  (parse-bool (:redshift-changed arg-map))
+                            :snowflake (parse-bool (:snowflake-changed arg-map))}}))
+
+(defn- driver-decision
+  "Determine if a driver should run and why.
+
+   Returns a map with :should-run (boolean) and :reason (string)."
+  [driver {:keys [is-master-or-release pr-labels skip cloud-driver-changes]}
+   driver-module-affected?]
+  (let [has-cloud-label? (contains? pr-labels "ci:all-cloud-drivers")]
+    (cond
+      ;; Global skip - workflow-level decision
+      skip
+      {:should-run false
+       :reason     "workflow skip (no backend changes)"}
+
+      ;; H2 always runs when backend tests run
+      (= driver :h2)
+      {:should-run true
+       :reason     "H2 always runs"}
+
+      ;; Master/release branch: all drivers run
+      is-master-or-release
+      {:should-run true
+       :reason     "master/release branch"}
+
+      ;; Cloud drivers have special rules beyond master/release
+      (contains? cloud-drivers driver)
+      (cond
+        has-cloud-label?
+        {:should-run true
+         :reason     "ci:all-cloud-drivers label"}
+
+        (get cloud-driver-changes driver)
+        {:should-run true
+         :reason     (str "driver files changed (modules/drivers/" (name driver) "/**)")}
+
+        driver-module-affected?
+        {:should-run true
+         :reason     "driver module affected by shared code changes"}
+
+        :else
+        {:should-run false
+         :reason     "no relevant changes for cloud driver"})
+
+      ;; Self-hosted drivers use module dependency analysis
+      :else
+      (if driver-module-affected?
+        {:should-run true
+         :reason     "driver module affected by changes"}
+        {:should-run false
+         :reason     "driver module not affected"}))))
+
+(defn- format-driver-name-for-output
+  "Convert driver keyword to the format used in GitHub Actions outputs.
+   e.g., :mysql-mariadb -> mysql-mariadb"
+  [driver]
+  (name driver))
+
+(defn cli-driver-decisions
+  "Determine which driver tests should run based on PR context.
+
+   Outputs decisions in GITHUB_OUTPUT format (key=value lines) plus human-readable logs.
+
+   Usage:
+     ./bin/mage driver-decisions \\
+       --git-ref=master \\
+       --is-master-or-release=false \\
+       --pr-labels=ci:all-cloud-drivers,other-label \\
+       --skip=false \\
+       --athena-changed=false \\
+       --bigquery-changed=false \\
+       --databricks-changed=false \\
+       --redshift-changed=false \\
+       --snowflake-changed=false"
+  [args]
+  (let [ctx                     (parse-driver-decisions-args args)
+        deps                    (dependencies)
+        updated-files           (remove-non-driver-test-namespaces
+                                  (u/updated-files (:git-ref ctx)))
+        updated                 (updated-files->updated-modules updated-files)
+        driver-affected?        (driver-module-affected? deps updated)
+        important-file-changed? (changes-important-file-for-drivers? (:git-ref ctx))
+        ;; For module dependency check, combine both conditions
+        effective-driver-affected? (or driver-affected? important-file-changed?)
+        decisions               (mapv (fn [driver]
+                                        (assoc (driver-decision driver ctx effective-driver-affected?)
+                                               :driver driver))
+                                      all-drivers)]
+
+    ;; Print module analysis summary
+    (println "")
+    (println "=== Module Analysis ===")
+    (println "Changed modules:" (pr-str updated))
+    (println "Driver module affected:" driver-affected?)
+    (println "Important file changed:" (boolean important-file-changed?))
+    (println "")
+
+    ;; Print human-readable decision summary
+    (println "=== Driver Decisions ===")
+    (doseq [{:keys [driver should-run reason]} decisions]
+      (println (format "%-25s %s - %s"
+                       (name driver)
+                       (if should-run
+                         (c/green "RUN ")
+                         (c/yellow "SKIP"))
+                       reason)))
+    (println "")
+
+    ;; Print GITHUB_OUTPUT format (this goes to $GITHUB_OUTPUT when >> is used)
+    (println "=== GitHub Output ===")
+    (doseq [{:keys [driver should-run]} decisions]
+      (println (str (format-driver-name-for-output driver) "-should-run=" (str should-run))))
+
+    (u/exit 0)))

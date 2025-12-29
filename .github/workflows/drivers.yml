@@ -28,18 +28,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # This job will determine if the tier 3 driver tests should be skipped.
-  # It will always run first.
+  # This job determines which driver tests should run based on PR context.
+  # All decision logic is consolidated in mage driver-decisions.
   determine-driver-skips:
     runs-on: ubuntu-latest
     outputs:
-      skip: ${{ steps.check-branch-and-files-changed.outputs.skip }}
-      # Cloud driver run decisions
-      athena-should-run: ${{ steps.cloud-drivers.outputs.athena-should-run }}
-      bigquery-should-run: ${{ steps.cloud-drivers.outputs.bigquery-should-run }}
-      databricks-should-run: ${{ steps.cloud-drivers.outputs.databricks-should-run }}
-      redshift-should-run: ${{ steps.cloud-drivers.outputs.redshift-should-run }}
-      snowflake-should-run: ${{ steps.cloud-drivers.outputs.snowflake-should-run }}
+      # All driver run decisions (from mage driver-decisions)
+      h2-should-run: ${{ steps.driver-decisions.outputs.h2-should-run }}
+      athena-should-run: ${{ steps.driver-decisions.outputs.athena-should-run }}
+      bigquery-should-run: ${{ steps.driver-decisions.outputs.bigquery-should-run }}
+      clickhouse-should-run: ${{ steps.driver-decisions.outputs.clickhouse-should-run }}
+      databricks-should-run: ${{ steps.driver-decisions.outputs.databricks-should-run }}
+      druid-should-run: ${{ steps.driver-decisions.outputs.druid-should-run }}
+      druid-jdbc-should-run: ${{ steps.driver-decisions.outputs.druid-jdbc-should-run }}
+      mongo-should-run: ${{ steps.driver-decisions.outputs.mongo-should-run }}
+      mongo-ssl-should-run: ${{ steps.driver-decisions.outputs.mongo-ssl-should-run }}
+      mongo-sharded-cluster-should-run: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-should-run }}
+      mysql-mariadb-should-run: ${{ steps.driver-decisions.outputs.mysql-mariadb-should-run }}
+      oracle-should-run: ${{ steps.driver-decisions.outputs.oracle-should-run }}
+      postgres-should-run: ${{ steps.driver-decisions.outputs.postgres-should-run }}
+      presto-jdbc-should-run: ${{ steps.driver-decisions.outputs.presto-jdbc-should-run }}
+      redshift-should-run: ${{ steps.driver-decisions.outputs.redshift-should-run }}
+      snowflake-should-run: ${{ steps.driver-decisions.outputs.snowflake-should-run }}
+      sparksql-should-run: ${{ steps.driver-decisions.outputs.sparksql-should-run }}
+      sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
+      sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
+      vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -48,54 +62,23 @@ jobs:
         run: |
           # Fetch the base branch to ensure its history is available for diffing
           git fetch --depth=1 origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
-          # Only run this if it's a pull request and the base ref exists
-      - name: Check if driver tests should run
-        id: check-branch-and-files-changed
+      - name: Determine which drivers should run
+        id: driver-decisions
         run: |
-          IS_MASTER_OR_RELEASE="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
-          echo "Is master or release: ${IS_MASTER_OR_RELEASE}"
-
-          if [[ "${IS_MASTER_OR_RELEASE}" == "true" ]]; then
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "Merging into master or a release branch. All driver tests will run."
-          else
-            echo "Checking for changes in relevant modules..."
-            if ./bin/mage can-skip-driver-tests "${{ github.event.pull_request.base.ref }}"; then
-              echo 'skip=true' >> $GITHUB_OUTPUT
-            else
-              echo 'skip=false' >> $GITHUB_OUTPUT
-            fi
-          fi
-        shell: bash
-      - name: Determine which cloud drivers should run
-        id: cloud-drivers
-        env:
-          IS_MASTER_OR_RELEASE: ${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}
-          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:all-cloud-drivers') }}
-          ATHENA_CHANGED: ${{ inputs.athena-changed }}
-          BIGQUERY_CHANGED: ${{ inputs.bigquery-changed }}
-          DATABRICKS_CHANGED: ${{ inputs.databricks-changed }}
-          REDSHIFT_CHANGED: ${{ inputs.redshift-changed }}
-          SNOWFLAKE_CHANGED: ${{ inputs.snowflake-changed }}
-        run: |
-          # Cloud drivers run if: master/release OR label present OR files changed
-          should_run() {
-            local driver=$1
-            local changed_var="${driver^^}_CHANGED"  # uppercase
-            [[ "${IS_MASTER_OR_RELEASE}" == "true" ]] || \
-            [[ "${HAS_LABEL}" == "true" ]] || \
-            [[ "${!changed_var}" == "true" ]]
-          }
-
-          for driver in athena bigquery databricks redshift snowflake; do
-            if should_run "$driver"; then
-              echo "${driver}-should-run=true" >> "$GITHUB_OUTPUT"
-              echo "${driver}: should run"
-            else
-              echo "${driver}-should-run=false" >> "$GITHUB_OUTPUT"
-              echo "${driver}: skip"
-            fi
-          done
+          # All decision logic is in mage - it analyzes module dependencies,
+          # branch context, labels, and file changes to decide what runs.
+          ./bin/mage -driver-decisions \
+            --git-ref="${{ github.event.pull_request.base.ref || 'master' }}" \
+            --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}" \
+            --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}" \
+            --skip="${{ inputs.skip }}" \
+            --athena-changed="${{ inputs.athena-changed }}" \
+            --bigquery-changed="${{ inputs.bigquery-changed }}" \
+            --databricks-changed="${{ inputs.databricks-changed }}" \
+            --redshift-changed="${{ inputs.redshift-changed }}" \
+            --snowflake-changed="${{ inputs.snowflake-changed }}" \
+            | tee /dev/stderr \
+            | grep -E "^[a-z]+-should-run=" >> $GITHUB_OUTPUT
         shell: bash
 
   be-tests-athena-ee:
@@ -201,7 +184,7 @@ jobs:
 
   be-tests-clickhouse-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.clickhouse-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -273,7 +256,7 @@ jobs:
 
   be-tests-druid-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.druid-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -311,7 +294,7 @@ jobs:
 
   be-tests-druid-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.druid-jdbc-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -425,7 +408,8 @@ jobs:
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
   be-tests-h2:
-    if: ${{ !inputs.skip }}
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.h2-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -455,7 +439,7 @@ jobs:
 
   be-tests-mysql-mariadb:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.mysql-mariadb-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -591,7 +575,7 @@ jobs:
 
   be-tests-mongo:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.mongo-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -661,7 +645,7 @@ jobs:
 
   be-tests-mongo-ssl:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.mongo-ssl-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -727,7 +711,7 @@ jobs:
 
   be-tests-mongo-sharded-cluster-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.mongo-sharded-cluster-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -762,7 +746,7 @@ jobs:
 
   be-tests-oracle:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.oracle-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -837,7 +821,7 @@ jobs:
 
   be-tests-postgres:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.postgres-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -946,7 +930,7 @@ jobs:
 
   be-tests-presto-jdbc-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.presto-jdbc-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1168,7 +1152,7 @@ jobs:
 
   be-tests-sparksql-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.sparksql-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1204,7 +1188,7 @@ jobs:
 
   be-tests-sqlite-ee:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.sqlite-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -1235,7 +1219,7 @@ jobs:
 
   be-tests-sqlserver:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.sqlserver-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -1346,7 +1330,7 @@ jobs:
 
   login-to-ecr:
     needs: determine-driver-skips
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -1376,7 +1360,7 @@ jobs:
 
   be-tests-vertica-ee:
     needs: [determine-driver-skips, login-to-ecr]
-    if: ${{ !inputs.skip && !(needs.determine-driver-skips.outputs.skip == 'true') }}
+    if: ${{ needs.determine-driver-skips.outputs.vertica-should-run == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:

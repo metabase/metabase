@@ -206,7 +206,7 @@
    :arg-schema [:sequential
                 {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
                 [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
-   :requires   [[mage.quick-test-runner :as qtr]] 
+   :requires   [[mage.quick-test-runner :as qtr]]
    :task       (task! (qtr/go parsed))}
 
   affected-modules
@@ -267,11 +267,27 @@
    :examples [["./bin/mage doctor" "Run all health checks"]]
    :requires [[mage.doctor :as doctor]]
    :task (task! (doctor/doctor!))}
-  
+
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
+
+  -driver-decisions
+  {:doc      "Determine which driver tests should run based on PR context. Outputs decisions for all drivers."
+   :examples [["./bin/mage -driver-decisions --git-ref=master --is-master-or-release=false --pr-labels= --skip=false" "Determine driver decisions for a PR"]
+              ["./bin/mage -driver-decisions --pr-labels=ci:all-cloud-drivers" "Run all cloud drivers via label"]]
+   :options  [[nil "--git-ref REF" "The git ref to compute changed modules against"]
+              [nil "--is-master-or-release MASTER_OR_RELEASE"]
+              [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
+              [nil "--skip SKIP"]
+              [nil "--athena-changed CHANGED" "Changes to athena files detected?"]
+              [nil "--bigquery-changed CHANGED" "Changes to bigquery files detected?"]
+              [nil "--databricks-changed CHANGED" "Changes to databricks files detected?"]
+              [nil "--redshift-changed CHANGED" "Changes to redshift files detected?"]
+              [nil "--snowflake-changed CHANGED" "Changes to snowflake files detected?"]]
+   :requires [[mage.modules]]
+   :task     (task! (mage.modules/cli-driver-decisions parsed))}
 
   -install-merge-drivers
   {:doc "Installs custom git merge drivers for YAML migration files."
@@ -317,7 +333,7 @@
                 [:string {:name "file-path" :description "file path"}]]
    :requires [[mage.merge-yaml-migrations]]
    :task (task! (mage.merge-yaml-migrations/-main parsed))}
-  
+
   -play
   {:doc        "Play sounds from mage.sound"
    :examples   [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
@@ -331,7 +347,7 @@
                         ("e" "error")   (sound/error)
                         ("p" "ping")    (sound/ping)
                         ("w" "warning") (sound/warning)))}
-  
+
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
    :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
