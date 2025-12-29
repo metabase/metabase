@@ -251,7 +251,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.only("should be able to check out existing transform into a new workspace from the transform page", () => {
+    it("should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
@@ -440,6 +440,54 @@ describe("scenarios > data studio > workspaces", () => {
       });
     })
   })
+
+  describe("setup tab", () => {
+    it("should allow to change database before transforms are added", () => {
+      H.addPostgresDatabase("Test DB");
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+        cy.log("Database dropdown should be enabled initially");
+        Workspaces.getWorkspaceDatabaseSelect()
+          .should("have.value", "Test DB")
+          .click();
+      H.popover().findByRole("option", { name: "Sample Database" }).should("not.exist");
+      H.popover().findByRole("option", { name: "Writable Postgres12" }).click();
+
+        cy.log("Verify database was changed");
+        Workspaces.getWorkspaceDatabaseSelect()
+          .should("have.value", "Writable Postgres12");
+    });
+
+
+    it("should lock database dropdown when workspace has been initialized, shows setup log", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+
+      cy.log("Add WS transform to lock DB selection");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+        Workspaces.getSaveTransformButton().click();
+
+        cy.findByRole("tab", { name: "Setup" }).click();
+
+        cy.log("Database dropdown should be disabled after adding transforms");
+        Workspaces.getWorkspaceDatabaseSelect()
+          .should("be.disabled")
+          .should("have.value", "Writable Postgres12");
+
+        cy.log("Setup log should be visible");
+        cy.findByText(/Setting up the workspace/).should("be.visible");
+      });
+    });
+  });
 });
 
 function createWorkspace() {
