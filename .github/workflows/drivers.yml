@@ -54,6 +54,8 @@ jobs:
       sqlite-should-run: ${{ steps.driver-decisions.outputs.sqlite-should-run }}
       sqlserver-should-run: ${{ steps.driver-decisions.outputs.sqlserver-should-run }}
       vertica-should-run: ${{ steps.driver-decisions.outputs.vertica-should-run }}
+      # Quarantine conflict detection
+      quarantine-conflict: ${{ steps.driver-decisions.outputs.quarantine-conflict }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -78,8 +80,28 @@ jobs:
             --redshift-changed="${{ inputs.redshift-changed }}" \
             --snowflake-changed="${{ inputs.snowflake-changed }}" \
             | tee /dev/stderr \
-            | grep -E "^[a-z]+-should-run=" >> $GITHUB_OUTPUT
+            | grep -E "^([a-z]+-should-run|quarantine-conflict)=" >> $GITHUB_OUTPUT
         shell: bash
+
+  # This job fails if you changed files in a quarantined driver without adding the break-quarantine label.
+  # This prevents accidentally merging changes without running the driver's tests.
+  check-quarantine-conflicts:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.quarantine-conflict != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail due to quarantine conflict
+        run: |
+          echo "::error::Quarantined driver(s) have file changes but tests will NOT run!"
+          echo ""
+          echo "The following quarantined drivers have file changes:"
+          echo "${{ needs.determine-driver-skips.outputs.quarantine-conflict }}" | tr ',' '\n' | while read driver; do
+            echo "  • $driver"
+            echo "    Add label 'break-quarantine-$driver' to run tests for this driver"
+          done
+          echo ""
+          echo "Without running tests, you won't know if your changes break the driver!"
+          exit 1
 
   be-tests-athena-ee:
     needs: determine-driver-skips
@@ -1402,6 +1424,7 @@ jobs:
   drivers-tests-result:
     needs:
       # if you add a driver job, you must add it to this list for it to be a required check
+      - check-quarantine-conflicts
       - be-tests-h2
       - be-tests-athena-ee
       - be-tests-bigquery-cloud-sdk-ee

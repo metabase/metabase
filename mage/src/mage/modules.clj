@@ -318,16 +318,17 @@
        --redshift-changed=false \\
        --snowflake-changed=false"
   [{:keys [options] :as _parsed}]
-  (let [ctx {:git-ref (get options :git-ref "master")
+  (let [cloud-driver-changes {:athena (parse-bool (:athena-changed options))
+                              :bigquery (parse-bool (:bigquery-changed options))
+                              :databricks (parse-bool (:databricks-changed options))
+                              :redshift (parse-bool (:redshift-changed options))
+                              :snowflake (parse-bool (:snowflake-changed options))}
+        ctx {:git-ref (get options :git-ref "master")
              :is-master-or-release (parse-bool (:is-master-or-release options))
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :cloud-driver-changes {:athena (parse-bool (:athena-changed options))
-                                    :bigquery (parse-bool (:bigquery-changed options))
-                                    :databricks (parse-bool (:databricks-changed options))
-                                    :redshift (parse-bool (:redshift-changed options))
-                                    :snowflake (parse-bool (:snowflake-changed options))}}
-        quarantined-drivers (quarantined-drivers)
+             :cloud-driver-changes cloud-driver-changes}
+        quarantined (quarantined-drivers)
         updated-files (remove-non-driver-test-namespaces
                        (u/updated-files (:git-ref ctx)))
         updated (updated-files->updated-modules updated-files)
@@ -336,9 +337,17 @@
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
-                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined-drivers)
+                          (assoc (driver-decision driver ctx effective-driver-affected? quarantined)
                                  :driver driver))
-                        all-drivers)]
+                        all-drivers)
+        ;; Check for quarantined drivers with file changes but no break-quarantine label
+        quarantined-with-changes (into []
+                                       (filter (fn [driver]
+                                                 (and (contains? quarantined driver)
+                                                      (get cloud-driver-changes driver)
+                                                      (not (contains? (:pr-labels ctx)
+                                                                      (break-quarantine-label driver))))))
+                                       (keys cloud-driver-changes))]
 
     ;; Print module analysis summary
     (println "")
@@ -366,5 +375,15 @@
       (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
       (doseq [{:keys [driver]} drivers-to-skip]
         (println (str (format-driver-name-for-output driver) "-should-run=false"))))
+
+    ;; Output quarantine conflicts for a separate check job to fail on
+    (when (seq quarantined-with-changes)
+      (println "")
+      (println (c/red "⚠️  WARNING: Quarantined driver(s) have file changes but tests will NOT run!"))
+      (doseq [driver quarantined-with-changes]
+        (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests"))))
+      (println "")
+      ;; Output for GitHub Actions to pick up
+      (println (str "quarantine-conflict=" (str/join "," (map name quarantined-with-changes)))))
 
     (u/exit 0)))
