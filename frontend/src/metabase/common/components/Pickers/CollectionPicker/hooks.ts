@@ -58,8 +58,9 @@ export const useRootCollectionPickerItems = (
     useListDatabasesQuery(undefined, { skip: !options.showDatabases });
   const databases = databaseData?.data ?? [];
   const tenantsEnabled = useSetting("use-tenants");
+  const currentUser = useSelector(getUser);
 
-  const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
+  const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
 
   const { data: libraryCollection } =
@@ -83,7 +84,7 @@ export const useRootCollectionPickerItems = (
 
   const {
     data: rootCollection,
-    isLoading: isLoadingRootCollecton,
+    isLoading: isLoadingRootCollection,
     error: rootCollectionError,
   } = useGetCollectionQuery({ id: "root" });
 
@@ -235,12 +236,13 @@ export const useRootCollectionPickerItems = (
     totalPersonalCollectionItems,
     libraryCollection,
     tenantsEnabled,
+    currentUser,
   ]);
 
   const isLoading =
     isLoadingDatabases ||
-    isLoadingRootCollecton ||
-    isLoadingPersonalCollecton ||
+    isLoadingRootCollection ||
+    isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
 
   return { items, isLoading };

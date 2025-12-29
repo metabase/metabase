@@ -1,6 +1,7 @@
 export * from "./entity-framework";
 export * from "./use-confirmation";
 export * from "./use-docs-url";
+export * from "./use-get-personal-collection";
 export * from "./use-has-token-feature";
 export * from "./use-locale";
 export * from "./use-notification-channels";
