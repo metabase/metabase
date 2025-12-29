@@ -9,6 +9,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:dynamic *github-output-only?* false)
+
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
 (defn- file->module [filename]
@@ -125,13 +127,12 @@
 (defn- changes-important-file-for-drivers?
   "Whether we should always run driver tests if we have changes relative to `git-ref` to something important like
   `deps.edn`."
-  [git-ref verbose?]
+  [git-ref]
   (some (fn [filename]
           (when (or (str/includes? filename "deps.edn")
                     (str/includes? filename "modules/drivers/"))
-            (when verbose?
-              (printf "Running driver tests because %s was changed\n" (pr-str filename))
-              (flush))
+            (when-not *github-output-only?*
+              (println (str "Running driver tests because " (pr-str filename) " was changed")))
             filename))
         (u/updated-files (or git-ref "master"))))
 
@@ -143,8 +144,8 @@
                              (not (some #(str/includes? filename %)
                                         ["query_processor"
                                          "driver"])))
-                    (printf "Ignorning changes in test namespace %s\n" (pr-str filename))
-                    (flush)
+                    (when-not *github-output-only?*
+                      (println (str "Ignorning changes in test namespace " (pr-str filename))))
                     filename)))
         files))
 
@@ -171,7 +172,7 @@
     ;; Not strictly necessary, but people looking at CI will appreciate having this extra info.
     (print-updated-and-unaffected-modules deps updated drivers-affected?)
     (u/exit (cond
-              (changes-important-file-for-drivers? git-ref true) 1
+              (changes-important-file-for-drivers? git-ref) 1
               drivers-affected? 1
               :else 0))))
 
@@ -367,7 +368,7 @@
   [driver]
   (name driver))
 
-(defn cli-driver-decisions
+(defn- cli-driver-decisions
   "Determine which driver tests should run based on PR context.
 
    Outputs decisions in GITHUB_OUTPUT format (key=value lines) plus human-readable logs.
@@ -403,7 +404,7 @@
                        (u/updated-files git-ref))
         updated (updated-files->updated-modules updated-files)
         driver-affected? (driver-module-affected? updated)
-        important-file-changed? (changes-important-file-for-drivers? git-ref (not github-output-only?))
+        important-file-changed? (changes-important-file-for-drivers? git-ref)
         ;; For module dependency check, combine both conditions
         effective-driver-affected? (or driver-affected? important-file-changed?)
         decisions (mapv (fn [driver]
@@ -421,48 +422,55 @@
                                                                       (break-quarantine-label driver))))))
                                        all-drivers)]
 
-    (when-not github-output-only?
-      ;; Print module analysis summary
-      (println "")
-      (println "=== Module Analysis ===")
-      (println "Changed modules:" (pr-str updated))
-      (println "Driver module affected:" driver-affected?)
-      (println "Important file changed:" (boolean important-file-changed?))
-      (println "Drivers with file changes:" (pr-str drivers-changed))
-      (println "")
-
-      ;; Print human-readable decision summary
-      (println "=== Driver Decisions ===")
-      (doseq [{:keys [driver should-run reason]} decisions]
-        (println (format "%-25s %s - %s"
-                         (name driver)
-                         (if should-run (c/green "RUN ") (c/yellow "SKIP"))
-                         reason)))
-      (println "")
-
-      ;; Print GITHUB_OUTPUT preview with colors
-      (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
-        (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
-        (doseq [{:keys [driver]} drivers-to-run]
-          (println (str (format-driver-name-for-output driver) "-should-run=true")))
-        (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
-        (doseq [{:keys [driver]} drivers-to-skip]
-          (println (str (format-driver-name-for-output driver) "-should-run=false"))))
-
-      ;; Output quarantine conflict warnings with colors
-      (when (seq quarantined-with-changes)
-        (println "")
-        (println (c/red "⚠️  WARNING: Quarantined driver(s) have file changes but tests will NOT run!"))
-        (println (c/red "=== Quarantine Conflicts ==="))
+    (if github-output-only?
+      ;; In github-output-only mode, print just the key=value lines (no colors)
+      (do
+        (doseq [{:keys [driver should-run]} decisions]
+          (println (str (format-driver-name-for-output driver) "-should-run=" should-run)))
         (doseq [driver quarantined-with-changes]
-          (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
-          (println (str (format-driver-name-for-output driver) "-quarantine-conflict=true")))))
+          (println (str (format-driver-name-for-output driver) "-quarantine-conflict=true"))))
 
-    ;; In github-output-only mode, print just the key=value lines (no colors)
-    (when github-output-only?
-      (doseq [{:keys [driver should-run]} decisions]
-        (println (str (format-driver-name-for-output driver) "-should-run=" should-run)))
-      (doseq [driver quarantined-with-changes]
-        (println (str (format-driver-name-for-output driver) "-quarantine-conflict=true"))))
+      (do
+        ;; Print module analysis summary
+        (println "")
+        (println "=== Module Analysis ===")
+        (println "Changed modules:" (pr-str updated))
+        (println "Driver module affected:" driver-affected?)
+        (println "Important file changed:" (boolean important-file-changed?))
+        (println "Drivers with file changes:" (pr-str drivers-changed))
+        (println "")
+
+        ;; Print human-readable decision summary
+        (println "=== Driver Decisions ===")
+        (doseq [{:keys [driver should-run reason]} decisions]
+          (println (format "%-25s %s - %s"
+                           (name driver)
+                           (if should-run (c/green "RUN ") (c/yellow "SKIP"))
+                           reason)))
+        (println "")
+
+        ;; Print GITHUB_OUTPUT preview with colors
+        (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
+          (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
+          (doseq [{:keys [driver]} drivers-to-run]
+            (println (str (format-driver-name-for-output driver) "-should-run=true")))
+          (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
+          (doseq [{:keys [driver]} drivers-to-skip]
+            (println (str (format-driver-name-for-output driver) "-should-run=false"))))
+
+        ;; Output quarantine conflict warnings with colors
+        (when (seq quarantined-with-changes)
+          (println "")
+          (println (c/red "⚠️  WARNING: Quarantined driver(s) have file changes but tests will NOT run!"))
+          (println (c/red "=== Quarantine Conflicts ==="))
+          (doseq [driver quarantined-with-changes]
+            (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
+            (println (str (format-driver-name-for-output driver) "-quarantine-conflict=true"))))))
 
     (u/exit 0)))
+
+(defn -main
+  "See [[cli-driver-decisions]]"
+  [{:keys [options] :as parsed}]
+  (binding [*github-output-only?* (:github-output-only options)]
+    (cli-driver-decisions parsed)))

@@ -289,7 +289,7 @@
               [nil "--snowflake-changed CHANGED" "Changes to snowflake files detected?"]
               [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
    :requires [[mage.modules]]
-   :task     (task! (mage.modules/cli-driver-decisions parsed))}
+   :task     (task! (mage.modules/-main parsed))}
 
   -install-merge-drivers
   {:doc "Installs custom git merge drivers for YAML migration files."
