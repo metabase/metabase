@@ -6,6 +6,7 @@ import _ from "underscore";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
+import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -40,7 +41,7 @@ import {
   useErrorHandling,
 } from "./hooks";
 import { type TreeItem, isCollection } from "./types";
-import { getWritableCollection } from "./utils";
+import { getAccessibleCollection } from "./utils";
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
@@ -72,15 +73,27 @@ export function LibrarySectionLayout() {
       "include-library": true,
     });
 
+  const isInstanceRemoteSyncEnabled = Boolean(
+    useSetting("remote-sync-enabled"),
+  );
+
   const libraryCollection = collections.find(isLibraryCollection);
 
   const tableCollection =
     libraryCollection &&
-    getWritableCollection(libraryCollection, "library-data");
+    getAccessibleCollection(
+      libraryCollection,
+      "library-data",
+      isInstanceRemoteSyncEnabled,
+    );
 
   const metricCollection =
     libraryCollection &&
-    getWritableCollection(libraryCollection, "library-metrics");
+    getAccessibleCollection(
+      libraryCollection,
+      "library-metrics",
+      isInstanceRemoteSyncEnabled,
+    );
 
   const handleItemSelect = useCallback(
     (item: TreeItem) => {
@@ -238,7 +251,10 @@ export function LibrarySectionLayout() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <CreateMenu metricCollectionId={metricCollection?.id} />
+            <CreateMenu
+              metricCollectionId={metricCollection?.id}
+              canWriteToMetricCollection={metricCollection?.can_write}
+            />
           </Flex>
           <Card withBorder p={0}>
             {isLoading ? (
