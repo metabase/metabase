@@ -437,6 +437,50 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("2,531");
     });
   });
+
+  describe("measure refs", () => {
+    it("should be possible to rename a measure without breaking queries that reference it", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: measure }) => {
+        useMeasure();
+
+        H.updateMeasure({
+          id: measure.id,
+          name: "Renamed measure",
+        });
+
+        cy.reload();
+        verifyScalarValue("1,510,621.68");
+      });
+    });
+
+    it("should be possible to rename an aggregation expression based on a measure without breaking it", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+
+      useMeasure(() => {
+        H.getNotebookStep("summarize").findByText("Table Measure").click();
+        H.CustomExpressionEditor.nameInput()
+          .clear()
+          .type("Renamed aggregation");
+        H.popover().button("Update").click();
+      });
+
+      verifyScalarValue("1,510,621.68");
+    });
+  });
 });
 
 function buildNewMeasure({ createQuery }: { createQuery: () => void }) {
