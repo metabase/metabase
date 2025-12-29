@@ -35,6 +35,9 @@ export function SyncProgressModal({
 
     await cancelRemoteSyncCurrentTask()
       .unwrap()
+      .then(() => {
+        onDismiss();
+      })
       .catch((error: any) => {
         let message = t`Failed to cancel sync`;
 
@@ -61,7 +64,11 @@ export function SyncProgressModal({
           <Text>{t`An error occurred during sync.`}</Text>
           {errorMessage && <Text>{errorMessage}</Text>}
           <Group justify="flex-end">
-            <Button onClick={onDismiss} variant="filled">{t`Close`}</Button>
+            <Button
+              data-testid="sync-error-close-button"
+              onClick={onDismiss}
+              variant="filled"
+            >{t`Close`}</Button>
           </Group>
         </Stack>
       </Modal>
