@@ -1,8 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ItemCallback,
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
+import _ from "underscore";
 
 import { useMantineTheme } from "metabase/ui";
 
@@ -117,10 +118,19 @@ export function GridLayout<T extends { id: number | null }>(
     [marginMap, currentBreakpoint],
   );
 
-  const layout = useMemo(
-    () => layouts[currentBreakpoint],
-    [layouts, currentBreakpoint],
-  );
+  const previousLayoutRef = useRef<ReactGridLayout.Layout[]>();
+  const layout = useMemo(() => {
+    const newLayout = layouts[currentBreakpoint];
+    const previousLayout = previousLayoutRef.current;
+    if (previousLayout !== undefined && _.isEqual(newLayout, previousLayout)) {
+      return previousLayout;
+    }
+    return newLayout;
+  }, [layouts, currentBreakpoint]);
+
+  useEffect(() => {
+    previousLayoutRef.current = layout;
+  });
 
   const cols = useMemo(
     () => columnsMap[currentBreakpoint],
