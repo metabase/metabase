@@ -269,7 +269,40 @@
 (defn- driver-decision
   "Determine if a driver should run and why.
 
-   Returns a map with :should-run (boolean) and :reason (string)."
+   Returns a map with :should-run (boolean) and :reason (string).
+
+   ## Decision Priority (first match wins)
+
+   | Priority | Condition                              | Result | Reason                                    |
+   |----------|----------------------------------------|--------|-------------------------------------------|
+   | 1        | Driver is quarantined                  | SKIP   | driver is quarantined                     |
+   | 1a       | ...but has break-quarantine-X label    | RUN    | anti-quarantine label present             |
+   | 2        | Global skip (no backend changes)       | SKIP   | workflow skip (no backend changes)        |
+   | 3        | Driver is :h2                          | RUN    | H2 always runs                            |
+   | 4        | On master or release branch            | RUN    | master/release branch                     |
+   | 5        | Driver module affected by changes      | RUN    | driver module affected by shared code     |
+   | 6        | Cloud driver + ci:all-cloud-drivers    | RUN    | ci:all-cloud-drivers label                |
+   | 7        | Cloud driver + its files changed       | RUN    | driver files changed                      |
+   | 8        | Cloud driver, no relevant changes      | SKIP   | no relevant changes for cloud driver      |
+   | 9        | Self-hosted driver, not affected       | SKIP   | driver module not affected                |
+
+   ## What counts as 'driver module affected'?
+
+   The driver module is considered affected when:
+   - Files in modules/drivers/* are changed (triggers all drivers)
+   - deps.edn is changed (triggers all drivers)
+   - Clojure modules that the 'driver' module depends on are changed
+
+   ## Cloud vs Self-hosted Drivers
+
+   Cloud drivers (athena, bigquery, databricks, redshift, snowflake) have
+   additional skip logic on PRs because they require external infrastructure
+   and secrets. They only run on PRs when:
+   - The ci:all-cloud-drivers label is present, OR
+   - Files in that specific driver's directory changed
+
+   Self-hosted drivers (postgres, mysql, mongo, etc.) run in Docker containers
+   and only skip when the driver module is completely unaffected by changes."
   [driver
    {:keys [is-master-or-release pr-labels skip cloud-driver-changes verbose?]}
    driver-module-affected?
