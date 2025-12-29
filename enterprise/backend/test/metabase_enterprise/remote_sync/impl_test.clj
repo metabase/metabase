@@ -727,6 +727,50 @@
                 (is (not (some #(str/includes? % "test-table") (keys files-after-export)))
                     "Removed table files should be deleted after export (including schema path)")))))))))
 
+(deftest export!-excludes-archived-segments-test
+  (testing "export! excludes archived segments from export (via skip-archived flag)"
+    (mt/with-model-cleanup [:model/RemoteSyncObject :model/Segment]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
+                         :model/Collection {coll-id :id}
+                         {:name "Test Collection"
+                          :is_remote_synced true
+                          :entity_id "test-collection-1xxxx"
+                          :location "/"}
+                         ;; Table must have collection_id and is_published to be included as Collection descendant
+                         :model/Table {table-id :id} {:name "test-table"
+                                                      :db_id db-id
+                                                      :collection_id coll-id
+                                                      :is_published true}
+                         :model/Segment {_active-seg-id :id}
+                         {:name "Active Segment"
+                          :table_id table-id
+                          :definition {:source-table table-id
+                                       :filter [:> [:field 1 nil] 0]}
+                          :entity_id "active-segment-xxxxxx"
+                          :archived false}
+                         :model/Segment {_archived-seg-id :id}
+                         {:name "Archived Segment"
+                          :table_id table-id
+                          :definition {:source-table table-id
+                                       :filter [:> [:field 2 nil] 0]}
+                          :entity_id "archived-segment-xxxx"
+                          :archived true}]
+            ;; Track the collection so export runs
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id coll-id :status "synced" :status_changed_at (t/offset-date-time)}])
+            (let [mock-source (test-helpers/create-mock-source)
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+              (is (= :success (:status result)))
+              (let [files-after-export (get @(:files-atom mock-source) "main")
+                    file-keys (keys files-after-export)]
+                ;; File paths use entity_id, e.g. "active-segment-xxxxxx_active_segment.yaml"
+                (is (some #(str/includes? % "active-segment-xxxxxx") file-keys)
+                    "Active segment should be exported")
+                (is (not (some #(str/includes? % "archived-segment-xxxx") file-keys))
+                    "Archived segment should NOT be exported")))))))))
+
 ;; Import Table/Field/Segment tracking tests
 
 (deftest import!-tracks-tables-in-remote-sync-object-test
