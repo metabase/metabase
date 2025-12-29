@@ -239,7 +239,7 @@
                   (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge")
                                         {:commit-message commit-msg}))))
         (testing "workspace was deleted after successful merge"
-          (is (nil? (t2/select-one :model/Workspace :id ws-id))))
+          (is (not (t2/exists? :model/Workspace :id ws-id))))
         (testing "merge history was created"
           (is (=? {:commit_message commit-msg
                    :creator_id     (mt/user->id :crowberto)}
@@ -373,22 +373,22 @@
   (testing "transactions"
     (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
                    :model/Table     _table {:schema "public" :name "merge_test_table_2"}
-                   :model/Transform x1 {:name        "Upstream Transform 1"
-                                        :description "Original description 2"
-                                        :target      {:type     "table"
-                                                      :database (mt/id)
-                                                      :schema   "public"
-                                                      :name     "merge_test_table"}}
-                   :model/Transform x2 {:name        "Upstream Transform 2"
-                                        :description "Original description 2"
-                                        :target      {:type     "table"
-                                                      :database (mt/id)
-                                                      :schema   "public"
-                                                      :name     "merge_test_table_2"}}]
+                   :model/Transform x1     {:name        "Upstream Transform 1"
+                                            :description "Original description 2"
+                                            :target      {:type     "table"
+                                                          :database (mt/id)
+                                                          :schema   "public"
+                                                          :name     "merge_test_table"}}
+                   :model/Transform x2     {:name        "Upstream Transform 2"
+                                            :description "Original description 2"
+                                            :target      {:type     "table"
+                                                          :database (mt/id)
+                                                          :schema   "public"
+                                                          :name     "merge_test_table_2"}}]
       (let [;; Create a workspace
             {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                               {:name        "Merge test"
-                                                               :database_id  (mt/id)}))
+                                                               :database_id (mt/id)}))
             ;; Add 2 transforms
             {ws-x-1-id :ref_id}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -421,13 +421,13 @@
             (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
               (is (= 2 (count (get-in resp [:merged :transforms]))))
               (is (= 0 (count (:errors resp))))
-              (is (some? (m/find-first #{{:op "update"
+              (is (some? (m/find-first #{{:op        "update"
                                           :global_id (:id x1)
-                                          :ref_id ws-x-1-id}}
+                                          :ref_id    ws-x-1-id}}
                                        (get-in resp [:merged :transforms]))))
-              (is (some? (m/find-first #{{:op "update"
+              (is (some? (m/find-first #{{:op        "update"
                                           :global_id (:id x2)
-                                          :ref_id ws-x-2-id}}
+                                          :ref_id    ws-x-2-id}}
                                        (get-in resp [:merged :transforms]))))))
           (testing "Core transforms names are updated"
             (is (= (:name ws-x-1)
@@ -435,13 +435,13 @@
             (is (= (:name ws-x-2)
                    (t2/select-one-fn :name :model/Transform (:id x2)))))
           (testing "Workspace transforms are deleted"
-            (is (nil? (t2/select-one :model/WorkspaceTransform
-                                     :workspace_id ws-id :ref_id (:ref_id ws-x-1))))
-            (is (nil? (t2/select-one :model/WorkspaceTransform
-                                     :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))
-          ;; This should change going forward. Deletion of workspace is temporary.
-          (testing "Workspace has been deleted"
-            (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))))
+            (is (not (t2/exists? :model/WorkspaceTransform
+                                 :workspace_id ws-id :ref_id (:ref_id ws-x-1)))))
+          (is (not (t2/exists? :model/WorkspaceTransform
+                               :workspace_id ws-id :ref_id (:ref_id ws-x-2)))))
+        ;; This should change going forward. Deletion of workspace is temporary.
+        (testing "Workspace has been deleted"
+          (is (not (t2/exists? :model/Workspace :id ws-id))))))))
 
 (deftest merge-empty-workspace-test
   (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
@@ -455,7 +455,7 @@
                 resp))))
     ;; This should change going forward. Deletion of workspace is temporary.
     (testing "Workspace has been deleted"
-      (is (nil? (t2/select-one :model/Workspace :id ws-id))))))
+      (is (not (t2/exists? :model/Workspace :id ws-id))))))
 
 (deftest merge-transfom-test
   (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_test_table"}
@@ -697,7 +697,7 @@
             (testing "Propagation back to core"
               (is (= "UPDATED 1"
                      (t2/select-one-fn :name :model/Transform :id (:global_id ws-x-1))))
-              (is (nil? (t2/select-one :model/Transform :id (:id x2))))
+              (is (not (t2/exists? :model/Transform :id (:id x2))))
               (is (= (:name ws-x-3)
                      (t2/select-one-fn :name :model/Transform :id new-global-id))))))))))
 
@@ -1118,7 +1118,7 @@
       (testing "can be archived and deleted"
         (is (= :archived (:status (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/archive")))))
         (is (= {:ok true} (mt/user-http-request :crowberto :delete 200 (ws-url ws-id))))
-        (is (nil? (t2/select-one :model/Workspace :id ws-id)))))))
+        (is (not (t2/exists? :model/Workspace :id ws-id)))))))
 
 (deftest initialize-uninitialized-workspace-test
   (testing "via adding transform"
@@ -1237,8 +1237,8 @@
         (testing "deletes transform"
           (is (nil? (mt/user-http-request :crowberto :delete 204
                                           (ws-url (:id workspace1) (str "/transform/" (:ref_id transform2))))))
-          (is (some? (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id transform1))))
-          (is (nil? (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id transform2)))))))))
+          (is (t2/exists? :model/WorkspaceTransform :ref_id (:ref_id transform1)))
+          (is (not (t2/exists? :model/WorkspaceTransform :ref_id (:ref_id transform2)))))))))
 
 (deftest run-workspace-transform-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/run"

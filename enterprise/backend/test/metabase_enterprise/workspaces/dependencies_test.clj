@@ -243,9 +243,9 @@
           (is (= 1 (count edges)))
           (is (= :output (:to_entity_type (first edges)))))
         (testing "no workspace_input created for internal dependency"
-          (is (nil? (t2/select-one :model/WorkspaceInput
-                                   :workspace_id (:id workspace)
-                                   :table "upstream_output"))))))))
+          (is (not (t2/exists? :model/WorkspaceInput
+                               :workspace_id (:id workspace)
+                               :table "upstream_output"))))))))
 
 (deftest write-dependencies-updates-on-change-test
   (testing "write-dependencies! updates records and removes stale edges"
@@ -282,9 +282,9 @@
         (testing "old edge is removed"
           (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace)))))
         (testing "new input is created"
-          (is (some? (t2/select-one :model/WorkspaceInput
-                                    :workspace_id (:id workspace)
-                                    :table (:name products-table)))))))))
+          (is (t2/exists? :model/WorkspaceInput
+                          :workspace_id (:id workspace)
+                          :table (:name products-table))))))))
 
 ;;; ---------------------------------------- Integration test ----------------------------------------
 
