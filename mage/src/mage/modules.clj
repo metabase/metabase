@@ -224,7 +224,8 @@
    "sparksql" [:sparksql]
    "sqlite" [:sqlite]
    "sqlserver" [:sqlserver]
-   "starburst" [:starburst]
+   ;; starburst tests are currently disabled in drivers.yml
+   ;; "starburst" [:starburst]
    "vertica" [:vertica]})
 
 (defn- drivers-with-file-changes
