@@ -464,6 +464,35 @@ describe("scenarios > data studio > measures > queries", () => {
     });
   });
 
+  it("should be possible to join on a measure in a follow up stage", () => {
+    H.createMeasure({
+      name: MEASURE_NAME,
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      },
+    });
+    useMeasure(() => {
+      breakout("Created At");
+
+      H.getNotebookStep("summarize").button("Join data").click();
+      H.popover().within(() => {
+        cy.findByText("Sample Database").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.popover().findByText("Custom Expression").click();
+
+      H.CustomExpressionEditor.clear().type("floor([Table Measure]/10)").blur();
+      H.popover().findByText("Done").click();
+
+      H.popover().findByText("ID").click();
+    });
+
+    verifyRowValues([["April 2022", "52.76", "5", "1"]]);
+  });
+
   describe("measure refs", () => {
     it("should be possible to rename a measure without breaking queries that reference it", () => {
       H.createMeasure({
