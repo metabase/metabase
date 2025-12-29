@@ -3,6 +3,7 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
+import { uuid } from "metabase/lib/uuid";
 import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
@@ -250,11 +251,11 @@ export const metabot = createSlice({
       state,
       { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
     ) => {
-      state.reactions.suggestedCodeEdits[codeEdit.bufferId] = codeEdit;
+      state.reactions.suggestedCodeEdits[codeEdit.buffer_id] = codeEdit;
     },
     removeSuggestedCodeEdit: (
       state,
-      action: PayloadAction<MetabotCodeEdit["bufferId"]>,
+      action: PayloadAction<MetabotCodeEdit["buffer_id"]>,
     ) => {
       delete state.reactions.suggestedCodeEdits[action.payload];
     },

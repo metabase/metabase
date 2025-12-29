@@ -1,9 +1,10 @@
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   Box,
@@ -21,7 +22,7 @@ import {
   useGetWorkspaceCheckoutQuery,
   useGetWorkspacesQuery,
 } from "metabase-enterprise/api";
-import type { DatabaseId, Transform, Workspace } from "metabase-types/api";
+import type { DatabaseId, Transform } from "metabase-types/api";
 
 type EditTransformMenuProps = {
   transform: Transform;
@@ -39,34 +40,38 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
     useCreateWorkspaceMutation();
   const { data: checkoutData, isLoading: isWorkspaceCheckoutLoading } =
     useGetWorkspaceCheckoutQuery(transform.id);
-  const [addedWorkspaceIds, setAddedWorkspaceIds] = useState<Set<number>>(
-    () => new Set(),
-  );
 
   const workspaces = useMemo(
     () => workspacesData?.items ?? [],
     [workspacesData],
   );
 
-  const existingWorkspaceIds = useMemo(() => {
-    const ids = new Set<number>();
-    checkoutData?.transforms?.forEach((item) => {
-      if (item.workspace?.id != null) {
-        ids.add(item.workspace.id);
-      }
-    });
-    addedWorkspaceIds.forEach((id) => ids.add(id));
-    return ids;
-  }, [checkoutData, addedWorkspaceIds]);
+  const matchingWorkspaces = useMemo(() => {
+    const allMatchingWorkspaceIds =
+      workspaces
+        ?.filter((item) => item.database_id === sourceDatabaseId)
+        ?.map((item) => item.id) ?? [];
 
-  const matchingWorkspaces = useMemo(
-    () =>
-      workspaces.filter(
-        (workspace) =>
-          !existingWorkspaceIds.has(workspace.id) && !workspace.archived,
-      ),
-    [workspaces, existingWorkspaceIds],
-  );
+    // Workspaces which already include this transform.
+    const checkedWorkspaceIds =
+      checkoutData?.transforms?.map((item) => item.workspace?.id) ?? [];
+
+    return Array.from(
+      new Set([...checkedWorkspaceIds, ...allMatchingWorkspaceIds]),
+    )
+      .map((id) => {
+        const workspace = workspaces.find((ws) => ws.id === id);
+        if (!workspace) {
+          return null;
+        }
+        return {
+          id,
+          isChecked: checkedWorkspaceIds.includes(id),
+          name: workspace.name,
+        };
+      })
+      .filter((workspace) => !!workspace);
+  }, [checkoutData?.transforms, workspaces, sourceDatabaseId]);
 
   const isBusy =
     isCreatingWorkspace || isLoadingWorkspaces || isWorkspaceCheckoutLoading;
@@ -75,20 +80,17 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
       ? t`No workspaces yet`
       : t`No workspaces for this database yet`;
 
-  const handleWorkspaceSelect = async (workspace: Workspace) => {
-    dispatch(
-      push(
-        `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
-      ),
-    );
+  const handleWorkspaceSelect = async (workspace: {
+    id: number;
+    name?: string;
+  }) => {
+    dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
   };
 
   const handleCreateWorkspace = async ({
-    name,
     databaseId,
   }: {
-    name?: string;
-    databaseId?: DatabaseId;
+    databaseId?: DatabaseId | null;
   }) => {
     if (!databaseId) {
       sendErrorToast(t`Failed to create workspace, no database id`);
@@ -97,17 +99,10 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
 
     try {
       const workspace = await createWorkspace({
-        name: name?.trim() || t`New workspace`,
         database_id: Number(databaseId),
       }).unwrap();
 
-      setAddedWorkspaceIds((prev) => new Set(prev).add(workspace.id));
-
-      dispatch(
-        push(
-          `/data-studio/workspaces/${workspace.id}?transformId=${transform.id}`,
-        ),
-      );
+      dispatch(push(Urls.dataStudioWorkspace(workspace.id, transform.id)));
     } catch (error) {
       console.error(error);
       sendErrorToast(t`Failed to create workspace`);
@@ -161,17 +156,22 @@ export function EditTransformMenu({ transform }: EditTransformMenuProps) {
               {matchingWorkspaces.map((workspace) => (
                 <Menu.Item
                   key={workspace.id}
-                  leftSection={<Icon name="sparkles" />}
+                  leftSection={
+                    <Icon
+                      name="sparkles"
+                      c={workspace.isChecked ? "brand" : "text-dark"}
+                    />
+                  }
                   onClick={() => handleWorkspaceSelect(workspace)}
                   disabled={isBusy}
                 >
                   <Stack gap={2} align="flex-start">
                     <Text fw={600}>{workspace.name}</Text>
-                    {workspace.created_at && (
+                    {/* {workspace.created_at && (
                       <Text size="sm" c="text-light">
                         {formatWorkspaceDate(workspace.created_at)}
                       </Text>
-                    )}
+                    )} */}
                   </Stack>
                 </Menu.Item>
               ))}

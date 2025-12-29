@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
+   [metabase.config.core :as config]
    [metabase.driver.util :as driver.u]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -15,7 +16,9 @@
   "Sets up test fixtures for workspace tests. Must be called at the top level of test namespaces."
   []
   (use-fixtures :once (fn [tests]
-                        (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+                        ;; E.g. app-db.yml tests perorm driver tests. Workspaces are not supported on mysql.
+                        ;; Following disj suppresses those runs destined for failure.
+                        (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
                           (mt/with-premium-features [:workspaces :dependencies :transforms]
                             (search.tu/with-index-disabled
                               (tests))))))
@@ -36,6 +39,7 @@
 (t2/define-before-delete :model/WorkspaceCleanUpInTest
   [workspace]
   (try
+    (log/infof "Cleaningup workspace %d in tests" (:id workspace))
     (when (:database_details workspace)
       (let [database (t2/select-one :model/Database (:database_id workspace))]
         (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)))
@@ -52,7 +56,7 @@
     (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
                  :done?      #(not= :pending (:status %))
                  ;; some cloud drivers are really slow
-                 :timeout-ms 10000})
+                 :timeout-ms (if config/is-dev? 5000 60000)})
         (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
 (defn create-workspace-for-test!

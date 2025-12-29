@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -28,29 +29,32 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    Statement
     Types)))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :redshift, :parent #{:postgres})
 
-(doseq [[feature supported?] {:connection-impersonation       true
-                              :describe-fields                true
-                              :describe-fks                   true
-                              :rename                         true
-                              :atomic-renames                 true
-                              :expression-literals            true
-                              :identifiers-with-spaces        false
-                              :uuid-type                      false
-                              :nested-field-columns           false
-                              :test/jvm-timezone-setting      false
-                              :database-routing               true
-                              :metadata/table-existence-check true
-                              :transforms/python              true
-                              :transforms/table               true
-                              :describe-default-expr          false
-                              :describe-is-generated          false
-                              :describe-is-nullable           false}]
+(doseq [[feature supported?] {:atomic-renames                   true
+                              :connection-impersonation         true
+                              :database-routing                 true
+                              :describe-default-expr            false
+                              :describe-fields                  true
+                              :describe-fks                     true
+                              :describe-is-generated            false
+                              :describe-is-nullable             false
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/table-existence-check   true
+                              :nested-field-columns             false
+                              :regex/lookaheads-and-lookbehinds false
+                              :rename                           true
+                              :test/jvm-timezone-setting        false
+                              :transforms/python                true
+                              :transforms/table                 true
+                              :uuid-type                        false
+                              :workspace                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -223,6 +227,19 @@
         (str/starts-with? stn "tinytext")   :type/Text
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
+
+        ;; Iceberg table types - https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+        (= stn "string")                    :type/Text
+        (= stn "boolean")                   :type/Boolean
+        (= stn "long")                      :type/BigInteger
+        (str/starts-with? stn "decimal(")   :type/Decimal
+        (= stn "binary")                    :type/*
+        (= stn "date")                      :type/Date
+        (= stn "timestamp")                 :type/DateTime
+        (= stn "timestamptz")               :type/DateTimeWithTZ
+
+        ;; MySQL federated table enum types
+        (str/starts-with? stn "enum(")      :type/Text
 
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
@@ -657,3 +674,60 @@
   ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Redshift inherits init-workspace-isolation! and grant-workspace-read-access! from Postgres.
+;; Only destroy needs to be overridden because Redshift doesn't support DROP OWNED BY.
+
+(defn- user-exists?
+  "Check if a Redshift user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defn- schema-exists?
+  "Check if a schema exists in Redshift."
+  [conn schema-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
+
+(defn- schemas-with-user-grants
+  "Query Redshift to find schemas where the user has been granted privileges."
+  [conn username]
+  (->> (jdbc/query conn
+                   ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
+           WHERE identity_name = ? AND identity_type = 'user'"
+                    username])
+       (keep :namespace_name)))
+
+(defmethod driver/destroy-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-exists    (user-exists? t-conn username)
+            schema-exists  (schema-exists? t-conn schema-name)
+            granted-schemas (when user-exists
+                              (schemas-with-user-grants t-conn username))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          ;; Only revoke if user exists
+          (when user-exists
+            (doseq [schema granted-schemas]
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
+                                         schema username))
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
+                                         schema username)))
+            ;; Only revoke default privileges if both user and schema exist
+            (when schema-exists
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                         schema-name username))))
+          ;; These are safe with IF EXISTS
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP USER IF EXISTS \"%s\"" username))
+          (.executeBatch ^Statement stmt))))))

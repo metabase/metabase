@@ -1,5 +1,4 @@
 // Functions that get key elements in the app
-
 import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
 
 export const POPOVER_ELEMENT =

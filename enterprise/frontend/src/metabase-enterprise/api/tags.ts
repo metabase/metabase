@@ -29,6 +29,7 @@ import type {
   TransformRun,
   TransformTag,
   Workspace,
+  WorkspaceItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -95,7 +96,7 @@ export function provideWorkspacesTags(
 }
 
 export function provideWorkspaceTags(
-  workspace: Workspace,
+  workspace: Workspace | WorkspaceItem,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("workspace", workspace.id)];
 }

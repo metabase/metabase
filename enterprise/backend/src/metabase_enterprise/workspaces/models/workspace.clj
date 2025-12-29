@@ -4,6 +4,7 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -19,12 +20,14 @@
   (derive :hook/timestamped?))
 
 (defn archive!
-  "Archive a workspace. Destroys database isolation resources, revokes access grants, sets archived_at."
+  "Archive a workspace. Destroys database isolation resources (best-effort), revokes access grants, sets archived_at.
+   Cleanup failures are logged but don't block archiving - the workspace can be unarchived to retry cleanup,
+   or deleted once the underlying permission issues are resolved."
   [{workspace-id :id :as workspace}]
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
   (when (not= :uninitialized (:status workspace))
     (let [database (t2/select-one :model/Database :id (:database_id workspace))]
-      (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
+      (ws.isolation/destroy-workspace-isolation! database workspace)
       ;; Mark all inputs as un-granted since the user was dropped
       (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
                   {:access_granted false})))
@@ -53,8 +56,8 @@
   [workspace]
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
   (when (not= :uninitialized (:status workspace))
-    (let [database (t2/select-one :model/Database :id (:database_id workspace))]
-      (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
+    (when-let [database (t2/select-one :model/Database :id (:database_id workspace))]
+      (ws.isolation/destroy-workspace-isolation! database workspace)
       (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)}
                   {:access_granted false})))
   (t2/delete! :model/Workspace (:id workspace)))

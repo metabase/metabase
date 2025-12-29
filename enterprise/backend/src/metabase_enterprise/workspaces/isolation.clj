@@ -1,63 +1,56 @@
 (ns metabase-enterprise.workspaces.isolation
+  "Workspace database isolation functions.
+
+  The actual driver-specific implementations are now in the driver files:
+  - metabase.driver.h2
+  - metabase.driver.postgres
+  - metabase.driver.redshift
+  - metabase.driver.snowflake
+  - metabase.driver.sqlserver
+  - metabase.driver.clickhouse
+  - metabase.driver.bigquery-cloud-sdk
+
+  This namespace provides the public API for workspace isolation."
   (:require
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]))
 
-;;;; Driver multimethods
-;; Implementations are in metabase-enterprise.workspaces.driver.{postgres,h2,sql-jdbc}
+;;;; Delegation to driver methods
+;; The actual multimethod implementations are now in the individual driver files.
+;; These functions dispatch through the driver multimethods.
 
-(defmulti grant-read-access-to-tables!
-  "Grant read access to these tables.
-   `database-or-conn` can be a database map or {:connection conn} to reuse an existing connection."
-  {:added "0.59.0" :arglists '([driver database-or-conn workspace tables])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmulti init-workspace-database-isolation!
+(defn init-workspace-database-isolation!
   "Create database isolation for a workspace. Return the database details.
-   `database-or-conn` can be a database map or {:connection conn} to reuse an existing connection."
-  {:added "0.59.0" :arglists '([driver database-or-conn workspace])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+   Delegates to driver/init-workspace-isolation!"
+  [database workspace]
+  (driver/init-workspace-isolation! (driver.u/database->driver database) database workspace))
 
-(defmulti destroy-workspace-isolation!
+(defn grant-read-access-to-tables!
+  "Grant read access to these tables.
+   Delegates to driver/grant-workspace-read-access!"
+  [database workspace tables]
+  (driver/grant-workspace-read-access! (driver.u/database->driver database) database workspace tables))
+
+(defn destroy-workspace-isolation!
   "Destroy all database resources created for workspace isolation.
-  This includes dropping tables, schemas/databases, users, roles, and logins.
-  Fails fast on first error. Should be called when deleting a workspace.
-  `database-or-conn` can be a database map or {:connection conn} to reuse an existing connection."
-  {:added "0.59.0" :arglists '([driver database-or-conn workspace])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-;;;; Permission checking
-
-(defmulti check-isolation-permissions
-  "Check if database connection has sufficient permissions for workspace isolation.
-   Runs test operations in a transaction that is always rolled back.
-
-   `test-table` is an optional {:schema ... :name ...} map used to test GRANT SELECT.
-   If nil, the grant test is skipped.
-
-   Returns nil on success, or an error message string on failure.
-
-   Default :sql-jdbc implementation tests CREATE SCHEMA, CREATE USER, GRANT, and DROP.
-   Drivers can override for database-specific syntax."
-  {:added "0.59.0" :arglists '([driver database test-table])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+   This includes dropping tables, schemas/databases, users, roles, and logins.
+   Fails fast on first error. Should be called when deleting a workspace.
+   Delegates to driver/destroy-workspace-isolation!"
+  [database workspace]
+  (driver/destroy-workspace-isolation! (driver.u/database->driver database) database workspace))
 
 ;;;; Public API
 
 (defn ensure-database-isolation!
   "Wrapper around the driver method, to make migrations easier in future."
   [workspace database]
-  (init-workspace-database-isolation! (driver.u/database->driver database) database workspace))
+  (init-workspace-database-isolation! database workspace))
 
 (defn do-with-workspace-isolation
   "Impl of* with-workspace-isolation*."
   [workspace thunk]
   (driver/with-swapped-connection-details (:database_id workspace)
-    (:database_details workspace)
+                                          (:database_details workspace)
     (thunk)))
 
 (defmacro with-workspace-isolation

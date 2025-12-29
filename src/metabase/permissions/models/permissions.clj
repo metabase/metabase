@@ -170,6 +170,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -406,12 +407,18 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn audit-namespace-clause
+(defn namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val]
-  (if (and (nil? namespace-val) (premium-features/enable-audit-app?))
-    [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
-    [:= namespace-keyword namespace-val]))
+  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
+  [:or
+   [:= namespace-keyword namespace-val]
+   (when (and (nil? namespace-val)
+              (premium-features/enable-audit-app?))
+     [:= namespace-keyword "analytics"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "shared-tenant-collection"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "tenant-specific"])])
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper

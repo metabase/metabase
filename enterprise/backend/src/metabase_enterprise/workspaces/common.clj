@@ -9,6 +9,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
 
@@ -94,13 +95,15 @@
 (defn- run-workspace-setup!
   "Background job: runs isolation, grants. Updates status to :ready when done."
   [{ws-id :id :as workspace} database]
-  (ws.log/track! ws-id :workspace-setup
-    (let [{:keys [_database_details]} (ws.log/track! ws-id :database-isolation
-                                        (-> (ws.isolation/ensure-database-isolation! workspace database)
-                                            ;; it actually returns just those, this is more like a doc than behavior
-                                            (select-keys [:schema :database_details])
-                                            (u/prog1 (t2/update! :model/Workspace ws-id <>))))]
-      (t2/update! :model/Workspace ws-id {:status :ready}))))
+  (try
+    (ws.log/track! ws-id :workspace-setup
+      (let [isolation-details (ws.log/track! ws-id :database-isolation
+                                (ws.isolation/ensure-database-isolation! workspace database))]
+        (t2/update! :model/Workspace ws-id (merge (select-keys isolation-details [:schema :database_details])
+                                                  {:status :ready}))))
+    (catch Exception e
+      (log/error e "Failed to setup workspace")
+      (throw e))))
 
 (defn initialize-workspace!
   "Initialize an uninitialized workspace with the given database_id.
@@ -148,7 +151,7 @@
   [creator-id {ws-name-maybe :name
                db-id         :database_id
                provisional?  :provisional?}]
-  (let [ws-name (or ws-name-maybe (str (random-uuid)))
+  (let [ws-name (or ws-name-maybe (ws.u/generate-name))
         ws      (create-uninitialized-workspace! creator-id db-id ws-name 5)]
     (if provisional?
       ws
@@ -157,7 +160,7 @@
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.
    If workspace is uninitialized, initializes it with the transform's target database."
-  [_creator-id workspace entity-type global-id body]
+  [creator-id workspace entity-type global-id body]
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:status workspace))
@@ -172,8 +175,8 @@
             transform       (t2/insert-returning-instance!
                              :model/WorkspaceTransform
                              (assoc (select-keys body [:name :description :source :target])
-                                    ;; TODO add this to workspace_transform, or implicitly use the id of the user that does the merge?
-                                    ;;:creator_id creator-id
+                                    :ref_id (ws.u/generate-ref-id)
+                                    :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]
         (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))

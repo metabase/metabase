@@ -20,7 +20,10 @@
 
 (defmethod transforms.i/target-db-id :query
   [transform]
-  (-> transform :target :database))
+  (or (get-in transform [:target :database])
+      (:target_db_id transform)
+      ;; Fallback to source. https://github.com/metabase/metabase/pull/67084#discussion_r2630147855
+      (-> transform :source :query :database)))
 
 (mr/def ::transform-details
   [:map

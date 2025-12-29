@@ -83,13 +83,15 @@
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids database_id type]}]
   (api/check-superuser)
-  (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
+  (let [type       (when type (map #(if (= % "query") "mbql" %) type))
+        where      (cond-> [:and]
+                     type        (conj [:in :source_type type])
+                     database_id (conj [:= :target_db_id database_id]))
+        transforms (t2/select :model/Transform {:where where :order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (transforms.util/->database-id-filter-xf database_id)
-                (transforms.util/->type-filter-xf type)
                 (map #(update % :last_run transforms.util/localize-run-timestamps)))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
@@ -114,23 +116,25 @@
   (get-transforms query-params))
 
 (defn create-transform!
-  "Create new transform in the appdb."
-  [body]
-  (let [transform (t2/with-transaction [_]
-                    (let [tag-ids (:tag_ids body)
-                          transform (t2/insert-returning-instance!
-                                     :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
-                                            ;; TODO: For workspace transfrom creation this user is not correct.
-                                            ;;       We should revisit this bit when working on https://linear.app/metabase/issue/BOT-691/easy-correctly-set-transformcreator-id-on-workspace-merge
-                                            :creator_id api/*current-user-id*))]
-                      ;; Add tag associations if provided
-                      (when (seq tag-ids)
-                        (transform.model/update-transform-tags! (:id transform) tag-ids))
-                      ;; Return with hydrated tag_ids
-                      (t2/hydrate transform :transform_tag_ids :creator)))]
-    (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    transform))
+  "Create new transform in the appdb.
+   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+  ([body]
+   (create-transform! body nil))
+  ([body creator-id]
+   (let [creator-id (or creator-id api/*current-user-id*)
+         transform  (t2/with-transaction [_]
+                      (let [tag-ids   (:tag_ids body)
+                            transform (t2/insert-returning-instance!
+                                       :model/Transform
+                                       (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                              :creator_id creator-id))]
+                        ;; Add tag associations if provided
+                        (when (seq tag-ids)
+                          (transform.model/update-transform-tags! (:id transform) tag-ids))
+                        ;; Return with hydrated tag_ids
+                        (t2/hydrate transform :transform_tag_ids :creator)))]
+     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
+     transform)))
 
 ;; TODO (chris 2025/12/16) fully populate the result schema
 ;; TODO (lbrdnk 2025/12/16) relaxed result schema to unblock FE. This should be properly handled later.

@@ -3,8 +3,6 @@
   gap: 0.5rem;
   flex-wrap: nowrap;
   overflow: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
 
   &::-webkit-scrollbar {
     display: none;
@@ -14,7 +12,15 @@
     display: none;
   }
 
-    & button {
+  & button {
     border-radius: 0;
   }
+}
+
+.sidebarResizableBox {
+  display: flex;
+  flex-shrink: 0;
+  border-left: 1px solid var(--mb-color-border);
+  position: relative;
+  height: 100%;
 }

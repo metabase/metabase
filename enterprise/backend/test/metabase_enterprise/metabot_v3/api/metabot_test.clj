@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.client :as metabot-v3.client]
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
@@ -272,26 +271,7 @@
             (is (= "Content verification is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                    (:message (mt/user-http-request :crowberto :put 402
                                                    (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                                   {:use_verified_content true}))))))
-
-        (testing "should prevent updating collection_id on primary metabot instance"
-          (let [metabot-id (metabot-v3.config/normalize-metabot-id metabot-v3.config/internal-metabot-id)]
-            (is (= "Cannot update collection_id for the primary metabot instance."
-                   (mt/user-http-request :crowberto :put 400
-
-                                         (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                         {:collection_id collection-id-1})))
-            ;; Verify the collection_id was not updated
-            (let [unchanged-metabot (t2/select-one :model/Metabot :id metabot-id)]
-              (is (= nil (:collection_id unchanged-metabot))))
-
-            ;; Verify that updating other fields still works
-            (with-redefs [metabot-v3.suggested-prompts/generate-sample-prompts (constantly nil)]
-              (let [response (mt/user-http-request :crowberto :put 200
-                                                   (format "ee/metabot-v3/metabot/%d" metabot-id)
-                                                   {:use_verified_content true})]
-                (is (true? (:use_verified_content response)))
-                (is (= nil (:collection_id response)))))))))))
+                                                   {:use_verified_content true}))))))))))
 
 (deftest metabot-prompt-regeneration-on-config-change-test
   (mt/dataset test-data

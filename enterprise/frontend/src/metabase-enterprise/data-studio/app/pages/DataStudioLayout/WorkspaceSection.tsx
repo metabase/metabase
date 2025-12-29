@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import { h } from "@tiptap/core";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
@@ -18,6 +19,7 @@ import {
   Group,
   Icon,
   type IconName,
+  Loader,
   Menu,
   Skeleton,
   Stack,
@@ -29,12 +31,9 @@ import {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
   useDeleteWorkspaceMutation,
-  useGetWorkspaceAllowedDatabasesQuery,
   useGetWorkspacesQuery,
   useUnarchiveWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
-import { CreateWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/CreateWorkspaceModal/CreateWorkspaceModal";
-import { useRecentWorkspaceDatabaseId } from "metabase-enterprise/data-studio/workspaces/hooks/use-recent-workspace-database-id";
 import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
 import type { Workspace, WorkspaceId } from "metabase-types/api/workspace";
 
@@ -47,12 +46,10 @@ type WorkspacesSectionProps = {
 function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const dispatch = useDispatch();
   const [isWorkspacesExpanded, setIsWorkspacesExpanded] = useState(true);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { pathname } = useSelector(getLocation);
-  const { data: workspacesData, isLoading } = useGetWorkspacesQuery();
-  const { data: allowedDatabasesData, isLoading: isLoadingDatabases } =
-    useGetWorkspaceAllowedDatabasesQuery();
-  const [createWorkspace, { isLoading: isCreating }] =
+  const { data: workspacesData, isLoading: areWorkspacesLoading } =
+    useGetWorkspacesQuery();
+  const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
 
   const workspaces = useMemo(
@@ -71,21 +68,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     [workspacesData],
   );
 
-  const databaseOptions = useMemo(
-    () =>
-      (allowedDatabasesData?.databases ?? []).map((db) => ({
-        value: String(db.id),
-        label: db.name,
-        disabled: !db.supported,
-      })),
-    [allowedDatabasesData],
-  );
-
-  const defaultDatabaseId = useRecentWorkspaceDatabaseId(
-    workspaces,
-    databaseOptions,
-  );
-
   const handleOpenWorkspace = useCallback(
     (workspaceId: number) => {
       dispatch(push(Urls.dataStudioWorkspace(workspaceId)));
@@ -93,36 +75,16 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     [dispatch],
   );
 
-  const handleOpenCreateModal = useCallback(() => {
-    setIsCreateModalOpen(true);
-  }, []);
-
-  const handleCloseCreateModal = useCallback(() => {
-    setIsCreateModalOpen(false);
-  }, []);
-
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
 
-  const handleCreateWorkspace = useCallback(
-    async ({ name, databaseId }: { name: string; databaseId: string }) => {
-      try {
-        const workspace = await createWorkspace({
-          name,
-          database_id: Number(databaseId),
-        }).unwrap();
-        handleCloseCreateModal();
-        handleOpenWorkspace(workspace.id);
-      } catch (error) {
-        sendErrorToast(t`Failed to create workspace`);
-      }
-    },
-    [
-      createWorkspace,
-      handleCloseCreateModal,
-      handleOpenWorkspace,
-      sendErrorToast,
-    ],
-  );
+  const handleCreateWorkspace = useCallback(async () => {
+    try {
+      const workspace = await createWorkspace().unwrap();
+      handleOpenWorkspace(workspace.id);
+    } catch (error) {
+      sendErrorToast(t`Failed to create workspace`);
+    }
+  }, [createWorkspace, handleOpenWorkspace, sendErrorToast]);
 
   const [archiveWorkspace] = useArchiveWorkspaceMutation();
   const [unarchiveWorkspace] = useUnarchiveWorkspaceMutation();
@@ -213,13 +175,17 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
         <>
           <UnstyledButton
             className={S.newWorkspaceButton}
-            onClick={handleOpenCreateModal}
-            disabled={isLoadingDatabases}
+            onClick={handleCreateWorkspace}
+            disabled={isCreatingWorkspace || areWorkspacesLoading}
             p="0.5rem"
             bdrs="md"
           >
             <Flex align="center" gap="xs">
-              <Icon name="add" size={16} />
+              {isCreatingWorkspace ? (
+                <Loader size="xs" />
+              ) : (
+                <Icon name="add" size={16} />
+              )}
               <Text size="sm" fw={500}>
                 {t`New workspace`}
               </Text>
@@ -229,7 +195,7 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
             gap="0.75rem"
             style={{ flex: 1, overflowY: "auto", minHeight: 0 }}
           >
-            {isLoading ? (
+            {areWorkspacesLoading ? (
               <>
                 <Skeleton height={80} radius="md" />
                 <Skeleton height={80} radius="md" />
@@ -259,15 +225,6 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
           </Stack>
         </>
       )}
-
-      <CreateWorkspaceModal
-        opened={isCreateModalOpen}
-        onClose={handleCloseCreateModal}
-        onSubmit={handleCreateWorkspace}
-        databaseOptions={databaseOptions}
-        isSubmitting={isCreating}
-        defaultDatabaseId={defaultDatabaseId}
-      />
     </Stack>
   );
 }
@@ -324,6 +281,7 @@ function WorkspaceItem({
       onClick={() => onOpen(workspace.id)}
       p="0.75rem"
       bdrs="md"
+      name={workspace.name}
     >
       <Flex align="flex-start" justify="space-between" gap="xs">
         <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
@@ -331,7 +289,12 @@ function WorkspaceItem({
             {workspace.name}
           </Text>
           {status && (
-            <Group gap="xs" align="center" wrap="nowrap">
+            <Group
+              gap="xs"
+              align="center"
+              wrap="nowrap"
+              data-testid="workspace-status"
+            >
               <Icon name={status.icon} size={10} c={status.color} />
               <Text size="xs" fw={500} c={status.color}>
                 {status.label}
@@ -359,12 +322,23 @@ function WorkspaceItem({
           </Menu.Target>
           <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             {workspace.archived ? (
-              <Menu.Item
-                leftSection={<Icon name="revert" />}
-                onClick={handleUnarchive}
-              >
-                {t`Restore`}
-              </Menu.Item>
+              <>
+                <Menu.Item
+                  leftSection={<Icon name="revert" />}
+                  onClick={handleUnarchive}
+                >
+                  {t`Restore`}
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  c="error"
+                  leftSection={<Icon name="trash" />}
+                  onClick={handleDelete}
+                  color="danger"
+                >
+                  {t`Delete`}
+                </Menu.Item>
+              </>
             ) : (
               <Menu.Item
                 leftSection={<Icon name="archive" />}
@@ -373,15 +347,6 @@ function WorkspaceItem({
                 {t`Archive`}
               </Menu.Item>
             )}
-            <Menu.Divider />
-            <Menu.Item
-              c="error"
-              leftSection={<Icon name="trash" />}
-              onClick={handleDelete}
-              color="danger"
-            >
-              {t`Delete`}
-            </Menu.Item>
           </Menu.Dropdown>
         </Menu>
       </Flex>

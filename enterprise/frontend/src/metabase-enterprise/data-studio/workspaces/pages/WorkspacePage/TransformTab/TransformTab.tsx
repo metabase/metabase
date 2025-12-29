@@ -1,22 +1,24 @@
 import { useDisclosure } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { useListDatabaseSchemasQuery } from "metabase/api";
+import {
+  useLazyGetAdhocQueryQuery,
+  useListDatabaseSchemasQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Button, Group, Icon, Stack, Text, Tooltip } from "metabase/ui";
+import { Box, Button, Group, Icon, Stack } from "metabase/ui";
 import {
   useCreateWorkspaceTransformMutation,
   useValidateTableNameMutation,
   workspaceApi,
 } from "metabase-enterprise/api";
-import { tag } from "metabase-enterprise/api/tags";
+import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import {
   deactivateSuggestedTransform,
@@ -33,6 +35,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   CreateWorkspaceTransformRequest,
   DatabaseId,
+  DatasetQuery,
   DraftTransformSource,
   ExternalTransform,
   Transform,
@@ -45,7 +48,7 @@ import type {
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { SaveTransformButton } from "../SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
-import type { EditedTransform, OpenTable } from "../WorkspaceProvider";
+import type { EditedTransform, PreviewTab } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -58,8 +61,7 @@ interface Props {
   workspaceTransforms: WorkspaceTransformItem[];
   isDisabled: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
-  onOpenTransform: (transformId: number | string) => void;
-  onResultsClick?: (table: OpenTable) => void;
+  onOpenTransform: (transform: Transform | WorkspaceTransform) => void;
 }
 
 export const TransformTab = ({
@@ -71,14 +73,14 @@ export const TransformTab = ({
   isDisabled,
   onChange,
   onOpenTransform,
-  onResultsClick,
 }: Props) => {
   const {
     updateTransformState,
-    setActiveTransform,
     removeUnsavedTransform,
     removeOpenedTransform,
     removeEditedTransform,
+    addOpenedTab,
+    updatePreviewTab,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -95,17 +97,50 @@ export const TransformTab = ({
   const wsTransform = transform as WorkspaceTransform;
 
   // Run transform hook - handles run state, API calls, and error handling
-  const {
-    statusRun,
-    buttonRun,
-    isRunStatusLoading,
-    isRunning,
-    handleRun,
-    output,
-  } = useWorkspaceTransformRun({
-    workspaceId,
-    transform: wsTransform,
-  });
+  const { statusRun, buttonRun, isRunStatusLoading, isRunning, handleRun } =
+    useWorkspaceTransformRun({
+      workspaceId,
+      transform: wsTransform,
+    });
+
+  const [runAdhocQuery] = useLazyGetAdhocQueryQuery();
+  const abortRef = useRef<(() => void) | undefined>();
+
+  const handleRunQueryStart = useCallback(
+    async (query: DatasetQuery) => {
+      // abort previous query
+      abortRef.current?.();
+
+      const previewTabId = `preview-${transform.id}`;
+
+      const previewTab: PreviewTab = {
+        id: previewTabId,
+        name: t`Preview (${transform.name})`,
+        type: "preview",
+        dataset: null,
+        transformId: transform.id,
+        isLoading: true,
+      };
+      addOpenedTab(previewTab, false);
+
+      const action = runAdhocQuery(query);
+      abortRef.current = action.abort;
+
+      const { data: dataset } = await action;
+      abortRef.current = undefined;
+
+      if (dataset) {
+        updatePreviewTab(previewTabId, dataset);
+      }
+    },
+    [
+      transform.id,
+      transform.name,
+      addOpenedTab,
+      updatePreviewTab,
+      runAdhocQuery,
+    ],
+  );
 
   const normalizeSource = useCallback(
     (source: DraftTransformSource) => {
@@ -207,13 +242,13 @@ export const TransformTab = ({
       // Invalidate workspace transforms after creating new one
       dispatch(
         workspaceApi.util.invalidateTags([
-          tag("workspace-transforms", workspaceId),
+          idTag("workspace-transforms", workspaceId),
+          listTag("external-transforms"),
         ]),
       );
 
       // Open the newly saved transform
-      setActiveTransform(savedTransform);
-      onOpenTransform(savedTransform.id);
+      onOpenTransform(savedTransform);
 
       sendSuccessToast(t`Transform saved successfully`);
       setSaveModalOpen(false);
@@ -245,8 +280,7 @@ export const TransformTab = ({
 
     removeEditedTransform(transform.id);
     removeOpenedTransform(transform.id);
-    setActiveTransform(savedTransform);
-    onOpenTransform(savedTransform.id);
+    onOpenTransform(savedTransform);
   };
 
   const validationSchemaExtension = useTransformValidation({
@@ -326,26 +360,24 @@ export const TransformTab = ({
           </Group>
 
           <Group>
-            <Group>
-              {isSaved && (
-                <WorkspaceRunButton
-                  id={transform.id}
-                  run={buttonRun}
-                  isDisabled={hasChanges || isDisabled}
-                  onRun={handleRun}
-                />
-              )}
+            {isSaved && (
+              <WorkspaceRunButton
+                id={transform.id}
+                run={buttonRun}
+                isDisabled={hasChanges || isDisabled}
+                onRun={handleRun}
+              />
+            )}
 
-              {isSaved && (
-                <SaveTransformButton
-                  databaseId={databaseId}
-                  workspaceId={workspaceId}
-                  editedTransform={editedTransform}
-                  transform={transform}
-                  isArchived={isDisabled}
-                />
-              )}
-            </Group>
+            {isSaved && (
+              <SaveTransformButton
+                databaseId={databaseId}
+                workspaceId={workspaceId}
+                editedTransform={editedTransform}
+                transform={transform}
+                isArchived={isDisabled}
+              />
+            )}
 
             {!isSaved && transform.id < 0 && (
               <Button
@@ -356,60 +388,37 @@ export const TransformTab = ({
               >{t`Save`}</Button>
             )}
 
-            {!isSaved && transform.id >= 0 && hasChanges && (
+            {!isSaved && transform.id >= 0 && (
               <Button
                 leftSection={<Icon name="check" />}
                 size="sm"
-                variant="filled"
-                disabled={isDisabled || isCheckoutDisabled}
+                variant={hasChanges ? "filled" : "default"}
+                disabled={isDisabled || isCheckoutDisabled || !hasChanges}
                 onClick={handleSaveExternalTransform}
               >{t`Save`}</Button>
             )}
           </Group>
         </Group>
 
-        <Group>
-          {isSaved &&
-            (isRunStatusLoading ? (
-              <Group gap="sm">
-                <Icon c="text-secondary" name="sync" />
-                <Box>{t`Loading run status...`}</Box>
-              </Group>
-            ) : (
-              <RunStatus
-                run={statusRun}
-                neverRunMessage={t`This transform hasn't been run before.`}
-              />
-            ))}
-          {output && (
-            <Tooltip label={t`View transform output`}>
-              <Box
-                style={{
-                  marginLeft: "auto",
-                  alignSelf: "flex-end",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  cursor: "pointer",
-                }}
-                onClick={() =>
-                  onResultsClick?.({
-                    tableId: output.table_id,
-                    name: output.table_name,
-                    schema: output.schema,
-                    transformId: wsTransform.id,
-                  })
-                }
-              >
-                <Icon name="table2" mr="xs" c="brand" />
-                <Text c="brand">{t`Results`}</Text>
-              </Box>
-            </Tooltip>
-          )}
-        </Group>
+        {isSaved &&
+          (isRunStatusLoading ? (
+            <Group gap="sm">
+              <Icon c="text-secondary" name="sync" />
+              <Box>{t`Loading run status...`}</Box>
+            </Group>
+          ) : (
+            <RunStatus
+              run={statusRun}
+              neverRunMessage={t`This transform hasn't been run before.`}
+            />
+          ))}
       </Stack>
 
       {editedTransform && (
-        <Box flex="1">
+        <Box
+          flex="1 1 auto"
+          style={{ overflow: "auto", "--native-query-editor-flex": "1 1 auto" }}
+        >
           <TransformEditor
             disabled={!isEditable}
             source={editedTransform.source}
@@ -417,6 +426,7 @@ export const TransformTab = ({
             onAcceptProposed={handleAcceptProposed}
             onRejectProposed={handleRejectProposed}
             onChange={handleSourceChange}
+            onRunQueryStart={handleRunQueryStart}
           />
         </Box>
       )}
@@ -437,6 +447,7 @@ export const TransformTab = ({
           showIncrementalSettings={true}
           validationSchemaExtension={validationSchemaExtension}
           handleSubmit={handleSave}
+          targetDescription={t`This is the main table this transform owns. Runs from this workspace write to an isolated workspace copy, so the original table isn't changed until you merge the workspace.`}
         />
       )}
     </Stack>

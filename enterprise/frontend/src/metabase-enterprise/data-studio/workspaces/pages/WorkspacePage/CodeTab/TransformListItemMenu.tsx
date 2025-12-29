@@ -59,6 +59,7 @@ export function TransformListItemMenu({ transform, workspaceId }: Props) {
           onClick={(event) => event.stopPropagation()}
           size="sm"
           variant="subtle"
+          aria-label={t`More actions`}
         >
           <Icon name="ellipsis" />
         </ActionIcon>

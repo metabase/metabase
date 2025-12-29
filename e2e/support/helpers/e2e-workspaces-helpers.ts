@@ -9,6 +9,10 @@ export const Workspaces = {
     return cy.visit("/data-studio");
   },
 
+  visitWorkspaces() {
+    return cy.visit("/data-studio/workspaces");
+  },
+
   visitTransformListPage() {
     return cy.visit("/data-studio/transforms");
   },
@@ -34,7 +38,11 @@ export const Workspaces = {
   },
 
   getWorkspaceItem(name: string | RegExp) {
-    return Workspaces.getWorkspacesSection().findByRole("button", { name });
+    return Workspaces.getWorkspacesSection().find(`button[name="${name}"]`);
+  },
+
+  getWorkspaceItemStatus(name: string | RegExp) {
+    return Workspaces.getWorkspaceItem(name).findByTestId("workspace-status");
   },
 
   getWorkspaceItemActions(name: string | RegExp) {
@@ -49,10 +57,14 @@ export const Workspaces = {
     return cy.findByRole("button", { name: /Merge/ });
   },
 
-  getRunWorkspaceButton() {
-    return Workspaces.getWorkspacePage().findByRole("button", {
-      name: /Run transforms/,
-    });
+  getMergeCommitInput() {
+    return cy.findByPlaceholderText(
+      "Describe the changes you made in this workspace...",
+    );
+  },
+
+  getWorkspaceDatabaseSelect() {
+    return cy.findByPlaceholderText("Select a database");
   },
 
   getTransformTargetButton() {
@@ -61,7 +73,7 @@ export const Workspaces = {
 
   getRunTransformButton() {
     return Workspaces.getWorkspaceContent().findByRole("button", {
-      name: /Run/,
+      name: /Run now/,
     });
   },
 

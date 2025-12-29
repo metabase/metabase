@@ -2,7 +2,7 @@ import { unifiedMergeView } from "@codemirror/merge";
 import cx from "classnames";
 import { diffLines } from "diff";
 import { useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
@@ -19,7 +19,9 @@ import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMir
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   Box,
+  Collapse,
   Flex,
+  Group,
   Icon,
   Loader,
   Modal,
@@ -28,6 +30,7 @@ import {
   Title,
 } from "metabase/ui";
 import {
+  useGetWorkspaceProblemsQuery,
   useLazyGetTransformQuery,
   useLazyGetWorkspaceTransformQuery,
 } from "metabase-enterprise/api";
@@ -40,6 +43,14 @@ import type {
 } from "metabase-types/api";
 
 import S from "./MergeWorkspaceModal.module.css";
+import type { ProblemCheckCategory } from "./problemUtils";
+import {
+  formatProblemDetails,
+  getCheckName,
+  getCheckStatus,
+  getCheckStatusWithUnused,
+  groupProblemsByCategory,
+} from "./problemUtils";
 
 const MAX_COMMIT_MESSAGE_LENGTH = 255;
 
@@ -108,7 +119,119 @@ function computeDiffStats(
   return { additions, deletions };
 }
 
-const OverviewPanel = () => {
+const QualityChecksSection = ({
+  workspaceId,
+}: {
+  workspaceId: WorkspaceId;
+}) => {
+  const { data: problems = [], isLoading } =
+    useGetWorkspaceProblemsQuery(workspaceId);
+  const grouped = useMemo(() => groupProblemsByCategory(problems), [problems]);
+  const [expandedChecks, setExpandedChecks] = useState<
+    Set<ProblemCheckCategory>
+  >(new Set());
+
+  const checkCategories: ProblemCheckCategory[] = [
+    "external-dependencies",
+    "internal-dependencies",
+    "structural-issues",
+    "unused-outputs",
+  ];
+
+  const toggleCheck = (category: ProblemCheckCategory) => {
+    setExpandedChecks((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  return (
+    <Stack gap="sm">
+      <Text fw="bold">{t`Quality Checks`}</Text>
+      <Stack gap="sm">
+        {checkCategories.map((category) => {
+          const categoryProblems = grouped[category];
+          const checkStatus =
+            category === "unused-outputs"
+              ? getCheckStatusWithUnused(categoryProblems)
+              : getCheckStatus(categoryProblems);
+          const isExpanded = expandedChecks.has(category);
+          const hasProblems = checkStatus.count > 0;
+
+          return (
+            <Box key={category}>
+              <Group
+                justify="space-between"
+                style={{ cursor: hasProblems ? "pointer" : "default" }}
+                onClick={() => hasProblems && toggleCheck(category)}
+              >
+                <Text>{getCheckName(category)}</Text>
+                {isLoading ? (
+                  <Loader size="xs" />
+                ) : (
+                  <Group gap="xs">
+                    {checkStatus.status === "passed" && (
+                      <Icon name="check" size={14} c="success" />
+                    )}
+                    <Text
+                      c={
+                        checkStatus.status === "passed"
+                          ? "success"
+                          : checkStatus.problems.some(
+                                (p) => p.severity === "error",
+                              )
+                            ? "error"
+                            : "warning"
+                      }
+                    >
+                      {checkStatus.status === "passed"
+                        ? category === "unused-outputs" && checkStatus.count > 0
+                          ? t`${checkStatus.count} info`
+                          : t`Passed`
+                        : checkStatus.count === 1
+                          ? t`Failed`
+                          : t`${checkStatus.count} issues`}
+                    </Text>
+                  </Group>
+                )}
+              </Group>
+              {hasProblems && (
+                <Collapse in={isExpanded}>
+                  <Stack gap="xs" mt="xs" pl="md">
+                    {checkStatus.problems.map((problem, idx) => (
+                      <Box key={idx}>
+                        <Text size="sm" c="text-medium">
+                          {formatProblemDetails(problem)}
+                        </Text>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Collapse>
+              )}
+            </Box>
+          );
+        })}
+      </Stack>
+    </Stack>
+  );
+};
+
+const OverviewPanel = ({
+  commitMessageLength = 0,
+  hasCommitMessageError,
+  workspaceId,
+  transformCount,
+}: {
+  commitMessageLength?: number;
+  hasCommitMessageError: boolean;
+  workspaceId: WorkspaceId;
+  transformCount: number;
+}) => {
   return (
     <Box p="xl" h="100%" style={{ overflowY: "auto" }}>
       <Stack>
@@ -118,7 +241,7 @@ const OverviewPanel = () => {
             {t`The commit message will be used to display the history of transform changes.`}
           </Text>
         </Box>
-        <Stack mt="md" gap="sm">
+        <Stack mt="md" gap="xs">
           <FormTextarea
             data-autofocus
             label={t`Commit message`}
@@ -127,7 +250,28 @@ const OverviewPanel = () => {
             minRows={4}
             required
           />
+          {!hasCommitMessageError && (
+            <Text size="xs" c="text-tertiary">
+              {commitMessageLength}/{MAX_COMMIT_MESSAGE_LENGTH}
+            </Text>
+          )}
         </Stack>
+        <QualityChecksSection workspaceId={workspaceId} />
+        <Box
+          p="md"
+          style={{
+            backgroundColor: "var(--mb-color-bg-light)",
+            borderRadius: "var(--mb-radius-sm)",
+          }}
+        >
+          <Text>
+            {ngettext(
+              msgid`${transformCount} transform will be merged`,
+              `${transformCount} transforms will be merged`,
+              transformCount,
+            )}
+          </Text>
+        </Box>
       </Stack>
     </Box>
   );
@@ -141,6 +285,7 @@ const DiffView = ({
   workspaceId: WorkspaceId;
 }) => {
   const metadata = useSelector(getMetadata);
+  const isNewTransform = transform.global_id == null;
 
   const [fetchWorkspaceTransform, workspaceTransformResult] =
     useLazyGetWorkspaceTransformQuery();
@@ -148,11 +293,11 @@ const DiffView = ({
     useLazyGetTransformQuery();
 
   useEffect(() => {
+    fetchWorkspaceTransform({
+      workspaceId,
+      transformId: transform.ref_id,
+    });
     if (transform.global_id) {
-      fetchWorkspaceTransform({
-        workspaceId,
-        transformId: transform.ref_id,
-      });
       fetchGlobalTransform(transform.global_id);
     }
   }, [
@@ -164,9 +309,11 @@ const DiffView = ({
   ]);
 
   const isLoading =
-    workspaceTransformResult.isLoading || globalTransformResult.isLoading;
+    workspaceTransformResult.isLoading ||
+    (!isNewTransform && globalTransformResult.isLoading);
   const hasError =
-    workspaceTransformResult.error || globalTransformResult.error;
+    workspaceTransformResult.error ||
+    (!isNewTransform && globalTransformResult.error);
 
   const oldSource = globalTransformResult.data
     ? getSourceCode(globalTransformResult.data, metadata)
@@ -241,17 +388,18 @@ const TransformListItem = ({
   workspaceId: WorkspaceId;
 }) => {
   const metadata = useSelector(getMetadata);
+  const isNewTransform = transform.global_id == null;
   const [fetchWorkspaceTransform, workspaceTransformResult] =
     useLazyGetWorkspaceTransformQuery();
   const [fetchGlobalTransform, globalTransformResult] =
     useLazyGetTransformQuery();
 
   useEffect(() => {
+    fetchWorkspaceTransform({
+      workspaceId,
+      transformId: transform.ref_id,
+    });
     if (transform.global_id) {
-      fetchWorkspaceTransform({
-        workspaceId,
-        transformId: transform.ref_id,
-      });
       fetchGlobalTransform(transform.global_id);
     }
   }, [
@@ -269,8 +417,17 @@ const TransformListItem = ({
     ? getSourceCode(workspaceTransformResult.data, metadata)
     : "";
 
-  const stats =
-    oldSource && newSource ? computeDiffStats(oldSource, newSource) : null;
+  const stats = useMemo(() => {
+    if (isNewTransform && newSource) {
+      // For new transforms, count all lines as additions
+      const lineCount = newSource.split("\n").length;
+      return { additions: lineCount, deletions: 0 };
+    }
+    if (oldSource && newSource) {
+      return computeDiffStats(oldSource, newSource);
+    }
+    return null;
+  }, [isNewTransform, oldSource, newSource]);
 
   return (
     <Flex
@@ -283,9 +440,7 @@ const TransformListItem = ({
     >
       <Flex align="center" gap="sm" style={{ overflow: "hidden" }}>
         <Icon name="code_block" size={14} c="text-medium" />
-        <Text size="sm" truncate>
-          {transform.name}
-        </Text>
+        <Text truncate>{transform.name}</Text>
       </Flex>
       {stats && (stats.additions > 0 || stats.deletions > 0) && (
         <Flex gap="xs" fz="xs" style={{ flexShrink: 0 }}>
@@ -308,8 +463,20 @@ export const ReviewChangesModal = ({
   const { sendErrorToast } = useMetadataToasts();
   const validationSchema = useMemo(() => getMergeWorkspaceSchema(), []);
 
+  const { data: workspaceProblems = [] } =
+    useGetWorkspaceProblemsQuery(workspaceId);
+  const hasBlockingProblems = useMemo(
+    () => workspaceProblems.some((p) => p.block_merge === true),
+    [workspaceProblems],
+  );
+
   const updatedTransforms = useMemo(
     () => workspaceTransforms.filter((t) => t.global_id != null),
+    [workspaceTransforms],
+  );
+
+  const newTransforms = useMemo(
+    () => workspaceTransforms.filter((t) => t.global_id == null),
     [workspaceTransforms],
   );
 
@@ -319,7 +486,7 @@ export const ReviewChangesModal = ({
 
   const selectedTransform =
     selectedTransformId !== "overview"
-      ? updatedTransforms.find((t) => t.ref_id === selectedTransformId)
+      ? workspaceTransforms.find((t) => t.ref_id === selectedTransformId)
       : null;
 
   const handleSubmit = async (values: MergeWorkspaceFormValues) => {
@@ -386,32 +553,65 @@ export const ReviewChangesModal = ({
                   onClick={() => setSelectedTransformId("overview")}
                 >
                   <Icon name="document" size={14} c="text-medium" />
-                  <Text size="sm">{t`Overview`}</Text>
+                  <Text>{t`Overview`}</Text>
                 </Flex>
-                <Text
-                  px="md"
-                  py="sm"
-                  fz="xs"
-                  fw={700}
-                  tt="uppercase"
-                  lts="0.5px"
-                  c="text-medium"
-                >
-                  {t`Modified transforms`}
-                </Text>
-                {updatedTransforms.map((transform) => (
-                  <TransformListItem
-                    key={transform.ref_id}
-                    transform={transform}
-                    isSelected={selectedTransformId === transform.ref_id}
-                    onClick={() => setSelectedTransformId(transform.ref_id)}
-                    workspaceId={workspaceId}
-                  />
-                ))}
+                {newTransforms.length > 0 && (
+                  <>
+                    <Text
+                      px="md"
+                      py="sm"
+                      fz="xs"
+                      fw={700}
+                      tt="uppercase"
+                      lts="0.5px"
+                      c="text-medium"
+                    >
+                      {t`New transforms`}
+                    </Text>
+                    {newTransforms.map((transform) => (
+                      <TransformListItem
+                        key={transform.ref_id}
+                        transform={transform}
+                        isSelected={selectedTransformId === transform.ref_id}
+                        onClick={() => setSelectedTransformId(transform.ref_id)}
+                        workspaceId={workspaceId}
+                      />
+                    ))}
+                  </>
+                )}
+                {updatedTransforms.length > 0 && (
+                  <>
+                    <Text
+                      px="md"
+                      py="sm"
+                      fz="xs"
+                      fw={700}
+                      tt="uppercase"
+                      lts="0.5px"
+                      c="text-medium"
+                    >
+                      {t`Modified transforms`}
+                    </Text>
+                    {updatedTransforms.map((transform) => (
+                      <TransformListItem
+                        key={transform.ref_id}
+                        transform={transform}
+                        isSelected={selectedTransformId === transform.ref_id}
+                        onClick={() => setSelectedTransformId(transform.ref_id)}
+                        workspaceId={workspaceId}
+                      />
+                    ))}
+                  </>
+                )}
               </Box>
               <Box flex={1} miw={0} style={{ overflow: "auto" }}>
                 {selectedTransformId === "overview" ? (
-                  <OverviewPanel />
+                  <OverviewPanel
+                    commitMessageLength={values.commit_message?.length}
+                    hasCommitMessageError={!!errors.commit_message}
+                    workspaceId={workspaceId}
+                    transformCount={workspaceTransforms.length}
+                  />
                 ) : selectedTransform ? (
                   <DiffView
                     key={selectedTransform.ref_id}
@@ -426,18 +626,16 @@ export const ReviewChangesModal = ({
               </Box>
             </Flex>
             <Flex
-              justify="space-between"
+              justify="flex-end"
               align="center"
               p="md"
               style={{ borderTop: "1px solid var(--mb-color-border)" }}
             >
-              <Text size="xs" c="text-tertiary">
-                {values.commit_message?.length ?? 0}/{MAX_COMMIT_MESSAGE_LENGTH}
-              </Text>
               <FormSubmitButton
                 disabled={
                   !values.commit_message?.trim() ||
-                  (touched.commit_message && !!errors.commit_message)
+                  (touched.commit_message && !!errors.commit_message) ||
+                  hasBlockingProblems
                 }
                 label={t`Merge`}
                 loading={isLoading}

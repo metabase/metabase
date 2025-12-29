@@ -96,6 +96,7 @@
 (def ^:private WorkspaceListing
   [:map {:closed true}
    [:id ::ws.t/appdb-id]
+   [:database_id ::ws.t/appdb-id]
    [:name :string]
    [:archived :boolean]])
 
@@ -106,7 +107,7 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :name [[:not= nil :archived_at] :archived]]
+  {:items  (t2/select [:model/Workspace :id :name :database_id [[:not= nil :archived_at] :archived]]
                       (cond-> {:order-by [[:created_at :desc]]}
                         (request/limit) (sql.helpers/limit (request/limit))
                         (request/offset) (sql.helpers/offset (request/offset))))
@@ -260,7 +261,7 @@
 
 (def ^:private CreateWorkspace
   [:map
-   [:name [:string {:min 1}]]
+   [:name {:optional true} [:string {:min 1}]]
    [:database_id {:optional true} ::ws.t/appdb-id]])
 
 (defn- first-supported-database-id
@@ -268,7 +269,7 @@
   []
   (:id
    (u/seek #(driver.u/supports? (:engine %) :workspace %)
-           (t2/select :model/Database {:order-by [:name]}))))
+           (t2/select :model/Database :is_audit false :is_sample false {:order-by [:name]}))))
 
 (api.macros/defendpoint :post "/" :- Workspace
   "Create a new workspace
@@ -318,7 +319,7 @@
   "Get a list of databases to show in the workspace picker, along with whether they're supported."
   [_url-params
    _query-params]
-  {:databases (->> (t2/select :model/Database {:order-by [:name]})
+  {:databases (->> (t2/select :model/Database :is_audit false :is_sample false {:order-by [:name]})
                    ;; Omit those we don't even support
                    (filter #(driver.u/supports? (:engine %) :workspace %))
                    (mapv (fn [db]
@@ -395,30 +396,32 @@
 (api.macros/defendpoint :get "/:ws-id/external/transform" :- [:map [:transforms [:sequential ExternalTransform]]]
   "Get transforms that are external to the workspace, i.e. no matching workspace_transform row exists."
   [{:keys [ws-id]} :- [:map [:ws-id ::ws.t/appdb-id]]
-   _query-params]
+   {:keys [database-id]} :- [:map [:database-id {:optional true} ::ws.t/appdb-id]]]
   (api/check-superuser)
-  (let [db-id      (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id)))
-        ;; TODO (chris 2025/12/11) use target_db_id once it's there, and skip :target
-        transforms (t2/select [:model/Transform :id :name :source_type :source :target]
+  (let [db-id      (or database-id
+                       (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id))))
+        transforms (t2/select [:model/Transform :id :name :source_type :source]
                               {:left-join [[:workspace_transform :wt]
                                            [:and
                                             [:= :transform.id :wt.global_id]
                                             [:= :wt.workspace_id ws-id]]]
                                ;; NULL workspace_id means transform is not checked out into this workspace
-                               :where     [:= nil :wt.workspace_id]
+                               :where     [:and
+                                           [:= nil :wt.workspace_id]
+                                           [:= :target_db_id db-id]]
                                :order-by  [[:id :asc]]})]
     {:transforms
      (into []
-           (comp (filter #(= db-id (:database (:target %))))
-                 (map #(-> %
-                           (dissoc :source :target)
-                           (assoc :checkout_disabled (case (:source_type %)
-                                                       :mbql   "mbql"
-                                                       :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
-                                                                 "card-reference")
-                                                       :python nil
-                                                       "unknown-type"))))
-                 #_(map #(update % :last_run transforms.util/localize-run-timestamps)))
+           (map #(-> %
+                     (dissoc :source)
+                     (assoc :checkout_disabled (case (:source_type %)
+                                                 :mbql   "mbql"
+                                                 :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
+                                                           "card-reference")
+                                                 :python nil
+                                                 "unknown-type"))))
+           ;; (Sanya 2025-12-24) - do we need this line?
+           #_(map #(update % :last_run transforms.util/localize-run-timestamps))
            transforms
            ;; Perhaps we want to expose some of this later?
            #_(t2/hydrate transforms :last_run :creator))}))
@@ -616,11 +619,12 @@
    ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
    [:target_stale :boolean]
    [:workspace_id ::ws.t/appdb-id]
-   ;;[:creator_id ::ws.t/appdb-id]
+   [:creator_id [:maybe ::ws.t/appdb-id]]
    [:archived_at :any]
    [:created_at :any]
    [:updated_at :any]
-   [:last_run_at :any]])
+   [:last_run_at :any]
+   [:last_run_message [:maybe :string]]])
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
 
@@ -661,7 +665,7 @@
    [:global_id [:maybe ::ws.t/appdb-id]]
    [:name :string]
    [:source_type [:maybe :keyword]]
-   ;[:creator_id ::ws.t/appdb-id]
+   [:creator_id [:maybe ::ws.t/appdb-id]]
    ;[:last_run :map]
    ; See https://metaboat.slack.com/archives/C099RKNLP6U/p1765205882655869?thread_ts=1765205222.888209&cid=C099RKNLP6U
    #_[:target_stale :boolean]])
@@ -676,7 +680,9 @@
   "Get all transforms in a workspace."
   [{:keys [id]} :- [:map [:id ::ws.t/appdb-id]]]
   (api/check-404 (t2/select-one :model/Workspace :id id))
-  {:transforms (map map-source-type (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source] :workspace_id id {:order-by [:created_at]}))})
+  {:transforms (->> (t2/select [:model/WorkspaceTransform :ref_id :global_id :name :source :creator_id]
+                               :workspace_id id {:order-by [:created_at]})
+                    (map map-source-type))})
 
 (defn- fetch-ws-transform [ws-id tx-id]
   ;; TODO We still need to do some hydration, e.g. of the target table (both internal and external)
@@ -801,7 +807,7 @@
    {:keys [commit-message]
     :or   {commit-message "Placeholder for merge commit message. Should be required on FE"}} :- [:map
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
-  (let [ws               (u/prog1 (t2/select-one [:model/Workspace :id :name :archived_at] :id ws-id)
+  (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
                            (api/check-404 <>)
                            (api/check-400 (nil? (:archived_at <>)) "Cannot merge an archived workspace"))
         {:keys [merged

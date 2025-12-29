@@ -24,6 +24,7 @@ type CodeTabProps = {
   availableTransforms: ExternalTransform[];
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransform[];
+  readOnly: boolean;
   onTransformClick: (transform: Transform | WorkspaceTransform) => void;
 };
 
@@ -32,6 +33,7 @@ export const CodeTab = ({
   availableTransforms,
   workspaceId,
   workspaceTransforms,
+  readOnly,
   onTransformClick,
 }: CodeTabProps) => {
   const { editedTransforms, hasTransformEdits } = useWorkspace();
@@ -119,17 +121,19 @@ export const CodeTab = ({
 
             return (
               <TransformListItem
-                key={transform.ref_id}
+                key={transform.ref_id ?? transform.id}
                 name={transform.name}
                 icon="pivot_table"
                 fw={600}
                 isActive={isActive}
                 isEdited={isEdited}
                 menu={
-                  <TransformListItemMenu
-                    transform={transform}
-                    workspaceId={workspaceId}
-                  />
+                  readOnly ? null : (
+                    <TransformListItemMenu
+                      transform={transform}
+                      workspaceId={workspaceId}
+                    />
+                  )
                 }
                 onClick={() => {
                   handleWorkspaceTransformClick(transform);

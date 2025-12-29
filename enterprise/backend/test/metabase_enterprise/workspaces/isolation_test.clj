@@ -33,10 +33,10 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
+                   ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM pg_user WHERE usename = ?" username])
+                   ["SELECT 1 FROM pg_user WHERE usename = ?" username])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :h2
@@ -45,10 +45,10 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?" schema-name])
+                   ["SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM INFORMATION_SCHEMA.USERS WHERE NAME = ?" username])
+                   ["SELECT 1 FROM INFORMATION_SCHEMA.USERS WHERE NAME = ?" username])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :snowflake
@@ -59,13 +59,13 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                             [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
+                   [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                             [(format "SHOW USERS LIKE '%s'" username)])
+                   [(format "SHOW USERS LIKE '%s'" username)])
                  seq boolean)
      :role   (-> (jdbc/query conn-spec
-                             [(format "SHOW ROLES LIKE '%s'" role-name)])
+                   [(format "SHOW ROLES LIKE '%s'" role-name)])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :sqlserver
@@ -75,13 +75,13 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
+                   ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM sys.database_principals WHERE name = ?" username])
+                   ["SELECT 1 FROM sys.database_principals WHERE name = ?" username])
                  seq boolean)
      :login  (-> (jdbc/query conn-spec
-                             ["SELECT 1 FROM master.sys.server_principals WHERE name = ?" login-name])
+                   ["SELECT 1 FROM master.sys.server_principals WHERE name = ?" login-name])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :clickhouse
@@ -90,10 +90,10 @@
         username  (ws.u/isolation-user-name workspace)
         conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:database (-> (jdbc/query conn-spec
-                               ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
+                     ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
                    seq boolean)
      :user     (-> (jdbc/query conn-spec
-                               ["SELECT 1 FROM system.users WHERE name = ?" username])
+                     ["SELECT 1 FROM system.users WHERE name = ?" username])
                    seq boolean)}))
 
 ;;; Tests
@@ -114,12 +114,12 @@
             (is (every? true? (vals resources)))))
 
         (testing "destroy removes all isolation resources"
-          (isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
+          (driver/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)
           (let [resources (workspace-isolation-resources-exist? database workspace)]
             (is (every? false? (vals resources)))))
 
         (testing "destroy is idempotent"
-          (isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace))))))
+          (driver/destroy-workspace-isolation! (driver.u/database->driver database) database workspace))))))
 
 ;;; check-isolation-permissions tests
 
@@ -129,7 +129,7 @@
       (let [database   (mt/db)
             test-table {:schema (mt/format-name "public")
                         :name   (mt/format-name "orders")}]
-        (is (nil? (isolation/check-isolation-permissions
+        (is (nil? (driver/check-isolation-permissions
                    (driver/the-driver (:engine database))
                    database
                    test-table)))))))
@@ -143,7 +143,7 @@
             test-table     {:schema (mt/format-name "public")
                             :name   (mt/format-name "orders")}]
         ;; Run the check
-        (isolation/check-isolation-permissions
+        (driver/check-isolation-permissions
          (driver/the-driver (:engine database))
          database
          test-table)

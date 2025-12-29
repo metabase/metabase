@@ -113,43 +113,6 @@
 ;;; Filter xf tests
 ;;; ------------------------------------------------------------
 
-(deftest ^:parallel type-filter-xf-test
-  (testing "->type-filter-xf filters transforms by source type"
-    ;; Note: :query :type "query" = MBQL, :query :type "native" = native SQL
-    (let [mbql-transform   {:id 1 :source_type "query"  :source {:type "query" :query {:type "query"}}}
-          native-transform {:id 2 :source_type "native" :source {:type "query" :query {:type "native"}}}
-          python-transform {:id 3 :source_type "python" :source {:type "python"}}
-          transforms       [mbql-transform native-transform python-transform]]
-
-      (are [x y] (= x (into [] (transforms.util/->type-filter-xf y) transforms))
-        transforms                         nil
-        transforms                         []
-        [mbql-transform]                   ["query"]
-        [native-transform]                 ["native"]
-        [python-transform]                 ["python"]
-        [mbql-transform native-transform]  ["query" "native"]
-        transforms                         ["query" "native" "python"]
-        []                                 ["whatever"]))))
-
-(deftest ^:parallel database-id-filter-xf-test
-  (testing "->database-id-filter-xf filters transforms by database ID"
-    (let [db1-query-x  {:id     1
-                        :name   "Query on DB1"
-                        :source {:type "query" :query {:database 1}}
-                        :target {:type "table" :name "t1" :database 1}}
-          db2-target-x {:id     2
-                        :name   "Python targeting DB4"
-                        :source {:type "python" :body "" :source-database 2 :source-tables {}}
-                        :target {:type "table" :name "t4" :database 2}}
-          transforms   [db1-query-x db2-target-x]]
-
-      (are [x y] (= x (into [] (transforms.util/->database-id-filter-xf y) transforms))
-        transforms     nil
-        [db1-query-x]  1
-        []             10               ; source does not match
-        [db2-target-x] 2
-        []             999))))
-
 (deftest ^:parallel matching-timestamp?-test
   (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
     (let [matching-timestamp? #'transforms.util/matching-timestamp?

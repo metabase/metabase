@@ -13,9 +13,9 @@ export type WorkspaceId = number;
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  archived: boolean;
+  status: WorkspaceSetupStatus;
+  archived?: boolean;
   archived_at?: string | null;
-  status?: WorkspaceSetupStatus;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;
@@ -25,26 +25,21 @@ export type Workspace = {
 export type WorkspaceItem = {
   id: WorkspaceId;
   name: string;
-};
-
-export type CreateWorkspaceRequest = {
-  name: string;
-  database_id?: DatabaseId;
+  database_id: DatabaseId;
+  archived?: boolean;
 };
 
 export type WorkspaceListResponse = {
-  items: Workspace[];
+  items: WorkspaceItem[];
   limit: number | null;
   offset: number | null;
 };
 
 export type WorkspaceTransformItem = {
   ref_id: string;
-  name: string;
-  source_type: string;
-  stale: boolean;
   global_id: TransformId | null;
-  target_stale: boolean;
+  name: string;
+  source_type: Transform["source_type"] | null;
 };
 
 export type WorkspaceTransformsResponse = {
@@ -56,6 +51,11 @@ export type ExternalTransform = {
   name: string;
   source_type: Transform["source_type"];
   checkout_disabled: string | null;
+};
+
+export type ExternalTransformsRequest = {
+  workspaceId: WorkspaceId;
+  databaseId?: DatabaseId | null;
 };
 
 export type ExternalTransformsResponse = {
@@ -70,14 +70,15 @@ export type WorkspaceOutputTableRef = {
 };
 
 export type WorkspaceTransform = Omit<Transform, "id"> & {
+  // Local identifier used by the UI; equal to `ref_id`
   id: string;
   ref_id: string;
-  workspace_id: number;
-  stale: boolean;
+  workspace_id: WorkspaceId;
   global_id: TransformId | null;
   target_stale: boolean;
-  target_isolated: WorkspaceOutputTableRef;
+  archived_at: string | null;
   last_run_at: string | null;
+  last_run_message: string | null;
 };
 
 export type TransformUpstreamMapping = {
@@ -104,18 +105,21 @@ export type WorkspaceCheckoutResponse = {
   transforms: WorkspaceCheckoutItem[];
 };
 
+export type WorkspaceMergeTransformResult = {
+  op: "create" | "delete" | "update" | "noop";
+  global_id: TransformId | null;
+  ref_id: string;
+  message?: string;
+};
+
 export type WorkspaceMergeResponse = {
-  promoted: WorkspaceTransformItem[];
-  errors?: (WorkspaceTransformItem & { error: string })[];
+  merged?: WorkspaceMergeTransformResult[];
+  errors?: WorkspaceMergeTransformResult[];
   workspace: WorkspaceItem;
   archived_at: string | null;
 };
 
-export type WorkspaceTransformMergeResponse = {
-  // I have no idea atm how are we going to use this
-  workspace: WorkspaceItem;
-  archived_at: string | null;
-};
+export type WorkspaceTransformMergeResponse = WorkspaceMergeTransformResult;
 
 export type ValidateTableNameRequest = {
   id: WorkspaceId;
@@ -213,39 +217,91 @@ export type WorkspaceTableRef = {
   table: string;
 };
 
-export type WorkspaceProblemMissingInputTable = {
-  type: "missing-input-table";
-  data: {
-    "entity-type": "workspace-transform";
-    "entity-id": string;
-    table: WorkspaceTableRef;
+export type WorkspaceProblemCategory =
+  | "unused"
+  | "internal-downstream"
+  | "external-downstream"
+  | "internal"
+  | "external";
+
+export type WorkspaceProblemType =
+  | "not-run"
+  | "stale"
+  | "failed"
+  | "removed-field"
+  | "removed-table"
+  | "target-conflict"
+  | "cycle";
+
+export type WorkspaceProblemSeverity = "error" | "warning" | "info";
+
+// Problem data structures (examples from API response)
+export type WorkspaceProblemDataRemovedField = {
+  output: {
+    db_id: DatabaseId;
+    producer?: {
+      type: "workspace-transform" | "external-transform";
+      id: string | number;
+    };
+    global: {
+      schema: string;
+      table: string;
+    };
+    isolated?: {
+      db_id?: DatabaseId;
+      schema: string;
+      table: string;
+    };
+  };
+  transform: {
+    type: "workspace-transform" | "external-transform";
+    id: string | number;
+    name?: string;
+  };
+  "bad-refs": Array<{
+    type: "field";
+    data: {
+      id: number;
+      name: string;
+      base_type: string;
+    };
+  }>;
+};
+
+export type WorkspaceProblemDataNotRun = {
+  output: {
+    isolated?: {
+      db_id: DatabaseId;
+      schema: string;
+      table: string;
+    };
+  };
+  transform: {
+    type: "workspace-transform" | "external-transform";
+    id: string | number;
   };
 };
 
-export type WorkspaceProblemTargetConflict = {
-  type: "target-conflict";
-  data: {
-    table: WorkspaceTableRef;
-    entities: WorkspaceEntityRef[];
-  };
+export type WorkspaceProblem = {
+  category: WorkspaceProblemCategory;
+  problem: WorkspaceProblemType;
+  severity: WorkspaceProblemSeverity;
+  block_merge: boolean;
+  description: string;
+  data:
+    | WorkspaceProblemDataRemovedField
+    | WorkspaceProblemDataNotRun
+    | Record<string, unknown>; // Varies by problem type
 };
-
-export type WorkspaceProblemCycle = {
-  type: "cycle";
-  data: {
-    path: WorkspaceEntityRef[];
-  };
-};
-
-export type WorkspaceProblem =
-  | WorkspaceProblemMissingInputTable
-  | WorkspaceProblemTargetConflict
-  | WorkspaceProblemCycle;
 
 export type WorkspaceLogEntryId = number;
 
 // Status used in workspace log responses (different from archived boolean on Workspace)
-export type WorkspaceSetupStatus = "pending" | "ready" | "archived";
+export type WorkspaceSetupStatus =
+  | "pending"
+  | "ready"
+  | "archived"
+  | "uninitialized";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 

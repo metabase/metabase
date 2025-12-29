@@ -60,9 +60,6 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
-   ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
-   ^{:clj-kondo/ignore [:metabase/modules]}
-   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.util :as u]
@@ -376,7 +373,11 @@
                                                   :id [:in {:select [:database_id]
                                                             :from   [:workspace]
                                                             :where  [:= :id workspace-id]}])
-          normalize             (partial sql.normalize/normalize-name driver)]
+          ;; TODO (chris 2025/12/17) I solemnly declare that we will clean up this coupling nightmare for table normalization
+          ;; -> lbrdnk: requring resolve instead of normal :require here to avoid reformat attempt of the cljfmt
+          ;;            performed in CI, which if successful moves the ignore where it should not be, hence the linter
+          ;;            is failing, or the reformat alone fails the CI.
+          normalize             (partial @(requiring-resolve 'metabase.driver.sql.normalize/normalize-name) driver)]
       (upsert-workspace-output! workspace-id ref-id isolated-schema output normalize)
       (let [{internal-inputs true external-inputs false} (group-by (fn [{:keys [db_id schema table]}]
                                                                      (contains? output-lookup [db_id schema table]))
