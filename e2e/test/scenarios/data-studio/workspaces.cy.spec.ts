@@ -399,15 +399,10 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
       });
 
-      cy.log("Open transform tabs")
-      Workspaces.getMainlandTransforms()
-        .findByText("Python transform")
-        .click();
+      cy.log("Open transform tabs");
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
 
-      Workspaces.getMainlandTransforms()
-        .findByText("SQL transform")
-        .click();
-
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("SQL transform", [
@@ -418,17 +413,30 @@ describe("scenarios > data studio > workspaces", () => {
         ]);
       });
 
-      cy.log("Reorder and close tabs")
+      cy.log("Reorder and close tabs");
       Workspaces.getWorkspaceContent().within(() => {
-          cy.findAllByRole("tab").eq(3).as("sqlTransformTab");
-          H.moveDnDKitElementByAlias("@sqlTransformTab", {
-            horizontal: -150,
-          });
-          cy.wait(100);
-          cy.findAllByRole("tab").eq(0).findByLabelText("close icon").should("not.exist");
-          cy.findAllByRole("tab").eq(1).findByLabelText("close icon").should("not.exist");
-          cy.findAllByRole("tab").eq(2).findByLabelText("close icon").should("exist");
-          cy.findAllByRole("tab").eq(3).findByLabelText("close icon").should("exist").click();
+        cy.findAllByRole("tab").eq(3).as("sqlTransformTab");
+        H.moveDnDKitElementByAlias("@sqlTransformTab", {
+          horizontal: -150,
+        });
+        cy.wait(100);
+        cy.findAllByRole("tab")
+          .eq(0)
+          .findByLabelText("close icon")
+          .should("not.exist");
+        cy.findAllByRole("tab")
+          .eq(1)
+          .findByLabelText("close icon")
+          .should("not.exist");
+        cy.findAllByRole("tab")
+          .eq(2)
+          .findByLabelText("close icon")
+          .should("exist");
+        cy.findAllByRole("tab")
+          .eq(3)
+          .findByLabelText("close icon")
+          .should("exist")
+          .click();
       });
 
       Workspaces.getWorkspaceContent().within(() => {
@@ -438,8 +446,8 @@ describe("scenarios > data studio > workspaces", () => {
           "SQL transform",
         ]);
       });
-    })
-  })
+    });
+  });
 
   describe("setup tab", () => {
     it("should allow to change database before transforms are added", () => {
@@ -448,24 +456,26 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.visitWorkspaces();
       createWorkspace();
 
-        cy.log("Database dropdown should be enabled initially");
-        Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Test DB")
-          .click();
-      H.popover().findByRole("option", { name: "Sample Database" }).should("not.exist");
+      cy.log("Database dropdown should be enabled initially");
+      Workspaces.getWorkspaceDatabaseSelect()
+        .should("have.value", "Test DB")
+        .click();
+      H.popover()
+        .findByRole("option", { name: "Sample Database" })
+        .should("not.exist");
       H.popover().findByRole("option", { name: "Writable Postgres12" }).click();
 
-        cy.log("Verify database was changed");
-        Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Writable Postgres12");
+      cy.log("Verify database was changed");
+      Workspaces.getWorkspaceDatabaseSelect().should(
+        "have.value",
+        "Writable Postgres12",
+      );
     });
-
 
     it("should lock database dropdown when workspace has been initialized, shows setup log", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
-
 
       cy.log("Add WS transform to lock DB selection");
       Workspaces.getMainlandTransforms()
@@ -486,6 +496,86 @@ describe("scenarios > data studio > workspaces", () => {
         cy.log("Setup log should be visible");
         cy.findByText(/Setting up the workspace/).should("be.visible");
       });
+    });
+  });
+
+  describe("code tab", () => {
+    it("should check out transform into the workspace and remove it", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open mainland transform");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      cy.log("Make changes to the transform");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+
+      cy.log(
+        "Check that transform has yellow dot change indicator after editing",
+      );
+      Workspaces.getMainlandTransforms().within(() => {
+        Workspaces.getTransformStatusDot("SQL transform").should("be.visible");
+      });
+
+      cy.log("Save the transform to add it to workspace");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Transform should be removed from available list after saving");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("not.exist");
+
+      cy.log("Transform should appear in workspace transforms list");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .should("be.visible");
+
+      cy.log("Make additional changes to the saved transform");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" ORDER BY 1");
+      });
+
+      cy.log("Check that transform has yellow dot status again");
+      Workspaces.getWorkspaceTransforms().within(() => {
+        Workspaces.getTransformStatusDot("SQL transform").should("be.visible");
+      });
+
+      cy.log("Save it again");
+      Workspaces.getWorkspaceContent().within(() => {
+        Workspaces.getSaveTransformButton().click();
+      });
+
+      cy.log("Check that yellow dot doesn't exist anymore after saving");
+      Workspaces.getWorkspaceTransforms().within(() => {
+        Workspaces.getTransformStatusDot("SQL transform").should("not.exist");
+      });
+
+      cy.log("Remove transform from the workspace through ellipsis menu");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .realHover();
+      Workspaces.getWorkspaceTransforms()
+        .findByLabelText("More actions")
+        .click();
+      H.popover()
+        .findByRole("menuitem", { name: /Remove/ })
+        .click();
+
+      cy.log("Check that it's not present in workspace transforms list");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .should("not.exist");
+
+      cy.log("Check that it's displayed back in available transforms list");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible");
     });
   });
 });
