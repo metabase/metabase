@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { useSetting } from "metabase/common/hooks";
 import {
   createDraftCard,
   generateDraftCardId,
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
-import { useSetting } from "metabase/common/hooks";
-import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
+import { useDispatch, useStore } from "metabase/lib/redux";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Flex, Modal } from "metabase/ui";

@@ -13,7 +13,7 @@ import { useSetting } from "metabase/common/hooks";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
-import { useSelector, useStore } from "metabase/lib/redux";
+import { useStore } from "metabase/lib/redux";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CommandExtension } from "metabase/rich_text_editing/tiptap/extensions/Command/CommandExtension";

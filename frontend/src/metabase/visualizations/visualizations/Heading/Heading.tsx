@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { useSetting } from "metabase/common/hooks";
 import { CollapsibleDashboardParameterList } from "metabase/dashboard/components/CollapsibleDashboardParameterList";
 import { DashCardParameterMapper } from "metabase/dashboard/components/DashCard/DashCardParameterMapper/DashCardParameterMapper";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -14,7 +15,6 @@ import {
   getIsEditingParameter,
   getParameterValues,
 } from "metabase/dashboard/selectors";
-import { useSetting } from "metabase/common/hooks";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";

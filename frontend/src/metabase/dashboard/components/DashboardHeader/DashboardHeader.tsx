@@ -50,9 +50,11 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const { dashboardBeforeEditing, parameterQueryParams, isFullscreen } =
     useDashboardContext();
 
+  const customHomepage = useSetting("custom-homepage");
+  const customHomepageDashboard = useSetting("custom-homepage-dashboard");
+
   const isHomepageDashboard =
-    useSetting("custom-homepage") &&
-    useSetting("custom-homepage-dashboard") === dashboard?.id;
+    customHomepage && customHomepageDashboard === dashboard?.id;
 
   const { data: collection, isLoading: isLoadingCollection } =
     useGetCollectionQuery(
