@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.source.git-test
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
@@ -445,7 +446,7 @@
             repaired-url (.getString repaired-config "remote" "origin" "url")]
         (is (not= corrupted-url repaired-url)
             "Origin URL should no longer be the corrupted URL")
-        (is (clojure.string/includes? repaired-url remote-dir)
+        (is (str/includes? repaired-url remote-dir)
             "Origin URL should point to the remote directory")))))
 
 (deftest ensure-origin-configured-sets-fetch-refspec-test
