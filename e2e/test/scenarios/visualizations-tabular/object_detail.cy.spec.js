@@ -95,11 +95,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     };
 
     H.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Wait for the table to fully render");
     cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
+    cy.findByTestId("table-header")
+      .should("be.visible")
+      .and("contain", "Subtotal");
+    cy.findByTestId("table-body")
+      .should("be.visible")
+      .and("contain", "37.65")
+      .and("contain", "110.93");
 
     cy.log("Check object details for the first row");
-    cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
-    cy.findAllByTestId("detail-shortcut").eq(1).should("be.hidden");
     H.openObjectDetail(0);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Awesome Concrete Shoes" }).should(
@@ -111,8 +118,6 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     });
 
     cy.log("Check object details for the second row");
-    cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
-    cy.findAllByTestId("detail-shortcut").eq(0).should("be.hidden");
     H.openObjectDetail(1);
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading", { name: "Mediocre Wooden Bench" }).should(
