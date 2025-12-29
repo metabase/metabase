@@ -5,6 +5,19 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
+(mr/def ::source-table-ref
+  "A reference to a source table by name, for cases where table_id may not exist yet.
+  Also saves querying metadata in situations where we'll need the name."
+  [:map
+   [:database_id :int]
+   [:schema {:optional true} [:maybe :string]]
+   [:table :string]
+   [:table_id {:optional true} [:maybe :int]]])
+
+(mr/def ::source-table-value
+  "Either a table ID (int) or a reference map."
+  [:or :int ::source-table-ref])
+
 (mr/def ::checkpoint-strategy
   [:map
    [:type [:= "checkpoint"]]
@@ -29,7 +42,7 @@
     [:map
      [:source-database {:optional true} :int]
      ;; NB: if source is checkpoint, only one table allowed
-     [:source-tables   [:map-of :string :int]]
+     [:source-tables   [:map-of :string ::source-table-value]]
      [:type [:= "python"]]
      [:body :string]
      [:source-incremental-strategy {:optional true} ::source-incremental-strategy]]]])
