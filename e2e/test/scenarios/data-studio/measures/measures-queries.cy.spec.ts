@@ -346,6 +346,58 @@ describe("scenarios > data studio > measures > queries", () => {
     });
   });
 
+  it.skip("should be possible to order by an aggregation using a measure directly", () => {
+    H.createMeasure({
+      name: MEASURE_NAME,
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      },
+    });
+
+    useMeasure(() => {
+      breakout("Created At");
+
+      H.sort();
+      H.popover().findByText("Table Measure").click();
+    });
+
+    // TODO: fix this when sorting works
+    verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+  });
+
+  it("should be possible to order by an aggregation using a custom expression based on a measure", () => {
+    H.createMeasure({
+      name: MEASURE_NAME,
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      },
+    });
+
+    useMeasure(() => {
+      H.getNotebookStep("summarize").findByText("Table Measure").click();
+      cy.log("Use weird formula to get different ordering in results");
+      H.CustomExpressionEditor.clear().type(
+        `length(text(log([${MEASURE_NAME}])))`,
+      );
+      H.popover().button("Update").click();
+
+      breakout("Created At");
+
+      H.sort();
+      H.popover().findByText("Table Measure").click();
+    });
+
+    verifyRowValues([
+      ["August 2023", "16"],
+      ["April 2026", "16"],
+      ["May 2022", "17"],
+    ]);
+  });
+
   describe("follow up stages", () => {
     it("should be possible to use results of a measure in follow up stages", () => {
       H.createMeasure({
