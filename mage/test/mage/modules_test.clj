@@ -20,12 +20,12 @@
   (merge {:is-master-or-release false
           :pr-labels #{}
           :skip false
-          :drivers-changed #{}
+          :particular-driver-changed? #{}
           :verbose? false}
          opts))
 
 ;;; =============================================================================
-;;; Priority 1: Quarantine
+;;; Priority 4: Quarantine
 ;;; =============================================================================
 
 (deftest quarantined-driver-skips
@@ -46,17 +46,17 @@
       (is (true? (:should-run result)))
       (is (re-find #"anti-quarantine label" (:reason result))))))
 
-(deftest quarantine-beats-master-branch
-  (testing "Quarantine takes priority over master branch"
+(deftest master-branch-beats-quarantine
+  (testing "Master/release branch takes priority over quarantine"
     (let [result (driver-decision :postgres
                                   (make-ctx {:is-master-or-release true})
-                                  true ; driver-module-affected?
+                                  true ; driver-deps-affected?
                                   #{:postgres})]
-      (is (false? (:should-run result)))
-      (is (= "driver is quarantined" (:reason result))))))
+      (is (true? (:should-run result)))
+      (is (= "master/release branch" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 2: Global skip
+;;; Priority 1: Global skip
 ;;; =============================================================================
 
 (deftest global-skip-skips-all-drivers
@@ -70,18 +70,17 @@
             (str driver " should be skipped"))
         (is (= "workflow skip (no backend changes)" (:reason result)))))))
 
-(deftest global-skip-does-not-apply-to-quarantined
-  (testing "Quarantine is checked before global skip"
-    ;; This verifies the priority order - quarantine comes first
+(deftest global-skip-beats-quarantine
+  (testing "Global skip takes priority over quarantine"
     (let [result (driver-decision :postgres
                                   (make-ctx {:skip true})
                                   false
                                   #{:postgres})]
-      ;; Should show quarantine reason, not skip reason
-      (is (= "driver is quarantined" (:reason result))))))
+      (is (false? (:should-run result)))
+      (is (= "workflow skip (no backend changes)" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 3: H2 always runs
+;;; Priority 2: H2 always runs
 ;;; =============================================================================
 
 (deftest h2-always-runs
@@ -103,7 +102,7 @@
       (is (= "workflow skip (no backend changes)" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 4: Master/release branch
+;;; Priority 3: Master/release branch
 ;;; =============================================================================
 
 (deftest master-branch-runs-all-drivers
@@ -150,7 +149,7 @@
 (deftest cloud-driver-with-file-changes-runs
   (testing "Cloud driver runs when its files changed"
     (let [result (driver-decision :athena
-                                  (make-ctx {:drivers-changed #{:athena}})
+                                  (make-ctx {:particular-driver-changed? #{:athena}})
                                   false
                                   #{})]
       (is (true? (:should-run result)))
