@@ -30,9 +30,21 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-    cy.request("PUT", "/api/permissions/graph",
-      {"groups":{"1":{"1":{"download":{"schemas":"full"},"view-data":"unrestricted"},"2":{"view-data":"unrestricted","download":{"schemas":"full"},"create-queries":"query-builder-and-native"}}},"revision":1,"sandboxes":[],"impersonations":[]}
-    );
+    cy.request("PUT", "/api/permissions/graph", {
+      groups: {
+        "1": {
+          "1": { download: { schemas: "full" }, "view-data": "unrestricted" },
+          "2": {
+            "view-data": "unrestricted",
+            download: { schemas: "full" },
+            "create-queries": "query-builder-and-native",
+          },
+        },
+      },
+      revision: 1,
+      sandboxes: [],
+      impersonations: [],
+    });
 
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
@@ -637,14 +649,20 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByDisplayValue("new_transform").clear().type("test_table");
 
         cy.findByLabelText("Schema").click();
-        cy.document().findByRole("option", { name: /Schema B/ }).click();
+        cy.document()
+          .findByRole("option", { name: /Schema B/ })
+          .click();
 
         cy.findByRole("button", { name: /Save/ }).click();
       });
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("New transform", ["Setup", "Agent Chat", "New transform"]);
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
       });
 
       cy.log(
@@ -661,7 +679,10 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getTransformTargetButton().click();
       H.modal().within(() => {
         cy.findByLabelText("Schema").should("have.value", "Schema B");
-        cy.findByLabelText("New table name").should("have.value", "test_table").clear().type("new_table");
+        cy.findByLabelText("New table name")
+          .should("have.value", "test_table")
+          .clear()
+          .type("new_table");
         Workspaces.getTransformTargetButton().click();
       });
 
@@ -728,14 +749,20 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByDisplayValue("new_transform").clear().type("test_table");
 
         cy.findByLabelText("Schema").click();
-        cy.document().findByRole("option", { name: /Schema B/ }).click();
+        cy.document()
+          .findByRole("option", { name: /Schema B/ })
+          .click();
 
         cy.findByRole("button", { name: /Save/ }).click();
       });
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("New transform", ["Setup", "Agent Chat", "New transform"]);
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
       });
 
       cy.log(
@@ -752,7 +779,10 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getTransformTargetButton().click();
       H.modal().within(() => {
         cy.findByLabelText("Schema").should("have.value", "Schema B");
-        cy.findByLabelText("New table name").should("have.value", "test_table").clear().type("new_table");
+        cy.findByLabelText("New table name")
+          .should("have.value", "test_table")
+          .clear()
+          .type("new_table");
         Workspaces.getTransformTargetButton().click();
       });
 
@@ -769,39 +799,67 @@ describe("scenarios > data studio > workspaces", () => {
   });
 
   describe("run transform", () => {
-    it.only("should run transform", () => {
+    it("should run and fail transform runs", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
 
       cy.log("Run transform");
-      Workspaces.getMainlandTransforms()
-        .findByText("SQL transform")
-        .click();
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
       H.NativeEditor.type(" LIMIT");
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
       H.undoToast().findByText("Failed to run transform");
-      Workspaces.getWorkspaceContent().findByText("This transform hasn't been run before.");
+      Workspaces.getWorkspaceContent().findByText(
+        "This transform hasn't been run before.",
+      );
 
       H.NativeEditor.type(" 1;");
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
-      Workspaces.getWorkspaceContent().contains("Ran successfully");
-      Workspaces.getWorkspaceContent().contains("Last ran a few seconds ago successfully.");
+      Workspaces.getWorkspaceContent().findByText("Ran successfully");
+      Workspaces.getWorkspaceContent().findByText(
+        "Last ran a few seconds ago successfully.",
+      );
 
       H.NativeEditor.type("{backspace}{backspace}");
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
       H.undoToast().findByText("Failed to run transform");
+    });
 
-      cy.pause();
-    })
-  })
+    it.only("should show ad-hoc results", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Run ad-hoc query");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      H.NativeEditor.type(" LIMIT 1;").runButton().click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+          "Preview (SQL transform)",
+        ]);
+        cy.findByText("Preview (SQL transform)").click();
+        // TODO: Is it expected that ad-hoc cols have lowercase names?
+        H.assertTableData({
+          columns: ["name", "score"],
+          firstRows: [
+            ["Duck", "10"],
+          ],
+        });
+      });
+    });
+  });
 });
 
 function createWorkspace() {
@@ -813,7 +871,7 @@ const TEST_PYTHON_TRANSFORM = dedent`
 
   def transform(foo):
       return pd.DataFrame([{"foo": 42 }])
-`
+`;
 function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
     targetTable: TARGET_TABLE,
