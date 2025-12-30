@@ -170,8 +170,10 @@
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  (let [order-by         {:order-by [:db_id :global_schema :global_table]}
+  (let [workspace        (api/check-404 (t2/select-one :model/Workspace :id id))
+        ;; Trigger creation of the Workspace*External entries
+        _                (ws.impl/get-or-calculate-graph workspace)
+        order-by         {:order-by [:db_id :global_schema :global_table]}
         outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
                                      :isolated_schema :isolated_table :isolated_table_id :ref_id]
