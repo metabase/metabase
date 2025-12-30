@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
@@ -536,6 +537,64 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("1,510,621.68");
     });
   });
+
+  describe("dependency graph", () => {
+    it("should display measures and their dependencies in the dependency graph", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: measure }) => {
+        createQuestionWithMeasure({
+          measureName: MEASURE_NAME,
+          questionDetails: {
+            type: "question",
+            name: "Question using measure",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+        });
+
+        createQuestionWithMeasure({
+          measureName: MEASURE_NAME,
+          questionDetails: {
+            type: "model",
+            name: "Model using measure",
+            query: {
+              "source-table": ORDERS_ID,
+            },
+          },
+        });
+
+        cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
+
+        H.DependencyGraph.graph().should("be.visible");
+        H.DependencyGraph.graph().findByText(MEASURE_NAME).should("be.visible");
+
+        cy.log("verify question dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("1 question")
+          .click();
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Question using measure")
+          .should("be.visible");
+
+        cy.log("verify model dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("1 model")
+          .click();
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Model using measure")
+          .should("be.visible");
+      });
+    });
+  });
 });
 
 function buildNewMeasure({ createQuery }: { createQuery: () => void }) {
@@ -588,5 +647,50 @@ function verifyRowValues(rowValues: string[][]) {
       .should("have.length.gt", rowValues.length)
       .eq(index)
       .should("have.text", value);
+  });
+}
+
+function createQuestionWithMeasure({
+  measureName = MEASURE_NAME,
+  questionDetails: details = {
+    name: "Custom Question",
+    query: {
+      "source-table": ORDERS_ID,
+    },
+  },
+  after = () => {},
+}: {
+  measureName?: string;
+  questionDetails?: StructuredQuestionDetails;
+  after?: () => void;
+}) {
+  H.createQuestion(
+    // TODO: I cannot get the createQuestion to work with measure aggregations
+    // probably because there is some missing BE logic for converting MBQLv1
+    // This helper therefore builds the measure in the FE.
+    // "aggregation": [["measure", measureName]],
+    details,
+    { visitQuestion: true },
+  ).then(() => {
+    if (details.type === "model") {
+      H.openQuestionActions("Edit query definition");
+    } else {
+      H.openNotebook();
+    }
+
+    H.summarize({ mode: "notebook" });
+    H.popover().within(() => {
+      cy.findByText("Measures").click();
+      cy.findByText(measureName).click();
+    });
+
+    after();
+
+    if (details.type === "model") {
+      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    } else {
+      cy.findByTestId("qb-header").button("Save").click();
+      H.modal().findByText("Save").click();
+    }
   });
 }
