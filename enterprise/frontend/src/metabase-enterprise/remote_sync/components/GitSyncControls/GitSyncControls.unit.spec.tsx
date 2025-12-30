@@ -2,8 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupRemoteSyncEndpoints } from "__support__/server-mocks";
-import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { delay } from "metabase/lib/promise";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 
 import { GitSyncControls } from "./GitSyncControls";
 import {
@@ -20,7 +19,6 @@ const setup = ({
   syncType = "read-write",
   dirty = [],
   branches = ["main", "develop"],
-  fullWidth = false,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
@@ -28,13 +26,12 @@ const setup = ({
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
-  fullWidth?: boolean;
 } = {}) => {
   setupRemoteSyncEndpoints({ branches, dirty });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
-  return renderWithProviders(<GitSyncControls fullWidth={fullWidth} />, {
+  return renderWithProviders(<GitSyncControls />, {
     storeInitialState: createRemoteSyncStoreState({
       isAdmin,
       remoteSyncEnabled,
@@ -57,37 +54,43 @@ describe("GitSyncControls", () => {
   describe("visibility", () => {
     it("should not render when remote sync is disabled", async () => {
       setup({ remoteSyncEnabled: false });
-      // Wait a bit to ensure component initialization is complete
-      await act(async () => await delay(10));
-      expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+
+      // Wait a tick to ensure component has rendered
+      await waitFor(() => {
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+      });
     });
 
     it("should not render when user is not admin", async () => {
       setup({ isAdmin: false });
-      // Wait a bit to ensure component initialization is complete
-      await act(async () => await delay(10));
-      expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+      });
     });
 
     it("should not render when currentBranch is null", async () => {
       setup({ currentBranch: null });
-      // Wait a bit to ensure component initialization is complete
-      await act(async () => await delay(10));
-      expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+      });
     });
 
     it("should not render when sync type is read-only", async () => {
       setup({ syncType: "read-only" });
-      // Wait a bit to ensure component initialization is complete
-      await act(async () => await delay(10));
-      expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(queryBranchButton(/main/)).not.toBeInTheDocument();
+      });
     });
 
     it("should render pill when all conditions are met", async () => {
       setup();
-      // Wait a bit to ensure component initialization is complete
-      await act(async () => await delay(10));
-      expect(getBranchButton(/main/)).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
     });
   });
 
