@@ -248,7 +248,6 @@
     ;; Note: lib/available-segments requires the query to have a direct source-table-id.
     ;; For metrics, this means the underlying card must be based on a table (not another card).
     (let [mp (mt/metadata-provider)
-          ;; Create a metric query that's directly based on a table
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                            (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
           segment-def (segment-definition (mt/id :orders) (mt/id :orders :total) 50)]
@@ -265,7 +264,7 @@
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
 
-          (testing "with_segments: true includes segments for the table"
+          (testing "with_segments: true includes segments for the metric"
             (let [result (entity-details/get-metric-details {:metric-id metric-id
                                                              :with-segments? true})
                   output (:structured-output result)
