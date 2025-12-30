@@ -1,8 +1,9 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { Button, Icon, Loader, Tooltip } from "metabase/ui";
+import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
 import { useImportChangesMutation } from "metabase-enterprise/api";
 
 import { trackBranchSwitched, trackPullChanges } from "../../analytics";
@@ -16,11 +17,14 @@ import {
   type SyncConflictVariant,
 } from "../SyncConflictModal";
 
-import { BranchPicker } from "./BranchPicker";
+import { BranchDropdown } from "./BranchDropdown";
+import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
 
 interface GitSyncControlsProps {
   fullWidth?: boolean;
 }
+
+type DropdownView = "options" | "branch";
 
 export const GitSyncControls = ({
   fullWidth = false,
@@ -34,8 +38,10 @@ export const GitSyncControls = ({
   const { isRunning: isSyncTaskRunning } = useSyncStatus();
 
   const [nextBranch, setNextBranch] = useState<string | null>(null);
-  const [showPushModal, setShowPushModal] = useState(false);
+  const [showPushModal, { toggle: togglePushModal }] = useDisclosure(false);
   const [sendToast] = useToast();
+  const [dropdownView, setDropdownView] = useState<DropdownView>("options");
+  const combobox = useCombobox();
 
   const { isDirty, refetch: refetchDirty } = useRemoteSyncDirtyState();
 
@@ -92,6 +98,11 @@ export const GitSyncControls = ({
     [currentBranch, changeBranch, refetchDirty, sendToast],
   );
 
+  const handlePushClick = useCallback(() => {
+    togglePushModal();
+    combobox.closeDropdown();
+  }, [combobox, togglePushModal]);
+
   const handlePullClick = useCallback(async () => {
     if (!currentBranch) {
       return;
@@ -103,11 +114,6 @@ export const GitSyncControls = ({
       trackPullChanges({
         triggeredFrom: "app-bar",
         force: false,
-      });
-
-      sendToast({
-        message: t`Your branch is now up to date with remote`,
-        icon: "check",
       });
     } catch (error) {
       const { hasConflict, errorMessage } = parseSyncError(error as SyncError);
@@ -122,19 +128,17 @@ export const GitSyncControls = ({
         icon: "warning",
       });
     }
-  }, [currentBranch, importChanges, sendToast]);
 
-  const handlePushClick = useCallback(() => {
-    setShowPushModal(true);
-  }, []);
-
-  const handleClosePushModal = useCallback(() => {
-    setShowPushModal(false);
-  }, []);
+    combobox.closeDropdown();
+  }, [combobox, currentBranch, importChanges, sendToast]);
 
   const handleCloseSyncConflictModal = useCallback(() => {
     setSyncConflictVariant(undefined);
     setNextBranch(null);
+  }, []);
+
+  const handleSwitchBranchClick = useCallback(() => {
+    setDropdownView("branch");
   }, []);
 
   if (!isVisible || !currentBranch) {
@@ -143,57 +147,79 @@ export const GitSyncControls = ({
 
   return (
     <>
-      <Button.Group
-        data-testid="git-sync-controls"
-        mr={fullWidth ? undefined : "2rem"}
-        w={fullWidth ? "100%" : "13.5rem"}
+      <Combobox
+        store={combobox}
+        withinPortal
+        width={280}
+        position="bottom-start"
+        disabled={isLoading}
+        onOptionSubmit={() => {
+          // Reset to options view when dropdown closes
+          if (!combobox.dropdownOpened) {
+            setDropdownView("options");
+          }
+        }}
       >
-        <BranchPicker
-          isLoading={isLoading}
-          value={currentBranch}
-          onChange={handleBranchSelect}
-          baseBranch={currentBranch}
-        />
-
-        <Tooltip label={t`Pull from Git`}>
+        <Combobox.Target>
           <Button
-            variant="default"
+            p="sm"
             size="compact-sm"
-            px="0.5rem"
-            py="1rem"
-            onClick={handlePullClick}
+            justify="flex-start"
+            bd="none"
+            fw="900"
+            mr={fullWidth ? undefined : "2rem"}
             disabled={isLoading}
-            aria-label={t`Pull from Git`}
-            data-testid="git-pull-button"
-            leftSection={
-              isImporting ? (
+            onClick={() => {
+              setDropdownView("options");
+              combobox.toggleDropdown();
+            }}
+            leftSection={<Icon name="git_branch" c="text-medium" size={14} />}
+            rightSection={
+              isLoading ? (
                 <Loader size="xs" />
               ) : (
-                <Icon name="arrow_down" size={16} />
+                <Icon
+                  name="chevrondown"
+                  c="text-medium"
+                  size={8}
+                  style={{
+                    transform: combobox.dropdownOpened
+                      ? "rotate(180deg)"
+                      : "rotate(0deg)",
+                    transition: "transform 200ms ease",
+                  }}
+                />
               )
             }
-          />
-        </Tooltip>
+            data-testid="git-sync-controls"
+          >
+            <Text fw="bold" c="text-medium" size="sm" lh="md" truncate>
+              {currentBranch}
+            </Text>
+          </Button>
+        </Combobox.Target>
 
-        <Tooltip label={isDirty ? t`Push to Git` : t`No changes to push`}>
-          <Button
-            variant="default"
-            size="compact-sm"
-            px="0.5rem"
-            py="1rem"
-            onClick={handlePushClick}
-            disabled={isLoading || !isDirty}
-            aria-label={t`Push to Git`}
-            data-testid="git-push-button"
-            leftSection={<Icon name="arrow_up" size={16} />}
+        {dropdownView === "options" ? (
+          <GitSyncOptionsDropdown
+            isPushDisabled={!isDirty || isLoading}
+            onPullClick={handlePullClick}
+            onPushClick={handlePushClick}
+            onSwitchBranchClick={handleSwitchBranchClick}
           />
-        </Tooltip>
-      </Button.Group>
+        ) : (
+          <BranchDropdown
+            baseBranch={currentBranch}
+            combobox={combobox}
+            onChange={handleBranchSelect}
+            value={currentBranch}
+          />
+        )}
+      </Combobox>
 
       {showPushModal && (
         <PushChangesModal
-          onClose={handleClosePushModal}
           currentBranch={currentBranch}
+          onClose={togglePushModal}
         />
       )}
 

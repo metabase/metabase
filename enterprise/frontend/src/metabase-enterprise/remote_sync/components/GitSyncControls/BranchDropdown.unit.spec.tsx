@@ -2,17 +2,35 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Combobox, useCombobox } from "metabase/ui";
 
-import { BranchPicker } from "./BranchPicker";
+import { BranchDropdown } from "./BranchDropdown";
 
-const defaultProps = {
-  value: "main",
-  onChange: jest.fn(),
-  disabled: false,
-  isLoading: false,
-  baseBranch: "main",
-  allowCreate: true,
-};
+function WrapperComponent({
+  value,
+  onChange,
+  baseBranch = "main",
+  allowCreate = true,
+}: {
+  value: string;
+  onChange: (branch: string, isNewBranch?: boolean) => void;
+  baseBranch?: string;
+  allowCreate?: boolean;
+}) {
+  const combobox = useCombobox({ opened: true });
+
+  return (
+    <Combobox store={combobox} withinPortal={false}>
+      <BranchDropdown
+        value={value}
+        onChange={onChange}
+        baseBranch={baseBranch}
+        allowCreate={allowCreate}
+        combobox={combobox}
+      />
+    </Combobox>
+  );
+}
 
 const setupEndpoints = () => {
   fetchMock.get("path:/api/ee/remote-sync/branches", {
@@ -21,56 +39,38 @@ const setupEndpoints = () => {
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
 };
 
-const setup = (props: Partial<typeof defaultProps> = {}) => {
+const setup = (
+  props: Partial<{
+    value: string;
+    baseBranch: string;
+    allowCreate: boolean;
+  }> = {},
+) => {
   const onChange = jest.fn();
-  const mergedProps = { ...defaultProps, onChange, ...props };
+  const mergedProps = {
+    value: "main",
+    baseBranch: "main",
+    allowCreate: true,
+    ...props,
+  };
 
   setupEndpoints();
 
-  renderWithProviders(<BranchPicker {...mergedProps} />);
+  renderWithProviders(
+    <WrapperComponent {...mergedProps} onChange={onChange} />,
+  );
 
   return { onChange };
 };
 
-describe("BranchPicker", () => {
+describe("BranchDropdown", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   describe("rendering", () => {
-    it("should render button with current branch name", () => {
-      setup({ value: "main" });
-
-      expect(screen.getByTestId("branch-picker-button")).toBeInTheDocument();
-      expect(screen.getByText("main")).toBeInTheDocument();
-    });
-
-    it("should render with different branch name", () => {
-      setup({ value: "feature-branch" });
-
-      expect(screen.getByText("feature-branch")).toBeInTheDocument();
-    });
-  });
-
-  describe("disabled state", () => {
-    it("should disable button when disabled prop is true", () => {
-      setup({ disabled: true });
-
-      expect(screen.getByTestId("branch-picker-button")).toBeDisabled();
-    });
-
-    it("should disable button when isLoading is true", () => {
-      setup({ isLoading: true });
-
-      expect(screen.getByTestId("branch-picker-button")).toBeDisabled();
-    });
-  });
-
-  describe("dropdown behavior", () => {
-    it("should open dropdown when button is clicked", async () => {
+    it("should render search input", async () => {
       setup();
-
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
 
       await waitFor(() => {
         expect(
@@ -82,21 +82,17 @@ describe("BranchPicker", () => {
     it("should show available branches in dropdown", async () => {
       setup({ value: "main" });
 
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
-
       await waitFor(() => {
-        // Other branches should be visible
         expect(screen.getByTestId("branch-item-develop")).toBeInTheDocument();
       });
-      // Current branch (main) should not be in the list
       expect(screen.queryByTestId("branch-item-main")).not.toBeInTheDocument();
       expect(screen.getByTestId("branch-item-feature-1")).toBeInTheDocument();
     });
+  });
 
+  describe("search filtering", () => {
     it("should filter branches based on search input", async () => {
       setup({ value: "main" });
-
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
 
       await waitFor(() => {
         expect(screen.getByTestId("branch-item-develop")).toBeInTheDocument();
@@ -114,13 +110,45 @@ describe("BranchPicker", () => {
         screen.queryByTestId("branch-item-develop"),
       ).not.toBeInTheDocument();
     });
+
+    it("should show create option when search has no results and allowCreate is true", async () => {
+      setup({ value: "main", allowCreate: true });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("branch-item-develop")).toBeInTheDocument();
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Find or create a branch..."),
+        "nonexistent",
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("create-branch-button")).toBeInTheDocument();
+      });
+    });
+
+    it("should show no branches message when search has no results and allowCreate is false", async () => {
+      setup({ value: "main", allowCreate: false });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("branch-item-develop")).toBeInTheDocument();
+      });
+
+      await userEvent.type(
+        screen.getByPlaceholderText("Find or create a branch..."),
+        "nonexistent",
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("No branches found")).toBeInTheDocument();
+      });
+    });
   });
 
   describe("branch selection", () => {
     it("should call onChange with branch name when branch is selected", async () => {
       const { onChange } = setup({ value: "main" });
-
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
 
       await waitFor(() => {
         expect(screen.getByTestId("branch-item-develop")).toBeInTheDocument();
@@ -135,8 +163,6 @@ describe("BranchPicker", () => {
   describe("branch creation", () => {
     it("should show create option when search does not match existing branches", async () => {
       setup({ value: "main" });
-
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
 
       await waitFor(() => {
         expect(
@@ -160,8 +186,6 @@ describe("BranchPicker", () => {
     it("should not show create option when allowCreate is false", async () => {
       setup({ value: "main", allowCreate: false });
 
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
-
       await waitFor(() => {
         expect(
           screen.getByPlaceholderText("Find or create a branch..."),
@@ -183,8 +207,6 @@ describe("BranchPicker", () => {
     it("should not show create option when search matches existing branch", async () => {
       setup({ value: "main" });
 
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
-
       await waitFor(() => {
         expect(
           screen.getByPlaceholderText("Find or create a branch..."),
@@ -205,8 +227,6 @@ describe("BranchPicker", () => {
 
     it("should call createBranch mutation and onChange when create option is clicked", async () => {
       const { onChange } = setup({ value: "main" });
-
-      await userEvent.click(screen.getByTestId("branch-picker-button"));
 
       await waitFor(() => {
         expect(
