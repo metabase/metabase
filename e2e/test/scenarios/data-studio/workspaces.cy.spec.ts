@@ -13,13 +13,13 @@ const { Transforms } = DataStudio;
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
-const DB_NAME = "Writable Postgres12";
+const DB_NAME = "Worms";
 const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
-const TARGET_TABLE_2 = "transform_table_2";
+const TARGET_TABLE_2 = "T2";
 const TARGET_SCHEMA = "Schema A";
-const TARGET_SCHEMA_2 = "Schema B";
-const CUSTOM_SCHEMA = "custom_schema";
+const TARGET_SCHEMA_2 = "S2";
+const CUSTOM_SCHEMA = "CS";
 
 describe("scenarios > data studio > workspaces", () => {
   beforeEach(() => {
@@ -80,7 +80,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Writable Postgres12")
+          .should("have.value", "Worms")
           .should("be.enabled");
 
         cy.log("Doesn't show workspace setup logs");
@@ -300,7 +300,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
       Workspaces.getTransformTargetButton().should("not.exist");
       Workspaces.getRunTransformButton().should("not.exist");
-      Workspaces.getSaveTransformButton().should("not.exist");
+      Workspaces.getSaveTransformButton().should("be.disabled");
 
       H.NativeEditor.type(" LIMIT 2");
 
@@ -388,13 +388,203 @@ describe("scenarios > data studio > workspaces", () => {
       H.tableInteractiveBody().findByText("30").should("not.exist");
     });
   });
+
+  describe("should show tabs UI correctly", () => {
+    it("should allow closing tabs with close button, selects fallback tab", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+      });
+
+      cy.log("Open transform tabs");
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "Python transform",
+          "SQL transform",
+        ]);
+      });
+
+      cy.log("Reorder and close tabs");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findAllByRole("tab").eq(3).as("sqlTransformTab");
+        H.moveDnDKitElementByAlias("@sqlTransformTab", {
+          horizontal: -150,
+        });
+        cy.wait(100);
+        cy.findAllByRole("tab")
+          .eq(0)
+          .findByLabelText("close icon")
+          .should("not.exist");
+        cy.findAllByRole("tab")
+          .eq(1)
+          .findByLabelText("close icon")
+          .should("not.exist");
+        cy.findAllByRole("tab")
+          .eq(2)
+          .findByLabelText("close icon")
+          .should("exist");
+        cy.findAllByRole("tab")
+          .eq(3)
+          .findByLabelText("close icon")
+          .should("exist")
+          .click();
+      });
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+    });
+  });
+
+  describe("setup tab", () => {
+    it("should allow to change database before transforms are added", () => {
+      H.addPostgresDatabase("Test DB");
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Database dropdown should be enabled initially");
+      Workspaces.getWorkspaceDatabaseSelect()
+        .should("have.value", "Test DB")
+        .click();
+      H.popover()
+        .findByRole("option", { name: "Sample Database" })
+        .should("not.exist");
+      H.popover().findByRole("option", { name: "Writable Postgres12" }).click();
+
+      cy.log("Verify database was changed");
+      Workspaces.getWorkspaceDatabaseSelect().should(
+        "have.value",
+        "Writable Postgres12",
+      );
+    });
+
+    it("should lock database dropdown when workspace has been initialized, shows setup log", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Add WS transform to lock DB selection");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+        Workspaces.getSaveTransformButton().click();
+
+        cy.findByRole("tab", { name: "Setup" }).click();
+
+        cy.log("Database dropdown should be disabled after adding transforms");
+        Workspaces.getWorkspaceDatabaseSelect()
+          .should("be.disabled")
+          .should("have.value", "Writable Postgres12");
+
+        cy.log("Setup log should be visible");
+        cy.findByText(/Setting up the workspace/).should("be.visible");
+      });
+    });
+  });
+
+  describe("code tab", () => {
+    it("should check out transform into the workspace and remove it", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Open mainland transform");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      cy.log("Make changes to the transform");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+
+      cy.log(
+        "Check that transform has yellow dot change indicator after editing",
+      );
+      Workspaces.getMainlandTransforms().within(() => {
+        Workspaces.getTransformStatusDot("SQL transform").should("be.visible");
+      });
+
+      cy.log("Save the transform to add it to workspace");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Transform should be removed from available list after saving");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("not.exist");
+
+      cy.log("Transform should appear in workspace transforms list");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .should("be.visible");
+
+      cy.log("Make additional changes to the saved transform");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" ORDER BY 1");
+      });
+
+      cy.log("Check that transform has yellow dot status again");
+      Workspaces.getWorkspaceTransforms().within(() => {
+        Workspaces.getTransformStatusDot("SQL transform").should("be.visible");
+      });
+
+      cy.log("Save it again");
+      Workspaces.getWorkspaceContent().within(() => {
+        Workspaces.getSaveTransformButton().click();
+      });
+
+      cy.log("Check that yellow dot doesn't exist anymore after saving");
+      Workspaces.getWorkspaceTransforms().within(() => {
+        Workspaces.getTransformStatusDot("SQL transform").should("not.exist");
+      });
+
+      cy.log("Remove transform from the workspace through ellipsis menu");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .realHover();
+      Workspaces.getWorkspaceTransforms()
+        .findByLabelText("More actions")
+        .click();
+      H.popover()
+        .findByRole("menuitem", { name: /Remove/ })
+        .click();
+
+      cy.log("Check that it's not present in workspace transforms list");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .should("not.exist");
+
+      cy.log("Check that it's displayed back in available transforms list");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible");
+    });
+  });
 });
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
 }
 
-function createTransforms({ visit }: { visit?: boolean } = {}) {
+function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
     targetTable: TARGET_TABLE,
   });

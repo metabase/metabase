@@ -1,5 +1,4 @@
 import { useDisclosure } from "@mantine/hooks";
-import { h } from "@tiptap/core";
 import cx from "classnames";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
@@ -52,21 +51,21 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
   const [createWorkspace, { isLoading: isCreatingWorkspace }] =
     useCreateWorkspaceMutation();
 
-  const workspaces = useMemo(
-    () =>
-      [...(workspacesData?.items ?? [])].sort((a, b) => {
-        // Archived workspaces should be placed at the end
-        if (a.archived !== b.archived) {
-          return a.archived ? 1 : -1;
-        }
+  const workspaces = useMemo(() => {
+    const isArchived = (ws: (typeof workspacesData)["items"][0]) =>
+      ws.status === "archived";
+    return [...(workspacesData?.items ?? [])].sort((a, b) => {
+      // Archived workspaces should be placed at the end
+      if (isArchived(a) !== isArchived(b)) {
+        return isArchived(a) ? 1 : -1;
+      }
 
-        // Within each group (archived/unarchived), sort by updated_at descending
-        const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-        const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-        return bDate - aDate;
-      }),
-    [workspacesData],
-  );
+      // Within each group (archived/unarchived), sort by updated_at descending
+      const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return bDate - aDate;
+    });
+  }, [workspacesData]);
 
   const handleOpenWorkspace = useCallback(
     (workspaceId: number) => {
@@ -321,7 +320,7 @@ function WorkspaceItem({
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            {workspace.archived ? (
+            {workspace.status === "archived" ? (
               <>
                 <Menu.Item
                   leftSection={<Icon name="revert" />}
@@ -370,7 +369,7 @@ type WorkspaceListStatus = {
 };
 
 function getWorkspaceListStatus(workspace: Workspace): WorkspaceListStatus {
-  if (workspace.archived) {
+  if (workspace.status === "archived") {
     return { label: t`Archived`, icon: "archive", color: "text-light" };
   }
 

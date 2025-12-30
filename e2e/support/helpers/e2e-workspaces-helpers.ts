@@ -100,4 +100,11 @@ export const Workspaces = {
   getNewWorkspaceDatabaseInput() {
     return cy.findByPlaceholderText("Select a database");
   },
+
+  getTransformStatusDot(name: string | RegExp) {
+    return cy
+      .findByText(name)
+      .parent()
+      .find('[class*="statusDot"]');
+  },
 };

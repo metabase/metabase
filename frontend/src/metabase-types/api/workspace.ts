@@ -14,8 +14,6 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   status: WorkspaceSetupStatus;
-  archived?: boolean;
-  archived_at?: string | null;
   collection_id?: CollectionId | null;
   database_id?: DatabaseId | null;
   created_at?: string;
@@ -26,7 +24,8 @@ export type WorkspaceItem = {
   id: WorkspaceId;
   name: string;
   database_id: DatabaseId;
-  archived?: boolean;
+  status: WorkspaceSetupStatus;
+  updated_at?: string;
 };
 
 export type WorkspaceListResponse = {
@@ -116,7 +115,6 @@ export type WorkspaceMergeResponse = {
   merged?: WorkspaceMergeTransformResult[];
   errors?: WorkspaceMergeTransformResult[];
   workspace: WorkspaceItem;
-  archived_at: string | null;
 };
 
 export type WorkspaceTransformMergeResponse = WorkspaceMergeTransformResult;
