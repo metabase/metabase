@@ -728,7 +728,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   items={openedTabs}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel}>
+                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel} data-testid="workspace-tabs">
                     <Tabs.Tab value="setup">
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="database" aria-hidden />

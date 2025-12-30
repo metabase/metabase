@@ -29,8 +29,24 @@ export const Workspaces = {
     return cy.findByTestId("workspace-content");
   },
 
+  getWorkspaceTabs() {
+    return cy.findByTestId("workspace-tabs");
+  },
+
   getWorkspaceSidebar() {
     return cy.findByTestId("workspace-sidebar");
+  },
+
+  openCodeTab() {
+    return this.getWorkspaceSidebar().within(() => {
+      return cy.findByRole("tab", { name: "Code" }).click();
+    });
+  },
+
+  openDataTab() {
+    return this.getWorkspaceSidebar().within(() => {
+      return cy.findByRole("tab", { name: "Data" }).click();
+    });
   },
 
   getWorkspacesSection() {

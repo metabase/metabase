@@ -578,12 +578,202 @@ describe("scenarios > data studio > workspaces", () => {
         .should("be.visible");
     });
   });
+
+  describe("transform tab", () => {
+    it("should create new transform - SQL", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Click Add Transform button");
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByLabelText("Add transform").click();
+      });
+
+      cy.log("Check that SQL and Python options are provided");
+      H.popover()
+        .findByRole("menuitem", { name: /Python Script/ })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .should("be.visible")
+        .click();
+
+      cy.log("Check that it opens new empty tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
+        H.NativeEditor.value().should("be.empty");
+      });
+
+      cy.log(
+        "Check that 'New transform' is added to workspace transforms list",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      cy.log("Type a query in the editor");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.paste("SELECT * FROM many_schemas.animals");
+      });
+
+      cy.log("Open transform settings");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log(
+        "Check that table name gets automatically populated based on transform name",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/).should("have.value", "new_transform");
+        cy.findByDisplayValue("new_transform").clear().type("test_table");
+
+        cy.findByLabelText("Schema").click();
+        cy.document().findByRole("option", { name: /Schema B/ }).click();
+
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+
+      cy.log("Verify transform is saved with new name");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", ["Setup", "Agent Chat", "New transform"]);
+      });
+
+      cy.log(
+        "Check transform appears in workspace transforms list with correct name",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      Workspaces.openDataTab().then(() => {
+        cy.findByText("Schema B.test_table").should("be.visible");
+      });
+
+      Workspaces.getTransformTargetButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Schema").should("have.value", "Schema B");
+        cy.findByLabelText("New table name").should("have.value", "test_table").clear().type("new_table");
+        Workspaces.getTransformTargetButton().click();
+      });
+
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByText("Schema B.new_table").should("be.visible");
+      });
+
+      Workspaces.openCodeTab().then(() => {
+        Workspaces.getWorkspaceTransforms().within(() => {
+          Workspaces.getTransformStatusDot("New transform").should("not.exist");
+        });
+      });
+    });
+
+    it("should create new transform - Python", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Click Add Transform button");
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByLabelText("Add transform").click();
+      });
+
+      cy.log("Check that Python and SQL options are provided");
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: /Python Script/ })
+        .should("be.visible")
+        .click();
+
+      cy.log("Check that it opens new empty tab");
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
+      });
+      H.PythonEditor.value().should("not.be.empty");
+
+      cy.log(
+        "Check that 'New transform' is added to workspace transforms list",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      cy.log("Type a query in the editor");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.PythonEditor.clear().paste(TEST_PYTHON_TRANSFORM);
+      });
+
+      cy.log("Open transform settings");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log(
+        "Check that table name gets automatically populated based on transform name",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/).should("have.value", "new_transform");
+        cy.findByDisplayValue("new_transform").clear().type("test_table");
+
+        cy.findByLabelText("Schema").click();
+        cy.document().findByRole("option", { name: /Schema B/ }).click();
+
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+
+      cy.log("Verify transform is saved with new name");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", ["Setup", "Agent Chat", "New transform"]);
+      });
+
+      cy.log(
+        "Check transform appears in workspace transforms list with correct name",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      Workspaces.openDataTab().then(() => {
+        cy.findByText("Schema B.test_table").should("be.visible");
+      });
+
+      Workspaces.getTransformTargetButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Schema").should("have.value", "Schema B");
+        cy.findByLabelText("New table name").should("have.value", "test_table").clear().type("new_table");
+        Workspaces.getTransformTargetButton().click();
+      });
+
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByText("Schema B.new_table").should("be.visible");
+      });
+
+      Workspaces.openCodeTab().then(() => {
+        Workspaces.getWorkspaceTransforms().within(() => {
+          Workspaces.getTransformStatusDot("New transform").should("not.exist");
+        });
+      });
+    });
+  });
 });
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
 }
 
+const TEST_PYTHON_TRANSFORM = dedent`
+  import pandas as pd
+
+  def transform(foo):
+      return pd.DataFrame([{"foo": 42 }])
+`
 function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
     targetTable: TARGET_TABLE,
@@ -591,12 +781,7 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
 
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
     createPythonTransform({
-      body: dedent`
-          import pandas as pd
-
-          def transform(foo):
-            return pd.DataFrame([{"foo": 42 }])
-        `,
+      body: TEST_PYTHON_TRANSFORM,
       sourceTables: { foo: id },
     });
   });

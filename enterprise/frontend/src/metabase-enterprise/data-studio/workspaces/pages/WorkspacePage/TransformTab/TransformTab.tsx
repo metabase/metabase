@@ -383,7 +383,8 @@ export const TransformTab = ({
               <Button
                 leftSection={<Icon name="check" />}
                 size="sm"
-                disabled={isDisabled}
+                variant="filled"
+                disabled={isDisabled || !hasChanges}
                 onClick={() => setSaveModalOpen(true)}
               >{t`Save`}</Button>
             )}

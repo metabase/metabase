@@ -113,7 +113,7 @@ function UpdateTargetForm({
       throw new Error("Database ID is required");
     }
     const updatedTransform = await updateWorkspaceTransform(
-      getUpdateRequest(transform, values, databaseId),
+      getUpdateTargetRequest(transform, values, databaseId),
     ).unwrap();
 
     onUpdate(updatedTransform);
@@ -162,7 +162,7 @@ function getInitialValues({ target }: WorkspaceTransform): EditTransformValues {
   };
 }
 
-function getUpdateRequest(
+function getUpdateTargetRequest(
   { id, workspace_id }: WorkspaceTransform,
   { name, schema }: EditTransformValues,
   databaseId: number,
