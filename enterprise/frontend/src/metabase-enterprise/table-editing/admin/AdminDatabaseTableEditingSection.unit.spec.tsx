@@ -25,11 +25,21 @@ const setup = (options: {
 };
 
 describe("AdminDatabaseTableEditingSection", () => {
-  it("should render for supported engines", () => {
-    setup({ engine: "postgres" });
+  it.each(["postgres", "mysql"])(
+    "should render for supported engine: %s",
+    (engine) => {
+      setup({ engine });
+      expect(
+        screen.getByTestId("database-table-editing-section"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("should hide section for unsupported engines", () => {
+    setup({ engine: "h2" });
     expect(
-      screen.getByTestId("database-table-editing-section"),
-    ).toBeInTheDocument();
+      screen.queryByTestId("database-table-editing-section"),
+    ).not.toBeInTheDocument();
   });
 
   it("should render disabled toggle for specific disabled reasons", () => {
