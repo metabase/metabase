@@ -114,7 +114,7 @@
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_driver _database _workspace]
+                                  (fn [_database _workspace]
                                     (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
         (is @called? "destroy-workspace-isolation! should be called when archiving")))))
@@ -134,7 +134,7 @@
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_driver _database _workspace]
+                                  (fn [_database _workspace]
                                     (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
         (mt/user-http-request :crowberto :delete 200 (ws-url (:id workspace)))
@@ -145,7 +145,7 @@
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
       (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_driver _database _workspace]
+                                  (fn [_database _workspace]
                                     (reset! called? true))]
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
         (is @called? "destroy-workspace-isolation! should be called when merging")))))
@@ -190,7 +190,7 @@
 
         (testing "Unarchive re-grants access and sets access_granted to true"
           (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
-                                      (fn [_driver _database _workspace tables]
+                                      (fn [_database _workspace tables]
                                         (reset! granted-tables tables))]
             (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
             (is (= [{:schema nil :name "test_table"}] @granted-tables)
@@ -1133,7 +1133,7 @@
                                                       :name     "init_transform_output"}})]
         (is (some? (:ref_id transform)))
         (let [ws (ws.tu/ws-ready ws)]
-          (is (=? {:status      "ready"
+          (is (=? {:status      :ready
                    :database_id (mt/id)}
                   ws))))))
   (testing "PUT database_id fails on already initialized workspace"
