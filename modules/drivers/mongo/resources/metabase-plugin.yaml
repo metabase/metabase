@@ -17,19 +17,22 @@ driver:
       required: true
       visible-if:
         use-conn-uri: true
-    - merge:
-        - host
-        - visible-if:
-            use-conn-uri: false
-          required: true
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - visible-if:
+                  use-conn-uri: false
+                required: true
+          - merge:
+              - port
+              - placeholder: 27017
+                visible-if:
+                  use-conn-uri: false
     - merge:
         - dbname
         - visible-if:
-            use-conn-uri: false
-    - merge:
-        - port
-        - placeholder: 27017
-          visible-if:
             use-conn-uri: false
     - merge:
         - user

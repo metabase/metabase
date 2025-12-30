@@ -8,13 +8,16 @@ driver:
   lazy-load: true
   parent: postgres
   connection-properties:
-    - merge:
-        - host
-        - placeholder: my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com
-          required: true
-    - merge:
-        - port
-        - placeholder: 5439
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - placeholder: my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com
+                required: true
+          - merge:
+              - port
+              - placeholder: 5439
     - merge:
         - dbname
         - name: db
