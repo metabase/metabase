@@ -25,7 +25,7 @@
          opts))
 
 ;;; =============================================================================
-;;; Priority 4: Quarantine
+;;; Priority 3: Quarantine (respected even on master/release)
 ;;; =============================================================================
 
 (deftest quarantined-driver-skips
@@ -46,14 +46,14 @@
       (is (true? (:should-run result)))
       (is (re-find #"anti-quarantine label" (:reason result))))))
 
-(deftest master-branch-beats-quarantine
-  (testing "Master/release branch takes priority over quarantine"
+(deftest quarantine-respected-on-master
+  (testing "Quarantined driver is skipped even on master/release"
     (let [result (driver-decision :postgres
                                   (make-ctx {:is-master-or-release true})
                                   true ; driver-deps-affected?
-                                  #{:postgres})]
-      (is (true? (:should-run result)))
-      (is (= "master/release branch" (:reason result))))))
+                                  #{:postgres})] ; quarantined
+      (is (false? (:should-run result)))
+      (is (= "driver is quarantined" (:reason result))))))
 
 ;;; =============================================================================
 ;;; Priority 1: Global skip
@@ -102,7 +102,7 @@
       (is (= "workflow skip (no backend changes)" (:reason result))))))
 
 ;;; =============================================================================
-;;; Priority 3: Master/release branch
+;;; Priority 4: Master/release branch
 ;;; =============================================================================
 
 (deftest master-branch-runs-all-drivers
@@ -117,22 +117,22 @@
         (is (= "master/release branch" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 5: Driver module affected
+;;; Priority 8: Driver deps affected (self-hosted only)
 ;;; =============================================================================
 
-(deftest driver-module-affected-runs-all-drivers
-  (testing "All drivers run when driver module is affected"
-    (doseq [driver [:postgres :mysql :mongo :athena :bigquery :snowflake]]
+(deftest driver-deps-affected-runs-self-hosted-drivers
+  (testing "Self-hosted drivers run when driver module is affected"
+    (doseq [driver [:postgres :mysql :mongo :oracle :sqlserver]]
       (let [result (driver-decision driver
                                     (make-ctx {})
-                                    true ; driver-module-affected
+                                    true ; driver-deps-affected
                                     #{})]
         (is (true? (:should-run result))
             (str driver " should run when driver module affected"))
         (is (= "driver module affected by shared code changes" (:reason result)))))))
 
 ;;; =============================================================================
-;;; Priority 6-8: Cloud driver special rules
+;;; Priority 5-7: Cloud driver special rules
 ;;; =============================================================================
 
 (deftest cloud-driver-with-label-runs

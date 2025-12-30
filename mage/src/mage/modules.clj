@@ -297,12 +297,7 @@
     {:should-run true
      :reason "H2 always runs"}
 
-    ;; Priority 3: Master/release branch - all drivers run
-    is-master-or-release
-    {:should-run true
-     :reason "master/release branch"}
-
-    ;; Priority 4: Quarantined drivers
+    ;; Priority 3: Quarantined drivers (respected even on master/release)
     (contains? quarantined-drivers driver)
     (do
       (when verbose?
@@ -313,27 +308,32 @@
         {:should-run false
          :reason "driver is quarantined"}))
 
-    ;; Priority 5: Driver deps affected by shared code changes
-    driver-deps-affected?
+    ;; Priority 4: Master/release branch - all (non-quarantined) drivers run
+    is-master-or-release
     {:should-run true
-     :reason "driver module affected by shared code changes"}
+     :reason "master/release branch"}
 
-    ;; Priority 6: Cloud driver + ci:all-cloud-drivers label
+    ;; Priority 5: Cloud driver + ci:all-cloud-drivers label
     (and (contains? cloud-drivers driver)
          (contains? pr-labels "ci:all-cloud-drivers"))
     {:should-run true
      :reason "ci:all-cloud-drivers label"}
 
-    ;; Priority 7: Cloud driver + its files changed
+    ;; Priority 6: Cloud driver + its files changed
     (and (contains? cloud-drivers driver)
          (contains? particular-driver-changed? driver))
     {:should-run true
      :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
-    ;; Priority 8: Cloud driver, no relevant changes
+    ;; Priority 7: Cloud driver, no relevant changes
     (contains? cloud-drivers driver)
     {:should-run false
      :reason "no relevant changes for cloud driver"}
+
+    ;; Priority 8: Driver deps affected by shared code changes
+    driver-deps-affected?
+    {:should-run true
+     :reason "driver module affected by shared code changes"}
 
     ;; Priority 9: Self-hosted driver, not affected
     :else
