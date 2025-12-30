@@ -182,6 +182,27 @@
       :else (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                 :body body})))))
 
+(defn- metering-url
+  [token base-url]
+  (format "%s/api/%s/v2/metering" base-url token))
+
+(defn send-metering-events!
+  "Send metering events for billing purposes"
+  []
+  (when-let [token (premium-features.settings/premium-embedding-token)]
+    (when (mr/validate [:re RemoteCheckedToken] token)
+      (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
+            stats (metering-stats)]
+        (try
+          (http/post (metering-url token token-check-url)
+                     {:body (json/encode (merge stats
+                                                {:site-uuid site-uuid
+                                                 :mb-version (:tag config/mb-version-info)}))
+                      :content-type :json
+                      :throw-exceptions false})
+          (catch Throwable e
+            (log/error e "Error sending metering events")))))))
+
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
 (declare decode-airgap-token)
