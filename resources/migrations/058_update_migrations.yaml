@@ -4576,7 +4576,6 @@ databaseChangeLog:
       id: v58.2025-12-29T19:00:00
       author: christruter
       comment: Add db_status column for tracking database isolation state
-      rollback: empty
       changes:
         - addColumn:
             tableName: workspace
@@ -4588,12 +4587,15 @@ databaseChangeLog:
                   defaultValue: "uninitialized"
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: db_status
 
   - changeSet:
       id: v58.2025-12-29T19:00:01
       author: christruter
       comment: Add base_status column for tracking workspace lifecycle
-      rollback: empty
       changes:
         - addColumn:
             tableName: workspace
@@ -4605,6 +4607,10 @@ databaseChangeLog:
                   defaultValue: "empty"
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: base_status
 
   - changeSet:
       id: v58.2025-12-29T19:00:02
@@ -4646,11 +4652,21 @@ databaseChangeLog:
       id: v58.2025-12-29T19:00:05
       author: christruter
       comment: Drop legacy status column
-      rollback: empty
       changes:
         - dropColumn:
             tableName: workspace
             columnName: status
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  remarks: Status of workspace setup
+                  defaultValue: "ready"
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
