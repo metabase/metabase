@@ -175,5 +175,7 @@
         ;; Transition base_status from :empty to :active when first transform is added
         (when (= :empty (:base_status workspace))
           (t2/update! :model/Workspace workspace-id {:base_status :active}))
-        (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
+        ;; Mark workspace as stale - dependencies will be analyzed lazily
+        ;; New transforms already start with analysis_stale=true from the DB default
+        (ws.impl/mark-workspace-stale! workspace-id)
         transform))))

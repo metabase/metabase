@@ -4668,6 +4668,46 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v58.2025-12-30T10:00:00
+      author: christruter
+      comment: Add analysis_stale column to workspace_transform for lazy analysis
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: analysis_stale
+                  type: boolean
+                  defaultValueBoolean: true
+                  remarks: Whether dependency analysis needs to be recalculated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: analysis_stale
+
+  - changeSet:
+      id: v58.2025-12-30T10:00:01
+      author: christruter
+      comment: Add analysis_stale column to workspace for lazy graph caching
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: analysis_stale
+                  type: boolean
+                  defaultValueBoolean: true
+                  remarks: Whether the graph needs to be recalculated
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: analysis_stale
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

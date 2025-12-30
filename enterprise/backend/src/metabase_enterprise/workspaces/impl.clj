@@ -9,6 +9,7 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -300,16 +301,105 @@
                              :table_id       (:table_id (get new-inputs [db_id schema table]))
                              :access_granted false})))))))))
 
-;; TODO save graph with invalidation hooks
+;;;; ---------------------------------------- Graph Serialization ----------------------------------------
+;; The :dependencies map in the graph uses Clojure maps as keys (e.g., {:node-type :workspace-transform :id "..."})
+;; which JSON doesn't support. We serialize to an association list and restore on read.
+
+(defn- serialize-graph-for-storage
+  "Convert graph to a JSON string suitable for database storage.
+   Converts :dependencies map to an association list since JSON can't have map keys."
+  [graph]
+  (-> graph
+      (update :dependencies (fn [deps]
+                              (mapv (fn [[k vs]]
+                                      [(select-keys k [:node-type :id])
+                                       (mapv #(select-keys % [:node-type :id]) vs)])
+                                    deps)))
+      (update :entities (fn [entities]
+                          (mapv #(select-keys % [:node-type :id]) entities)))
+      json/generate-string))
+
+(defn- deserialize-graph-from-storage
+  "Convert graph JSON string from database back to runtime format.
+   Converts association list :dependencies back to a map and restores keyword node-types."
+  [graph-json]
+  (when graph-json
+    (let [graph (json/parse-string graph-json true)]
+      (-> graph
+          (update :dependencies (fn [assoc-list]
+                                  (into {} (map (fn [[k vs]]
+                                                  [(update k :node-type keyword)
+                                                   (mapv #(update % :node-type keyword) vs)])
+                                                assoc-list))))
+          (update :entities (fn [entities]
+                              (mapv #(update % :node-type keyword) entities)))
+          ;; Also restore :inputs and :outputs which are simple vectors
+          (update :inputs (fn [inputs] (or inputs [])))
+          (update :outputs (fn [outputs] (or outputs [])))))))
+
+;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
+
+(defn- calculate-graph!
+  "Calculate the dependency graph for a workspace.
+   Returns the graph without caching - caller is responsible for caching."
+  [ws-id]
+  (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
+                                                        [:model/WorkspaceTransform :ref_id]
+                                                        :workspace_id ws-id)))
+
+(defn- analyze-stale-transforms!
+  "Re-analyze dependencies for any workspace transforms that are stale.
+   Marks them as not stale after analysis."
+  [{ws-id :id, isolated-schema :schema :as workspace}]
+  (let [stale-transforms (t2/select :model/WorkspaceTransform
+                                    :workspace_id ws-id
+                                    :analysis_stale true)]
+    (doseq [transform stale-transforms]
+      (let [analysis (ws.deps/analyze-entity :transform transform)]
+        (ws.deps/write-dependencies! ws-id isolated-schema :transform (:ref_id transform) analysis))
+      (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false}))
+    ;; Grant read access to any new external inputs
+    (when (seq stale-transforms)
+      (sync-grant-accesses! workspace))))
+
+(defn- calculate-and-cache-graph!
+  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
+  [{ws-id :id, isolated-schema :schema :as workspace}]
+  (t2/with-transaction [_conn]
+    ;; First, re-analyze any stale transforms
+    (analyze-stale-transforms! workspace)
+    ;; Calculate the graph
+    (let [graph (calculate-graph! ws-id)]
+      ;; Sync external outputs and inputs
+      (sync-external-outputs! ws-id isolated-schema (:entities graph))
+      (sync-external-inputs! ws-id (:entities graph))
+      ;; Cache the graph and mark workspace as not stale
+      (t2/update! :model/Workspace ws-id
+                  {:graph          (serialize-graph-for-storage graph)
+                   :analysis_stale false})
+      graph)))
+
 (defn get-or-calculate-graph
-  "Return the graph. Also syncs workspace_output_external and workspace_input_external tables."
-  [{ws-id :id, isolated-schema :schema :as _workspace}]
-  (let [graph (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
-                                                                    [:model/WorkspaceTransform :ref_id]
-                                                                    :workspace_id ws-id))]
-    (sync-external-outputs! ws-id isolated-schema (:entities graph))
-    (sync-external-inputs! ws-id (:entities graph))
-    graph))
+  "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
+   otherwise recalculates it.
+   Also syncs workspace_output_external and workspace_input_external tables when recalculating."
+  [{analysis-stale :analysis_stale, cached-graph :graph :as workspace}]
+  (if-not analysis-stale
+    ;; Return cached graph
+    (deserialize-graph-from-storage cached-graph)
+    ;; Recalculate and cache
+    (calculate-and-cache-graph! workspace)))
+
+(defn mark-transform-stale!
+  "Mark a workspace transform and its workspace as needing analysis recalculation."
+  [workspace-id ref-id]
+  (t2/update! :model/WorkspaceTransform ref-id {:analysis_stale true})
+  (t2/update! :model/Workspace workspace-id {:analysis_stale true}))
+
+(defn mark-workspace-stale!
+  "Mark a workspace as needing graph recalculation."
+  [workspace-id]
+  (t2/update! :model/Workspace workspace-id {:analysis_stale true}))
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
