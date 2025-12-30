@@ -25,20 +25,20 @@
 
 (defn archive!
   "Archive a workspace. Destroys database isolation resources (best-effort), revokes access grants, sets status to :archived.
-  Cleanup failures are logged but don't block archiving - the workspace can be unarchived to retry cleanup,
-  or deleted once the underlying permission issues are resolved."
+   Cleanup failures are logged but don't block archiving - the workspace can be unarchived to retry cleanup,
+   or deleted once the underlying permission issues are resolved."
   [{workspace-id :id :as workspace}]
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
   (when (not= :uninitialized (:status workspace))
-    ;; Best-effort cleanup - don't block archiving on cleanup failures
-    (try
-      (let [database (t2/select-one :model/Database :id (:database_id workspace))]
-        (ws.isolation/destroy-workspace-isolation! database workspace))
-      (catch Exception e
-        (log/warnf e "Failed to cleanup isolation resources for workspace %s, proceeding with archive" workspace-id)))
-    ;; Mark all inputs as un-granted since the user may have been dropped
-    (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
-                {:access_granted false}))
+    (let [database (t2/select-one :model/Database :id (:database_id workspace))]
+      ;; Best-effort cleanup - don't block archiving on cleanup failures
+      (try
+        (ws.isolation/destroy-workspace-isolation! database workspace)
+        (catch Exception e
+          (log/warnf e "Failed to cleanup isolation resources for workspace %s, proceeding with archive" workspace-id)))
+      ;; Mark all inputs as un-granted since the user may have been dropped
+      (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
+                  {:access_granted false})))
   (t2/update! :model/Workspace workspace-id {:status :archived}))
 
 (defn unarchive!
