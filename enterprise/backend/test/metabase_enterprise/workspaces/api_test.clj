@@ -129,7 +129,7 @@
         (is (= :archived (t2/select-one-fn :status :model/Workspace :id (:id workspace)))
             "Workspace should have status :archived despite cleanup failure")))))
 
-(deftest ^:parallel delete-workspace-calls-destroy-isolation-test
+(deftest delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
