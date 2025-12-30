@@ -683,7 +683,7 @@ describe("scenarios > data studio > workspaces", () => {
           .should("have.value", "test_table")
           .clear()
           .type("new_table");
-        Workspaces.getTransformTargetButton().click();
+        cy.findByRole("button", { name: /Change target/ }).click();
       });
 
       Workspaces.getWorkspaceSidebar().within(() => {
@@ -796,6 +796,48 @@ describe("scenarios > data studio > workspaces", () => {
         });
       });
     });
+
+    it("should validate target name", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Add existing transform");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      cy.log("Make changes to the transform");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Create new transform");
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByLabelText("Add transform").click();
+      });
+
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.paste("any text");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      H.modal().within(() => {
+        cy.findByDisplayValue("new_transform").clear();
+        cy.findByText("Target table name is required").should('be.visible');
+        cy.realType("transform_table");
+        cy.findByText("Another transform in this workspace already targets that table").should('be.visible');
+        cy.realType("1");
+        cy.findByText("Another transform in this workspace already targets that table").should('not.exist');
+      });
+
+    });
   });
 
   describe("run transform", () => {
@@ -832,7 +874,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.undoToast().findByText("Failed to run transform");
     });
 
-    it.only("should show ad-hoc results", () => {
+    it("should show ad-hoc results", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();
@@ -853,9 +895,7 @@ describe("scenarios > data studio > workspaces", () => {
         // TODO: Is it expected that ad-hoc cols have lowercase names?
         H.assertTableData({
           columns: ["name", "score"],
-          firstRows: [
-            ["Duck", "10"],
-          ],
+          firstRows: [["Duck", "10"]],
         });
       });
     });
