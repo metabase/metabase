@@ -734,6 +734,51 @@ describe("scenarios > data studio > measures > queries", () => {
           .should("be.visible");
       });
     });
+
+    it("should show measures as unused when they are not depended on", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: measure }) => {
+        cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
+
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("Nothing uses this")
+          .should("be.visible");
+      });
+    });
+
+    it("should not show measures as unused when they are only depended on by other measures", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      }).then(({ body: measure }) => {
+        H.createMeasure({
+          name: "Dependent measure",
+          table_id: ORDERS_ID,
+          definition: {
+            "source-table": ORDERS_ID,
+            aggregation: [["*", 2, ["measure", measure.id]]],
+          },
+        });
+
+        cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
+
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("Nothing uses this")
+          .should("not.exist");
+      });
+    });
   });
 });
 
