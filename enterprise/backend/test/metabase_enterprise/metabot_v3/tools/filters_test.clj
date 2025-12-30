@@ -4,10 +4,12 @@
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
+   [metabase-enterprise.metabot-v3.tools.test-util :as tools.tu]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-util :as lib.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -44,17 +46,16 @@
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
           (testing "Trivial query works."
-            (is (=? {:structured-output {:type :query,
-                                         :query-id string?
-                                         :query {:database (mt/id)
-                                                 :lib/type :mbql/query
-                                                 :stages [{:lib/type :mbql.stage/mbql
-                                                           :source-table (mt/id :orders)
-                                                           :aggregation [[:metric {} metric-id]]}]}}}
-                    (metabot-v3.tools.filters/query-metric
-                     {:metric-id metric-id
-                      :filters []
-                      :group-by []}))))
+            (let [result (metabot-v3.tools.filters/query-metric
+                          {:metric-id metric-id
+                           :filters []
+                           :group-by []})
+                  actual-query (get-in result [:structured-output :query])
+                  expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                     (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id])))]
+              (is (= :query (get-in result [:structured-output :type])))
+              (is (string? (get-in result [:structured-output :query-id])))
+              (is (tools.tu/query= expected-query actual-query))))
           (testing "Filtering and grouping works and ignores bucketing for non-temporal columns."
             (is (=? {:structured-output {:type :query,
                                          :query-id string?
@@ -315,36 +316,34 @@
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
       (testing "Trivial query works."
-        (is (=? {:structured-output {:type :query,
-                                     :query-id string?
-                                     :query {:database (mt/id)
-                                             :lib/type :mbql/query
-                                             :stages [{:lib/type :mbql.stage/mbql
-                                                       :source-table table-id}]}}}
-                (metabot-v3.tools.filters/filter-records
-                 {:data-source {:table-id table-id}
-                  :filters []}))))
+        (let [result (metabot-v3.tools.filters/filter-records
+                      {:data-source {:table-id table-id}
+                       :filters []})
+              actual-query (get-in result [:structured-output :query])
+              expected-query (lib/query mp (lib.metadata/table mp table-id))]
+          (is (= :query (get-in result [:structured-output :type])))
+          (is (string? (get-in result [:structured-output :query-id])))
+          (is (tools.tu/query= expected-query actual-query))))
       (testing "Filtering works."
-        (is (=? {:structured-output {:type :query,
-                                     :query-id string?
-                                     :query {:database (mt/id)
-                                             :lib/type :mbql/query
-                                             :stages [{:lib/type :mbql.stage/mbql
-                                                       :source-table (mt/id :orders)
-                                                       :filters
-                                                       [[:= {}
-                                                         [:get-day-of-week {} [:field {} (mt/id :orders :created_at)] :iso]
-                                                         1 7]
-                                                        [:> {} [:field {} (mt/id :orders :discount)] 3]]}]}}}
-                (metabot-v3.tools.filters/filter-records
-                 {:data-source {:table-id table-id}
-                  :filters [{:field-id (->field-id "Created At")
-                             :bucket :day-of-week
-                             :operation :equals
-                             :values [1 7]}
-                            {:field-id (->field-id "Discount")
-                             :operation :number-greater-than
-                             :value 3}]})))))
+        (let [result (metabot-v3.tools.filters/filter-records
+                      {:data-source {:table-id table-id}
+                       :filters [{:field-id (->field-id "Created At")
+                                  :bucket :day-of-week
+                                  :operation :equals
+                                  :values [1 7]}
+                                 {:field-id (->field-id "Discount")
+                                  :operation :number-greater-than
+                                  :value 3}]})
+              actual-query (get-in result [:structured-output :query])
+              orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              created-at-col (lib.metadata/field mp (mt/id :orders :created_at))
+              discount-col (lib.metadata/field mp (mt/id :orders :discount))
+              expected-query (-> orders-query
+                                 (lib/filter (lib/= (lib/get-day-of-week created-at-col :iso) 1 7))
+                                 (lib/filter (lib/> discount-col 3)))]
+          (is (= :query (get-in result [:structured-output :type])))
+          (is (string? (get-in result [:structured-output :query-id])))
+          (is (tools.tu/query= expected-query actual-query)))))
     (testing "Missing table results in an error."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Not found."
                             (metabot-v3.tools.filters/filter-records

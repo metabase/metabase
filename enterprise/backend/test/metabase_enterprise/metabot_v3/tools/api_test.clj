@@ -12,11 +12,13 @@
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase-enterprise.metabot-v3.tools.find-outliers :as metabot-v3.tools.find-outliers]
    [metabase-enterprise.metabot-v3.tools.generate-insights :as metabot-v3.tools.generate-insights]
+   [metabase-enterprise.metabot-v3.tools.test-util :as tools.tu]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase-enterprise.metabot-v3.util :as metabot-v3.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -249,25 +251,25 @@
                                                                 :group_by  breakouts}
                                               :conversation_id conversation-id})
               query-id (-> response :structured_output :query_id)
-              expected-query (mt/$ids :products
-                               {:database (mt/id)
-                                :lib/type :mbql/query
-                                :stages [{:lib/type :mbql.stage/mbql
-                                          :source-table $$products
-                                          :aggregation [[:metric {} metric-id]]
-                                          :breakout [[:field {:temporal-unit :week} %created_at]
-                                                     [:field {:temporal-unit :day} %created_at]]
-                                          :filters [[:> {} [:field {} %id] 50]
-                                                    [:= {} [:field {} %title] "3" "4"]
-                                                    [:!= {} [:field {} %rating] 3 4]
-                                                    [:= {} [:get-month {} [:field {} %created_at]] 4 5 9]
-                                                    [:!= {} [:get-day {} [:field {} %created_at]] 14 15 19]
-                                                    [:= {} [:get-day-of-week {} [:field {} %created_at] :iso] 1 7]
-                                                    [:= {} [:get-year {} [:field {} %created_at]] 2008]]}]})]
+              actual-query (-> response :structured_output :query lib-be/normalize-query)
+              id-col (lib.metadata/field mp (mt/id :products :id))
+              title-col (lib.metadata/field mp (mt/id :products :title))
+              rating-col (lib.metadata/field mp (mt/id :products :rating))
+              created-at-col (lib.metadata/field mp (mt/id :products :created_at))
+              expected-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                 (lib/aggregate (lib.options/ensure-uuid [:metric {} metric-id]))
+                                 (lib/breakout (lib/with-temporal-bucket created-at-col :week))
+                                 (lib/breakout (lib/with-temporal-bucket created-at-col :day))
+                                 (lib/filter (lib/> id-col 50))
+                                 (lib/filter (lib/= title-col "3" "4"))
+                                 (lib/filter (lib/!= rating-col 3 4))
+                                 (lib/filter (lib/= (lib/get-month created-at-col) 4 5 9))
+                                 (lib/filter (lib/!= (lib/get-day created-at-col) 14 15 19))
+                                 (lib/filter (lib/= (lib/get-day-of-week created-at-col :iso) 1 7))
+                                 (lib/filter (lib/= (lib/get-year created-at-col) 2008)))]
           (is (=? {:structured_output
                    {:type "query"
                     :query_id string?
-                    :query expected-query
                     :result_columns
                     [{:field_id (str "q" query-id "-0")
                       :name "CREATED_AT"
@@ -288,7 +290,8 @@
                       :database_type missing-value
                       :semantic_type "score"}]}
                    :conversation_id conversation-id}
-                  (update-in response [:structured_output :query] lib-be/normalize-query))))))))
+                  response))
+          (is (tools.tu/query= expected-query actual-query)))))))
 
 (deftest query-model-test
   (mt/with-premium-features #{:metabot-v3}
