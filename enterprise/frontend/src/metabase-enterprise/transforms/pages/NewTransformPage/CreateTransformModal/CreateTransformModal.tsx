@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import type * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
@@ -39,6 +40,7 @@ type CreateTransformModalProps = {
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
   targetDescription?: string;
+  validateOnMount?: boolean;
 };
 
 export function CreateTransformModal({
@@ -51,6 +53,7 @@ export function CreateTransformModal({
   validationSchemaExtension,
   handleSubmit,
   targetDescription,
+  validateOnMount,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
@@ -64,6 +67,7 @@ export function CreateTransformModal({
         validationSchemaExtension={validationSchemaExtension}
         handleSubmit={handleSubmit}
         targetDescription={targetDescription}
+        validateOnMount={validateOnMount}
       />
     </Modal>
   );
@@ -79,6 +83,7 @@ type CreateTransformFormProps = {
   validationSchemaExtension?: ValidationSchemaExtension;
   handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
   targetDescription?: string;
+  validateOnMount?: boolean;
 };
 
 function CreateTransformForm({
@@ -90,6 +95,8 @@ function CreateTransformForm({
   showIncrementalSettings = true,
   handleSubmit,
   targetDescription,
+  validationSchemaExtension,
+  validateOnMount,
 }: CreateTransformFormProps) {
   const databaseId =
     source.type === "query" ? source.query.database : source["source-database"];
@@ -123,8 +130,13 @@ function CreateTransformForm({
 
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const { initialValues, validationSchema, createTransform } =
+  const { initialValues, validationSchema: defaultSchema, createTransform } =
     useCreateTransform(schemas, defaultValues);
+
+  const validationSchema = useMemo(
+    () => validationSchemaExtension ? defaultSchema.shape(validationSchemaExtension) : defaultSchema,
+    [validationSchemaExtension, defaultSchema],
+  );
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -143,6 +155,7 @@ function CreateTransformForm({
       initialValues={initialValues}
       validationSchema={validationSchema}
       onSubmit={handleSubmit || defaultHandleSubmit}
+      validateOnMount={validateOnMount}
     >
       <Form>
         <Stack gap="lg" mt="sm">
