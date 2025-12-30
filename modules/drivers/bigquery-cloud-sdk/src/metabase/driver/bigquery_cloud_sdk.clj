@@ -1176,10 +1176,10 @@
 (defn- ws-has-role-binding?
   "Check if a policy already has a binding for the given role and member."
   [^Policy policy ^String role ^String member]
-  (clojure.core/some (fn [^Binding binding]
-                       (and (= (.getRole binding) role)
-                            (clojure.core/some #(= % member) (.getMembersList binding))))
-                     (.getBindingsList policy)))
+  (some (fn [^Binding binding]
+          (and (= (.getRole binding) role)
+               (some #(= % member) (.getMembersList binding))))
+        (.getBindingsList policy)))
 
 (defn- ws-grant-impersonation-permission!
   "Grant the main service account permission to impersonate the workspace service account."
@@ -1310,10 +1310,10 @@
 (defn- ws-has-acl-entry?
   "Check if an ACL list already has an entry for the given entity and role."
   [acl-list ^Acl$User entity ^Acl$Role role]
-  (clojure.core/some (fn [^Acl acl]
-                       (and (= (.getEntity acl) entity)
-                            (= (.getRole acl) role)))
-                     acl-list))
+  (some (fn [^Acl acl]
+          (and (= (.getEntity acl) entity)
+               (= (.getRole acl) role)))
+        acl-list))
 
 (defn- ws-grant-dataset-acl!
   "Grant an ACL role on a dataset to a service account."
