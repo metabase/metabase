@@ -129,7 +129,7 @@
         (is (= :archived (t2/select-one-fn :base_status :model/Workspace :id (:id workspace)))
             "Workspace should have status :archived despite cleanup failure")))))
 
-(deftest ^:parallel delete-workspace-calls-destroy-isolation-test
+(deftest ^:synchronized delete-workspace-calls-destroy-isolation-test
   (testing "DELETE /api/ee/workspace/:id calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Delete Isolation Test")]
@@ -140,7 +140,7 @@
         (mt/user-http-request :crowberto :delete 200 (ws-url (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
 
-(deftest ^:parallel merge-workspace-calls-destroy-isolation-test
+(deftest ^:synchronized merge-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
     (let [called?   (atom false)
           workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
