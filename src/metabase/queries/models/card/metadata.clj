@@ -176,7 +176,8 @@ saved later when it is ready."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols query)))))
+                 (qp.preprocess/query->expected-cols
+                  (assoc-in query [:middleware :disable-remaps?] true))))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.

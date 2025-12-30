@@ -972,7 +972,7 @@
                                                   (assoc :type :question))
                                                 (m/update-existing :dataset_query lib-be/normalize-query))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             {:query     (:dataset_query card-data)
+                                             {:query     (assoc-in (:dataset_query card-data) [:middleware :disable-remaps?] true)
                                               :metadata  result_metadata
                                               :entity-id (:entity_id card-data)
                                               :model?    (model? card-data)})
