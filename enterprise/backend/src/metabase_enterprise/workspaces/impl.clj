@@ -9,7 +9,6 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -301,42 +300,6 @@
                              :table_id       (:table_id (get new-inputs [db_id schema table]))
                              :access_granted false})))))))))
 
-;;;; ---------------------------------------- Graph Serialization ----------------------------------------
-;; The :dependencies map in the graph uses Clojure maps as keys (e.g., {:node-type :workspace-transform :id "..."})
-;; which JSON doesn't support. We serialize to an association list and restore on read.
-
-(defn- serialize-graph-for-storage
-  "Convert graph to a JSON string suitable for database storage.
-   Converts :dependencies map to an association list since JSON can't have map keys."
-  [graph]
-  (-> graph
-      (update :dependencies (fn [deps]
-                              (mapv (fn [[k vs]]
-                                      [(select-keys k [:node-type :id])
-                                       (mapv #(select-keys % [:node-type :id]) vs)])
-                                    deps)))
-      (update :entities (fn [entities]
-                          (mapv #(select-keys % [:node-type :id]) entities)))
-      json/generate-string))
-
-(defn- deserialize-graph-from-storage
-  "Convert graph JSON string from database back to runtime format.
-   Converts association list :dependencies back to a map and restores keyword node-types."
-  [graph-json]
-  (when graph-json
-    (let [graph (json/parse-string graph-json true)]
-      (-> graph
-          (update :dependencies (fn [assoc-list]
-                                  (into {} (map (fn [[k vs]]
-                                                  [(update k :node-type keyword)
-                                                   (mapv #(update % :node-type keyword) vs)])
-                                                assoc-list))))
-          (update :entities (fn [entities]
-                              (mapv #(update % :node-type keyword) entities)))
-          ;; Also restore :inputs and :outputs which are simple vectors
-          (update :inputs (fn [inputs] (or inputs [])))
-          (update :outputs (fn [outputs] (or outputs [])))))))
-
 ;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
 
 (defn- calculate-graph!
@@ -347,9 +310,18 @@
                                                         [:model/WorkspaceTransform :ref_id]
                                                         :workspace_id ws-id)))
 
-(defn- analyze-stale-transforms!
+(defn analyze-transform-if-stale!
+  "Re-analyze dependencies for a given transform, if necessary. Marks it as not stale after analysis."
+  [{ws-id :id, isolated-schema :schema :as workspace} transform]
+  (when (:analysis_stale transform)
+    (let [analysis (ws.deps/analyze-entity :transform transform)]
+      (ws.deps/write-dependencies! ws-id isolated-schema :transform (:ref_id transform) analysis))
+    (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false})
+    (sync-grant-accesses! workspace)))
+
+(defn analyze-stale-transforms!
   "Re-analyze dependencies for any workspace transforms that are stale.
-   Marks them as not stale after analysis."
+   Marks them as not stale after analysis. Returns true if any transforms were analyzed."
   [{ws-id :id, isolated-schema :schema :as workspace}]
   (let [stale-transforms (t2/select :model/WorkspaceTransform
                                     :workspace_id ws-id
@@ -360,7 +332,15 @@
       (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false}))
     ;; Grant read access to any new external inputs
     (when (seq stale-transforms)
-      (sync-grant-accesses! workspace))))
+      (sync-grant-accesses! workspace))
+    (boolean (seq stale-transforms))))
+
+(defn- upsert-workspace-graph!
+  "Insert or update the cached graph for a workspace."
+  [ws-id graph]
+  (if-let [existing (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
+    (t2/update! :model/WorkspaceGraph (:id existing) {:graph graph})
+    (t2/insert! :model/WorkspaceGraph {:workspace_id ws-id :graph graph})))
 
 (defn- calculate-and-cache-graph!
   "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
@@ -373,20 +353,21 @@
       ;; Sync external outputs and inputs
       (sync-external-outputs! ws-id isolated-schema (:entities graph))
       (sync-external-inputs! ws-id (:entities graph))
-      ;; Cache the graph and mark workspace as not stale
-      (t2/update! :model/Workspace ws-id
-                  {:graph          (serialize-graph-for-storage graph)
-                   :analysis_stale false})
+      ;; Cache the graph in workspace_graph table
+      (upsert-workspace-graph! ws-id graph)
+      ;; Mark workspace as not stale
+      (t2/update! :model/Workspace ws-id {:analysis_stale false})
       graph)))
 
 (defn get-or-calculate-graph
   "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
    otherwise recalculates it.
    Also syncs workspace_output_external and workspace_input_external tables when recalculating."
-  [{analysis-stale :analysis_stale, cached-graph :graph :as workspace}]
+  [{ws-id :id, analysis-stale :analysis_stale :as workspace}]
   (if-not analysis-stale
-    ;; Return cached graph
-    (deserialize-graph-from-storage cached-graph)
+    ;; Return cached graph from workspace_graph table
+    (when-let [cached (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
+      (:graph cached))
     ;; Recalculate and cache
     (calculate-and-cache-graph! workspace)))
 

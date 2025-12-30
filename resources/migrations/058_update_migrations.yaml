@@ -4708,6 +4708,79 @@ databaseChangeLog:
             tableName: workspace
             columnName: analysis_stale
 
+  - changeSet:
+      id: v58.2025-12-30T10:00:02
+      author: christruter
+      comment: Create workspace_graph table for cached dependency graphs
+      changes:
+        - createTable:
+            tableName: workspace_graph
+            remarks: Stores cached dependency graph for each workspace
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: Reference to the workspace this graph belongs to
+                  constraints:
+                    nullable: false
+                    references: workspace(id)
+                    foreignKeyName: fk_workspace_graph_workspace_id
+                    deleteCascade: true
+              - column:
+                  name: graph
+                  type: text
+                  remarks: JSON representation of the dependency graph
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: datetime
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: workspace_graph
+            indexName: idx_workspace_graph_workspace_id
+            unique: true
+            columns:
+              - column:
+                  name: workspace_id
+      rollback:
+        - dropTable:
+            tableName: workspace_graph
+
+  - changeSet:
+      id: v58.2025-12-30T10:00:03
+      author: christruter
+      comment: Drop graph column from workspace table (moved to workspace_graph)
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: graph
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: graph
+                  type: text
+                  remarks: JSON representation of the dependency graph
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

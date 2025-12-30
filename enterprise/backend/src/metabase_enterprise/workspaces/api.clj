@@ -733,12 +733,15 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    (t2/update! :model/WorkspaceTransform tx-id body)
-    (u/prog1 (fetch-ws-transform ws-id tx-id)
-      ;; Mark transform and workspace as stale if source or target changed.
-      ;; Dependencies will be re-analyzed lazily when the graph is next requested.
-      (when (or (:source body) (:target body))
-        (ws.impl/mark-transform-stale! ws-id tx-id)))))
+    ;; If source or target changed, mark as stale in the same update
+    (let [source-or-target-changed? (or (:source body) (:target body))
+          update-body (cond-> body
+                        source-or-target-changed? (assoc :analysis_stale true))]
+      (t2/update! :model/WorkspaceTransform tx-id update-body)
+      ;; Mark workspace as stale too if source/target changed
+      (when source-or-target-changed?
+        (t2/update! :model/Workspace ws-id {:analysis_stale true})))
+    (fetch-ws-transform ws-id tx-id)))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
@@ -772,6 +775,8 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
+    ;; Ensure analysis is up-to-date, as we may need grants to external input tables.
+    (ws.impl/analyze-transform-if-stale! workspace transform)
     (ws.impl/run-transform! workspace transform)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}

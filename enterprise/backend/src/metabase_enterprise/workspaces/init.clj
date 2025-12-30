@@ -4,4 +4,5 @@
   (:require
    [metabase-enterprise.workspaces.events]
    [metabase-enterprise.workspaces.models.workspace]
+   [metabase-enterprise.workspaces.models.workspace-graph]
    [metabase-enterprise.workspaces.models.workspace-transform]))

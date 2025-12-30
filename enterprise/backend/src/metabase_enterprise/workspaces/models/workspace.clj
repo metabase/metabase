@@ -17,8 +17,6 @@
   "Set of valid db_status values, representing the status of the data warehouse."
   #{:uninitialized :pending :ready :broken})
 
-;; Note: :graph is NOT transformed here - we handle serde manually in impl/get-or-calculate-graph
-;; to avoid paying the transformation tax on typical queries that don't need the graph.
 (t2/deftransforms :model/Workspace
   {:database_details mi/transform-encrypted-json
    :base_status      (mi/transform-validator mi/transform-keyword (partial mi/assert-enum base-statuses))
