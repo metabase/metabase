@@ -8,7 +8,6 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
