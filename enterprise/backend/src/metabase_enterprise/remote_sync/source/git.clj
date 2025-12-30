@@ -33,6 +33,35 @@
     (ex-info (format "Git %s failed: %s" (-> command .getClass .getSimpleName) (str/replace-first (ex-message root-ex) #"^[a-z]+://[a-zA-Z0-9\-\.]+: " ""))
              {:remote remote?} root-ex)))
 
+;;; ------------------------------------------------ Authentication ------------------------------------------------
+
+(defmulti credentials-provider
+  "Creates a JGit CredentialsProvider based on the authentication method.
+
+  Dispatches on auth-method keyword. The credentials argument is method-specific
+  and can be any data structure appropriate for that authentication method.
+
+  Returns a CredentialsProvider instance or nil if no authentication is needed."
+  {:arglists '([auth-method credentials])}
+  (fn [auth-method _credentials] auth-method))
+
+(defmethod credentials-provider :default
+  [auth-method _credentials]
+  (throw (ex-info (str "Unknown git authentication method: " auth-method)
+                  {:auth-method auth-method})))
+
+(defmethod credentials-provider :token
+  [_auth-method ^String token]
+  (when token
+    (UsernamePasswordCredentialsProvider. "x-access-token" token)))
+
+(defmethod credentials-provider :basic
+  [_auth-method {:keys [^String username ^String password]}]
+  (when password
+    (UsernamePasswordCredentialsProvider. (or username "") password)))
+
+;;; ------------------------------------------------ Git Operations ------------------------------------------------
+
 (defn- call-command [^GitCommand command]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote false}]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
@@ -43,16 +72,14 @@
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
         (throw (clean-git-exception e command false))))))
 
-(defn- call-remote-command [^TransportCommand command {:keys [^String token]}]
+(defn- call-remote-command [^TransportCommand command {:keys [auth-method credentials]}]
   (let [analytics-labels {:operation (-> command .getClass .getSimpleName) :remote true}
-        ;; GitHub convention: use "x-access-token" as username when authenticating with a personal access token
-        ;; For Gitlab any values can be used as the user name so x-access-token works just as well
-        credentials-provider (when token (UsernamePasswordCredentialsProvider. "x-access-token" token))]
+        creds-provider   (credentials-provider (or auth-method :token) credentials)]
     (analytics/inc! :metabase-remote-sync/git-operations analytics-labels)
 
     (try
       (-> command
-          (.setCredentialsProvider credentials-provider)
+          (.setCredentialsProvider creds-provider)
           (.call))
       (catch Exception e
         (analytics/inc! :metabase-remote-sync/git-operations-failed analytics-labels)
@@ -66,8 +93,8 @@
 (defn fetch!
   "Fetches updates from the remote git repository.
 
-  Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
-  of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Takes a git-source map containing a :git Git instance and authentication via :auth-method and :credentials.
+  Returns the result of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
@@ -76,25 +103,25 @@
     (u/prog1 (call-remote-command (.fetch git) git-source))
     (log/info "Successfully fetched repository")))
 
-(defn- repo-path [{:keys [^String remote-url ^String token]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
+(defn- repo-path [{:keys [^String remote-url credentials]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url (pr-str credentials)]) buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
 
-  Takes a map with :remote-url (the git repository URL) and optional :token (authentication token for private
-  repositories). Returns a Git instance for the cloned repository. If the repository already exists in the temp
+  Takes a map with :remote-url (the git repository URL) and authentication via :auth-method and :credentials.
+  Returns a Git instance for the cloned repository. If the repository already exists in the temp
   directory and is valid, returns the existing repository after fetching.
 
   Throws ExceptionInfo if cloning fails due to network issues, invalid URL, authentication failure, etc."
-  [repo-path {:keys [^String remote-url ^String token]}]
+  [repo-path {:keys [^String remote-url auth-method credentials]}]
   (log/info "Cloning repository" {:url remote-url :repo-path repo-path})
   (io/make-parents repo-path)
   (try
     (u/prog1 (call-remote-command (-> (Git/cloneRepository)
                                       (.setDirectory repo-path)
                                       (.setURI remote-url)
-                                      (.setBare true)) {:token token})
+                                      (.setBare true)) {:auth-method auth-method :credentials credentials})
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
@@ -191,8 +218,8 @@
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
-  Takes a git-source map containing a :git Git instance, :branch, and optional :token for
-  authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Takes a git-source map containing a :git Git instance, :branch, and authentication via :auth-method
+  and :credentials. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
@@ -316,7 +343,7 @@
 (defn branches
   "Retrieves all branch names from the remote repository.
 
-  Takes a source map containing a :git Git instance and optional :token for authentication.
+  Takes a source map containing a :git Git instance and authentication via :auth-method and :credentials.
   Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
@@ -357,8 +384,8 @@
 (defn create-branch
   "Creates a new branch in the git repository from an existing branch.
 
-  Takes a source map containing a :git Git instance and optional :token for authentication, a branch-name string for
-  the new branch, and a base-branch to use as the base for the new branch.
+  Takes a source map containing a :git Git instance and authentication via :auth-method and :credentials,
+  a branch-name string for the new branch, and a base-branch to use as the base for the new branch.
 
   Returns the name of the newly created branch.
 
@@ -381,7 +408,7 @@
     (push-branch! (assoc source :branch branch-name))
     branch-name))
 
-(defrecord GitSnapshot [git remote-url branch version token]
+(defrecord GitSnapshot [git remote-url branch version auth-method credentials]
   source.p/SourceSnapshot
 
   (list-files [this]
@@ -401,10 +428,10 @@
   (fetch! source)
   (let [version (commit-sha source (:branch source))]
     (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source))
+      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:auth-method source) (:credentials source))
       (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
 
-(defrecord GitSource [git remote-url branch token]
+(defrecord GitSource [git remote-url branch auth-method credentials]
   source.p/Source
   (branches [source] (branches source))
 
@@ -419,11 +446,12 @@
 
 (def ^:private jgit (atom {}))
 
-(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
+(defn- get-jgit [^File path {:keys [remote-url auth-method credentials] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
     obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
-                                                                     :token      token})
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url  remote-url
+                                                                     :auth-method auth-method
+                                                                     :credentials credentials})
                                              (when-not (has-data? (assoc args :git <>))
                                                (FileUtils/deleteDirectory path)
                                                (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
@@ -432,10 +460,15 @@
 (defn git-source
   "Creates a new GitSource instance for a git repository.
 
-  Takes a URL string (the git repository URL), a branch, and an
-  optional token string (authentication token for private repositories).
+  Takes a URL string (the git repository URL), a branch, and authentication options.
+  The auth-method keyword determines how credentials are interpreted:
+  - :token (default) - credentials is a token string, uses 'x-access-token' as username
+  - :basic - credentials is a map with :username and :password keys
 
   Returns a GitSource record implementing the Source protocol."
-  [url branch token]
-  (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
-               url branch token))
+  ([url branch credentials]
+   (git-source url branch :token credentials))
+  ([url branch auth-method credentials]
+   (let [args {:remote-url url :auth-method auth-method :credentials credentials}]
+     (->GitSource (get-jgit (repo-path args) args)
+                  url branch auth-method credentials))))

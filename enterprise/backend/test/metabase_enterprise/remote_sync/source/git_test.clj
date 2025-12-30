@@ -86,8 +86,8 @@
                        (.toURI)
                        (.toURL)
                        (.toExternalForm))
-        local-repo (#'git/get-jgit (#'git/repo-path {:remote-url remote-url}) {:remote-url remote-url})]
-    (git/->GitSource local-repo remote-url branch nil)))
+        local-repo (#'git/get-jgit (#'git/repo-path {:remote-url remote-url :credentials nil}) {:remote-url remote-url})]
+    (git/->GitSource local-repo remote-url branch :token nil)))
 
 (defn- init-source!
   [branch dir & config]
@@ -481,3 +481,54 @@
         (is (= ["Add new file" "Initial commit"]
                (map :message (git/log repaired-source)))
             "Should be able to fetch after origin repair")))))
+
+;;; ------------------------------------------------ credentials-provider tests ------------------------------------------------
+
+(deftest credentials-provider-token-test
+  (testing ":token auth method uses x-access-token as username"
+    (let [provider (git/credentials-provider :token "my-secret-token")]
+      (is (some? provider) "Should return a credentials provider")
+      (is (instance? org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider provider))))
+
+  (testing ":token auth method with nil token returns nil"
+    (is (nil? (git/credentials-provider :token nil)))))
+
+(deftest credentials-provider-basic-test
+  (testing ":basic auth method uses provided username and password"
+    (let [provider (git/credentials-provider :basic {:username "my-user" :password "my-pass"})]
+      (is (some? provider) "Should return a credentials provider")
+      (is (instance? org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider provider))))
+
+  (testing ":basic auth method with nil password returns nil"
+    (is (nil? (git/credentials-provider :basic {:username "user" :password nil}))))
+
+  (testing ":basic auth method with missing username uses empty string"
+    (let [provider (git/credentials-provider :basic {:password "my-pass"})]
+      (is (some? provider) "Should return a credentials provider even without username"))))
+
+(deftest credentials-provider-unknown-method-test
+  (testing "Unknown auth method throws exception"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                          #"Unknown git authentication method"
+                          (git/credentials-provider :unknown-method "credentials")))))
+
+(deftest git-source-with-auth-method-test
+  (testing "git-source 3-arity defaults to :token auth method"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[source _remote] (init-source! "master" remote-dir :files {"test.txt" "content"})]
+        (is (= :token (:auth-method source)))
+        (is (nil? (:credentials source))))))
+
+  (testing "git-source 4-arity accepts explicit auth-method and credentials"
+    (mt/with-temp-dir [remote-dir nil]
+      (let [remote (init-remote! remote-dir :files {"test.txt" "content"})
+            ^Git git (:git remote)
+            remote-url (-> (.getRepository git)
+                           (.getDirectory)
+                           (.toURI)
+                           (.toURL)
+                           (.toExternalForm))
+            source (git/git-source remote-url "master" :basic {:username "user" :password "pass"})]
+        (is (= :basic (:auth-method source)))
+        (is (= {:username "user" :password "pass"} (:credentials source)))))))
+
