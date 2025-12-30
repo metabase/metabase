@@ -574,14 +574,15 @@
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
 
-      (#'lib.events/create-or-update-remote-sync-object-entry! "Card" 123 "create" 456)
+      (let [existing-card-id (t2/select-one-fn :id [:model/Card :id])]
+        (#'lib.events/create-or-update-remote-sync-object-entry! "Card" existing-card-id "create" 456)
 
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "Card"
-                 :model_id 123
-                 :status "create"}
-                (first entries)))))))
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Card"
+                   :model_id existing-card-id
+                   :status "create"}
+                  (first entries))))))))
 
 (deftest create-remote-sync-object-entry-updates-existing-entry-test
   (testing "create-remote-sync-object-entry! updates existing entry when one exists"
@@ -589,19 +590,20 @@
       (t2/delete! :model/RemoteSyncObject)
 
       ;; Create initial entry with "update" status at time T1
-      (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))]
+      (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
+            existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])]
         (t/with-clock clock-t1
-          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "update"))
+          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "update"))
 
-        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)
+        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)
               initial-time (:status_changed_at initial-entry)]
 
           ;; Update to synced status at time T2 (1 hour later)
           (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "synced")))
+              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced")))
 
-          (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)]
+          (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
             ;; Should still be just one entry
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
@@ -618,18 +620,19 @@
       (t2/delete! :model/RemoteSyncObject)
 
       ;; Create initial entry with "create" status at time T1
-      (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))]
+      (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
+            existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])]
         (t/with-clock clock-t1
-          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "create"))
+          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "create"))
 
-        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)]
+        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
 
           ;; Try to update to synced status at time T2 (1 hour later)
           (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
-              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" 789 "synced")))
+              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced")))
 
-          (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id 789)]
+          (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
             ;; Should still be just one entry
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
@@ -645,14 +648,15 @@
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
 
-      (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" 999 "create")
+      (let [existing-collection-id (t2/select-one-fn :id [:model/Collection :id])]
+        (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create")
 
-      (let [entries (t2/select :model/RemoteSyncObject)]
-        (is (= 1 (count entries)))
-        (is (=? {:model_type "Collection"
-                 :model_id 999
-                 :status "create"}
-                (first entries)))))))
+        (let [entries (t2/select :model/RemoteSyncObject)]
+          (is (= 1 (count entries)))
+          (is (=? {:model_type "Collection"
+                   :model_id existing-collection-id
+                   :status "create"}
+                  (first entries))))))))
 
 (deftest card-moved-out-of-remote-synced-collection-test
   (testing "card moved out of remote-synced collection is marked as removed"
@@ -904,3 +908,46 @@
                  :model_id (:id timeline)
                  :status "removed"}
                 (first entries)))))))
+
+(deftest new-timeline-moved-out-of-remote-synced-collection-test
+  (testing "new timeline moved out of remote-synced collection is no longer tracked"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal Collection"}
+                   :model/Timeline timeline {:name "Test Timeline"
+                                             :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/timeline-create
+                             {:object timeline :user-id (mt/user->id :rasta)})
+      (is (= 1 (count (t2/select :model/RemoteSyncObject))))
+      (events/publish-event! :event/timeline-update
+                             {:object (assoc timeline :collection_id (:id normal-collection))
+                              :user-id (mt/user->id :rasta)})
+      (let [entries (t2/select :model/RemoteSyncObject)]
+        (is (= 0 (count entries)))))))
+
+(deftest soft-delete-then-hard-delete-preserves-dirty-status-test
+  (testing "doc that is soft-deleted then hard-deleted should maintain dirty status"
+    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+                   :model/Document doc {:name "Test Doc"
+                                        :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+
+      ;; Trash the doc
+      (t2/update! :model/Document (:id doc) {:archived true})
+      (events/publish-event! :event/document-update
+                             {:object (assoc doc :archived true)
+                              :user-id (mt/user->id :rasta)})
+
+      (let [soft-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
+        (is (= "delete" (:status soft-delete-entry))))
+
+      ;; Permanently delete from trash
+      (t2/delete! :model/Document (:id doc))
+      (events/publish-event! :event/document-delete
+                             {:object doc :user-id (mt/user->id :rasta)})
+
+      ;; The remote sync object entry should still exist with delete status
+      ;; so the collection remains dirty
+      (let [hard-delete-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id doc))]
+        (is (= "delete" (:status hard-delete-entry)))
+        (is (not (nil? hard-delete-entry)))))))
