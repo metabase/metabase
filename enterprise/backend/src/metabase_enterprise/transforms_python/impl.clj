@@ -8,10 +8,6 @@
   (or (get-in transform [:target :database])
       (:target_db_id transform)))
 
-(defmethod transforms.i/source-db-id :python
-  [transform]
-  (-> transform :source :source-database))
-
 #_{:clj-kondo/ignore [:discouraged-var]}
 (defmethod transforms.i/execute! :python
   [transform options]

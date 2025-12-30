@@ -1825,9 +1825,11 @@
   (reserve-at-symbol-user-attributes/migrate!))
 
 (define-migration BackfillTransformTargetDbId
-  (let [update! (fn [{:keys [id target]}]
+  (let [update! (fn [{:keys [id source target]}]
                   (let [target-map (json/decode target)
-                        db-id      (get target-map "database")]
+                        source-map (json/decode source)
+                        db-id      (or (get target-map "database")
+                                       (get-in source-map ["query" "database"]))]
                     (when db-id
                       (t2/update! :transform id {:target_db_id db-id}))))]
     (run! update! (t2/reducible-query {:select [:id :target]

@@ -54,13 +54,13 @@
   #{:transforms})
 
 (t2/define-before-insert :model/Transform
-  [{:keys [source target collection_id] :as transform}]
+  [{:keys [source collection_id] :as transform}]
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform
          :source_type (transforms.util/transform-source-type source)
-         :target_db_id (or (transforms.i/target-db-id transform) (:database target) (:target_db_id transform))))
+         :target_db_id (transforms.i/target-db-id transform)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source target] :as transform}]
