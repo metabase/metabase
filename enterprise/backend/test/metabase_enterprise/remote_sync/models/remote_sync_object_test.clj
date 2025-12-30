@@ -31,8 +31,9 @@
                          :creator_id (mt/user->id :rasta)
                          :display "table"
                          :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "synced"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (false? (rs-object/dirty-global?))))))
@@ -47,8 +48,9 @@
                          :creator_id (mt/user->id :rasta)
                          :display "table"
                          :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty-global?))))))
@@ -63,8 +65,9 @@
                          :creator_id (mt/user->id :rasta)
                          :display "table"
                          :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "error"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty-global?))))))
@@ -84,12 +87,14 @@
                           :creator_id (mt/user->id :rasta)
                           :display "table"
                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card1)
+                                  :model_name (:name card1)
                                   :status "synced"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card2)
+                                  :model_name (:name card2)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (true? (rs-object/dirty-global?))))))
@@ -112,8 +117,9 @@
                          :creator_id (mt/user->id :rasta)
                          :display "table"
                          :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "synced"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (is (empty? (rs-object/dirty-for-global))))))
@@ -128,8 +134,9 @@
                          :creator_id (mt/user->id :rasta)
                          :display "table"
                          :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)]
@@ -153,12 +160,14 @@
        :model/Dashboard dashboard {:name "Test Dashboard"
                                    :collection_id (:id collection)
                                    :creator_id (mt/user->id :rasta)}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Dashboard"
+       :model/RemoteSyncObject _ {:model_type "dashboard"
                                   :model_id (:id dashboard)
+                                  :model_name (:name dashboard)
                                   :status "error"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)
@@ -174,8 +183,9 @@
     (mt/with-temp
       [:model/Collection collection {:name "Test Collection"
                                      :location "/"}
-       :model/RemoteSyncObject _ {:model_type "Collection"
+       :model/RemoteSyncObject _ {:model_type "collection"
                                   :model_id (:id collection)
+                                  :model_name (:name collection)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)]
@@ -200,12 +210,14 @@
                           :creator_id (mt/user->id :rasta)
                           :display "table"
                           :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card1)
+                                  :model_name (:name card1)
                                   :status "synced"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card2)
+                                  :model_name (:name card2)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)
@@ -223,8 +235,9 @@
                                           :collection_id (:id snip-collection)
                                           :creator_id (mt/user->id :rasta)
                                           :content "SELECT * FROM table"}
-       :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet"
+       :model/RemoteSyncObject _ {:model_type "snippet"
                                   :model_id (:id snippet)
+                                  :model_name (:name snippet)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)]
@@ -242,8 +255,9 @@
        :model/Document document {:name "Test Document"
                                  :collection_id (:id collection)
                                  :creator_id (mt/user->id :rasta)}
-       :model/RemoteSyncObject _ {:model_type "Document"
+       :model/RemoteSyncObject _ {:model_type "document"
                                   :model_id (:id document)
+                                  :model_name (:name document)
                                   :status "error"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)]
@@ -277,24 +291,29 @@
                                           :collection_id (:id snip-collection)
                                           :creator_id (mt/user->id :rasta)
                                           :content "SELECT * FROM table"}
-       :model/RemoteSyncObject _ {:model_type "Collection"
+       :model/RemoteSyncObject _ {:model_type "collection"
                                   :model_id (:id collection)
+                                  :model_name (:name collection)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Card"
+       :model/RemoteSyncObject _ {:model_type "card"
                                   :model_id (:id card)
+                                  :model_name (:name card)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Dashboard"
+       :model/RemoteSyncObject _ {:model_type "dashboard"
                                   :model_id (:id dashboard)
+                                  :model_name (:name dashboard)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "Document"
+       :model/RemoteSyncObject _ {:model_type "document"
                                   :model_id (:id document)
+                                  :model_name (:name document)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}
-       :model/RemoteSyncObject _ {:model_type "NativeQuerySnippet"
+       :model/RemoteSyncObject _ {:model_type "snippet"
                                   :model_id (:id snippet)
+                                  :model_name (:name snippet)
                                   :status "pending"
                                   :status_changed_at (java.time.OffsetDateTime/now)}]
       (let [dirty-items (rs-object/dirty-for-global)
@@ -321,8 +340,9 @@
                            :creator_id (mt/user->id :rasta)
                            :display "table"
                            :dataset_query (mt/native-query {:query "SELECT 1"})}
-         :model/RemoteSyncObject _ {:model_type "Card"
+         :model/RemoteSyncObject _ {:model_type "card"
                                     :model_id (:id card)
+                                    :model_name (:name card)
                                     :status "pending"
                                     :status_changed_at (java.time.OffsetDateTime/now)}]
         (is (true? (rs-object/dirty-global?)))
