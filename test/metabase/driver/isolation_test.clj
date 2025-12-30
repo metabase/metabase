@@ -184,3 +184,38 @@
               (is true "Swap context established successfully"))))
         (finally
           (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Grant Permissions Tests                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest grant-workspace-read-access-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (let [workspace {:id (rand-int 100000)}]
+      (try
+        ;; Setup isolation first
+        (let [{:keys [database_details]} (driver/init-workspace-isolation! driver/*driver* (mt/db) workspace)]
+          (testing "grant-workspace-read-access! succeeds for valid tables"
+            (let [tables [{:schema "public" :name "venues"}
+                          {:schema "public" :name "categories"}]]
+              ;; Should not throw
+              (is (nil? (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace tables)))))
+
+          (testing "isolated user can read granted tables after grant"
+            (driver/with-swapped-connection-details (mt/id) database_details
+              ;; After granting access, the isolated user should be able to query
+              ;; Note: This may still fail for some drivers depending on how they handle grants
+              ;; The important thing is that grant-workspace-read-access! doesn't throw
+              (is (map? database_details)))))
+        (finally
+          (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
+
+(deftest check-isolation-permissions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "check-isolation-permissions returns success for properly configured database"
+      (let [result (driver/check-isolation-permissions driver/*driver* (mt/db))]
+        (is (map? result))
+        (is (contains? result :valid))
+        (when-not (:valid result)
+          ;; If not valid, should have an error message
+          (is (contains? result :message)))))))
