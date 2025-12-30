@@ -31,7 +31,7 @@
 
 (def ^:private ->api-vals
   {:perms/view-data             {:unrestricted           :unrestricted
-                                 :sandboxed              :sandboxed
+                                 :restricted-access      :restricted-access
                                  :legacy-no-self-service :legacy-no-self-service
                                  :blocked                :blocked}
    :perms/create-queries        {:query-builder-and-native :query-builder-and-native
@@ -365,7 +365,7 @@
                          (update-vals (fn [table-perm]
                                         (case table-perm
                                           :unrestricted           :unrestricted
-                                          :sandboxed              :sandboxed
+                                          :sandboxed              :restricted-access
                                           :legacy-no-self-service :legacy-no-self-service
                                           :blocked                :blocked))))]
     (perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
@@ -391,7 +391,13 @@
       :legacy-no-self-service
       (perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
 
-      (:impersonated :blocked)
+      :impersonated
+      (do
+        (when-not (premium-features/has-feature? :advanced-permissions)
+          (throw (ee-permissions-exception :impersonated)))
+        (perms/set-database-permission! group-id db-id :perms/view-data :restricted-access))
+
+      :blocked
       (do
         (when-not (premium-features/has-feature? :advanced-permissions)
           (throw (ee-permissions-exception :blocked)))

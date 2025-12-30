@@ -220,17 +220,17 @@
 (defmethod coalesce :perms/view-data
   [perm-type perm-values]
   (let [perm-values (set perm-values)
-        ;; IMPORTANT: Without the :sandboxes feature (e.g., in OSS), :sandboxed is equivalent to :blocked.
-        ;; This ensures that users don't accidentally get access to sandboxed tables when sandboxing is disabled.
-        perm-values (if (and (perm-values :sandboxed)
+        ;; IMPORTANT: Without the :sandboxes feature (e.g., in OSS), :restricted-access is equivalent to :blocked.
+        ;; This ensures that users don't accidentally get access to sandboxed/impersonated tables when the feature is disabled.
+        perm-values (if (and (perm-values :restricted-access)
                              (not (premium-features/enable-sandboxes?)))
-                      (-> perm-values (disj :sandboxed) (conj :blocked))
+                      (-> perm-values (disj :restricted-access) (conj :blocked))
                       perm-values)
         ordered-values (-> permissions.schema/data-permissions perm-type :values)]
     (if (and (perm-values :blocked)
              (not (perm-values :unrestricted))
-             (not (perm-values :sandboxed)))
-      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted or sandboxed
+             (not (perm-values :restricted-access)))
+      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted or restricted-access
       :blocked
       (first (filter perm-values ordered-values)))))
 

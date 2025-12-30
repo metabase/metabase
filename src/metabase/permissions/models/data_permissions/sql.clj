@@ -43,18 +43,18 @@
    column :- :keyword]
   ;; Custom priority ordering for view-data permissions:
   ;; - :blocked has higher priority than :legacy-no-self-service (blocked wins)
-  ;; - :sandboxed overrides :blocked (like :unrestricted does)
-  ;; Schema order: [:unrestricted :sandboxed :legacy-no-self-service :blocked] = indices [0 1 2 3]
+  ;; - :restricted-access overrides :blocked (like :unrestricted does)
+  ;; Schema order: [:unrestricted :restricted-access :legacy-no-self-service :blocked] = indices [0 1 2 3]
   (let [minimum-perm-value [:min
                             [:case
                              [:= column [:inline "unrestricted"]] [:inline 0]
-                             [:= column [:inline "sandboxed"]] [:inline 1]
+                             [:= column [:inline "restricted-access"]] [:inline 1]
                              [:= column [:inline "blocked"]] [:inline 2]
                              [:= column [:inline "legacy-no-self-service"]] [:inline 3]]]]
     ;; Remap to schema indices: blocked is at 3, legacy-no-self-service is at 2
     [:case
      [:= minimum-perm-value [:inline 0]] [:inline 0]  ;; unrestricted → 0
-     [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; sandboxed → 1
+     [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; restricted-access → 1
      [:= minimum-perm-value [:inline 2]] [:inline 3]  ;; blocked → 3
      [:= minimum-perm-value [:inline 3]] [:inline 2]  ;; legacy-no-self-service → 2
      ]))
@@ -63,20 +63,20 @@
   "Returns the effective required permission level, accounting for feature flags.
 
    For :perms/view-data:
-   - When sandboxes feature is ENABLED: asking for :unrestricted also accepts :sandboxed
-     (because sandboxed users can view data, just filtered)
-   - When sandboxes feature is DISABLED: asking for :sandboxed only accepts :unrestricted
-     (because :sandboxed is equivalent to :blocked without the feature)"
+   - When sandboxes feature is ENABLED: asking for :unrestricted also accepts :restricted-access
+     (because sandboxed/impersonated users can view data, just filtered)
+   - When sandboxes feature is DISABLED: asking for :restricted-access only accepts :unrestricted
+     (because :restricted-access is equivalent to :blocked without the feature)"
   [perm-type required-level]
   (if (= perm-type :perms/view-data)
     (cond
-      ;; With sandboxes enabled: :unrestricted should also include :sandboxed tables
+      ;; With sandboxes enabled: :unrestricted should also include :restricted-access tables
       (and (= required-level :unrestricted)
            (premium-features/enable-sandboxes?))
-      :sandboxed
+      :restricted-access
 
-      ;; Without sandboxes: :sandboxed is equivalent to :blocked, so only accept :unrestricted
-      (and (= required-level :sandboxed)
+      ;; Without sandboxes: :restricted-access is equivalent to :blocked, so only accept :unrestricted
+      (and (= required-level :restricted-access)
            (not (premium-features/enable-sandboxes?)))
       :unrestricted
 
@@ -85,14 +85,17 @@
 
 (defn- fixed-permission-mapping [perm-mapping]
   (into {} (map (fn [[perm-type perm-value]]
-                  (let [[perm-value v] (if (sequential? perm-value) perm-value [perm-value nil])]
-                    [perm-type (effective-required-level perm-type perm-value)]))
+                  (let [[level most-or-least] (if (sequential? perm-value)
+                                                perm-value
+                                                [perm-value nil])]
+                    [level (if most-or-least
+                             [(effective-required-level perm-type level) most-or-least]
+                             (effective-required-level perm-type level))]))
                 perm-mapping)))
 
 (mu/defn- perm-type-to-int-inline :- [:tuple [:= :inline] nat-int?]
   [perm-type :- ::permissions.schema/data-permission-type
    level     :- ::permissions.schema/data-permission-value]
-  perm-type (-> permissions.schema/data-permissions perm-type :values)
   (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
     [:inline (.indexOf values level)]))
 
@@ -192,18 +195,18 @@
        :least :<=)
      (if (= perm-type :perms/view-data)
        ;; Special handling for view-data permission priority (same logic as perm-type-to-least-int-case)
-       ;; Schema order: [:unrestricted :sandboxed :legacy-no-self-service :blocked] = indices [0 1 2 3]
+       ;; Schema order: [:unrestricted :restricted-access :legacy-no-self-service :blocked] = indices [0 1 2 3]
        (let [minimum-perm-value [agg-fn
                                  [:case
                                   [:= :dp.perm_type (h2x/literal perm-type)]
                                   [:case
                                    [:= :dp.perm_value [:inline "unrestricted"]] [:inline 0]
-                                   [:= :dp.perm_value [:inline "sandboxed"]] [:inline 1]
+                                   [:= :dp.perm_value [:inline "restricted-access"]] [:inline 1]
                                    [:= :dp.perm_value [:inline "blocked"]] [:inline 2]
                                    [:= :dp.perm_value [:inline "legacy-no-self-service"]] [:inline 3]]]]]
          [:case
           [:= minimum-perm-value [:inline 0]] [:inline 0]  ;; unrestricted → 0
-          [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; sandboxed → 1
+          [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; restricted-access → 1
           [:= minimum-perm-value [:inline 2]] [:inline 3]  ;; blocked → 3
           [:= minimum-perm-value [:inline 3]] [:inline 2]  ;; legacy-no-self-service → 2
           ])

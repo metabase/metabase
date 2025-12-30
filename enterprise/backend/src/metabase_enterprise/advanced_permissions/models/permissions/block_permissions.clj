@@ -18,11 +18,11 @@
 
 (defn- all-non-sandboxed-tables-unrestricted?
   "For native query access: returns true if all tables in the database that are NOT sandboxed
-   for this user have :unrestricted or :sandboxed view-data permission.
+   for this user have :unrestricted or :restricted-access view-data permission.
 
    This is used to allow sandboxed users to view native queries when:
-   - They have sandboxes on some tables (which have :sandboxed permission)
-   - All other tables have :unrestricted or :sandboxed permission
+   - They have sandboxes on some tables (which have :restricted-access permission)
+   - All other tables have :unrestricted or :restricted-access permission
 
    If any non-sandboxed table is :blocked, the user cannot view native queries."
   [database-id]
@@ -32,7 +32,7 @@
                                  (map :table_id)
                                  set)
         non-sandboxed-table-ids (set/difference all-table-ids sandboxed-table-ids)]
-    (every? #(contains? #{:unrestricted :sandboxed}
+    (every? #(contains? #{:unrestricted :restricted-access}
                         (perms/table-permission-for-user api/*current-user-id*
                                                          :perms/view-data
                                                          database-id
@@ -63,8 +63,8 @@
     (or
      impersonated?
      (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-     ;; Allow if all tables have :unrestricted or :sandboxed permission (not :blocked or :legacy-no-self-service)
-     (and (seq other-table-permissions) (every? #{:unrestricted :sandboxed} other-table-permissions))
+     ;; Allow if all tables have :unrestricted or :restricted-access permission (not :blocked or :legacy-no-self-service)
+     (and (seq other-table-permissions) (every? #{:unrestricted :restricted-access} other-table-permissions))
      ;; Sandboxed users can view native queries as long as they're not blocked on any table. (Sandboxed tables don't count here.)
      (and native? (all-non-sandboxed-tables-unrestricted? database-id))
      (throw-block-permissions-exception))

@@ -16,8 +16,9 @@
   "Permissions which apply to individual databases or tables."
   ;; `legacy-no-self-service` is a deprecated permission which behaves the same as `:unrestricted` but does not override
   ;; `:blocked` in other groups.
-  ;; `sandboxed` means the user has access through a sandbox (GTAP). Without the :sandboxes feature, it is equivalent to `:blocked`.
-  {:perms/view-data             {:model :model/Table,    :values [:unrestricted :sandboxed :legacy-no-self-service :blocked]}
+  ;; `restricted-access` means the user has access through a sandbox (GTAP) or impersonation.
+  ;; Without the :sandboxes feature, it is equivalent to `:blocked`.
+  {:perms/view-data             {:model :model/Table,    :values [:unrestricted :restricted-access :legacy-no-self-service :blocked]}
    :perms/create-queries        {:model :model/Table,    :values [:query-builder-and-native :query-builder :no]}
    :perms/download-results      {:model :model/Table,    :values [:one-million-rows :ten-thousand-rows :no]}
    :perms/manage-table-metadata {:model :model/Table,    :values [:yes :no]}
