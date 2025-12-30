@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.common
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
@@ -165,7 +166,7 @@
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:status workspace))
-                    (let [target-db-id (get-in body [:target :database])]
+                    (let [target-db-id (transforms.i/target-db-id body)]
                       (api/check-400 target-db-id "Transform must have a target database")
                       (initialize-workspace! workspace target-db-id))
                     workspace)]
