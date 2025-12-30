@@ -3,8 +3,10 @@ import { t } from "ttag";
 import EmptyMetric from "assets/img/empty-states/qbnewb-metric.svg";
 import EmptyModel from "assets/img/empty-states/qbnewb-model.svg";
 import EmptyQuestion from "assets/img/empty-states/qbnewq-question.svg";
-import { Box, Button, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Center, Modal, Stack, Text } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
+
+import SavedQuestionIntroModalS from "./SavedQuestionIntroModal.module.css";
 
 interface Props {
   isShowingNewbModal: boolean;
@@ -60,24 +62,22 @@ export const SavedQuestionIntroModal = ({
       <Modal.Overlay />
       <Modal.Content p="xl" ta="center">
         <Modal.Header maw={contentWidth} mx="auto" my="md">
-          <Stack align="center" justify="center" style={{ width: "100%" }}>
-            <Box w="6rem">
-              <img
-                src={image}
-                alt={t`Saved entity modal empty state illustration`}
-              />
-            </Box>
-            <Modal.Title
-              style={{
-                maxWidth: "100%",
-                textAlign: "center",
-                whiteSpace: "normal",
-                wordBreak: "break-word",
-              }}
-            >
-              {title}
-            </Modal.Title>
-          </Stack>
+          <Center w="100%">
+            <Stack align="center">
+              <Box w="6rem">
+                <img
+                  src={image}
+                  alt={t`Saved entity modal empty state illustration`}
+                />
+              </Box>
+              <Modal.Title
+                mx="auto"
+                className={SavedQuestionIntroModalS.ModalTitle}
+              >
+                {title}
+              </Modal.Title>
+            </Stack>
+          </Center>
         </Modal.Header>
         <Modal.Body maw={contentWidth} mx="auto" my="md">
           <Text mb="lg">{message}</Text>
