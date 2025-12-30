@@ -7,14 +7,6 @@ import type { ExpressionType } from "../types";
 
 import { compile, lexify, parse } from ".";
 
-function integer(x: number) {
-  return value(x, "type/Integer");
-}
-
-function text(x: string) {
-  return value(x, "type/Text");
-}
-
 function bigint(x: string) {
   return value(x, "type/BigInteger");
 }
@@ -30,19 +22,24 @@ describe("pratt/compiler", () => {
   }
 
   describe("(for an expression)", () => {
-    it("should compile literals", () => {
-      expect(expr("42")).toEqual(integer(42));
-      expect(expr("'Universe'")).toEqual(text("Universe"));
-      expect(expr(`"Universe"`)).toEqual(text("Universe"));
-      expect(expr(`"\\""`)).toEqual(text(`"`));
-      expect(expr(`'\\''`)).toEqual(text(`'`));
-      expect(expr(`"a\\"b"`)).toEqual(text(`a"b`));
-      expect(expr(`'a\\'b'`)).toEqual(text(`a'b`));
-      expect(expr(`"'"`)).toEqual(text(`'`));
-      expect(expr(`'"'`)).toEqual(text(`"`));
+    it("should compile literals as raw values", () => {
+      // Top-level literals should be returned as raw values, not wrapped in :value clauses.
+      // This matches how filter clauses are created and allows wrap-value-literals QP middleware
+      // to add proper type info from the column being compared.
+      expect(expr("42")).toEqual(42);
+      expect(expr("'Universe'")).toEqual("Universe");
+      expect(expr(`"Universe"`)).toEqual("Universe");
+      expect(expr(`"\\""`)).toEqual(`"`);
+      expect(expr(`'\\''`)).toEqual(`'`);
+      expect(expr(`"a\\"b"`)).toEqual(`a"b`);
+      expect(expr(`'a\\'b'`)).toEqual(`a'b`);
+      expect(expr(`"'"`)).toEqual(`'`);
+      expect(expr(`'"'`)).toEqual(`"`);
     });
 
-    it("should compile bigints", () => {
+    it("should compile bigints wrapped in :value clause", () => {
+      // Bigints need to be wrapped because they must be serialized as strings
+      // and need type info to be parsed correctly
       expect(expr("12309109320930192039")).toEqual(
         bigint("12309109320930192039"),
       );
@@ -102,7 +99,7 @@ describe("pratt/compiler", () => {
           },
         ],
       });
-      expect(expr("-12")).toEqual(value(-12, "type/Integer"));
+      expect(expr("-12")).toEqual(-12);
     });
 
     it("should compile comparisons", () => {
@@ -261,12 +258,12 @@ describe("pratt/compiler", () => {
     });
 
     it("should handle parenthesized expression", () => {
-      expect(expr("(42)")).toEqual(integer(42));
-      expect(expr("-42")).toEqual(integer(-42));
-      expect(expr("-(42)")).toEqual(integer(-42));
-      expect(expr("((43))")).toEqual(integer(43));
-      expect(expr("('Universe')")).toEqual(text("Universe"));
-      expect(expr("(('Answer'))")).toEqual(text("Answer"));
+      expect(expr("(42)")).toEqual(42);
+      expect(expr("-42")).toEqual(-42);
+      expect(expr("-(42)")).toEqual(-42);
+      expect(expr("((43))")).toEqual(43);
+      expect(expr("('Universe')")).toEqual("Universe");
+      expect(expr("(('Answer'))")).toEqual("Answer");
       expect(expr("(1+2)")).toEqual({
         operator: "+",
         options: {},
