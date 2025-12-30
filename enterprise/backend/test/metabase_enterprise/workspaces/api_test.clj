@@ -1129,7 +1129,7 @@
         (is (= {:ok true} (mt/user-http-request :crowberto :delete 200 (ws-url ws-id))))
         (is (not (t2/exists? :model/Workspace :id ws-id)))))))
 
-(deftest initialize-uninitialized-workspace-test
+(deftest ^:synchronized initialize-uninitialized-workspace-test
   (testing "via adding transform"
     (let [ws (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                    {:name "init-via-transform"})]
