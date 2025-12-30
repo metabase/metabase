@@ -306,7 +306,7 @@
    Self-hosted drivers (postgres, mysql, mongo, etc.) run in Docker containers
    and only skip when the driver module is completely unaffected by changes."
   [driver
-   {:keys [is-master-or-release pr-labels skip cloud-driver-changes verbose?]}
+   {:keys [is-master-or-release pr-labels skip drivers-changed verbose?]}
    driver-module-affected?
    quarantined-drivers]
   (cond
@@ -346,7 +346,7 @@
       {:should-run true
        :reason "ci:all-cloud-drivers label"}
 
-      (get cloud-driver-changes driver)
+      (contains? drivers-changed driver)
       {:should-run true
        :reason (str "driver files changed (modules/drivers/" (name driver) "/**)")}
 
@@ -379,25 +379,17 @@
        --git-ref=master \\
        --is-master-or-release=false \\
        --pr-labels=ci:all-cloud-drivers,other-label \\
-       --skip=false \\
-       --athena-changed=false \\
-       --bigquery-changed=false \\
-       --databricks-changed=false \\
-       --redshift-changed=false \\
-       --snowflake-changed=false"
+       --skip=false"
   [{:keys [options] :as _parsed}]
   (let [github-output-only? (some? (:github-output-only options))
         git-ref (get options :git-ref "master")
-        cloud-driver-changes {:athena (parse-bool (:athena-changed options))
-                              :bigquery (parse-bool (:bigquery-changed options))
-                              :databricks (parse-bool (:databricks-changed options))
-                              :redshift (parse-bool (:redshift-changed options))
-                              :snowflake (parse-bool (:snowflake-changed options))}
+        ;; Detect file changes for ALL drivers via git diff
+        drivers-changed (drivers-with-file-changes git-ref)
         ctx {:git-ref git-ref
              :is-master-or-release (parse-bool (:is-master-or-release options))
              :pr-labels (parse-labels (:pr-labels options))
              :skip (parse-bool (:skip options))
-             :cloud-driver-changes cloud-driver-changes
+             :drivers-changed drivers-changed
              :verbose? (not github-output-only?)}
         quarantined (quarantined-drivers)
         updated-files (remove-non-driver-test-namespaces
@@ -411,8 +403,6 @@
                           (assoc (driver-decision driver ctx effective-driver-affected? quarantined)
                                  :driver driver))
                         all-drivers)
-        ;; Detect file changes for ALL drivers (not just cloud ones)
-        drivers-changed (drivers-with-file-changes git-ref)
         ;; Check for quarantined drivers with file changes but no break-quarantine label
         quarantined-with-changes (into #{}
                                        (filter (fn [driver]

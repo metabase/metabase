@@ -32,7 +32,7 @@
   (merge {:is-master-or-release false
           :pr-labels #{}
           :skip false
-          :cloud-driver-changes {}
+          :drivers-changed #{}
           :verbose? false}
          opts))
 
@@ -162,7 +162,7 @@
 (deftest cloud-driver-with-file-changes-runs
   (testing "Cloud driver runs when its files changed"
     (let [result (driver-decision :athena
-                                  (make-ctx {:cloud-driver-changes {:athena true}})
+                                  (make-ctx {:drivers-changed #{:athena}})
                                   false
                                   #{})]
       (is (true? (:should-run result)))

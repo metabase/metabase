@@ -6,22 +6,6 @@ on:
       skip:
         type: boolean
         default: false
-      # Cloud driver file change flags (from paths-filter)
-      athena-changed:
-        type: boolean
-        default: false
-      bigquery-changed:
-        type: boolean
-        default: false
-      databricks-changed:
-        type: boolean
-        default: false
-      redshift-changed:
-        type: boolean
-        default: false
-      snowflake-changed:
-        type: boolean
-        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-drivers
@@ -92,11 +76,6 @@ jobs:
             --is-master-or-release="${{ github.ref_name == 'master' || startsWith(github.ref_name, 'release-') }}"
             --pr-labels="${{ join(github.event.pull_request.labels.*.name, ',') }}"
             --skip="${{ inputs.skip }}"
-            --athena-changed="${{ inputs.athena-changed }}"
-            --bigquery-changed="${{ inputs.bigquery-changed }}"
-            --databricks-changed="${{ inputs.databricks-changed }}"
-            --redshift-changed="${{ inputs.redshift-changed }}"
-            --snowflake-changed="${{ inputs.snowflake-changed }}"
           )
           # First call: show human-readable output for debugging
           ./bin/mage -driver-decisions "${MAGE_ARGS[@]}"

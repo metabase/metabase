@@ -282,11 +282,6 @@
               [nil "--is-master-or-release MASTER_OR_RELEASE"]
               [nil "--pr-labels PR_LABELS" "Comma delimited labels on the pr"]
               [nil "--skip SKIP"]
-              [nil "--athena-changed CHANGED" "Changes to athena files detected?"]
-              [nil "--bigquery-changed CHANGED" "Changes to bigquery files detected?"]
-              [nil "--databricks-changed CHANGED" "Changes to databricks files detected?"]
-              [nil "--redshift-changed CHANGED" "Changes to redshift files detected?"]
-              [nil "--snowflake-changed CHANGED" "Changes to snowflake files detected?"]
               [nil "--github-output-only" "Only output GITHUB_OUTPUT format (no human-readable output)"]]
    :requires [[mage.modules]]
    :task     (task! (mage.modules/-main parsed))}
