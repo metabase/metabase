@@ -37,6 +37,23 @@
   :audit :getter
   :can-read-from-env? false)
 
+(defsetting remote-sync-auth-method
+  (deferred-tru "Authentication method for git sync. Supported values: :token (default, uses x-access-token as username), :basic (uses remote-sync-username as username)")
+  :type :keyword
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default :token
+  :can-read-from-env? false)
+
+(defsetting remote-sync-username
+  (deferred-tru "Username for basic authentication. Only used when remote-sync-auth-method is :basic")
+  :type :string
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :can-read-from-env? false)
+
 (defsetting remote-sync-url
   (deferred-tru "The location of your git repository, e.g. https://github.com/acme-inco/metabase.git")
   :type :string
@@ -86,35 +103,50 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defn make-credentials
+  "Constructs credentials for git authentication based on auth-method.
+
+  For :token method, returns the token string directly.
+  For :basic method, returns a map with :username and :password."
+  [auth-method token username]
+  (case auth-method
+    :basic {:username username :password token}
+    ;; default to :token - just return the token string
+    token))
+
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 
   If no args are passed, it validates the current settings.
 
   Throws ExceptionInfo if unable to connect to the repository with the provided settings."
-  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url    (setting/get :remote-sync-url)
-                                                                     :remote-sync-token  (setting/get :remote-sync-token)
-                                                                     :remote-sync-branch (setting/get :remote-sync-branch)
-                                                                     :remote-sync-type   (setting/get :remote-sync-type)})))
+  ([] (when (setting/get :remote-sync-enabled) (check-git-settings! {:remote-sync-url         (setting/get :remote-sync-url)
+                                                                     :remote-sync-token       (setting/get :remote-sync-token)
+                                                                     :remote-sync-auth-method (setting/get :remote-sync-auth-method)
+                                                                     :remote-sync-username    (setting/get :remote-sync-username)
+                                                                     :remote-sync-branch      (setting/get :remote-sync-branch)
+                                                                     :remote-sync-type        (setting/get :remote-sync-type)})))
 
-  ([{:keys [remote-sync-url remote-sync-token remote-sync-branch remote-sync-type]}]
+  ([{:keys [remote-sync-url remote-sync-token remote-sync-auth-method remote-sync-username remote-sync-branch remote-sync-type]}]
    (when-not (or (not (str/index-of remote-sync-url ":"))
                  (str/starts-with? remote-sync-url "file://")
-                 (and (or (str/starts-with? remote-sync-url "http://")
-                          (str/starts-with? remote-sync-url "https://"))
-                      (str/index-of remote-sync-url "github.com")))
+                 (str/starts-with? remote-sync-url "http://")
+                 (str/starts-with? remote-sync-url "https://"))
      (throw (ex-info "Invalid Repository URL format"
                      {:url remote-sync-url})))
 
-   (let [source (git/git-source remote-sync-url "HEAD" remote-sync-token)]
+   (let [auth-method (or remote-sync-auth-method :token)
+         credentials (make-credentials auth-method remote-sync-token remote-sync-username)
+         source      (git/git-source remote-sync-url "HEAD" auth-method credentials)]
      (when (and (= :read-only remote-sync-type) (not (str/blank? remote-sync-branch)) (not (some #{remote-sync-branch} (git/branches source))))
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
 
 (defn check-and-update-remote-settings!
   "Validates and updates git sync settings in the application database.
 
-  Takes a settings map containing :remote-sync-url, :remote-sync-token, :remote-sync-type, :remote-sync-branch, and
-  :remote-sync-auto-import keys. If the URL is blank, clears all git sync settings (url, token, and branch).
+  Takes a settings map containing :remote-sync-url, :remote-sync-token, :remote-sync-auth-method,
+  :remote-sync-username, :remote-sync-type, :remote-sync-branch, and :remote-sync-auto-import keys.
+  If the URL is blank, clears all git sync settings (url, token, and branch).
   Otherwise, validates the settings by connecting to the repository, then updates the settings in a transaction.
 
   If the token is obfuscated (matches the existing token), preserves the existing token value rather than
@@ -127,12 +159,15 @@
     (t2/with-transaction [_conn]
       (setting/set! :remote-sync-url nil)
       (setting/set! :remote-sync-token nil)
-      (setting/set! :remote-sync-branch nil))
+      (setting/set! :remote-sync-branch nil)
+      (setting/set! :remote-sync-auth-method nil)
+      (setting/set! :remote-sync-username nil))
     (let [current-token (setting/get :remote-sync-token)
           obfuscated? (= remote-sync-token (setting/obfuscate-value current-token))
           token-to-check (if obfuscated? current-token remote-sync-token)
           _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
-        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
+        (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-auth-method :remote-sync-username
+                   :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
           (when (not (and (= k :remote-sync-token) obfuscated?))
             (setting/set! k (k settings))))))))

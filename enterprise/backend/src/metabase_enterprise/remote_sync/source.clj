@@ -87,16 +87,28 @@
          (map-indexed #(->file-spec task-id stream-count opts %1 %2))
          (source.p/write-files! snapshot message))))
 
+(defn- make-credentials
+  "Constructs credentials for git authentication based on auth-method."
+  [auth-method token username]
+  (case auth-method
+    :basic {:username username :password token}
+    token))
+
 (defn source-from-settings
   "Creates a git source from the current remote sync settings.
 
   Takes an optional branch name to use. If not provided, uses the configured remote-sync-branch setting.
 
-  Returns a GitSource instance configured with the remote-sync-url, branch, and remote-sync-token from settings."
+  Returns a GitSource instance configured with the remote-sync-url, branch, and authentication from settings."
   ([branch]
-   (git/git-source
-    (setting/get :remote-sync-url)
-    (or branch (setting/get :remote-sync-branch))
-    (setting/get :remote-sync-token)))
+   (let [auth-method (or (setting/get :remote-sync-auth-method) :token)
+         credentials (make-credentials auth-method
+                                       (setting/get :remote-sync-token)
+                                       (setting/get :remote-sync-username))]
+     (git/git-source
+      (setting/get :remote-sync-url)
+      (or branch (setting/get :remote-sync-branch))
+      auth-method
+      credentials)))
   ([]
    (source-from-settings (setting/get :remote-sync-branch))))
