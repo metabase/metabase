@@ -22,7 +22,6 @@ export const GitSyncOptionsDropdown = ({
           label={isPushDisabled ? t`No changes to push` : t`Push changes`}
         >
           <Combobox.Option
-            data-testid="git-sync-option-push"
             disabled={isPushDisabled}
             onClick={onPushClick}
             py="sm"
@@ -35,12 +34,7 @@ export const GitSyncOptionsDropdown = ({
           </Combobox.Option>
         </Tooltip>
 
-        <Combobox.Option
-          data-testid="git-sync-option-pull"
-          onClick={onPullClick}
-          py="sm"
-          value="pull"
-        >
+        <Combobox.Option onClick={onPullClick} py="sm" value="pull">
           <Group gap="md" wrap="nowrap">
             <Icon name="arrow_down" size={12} />
             <Text>{t`Pull changes`}</Text>
@@ -48,7 +42,6 @@ export const GitSyncOptionsDropdown = ({
         </Combobox.Option>
 
         <Combobox.Option
-          data-testid="git-sync-option-switch-branch"
           onClick={onSwitchBranchClick}
           py="sm"
           value="switch-branch"

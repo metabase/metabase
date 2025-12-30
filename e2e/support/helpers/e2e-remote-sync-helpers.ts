@@ -1,4 +1,3 @@
-import type { MatcherOptions } from "@testing-library/cypress";
 import yaml from "js-yaml";
 
 import type { Collection } from "metabase-types/api";
@@ -167,15 +166,34 @@ export const goToSyncedCollection = (opts?: Partial<Cypress.ClickOptions>) =>
 // Git sync controls are now in the app bar, not the sidebar
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-export const getPullButton = () =>
-  getGitSyncControls().findByTestId("git-pull-button");
+const ensureGitSyncMenuOpen = () => {
+  getGitSyncControls().then(($btn) => {
+    if ($btn.attr("data-expanded") !== "true") {
+      cy.wrap($btn).click();
+    }
+  });
+};
 
-export const getPushButton = () =>
-  getGitSyncControls().findByTestId("git-push-button");
+export const getPullOption = () => {
+  ensureGitSyncMenuOpen();
+  return cy
+    .findByRole("presentation")
+    .findByRole("option", { name: /Pull changes/ });
+};
 
-// Branch picker is now in the app bar (git-sync-controls), not the sidebar
-export const branchPicker = (opts?: Partial<MatcherOptions>) =>
-  getGitSyncControls().findByTestId("branch-picker-button", opts);
+export const getPushOption = () => {
+  ensureGitSyncMenuOpen();
+  return cy
+    .findByRole("presentation")
+    .findByRole("option", { name: /Push changes/ });
+};
+
+export const getSwitchBranchOption = () => {
+  ensureGitSyncMenuOpen();
+  return cy
+    .findByRole("presentation")
+    .findByRole("option", { name: /Switch branch/ });
+};
 
 // Enable tenants feature for testing
 export const enableTenants = () => {
