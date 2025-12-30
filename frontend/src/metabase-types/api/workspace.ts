@@ -300,7 +300,7 @@ export type WorkspaceSetupStatus =
   | "ready"
   | "archived"
   | "uninitialized"
-  | "setup-failed";
+  | "broken";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 
