@@ -18,6 +18,7 @@ import type {
 } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
+  DatasetQuery,
   MaybeTranslatedSeries,
   RawSeries,
   RowValue,
@@ -428,4 +429,29 @@ export const getPieSortRowsDimensionSetting = (
   return settings["pie.dimension"];
 };
 
-export const getDefaultSortRows = () => true;
+export const getDefaultSortRows = (series: MaybeTranslatedSeries) => {
+  const [{ card }] = series;
+
+  return hasExplicitOrderBy(card.dataset_query);
+};
+
+function hasExplicitOrderBy(datasetQuery: DatasetQuery | null): boolean {
+  if (
+    datasetQuery &&
+    typeof datasetQuery === "object" &&
+    "type" in datasetQuery &&
+    datasetQuery.type === "query" &&
+    "query" in datasetQuery &&
+    datasetQuery.query &&
+    typeof datasetQuery.query === "object" &&
+    "order-by" in datasetQuery.query
+  ) {
+    const orderBy = datasetQuery.query["order-by"];
+    // If order-by exists and is not empty, the question has explicit ordering
+    if (orderBy && Array.isArray(orderBy) && orderBy.length > 0) {
+      return false; // Don't auto-sort when explicit ordering exists
+    }
+  }
+
+  return false;
+}
