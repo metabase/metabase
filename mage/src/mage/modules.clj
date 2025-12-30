@@ -275,25 +275,13 @@
    Returns a map with :should-run (boolean) and :reason (string).
 
    For the decision priority order, see: mage -driver-decisions -h
-   (or see [[driver-decision-priority-rules]] for the data structure)
 
    ## What counts as 'driver module affected'?
 
    The driver module is considered affected when:
    - Files in modules/drivers/* are changed (triggers all drivers)
    - deps.edn is changed (triggers all drivers)
-   - Clojure modules that the 'driver' module depends on are changed
-
-   ## Cloud vs Self-hosted Drivers
-
-   Cloud drivers (athena, bigquery, databricks, redshift, snowflake) have
-   additional skip logic on PRs because they require external infrastructure
-   and secrets. They only run on PRs when:
-   - The ci:all-cloud-drivers label is present, OR
-   - Files in that specific driver's directory changed
-
-   Self-hosted drivers (postgres, mysql, mongo, etc.) run in Docker containers
-   and only skip when the driver module is completely unaffected by changes."
+   - Clojure modules that the 'driver' module depends on are changed"
   [driver
    {:keys [is-master-or-release pr-labels skip drivers-changed verbose?]}
    driver-module-affected?
@@ -351,12 +339,6 @@
       {:should-run false
        :reason "driver module not affected"})))
 
-(defn- format-driver-name-for-output
-  "Convert driver keyword to the format used in GitHub Actions outputs.
-   e.g., :mysql-mariadb -> mysql-mariadb"
-  [driver]
-  (name driver))
-
 (defn- cli-driver-decisions
   "Determine which driver tests should run based on PR context.
 
@@ -405,9 +387,9 @@
       ;; In github-output-only mode, print just the key=value lines (no colors)
       (do
         (doseq [{:keys [driver should-run]} decisions]
-          (println (str (format-driver-name-for-output driver) "-should-run=" should-run)))
+          (println (str (name driver) "-should-run=" should-run)))
         (doseq [driver quarantined-with-changes]
-          (println (str (format-driver-name-for-output driver) "-quarantine-conflict=true"))))
+          (println (str (name driver) "-quarantine-conflict=true"))))
 
       (do
         ;; Print module analysis summary
@@ -432,10 +414,10 @@
         (let [{drivers-to-run true drivers-to-skip false} (group-by :should-run decisions)]
           (println (c/green (str "\n=== Drivers to Run (" (count drivers-to-run) ") ===")))
           (doseq [{:keys [driver]} drivers-to-run]
-            (println (str (format-driver-name-for-output driver) "-should-run=true")))
+            (println (str (name driver) "-should-run=true")))
           (println (c/yellow (str "\n=== Drivers to Skip (" (count drivers-to-skip) ") ===")))
           (doseq [{:keys [driver]} drivers-to-skip]
-            (println (str (format-driver-name-for-output driver) "-should-run=false"))))
+            (println (str (name driver) "-should-run=false"))))
 
         ;; Output quarantine conflict warnings with colors
         (when (seq quarantined-with-changes)
@@ -444,7 +426,7 @@
           (println (c/red "=== Quarantine Conflicts ==="))
           (doseq [driver quarantined-with-changes]
             (println (c/red (str "  • " (name driver) " - add label '" (break-quarantine-label driver) "' to run tests")))
-            (println (str (format-driver-name-for-output driver) "-quarantine-conflict=true"))))))
+            (println (str (name driver) "-quarantine-conflict=true"))))))
 
     (u/exit 0)))
 
