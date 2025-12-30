@@ -12,7 +12,6 @@
  [metabase.api-routes.routes
   routes])
 
-
 (derive ::api-events :metabase/event)
 (derive :event/api-handler-update ::api-events)
 
