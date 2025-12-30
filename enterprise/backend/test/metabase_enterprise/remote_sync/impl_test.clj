@@ -888,4 +888,3 @@
                             :model_id table-id
                             :status "synced")
                 "Table with schema should be tracked in RemoteSyncObject")))))))
-
