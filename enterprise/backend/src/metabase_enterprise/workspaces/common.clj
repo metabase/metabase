@@ -73,14 +73,9 @@
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
                                                 :workspace_id (:id ws)})
-        ;; Only set schema for initialized workspaces (not uninitialized db_status)
-        schema  (when (not= db-status :uninitialized) (ws.u/isolation-namespace-name ws))
-        ws      (assoc ws
-                       :collection_id (:id coll)
-                       :schema schema)]
+        ws      (assoc ws :collection_id (:id coll))]
     ;; Set the backlink from the workspace to the collection inside it and set the schema.
-    (t2/update! :model/Workspace (:id ws) (cond-> {:collection_id (:id coll)}
-                                            schema (assoc :schema schema)))
+    (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
     ;; TODO (Sanya 2025-11-18) - not sure how to transfer this api key to agent
     #_(log/infof "Generated API key for workspace: %s" (u.secret/expose (:unmasked_key api-key)))
     ws))
