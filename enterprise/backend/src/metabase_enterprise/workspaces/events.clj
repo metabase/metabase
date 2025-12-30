@@ -8,7 +8,7 @@
 
 ;; When a global transform is created, updated, or deleted, mark all workspaces as stale.
 ;; This is a conservative approach - we could be more selective by tracking which workspaces
-;; reference which transforms, but for now simplicity wins.
+;; reference which transforms, but the complexity of doing so would be brittle.
 
 (defn- mark-all-workspaces-stale!
   "Mark all workspaces as needing graph recalculation."
@@ -17,7 +17,6 @@
     (when (pos? count)
       (log/debugf "Marked %d workspaces as analysis stale due to global transform change" count))))
 
-;; ### Global Transform Events
 ;; These events are published by metabase-enterprise.transforms.api when transforms are
 ;; created, updated, or deleted. We subscribe to mark workspaces stale.
 
@@ -29,5 +28,5 @@
 (methodical/defmethod events/publish-event! ::workspace-staleness
   [_ _event]
   ;; Mark all workspaces as stale when any global transform changes.
-  ;; The graph will be recalculated lazily on next access.
+  ;; The graph will be recalculated lazily the next time we need it.
   (mark-all-workspaces-stale!))
