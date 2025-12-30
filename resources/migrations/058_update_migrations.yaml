@@ -4584,7 +4584,7 @@ databaseChangeLog:
               - column:
                   name: db_status
                   type: varchar(20)
-                  remarks: Status of the database isolation resources (uninitialized, pending, ready, setup-failed)
+                  remarks: Status of the database isolation resources (uninitialized, pending, ready, broken)
                   defaultValue: "uninitialized"
                   constraints:
                     nullable: false
@@ -4615,7 +4615,7 @@ databaseChangeLog:
         - sql:
             sql: |
               UPDATE workspace SET db_status = status
-              WHERE status IN ('uninitialized', 'pending', 'ready', 'setup-failed')
+              WHERE status IN ('uninitialized', 'pending', 'ready', 'broken')
             splitStatements: false
 
   - changeSet:
@@ -4627,7 +4627,7 @@ databaseChangeLog:
         - sql:
             sql: |
               UPDATE workspace SET base_status = 'active'
-              WHERE status IN ('pending', 'ready', 'setup-failed')
+              WHERE status IN ('pending', 'ready', 'broken')
             splitStatements: false
 
   - changeSet:

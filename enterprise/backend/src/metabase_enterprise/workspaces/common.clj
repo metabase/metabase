@@ -105,7 +105,7 @@
                                                   {:db_status :ready}))))
     (catch Exception e
       (log/error e "Failed to setup workspace")
-      (t2/update! :model/Workspace ws-id {:db_status :setup-failed})
+      (t2/update! :model/Workspace ws-id {:db_status :broken})
       (throw e))))
 
 (defn initialize-workspace!

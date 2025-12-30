@@ -15,7 +15,7 @@
 
 (def ^:private db-statuses
   "Set of valid db_status values, representing the status of the isolated resources in the data warehouse."
-  #{:uninitialized :pending :ready :setup-failed})
+  #{:uninitialized :pending :ready :broken})
 
 (t2/deftransforms :model/Workspace
   {:graph            mi/transform-json
@@ -44,17 +44,19 @@
   [{workspace-id :id :as workspace}]
   ;; Only destroy isolation if workspace was initialized (not uninitialized db_status)
   (when (not= :uninitialized (:db_status workspace))
-    (let [database (t2/select-one :model/Database :id (:database_id workspace))]
-      ;; Best-effort cleanup - don't block archiving on cleanup failures
-      (try
-        (ws.isolation/destroy-workspace-isolation! database workspace)
-        (catch Exception e
-          (log/warnf e "Failed to cleanup isolation resources for workspace %s, proceeding with archive" workspace-id)))
-      ;; Mark all inputs as un-granted since the user may have been dropped
+    (let [database (t2/select-one :model/Database :id (:database_id workspace))
+          ;; Best-effort cleanup - don't block archiving on cleanup failures
+          cleaned? (try
+                     (ws.isolation/destroy-workspace-isolation! database workspace)
+                     true
+                     (catch Exception e
+                       (log/warnf e "Failed to cleanup isolation resources for workspace %s, proceeding with archive" workspace-id)
+                       false))]
+      ;; Mark all inputs as un-granted since the user *may* have been dropped (even if there were some failures)
       (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
-                  {:access_granted false})))
-  (t2/update! :model/Workspace workspace-id {:base_status :archived
-                                             :db_status   :uninitialized}))
+                  {:access_granted false})
+      (t2/update! :model/Workspace workspace-id {:base_status :archived
+                                                 :db_status   (if cleaned? :uninitialized :broken)}))))
 
 (defn unarchive!
   "Unarchive a workspace. If workspace has transforms, re-initializes database isolation resources,

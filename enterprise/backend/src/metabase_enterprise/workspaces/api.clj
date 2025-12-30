@@ -36,7 +36,7 @@
 
 (def ^:private computed-statuses
   "All possible values returned by computed-status (union of db-statuses and :archived from base-statuses)"
-  #{:uninitialized :pending :ready :setup-failed :archived})
+  #{:uninitialized :pending :ready :broken :archived})
 
 (mr/def ::status (into [:enum] computed-statuses))
 
