@@ -134,6 +134,59 @@ describe("scenarios > visualizations > maps", () => {
     H.popover().findByText("Blastoise").should("be.visible");
   });
 
+  it("should preserve zoom and pan after resize (metabase#11211)", () => {
+    cy.viewport(800, 600);
+
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": PEOPLE_ID,
+          limit: 999,
+        },
+      },
+      display: "map",
+      visualization_settings: {
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+        "map.center_latitude": 40,
+        "map.center_longitude": -100,
+        "map.zoom": 4,
+      },
+    });
+
+    zoomIn(4);
+
+    cy.get(".leaflet-marker-icon")
+      .first()
+      .then(($marker) => {
+        const posAfterZoom = $marker[0].getBoundingClientRect();
+
+        // 1px resize should not reset zoom
+        cy.viewport(801, 600);
+        cy.wait(300);
+
+        cy.get(".leaflet-marker-icon")
+          .first()
+          .then(($markerAfterResize) => {
+            const posAfterResize =
+              $markerAfterResize[0].getBoundingClientRect();
+            // Position should be nearly identical (within 5px tolerance)
+            const tolerance = 5;
+            expect(posAfterResize.left).to.be.closeTo(
+              posAfterZoom.left,
+              tolerance,
+            );
+            expect(posAfterResize.top).to.be.closeTo(
+              posAfterZoom.top,
+              tolerance,
+            );
+          });
+      });
+  });
+
   it("should not assign the full name of the state as the filter value on a drill-through (metabase#14650)", () => {
     cy.intercept("/app/assets/geojson/**").as("geojson");
     H.visitQuestionAdhoc({
@@ -464,4 +517,11 @@ function toggleFieldSelectElement(field) {
   return cy.get(`[data-field-title="${field}"]`).within(() => {
     cy.findByTestId("chart-setting-select").click();
   });
+}
+
+function zoomIn(times) {
+  for (let i = 0; i < times; i++) {
+    cy.get(".leaflet-control-zoom-in").click();
+    cy.wait(200);
+  }
 }
