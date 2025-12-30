@@ -348,12 +348,10 @@
   (t2/with-transaction [_conn]
     ;; First, re-analyze any stale transforms
     (analyze-stale-transforms! workspace)
-    ;; Calculate the graph
     (let [graph (calculate-graph! ws-id)]
-      ;; Sync external outputs and inputs
+      ;; Persist our work
       (sync-external-outputs! ws-id isolated-schema (:entities graph))
       (sync-external-inputs! ws-id (:entities graph))
-      ;; Cache the graph in workspace_graph table
       (upsert-workspace-graph! ws-id graph)
       ;; Mark workspace as not stale
       (t2/update! :model/Workspace ws-id {:analysis_stale false})

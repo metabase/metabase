@@ -54,8 +54,11 @@
     ;; Mark all inputs as un-granted since the user *may* have been dropped (even if there were some failures)
     (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
                 {:access_granted false})
-    (t2/update! :model/Workspace workspace-id {:base_status :archived
-                                               :db_status   (if cleaned? :uninitialized :broken)})))
+    ;; Mark all analysis as stale, as we will need to recreate grants.
+    (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id} {:analysis_stale true})
+    (t2/update! :model/Workspace workspace-id {:base_status    :archived
+                                               :db_status      (if cleaned? :uninitialized :broken)
+                                               :analysis_stale true})))
 
 (defn unarchive!
   "Unarchive a workspace. If workspace has transforms, re-initializes database isolation resources,
@@ -64,13 +67,15 @@
   [workspace]
   (let [workspace-id (:id workspace)
         has-transforms? (t2/exists? :model/WorkspaceTransform :workspace_id workspace-id)]
+    (t2/delete! :model/WorkspaceGraph :workspace_id workspace-id)
     (if has-transforms?
       ;; Workspace has transforms - re-initialize database isolation
       (let [database         (t2/select-one :model/Database (:database_id workspace))
             isolation-result (ws.isolation/ensure-database-isolation! workspace database)
             _                (t2/update! :model/Workspace workspace-id
-                                         (merge {:base_status :active
-                                                 :db_status   :ready}
+                                         (merge {:base_status    :active
+                                                 :db_status      :ready
+                                                 :analysis_stale true}
                                                 (select-keys isolation-result [:schema :database_details])))
             ;; Re-fetch workspace to get updated database_details and schema for granting permissions
             updated-ws       (t2/select-one :model/Workspace workspace-id)]

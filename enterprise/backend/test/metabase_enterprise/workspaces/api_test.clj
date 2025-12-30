@@ -179,6 +179,7 @@
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
           (is @called? "sync-grant-accesses! should be called when unarchiving")))))
 
+;; TODO rework this test
 (deftest archive-unarchive-access-granted-test
   (testing "Archive/unarchive properly manages access_granted flags and grants"
     (let [workspace      (ws.tu/create-ready-ws! "Archive Grant Test")
@@ -198,6 +199,9 @@
                                       (fn [_database _workspace tables]
                                         (reset! granted-tables tables))]
             (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
+            ;; TODO since analysis is now lazy, we have to call this api to force it to happen.
+            ;;      really we should restructure our tests.
+            (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "graph"))
             #_(is (= [{:schema nil :name "test_table"}] @granted-tables)
                   "grant-read-access-to-tables! should be called with the input tables")
             #_(is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))
