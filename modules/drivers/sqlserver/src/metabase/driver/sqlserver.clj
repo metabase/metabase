@@ -23,6 +23,7 @@
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -61,7 +62,8 @@
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :workspace                              true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -1069,3 +1071,70 @@
   [_driver]
   ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
   128)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- isolation-login-name
+  "Generate login name for workspace isolation."
+  [workspace]
+  (format "mb_isolation_%s_login" (:id workspace)))
+
+(defmethod driver/init-workspace-isolation! :sqlserver
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        login-name  (isolation-login-name workspace)
+        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
+                     :password (driver.u/random-workspace-password)}
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; SQL Server: create login (server level), then user (database level), then schema
+    (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
+                              "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
+                         login-name login-name (:password read-user))
+                 (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
+                         (:user read-user) (:user read-user) login-name)
+                 (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
+                         schema-name schema-name)
+                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name (:user read-user))]]
+      (jdbc/execute! conn-spec [sql]))
+    {:schema           schema-name
+     :database_details read-user}))
+
+(defmethod driver/destroy-workspace-isolation! :sqlserver
+  [_driver database workspace]
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        login-name  (isolation-login-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
+        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    ;; SQL Server requires dropping objects in schema before dropping schema
+    (doseq [sql [;; Drop all tables in the schema first
+                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'DROP TABLE [%s].[' + name + ']; ' "
+                              "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
+                              "EXEC sp_executesql @sql")
+                         schema-name schema-name)
+                 ;; Drop schema (must be empty)
+                 (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s]"
+                         schema-name schema-name)
+                 ;; Drop database user
+                 (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
+                         username username)
+                 ;; Drop server login
+                 (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
+                         login-name login-name)]]
+      (jdbc/execute! conn-spec [sql]))))
+
+(defmethod driver/grant-workspace-read-access! :sqlserver
+  [_driver database workspace tables]
+  (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
+        username  (-> workspace :database_details :user)
+        schemas   (distinct (map :schema tables))]
+    (when-not username
+      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+                      {:workspace-id (:id workspace) :step :grant})))
+    (doseq [schema schemas]
+      (jdbc/execute! conn-spec [(format "GRANT SELECT ON SCHEMA::[%s] TO [%s]" schema username)]))
+    (doseq [table tables]
+      (jdbc/execute! conn-spec [(format "GRANT SELECT ON [%s].[%s] TO [%s]"
+                                        (:schema table) (:name table) username)]))))

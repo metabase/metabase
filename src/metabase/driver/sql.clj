@@ -183,10 +183,26 @@
   {:table (sql.normalize/normalize-name driver table)
    :schema (some->> schema (sql.normalize/normalize-name driver))})
 
+(defn- parsed-table-refs
+  "Parse a native query and return a sequence of normalized table specs {:table ... :schema ...}."
+  [driver query]
+  (->> query
+       driver-api/raw-native-query
+       macaw/parsed-query
+       macaw/query->components
+       :tables
+       (map :component)
+       (map #(normalize-table-spec driver %))))
+
+(mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (into #{} (parsed-table-refs driver query)))
+
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]
-  (let [db-tables (driver-api/tables query)
+  (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
     (-> query
         driver-api/raw-native-query
