@@ -68,7 +68,7 @@
                                                 :database_id    db-id
                                                 :api_key_id     (:id api-key)
                                                 :execution_user (:user_id api-key)
-                                                :base_status    :active
+                                                :base_status    :empty
                                                 :db_status      db-status})
         coll    (t2/insert-returning-instance! :model/Collection
                                                {:name         (format "Collection for Workspace %s" workspace-name)
@@ -158,7 +158,8 @@
 
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.
-   If workspace db_status is uninitialized, initializes it with the transform's target database."
+   If workspace db_status is uninitialized, initializes it with the transform's target database.
+   If workspace base_status is empty, transitions it to active."
   [creator-id workspace entity-type global-id body]
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
@@ -178,5 +179,8 @@
                                     :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]
+        ;; Transition base_status from :empty to :active when first transform is added
+        (when (= :empty (:base_status workspace))
+          (t2/update! :model/Workspace workspace-id {:base_status :active}))
         (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
         transform))))

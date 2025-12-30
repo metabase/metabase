@@ -4599,7 +4599,7 @@ databaseChangeLog:
       changes:
         - sql:
             sql: |
-              UPDATE workspace SET db_status = status WHERE status IN ('uninitialized', 'pending', 'ready')
+              UPDATE workspace SET db_status = status WHERE status IN ('uninitialized', 'pending', 'ready', 'setup-failed')
             splitStatements: false
       rollback:
         # No rollback needed - will be handled by next migration's rollback
@@ -4616,7 +4616,7 @@ databaseChangeLog:
             columnDataType: varchar(20)
         - sql:
             sql: |
-              UPDATE workspace SET base_status = 'active' WHERE base_status IN ('uninitialized', 'pending', 'ready')
+              UPDATE workspace SET base_status = 'active' WHERE base_status IN ('uninitialized', 'pending', 'ready', 'setup-failed')
             splitStatements: false
       rollback:
         - sql:
