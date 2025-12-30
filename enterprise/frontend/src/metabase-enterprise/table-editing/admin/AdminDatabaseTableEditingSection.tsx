@@ -8,6 +8,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import Toggle from "metabase/common/components/Toggle";
+import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
@@ -35,8 +36,6 @@ const VISIBLE_REASONS: string[] = [
   DisabledReasonKey.SyncInProgress,
   DisabledReasonKey.DatabaseEmpty,
 ];
-
-const ALLOWED_ENGINES_FOR_TABLE_EDITING = ["postgres", "mysql"];
 
 export function AdminDatabaseTableEditingSection({
   database,
