@@ -76,7 +76,7 @@ export function useQuestionEditorSync({
       const isSaveAction =
         prevIsQuestionSaved === false && !isSwitchingQuestionsRef.current;
 
-      if (isSaveAction && !queryResultsRef.current) {
+      if (isNewQuestion && isSaveAction && !queryResultsRef.current) {
         queryQuestionRef.current();
       }
 
