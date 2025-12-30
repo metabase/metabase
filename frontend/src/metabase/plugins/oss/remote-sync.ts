@@ -16,16 +16,11 @@ export type CollectionsNavTreeProps = {
   onSelect?: (item: ITreeNodeItem) => void;
 };
 
-export interface GitSyncAppBarControlsProps {
-  fullWidth?: boolean;
-}
-
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
-  GitSyncAppBarControls:
-    PluginPlaceholder as ComponentType<GitSyncAppBarControlsProps>,
+  GitSyncAppBarControls: PluginPlaceholder as ComponentType,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
@@ -44,7 +39,7 @@ export const PLUGIN_REMOTE_SYNC: {
   LibraryNav: ComponentType;
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
-  GitSyncAppBarControls: ComponentType<GitSyncAppBarControlsProps>;
+  GitSyncAppBarControls: ComponentType;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;

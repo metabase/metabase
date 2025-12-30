@@ -19,6 +19,7 @@ import {
   Center,
   FixedSizeIcon,
   Flex,
+  Group,
   type IconName,
   Loader,
   Stack,
@@ -92,9 +93,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
-        {isNavbarOpened && (
-          <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls fullWidth />
-        )}
         <DataStudioTab
           label={t`Library`}
           icon="repository"
@@ -235,22 +233,29 @@ function DataStudioNavbarToggle({
 }: DataStudioNavbarToggleProps) {
   return (
     <Flex justify="space-between" mb={2}>
-      <UnstyledButton
-        className={cx(S.toggle, {
-          [S.hoverButton]: !isNavbarOpened,
-          [S.disablePointer]: isNavbarOpened,
-        })}
-        p="0.5rem"
-        bdrs="md"
-        onClick={() => !isNavbarOpened && onNavbarToggle(true)}
-      >
-        <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
-        <FixedSizeIcon
-          name="sidebar_open"
-          className={S.showOnHover}
-          c="text-secondary"
-        />
-      </UnstyledButton>
+      <Group gap="sm">
+        <UnstyledButton
+          className={cx(S.toggle, {
+            [S.hoverButton]: !isNavbarOpened,
+            [S.disablePointer]: isNavbarOpened,
+          })}
+          p="0.5rem"
+          bdrs="md"
+          onClick={() => !isNavbarOpened && onNavbarToggle(true)}
+        >
+          <img
+            alt="Data Studio Logo"
+            className={cx(S.hideOnHover, S.logo)}
+            src={DataStudioLogo}
+          />
+          <FixedSizeIcon
+            name="sidebar_open"
+            className={S.showOnHover}
+            c="text-secondary"
+          />
+        </UnstyledButton>
+        {isNavbarOpened && <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
+      </Group>
       {isNavbarOpened && (
         <UnstyledButton
           className={S.toggle}

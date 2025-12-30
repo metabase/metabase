@@ -20,15 +20,9 @@ import {
 import { BranchDropdown } from "./BranchDropdown";
 import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
 
-interface GitSyncControlsProps {
-  fullWidth?: boolean;
-}
-
 type DropdownView = "options" | "branch";
 
-export const GitSyncControls = ({
-  fullWidth = false,
-}: GitSyncControlsProps) => {
+export const GitSyncControls = () => {
   const { isVisible, currentBranch } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
@@ -167,7 +161,7 @@ export const GitSyncControls = ({
             justify="flex-start"
             bd="none"
             fw="900"
-            mr={fullWidth ? undefined : "2rem"}
+            mr="lg"
             disabled={isLoading}
             onClick={() => {
               setDropdownView("options");
