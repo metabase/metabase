@@ -26,6 +26,7 @@
    [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
+   [metabase.api.docs :as api.docs]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
@@ -713,7 +714,8 @@
     ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
     (when config/is-dev?
       (try
-        (events/publish-event! :event/api-handler-update {})
+        (events/publish-event! :event/api-handler-update
+                               {:api.docs/request-rebuild api.docs/request-spec-regeneration!})
         (catch Throwable e
           (log/debug e "Failed to publish api-handler-update event"))))))
 
