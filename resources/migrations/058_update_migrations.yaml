@@ -4572,6 +4572,63 @@ databaseChangeLog:
             sql: UPDATE workspace SET archived_at = current_timestamp WHERE status = 'archived'
             splitStatements: false
 
+  - changeSet:
+      id: v58.2025-12-29T19:00:00
+      author: christruter
+      comment: Add db_status column to workspace for tracking database isolation state
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: db_status
+                  type: varchar(20)
+                  remarks: Status of the database isolation resources (uninitialized, pending, ready, setup-failed)
+                  defaultValue: "uninitialized"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: db_status
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:01
+      author: christruter
+      comment: Migrate workspace status to db_status before renaming
+      changes:
+        - sql:
+            sql: |
+              UPDATE workspace SET db_status = status WHERE status IN ('uninitialized', 'pending', 'ready')
+            splitStatements: false
+      rollback:
+        # No rollback needed - will be handled by next migration's rollback
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:02
+      author: christruter
+      comment: Rename workspace status to base_status and migrate values
+      changes:
+        - renameColumn:
+            tableName: workspace
+            oldColumnName: status
+            newColumnName: base_status
+            columnDataType: varchar(20)
+        - sql:
+            sql: |
+              UPDATE workspace SET base_status = 'active' WHERE base_status IN ('uninitialized', 'pending', 'ready')
+            splitStatements: false
+      rollback:
+        - sql:
+            sql: |
+              UPDATE workspace SET base_status = db_status WHERE base_status = 'active'
+            splitStatements: false
+        - renameColumn:
+            tableName: workspace
+            oldColumnName: base_status
+            newColumnName: status
+            columnDataType: varchar(20)
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
