@@ -20,8 +20,7 @@
 
 (defmethod transforms.i/target-db-id :query
   [transform]
-  (or (get-in transform [:target :database])
-      (:target_db_id transform)))
+  (-> transform :source :query :database))
 
 (mr/def ::transform-details
   [:map
