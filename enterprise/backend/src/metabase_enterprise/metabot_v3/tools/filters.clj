@@ -260,26 +260,17 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Separate field-based aggregations (need column resolution) from measure-based (don't)
-        measure-aggregations (filter :measure-id aggregations)
-        field-aggregations (remove :measure-id aggregations)
-        resolved-field-aggregations (map resolve-visible-column field-aggregations)
-        ;; Measure aggregations don't need column resolution - passed directly to add-aggregation
-        all-aggregations (concat resolved-field-aggregations measure-aggregations)
-        ;; Separate field-based filters from segment-based filters
-        segment-filters (filter :segment-id filters)
-        field-filters (remove :segment-id filters)
-        resolved-field-filters (map resolve-visible-column field-filters)
-        ;; Segment filters don't need column resolution - passed directly to add-filter
-        all-filters (concat resolved-field-filters segment-filters)
+        ;; Measures and segments don't require column resolution
+        resolved-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
                   (reduce-query (fn [query [expr-or-column expr-name]]
                                   (lib/expression query expr-name expr-or-column))
                                 (filter (comp expression? first) projection))
                   (add-fields projection)
-                  (reduce-query add-filter all-filters)
-                  (reduce-query add-aggregation all-aggregations)
+                  (reduce-query add-filter resolved-filters)
+                  (reduce-query add-aggregation resolved-aggregations)
                   (reduce-query add-breakout (map resolve-visible-column group-by))
                   (reduce-query add-order-by (map resolve-order-by-column order-by))
                   (add-limit limit))
@@ -331,18 +322,9 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        ;; Separate field-based aggregations (need column resolution) from measure-based (don't)
-        measure-aggregations (filter :measure-id aggregations)
-        field-aggregations (remove :measure-id aggregations)
-        resolved-field-aggregations (map resolve-visible-column field-aggregations)
-        ;; Measure aggregations don't need column resolution - passed directly to add-aggregation
-        all-aggregations (concat resolved-field-aggregations measure-aggregations)
-        ;; Separate field-based filters from segment-based filters
-        segment-filters (filter :segment-id filters)
-        field-filters (remove :segment-id filters)
-        resolved-field-filters (map resolve-visible-column field-filters)
-        ;; Segment filters don't need column resolution - passed directly to add-filter
-        all-filters (concat resolved-field-filters segment-filters)
+        ;; Measures and segments don't require column resolution
+        all-aggregations (map #(if (:measure-id %) % (resolve-visible-column %)) aggregations)
+        all-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         reduce-query (fn [query f coll] (reduce f query coll))
         query (-> base-query
                   (reduce-query (fn [query [expr-or-column expr-name]]

@@ -787,8 +787,7 @@
                   filters (get-in query [:stages 0 :filters])]
               (is (some? (:structured-output result)))
               (is (= :query (get-in result [:structured-output :type])))
-              ;; Check that a segment filter is present
-              (is (some #(and (vector? %) (= :segment (first %))) filters)))))))))
+              (is (=? [[:segment {} mock-segment-id]] filters)))))))))
 
 (deftest query-datasource-with-measure-aggregation-test
   (let [mp (mt/metadata-provider)

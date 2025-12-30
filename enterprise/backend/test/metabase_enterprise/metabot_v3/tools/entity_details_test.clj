@@ -265,12 +265,13 @@
                   output (:structured-output result)]
               (is (nil? (:segments output)))))
 
-          (testing "with_segments: true returns segments key (may be empty if source-table not resolvable)"
+          (testing "with_segments: true includes segments for the table"
             (let [result (entity-details/get-metric-details {:metric-id metric-id
                                                              :with-segments? true})
-                  output (:structured-output result)]
-              ;; The segments key should be present when with-segments? is true
-              (is (contains? output :segments))
-              ;; If segments are found, they should have the expected structure
-              (when-let [segments (seq (:segments output))]
-                (is (= segment-id (:id (first segments))))))))))))
+                  output (:structured-output result)
+                  segments (:segments output)]
+              (is (sequential? segments))
+              (is (= 1 (count segments)))
+              (let [segment (first segments)]
+                (is (= segment-id (:id segment)))
+                (is (= "Large Orders" (:name segment)))))))))))
