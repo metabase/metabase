@@ -26,16 +26,11 @@ import type { RemoteSyncEntity } from "metabase-types/api";
 import { CollectionPath } from "./CollectionPath";
 import { EntityLink } from "./EntityLink";
 
-/** A table entity with its nested children (fields and segments) */
-type TableWithChildren = {
-  table: RemoteSyncEntity;
-  children: RemoteSyncEntity[];
-};
-
-/** A virtual table group for orphan children (when the table itself isn't dirty) */
-type OrphanTableGroup = {
+/** A table group with optional entity (when table itself is dirty) and its nested children */
+type TableGroup = {
   tableId: number;
   tableName: string;
+  table?: RemoteSyncEntity;
   children: RemoteSyncEntity[];
 };
 
@@ -112,15 +107,17 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           (e) => e.table_id || 0,
         );
 
-        // Create table items with their nested children
-        const tablesWithChildren: TableWithChildren[] = tables.map((table) => ({
+        // Create table groups for dirty tables
+        const tableIds = new Set(tables.map((t) => t.id));
+        const dirtyTableGroups: TableGroup[] = tables.map((table) => ({
+          tableId: table.id,
+          tableName: table.name,
           table,
           children: sortByStatus(childrenByTableId[table.id] || []),
         }));
 
-        // Find orphan children (children whose parent table is not in the dirty set)
-        const tableIds = new Set(tables.map((t) => t.id));
-        const orphanTableGroups: OrphanTableGroup[] = Object.entries(
+        // Create table groups for orphan children (children whose parent table is not dirty)
+        const orphanTableGroups: TableGroup[] = Object.entries(
           childrenByTableId,
         )
           .filter(([tableId]) => !tableIds.has(Number(tableId)))
@@ -130,6 +127,11 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
             children: sortByStatus(children),
           }));
 
+        // Combine and sort all table groups
+        const tableGroups = [...dirtyTableGroups, ...orphanTableGroups].sort(
+          (a, b) => a.tableName.localeCompare(b.tableName),
+        );
+
         return {
           pathSegments: getCollectionPathSegments(
             Number(collectionId) || undefined,
@@ -137,12 +139,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
           ),
           collectionId: Number(collectionId) || undefined,
           collectionEntity,
-          tablesWithChildren: tablesWithChildren.sort((a, b) =>
-            a.table.name.localeCompare(b.table.name),
-          ),
-          orphanTableGroups: orphanTableGroups.sort((a, b) =>
-            a.tableName.localeCompare(b.tableName),
-          ),
+          tableGroups,
           items: sortByStatus(otherItems),
         };
       })
@@ -175,9 +172,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
         <Stack gap={0}>
           {groupedData.map((group, groupIndex) => {
             const hasItems =
-              group.items.length > 0 ||
-              group.tablesWithChildren.length > 0 ||
-              group.orphanTableGroups.length > 0;
+              group.items.length > 0 || group.tableGroups.length > 0;
 
             return (
               <Fragment key={group.collectionId}>
@@ -218,11 +213,20 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                         borderLeft: "2px solid var(--mb-color-border)",
                       }}
                     >
-                      {/* Render tables with their children */}
-                      {group.tablesWithChildren.map(({ table, children }) => (
-                        <Box key={`table-${table.id}`}>
-                          <EntityLink entity={table} />
-                          {children.length > 0 && (
+                      {/* Render table groups (both dirty tables and orphan children) */}
+                      {group.tableGroups.map((tableGroup) => (
+                        <Box key={`table-${tableGroup.tableId}`}>
+                          {tableGroup.table ? (
+                            <EntityLink entity={tableGroup.table} />
+                          ) : (
+                            <Group gap="sm" wrap="nowrap" px="sm">
+                              <Icon name="table" size={16} c="text-secondary" />
+                              <Text size="sm" c="text-secondary">
+                                {tableGroup.tableName}
+                              </Text>
+                            </Group>
+                          )}
+                          {tableGroup.children.length > 0 && (
                             <Stack
                               gap="0.75rem"
                               ml="md"
@@ -233,7 +237,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                                   "2px solid var(--mb-color-border-light)",
                               }}
                             >
-                              {children.map((child) => (
+                              {tableGroup.children.map((child) => (
                                 <EntityLink
                                   key={`${child.model}-${child.id}`}
                                   entity={child}
@@ -241,35 +245,6 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                               ))}
                             </Stack>
                           )}
-                        </Box>
-                      ))}
-
-                      {/* Render orphan table groups (children without their parent table in dirty set) */}
-                      {group.orphanTableGroups.map((orphanGroup) => (
-                        <Box key={`orphan-table-${orphanGroup.tableId}`}>
-                          <Group gap="sm" wrap="nowrap" px="sm">
-                            <Icon name="table" size={16} c="text-secondary" />
-                            <Text size="sm" c="text-secondary">
-                              {orphanGroup.tableName}
-                            </Text>
-                          </Group>
-                          <Stack
-                            gap="0.75rem"
-                            ml="md"
-                            pl="xs"
-                            mt="0.75rem"
-                            style={{
-                              borderLeft:
-                                "2px solid var(--mb-color-border-light)",
-                            }}
-                          >
-                            {orphanGroup.children.map((child) => (
-                              <EntityLink
-                                key={`${child.model}-${child.id}`}
-                                entity={child}
-                              />
-                            ))}
-                          </Stack>
                         </Box>
                       ))}
 
