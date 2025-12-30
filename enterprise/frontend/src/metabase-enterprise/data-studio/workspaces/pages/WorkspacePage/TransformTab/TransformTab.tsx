@@ -342,6 +342,7 @@ export const TransformTab = ({
   return (
     <Stack gap={0} h="100%">
       <Stack
+        data-testid="transform-tab-header"
         flex="0 0 auto"
         gap="sm"
         p="md"

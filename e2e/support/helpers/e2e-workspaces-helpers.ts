@@ -54,15 +54,15 @@ export const Workspaces = {
   },
 
   getWorkspaceItem(name: string | RegExp) {
-    return Workspaces.getWorkspacesSection().find(`button[name="${name}"]`);
+    return this.getWorkspacesSection().find(`button[name="${name}"]`);
   },
 
   getWorkspaceItemStatus(name: string | RegExp) {
-    return Workspaces.getWorkspaceItem(name).findByTestId("workspace-status");
+    return this.getWorkspaceItem(name).findByTestId("workspace-status");
   },
 
   getWorkspaceItemActions(name: string | RegExp) {
-    return Workspaces.getWorkspaceItem(name).findByLabelText("More actions");
+    return this.getWorkspaceItem(name).findByLabelText("More actions");
   },
 
   getWorkspaceNameInput() {
@@ -83,18 +83,22 @@ export const Workspaces = {
     return cy.findByPlaceholderText("Select a database");
   },
 
-  getTransformTargetButton() {
-    return cy.findByRole("button", { name: /Change target/ });
+  getTransformTabHeader() {
+    return cy.findByTestId("transform-tab-header");
   },
 
-  getRunTransformButton() {
-    return Workspaces.getWorkspaceContent().findByRole("button", {
-      name: /Run now/,
+  getTransformTargetButton() {
+    return this.getTransformTabHeader().findByRole("button", {
+      name: /Change target/,
     });
   },
 
+  getRunTransformButton() {
+    return this.getTransformTabHeader().findByTestId("run-button");
+  },
+
   getSaveTransformButton() {
-    return cy.findByRole("button", { name: /Save/ });
+    return this.getTransformTabHeader().findByRole("button", { name: /Save/ });
   },
 
   getWorkspaceTransforms() {

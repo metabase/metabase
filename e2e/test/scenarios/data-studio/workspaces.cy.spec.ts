@@ -30,6 +30,10 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
+    cy.request("PUT", "/api/permissions/graph",
+      {"groups":{"1":{"1":{"download":{"schemas":"full"},"view-data":"unrestricted"},"2":{"view-data":"unrestricted","download":{"schemas":"full"},"create-queries":"query-builder-and-native"}}},"revision":1,"sandboxes":[],"impersonations":[]}
+    );
+
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
       "runTransform",
@@ -607,6 +611,7 @@ describe("scenarios > data studio > workspaces", () => {
           "New transform",
         ]);
         H.NativeEditor.value().should("be.empty");
+        Workspaces.getSaveTransformButton().should("be.disabled");
       });
 
       cy.log(
@@ -762,6 +767,41 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
   });
+
+  describe("run transform", () => {
+    it.only("should run transform", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Run transform");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .click();
+
+      H.NativeEditor.type(" LIMIT");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getRunTransformButton().click();
+
+      H.undoToast().findByText("Failed to run transform");
+      Workspaces.getWorkspaceContent().findByText("This transform hasn't been run before.");
+
+      H.NativeEditor.type(" 1;");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getRunTransformButton().click();
+
+      Workspaces.getWorkspaceContent().contains("Ran successfully");
+      Workspaces.getWorkspaceContent().contains("Last ran a few seconds ago successfully.");
+
+      H.NativeEditor.type("{backspace}{backspace}");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getRunTransformButton().click();
+
+      H.undoToast().findByText("Failed to run transform");
+
+      cy.pause();
+    })
+  })
 });
 
 function createWorkspace() {
