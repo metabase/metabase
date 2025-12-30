@@ -4678,7 +4678,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: analysis_stale
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: true
                   remarks: Whether dependency analysis needs to be recalculated
                   constraints:
@@ -4698,7 +4698,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: analysis_stale
-                  type: boolean
+                  type: ${boolean.type}
                   defaultValueBoolean: true
                   remarks: Whether the graph needs to be recalculated
                   constraints:
@@ -4735,22 +4735,33 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   name: graph
-                  type: text
+                  type: ${text.type}
                   remarks: JSON representation of the dependency graph
                   constraints:
                     nullable: false
               - column:
                   name: created_at
-                  type: datetime
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the cached graph was created
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: updated_at
-                  type: datetime
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the cached graph was last updated
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+      rollback:
+        - dropTable:
+            tableName: workspace_graph
+
+  - changeSet:
+      id: v58.2025-12-30T10:00:03
+      author: christruter
+      comment: Add unique index on workspace_graph.workspace_id
+      changes:
         - createIndex:
             tableName: workspace_graph
             indexName: idx_workspace_graph_workspace_id
@@ -4758,12 +4769,12 @@ databaseChangeLog:
             columns:
               - column:
                   name: workspace_id
-      rollback:
-        - dropTable:
-            tableName: workspace_graph
+      rollback: # will be removed along the table
 
+  # TODO: Before merging to master, cancel this out by also removing the graph column
+  # from the workspace table creation (around line 1140) since both migrations are new.
   - changeSet:
-      id: v58.2025-12-30T10:00:03
+      id: v58.2025-12-30T10:00:04
       author: christruter
       comment: Drop graph column from workspace table (moved to workspace_graph)
       changes:
@@ -4776,7 +4787,7 @@ databaseChangeLog:
             columns:
               - column:
                   name: graph
-                  type: text
+                  type: ${text.type}
                   remarks: JSON representation of the dependency graph
                   constraints:
                     nullable: true
