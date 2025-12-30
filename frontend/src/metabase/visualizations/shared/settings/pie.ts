@@ -432,25 +432,30 @@ export const getPieSortRowsDimensionSetting = (
 export const getDefaultSortRows = (series: MaybeTranslatedSeries) => {
   const [{ card }] = series;
 
-  return hasExplicitOrderBy(card.dataset_query);
+  // Auto-sort only when there's NO explicit order-by in the query
+  return !hasExplicitOrderBy(card.dataset_query);
 };
 
 function hasExplicitOrderBy(datasetQuery: DatasetQuery | null): boolean {
-  if (
-    datasetQuery &&
-    typeof datasetQuery === "object" &&
-    "type" in datasetQuery &&
-    datasetQuery.type === "query" &&
-    "query" in datasetQuery &&
-    datasetQuery.query &&
-    typeof datasetQuery.query === "object" &&
-    "order-by" in datasetQuery.query
-  ) {
+  if (!datasetQuery) {
+    return false;
+  }
+
+  // Type guard: check if this is a legacy dataset query (not MLv2 opaque)
+  if (!("type" in datasetQuery)) {
+    // MLv2 queries (opaque) - can't easily detect order-by without using Lib
+    return false;
+  }
+
+  // Skip native queries - can't detect ORDER BY in SQL strings without parsing
+  if (datasetQuery.type === "native") {
+    return false;
+  }
+
+  // For structured queries, check for order-by clause
+  if (datasetQuery.type === "query") {
     const orderBy = datasetQuery.query["order-by"];
-    // If order-by exists and is not empty, the question has explicit ordering
-    if (orderBy && Array.isArray(orderBy) && orderBy.length > 0) {
-      return false; // Don't auto-sort when explicit ordering exists
-    }
+    return (orderBy?.length ?? 0) > 0;
   }
 
   return false;
