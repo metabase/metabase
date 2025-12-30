@@ -16,10 +16,12 @@ const mockHasDirtyInCollectionTree = jest.fn(
   (_collectionIds: Set<number>) => false,
 );
 const mockIsDirty = jest.fn(() => false);
+const mockHasRemovedItems = jest.fn(() => false);
 jest.mock("./use-remote-sync-dirty-state", () => ({
   useRemoteSyncDirtyState: () => ({
     hasDirtyInCollectionTree: mockHasDirtyInCollectionTree,
     isDirty: mockIsDirty(),
+    hasRemovedItems: mockHasRemovedItems(),
   }),
 }));
 
@@ -75,6 +77,7 @@ describe("useHasLibraryDirtyChanges", () => {
     });
     mockIsDirty.mockReturnValue(false);
     mockHasDirtyInCollectionTree.mockReturnValue(false);
+    mockHasRemovedItems.mockReturnValue(false);
   });
 
   it("returns false when no dirty changes exist", async () => {
@@ -144,6 +147,30 @@ describe("useHasLibraryDirtyChanges", () => {
 
     await waitFor(() => {
       expect(result.current).toBe(false);
+    });
+  });
+
+  it("returns true when there are removed items even if no other dirty changes", async () => {
+    setupCollectionsEndpoint([createLibraryCollection()]);
+    mockIsDirty.mockReturnValue(false);
+    mockHasRemovedItems.mockReturnValue(true);
+    mockHasDirtyInCollectionTree.mockReturnValue(false);
+
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("returns true when there are removed items even without Library collection", async () => {
+    setupCollectionsEndpoint([createRegularCollection()]);
+    mockHasRemovedItems.mockReturnValue(true);
+
+    const { result } = setup();
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
     });
   });
 
