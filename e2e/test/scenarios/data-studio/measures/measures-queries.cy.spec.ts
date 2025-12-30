@@ -683,10 +683,28 @@ describe("scenarios > data studio > measures > queries", () => {
           },
         });
 
+        H.createMeasure({
+          name: "Measure using measure",
+          table_id: ORDERS_ID,
+          definition: {
+            "source-table": ORDERS_ID,
+            aggregation: [["*", 2, ["measure", measure.id]]],
+          },
+        });
+
         cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
 
         H.DependencyGraph.graph().should("be.visible");
-        H.DependencyGraph.graph().findByText(MEASURE_NAME).should("be.visible");
+        H.DependencyGraph.graph().findByText("2 measures").click();
+
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Question using measure")
+          .should("be.visible");
+
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Table Measure")
+          .should("be.visible")
+          .click();
 
         cy.log("verify question dependency");
         H.DependencyGraph.graph()
@@ -704,6 +722,15 @@ describe("scenarios > data studio > measures > queries", () => {
           .click();
         H.DependencyGraph.dependencyPanel()
           .findByText("Model using measure")
+          .should("be.visible");
+
+        cy.log("verify measure dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("1 measure")
+          .click();
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Measure using measure")
           .should("be.visible");
       });
     });
