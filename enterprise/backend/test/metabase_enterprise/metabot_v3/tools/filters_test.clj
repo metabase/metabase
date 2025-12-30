@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot-v3.tools.filters-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
@@ -857,3 +858,31 @@
             ;; Check that both measure and segment are present
             (is (some #(and (vector? %) (= :measure (first %))) aggregations))
             (is (some #(and (vector? %) (= :segment (first %))) filters))))))))
+
+(deftest segment-not-found-test
+  (let [mp (mt/metadata-provider)
+        non-existent-segment-id 99999]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-redefs [lib-be/application-database-metadata-provider (constantly mp)]
+        (testing "query-datasource with non-existent segment returns error"
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id (mt/id :orders)
+                         :filters [{:segment-id non-existent-segment-id}]})]
+            (is (nil? (:structured-output result)))
+            (is (string? (:output result)))
+            (is (str/includes? (:output result) "Segment"))
+            (is (str/includes? (:output result) "not found"))))))))
+
+(deftest measure-not-found-test
+  (let [mp (mt/metadata-provider)
+        non-existent-measure-id 99999]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (with-redefs [lib-be/application-database-metadata-provider (constantly mp)]
+        (testing "query-datasource with non-existent measure returns error"
+          (let [result (metabot-v3.tools.filters/query-datasource
+                        {:table-id (mt/id :orders)
+                         :aggregations [{:measure-id non-existent-measure-id}]})]
+            (is (nil? (:structured-output result)))
+            (is (string? (:output result)))
+            (is (str/includes? (:output result) "Measure"))
+            (is (str/includes? (:output result) "not found"))))))))

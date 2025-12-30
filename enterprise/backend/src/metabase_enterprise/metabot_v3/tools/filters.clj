@@ -8,7 +8,8 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- apply-filter-bucket
   [column bucket]
@@ -78,7 +79,11 @@
   [query llm-filter]
   (if-let [segment-id (:segment-id llm-filter)]
     ;; Segment-based filter
-    (lib/filter query (lib.metadata/segment query segment-id))
+    (if-let [segment (lib.metadata/segment query segment-id)]
+      (lib/filter query segment)
+      (throw (ex-info (tru "Segment with id {0} not found" segment-id)
+                      {:agent-error? true
+                       :segment-id segment-id})))
     ;; Standard field-based filter logic
     (let [{:keys [operation value values]} llm-filter
           expr (filter-bucketed-column llm-filter)
@@ -210,7 +215,11 @@
         query-with-aggregation
         (if-let [measure-id (:measure-id aggregation)]
           ;; Measure-based aggregation
-          (lib/aggregate query (lib.metadata/measure query measure-id))
+          (if-let [measure (lib.metadata/measure query measure-id)]
+            (lib/aggregate query measure)
+            (throw (ex-info (tru "Measure with id {0} not found" measure-id)
+                            {:agent-error? true
+                             :measure-id measure-id})))
           ;; Field-based aggregation
           (let [expr (bucketed-column aggregation)
                 agg-expr (case (:function aggregation)
