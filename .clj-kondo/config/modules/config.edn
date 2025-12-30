@@ -1648,6 +1648,7 @@
    :uses #{analytics
            api
            app-db
+           config
            database-routing
            driver
            events

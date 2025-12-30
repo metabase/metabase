@@ -236,10 +236,10 @@
       (sync-unhidden-tables newly-unhidden)
       ;; Publish update events for remote sync tracking, only when ee extensions are available to provide
       ;; a handler for these events
-      (config/ee-available?
-       (doseq [table updated-tables]
-         (events/publish-event! :event/table-update {:object  table
-                                                     :user-id api/*current-user-id*})))
+      (when config/ee-available?
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*})))
       updated-tables)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
