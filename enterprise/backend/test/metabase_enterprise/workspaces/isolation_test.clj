@@ -3,7 +3,6 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.isolation :as isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
@@ -33,22 +32,22 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
+                             ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM pg_user WHERE usename = ?" username])
+                             ["SELECT 1 FROM pg_user WHERE usename = ?" username])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :h2
   [database workspace]
-  (let [schema-name (ws.u/isolation-namespace-name workspace)
-        username    (ws.u/isolation-user-name workspace)
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?" schema-name])
+                             ["SELECT 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE UPPER(SCHEMA_NAME) = UPPER(?)" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM INFORMATION_SCHEMA.USERS WHERE NAME = ?" username])
+                             ["SELECT 1 FROM INFORMATION_SCHEMA.USERS WHERE UPPER(USER_NAME) = UPPER(?)" username])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :snowflake
@@ -59,13 +58,13 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                   [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
+                             [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                   [(format "SHOW USERS LIKE '%s'" username)])
+                             [(format "SHOW USERS LIKE '%s'" username)])
                  seq boolean)
      :role   (-> (jdbc/query conn-spec
-                   [(format "SHOW ROLES LIKE '%s'" role-name)])
+                             [(format "SHOW ROLES LIKE '%s'" role-name)])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :sqlserver
@@ -75,13 +74,13 @@
         username    (ws.u/isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
+                             ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
                  seq boolean)
      :user   (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM sys.database_principals WHERE name = ?" username])
+                             ["SELECT 1 FROM sys.database_principals WHERE name = ?" username])
                  seq boolean)
      :login  (-> (jdbc/query conn-spec
-                   ["SELECT 1 FROM master.sys.server_principals WHERE name = ?" login-name])
+                             ["SELECT 1 FROM master.sys.server_principals WHERE name = ?" login-name])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :clickhouse
@@ -90,10 +89,10 @@
         username  (ws.u/isolation-user-name workspace)
         conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:database (-> (jdbc/query conn-spec
-                     ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
+                               ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
                    seq boolean)
      :user     (-> (jdbc/query conn-spec
-                     ["SELECT 1 FROM system.users WHERE name = ?" username])
+                               ["SELECT 1 FROM system.users WHERE name = ?" username])
                    seq boolean)}))
 
 ;;; Tests
@@ -151,3 +150,58 @@
         (let [resources (workspace-isolation-resources-exist? database test-workspace)]
           (is (every? false? (vals resources))
               "No isolation resources should exist after permission check"))))))
+
+(deftest check-isolation-permissions-init-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns error message when init fails"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "orders")}]
+        (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
+                                    (fn [_driver _database _workspace]
+                                      (throw (ex-info "permission denied" {:step :init})))]
+          (is (some? (driver/check-isolation-permissions
+                      (driver/the-driver (:engine database))
+                      database
+                      test-table))
+              "Should return error message when init fails"))))))
+
+(deftest check-isolation-permissions-grant-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns error message when grant fails"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "orders")}]
+        (mt/with-dynamic-fn-redefs [driver/grant-workspace-read-access!
+                                    (fn [_driver _database _workspace _tables]
+                                      (throw (ex-info "permission denied" {:step :grant})))]
+          (is (some? (driver/check-isolation-permissions
+                      (driver/the-driver (:engine database))
+                      database
+                      test-table))
+              "Should return error message when grant fails"))))))
+
+(deftest check-isolation-permissions-destroy-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns error message when destroy fails"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "orders")}]
+        (mt/with-dynamic-fn-redefs [driver/destroy-workspace-isolation!
+                                    (fn [_driver _database _workspace]
+                                      (throw (ex-info "permission denied" {:step :destroy})))]
+          (is (some? (driver/check-isolation-permissions
+                      (driver/the-driver (:engine database))
+                      database
+                      test-table))
+              "Should return error message when destroy fails"))))))
+
+(deftest check-isolation-permissions-nil-table-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns nil when test-table is nil (skips grant step)"
+      (let [database (mt/db)]
+        (is (nil? (driver/check-isolation-permissions
+                   (driver/the-driver (:engine database))
+                   database
+                   nil))
+            "Should succeed when test-table is nil")))))

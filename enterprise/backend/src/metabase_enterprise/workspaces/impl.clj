@@ -54,7 +54,7 @@
         (let [database (t2/select-one :model/Database :id (:database_id workspace))
               tables   (mapv external-input->table ungranted-inputs)]
           (try
-            (ws.isolation/grant-read-access-to-tables! (driver.u/database->driver database) database workspace tables)
+            (ws.isolation/grant-read-access-to-tables! database workspace tables)
             ;; Mark inputs as granted after successful grant
             (t2/update! :model/WorkspaceInput {:id [:in (map :id ungranted-inputs)]}
                         {:access_granted true})

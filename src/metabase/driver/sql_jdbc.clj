@@ -40,7 +40,7 @@
   "Execute a `honeysql-form` query against `database`, `driver`, and optionally `table`."
   ([driver database honeysql-form]
    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-     (sql.qp/format-honeysql driver honeysql-form)))
+               (sql.qp/format-honeysql driver honeysql-form)))
 
   ([driver database table honeysql-form]
    (let [table-identifier (sql.qp/->honeysql driver (h2x/identifier :table (:schema table) (:name table)))]
@@ -347,7 +347,6 @@
      database
      {:write? true}
      (fn [^Connection conn]
-       ;; Disable auto-commit so we can rollback
        (.setAutoCommit conn false)
        (try
          (let [init-result (try
@@ -357,7 +356,6 @@
                                                        (ex-message e))
                                                {:step :init} e))))
                workspace-with-details (merge test-workspace init-result)]
-           ;; Step 2: Test grant (if we have a table)
            (when test-table
              (try
                (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
@@ -365,17 +363,14 @@
                  (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
                                          (:schema test-table) (:name test-table) (ex-message e))
                                  {:step :grant :table test-table} e)))))
-           ;; Step 3: Test destroy (DROP SCHEMA, DROP USER)
            (try
              (driver/destroy-workspace-isolation! driver database workspace-with-details)
              (catch Exception e
                (throw (ex-info (format "Failed to destroy workspace isolation (DROP SCHEMA/USER): %s"
                                        (ex-message e))
                                {:step :destroy} e)))))
-         ;; All succeeded
          nil
          (catch Exception e
            (ex-message e))
          (finally
-           ;; Always rollback - nothing is persisted
            (.rollback conn)))))))

@@ -5,7 +5,6 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace :as ws.model]
    [metabase.config.core :as config]
-   [metabase.driver.util :as driver.u]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -42,7 +41,7 @@
     (log/infof "Cleaningup workspace %d in tests" (:id workspace))
     (when (:database_details workspace)
       (let [database (t2/select-one :model/Database (:database_id workspace))]
-        (ws.isolation/destroy-workspace-isolation! (driver.u/database->driver database) database workspace)))
+        (ws.isolation/destroy-workspace-isolation! database workspace)))
     (catch Exception e
       (log/warn e "Failed to destroy isolation" {:workspace workspace})))
   workspace)
