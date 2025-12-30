@@ -538,6 +538,119 @@ describe("scenarios > data studio > measures > queries", () => {
     });
   });
 
+  describe("using measures in saved questions", () => {
+    it("should be possible to use measure results in a saved question as source for a follow up question", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+
+      createQuestionWithMeasure({
+        measureName: MEASURE_NAME,
+        questionDetails: {
+          type: "question",
+          name: "Question with measure",
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        },
+        after: () => {
+          breakout("Created At");
+        },
+      }).then((questionId) => {
+        H.createQuestion(
+          {
+            query: {
+              "source-table": `card__${questionId}`,
+            },
+            display: "scalar",
+          },
+          { visitQuestion: true },
+        );
+      });
+
+      H.openNotebook();
+
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText(MEASURE_NAME).click();
+        cy.findByPlaceholderText("Min").type("100");
+        cy.button("Add filter").click();
+      });
+
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({
+        formula: `Sum([${MEASURE_NAME}])`,
+        name: "Table Measure Sum",
+        clickDone: true,
+      });
+
+      H.visualize();
+      verifyScalarValue("1,510,568.93");
+    });
+
+    it("should be possible to use measure results in a saved question as source for a follow up model", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+        },
+      });
+
+      createQuestionWithMeasure({
+        measureName: MEASURE_NAME,
+        questionDetails: {
+          type: "question",
+          name: "Question with measure",
+          query: {
+            "source-table": ORDERS_ID,
+          },
+        },
+        after: () => {
+          breakout("Created At");
+        },
+      }).then((questionId) => {
+        H.createQuestion(
+          {
+            type: "model",
+            query: {
+              "source-table": `card__${questionId}`,
+            },
+            display: "scalar",
+          },
+          { visitQuestion: true },
+        );
+      });
+
+      H.openQuestionActions("Edit query definition");
+
+      H.filter({ mode: "notebook" });
+      H.popover().within(() => {
+        cy.findByText(MEASURE_NAME).click();
+        cy.findByPlaceholderText("Min").type("100");
+        cy.button("Add filter").click();
+      });
+
+      H.summarize({ mode: "notebook" });
+      H.popover().findByText("Custom Expression").click();
+      H.enterCustomColumnDetails({
+        formula: `Sum([${MEASURE_NAME}])`,
+        name: "Table Measure Sum",
+        clickDone: true,
+      });
+
+      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+      verifyScalarValue("1,510,568.93");
+    });
+  });
+
   describe("dependency graph", () => {
     it("should display measures and their dependencies in the dependency graph", () => {
       H.createMeasure({
@@ -664,13 +777,16 @@ function createQuestionWithMeasure({
   questionDetails?: StructuredQuestionDetails;
   after?: () => void;
 }) {
-  H.createQuestion(
+  return H.createQuestion(
     // TODO: I cannot get the createQuestion to work with measure aggregations
     // probably because there is some missing BE logic for converting MBQLv1
     // This helper therefore builds the measure in the FE.
     // "aggregation": [["measure", measureName]],
     details,
-    { visitQuestion: true },
+    {
+      visitQuestion: true,
+      wrapId: true,
+    },
   ).then(() => {
     if (details.type === "model") {
       H.openQuestionActions("Edit query definition");
@@ -692,5 +808,7 @@ function createQuestionWithMeasure({
       cy.findByTestId("qb-header").button("Save").click();
       H.modal().findByText("Save").click();
     }
+
+    return cy.get("@questionId");
   });
 }
