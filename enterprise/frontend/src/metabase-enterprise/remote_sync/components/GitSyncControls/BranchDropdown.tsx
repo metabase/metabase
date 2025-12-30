@@ -85,8 +85,7 @@ export const BranchDropdown = ({
       });
 
       onChange(branchName, true);
-    } catch (error) {
-      console.error("Failed to create branch:", error);
+    } catch {
       sendToast({
         message: t`Failed to create branch`,
         icon: "warning",
