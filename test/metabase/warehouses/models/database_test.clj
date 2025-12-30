@@ -788,7 +788,7 @@
         (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
         (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
         (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
-        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/create-queries :no)
         (is (= #{db1-id db2-id db3-id}
                (fetch-visible-db-ids [db1-id db2-id db3-id]
                                      {:user-id (mt/user->id :rasta) :is-superuser? false}

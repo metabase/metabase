@@ -2,6 +2,7 @@
   "Helper functions for models using data permissions to construct `visisble-query` methods from."
   (:require
    [metabase.permissions.schema :as permissions.schema]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu])
   (:import
@@ -40,21 +41,58 @@
 (mu/defmethod perm-type-to-least-int-case :perms/view-data
   [_ :- ::permissions.schema/data-permission-type
    column :- :keyword]
-  ;; blocked has a higher 'priority' than legacy-no-self-service when determining what permission level the user has
+  ;; Custom priority ordering for view-data permissions:
+  ;; - :blocked has higher priority than :legacy-no-self-service (blocked wins)
+  ;; - :sandboxed overrides :blocked (like :unrestricted does)
+  ;; Schema order: [:unrestricted :sandboxed :legacy-no-self-service :blocked] = indices [0 1 2 3]
   (let [minimum-perm-value [:min
                             [:case
                              [:= column [:inline "unrestricted"]] [:inline 0]
-                             [:= column [:inline "blocked"]] [:inline 1]
-                             [:= column [:inline "legacy-no-self-service"]] [:inline 2]]]]
-    ;; but when we compare it against the required level it should still be compared by its index value
+                             [:= column [:inline "sandboxed"]] [:inline 1]
+                             [:= column [:inline "blocked"]] [:inline 2]
+                             [:= column [:inline "legacy-no-self-service"]] [:inline 3]]]]
+    ;; Remap to schema indices: blocked is at 3, legacy-no-self-service is at 2
     [:case
-     [:= minimum-perm-value [:inline 0]] [:inline 0]
-     [:= minimum-perm-value [:inline 1]] [:inline 2]
-     [:= minimum-perm-value [:inline 2]] [:inline 1]]))
+     [:= minimum-perm-value [:inline 0]] [:inline 0]  ;; unrestricted → 0
+     [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; sandboxed → 1
+     [:= minimum-perm-value [:inline 2]] [:inline 3]  ;; blocked → 3
+     [:= minimum-perm-value [:inline 3]] [:inline 2]  ;; legacy-no-self-service → 2
+     ]))
+
+(defn- effective-required-level
+  "Returns the effective required permission level, accounting for feature flags.
+
+   For :perms/view-data:
+   - When sandboxes feature is ENABLED: asking for :unrestricted also accepts :sandboxed
+     (because sandboxed users can view data, just filtered)
+   - When sandboxes feature is DISABLED: asking for :sandboxed only accepts :unrestricted
+     (because :sandboxed is equivalent to :blocked without the feature)"
+  [perm-type required-level]
+  (if (= perm-type :perms/view-data)
+    (cond
+      ;; With sandboxes enabled: :unrestricted should also include :sandboxed tables
+      (and (= required-level :unrestricted)
+           (premium-features/enable-sandboxes?))
+      :sandboxed
+
+      ;; Without sandboxes: :sandboxed is equivalent to :blocked, so only accept :unrestricted
+      (and (= required-level :sandboxed)
+           (not (premium-features/enable-sandboxes?)))
+      :unrestricted
+
+      :else required-level)
+    required-level))
+
+(defn- fixed-permission-mapping [perm-mapping]
+  (into {} (map (fn [[perm-type perm-value]]
+                  (let [[perm-value v] (if (sequential? perm-value) perm-value [perm-value nil])]
+                    [perm-type (effective-required-level perm-type perm-value)]))
+                perm-mapping)))
 
 (mu/defn- perm-type-to-int-inline :- [:tuple [:= :inline] nat-int?]
   [perm-type :- ::permissions.schema/data-permission-type
    level     :- ::permissions.schema/data-permission-value]
+  perm-type (-> permissions.schema/data-permissions perm-type :values)
   (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
     [:inline (.indexOf values level)]))
 
@@ -67,13 +105,14 @@
   [perm-type      :- :keyword
    required-level :- :keyword
    most-or-least  :- [:enum :most :least]]
-  [(case most-or-least
-     :most  :>=
-     :least :<=)
-   (case most-or-least
-     :most  (perm-type-to-most-int-case perm-type :dp.perm_value)
-     :least (perm-type-to-least-int-case perm-type :dp.perm_value))
-   (perm-type-to-int-inline perm-type required-level)])
+  (let [required-level (effective-required-level perm-type required-level)]
+    [(case most-or-least
+       :most  :>=
+       :least :<=)
+     (case most-or-least
+       :most  (perm-type-to-most-int-case perm-type :dp.perm_value)
+       :least (perm-type-to-least-int-case perm-type :dp.perm_value))
+     (perm-type-to-int-inline perm-type required-level)]))
 
 (mu/defn- user-in-group-clause
   "Returns a simple IN clause to check if dp.group_id is in the user's groups.
@@ -140,7 +179,8 @@
   [perm-type      :- :keyword
    required-level :- :keyword
    most-or-least  :- [:enum :most :least]]
-  (let [agg-fn (case most-or-least
+  (let [required-level (effective-required-level perm-type required-level)
+        agg-fn (case most-or-least
                  :most  :max
                  :least :min)
         ;; Build conditional: CASE WHEN dp.perm_type = ? THEN <int-case> END
@@ -151,18 +191,22 @@
        :most  :>=
        :least :<=)
      (if (= perm-type :perms/view-data)
-       ;; Special handling for view-data permission priority
+       ;; Special handling for view-data permission priority (same logic as perm-type-to-least-int-case)
+       ;; Schema order: [:unrestricted :sandboxed :legacy-no-self-service :blocked] = indices [0 1 2 3]
        (let [minimum-perm-value [agg-fn
                                  [:case
                                   [:= :dp.perm_type (h2x/literal perm-type)]
                                   [:case
                                    [:= :dp.perm_value [:inline "unrestricted"]] [:inline 0]
-                                   [:= :dp.perm_value [:inline "blocked"]] [:inline 1]
-                                   [:= :dp.perm_value [:inline "legacy-no-self-service"]] [:inline 2]]]]]
+                                   [:= :dp.perm_value [:inline "sandboxed"]] [:inline 1]
+                                   [:= :dp.perm_value [:inline "blocked"]] [:inline 2]
+                                   [:= :dp.perm_value [:inline "legacy-no-self-service"]] [:inline 3]]]]]
          [:case
-          [:= minimum-perm-value [:inline 0]] [:inline 0]
-          [:= minimum-perm-value [:inline 1]] [:inline 2]
-          [:= minimum-perm-value [:inline 2]] [:inline 1]])
+          [:= minimum-perm-value [:inline 0]] [:inline 0]  ;; unrestricted → 0
+          [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; sandboxed → 1
+          [:= minimum-perm-value [:inline 2]] [:inline 3]  ;; blocked → 3
+          [:= minimum-perm-value [:inline 3]] [:inline 2]  ;; legacy-no-self-service → 2
+          ])
        [agg-fn conditional-case])
      (perm-type-to-int-inline perm-type required-level)]))
 
@@ -225,31 +269,32 @@
   permission level either more or less restrictive than the supplied level."
   [{:keys [user-id is-superuser?]} :- UserInfo
    permission-mapping              :- PermissionMapping]
-  {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
-   :from   [[:metabase_table :mt]]
-   :join   [[:data_permissions :dp] [:or
-                                     [:and
-                                      [:= :mt.db_id :dp.db_id]
-                                      [:= :dp.table_id nil]]
-                                     [:= :mt.id :dp.table_id]]
-            [:permissions_group :pg] [:= :pg.id :dp.group_id]
-            [:permissions_group_membership :pgm] [:and
-                                                  [:= :pgm.group_id :pg.id]
-                                                  [:= :pgm.user_id [:inline user-id]]]]
-   :where  (if is-superuser?
-             [:= [:inline 1] [:inline 1]]
-             (into [:or]
-                   (map (fn [[perm-type perm-level]]
-                          (let [[level most-or-least] (cond-> perm-level
-                                                        (not (sequential? perm-level)) vector)]
-                            [:and
-                             [:= :dp.perm_type (h2x/literal perm-type)]
-                             [(case most-or-least
-                                :most :<=
-                                (:least nil) :>=)
-                              (perm-type-to-int-inline perm-type level)
-                              (perm-type-to-int-case perm-type :dp.perm_value)]]))
-                        permission-mapping)))})
+  (let [perm-mapping (fixed-permission-mapping permission-mapping)]
+    {:select [:mt.id :dp.group_id :dp.perm_type :dp.perm_value]
+     :from   [[:metabase_table :mt]]
+     :join   [[:data_permissions :dp] [:or
+                                       [:and
+                                        [:= :mt.db_id :dp.db_id]
+                                        [:= :dp.table_id nil]]
+                                       [:= :mt.id :dp.table_id]]
+              [:permissions_group :pg] [:= :pg.id :dp.group_id]
+              [:permissions_group_membership :pgm] [:and
+                                                    [:= :pgm.group_id :pg.id]
+                                                    [:= :pgm.user_id [:inline user-id]]]]
+     :where  (if is-superuser?
+               [:= [:inline 1] [:inline 1]]
+               (into [:or]
+                     (map (fn [[perm-type perm-level]]
+                            (let [[level most-or-least] (cond-> perm-level
+                                                          (not (sequential? perm-level)) vector)]
+                              [:and
+                               [:= :dp.perm_type (h2x/literal perm-type)]
+                               [(case most-or-least
+                                  :most :<=
+                                  (:least nil) :>=)
+                                (perm-type-to-int-inline perm-type level)
+                                (perm-type-to-int-case perm-type :dp.perm_value)]]))
+                          perm-mapping)))}))
 
 (mu/defn- has-perms-for-database-as-honey-sql?
   "Builds an EXISTS (SELECT ...) half-join to filter databases that a user has the required permissions for.

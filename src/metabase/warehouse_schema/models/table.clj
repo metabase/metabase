@@ -242,13 +242,12 @@
   "OSS implementation. Returns a boolean, whether the user can read this table."
   metabase-enterprise.advanced-permissions.common
   [instance]
-  (and (or (perms/user-has-permission-for-table?
-            api/*current-user-id*
-            :perms/view-data
-            :unrestricted
-            (:db_id instance)
-            (:id instance))
-           (perms/sandboxed-table? (:id instance)))
+  (and (perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/view-data
+        :unrestricted
+        (:db_id instance)
+        (:id instance))
        (perms/user-has-permission-for-table?
         api/*current-user-id*
         :perms/create-queries

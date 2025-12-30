@@ -9,7 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -220,10 +220,17 @@
 (defmethod coalesce :perms/view-data
   [perm-type perm-values]
   (let [perm-values (set perm-values)
+        ;; IMPORTANT: Without the :sandboxes feature (e.g., in OSS), :sandboxed is equivalent to :blocked.
+        ;; This ensures that users don't accidentally get access to sandboxed tables when sandboxing is disabled.
+        perm-values (if (and (perm-values :sandboxed)
+                             (not (premium-features/enable-sandboxes?)))
+                      (-> perm-values (disj :sandboxed) (conj :blocked))
+                      perm-values)
         ordered-values (-> permissions.schema/data-permissions perm-type :values)]
     (if (and (perm-values :blocked)
-             (not (perm-values :unrestricted)))
-      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted
+             (not (perm-values :unrestricted))
+             (not (perm-values :sandboxed)))
+      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted or sandboxed
       :blocked
       (first (filter perm-values ordered-values)))))
 

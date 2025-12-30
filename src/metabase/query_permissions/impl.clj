@@ -331,15 +331,13 @@
   (let [field-ids (keep :id result-metadata)
         table-ids (into (set (keep (some-fn :table-id :table_id) result-metadata))
                         (when (seq field-ids)
-                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))
-        sandboxed-tables (set (map :table_id (perms/sandboxes-for-user)))]
-    (run! #(when-not (or (perms/user-has-permission-for-table?
-                          api/*current-user-id*
-                          :perms/view-data
-                          :unrestricted
-                          database-id
-                          %)
-                         (contains? sandboxed-tables %))
+                          (t2/select-fn-set :table_id :model/Field :id [:in field-ids])))]
+    (run! #(when-not (perms/user-has-permission-for-table?
+                      api/*current-user-id*
+                      :perms/view-data
+                      :unrestricted
+                      database-id
+                      %)
              (throw (perms-exception (tru "You do not have permission to view data of table {0} in result_metadata." %)
                                      {database-id {:perms/view-data {% :unrestricted}}})))
           table-ids)))

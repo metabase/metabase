@@ -7,6 +7,7 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -16,22 +17,54 @@
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
       :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :sandboxed :legacy-no-self-service :blocked}]
       :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+      :sandboxed       [:perms/view-data #{:sandboxed :legacy-no-self-service :blocked}]
+      :sandboxed       [:perms/view-data #{:sandboxed :blocked}]
+      :sandboxed       [:perms/view-data #{:sandboxed}]
       :blocked         [:perms/view-data #{:legacy-no-self-service :blocked}]
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
+    ;; :unrestricted is most permissive
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :sandboxed))
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
+    ;; :sandboxed is second most permissive
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :sandboxed))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :legacy-no-self-service))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :blocked))
+    ;; :legacy-no-self-service is third most permissive
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :sandboxed)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
     (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
+    ;; :blocked is least permissive
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :sandboxed)))
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
+
+(deftest sandboxed-permission-oss-invariant-test
+  (testing "INVARIANT: Without the :sandboxes feature, :sandboxed is treated as :blocked"
+    (mt/with-premium-features #{}
+      (testing "coalesce treats :sandboxed as :blocked when feature is disabled"
+        ;; :sandboxed alone becomes :blocked
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:sandboxed})))
+        ;; :sandboxed + :legacy-no-self-service - :blocked wins (from translated :sandboxed)
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:sandboxed :legacy-no-self-service})))
+        ;; :unrestricted still wins over translated :sandboxed->:blocked
+        (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed}))))))
+
+  (testing "With :sandboxes feature enabled, :sandboxed works normally"
+    (mt/with-premium-features #{:sandboxes}
+      (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed})))
+      (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed :blocked})))
+      (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed}))))))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}

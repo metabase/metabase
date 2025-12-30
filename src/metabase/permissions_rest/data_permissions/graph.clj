@@ -31,6 +31,7 @@
 
 (def ^:private ->api-vals
   {:perms/view-data             {:unrestricted           :unrestricted
+                                 :sandboxed              :sandboxed
                                  :legacy-no-self-service :legacy-no-self-service
                                  :blocked                :blocked}
    :perms/create-queries        {:query-builder-and-native :query-builder-and-native
@@ -364,9 +365,7 @@
                          (update-vals (fn [table-perm]
                                         (case table-perm
                                           :unrestricted           :unrestricted
-                                          ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
-                                          ;; sandboxes are stored separately in the `sandboxes` table
-                                          :sandboxed              :blocked
+                                          :sandboxed              :sandboxed
                                           :legacy-no-self-service :legacy-no-self-service
                                           :blocked                :blocked))))]
     (perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
