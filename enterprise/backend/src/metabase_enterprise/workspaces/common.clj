@@ -53,10 +53,9 @@
       (str stripped-name " (" next-num ")"))))
 
 ;; TODO: Generate new metabase user for the workspace
-;; TODO: Should we move this to model as per the diagram?
 (defn- create-workspace-container!
   "Create the workspace and its related collection, user, and api key."
-  [creator-id db-id workspace-name db-status]
+  [creator-id db-id workspace-name]
   ;; TODO (Chris 2025-11-19) Unsure API key name is unique, and remove this (insecure) workaround.
   (let [api-key (let [key-name (format "API key for Workspace %s" workspace-name)]
                   (or (t2/select-one :model/ApiKey :name key-name)
@@ -69,7 +68,7 @@
                                                 :api_key_id     (:id api-key)
                                                 :execution_user (:user_id api-key)
                                                 :base_status    :empty
-                                                :db_status      db-status})
+                                                :db_status      :uninitialized})
         coll    (t2/insert-returning-instance! :model/Collection
                                                {:name         (format "Collection for Workspace %s" workspace-name)
                                                 :namespace    "workspace"
@@ -140,7 +139,7 @@
     (let [unique-name         (generate-unique-workspace-name ws-name)
           {:keys [retry
                   workspace]} (try
-                                {:workspace (create-workspace-container! creator-id db-id unique-name :uninitialized)}
+                                {:workspace (create-workspace-container! creator-id db-id unique-name)}
                                 (catch Exception e
                                   (if (and (< attempt max-retries) (unique-constraint-violation? e))
                                     {:retry true}
