@@ -142,17 +142,11 @@ export const GitSyncControls = () => {
   return (
     <>
       <Combobox
-        store={combobox}
-        withinPortal
-        width={280}
-        position="bottom-start"
         disabled={isLoading}
-        onOptionSubmit={() => {
-          // Reset to options view when dropdown closes
-          if (!combobox.dropdownOpened) {
-            setDropdownView("options");
-          }
-        }}
+        position="bottom-start"
+        store={combobox}
+        width={280}
+        withinPortal
       >
         <Combobox.Target>
           <Button
@@ -160,7 +154,6 @@ export const GitSyncControls = () => {
             size="compact-sm"
             justify="flex-start"
             bd="none"
-            fw="900"
             mr="lg"
             disabled={isLoading}
             onClick={() => {
