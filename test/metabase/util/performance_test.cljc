@@ -1,5 +1,8 @@
 (ns metabase.util.performance-test
   (:require
+   #?@(:clj [[clojure.test.check.clojure-test :refer [defspec]]
+             [clojure.test.check.properties :as prop]
+             [malli.generator :as mg]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.util.performance :as perf]))
 
@@ -184,3 +187,142 @@
 
   (testing "f returns nil keys"
     (is (= {nil 2} (perf/update-keys {:a 1 :b 2} (constantly nil))))))
+
+(deftest ^:parallel get-in-test
+  (testing "basic nested access"
+    (is (= 3 (perf/get-in {:a {:b 3}} [:a :b])))
+    (is (= "value" (perf/get-in {:x {:y {:z "value"}}} [:x :y :z])))
+    (is (= 42 (perf/get-in {:key 42} [:key])))
+    (is (= {:a 1} (perf/get-in {:a 1} [])))
+    (is (nil? (perf/get-in nil [:a :b]))))
+
+  (testing "missing keys return nil"
+    (is (nil? (perf/get-in {:a {:b 3}} [:a :c])))
+    (is (nil? (perf/get-in {:a 1} [:x :y :z]))))
+
+  (testing "with not-found value"
+    (is (= :default (perf/get-in {:a {:b 3}} [:a :c] :default)))
+    (is (nil? (perf/get-in {:a {:b 3}} [:a :c] nil)))
+    (is (nil? (perf/get-in {:a {:b nil}} [:a :b] :something-else))))
+
+  (testing "nil values vs missing keys"
+    (is (nil? (perf/get-in {:a {:b nil}} [:a :b])))
+    (is (= :default (perf/get-in {:a {:b nil}} [:a :c] :default))))
+
+  (testing "works with vectors"
+    (is (= 2 (perf/get-in [[1 2] [3 4]] [0 1])))
+    (is (= 30 (perf/get-in {:items [10 20 30]} [:items 2]))))
+
+  (testing "partial path exists"
+    (is (nil? (perf/get-in {:a 1} [:a :b])))
+    (is (= :fallback (perf/get-in {:a "not-a-map"} [:a :b] :fallback)))))
+
+#?(:clj
+   (defn- trap-seq
+     "Returns a lazy seq of `safe-count` elements (0 to safe-count - 1) followed by elements that throw on realization.
+      Used to verify that mapv doesn't over-realize lazy sequences."
+     [safe-count]
+     (concat (range safe-count)
+             (for [_ (range 10)]
+               (throw (ex-info "should not be realized" {:safe-count safe-count}))))))
+
+(deftest ^:parallel mapv-does-not-realize-lazy-seqs-test
+  (testing "Does not realize long or infinite sequences beyond what's needed (bug repro)"
+    (is (= [1 2]
+           (perf/mapv (comp first vector)
+                      [1 2]
+                      (concat (range 1000)
+                              (for [_ (range 10)]
+                                (throw (ex-info "you should not be here" {})))))))))
+
+#?(:clj
+   (defspec mapv-single-coll-equivalence 100
+     (prop/for-all [coll (mg/generator [:sequential :int])]
+                   (= (mapv str coll)
+                      (perf/mapv str coll)))))
+
+#?(:clj
+   (defspec mapv-two-coll-equivalence 100
+     (prop/for-all [c1 (mg/generator [:sequential :int])
+                    c2 (mg/generator [:sequential :int])]
+                   (= (mapv str c1 c2)
+                      (perf/mapv str c1 c2)))))
+
+#?(:clj
+   (defspec mapv-three-coll-equivalence 100
+     (prop/for-all [c1 (mg/generator [:sequential :int])
+                    c2 (mg/generator [:sequential :int])
+                    c3 (mg/generator [:sequential :int])]
+                   (= (mapv str c1 c2 c3)
+                      (perf/mapv str c1 c2 c3)))))
+
+#?(:clj
+   (defspec mapv-four-coll-equivalence 100
+     (prop/for-all [c1 (mg/generator [:sequential :int])
+                    c2 (mg/generator [:sequential :int])
+                    c3 (mg/generator [:sequential :int])
+                    c4 (mg/generator [:sequential :int])]
+                   (= (mapv str c1 c2 c3 c4)
+                      (perf/mapv str c1 c2 c3 c4)))))
+
+#?(:clj
+   (defspec smallest-count-does-not-over-realize-2-colls 100
+     (prop/for-all [short-len (mg/generator [:int {:min 0 :max 33}])
+                    extra-len (mg/generator [:int {:min 34 :max 100}])]
+                   (let [short-coll (vec (range short-len))
+                         trap-coll  (trap-seq (+ short-len extra-len))]
+                     (= (#'perf/smallest-count short-coll trap-coll)
+                        (min short-len extra-len))))))
+
+#?(:clj
+   (defspec mapv-does-not-over-realize-2-colls 1000
+     (prop/for-all [short-len (mg/generator [:int {:min 0 :max 50}])
+                    extra-len (mg/generator [:int {:min 34 :max 100}])]
+                   (let [short-coll (vec (range short-len))
+                         trap-coll  (trap-seq (+ short-len extra-len))]
+                     (= (mapv vector short-coll trap-coll)
+                        (perf/mapv vector short-coll trap-coll))))))
+
+#?(:clj
+   (defspec mapv-does-not-over-realize-3-colls 1000
+     (prop/for-all [short-len (mg/generator [:int {:min 0 :max 33}])
+                    extra-len (mg/generator [:int {:min 34 :max 100}])]
+                   (let [short-coll (vec (range short-len))
+                         trap-coll  (trap-seq (+ short-len extra-len))]
+                     (= (mapv vector short-coll trap-coll trap-coll)
+                        (perf/mapv vector short-coll trap-coll trap-coll))))))
+
+#?(:clj
+   (defspec mapv-does-not-over-realize-4-colls 1000
+     (prop/for-all [short-len (mg/generator [:int {:min 0 :max 33}])
+                    extra-len (mg/generator [:int {:min 34 :max 100}])]
+                   (let [short-coll (vec (range short-len))
+                         trap-coll  (trap-seq (+ short-len extra-len))]
+                     (= (mapv vector short-coll trap-coll trap-coll trap-coll)
+                        (perf/mapv vector short-coll trap-coll trap-coll trap-coll))))))
+
+#?(:clj
+   (defspec mapv-handles-infinite-seqs-2-colls 1000
+     (prop/for-all [coll (mg/generator [:vector {:min 0 :max 50} :int])]
+                   (= (mapv vector coll (range))
+                      (perf/mapv vector coll (range))))))
+
+#?(:clj
+   (defspec mapv-handles-infinite-seqs-3-colls 1000
+     (prop/for-all [coll (mg/generator [:vector {:min 0 :max 50} :int])]
+                   (= (mapv vector coll (range) (iterate inc 0))
+                      (perf/mapv vector coll (range) (iterate inc 0))))))
+
+#?(:clj
+   (defspec mapv-handles-infinite-seqs-4-colls 1000
+     (prop/for-all [coll (mg/generator [:vector {:min 0 :max 50} :int])]
+                   (= (mapv vector coll (range) (iterate inc 0) (repeat 1))
+                      (perf/mapv vector coll (range) (iterate inc 0) (repeat 1))))))
+
+#?(:clj
+   (defspec mapv-boundary-32-equivalence 1000
+     (prop/for-all [n (mg/generator [:int {:min 28 :max 36}])]
+                   (let [c1 (vec (range n))
+                         c2 (vec (range n))]
+                     (= (mapv + c1 c2)
+                        (perf/mapv + c1 c2))))))

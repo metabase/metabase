@@ -23,10 +23,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     H.openSharingMenu("Embed");
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByText("public embedding").should("be.visible");
-      cy.findByText("Static embedding").should("be.visible");
-    });
+    H.embedModalContent().should("be.visible");
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
@@ -516,13 +513,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.disabled");
     });
 
-    it("should disable subscriptions for non-admin users", () => {
+    it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu();
-      H.sharingMenu()
-        .findByText("Can't send subscriptions")
-        .should("be.visible");
+      H.sharingMenu().findByText("Subscriptions").should("be.visible");
     });
   });
 
@@ -799,6 +794,31 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.sidebar()
           .findByText("Set filter values for when this gets sent")
           .should("not.exist");
+      });
+    });
+
+    describe("modular embedding", () => {
+      it("should not include links to Metabase", () => {
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+        H.openSharingMenu();
+        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+        cy.findByRole("button", { name: "Agree and enable" }).click();
+        cy.findByLabelText("Metabase account (SSO)").click();
+        cy.findByLabelText("Allow subscriptions").check().should("be.checked");
+        H.getIframeBody().within(() => {
+          cy.button("Subscriptions").click();
+          H.sendEmailAndVisitIt();
+        });
+
+        cy.log(
+          "Links should be disabled in modular embedding and modular embedding SDK subscription emails",
+        );
+        cy.findAllByRole("table")
+          .first()
+          .findByText("Orders in a dashboard")
+          .should("exist");
+        cy.findAllByRole("link").should("not.exist");
       });
     });
   });

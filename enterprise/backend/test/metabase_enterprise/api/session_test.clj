@@ -19,8 +19,8 @@
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
+                              :data-studio
                               :development-mode
-                              :documents
                               :email-allow-list
                               :email-restrict-recipients
                               :embedding
@@ -49,12 +49,14 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
+                              :support-users
                               :transforms
                               :transforms-python
                               :upload-management
                               :whitelabel
                               :collection-cleanup
                               :database-routing
+                              :tenants
                               :cloud-custom-smtp}
     (is (= {:advanced_permissions           true
             :attached_dwh                   true
@@ -67,8 +69,8 @@
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true
+            :data_studio                    true
             :development_mode               true
-            :documents                      true
             :email_allow_list               true
             :email_restrict_recipients      true
             :embedding                      true
@@ -95,6 +97,7 @@
             :sso_jwt                        true
             :sso_ldap                       true
             :sso_saml                       true
+            :support-users                  true
             :table_data_editing             false
             :transforms                     true
             :transforms-python              true
@@ -102,6 +105,7 @@
             :whitelabel                     true
             :collection_cleanup             true
             :database_routing               true
+            :tenants                        true
             :cloud_custom_smtp              true
             :etl_connections                false
             :etl_connections_pg             false

@@ -6,9 +6,16 @@ import {
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { LibraryNav } from "./LibraryNav";
+import { CollectionsNavTree } from "./components/CollectionsNavTree";
+import { GitSyncControls } from "./components/GitSyncControls";
 import { RemoteSyncAdminSettings } from "./components/RemoteSyncAdminSettings/RemoteSyncAdminSettings";
-import { SyncedCollectionsSidebarSection } from "./components/SyncedCollectionsSidebarSection/SyncedCollectionsSidebarSection";
+import {
+  CollectionSyncStatusBadge,
+  SyncedCollectionsSidebarSection,
+} from "./components/SyncedCollectionsSidebarSection";
 import { REMOTE_SYNC_INVALIDATION_TAGS } from "./constants";
+import { useGitSyncVisible } from "./hooks/use-git-sync-visible";
+import { useHasLibraryDirtyChanges } from "./hooks/use-has-library-dirty-changes";
 import { useSyncStatus } from "./hooks/use-sync-status";
 import { remoteSyncListenerMiddleware } from "./middleware/remote-sync-listener-middleware";
 import { remoteSyncReducer } from "./sync-task-slice";
@@ -22,9 +29,14 @@ export function initializePlugin() {
     PLUGIN_REMOTE_SYNC.LibraryNav = LibraryNav;
     PLUGIN_REMOTE_SYNC.SyncedCollectionsSidebarSection =
       SyncedCollectionsSidebarSection;
+    PLUGIN_REMOTE_SYNC.GitSyncAppBarControls = GitSyncControls;
+    PLUGIN_REMOTE_SYNC.CollectionsNavTree = CollectionsNavTree;
+    PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge = CollectionSyncStatusBadge;
     PLUGIN_REMOTE_SYNC.REMOTE_SYNC_INVALIDATION_TAGS =
       REMOTE_SYNC_INVALIDATION_TAGS;
     PLUGIN_REMOTE_SYNC.useSyncStatus = useSyncStatus;
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible = useGitSyncVisible;
+    PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges = useHasLibraryDirtyChanges;
 
     PLUGIN_REDUX_MIDDLEWARES.push(remoteSyncListenerMiddleware.middleware);
     PLUGIN_REDUCERS.remoteSyncPlugin = remoteSyncReducer;

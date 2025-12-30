@@ -9,7 +9,6 @@
 
 (p/import-vars
  [metabase.session.models.session
-  create-session!
   generate-session-key
   generate-session-id
   hash-session-key]

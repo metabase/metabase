@@ -34,9 +34,15 @@ export const remoteSyncSlice = createSlice({
       state.showModal = true;
     },
     taskUpdated: (state, action: { payload: RemoteSyncTask }) => {
-      state.currentTask = action.payload;
-      if (action.payload.ended_at === null) {
-        state.showModal = true;
+      if (
+        !state.currentTask ||
+        // status for old task can come in when a new task has been already started
+        state.currentTask.sync_task_type === action.payload.sync_task_type
+      ) {
+        state.currentTask = action.payload;
+        if (action.payload.ended_at === null) {
+          state.showModal = true;
+        }
       }
     },
     modalDismissed: (state) => {

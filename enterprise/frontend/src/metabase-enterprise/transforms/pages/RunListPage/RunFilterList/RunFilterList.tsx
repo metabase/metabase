@@ -14,11 +14,10 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-import { StatusFilterWidget } from "../../../components/StatusFilterWidget";
-import { TagFilterWidget } from "../../../components/TagFilterWidget";
-import { TimeFilterWidget } from "../../../components/TimeFilterWidget";
-
 import { RunMethodFilterWidget } from "./RunMethodFilterWidget";
+import { StatusFilterWidget } from "./StatusFilterWidget";
+import { TagFilterWidget } from "./TagFilterWidget";
+import { TimeFilterWidget } from "./TimeFilterWidget";
 import { TransformFilterWidget } from "./TransformFilterWidget";
 
 const PAST_INTERVAL_DIRECTIONS: RelativeIntervalDirection[] = [

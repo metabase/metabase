@@ -1,5 +1,6 @@
 import { isValidElement } from "react";
 
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -20,6 +21,7 @@ export const Value = ({
   dashboardId?: DashboardId;
 } & OptionsType) => {
   const tc = useTranslateContent<unknown>();
+  const { uuid, token } = useEmbeddingEntityContext();
 
   if (rawOptions.hide) {
     return null;
@@ -29,6 +31,8 @@ export const Value = ({
 
   const options = {
     ...rawOptions,
+    uuid,
+    token,
     displayValue: tc(rawOptions.displayValue),
   };
 

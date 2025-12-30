@@ -34,11 +34,12 @@ export const TableList = ({
       name: table.display_name,
       database: { id: table.db_id },
       database_id: table.db_id,
+      is_published: table.is_published,
     }));
   }, [tables]);
 
   return (
-    <ListBox data-testid="item-picker-level-2">
+    <ListBox data-testid="item-picker-level-3">
       <ItemList
         error={error}
         isCurrentLevel={isCurrentLevel}

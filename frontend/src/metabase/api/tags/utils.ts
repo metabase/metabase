@@ -11,12 +11,12 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Comment,
   Dashboard,
   DashboardQueryMetadata,
   DashboardSubscription,
   Database,
   DatabaseXray,
-  Dataset,
   Field,
   FieldDimension,
   FieldId,
@@ -107,25 +107,15 @@ export function provideActivityItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
-export function provideAdhocQueryTags(
-  dataset: Dataset,
-): TagDescription<TagType>[] {
-  return [
-    listTag("database"),
-    idTag("database", dataset.database_id),
-    listTag("field"),
-    ...(dataset.data?.results_metadata?.columns
-      ?.map((column) =>
-        column.id !== undefined ? idTag("field", column.id) : null,
-      )
-      .filter((tag): tag is TagType => tag !== null) ?? []),
-  ];
+export function provideAdhocDatasetTags(): TagDescription<TagType>[] {
+  return [tag("dataset")];
 }
 
 export function provideAdhocQueryMetadataTags(
   metadata: CardQueryMetadata,
 ): TagDescription<TagType>[] {
   return [
+    ...provideAdhocDatasetTags(),
     ...provideDatabaseListTags(metadata.databases),
     ...provideTableListTags(metadata.tables),
     ...provideFieldListTags(metadata.fields),
@@ -665,4 +655,20 @@ export function provideUserKeyValueTags({
   key,
 }: GetUserKeyValueRequest) {
   return [{ type: "user-key-value" as const, id: `${namespace}#${key}` }];
+}
+
+export function provideCommentListTags(
+  comments: Comment[],
+): TagDescription<TagType>[] {
+  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
+}
+
+export function provideCommentTags(
+  comment: Comment,
+): TagDescription<TagType>[] {
+  if (comment.creator) {
+    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
+  }
+
+  return [idTag("comment", comment.id)];
 }

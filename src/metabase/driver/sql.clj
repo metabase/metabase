@@ -127,6 +127,14 @@
                   overwrite? (cons (driver/compile-drop-table driver output-table)))]
     {:rows-affected (last (driver/execute-raw-queries! driver conn-spec queries))}))
 
+(defmethod driver/run-transform! [:sql :table-incremental]
+  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
+  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
+                                                           :name (name output-table)})
+                  (driver/compile-insert driver transform-details)
+                  (driver/compile-transform driver transform-details))]
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
+
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
   [{schema :schema, table-name :name}]
@@ -180,14 +188,14 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-    (->> query
-         driver-api/raw-native-query
-         macaw/parsed-query
-         macaw/query->components
-         :tables
-         (map :component)
-         (into #{} (keep #(->> (normalize-table-spec driver %)
-                               (find-table-or-transform driver db-tables db-transforms)))))))
+    (-> query
+        driver-api/raw-native-query
+        macaw/parsed-query
+        (macaw/query->components {:strip-contexts? true})
+        :tables
+        (->> (map :component))
+        (->> (into #{} (keep #(->> (normalize-table-spec driver %)
+                                   (find-table-or-transform driver db-tables db-transforms))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |

@@ -39,6 +39,7 @@ export type DatabaseFeature =
   | "persist-models"
   | "persist-models-enabled"
   | "regex"
+  | "regex/lookaheads-and-lookbehinds"
   | "schemas"
   | "set-timezone"
   | "left-join"
@@ -54,6 +55,7 @@ export type DatabaseFeature =
   | "distinct-where"
   | "saved-question-sandboxing"
   | "split-part"
+  | "collate"
   | "transforms/python"
   | "transforms/table";
 

@@ -4,6 +4,7 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -70,6 +71,17 @@
        maps-schema]
       (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
 
+#_{:clj-kondo/ignore [:unused-private-var]}
+(def ^{:arglists '([map-schema])
+       :private  true}
+  ->kebab-keys-map
+  "Transform all keys of a map schema to kebab keys."
+  (memoize
+   (fn [map-schema]
+     (mut/transform-entries map-schema
+                            (partial map (fn [[k opts s]]
+                                           [(u/->kebab-case-en k) opts s]))))))
+
 (defn enum-keywords-and-strings
   "Returns an enum schema that accept both keywords and strings.
     (enum-keywords-and-strings :foo :bar)
@@ -96,7 +108,8 @@
    ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
    [:and
     {:error/message "non-blank string"
-     :json-schema   {:type "string" :minLength 1}}
+     :json-schema   {:type "string" :minLength 1}
+     :api/regex     #".+"}
     [:string {:min 1}]
     [:fn
      {:error/message "non-blank string"}
@@ -140,7 +153,7 @@
       :description (str message)
       :error/fn    (fn [_ _]
                      (str message))
-      :api/regex   #"[1-9]\d*"}]))
+      :api/regex   #"-[1-9]\d*"}]))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -307,7 +320,7 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (mu/with-api-error-message
-   [:re #"^[A-Za-z0-9_\-]{21}$"]
+   [:re {:api/regex #"[A-Za-z0-9_\-]{21}"} #"^[A-Za-z0-9_\-]{21}$"]
    (deferred-tru "String must be a valid 21-character NanoID string.")))
 
 (def UUIDString

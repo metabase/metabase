@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
+import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { CurrencyStyle } from "metabase/lib/formatting";
-import type { SdkIframeEmbedSetupSettings } from "metabase-enterprise/embedding_iframe_sdk_setup/types";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
@@ -326,10 +326,12 @@ export const tokenFeatures = [
   "table_data_editing",
   "remote_sync",
   "dependencies",
-  "documents",
   "semantic_search",
   "transforms",
   "transforms-python",
+  "data_studio",
+  "support-users",
+  "tenants",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -560,6 +562,7 @@ interface PublicSettings {
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
   "non-table-chart-generated": boolean;
+  "use-tenants": boolean;
 }
 
 export type UserSettings = {
@@ -568,10 +571,11 @@ export type UserSettings = {
   "dismissed-browse-models-banner"?: boolean;
   "dismissed-custom-dashboard-toast"?: boolean;
   "last-used-native-database-id"?: number | null;
-  "notebook-native-preview-shown"?: boolean;
   "notebook-native-preview-sidebar-width"?: number | null;
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
+  "expand-collections-in-nav"?: boolean;
+  "expand-library-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
   "browse-filter-only-verified-metrics"?: boolean;
   "show-updated-permission-modal": boolean;
@@ -581,6 +585,7 @@ export type UserSettings = {
     SdkIframeEmbedSetupSettings,
     "theme" | "useExistingUserSession"
   > | null;
+  "color-scheme"?: string;
 };
 
 /**
@@ -649,7 +654,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-token"?: string | null;
   "remote-sync-url"?: string | null;
   "remote-sync-branch"?: string | null;
-  "remote-sync-type"?: "production" | "development" | null;
+  "remote-sync-type"?: "read-only" | "read-write" | null;
   "remote-sync-auto-import"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
@@ -677,6 +682,7 @@ export interface EnterpriseSettings extends Settings {
   "jwt-attribute-firstname": string | null;
   "jwt-attribute-lastname": string | null;
   "jwt-attribute-groups": string | null;
+  "jwt-attribute-tenant": string | null;
   "jwt-group-sync": boolean | null;
   "saml-enabled": boolean;
   "saml-configured": boolean;
@@ -691,6 +697,7 @@ export interface EnterpriseSettings extends Settings {
   "saml-attribute-email": string | null;
   "saml-attribute-firstname": string | null;
   "saml-attribute-lastname": string | null;
+  "saml-attribute-tenant": string | null;
   "saml-attribute-group": string | null;
   "saml-group-sync": boolean | null;
   "saml-group-mappings": Record<string, GroupId[]> | null;
@@ -703,6 +710,7 @@ export interface EnterpriseSettings extends Settings {
   "python-storage-s-3-endpoint"?: string | null;
   "python-storage-s-3-region"?: string | null;
   "python-storage-s-3-bucket"?: string | null;
+  "python-storage-s-3-prefix"?: string | null;
   "python-storage-s-3-access-key"?: string | null;
   "python-storage-s-3-secret-key"?: string | null;
   "python-storage-s-3-container-endpoint"?: string | null;

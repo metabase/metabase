@@ -11,7 +11,8 @@ import FormInput from "metabase/common/components/FormInput";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { connect } from "metabase/lib/redux";
@@ -109,18 +110,8 @@ function SnippetCollectionForm({
   );
 
   const shouldDisableItem = useCallback(
-    (item: CollectionPickerItem) => {
-      if (passedCollection.id === undefined) {
-        return false;
-      } else {
-        return (
-          item.effective_location
-            ?.split("/")
-            .includes(String(passedCollection.id)) ||
-          passedCollection.id === item.id
-        );
-      }
-    },
+    (item: CollectionPickerItem) =>
+      isItemInCollectionOrItsDescendants(item, passedCollection.id),
     [passedCollection.id],
   );
 
@@ -137,7 +128,6 @@ function SnippetCollectionForm({
             name="name"
             title={t`Give your folder a name`}
             placeholder={t`Something short but sweet`}
-            autoFocus
           />
           <FormTextArea
             name="description"

@@ -150,6 +150,10 @@ you could put the snippet in one query and have the snippet parameter map to a `
 
 If you have multiple snippets containing parameters with the same name, the question using those snippets will only use one instance of the parameter. For example, if `{% raw %}{{snippet: 1}}{% endraw %}` contains parameter `{% raw %}{{var}}{% endraw %}` and `{% raw %}{{snippet: 2}}{% endraw %}` also contains parameter `{% raw %}{{var}}{% endraw %}`, the question will display only one `{% raw %}{{var}}{% endraw %}` parameter and use its value in both snippets.
 
+### Sharing parameters across questions
+
+You can also use snippets to share parameters across multiple SQL questions, including questions that build on one another (nested questions). For example, you have a question “Orders by date” that filters orders using `{% raw %}{{start_date}}{% endraw %}`. You then create another question, say “Revenue by product,” that uses the results from “Orders by date.” To keep using the same `{% raw %}{{start_date}}{% endraw %}` parameter in both questions, move the SQL that contains the parameter from “Orders by date” into a snippet and update both questions to reference that snippet. Now, both questions surface the same parameter, and a single dashboard date filter can control both cards that use the snippet.
+
 ## Snippet permissions
 
 Any user who has native editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user lacks SQL editing access to.

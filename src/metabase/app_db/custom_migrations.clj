@@ -26,6 +26,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
@@ -1819,3 +1820,16 @@
                                (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
                                                {:transform-id id :source-type source-type})))]
           (t2/update! :transform id {:source_type transform-type})))))
+
+(define-migration MoveExistingAtSymbolUserAttributes
+  (reserve-at-symbol-user-attributes/migrate!))
+
+(define-migration BackfillTransformTargetDbId
+  (let [update! (fn [{:keys [id target]}]
+                  (let [target-map (json/decode target)
+                        db-id      (get target-map "database")]
+                    (when db-id
+                      (t2/update! :transform id {:target_db_id db-id}))))]
+    (run! update! (t2/reducible-query {:select [:id :target]
+                                       :from   [:transform]
+                                       :where  [:= :target_db_id nil]}))))

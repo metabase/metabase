@@ -65,9 +65,9 @@ describe("scenarios > question > custom column", () => {
     H.createQuestion({ name, query: { "source-table": ORDERS_ID } });
 
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText(name).click();
+      H.entityPickerModalLevel(1).findByText(name).click();
     });
     cy.button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[cre", blur: false });
@@ -268,8 +268,9 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+      H.entityPickerModalLevel(0).findByText("Databases").click();
       cy.findByText("Products").click();
     });
 
@@ -1080,8 +1081,7 @@ describe(
 
     it("should understand date functions", () => {
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
         cy.findByText("QA Postgres12").click();
         cy.findByText("Orders").click();
       });
@@ -1502,7 +1502,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.popover().findByText("Custom Expression").click();
 
     cy.log("Close summarize modal by clicking outside");
-    cy.button("View SQL").click();
+    cy.findByLabelText("View SQL").click();
 
     H.modal().should("not.exist");
     cy.get("popover").should("not.exist");
@@ -1738,8 +1738,7 @@ describe("scenarios > question > custom column > splitPart", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("People").click();
     });
@@ -1797,8 +1796,7 @@ describe("exercise today() function", () => {
 
   it("should show today's date", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Products").click();
     });

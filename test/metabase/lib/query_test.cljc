@@ -622,3 +622,18 @@
              :lib/type :mbql/query}
             (lib.query/query (lib.tu/mock-metadata-provider {})
                              {"database" 1, "type" "query", "query" {"source-table" 2}})))))
+
+(deftest ^:parallel discard-invalid-clauses-on-conversion-from-mbql-4-test
+  (testing "Invalid expressions that do not get normalized correctly (e.g. :sum inside :expressions) should get dropped"
+    (mu/disable-enforcement
+      (let [query {"database" 1
+                   "type"     "query"
+                   "query"    {"source-table" 2
+                               "expressions"  {"booking" ["sum" ["field" 3 {"base-type" "type/BigInteger"}]]}}}
+            mp    (lib.tu/mock-metadata-provider {})]
+        (is (= {:lib/type               :mbql/query,
+                :stages                 [{:lib/type :mbql.stage/mbql, :source-table 2}]
+                :database               1
+                :lib.convert/converted? true
+                :lib/metadata           (lib.metadata.cached-provider/cached-metadata-provider mp)}
+               (lib.query/query mp query)))))))

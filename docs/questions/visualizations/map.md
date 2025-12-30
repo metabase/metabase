@@ -57,7 +57,7 @@ To change the pin type:
    - **Markers**. Maps display up to 1,000 markers. If you choose the marker pin type for results with more than 1,000 rows, Metabase will still only display 1,000 markers. Maps default to markers for results fewer then 1,000 rows.
    - **Tiles**. Maps display up to 2,000 tiles. Maps default to tiles for results greater than 1,000 rows. Tooltips will not be displayed for tiles.
 
-By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browswer.
+By default, maps can't display more than 2,000 individual unaggregated data points, regardless of the pin type. This limit is the same for every chart displaying unaggregated data in Metabase. To increase the number of data points rendered on charts based on unaggregated queries, you can use the environment variable [`MB_UNAGGREGATED_QUERY_ROW_LIMIT`](../../configuring-metabase/environment-variables.md#mb_unaggregated_query_row_limit). This setting will affect data points on _all_ charts—not just the pin maps—so increasing the limit too much could significantly slow down your Metabase and your browser.
 
 If you need to display a large number of geographic data points, consider using a grid map to display the distribution instead.
 

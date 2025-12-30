@@ -1,9 +1,10 @@
 (ns metabase.query-processor.dashboard-test
-  "There are more e2e tests in [[metabase.dashboards.api-test]]."
-  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+  "There are more e2e tests in [[metabase.dashboards-rest.api-test]]."
+  {:clj-kondo/config '{:linters {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                                   toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.test :refer :all]
-   [metabase.dashboards.api-test :as api.dashboard-test]
+   [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.query-processor :as qp]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]

@@ -103,7 +103,7 @@
     (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
                    :model/Database         {database-id :id} {}
                    :model/Table            view-table        {:db_id database-id :name "v_users"}
-                   :model/Collection       collection        {}]
+                   :model/Collection       collection        {:namespace "analytics"}]
       (with-redefs [audit/audit-db-id                 database-id
                     audit/default-audit-collection (constantly collection)]
         (testing "Updating permissions for the audit collection also updates audit DB permissions"

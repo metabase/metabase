@@ -6,87 +6,91 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { Database, QueryTransformSource } from "metabase-types/api";
+import type {
+  Database,
+  QueryTransformSource,
+  TransformId,
+} from "metabase-types/api";
 
-import { EditorHeader } from "./EditorHeader";
-import { getEditorOptions, getQuery, getValidationResult } from "./utils";
+import { EditDefinitionButton } from "./EditDefinitionButton";
+import { getEditorOptions } from "./utils";
 
 type TransformEditorProps = {
-  name?: string;
   source: QueryTransformSource;
   uiState: QueryEditorUiState;
   proposedSource: QueryTransformSource | undefined;
   databases: Database[];
-  isNew: boolean;
-  isDirty: boolean;
-  isSaving: boolean;
   onChangeSource: (source: QueryTransformSource) => void;
   onChangeUiState: (state: QueryEditorUiState) => void;
-  onSave: () => void;
-  onCancel: () => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  readOnly?: boolean;
+  transformId?: TransformId;
 };
 
 export function TransformEditor({
-  name,
   source,
   proposedSource,
   databases,
   uiState,
-  isNew,
-  isDirty,
-  isSaving,
-  onSave,
   onChangeSource,
   onChangeUiState,
-  onCancel,
   onAcceptProposed,
   onRejectProposed,
+  readOnly,
+  transformId,
 }: TransformEditorProps) {
   const metadata = useSelector(getMetadata);
-  const query = useMemo(() => getQuery(source, metadata), [source, metadata]);
+  const query = useMemo(
+    () => Lib.fromJsQueryAndMetadata(metadata, source.query),
+    [source, metadata],
+  );
   const proposedQuery = useMemo(
-    () => (proposedSource ? getQuery(proposedSource, metadata) : undefined),
+    () =>
+      proposedSource
+        ? Lib.fromJsQueryAndMetadata(metadata, proposedSource.query)
+        : undefined,
     [proposedSource, metadata],
   );
-  const uiOptions = useMemo(() => getEditorOptions(databases), [databases]);
-  const validationResult = useMemo(() => getValidationResult(query), [query]);
+  const uiOptions = useMemo(
+    () => getEditorOptions(databases, readOnly),
+    [databases, readOnly],
+  );
 
   const handleQueryChange = (query: Lib.Query) => {
-    onChangeSource({ type: "query", query: Lib.toJsQuery(query) });
+    const newSource: QueryTransformSource = {
+      ...source,
+      type: "query",
+      query: Lib.toJsQuery(query),
+    };
+
+    onChangeSource(newSource);
   };
 
   return (
-    <Stack
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="transform-query-editor"
-      gap={0}
-    >
-      <EditorHeader
-        name={name}
-        validationResult={validationResult}
-        isNew={isNew}
-        isDirty={isDirty}
-        isSaving={isSaving}
-        onSave={onSave}
-        onCancel={onCancel}
-      />
-      <QueryEditor
-        query={query}
-        uiState={uiState}
-        uiOptions={uiOptions}
-        proposedQuery={proposedQuery}
-        onChangeQuery={handleQueryChange}
-        onChangeUiState={onChangeUiState}
-        onAcceptProposed={onAcceptProposed}
-        onRejectProposed={onRejectProposed}
-      />
-    </Stack>
+    <QueryEditor
+      query={query}
+      uiState={uiState}
+      uiOptions={uiOptions}
+      proposedQuery={proposedQuery}
+      onChangeQuery={handleQueryChange}
+      onChangeUiState={onChangeUiState}
+      onAcceptProposed={onAcceptProposed}
+      onRejectProposed={onRejectProposed}
+      topBarInnerContent={
+        readOnly &&
+        !!transformId && (
+          <EditDefinitionButton
+            bg="transparent"
+            fz="sm"
+            h="1.5rem"
+            px="sm"
+            size="xs"
+            transformId={transformId}
+          />
+        )
+      }
+    />
   );
 }

@@ -2,9 +2,8 @@
   "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
   (`:segment` forms are expanded into filter clauses.)"
-  (:refer-clojure :exclude [mapv not-empty])
+  (:refer-clojure :exclude [mapv not-empty get-in])
   (:require
-   [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -19,7 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv not-empty]]))
+   [metabase.util.performance :refer [mapv not-empty get-in]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro
@@ -52,18 +51,14 @@
 
 ;;; a legacy Segment has one or more filter clauses.
 
-(mu/defn- legacy-macro-definition->pMBQL :- ::lib.schema/stage.mbql
-  "Get the definition of a macro as a pMBQL stage."
-  [metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
-   {:keys [definition table-id], :as _legacy-macro} :- ::legacy-macro]
-  (log/tracef "Converting legacy MBQL for macro definition from\n%s" (u/pprint-to-str definition))
-  (u/prog1 (-> {:type     :query
-                :query    (merge {:source-table table-id}
-                                 definition)
-                :database (u/the-id (lib.metadata/database metadata-providerable))}
-               (lib/->query metadata-providerable)
-               (lib/query-stage -1))
-    (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
+(mu/defn- segment-definition->stage :- ::lib.schema/stage.mbql
+  "Extract the pMBQL stage from a segment definition. Segment definitions are always MBQL 5 queries at this point
+  (converted by the segment model's after-select hook), so we just extract the first stage."
+  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {:keys [definition], :as _legacy-macro} :- ::legacy-macro]
+  (log/tracef "Extracting pMBQL stage from segment definition:\n%s" (u/pprint-to-str definition))
+  (u/prog1 (first (:stages definition))
+    (log/tracef "Extracted stage:\n%s" (u/pprint-to-str <>))))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
   "Get the filter(s) associated with a Segment."
@@ -82,7 +77,7 @@
                             :segment :metadata/segment)]
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]
-                                    (assoc legacy-macro :definition (legacy-macro-definition->pMBQL metadata-providerable legacy-macro)))))
+                                    (assoc legacy-macro :definition (segment-definition->stage metadata-providerable legacy-macro)))))
                    (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]

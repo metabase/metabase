@@ -333,7 +333,9 @@
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
-               :name (str "test_table_" (u/generate-nano-id))}})
+               :name (str "test_table_" (u/generate-nano-id))
+               :database (data/id)}
+      :target_db_id (data/id)})
 
    :model/TransformJob
    (fn [_]
@@ -353,6 +355,11 @@
    (fn [_]
      (default-timestamped
       {:name (str "test-tag-" (u/generate-nano-id))}))
+
+   :model/Tenant
+   (fn [_]
+     {:slug (u/lower-case-en (u.random/random-name))
+      :name (u.random/random-name)})
 
    :model/User
    (fn [_] {:first_name (u.random/random-name)
@@ -1113,7 +1120,9 @@
     (finally
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
+                                            :id [:not= (u/the-id (perms/admin-group))]
+                                            :is_tenant_group false)]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
@@ -1552,6 +1561,16 @@
   [^bytes bs]
   (str "data:application/octet-stream;base64," (u/encode-base64-bytes bs)))
 
+(defn format-env-key ^String [env-key]
+  (let [[_ header body footer]
+        (re-find #"(?s)(-----BEGIN (?:\p{Alnum}+ )?PRIVATE KEY-----)(.*)(-----END (?:\p{Alnum}+ )?PRIVATE KEY-----)" env-key)]
+    (str header (str/replace body #"\s+|\\n" "\n") footer)))
+
+(defn priv-key->base64-uri [priv-key]
+  (-> (format-env-key priv-key)
+      u/string-to-bytes
+      bytes->base64-data-uri))
+
 (defn works-after
   "Returns a function which works as `f` except that on the first `n` calls an
   exception is thrown instead.
@@ -1575,6 +1594,19 @@
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
                            (when model-id [:= :model_id model-id])]})))
+
+(defn all-entries-for
+  "Return all audit log entries for a particular object. If you omit the topic, will get all audit logs. You must
+  provide a model so we can disambiguate dash 4 from card 4."
+  [topic model model-id]
+  (assert (int? model-id) "Must provide an integer id for the model")
+  (assert (isa? model :metabase/model))
+  (t2/select [:model/AuditLog :topic :user_id :model :model_id :details]
+             {:order-by [[:id :desc]]
+              :where [:and
+                      [:= :model (name model)]
+                      [:= :model_id model-id]
+                      (when topic [:= :topic (name topic)])]}))
 
 (defn repeat-concurrently
   "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."

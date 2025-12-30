@@ -100,6 +100,15 @@
   When converting queries at later stages of the preprocessing pipeline, this cleaning might not be desirable."
   true)
 
+#?(:clj
+   (def ^:dynamic *card-clean-hook*
+     "Set by [[metabase.lib-be.models.transforms]] to a function which expects to be called like
+     `(f pre-cleaning-query post-cleaning-query)`, when [[clean]] makes material changes.
+
+     [[clean]] is expected to be a no-op in general and should not be removing clauses when a query is converted from
+     MBQL 4 to 5 on being read from AppDB."
+     nil))
+
 (defn without-cleaning
   "Runs the provided function with cleaning of queries disabled.
 
@@ -111,15 +120,19 @@
 (defn- clean [almost-query]
   (if-not *clean-query*
     almost-query
-    (loop [almost-query almost-query
-           stage-index 0]
-      (let [current-stage (nth (:stages almost-query) stage-index)
-            new-stage (clean-stage current-stage)]
-        (if (= current-stage new-stage)
-          (if (= stage-index (dec (count (:stages almost-query))))
-            almost-query
-            (recur almost-query (inc stage-index)))
-          (recur (update almost-query :stages assoc stage-index new-stage) stage-index))))))
+    (let [cleaned (loop [almost-query almost-query
+                         stage-index 0]
+                    (let [current-stage (nth (:stages almost-query) stage-index)
+                          new-stage (clean-stage current-stage)]
+                      (if (= current-stage new-stage)
+                        (if (= stage-index (dec (count (:stages almost-query))))
+                          almost-query
+                          (recur almost-query (inc stage-index)))
+                        (recur (update almost-query :stages assoc stage-index new-stage) stage-index))))]
+      #?(:clj
+         (when (and *card-clean-hook* (not= almost-query cleaned))
+           (*card-clean-hook* almost-query cleaned)))
+      cleaned)))
 
 (defmulti ->pMBQL
   "Coerce something to pMBQL (the version of MBQL manipulated by Metabase Lib v2) if it's not already pMBQL."
@@ -412,6 +425,14 @@
   [[_tag & [_column _value _bucket _offset-value _offset-bucket :as args]]]
   (lib.options/ensure-uuid (into [:relative-time-interval {}] (map ->pMBQL) args)))
 
+(defmethod ->pMBQL :relative-datetime
+  [[_tag n unit]]
+  (let [normalized-unit (cond-> unit (string? unit) keyword)]
+    (lib.options/ensure-uuid
+     (if normalized-unit
+       [:relative-datetime {} n normalized-unit]
+       [:relative-datetime {} n]))))
+
 ;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
 (defmethod ->pMBQL :offset
   [[tag opts expr n, :as clause]]
@@ -571,7 +592,7 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract :date
-             :concat :substring :replace :regex-match-first :split-part
+             :concat :substring :replace :regex-match-first :split-part :collate
              :length :trim :ltrim :rtrim :upper :lower :text :integer :today]]
   (lib.hierarchy/derive tag ::expression))
 

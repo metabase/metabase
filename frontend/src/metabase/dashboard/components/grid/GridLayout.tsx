@@ -92,8 +92,11 @@ export function GridLayout<T extends { id: number | null }>(
     ),
   );
 
+  const [localLayout, setLocalLayout] = useState<ReactGridLayout.Layout[]>();
+
   const onLayoutChangeWrapped = useCallback(
     (currentLayout: ReactGridLayout.Layout[]) => {
+      setLocalLayout(currentLayout);
       onLayoutChange({
         layout: currentLayout,
         // Calculating the breakpoint right here,
@@ -159,13 +162,18 @@ export function GridLayout<T extends { id: number | null }>(
   );
 
   const height = useMemo(() => {
-    let lowestLayoutCellPoint = Math.max(...layout.map((l) => l.y + l.h));
+    // Once `localLayout` is set, use it instead of the prop layout.
+    // The prop layout includes all cards (visible and hidden), causing
+    // incorrect y/height calculations. `localLayout` only includes visible cards.
+    let lowestLayoutCellPoint = Math.max(
+      ...(localLayout ?? layout).map((l) => l.y + l.h),
+    );
     if (isEditing) {
       lowestLayoutCellPoint += Math.ceil(window.innerHeight / cellSize.height);
     }
-    const verticalMargin = margin[1];
+    const [_horizontalMargin, verticalMargin] = margin;
     return (cellSize.height + verticalMargin) * lowestLayoutCellPoint;
-  }, [cellSize.height, layout, margin, isEditing]);
+  }, [localLayout, layout, isEditing, margin, cellSize.height]);
 
   const background = useMemo(
     () =>

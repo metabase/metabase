@@ -1,9 +1,7 @@
-import type { IconProps } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
 export type WrappedEntity<Entity> = {
   getName: () => string;
-  getIcon: () => IconProps;
   getColor: () => string;
   getCollection: () => Collection;
   getUrl: () => string;

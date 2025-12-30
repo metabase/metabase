@@ -9,7 +9,7 @@ import {
 import { setupSearchEndpoints } from "__support__/server-mocks/search";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { SuggestionModel } from "metabase-enterprise/rich_text_editing/tiptap/extensions/shared/types";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { createMockCard, createMockUser } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockSearchResult } from "metabase-types/api/mocks/search";
@@ -21,13 +21,16 @@ const defaultProps = {
   value: "",
   onChange: jest.fn(),
   onSubmit: jest.fn(),
-  suggestionModels: [
-    "table",
-    "database",
-    "card",
-    "dashboard",
-    "collection",
-  ] as SuggestionModel[],
+  onStop: jest.fn(),
+  suggestionConfig: {
+    suggestionModels: [
+      "table",
+      "database",
+      "card",
+      "dashboard",
+      "collection",
+    ] as SuggestionModel[],
+  },
 };
 
 const setup = (props = {}) => {

@@ -1,6 +1,10 @@
 import { match } from "ts-pattern";
 
-import { entityPickerModal, modal } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  entityPickerModal,
+  modal,
+} from "e2e/support/helpers";
 import type { Dashboard, RecentItem } from "metabase-types/api";
 
 type RecentActivityIntercept = {
@@ -19,20 +23,36 @@ export const getEmbedSidebar = () =>
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = () => {
+export const visitNewEmbedPage = (
+  { waitForResource } = { waitForResource: true },
+) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
   cy.visit("/admin/embedding");
 
-  cy.findAllByTestId("sdk-setting-card")
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
     .first()
     .within(() => {
       cy.findByText("New embed").click();
     });
 
-  cy.wait("@dashboard");
+  cy.get("body").then(($body) => {
+    const isEmbeddingDisabled =
+      $body.find('[data-testid="enable-embedding-card"]').length > 0;
 
-  cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
+    if (isEmbeddingDisabled) {
+      embedModalEnableEmbedding();
+    }
+
+    if (waitForResource) {
+      cy.wait("@dashboard");
+
+      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+        "have.length",
+        1,
+      );
+    }
+  });
 };
 
 export const assertRecentItemName = (
@@ -59,23 +79,31 @@ type NavigateToStepOptions =
   | {
       experience: "exploration" | "metabot";
       resourceName?: never;
+      preselectSso?: boolean;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
       resourceName: string;
+      preselectSso?: boolean;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience } = options;
+  const { experience, preselectSso } = options;
 
   visitNewEmbedPage();
 
   cy.log("select an experience");
 
+  const isQuestionOrDashboardExperience =
+    experience === "chart" || experience === "dashboard";
   const hasEntitySelection =
     experience !== "exploration" && experience !== "metabot";
+
+  if (preselectSso || !isQuestionOrDashboardExperience) {
+    cy.findByLabelText("Metabase account (SSO)").click();
+  }
 
   const labelByExperience = match(experience)
     .with("chart", () => "Chart")

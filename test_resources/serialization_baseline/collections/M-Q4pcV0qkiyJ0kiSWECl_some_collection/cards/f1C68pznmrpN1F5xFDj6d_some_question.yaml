@@ -13,7 +13,6 @@ database_id: test-data (h2)
 table_id: null
 enable_embedding: false
 embedding_params: null
-embedding_type: null
 made_public_by_id: null
 public_uuid: null
 parameters: []
@@ -22,14 +21,15 @@ dataset_query: {}
 result_metadata: null
 visualization_settings:
   column_settings: null
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - id: f1C68pznmrpN1F5xFDj6d
   label: some_question
   model: Card
 archived_directly: false
 dashboard_id: null
-metabase_version: v1.54.4-SNAPSHOT (c6780bb)
+document_id: null
+embedding_type: null
+metabase_version: v1.58.0-SNAPSHOT (d5e5626)
 source_card_id: null
 type: question
-document_id: null

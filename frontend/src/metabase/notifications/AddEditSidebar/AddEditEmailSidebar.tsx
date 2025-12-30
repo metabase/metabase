@@ -1,7 +1,10 @@
 import cx from "classnames";
+import { useEffect } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getCurrentUser } from "metabase/admin/datamodel/selectors";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import SchedulePicker, {
   type ScheduleChangeProp,
 } from "metabase/common/components/SchedulePicker";
@@ -9,6 +12,7 @@ import SendTestPulse from "metabase/common/components/SendTestPulse";
 import Toggle from "metabase/common/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { dashboardPulseIsValid } from "metabase/lib/pulse";
 import { useSelector } from "metabase/lib/redux";
 import EmailAttachmentPicker from "metabase/notifications/EmailAttachmentPicker";
@@ -80,6 +84,18 @@ export const AddEditEmailSidebar = ({
 }: AddEditEmailSidebarProps) => {
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
   const userCanAccessSettings = useSelector(canAccessSettings);
+  const currentUser = useSelector(getCurrentUser);
+
+  // Return true if the results of all cards can be downloaded
+  const allowDownload = pulse.cards?.every(
+    (card) => card.download_perms !== DataPermissionValue.NONE,
+  );
+
+  useEffect(() => {
+    if (isEmbeddingSdk()) {
+      onChannelPropertyChange("recipients", [currentUser]);
+    }
+  }, [currentUser, onChannelPropertyChange]);
 
   return (
     <Sidebar
@@ -91,26 +107,28 @@ export const AddEditEmailSidebar = ({
         <Icon name="mail" className={CS.mr1} size={21} />
         <Heading>{t`Email this dashboard`}</Heading>
       </div>
-      <CaveatMessage />
+      {isEmbeddingSdk() ? null : <CaveatMessage />}
       <div
         className={cx(CS.my2, CS.px4, CS.fullHeight, CS.flex, CS.flexColumn)}
       >
-        <div>
-          <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
-          <RecipientPicker
-            autoFocus={false}
-            recipients={channel.recipients}
-            users={users}
-            onRecipientsChange={(recipients) =>
-              onChannelPropertyChange("recipients", recipients)
-            }
-            invalidRecipientText={(domains) =>
-              userCanAccessSettings
-                ? t`You're only allowed to email subscriptions to addresses ending in ${domains}`
-                : t`You're only allowed to email subscriptions to allowed domains`
-            }
-          />
-        </div>
+        {isEmbeddingSdk() ? null : (
+          <div>
+            <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
+            <RecipientPicker
+              autoFocus={false}
+              recipients={channel.recipients}
+              users={users}
+              onRecipientsChange={(recipients) =>
+                onChannelPropertyChange("recipients", recipients)
+              }
+              invalidRecipientText={(domains) =>
+                userCanAccessSettings
+                  ? t`You're only allowed to email subscriptions to addresses ending in ${domains}`
+                  : t`You're only allowed to email subscriptions to allowed domains`
+              }
+            />
+          </div>
+        )}
         <SchedulePicker
           schedule={_.pick(
             channel,
@@ -175,6 +193,7 @@ export const AddEditEmailSidebar = ({
           cards={pulse.cards}
           pulse={pulse}
           setPulse={setPulse}
+          allowDownload={allowDownload}
         />
         {pulse.id != null && (
           <DeleteSubscriptionAction

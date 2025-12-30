@@ -1791,6 +1791,12 @@
   (constantly
    {:export name :import keyword}))
 
+(def optional-kw "Transformer for optional keywordized values.
+
+  Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
+  (constantly
+   {:export #(when % (name %)) :import #(when % (keyword %))}))
+
 (defn as
   "Serialize this field under the given key instead, typically because it has been logically transformed."
   [k xform]

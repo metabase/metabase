@@ -196,7 +196,7 @@
    :dashboard-templates-prefix ["table"]})
 
 (mu/defmethod ->root :model/Segment :- ::ads/root
-  [segment :- ::segments.schema/segment]
+  [segment :- [:map [:definition ::segments.schema/segment]]]
   (let [table (->> segment :table_id (t2/select-one :model/Table :id))]
     {:entity                     segment
      :full-name                  (tru "{0} in the {1} segment" (:display_name table) (:name segment))
@@ -766,7 +766,7 @@
   (automagic-dashboard (merge (->root table) opts)))
 
 (mu/defmethod automagic-analysis-method :model/Segment
-  [segment :- ::segments.schema/segment
+  [segment :- [:map [:definition ::segments.schema/segment]]
    opts]
   (automagic-dashboard (merge (->root segment) opts)))
 

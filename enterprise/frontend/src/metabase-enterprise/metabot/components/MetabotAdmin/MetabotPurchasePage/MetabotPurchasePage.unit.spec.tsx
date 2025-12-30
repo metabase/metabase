@@ -18,6 +18,39 @@ import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { MetabotPurchasePage } from ".";
 
+const nonStoreUserPageRegex = /Please ask a Metabase Store Admin/;
+const storeUserTrialPageRegex =
+  /After 14 days of free trial an additional amount/;
+const storeUserNoTrialPageRegex = /An additional amount/;
+const errorPageRegex = /Error fetching information/;
+const expectNonStoreUserPage = async () => {
+  expect(await screen.findByText(nonStoreUserPageRegex)).toBeVisible();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
+};
+
+const expectStoreUserTrialPage = async () => {
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(storeUserTrialPageRegex)).toBeVisible();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
+};
+
+const expectStoreUserNoTrialPage = async () => {
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(storeUserNoTrialPageRegex)).toBeVisible();
+  expect(screen.queryByText(errorPageRegex)).not.toBeInTheDocument();
+};
+
+const expectErrorPage = async () => {
+  expect(screen.queryByText(nonStoreUserPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserTrialPageRegex)).not.toBeInTheDocument();
+  expect(screen.queryByText(storeUserNoTrialPageRegex)).not.toBeInTheDocument();
+  expect(await screen.findByText(errorPageRegex)).toBeVisible();
+};
+
 const setupRefreshableProperties = ({
   current_user_matches_store_user,
   has_metabot_v3 = false,
@@ -43,11 +76,13 @@ const setupRefreshableProperties = ({
 const setup = async ({
   current_user_matches_store_user,
   billing_period_months,
+  had_metabot,
   simulate_http_get_error,
   simulate_http_post_error,
 }: {
   current_user_matches_store_user: boolean;
   billing_period_months: number;
+  had_metabot: false | "trial" | "tiered";
   simulate_http_get_error: boolean;
   simulate_http_post_error: false | "error-no-quantity" | "error-no-connection";
 }) => {
@@ -58,7 +93,11 @@ const setup = async ({
   const user = createMockUser({ email: "user@example.com" });
   setupCurrentUserEndpoint(user);
 
-  setupStoreEEBillingEndpoint(billing_period_months, simulate_http_get_error);
+  setupStoreEEBillingEndpoint(
+    billing_period_months,
+    had_metabot,
+    simulate_http_get_error,
+  );
   setupStoreEECloudAddOnsEndpoint(
     billing_period_months,
     simulate_http_get_error,
@@ -72,6 +111,8 @@ const setup = async ({
       currentUser: user,
     },
   });
+
+  await screen.findByText(/Metabot helps you move faster/);
 };
 
 describe("MetabotPurchasePage", () => {
@@ -79,46 +120,73 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: false,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.getByText(/Please ask a Metabase Store Admin/),
-    ).toBeInTheDocument();
+
+    await expectNonStoreUserPage();
   });
 
   it("shows an error message when retrieving billing or add-on information fails", async () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: true,
       simulate_http_post_error: false,
     });
-    expect(await screen.findByText(/Error fetching information/)).toBeVisible();
-    expect(
-      screen.queryByText(/Metabot helps you move faster/),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+
+    await expectErrorPage();
+  });
+
+  it("does not show an error message when when current user is not a store user", async () => {
+    await setup({
+      current_user_matches_store_user: false,
+      billing_period_months: 12,
+      had_metabot: false,
+      simulate_http_get_error: true,
+      simulate_http_post_error: false,
+    });
+
+    await expectNonStoreUserPage();
+  });
+
+  it("does not show trial page when metabot was trialed previously", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      billing_period_months: 1,
+      had_metabot: "trial",
+      simulate_http_get_error: false,
+      simulate_http_post_error: false,
+    });
+
+    await expectStoreUserNoTrialPage();
+  });
+
+  it("does not show trial page when metabot was purchased previously", async () => {
+    await setup({
+      current_user_matches_store_user: true,
+      billing_period_months: 1,
+      had_metabot: "tiered",
+      simulate_http_get_error: false,
+      simulate_http_post_error: false,
+    });
+
+    await expectStoreUserNoTrialPage();
   });
 
   it("shows monthly tiers according to own billing period", async () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 1,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+
+    await expectStoreUserTrialPage();
+
     const metabase_ai_tier1 = screen.getByRole("radio", {
       name: /up to 1234 requests\/month/,
     });
@@ -135,22 +203,20 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+
+    await expectStoreUserTrialPage();
+
     const metabase_ai_tier3 = screen.getByRole("radio", {
-      name: /up to 3456 requests\/month/,
+      name: /up to 3456 requests\/year/,
     });
     expect(metabase_ai_tier3).toBeVisible();
     expect(metabase_ai_tier3).toHaveAccessibleName(/\$333\/year/);
     const metabase_ai_tier4 = screen.getByRole("radio", {
-      name: /up to 4567 requests\/month/,
+      name: /up to 4567 requests\/year/,
     });
     expect(metabase_ai_tier4).toBeVisible();
     expect(metabase_ai_tier4).toHaveAccessibleName(/\$444\/year/);
@@ -160,49 +226,34 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
+
+    await expectStoreUserTrialPage();
+
+    // This add-on product tier has `is_default = true`:
     expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    expect(
-      screen.queryByText(/Please ask a Metabase Store Admin/),
-    ).not.toBeInTheDocument();
+      screen.getByRole("radio", { name: /up to 4567 requests/ }),
+    ).toBeChecked();
     expect(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     ).not.toBeChecked();
     expect(
       screen.getByRole("button", { name: /Confirm purchase/ }),
     ).toBeDisabled();
+
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     );
+
     expect(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     ).toBeChecked();
     expect(
       screen.getByRole("button", { name: /Confirm purchase/ }),
     ).toBeEnabled();
-  });
-
-  it("submits a HTTP request", async () => {
-    await setup({
-      current_user_matches_store_user: true,
-      billing_period_months: 12,
-      simulate_http_get_error: false,
-      simulate_http_post_error: false,
-    });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
-    // This add-on product tier has `is_default = true`:
-    expect(
-      screen.getByRole("radio", { name: /up to 4567 requests/ }),
-    ).toBeChecked();
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /Terms of Service/ }),
-    );
 
     await userEvent.click(
       screen.getByRole("button", { name: /Confirm purchase/ }),
@@ -237,12 +288,13 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: false,
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
+
+    await expectStoreUserTrialPage();
+
     await userEvent.click(
       screen.getByRole("radio", { name: /up to 3456 requests/ }),
     );
@@ -269,12 +321,13 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-quantity",
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
+
+    await expectStoreUserTrialPage();
+
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     );
@@ -296,12 +349,13 @@ describe("MetabotPurchasePage", () => {
     await setup({
       current_user_matches_store_user: true,
       billing_period_months: 12,
+      had_metabot: false,
       simulate_http_get_error: false,
       simulate_http_post_error: "error-no-connection",
     });
-    expect(
-      await screen.findByText(/Metabot helps you move faster/),
-    ).toBeVisible();
+
+    await expectStoreUserTrialPage();
+
     await userEvent.click(
       screen.getByRole("checkbox", { name: /Terms of Service/ }),
     );

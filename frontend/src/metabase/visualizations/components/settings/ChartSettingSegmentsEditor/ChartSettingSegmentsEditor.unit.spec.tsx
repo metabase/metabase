@@ -32,9 +32,7 @@ it("Should render a segment editor", () => {
 
   const firstRow = screen.getAllByRole("row").at(1) as HTMLElement;
 
-  expect(within(firstRow).getByPlaceholderText(/Label for this/)).toHaveValue(
-    "bad",
-  );
+  expect(within(firstRow).getByPlaceholderText(/Optional/)).toHaveValue("bad");
   expect(within(firstRow).getByPlaceholderText(/Min/)).toHaveValue("0");
   expect(within(firstRow).getByPlaceholderText(/Max/)).toHaveValue("100");
 });
@@ -87,4 +85,32 @@ it("Should allow you to add a new segment with apropriate defaults", async () =>
       color: expect.anything(),
     }),
   ]);
+});
+
+it("Should handle floating point values", async () => {
+  const { onChange } = setup();
+
+  const min = await screen.findByDisplayValue("0");
+
+  await userEvent.clear(min);
+  await userEvent.type(min, "12.5");
+  fireEvent.blur(min);
+
+  expect(onChange).toHaveBeenCalledWith(
+    expect.arrayContaining([
+      expect.objectContaining({ ...DEFAULT_VALUE[0], min: 12.5 }),
+      expect.objectContaining(DEFAULT_VALUE[1]),
+    ]),
+  );
+});
+
+it("Should not call onChange when blurring without changing value", async () => {
+  const { onChange } = setup();
+
+  const min = await screen.findByDisplayValue("0");
+
+  fireEvent.focus(min);
+  fireEvent.blur(min);
+
+  expect(onChange).not.toHaveBeenCalled();
 });

@@ -13,8 +13,12 @@ export const getStackModels = (
     return [];
   }
 
+  const visibleSeriesModels = seriesModels.filter(
+    (seriesModel) => seriesModel.visible,
+  );
+
   const seriesModelsByDisplay = _.groupBy(
-    seriesModels,
+    visibleSeriesModels,
     (seriesModel) =>
       settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
   );

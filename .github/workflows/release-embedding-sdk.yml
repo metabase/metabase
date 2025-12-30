@@ -383,28 +383,16 @@ jobs:
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
 
-          TAG=$(jq -r --null-input \
-            --arg branch "${{ inputs.branch }}" \
-            --arg masterTag "${{ steps.compute-tag.outputs.masterTag }}" '
-            {
-              "master": $masterTag,
-              "release-x.51.x": "51-stable",
-              "release-x.52.x": "52-stable",
-              "release-x.53.x": "53-stable",
-              "release-x.54.x": "54-stable",
-              "release-x.55.x": "55-stable",
-              "release-x.56.x": "56-stable"
-            }[$branch]'
-          )
-
+          TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.56.x' }}
-        working-directory: sdk
-        run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
+      # Only uncomment this when the new release branch becomes stable (gold).
+      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+      #   working-directory: sdk
+      #   run: |
+      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]

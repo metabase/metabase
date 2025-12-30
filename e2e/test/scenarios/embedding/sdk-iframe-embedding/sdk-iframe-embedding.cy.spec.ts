@@ -310,131 +310,134 @@ describe("scenarios > embedding > sdk iframe embedding", () => {
   });
 });
 
-H.describeWithSnowplowEE(
-  "scenarios > embedding > embedded analytics JS",
-  () => {
-    beforeEach(() => {
-      H.resetSnowplow();
-      H.prepareSdkIframeEmbedTest({
-        enabledAuthMethods: ["jwt"],
-        signOut: false,
-      });
-      H.enableTracking();
+describe("scenarios > embedding > Modular embedding", () => {
+  beforeEach(() => {
+    H.resetSnowplow();
+    H.prepareSdkIframeEmbedTest({
+      enabledAuthMethods: ["jwt"],
+      signOut: false,
+    });
+    H.enableTracking();
+  });
+
+  it("should send an modular embedding usage event", () => {
+    cy.signOut();
+    cy.visit("http://localhost:4000");
+    const frame = H.loadSdkIframeEmbedTestPage({
+      origin: "http://different-than-metabase-instance.com",
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+            "with-subscriptions": true,
+          },
+        },
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+          },
+        },
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: "new",
+          },
+        },
+        {
+          component: "metabase-browser",
+          attributes: {},
+        },
+      ],
+      selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
     });
 
-    it("should send an Embedded Analytics JS usage event", () => {
-      cy.signOut();
-      cy.visit("http://localhost:4000");
-      const frame = H.loadSdkIframeEmbedTestPage({
-        origin: "http://different-than-metabase-instance.com",
-        elements: [
-          {
-            component: "metabase-dashboard",
-            attributes: {
-              dashboardId: ORDERS_DASHBOARD_ID,
-            },
-          },
-          {
-            component: "metabase-question",
-            attributes: {
-              questionId: ORDERS_QUESTION_ID,
-            },
-          },
-          {
-            component: "metabase-question",
-            attributes: {
-              questionId: "new",
-            },
-          },
-          {
-            component: "metabase-browser",
-            attributes: {},
-          },
-        ],
-        selector: `[dashboard-id="${ORDERS_DASHBOARD_ID}"] > iframe`, // get only the first iframe
-      });
+    frame.within(() => {
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      H.assertTableRowsCount(2000);
+    });
 
-      frame.within(() => {
-        cy.findByText("Orders in a dashboard").should("be.visible");
-        cy.findByText("Orders").should("be.visible");
-        H.assertTableRowsCount(2000);
-      });
+    H.expectUnstructuredSnowplowEvent({
+      event: "setup",
+      global: {
+        auth_method: "sso",
+      },
+      dashboard: {
+        with_title: {
+          false: 0,
+          true: 1,
+        },
+        with_downloads: {
+          false: 1,
+          true: 0,
+        },
+        drills: {
+          false: 0,
+          true: 1,
+        },
+        with_subscriptions: {
+          false: 0,
+          true: 1,
+        },
+      },
+      question: {
+        drills: {
+          false: 0,
+          true: 1,
+        },
+        with_downloads: {
+          false: 1,
+          true: 0,
+        },
+        with_title: {
+          false: 0,
+          true: 1,
+        },
+        is_save_enabled: {
+          false: 1,
+          true: 0,
+        },
+      },
+      exploration: {
+        is_save_enabled: {
+          false: 1,
+          true: 0,
+        },
+      },
+      browser: {
+        read_only: {
+          false: 0,
+          true: 1,
+        },
+      },
+    });
+  });
 
-      H.expectUnstructuredSnowplowEvent({
+  it("should not send an modular embedding usage event in the preview", () => {
+    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
+
+    H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
+
+    H.waitForSimpleEmbedIframesToLoad();
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Orders").should("be.visible");
+    });
+
+    H.expectUnstructuredSnowplowEvent(
+      {
         event: "setup",
         global: {
-          auth_method: "sso",
+          auth_method: "session",
         },
-        dashboard: {
-          with_title: {
-            false: 0,
-            true: 1,
-          },
-          with_downloads: {
-            false: 1,
-            true: 0,
-          },
-          drills: {
-            false: 0,
-            true: 1,
-          },
-        },
-        question: {
-          drills: {
-            false: 0,
-            true: 1,
-          },
-          with_downloads: {
-            false: 1,
-            true: 0,
-          },
-          with_title: {
-            false: 0,
-            true: 1,
-          },
-          is_save_enabled: {
-            false: 1,
-            true: 0,
-          },
-        },
-        exploration: {
-          is_save_enabled: {
-            false: 1,
-            true: 0,
-          },
-        },
-        browser: {
-          read_only: {
-            false: 0,
-            true: 1,
-          },
-        },
-      });
-    });
-
-    it("should not send an Embedded Analytics JS usage event in the preview", () => {
-      cy.visit(`/question/${ORDERS_QUESTION_ID}`);
-
-      H.openEmbedJsModal();
-
-      H.waitForSimpleEmbedIframesToLoad();
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.findByText("Orders").should("be.visible");
-      });
-
-      H.expectUnstructuredSnowplowEvent(
-        {
-          event: "setup",
-          global: {
-            auth_method: "session",
-          },
-        },
-        // Expect that the usage event shouldn't be sent
-        0,
-      );
-    });
-  },
-);
+      },
+      // Expect that the usage event shouldn't be sent
+      0,
+    );
+  });
+});
 
 const getIframeWindow = () =>
   cy

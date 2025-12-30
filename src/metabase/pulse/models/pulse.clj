@@ -71,6 +71,7 @@
                            (apply merge defaults {:collection_id collection-id}))]
     (u/prog1 notification
       (assert-valid-parameters notification)
+      (collection/check-allowed-content :model/Pulse (:collection_id notification))
       (collection/check-collection-namespace :model/Pulse (:collection_id notification)))))
 
 (def ^:dynamic *allow-moving-dashboard-subscriptions*
@@ -82,6 +83,7 @@
   [notification]
   (let [{:keys [collection_id dashboard_id]} (t2/original notification)
         changes                              (t2/changes notification)]
+    (collection/check-allowed-content :model/Pulse (:collection_id changes))
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
@@ -166,11 +168,21 @@
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
 
+(defn- can-read-attachments?
+  "Return true if the card has attachments and those can be read. If it has no attachments, return true"
+  [card]
+  (if (or (:include_csv card) (:include_xls card))
+    (let [level (perms/download-perms-level (or (:dataset_query card) (t2/select-one-fn :dataset_query :model/Card :id (:id card))) api/*current-user-id*)]
+      (and level (not= level  :no)))
+    true))
+
 (defmethod mi/can-create? :model/Pulse
   [_m {cards :cards dashboard-id :dashboard_id collection-id :collection_id}]
   (and
    ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
-   (every? #(mi/can-read? :model/Card (u/the-id %)) cards)
+   (every? #(and
+             (mi/can-read? :model/Card (u/the-id %))
+             (can-read-attachments? %)) cards)
    ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
    ;; make sure we have write permissions for that collection
    (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
@@ -312,7 +324,10 @@
   [notification :- (ms/InstanceOf :model/Pulse)]
   (-> notification
       (assoc :card (first (:cards notification)))
-      (dissoc :cards)))
+      (dissoc :cards)
+      ;; TODO (Kelvin 2025-12-19) Remove this once we support alerts on modular embedding,
+      ;; as we only currently have `disable_links` column on Subscriptions.
+      (dissoc :disable_links)))
 
 (mu/defn retrieve-alert :- [:maybe (ms/InstanceOf :model/Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
@@ -529,7 +544,8 @@
                 [:collection_id       {:optional true} [:maybe ms/PositiveInt]]
                 [:collection_position {:optional true} [:maybe ms/PositiveInt]]
                 [:dashboard_id        {:optional true} [:maybe ms/PositiveInt]]
-                [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
+                [:parameters          {:optional true} [:maybe [:sequential :map]]]
+                [:disable_links       {:optional true} [:maybe ms/BooleanValue]]]]
   (let [pulse-id (create-notification-and-add-cards-and-channels! kvs cards channels)]
     ;; return the full Pulse (and record our create event).
     (u/prog1 (retrieve-pulse pulse-id)

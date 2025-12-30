@@ -2,6 +2,7 @@
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { assocIn } from "icepick";
 import { P, isMatching } from "ts-pattern";
 import _ from "underscore";
 
@@ -10,7 +11,6 @@ import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   act,
-  fireEvent,
   renderWithProviders,
   screen,
   waitFor,
@@ -20,16 +20,16 @@ import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
 import {
-  type MockStreamedEndpointParams,
   createMockReadableStream,
   createPauses,
-  mockStreamedEndpoint,
 } from "metabase-enterprise/api/ai-streaming/test-utils";
 import type { User } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTokenFeatures,
+  createMockTransform,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -43,18 +43,35 @@ import { MetabotProvider } from "./context";
 import { useMetabotAgent } from "./hooks";
 import {
   type MetabotState,
+  type MetabotStoreState,
+  addSuggestedTransform,
   addUserMessage,
   getHistory,
-  getMetabot,
-  getMetabotConversationId,
-  getMetabotInitialState,
-  getMetabotState,
+  getMetabotConversation,
+  getMetabotReactionsState,
+  getMetabotRequestState,
   metabotReducer,
-  setVisible,
+  setNavigateToPath,
 } from "./state";
-
-const mockAgentEndpoint = (params: MockStreamedEndpointParams) =>
-  mockStreamedEndpoint("/api/ee/metabot-v3/agent-streaming", params);
+import { getMetabotInitialState } from "./state/reducer-utils";
+import {
+  assertConversation,
+  assertNotVisible,
+  assertVisible,
+  chat,
+  closeChatButton,
+  enterChatMessage,
+  hideMetabot,
+  input,
+  lastChatMessage,
+  lastReqBody,
+  mockAgentEndpoint,
+  resetChatButton,
+  responseLoader,
+  sendMessageButton,
+  showMetabot,
+  stopResponseButton,
+} from "./tests/utils";
 
 function setup(
   options: {
@@ -72,14 +89,17 @@ function setup(
 
   setupEnterprisePlugins();
 
+  const _metabotState = getMetabotInitialState();
+  const metabotState = assocIn(
+    _metabotState,
+    ["conversations", "omnibot", "visible"],
+    true,
+  );
+
   const {
     ui = <Metabot />,
     currentUser = createMockUser(),
-    metabotPluginInitialState = {
-      ...getMetabotInitialState(),
-      visible: true,
-      useStreaming: true,
-    },
+    metabotPluginInitialState = metabotState,
     promptSuggestions = [],
   } = options || {};
 
@@ -89,84 +109,34 @@ function setup(
   );
   setupDatabaseListEndpoint([]);
 
-  return renderWithProviders(<MetabotProvider>{ui}</MetabotProvider>, {
-    storeInitialState: createMockState({
-      settings,
-      currentUser: currentUser ? currentUser : undefined,
-      plugins: {
-        metabotPlugin: metabotPluginInitialState,
+  const { store, rerender } = renderWithProviders(
+    <MetabotProvider>{ui}</MetabotProvider>,
+    {
+      storeInitialState: createMockState({
+        settings,
+        currentUser: currentUser ? currentUser : undefined,
+        plugins: {
+          metabotPlugin: metabotPluginInitialState,
+        },
+      } as any),
+      customReducers: {
+        plugins: combineReducers({
+          metabotPlugin: metabotReducer,
+        }),
       },
-    } as any),
-    customReducers: {
-      plugins: combineReducers({
-        metabotPlugin: metabotReducer,
-      }),
     },
-  });
+  );
+
+  return {
+    rerender,
+    conversationIds: Object.keys(metabotState.conversations),
+    store: store as Omit<typeof store, "getState"> & {
+      getState: () => MetabotStoreState;
+    },
+  };
 }
 
-const chat = () => screen.findByTestId("metabot-chat");
-const chatMessages = () => screen.findAllByTestId("metabot-chat-message");
-const lastChatMessage = async () => (await chatMessages()).at(-1);
-const input = async () => {
-  const chatInput = await screen.findByTestId("metabot-chat-input");
-  // get tiptap content editable node
-  // eslint-disable-next-line testing-library/no-node-access
-  return chatInput.querySelector('[contenteditable="true"]')!;
-};
-const enterChatMessage = async (message: string, send = true) => {
-  // using userEvent.type works locally but in CI characters are sometimes dropped
-  // so "Who is your favorite?" becomes something like "Woi or fvrite?"
-  const editor = await input();
-  editor.textContent = message;
-  fireEvent.input(editor, {
-    target: { textContent: message },
-  });
-  if (send) {
-    await userEvent.type(await input(), "{Enter}");
-  }
-};
-const closeChatButton = () => screen.findByTestId("metabot-close-chat");
-const responseLoader = () => screen.findByTestId("metabot-response-loader");
-const resetChatButton = () => screen.findByTestId("metabot-reset-chat");
-
-const assertVisible = async () =>
-  expect(await screen.findByTestId("metabot-chat")).toBeInTheDocument();
-const assertNotVisible = async () =>
-  await waitFor(() => {
-    expect(screen.queryByTestId("metabot-chat")).not.toBeInTheDocument();
-  });
-
-// NOTE: for some reason the keyboard shortcuts won't work with tinykeys while testing, using redux for now...
-const hideMetabot = (dispatch: any) => act(() => dispatch(setVisible(false)));
-const showMetabot = (dispatch: any) => act(() => dispatch(setVisible(true)));
-
-const assertConversation = async (
-  expectedMessages: ["user" | "agent", string][],
-) => {
-  if (!expectedMessages.length) {
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("metabot-chat-message"),
-      ).not.toBeInTheDocument();
-    });
-  } else {
-    const realMessages = await chatMessages();
-    expect(expectedMessages.length).toBe(realMessages.length);
-    expectedMessages.forEach(([expectedRole, expectedMessage], index) => {
-      const realMessage = realMessages[index];
-      expect(realMessage).toHaveAttribute("data-message-role", expectedRole);
-      expect(realMessage).toHaveTextContent(expectedMessage);
-    });
-  }
-};
-
-const lastReqBody = async (agentSpy: ReturnType<typeof mockAgentEndpoint>) => {
-  await waitFor(() => expect(agentSpy).toHaveBeenCalled());
-  return JSON.parse(agentSpy.mock.lastCall?.[1]?.body as string);
-};
-
-describe("metabot-streaming", () => {
+describe("metabot", () => {
   describe("ui", () => {
     it("should be able to render metabot", async () => {
       setup();
@@ -383,7 +353,7 @@ describe("metabot-streaming", () => {
 
     it("should be able to set the prompt input's value from anywhere in the app", async () => {
       const AnotherComponent = () => {
-        const { setPrompt } = useMetabotAgent();
+        const { setPrompt } = useMetabotAgent("omnibot");
 
         return (
           <button onClick={() => setPrompt("TEST VAL")}>CLICK HERE</button>
@@ -490,12 +460,6 @@ describe("metabot-streaming", () => {
   });
 
   describe("message", () => {
-    it("should have a conversation id before sending any messages", async () => {
-      const { store } = setup();
-      const state = store.getState() as any;
-      expect(getMetabotConversationId(state)).not.toBeUndefined();
-    });
-
     it("should properly send chat messages", async () => {
       setup();
 
@@ -517,10 +481,23 @@ describe("metabot-streaming", () => {
       expect(await input()).toHaveFocus();
     });
 
+    it("should be able to send a message via send button", async () => {
+      setup();
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+      await enterChatMessage("Who is your favorite?", false);
+      expect(await input()).toHaveTextContent("Who is your favorite?");
+      (await sendMessageButton()).click();
+
+      expect(
+        await screen.findByText("You, but don't tell anyone."),
+      ).toBeInTheDocument();
+    });
+
     it("should properly handle partial messages", async () => {
       setup();
 
-      const [pause1] = createPauses(2);
+      const [pause1] = createPauses(1);
       mockAgentEndpoint({
         stream: createMockReadableStream(
           (async function* () {
@@ -680,6 +657,62 @@ describe("metabot-streaming", () => {
         ["agent", "Response 2"],
       ]);
     });
+
+    it("should be able to stop a response via stop button", async () => {
+      setup();
+
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"You, but "\n`;
+            await pause1.promise;
+            yield `0:"don't tell anyone."\n`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Who is your favorite?");
+      await userEvent.click(await stopResponseButton());
+      pause1.resolve();
+
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      await enterChatMessage("Who is your favorite?");
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but"],
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
+    });
+
+    it("should be able to stop a response via escape press", async () => {
+      setup();
+
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"You, but "\n`;
+            await pause1.promise;
+            yield `0:"don't tell anyone."\n`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Who is your favorite?");
+      await userEvent.type(await input(), "{Escape}");
+      pause1.resolve();
+
+      mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+      await enterChatMessage("Who is your favorite?");
+      await assertConversation([
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but"],
+        ["user", "Who is your favorite?"],
+        ["agent", "You, but don't tell anyone."],
+      ]);
+    });
   });
 
   describe("errors", () => {
@@ -780,7 +813,11 @@ describe("metabot-streaming", () => {
     });
 
     it("should send along available actions in context", async () => {
-      setup();
+      setup({
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({ can_create_queries: true }),
+        }),
+      });
       fetchMock.removeRoutes({ names: ["database-list"] });
       setupDatabaseListEndpoint([
         createMockDatabase({
@@ -847,29 +884,29 @@ describe("metabot-streaming", () => {
   describe("convo state", () => {
     it("should update the convo state on a successful request", async () => {
       const { store } = setup();
-      // TODO: make enterprise store
-      const getState = () => getMetabotState(store.getState() as any);
+      const getConvoReqState = () =>
+        getMetabotRequestState(store.getState(), "omnibot");
 
       mockAgentEndpoint({
         stream: createMockReadableStream(
           (async function* () {
             yield `2:{"type":"state","version":1,"value":{"queries":{}}}\n`;
             // assert that state hasn't been updated mid-response
-            expect(getState()).toEqual({});
+            expect(getConvoReqState()).toEqual({});
             yield `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`;
           })(),
         ),
       });
 
-      expect(getState()).toEqual({});
+      expect(getConvoReqState()).toEqual({});
       await enterChatMessage("Request");
-      expect(getState()).toEqual({ queries: {} });
+      expect(getConvoReqState()).toEqual({ queries: {} });
     });
 
     it("should not update the convo state on a failed request", async () => {
       const { store } = setup();
-      // TODO: make enterprise store
-      const getState = () => getMetabotState(store.getState() as any);
+      const getConvoReqState = () =>
+        getMetabotRequestState(store.getState(), "omnibot");
 
       mockAgentEndpoint({
         textChunks: [
@@ -878,9 +915,72 @@ describe("metabot-streaming", () => {
         ],
       });
 
-      expect(getState()).toEqual({});
+      expect(getConvoReqState()).toEqual({});
       await enterChatMessage("Request");
-      expect(getState()).toEqual({});
+      expect(getConvoReqState()).toEqual({});
+    });
+
+    it("should preserve conversation state if aborted response didn't contain a state data object", async () => {
+      const { store } = setup();
+      const getConvoReqState = () =>
+        getMetabotRequestState(store.getState(), "omnibot");
+
+      // insert some state via previous convo
+      mockAgentEndpoint({
+        textChunks: [
+          `0:"here ya go"`,
+          `2:{"type":"state","version":1,"value":{"testing":123}}`,
+          `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
+        ],
+      });
+      await enterChatMessage("gimme state plz");
+      assertConversation([
+        ["user", "gimme state plz"],
+        ["agent", "here ya go"],
+      ]);
+      expect(getConvoReqState()).toEqual({ testing: 123 });
+
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `0:"blah blah blah"\n`;
+            await pause1.promise;
+            yield `0:"something something"\n`;
+          })(),
+        ),
+      });
+
+      await enterChatMessage("i'm going to cancel this request...");
+      assertConversation([
+        ["user", "gimme state plz"],
+        ["agent", "here ya go"],
+        ["user", "i'm going to cancel this request..."],
+        ["agent", "blah blah blah"],
+      ]);
+      await userEvent.click(await stopResponseButton());
+      pause1.resolve();
+
+      expect(getConvoReqState()).toEqual({ testing: 123 });
+    });
+
+    it("should use new state object if aborted response contained one", async () => {
+      const { store } = setup();
+
+      // insert some state via previous convo
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `2:{"type":"state","version":1,"value":{"testing":123}}`,
+              await pause1.promise;
+          })(),
+        ),
+      });
+      await enterChatMessage("hi");
+      await userEvent.click(await stopResponseButton());
+      const reqState = getMetabotRequestState(store.getState(), "omnibot");
+      expect(reqState).toEqual({ testing: 123 });
     });
   });
 
@@ -940,12 +1040,12 @@ describe("metabot-streaming", () => {
         ],
       });
 
-      const initialHistory = getHistory(store.getState() as any);
+      const initialHistory = getHistory(store.getState(), "omnibot");
       expect(initialHistory).toEqual([]);
 
       await enterChatMessage("Who is your favorite?");
 
-      const finalHistory = getHistory(store.getState() as any);
+      const finalHistory = getHistory(store.getState(), "omnibot");
       expect(finalHistory).toHaveLength(2);
       expect(finalHistory[0].role).toBe("user");
       expect(finalHistory[0].content).toBe("Who is your favorite?");
@@ -955,7 +1055,8 @@ describe("metabot-streaming", () => {
 
     it("should clear history when the user hits the reset button", async () => {
       const { store } = setup();
-      const getState = () => getMetabot(store.getState() as any);
+      const getState = () =>
+        getMetabotConversation(store.getState(), "omnibot");
       mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
 
       // send a message to get some history back
@@ -966,13 +1067,12 @@ describe("metabot-streaming", () => {
       ]);
 
       const beforeResetState = getState();
-      expect(beforeResetState.conversationId).not.toBe(null);
-      expect(_.omit(beforeResetState.messages[0], "id")).toStrictEqual({
+      expect(_.omit(beforeResetState.messages[0], ["id"])).toStrictEqual({
         role: "user",
         type: "text",
         message: "Who is your favorite?",
       });
-      expect(_.omit(beforeResetState.messages[1], "id")).toStrictEqual({
+      expect(_.omit(beforeResetState.messages[1], ["id"])).toStrictEqual({
         role: "agent",
         type: "text",
         message: "You, but don't tell anyone.",
@@ -994,7 +1094,12 @@ describe("metabot-streaming", () => {
       // adding messages this long via the ui's input makes the test hang
       act(() => {
         store.dispatch(
-          addUserMessage({ id: "1", type: "text", message: longMsg }),
+          addUserMessage({
+            id: "1",
+            type: "text",
+            message: longMsg,
+            agentId: "omnibot",
+          }),
         );
       });
       expect(await screen.findByText(/xxxxxxx/)).toBeInTheDocument();
@@ -1004,7 +1109,12 @@ describe("metabot-streaming", () => {
 
       act(() => {
         store.dispatch(
-          addUserMessage({ id: "2", type: "text", message: longMsg }),
+          addUserMessage({
+            id: "2",
+            type: "text",
+            message: longMsg,
+            agentId: "omnibot",
+          }),
         );
       });
       expect(
@@ -1020,6 +1130,62 @@ describe("metabot-streaming", () => {
         ).not.toBeInTheDocument();
       });
       expect(screen.queryByText(/xxxxxxx/)).not.toBeInTheDocument();
+    });
+
+    it("should manually insert synthetic tool results for aborted requests with unresolved tool calls", async () => {
+      const { store } = setup();
+
+      // insert some state via previous convo
+      const [pause1] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockReadableStream(
+          (async function* () {
+            yield `9:{"toolCallId":"test","toolName":"test","args":""}`;
+            await pause1.promise;
+          })(),
+        ),
+      });
+      await enterChatMessage("hi");
+      await userEvent.click(await stopResponseButton());
+      pause1.resolve();
+      expect(getHistory(store.getState(), "omnibot")).toMatchObject([
+        { content: "hi", role: "user" },
+        {
+          role: "assistant",
+          tool_calls: [{ arguments: "", id: "test", name: "test" }],
+        },
+        {
+          content: "Tool execution interrupted by user",
+          role: "tool",
+          tool_call_id: "test",
+        },
+      ]);
+    });
+  });
+
+  describe("reaction state", () => {
+    it("should clear navigateToPath and suggestedTransforms when resetting omnibot conversation", async () => {
+      const { store } = setup();
+      const getReactions = () => getMetabotReactionsState(store.getState());
+
+      act(() => {
+        store.dispatch(setNavigateToPath("/some/path"));
+        store.dispatch(
+          addSuggestedTransform({
+            ...createMockTransform(),
+            active: true,
+            suggestionId: "test-suggestion",
+          }),
+        );
+      });
+
+      expect(getReactions().navigateToPath).toBe("/some/path");
+      expect(getReactions().suggestedTransforms).toHaveLength(1);
+
+      await userEvent.click(await resetChatButton());
+
+      expect(getReactions().navigateToPath).toBeNull();
+      expect(getReactions().suggestedTransforms).toEqual([]);
     });
   });
 
@@ -1050,18 +1216,10 @@ describe("metabot-streaming", () => {
       });
 
       it("should show tool_call messages in chat if debug mode is enabled", async () => {
-        setup({
-          metabotPluginInitialState: {
-            ...getMetabotInitialState(),
-            visible: true,
-            experimental: {
-              ...getMetabotInitialState().experimental,
-              debugMode: true,
-            },
-          },
-        });
+        setup();
         mockResponse();
 
+        await enterChatMessage("/debug");
         await enterChatMessage("Don't show me tool call messages");
         await assertConversation([
           ["user", "Don't show me tool call messages"],

@@ -44,7 +44,7 @@
       ["target/classes/metabase/request/util.clj"]                                  true
       ;; Both a FE and a BE path
       ["frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:145"
-       "metabase/warehouses/api.clj:178"]                                           true
+       "metabase/warehouses_rest/api.clj:178"]                                      true
       ;; FE-only paths
       ["frontend/src/metabase/components/ActionButton.jsx:31"]                      false
       ["frontend/src/metabase/entities/collections/forms.js:22"]                    false

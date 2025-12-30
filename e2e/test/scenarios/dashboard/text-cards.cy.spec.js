@@ -13,7 +13,7 @@ describe("scenarios > dashboard > text and headings", () => {
     H.enableTracking();
   });
 
-  H.describeWithSnowplow("text", () => {
+  describe("text", () => {
     beforeEach(() => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });
@@ -152,7 +152,7 @@ describe("scenarios > dashboard > text and headings", () => {
     });
   });
 
-  H.describeWithSnowplow("heading", () => {
+  describe("heading", () => {
     beforeEach(() => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
     });

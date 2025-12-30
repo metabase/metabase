@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { MoveModal } from "metabase/common/components/MoveModal";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { useCollectionQuery } from "metabase/common/hooks";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
@@ -41,9 +41,12 @@ const MoveCollectionModalView = ({
       title={t`Move "${collection.name}"?`}
       initialCollectionId={collection.parent_id ?? "root"}
       movingCollectionId={collection.id}
+      movingCollectionNamespace={collection.namespace ?? undefined}
+      entityType="collection"
       onMove={handleMove}
       onClose={onClose}
       recentAndSearchFilter={recentsAndSearchFilter}
+      savingModel="collection"
     />
   );
 };

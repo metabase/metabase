@@ -770,6 +770,8 @@ export function formatDateTimeForParameter(
     return m.format("[Q]Q-YYYY");
   } else if (unit === "day") {
     return m.format("YYYY-MM-DD");
+  } else if (unit === "hour" || unit === "minute") {
+    return m.format("YYYY-MM-DDTHH:mm");
   } else if (unit) {
     return formatDateToRangeForParameter(value, unit);
   }
@@ -787,17 +789,27 @@ export function formatDateToRangeForParameter(
   }
 
   const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  const end = getEndOfInterval(start, unit);
 
   if (!start.isValid() || !end.isValid()) {
     return String(value);
   }
 
-  const isSameDay = start.isSame(end, "day");
+  if (unit === "hour" || unit === "minute") {
+    return `${start.format("YYYY-MM-DDTHH:mm")}~${end.format("YYYY-MM-DDTHH:mm")}`;
+  }
 
+  const isSameDay = start.isSame(end, "day");
   return isSameDay
     ? start.format("YYYY-MM-DD")
     : `${start.format("YYYY-MM-DD")}~${end.format("YYYY-MM-DD")}`;
+}
+
+function getEndOfInterval(start: Dayjs, unit: DatetimeUnit | null) {
+  if (unit === "hour" || unit === "minute") {
+    return start.clone().add(1, unit);
+  }
+  return start.clone().endOf(unit);
 }
 
 export function normalizeDateTimeRangeWithUnit(
@@ -1110,7 +1122,11 @@ export function formatDateTimeWithUnit(
   }
 
   if (unit === "week-of-year") {
-    return dayjs().localeData().ordinal(m.isoWeek()).slice(1, -1);
+    const ordinal = String(dayjs().localeData().ordinal(m.isoWeek()));
+    if (ordinal.startsWith("[") && ordinal.endsWith("]")) {
+      return ordinal.slice(1, -1);
+    }
+    return ordinal;
   }
 
   // expand "week" into a range in specific contexts

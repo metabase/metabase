@@ -4,10 +4,16 @@ import {
   setupDatabaseListEndpoint,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import {
+  getIcon,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import * as domUtils from "metabase/lib/dom";
 import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { BrowseNavSection } from "./BrowseNavSection";
@@ -20,55 +26,56 @@ describe("BrowseNavSection", () => {
   it("should render a section title and an 'Add data' button", async () => {
     setup({ isAdmin: true });
 
-    const tab = screen.getByRole("tab");
+    const section = screen.getByRole("section", { name: "Data" });
 
-    expect(tab).toBeInTheDocument();
+    expect(section).toBeInTheDocument();
     expect(
-      within(tab).getByRole("heading", { name: "Data" }),
+      within(section).getByRole("heading", { name: "Data" }),
     ).toBeInTheDocument();
     expect(
-      await within(tab).findByRole("button", { name: "Add data" }),
+      await within(section).findByRole("button", { name: "Add data" }),
     ).toBeInTheDocument();
   });
 
   it("should not render a section title and an 'Add data' button for users without enough permissions", async () => {
     setup({ isAdmin: false });
 
-    const tab = screen.getByRole("tab");
+    const section = screen.getByRole("section", { name: "Data" });
 
-    expect(tab).toBeInTheDocument();
+    expect(section).toBeInTheDocument();
     expect(
-      within(tab).getByRole("heading", { name: "Data" }),
+      within(section).getByRole("heading", { name: "Data" }),
     ).toBeInTheDocument();
     expect(
-      within(tab).queryByRole("button", { name: "Add data" }),
+      within(section).queryByRole("button", { name: "Add data" }),
     ).not.toBeInTheDocument();
   });
 
   it("should not render the 'Add data' button for full app embedding", () => {
     setup({ isEmbeddingIframe: true });
 
-    const tab = screen.getByRole("tab");
+    const section = screen.getByRole("section", { name: "Data" });
 
-    expect(tab).toBeInTheDocument();
+    expect(section).toBeInTheDocument();
     expect(
-      within(tab).getByRole("heading", { name: "Data" }),
+      within(section).getByRole("heading", { name: "Data" }),
     ).toBeInTheDocument();
     expect(
-      within(tab).queryByRole("button", { name: "Add data" }),
+      within(section).queryByRole("button", { name: "Add data" }),
     ).not.toBeInTheDocument();
   });
 
   it("should be expanded by default but collapsible", async () => {
     setup();
 
-    const addDataButton = screen.getByRole("button", { name: "Add data" });
+    const section = screen.getByRole("section", { name: "Data" });
+    const addDataButton = within(section).getByRole("button", {
+      name: "Add data",
+    });
+    const toggle = within(section).getByRole("button", { name: /Data/ });
 
-    expect(screen.getByRole("tab")).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("tabpanel")).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(section).getByRole("region")).toBeInTheDocument();
 
     expect(addDataButton).toBeInTheDocument();
     expect(getIcon("chevrondown")).toBeInTheDocument();
@@ -76,9 +83,9 @@ describe("BrowseNavSection", () => {
     expect(screen.getByText("Databases")).toBeInTheDocument();
     expect(screen.getByText("Metrics")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByText("Data"));
-    expect(screen.getByRole("tab")).toHaveAttribute("aria-selected", "false");
-    expect(screen.queryByRole("tabpanel")).not.toBeInTheDocument();
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(section).queryByRole("region")).not.toBeInTheDocument();
 
     expect(addDataButton).toBeInTheDocument();
     expect(getIcon("chevronright")).toBeInTheDocument();
@@ -88,7 +95,7 @@ describe("BrowseNavSection", () => {
   });
 
   it("clicking the 'Add data' button triggers the modal", async () => {
-    const { onAddDataModalOpen } = setup();
+    const { onAddDataModalOpen } = await setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Add data" }));
     expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
@@ -169,11 +176,11 @@ describe("BrowseNavSection", () => {
 
 interface SetupOpts {
   isEmbeddingIframe?: boolean;
-  entityTypes?: EmbeddingEntityType[];
+  entityTypes?: ModularEmbeddingEntityType[];
   isAdmin?: boolean;
 }
 
-function setup({
+async function setup({
   isEmbeddingIframe,
   entityTypes,
   isAdmin = true,
@@ -219,6 +226,10 @@ function setup({
       onAddDataModalOpen={onAddDataModalOpen}
     />,
     { storeInitialState },
+  );
+
+  await waitFor(() =>
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
   );
 
   return { onAddDataModalOpen };

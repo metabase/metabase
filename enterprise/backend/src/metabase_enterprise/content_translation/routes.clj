@@ -26,6 +26,10 @@
                                     {:locale "ja" :msgid "Sample translation" :msgstr "サンプル翻訳"}
                                     {:locale "ko" :msgid "Sample translation" :msgstr "샘플 번역"}])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/csv"
   "Provides content translation dictionary in CSV"
   []
@@ -44,6 +48,10 @@
      :body (with-out-str
              (csv/write-csv *out* csv-data))}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post
   "/upload-dictionary"
   "Upload a CSV of content translations"
@@ -69,10 +77,14 @@
     (dictionary/read-and-import-csv! file)
     {:success true}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dictionary/:token"
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
-                       [:token string?]]
+                       [:token ms/NonBlankString]]
    {:keys [locale]}]
   ;; this will error if bad
   (embedding.jwt/unsign token)

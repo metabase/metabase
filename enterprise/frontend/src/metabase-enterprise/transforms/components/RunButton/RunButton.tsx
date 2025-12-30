@@ -1,13 +1,23 @@
-import { type ReactNode, type Ref, forwardRef, useState } from "react";
-import { useUpdateEffect } from "react-use";
+import {
+  type ReactNode,
+  type Ref,
+  forwardRef,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { Button, Icon, Loader, Tooltip } from "metabase/ui";
-import type { TransformRun } from "metabase-types/api";
+import type {
+  TransformId,
+  TransformJobId,
+  TransformRun,
+} from "metabase-types/api";
 
 const RECENT_TIMEOUT = 5000;
 
 type RunButtonProps = {
+  id: TransformId | TransformJobId | undefined;
   run: TransformRun | null | undefined;
   isDisabled?: boolean;
   allowCancellation?: boolean;
@@ -17,11 +27,12 @@ type RunButtonProps = {
 
 export const RunButton = forwardRef(function RunButton(
   {
+    id,
     run,
     isDisabled: isExternallyDisabled = false,
+    allowCancellation = false,
     onRun,
     onCancel,
-    allowCancellation = false,
   }: RunButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
@@ -32,11 +43,15 @@ export const RunButton = forwardRef(function RunButton(
     isDisabled: isExternallyDisabled,
   });
 
-  useUpdateEffect(() => {
+  useLayoutEffect(() => {
     setIsRecent(true);
     const timeoutId = setTimeout(() => setIsRecent(false), RECENT_TIMEOUT);
     return () => clearTimeout(timeoutId);
   }, [run]);
+
+  useLayoutEffect(() => {
+    setIsRecent(false);
+  }, [id]);
 
   return (
     <Button.Group>

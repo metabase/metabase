@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.context :as context]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]))
@@ -217,3 +218,32 @@
                                                      :database (mt/id)}}}]}
           result (#'context/annotate-transform-source-types input)]
       (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))
+
+(deftest recent-views-in-context-test
+  (testing "Adds recent views to context"
+    (mt/with-test-user :rasta
+      (mt/with-temp [:model/Collection {col-id :id}   {}
+                     :model/Card       {card-id :id}   {:type "question"
+                                                        :name "my question"
+                                                        :description "question description"}
+                     :model/Card       {card-id-2 :id} {:type "question"
+                                                        :name "my question 2"
+                                                        :description "question description 2"}
+                     :model/Card       {model-id :id} {:type "model"
+                                                       :name "my model"
+                                                       :description "model description"}
+                     :model/Dashboard  {dash-id :id}  {:name "my dashboard"
+                                                       :description "dashboard description"}
+                     :model/Table      {table-id :id} {}]
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id-2 :view)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card model-id :view)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection col-id :view)
+        (let [recently-viewed (-> (context/create-context {})
+                                  :user_recently_viewed)]
+          (is (= 5 (count recently-viewed)))
+          ;; Assert that collection is excluded even though it was viewed most recently
+          (is (= #{"question" "model" "dashboard" "table"}
+                 (set (map :type recently-viewed)))))))))

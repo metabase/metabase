@@ -162,7 +162,7 @@ async function setup({
         createMockTable({
           id: `card__${card.id}`,
           name: card.name,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ],
     }),

@@ -1,5 +1,6 @@
 (ns metabase.search.appdb.core
   (:require
+   [clojure.string :as str]
    [environ.core :as env]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -15,6 +16,7 @@
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.settings :as search.settings]
+   [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
@@ -49,6 +51,13 @@
            (#{"appdb" "semantic"} (some-> (search.settings/search-engine) name)))
        (supported-db? (mdb/db-type))))
 
+(defmethod search.engine/disjunction :search.engine/appdb [_ terms]
+  (when (seq terms)
+    (if (or (= (mdb/db-type) :h2)
+            (= 1 (count terms)))
+      terms
+      [(str/join " OR " (map #(str "(" % ")") terms))])))
+
 (defn- parse-datetime [s]
   (when s (OffsetDateTime/parse s)))
 
@@ -61,25 +70,36 @@
        :bookmark   (pos? (:bookmarked index-row 0))
        :score      (:total_score index-row 1)
        :all-scores (search.scoring/all-scores weights active-scorers index-row))
+      (dissoc :is_published)
       (update :created_at parse-datetime)
       (update :updated_at parse-datetime)
       (update :last_edited_at parse-datetime)))
 
 (defn add-table-where-clauses
-  "Add a `WHERE` clause to the query to only return tables the current user has access to"
+  "Add a `WHERE` clause to the query to only return tables the current user has access to.
+   Also adds any CTEs required for permission filtering."
   [search-ctx qry]
-  (sql.helpers/where qry
-                     [:or
-                      [:= :search_index.model nil]
-                      [:!= :search_index.model [:inline "table"]]
-                      [:and
-                       [:= :search_index.model [:inline "table"]]
-                       [:exists {:select [1]
-                                 :from   [[:metabase_table :mt_toplevel]]
-                                 :where  [:and [:= :mt_toplevel.id [:cast :search_index.model_id (case (mdb/db-type)
-                                                                                                   :mysql :signed
-                                                                                                   :integer)]]
-                                          (search.permissions/permitted-tables-clause search-ctx :mt_toplevel.id)]}]]]))
+  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
+                                                     :mysql :signed
+                                                     :integer)]
+        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
+    (cond-> qry
+      (seq with) (update :with (fnil into []) with)
+      true       (sql.helpers/where
+                  [:or
+                   [:= :search_index.model nil]
+                   [:!= :search_index.model [:inline "table"]]
+                   [:and
+                    [:= :search_index.model [:inline "table"]]
+                    clause]]))))
+
+(def null-collection-id-should-be-ignored-for-unpublished-tables-clause
+  "For every model except tables, a null collection ID means the thing is in Our Analytics.
+
+  For tables, this means there is no associated collection and the collection_id should be completely ignored."
+  [:and
+   [:= :model [:inline "table"]]
+   [:= :is_published false]])
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -89,7 +109,10 @@
         permitted-clause  (search.permissions/permitted-collections-clause search-ctx collection-id-col)
         personal-clause   (search.filter/personal-collections-where-clause search-ctx collection-id-col)
         excluded-models   (search.filter/models-without-collection)
-        or-null           #(vector :or [:in :search_index.model excluded-models] %)]
+        or-null           #(vector :or
+                                   [:in :search_index.model excluded-models]
+                                   null-collection-id-should-be-ignored-for-unpublished-tables-clause
+                                   %)]
     (cond-> qry
       true (sql.helpers/left-join [:collection :collection] [:= collection-id-col :collection.id])
       true (sql.helpers/where (or-null permitted-clause))
@@ -115,7 +138,7 @@
       (throw (ex-info "Search Index not found."
                       {:search-engine      search-engine
                        :db-type            (mdb/db-type)
-                       :version            @#'search.index/*index-version-id*
+                       :version            (search.spec/index-version-hash)
                        :lang_code          (i18n/site-locale-string)
                        :forced-init?       init-now?
                        :index-state-before index-state

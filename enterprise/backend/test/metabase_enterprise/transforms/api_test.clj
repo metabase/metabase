@@ -61,7 +61,8 @@
                                                          :query query}
                                                 :target {:type "table"
                                                          :schema schema
-                                                         :name table-name}})
+                                                         :name table-name
+                                                         :database (mt/id)}})
                 transform-id (:id response)
                 crowberto-id (mt/user->id :crowberto)
                 creator-id (t2/select-one-fn :creator_id :model/Transform transform-id)]
@@ -88,7 +89,8 @@
                                                              :query mbql-query}
                                                     :target {:type   "table"
                                                              :schema schema
-                                                             :name   table-name}})]
+                                                             :name   table-name
+                                                             :database (mt/id)}})]
                 (is (= "mbql" (:source_type response))))))
 
           (testing "Native query transforms are detected as :native"
@@ -100,7 +102,8 @@
                                                              :query (lib/native-query (mt/metadata-provider) "SELECT 1")}
                                                     :target {:type   "table"
                                                              :schema schema
-                                                             :name   table-name}})]
+                                                             :name   table-name
+                                                             :database (mt/id)}})]
                 (is (= "native" (:source_type response))))))
 
           (testing "Python transforms are detected as :python"
@@ -132,7 +135,8 @@
                                                           :query native-query}
                                                  :target {:type   "table"
                                                           :schema schema
-                                                          :name   table-name}})]
+                                                          :name   table-name
+                                                          :database (mt/id)}})]
               (is (= "native" (:source_type created)))
 
               (testing "Type automatically changes to mbql when updating to an MBQL query"
@@ -155,7 +159,8 @@
                                                          :query query}
                                                 :target {:type   "table"
                                                          :schema schema
-                                                         :name   "test_transform"}})]
+                                                         :name   "test_transform"
+                                                         :database (mt/id)}})]
             (is (= "error-premium-feature-not-available" (:status response)))))))
 
     (testing "Creating a query transform with :transforms feature succeeds"
@@ -170,7 +175,8 @@
                                                            :query query}
                                                   :target {:type   "table"
                                                            :schema schema
-                                                           :name   table-name}})]
+                                                           :name   table-name
+                                                           :database (mt/id)}})]
               (is (some? (:id response))))))))))
 
 (deftest update-transform-feature-flag-test
@@ -186,7 +192,8 @@
                                               :query query}
                                      :target {:type   "table"
                                               :schema schema
-                                              :name   table-name}}
+                                              :name   table-name
+                                              :database (mt/id)}}
                   created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
               ;; Now test update without feature flag
               (mt/with-premium-features #{}
@@ -208,7 +215,8 @@
                                               :query query}
                                      :target {:type   "table"
                                               :schema schema
-                                              :name   table-name}}
+                                              :name   table-name
+                                              :database (mt/id)}}
                   created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
               ;; Now test run without feature flag
               (mt/with-premium-features #{}
@@ -231,7 +239,8 @@
                                               :query (make-query "Gadget")}
                                 :target      {:type   "table"
                                               :schema (get-test-schema)
-                                              :name   table-name}}
+                                              :name   table-name
+                                              :database (mt/id)}}
                   _            (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                   list-resp    (mt/user-http-request :crowberto :get 200 "ee/transform")
                   crowberto-id (mt/user->id :crowberto)]
@@ -280,7 +289,8 @@
                                             :query (make-query "Gadget")}
                               :target      {:type   "table"
                                             :schema (get-test-schema)
-                                            :name   table-name}}
+                                            :name   table-name
+                                            :database (mt/id)}}
                 resp         (mt/user-http-request :crowberto :post 200 "ee/transform" body)
                 get-resp     (mt/user-http-request :crowberto :get 200 (format "ee/transform/%s" (:id resp)))
                 crowberto-id (mt/user->id :crowberto)]
@@ -296,7 +306,8 @@
    :name transform-name
    :target {:schema "public"
             :name "orders_2"
-            :type "table"}})
+            :type "table"
+            :database (mt/id)}})
 
 (deftest get-transform-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -331,14 +342,16 @@
                                                              :query (make-query "Gadget")}
                                                     :target {:type   "table"
                                                              :schema (get-test-schema)
-                                                             :name   table-name}})
+                                                             :name   table-name
+                                                             :database (mt/id)}})
                 transform    {:name        "Gadget Products 2"
                               :description "Desc"
                               :source      {:type  "query"
                                             :query query2}
                               :target      {:type   "table"
                                             :schema (get-test-schema)
-                                            :name   table-name}}
+                                            :name   table-name
+                                            :database (mt/id)}}
                 put-resp     (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp))
                                                    transform)
                 crowberto-id (mt/user->id :crowberto)]
@@ -360,7 +373,8 @@
                                    :query (make-query "Gadget")}
                           :target {:type   "table"
                                    :schema (get-test-schema)
-                                   :name   table1-name}}
+                                   :name   table1-name
+                                   :database (mt/id)}}
                 resp     (mt/user-http-request :crowberto :post 200 "ee/transform"
                                                original)
                 updated  {:name        "Doohickey Products"
@@ -369,7 +383,8 @@
                                         :query query2}
                           :target      {:type   "table"
                                         :schema (get-test-schema)
-                                        :name   table2-name}}]
+                                        :name   table2-name
+                                        :database (mt/id)}}]
             (is (=? (-> updated
                         (m/dissoc-in [:source :query :lib/metadata]))
                     (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id resp)) updated)
@@ -387,7 +402,8 @@
                                                      :query (make-query "Gadget")}
                                             :target {:type   "table"
                                                      :schema (get-test-schema)
-                                                     :name   table-name}})]
+                                                     :name   table-name
+                                                     :database (mt/id)}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s" (:id resp)))
             (mt/user-http-request :crowberto :get 404 (format "ee/transform/%s" (:id resp)))))))))
 
@@ -402,7 +418,8 @@
                                                      :query (make-query "Gadget")}
                                             :target {:type   "table"
                                                      :schema (get-test-schema)
-                                                     :name   table-name}})]
+                                                     :name   table-name
+                                                     :database (mt/id)}})]
             (mt/user-http-request :crowberto :delete 204 (format "ee/transform/%s/table" (:id resp)))))))))
 
 (defn- test-run
@@ -482,10 +499,12 @@
           (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
-                                                                       :name   "gadget_products"}
+                                                                       :name   "gadget_products"
+                                                                       :database (mt/id)}
                                       {table2-name :name :as target2} {:type   "table"
                                                                        :schema schema
-                                                                       :name   "doohickey_products"}]
+                                                                       :name   "doohickey_products"
+                                                                       :database (mt/id)}]
               (let [query2             (make-query "Doohickey")
                     original           {:name   "Gadget Products"
                                         :source {:type  "query"
@@ -853,7 +872,7 @@
                      (mt/user-http-request :crowberto :post 400 "ee/transform"
                                            {:name   "Gadget Products"
                                             :source {:type "query" :query query}
-                                            :target {:type "table" :schema schema :name table-name}}))))))))))
+                                            :target {:type "table" :schema schema :name table-name :database (mt/id)}}))))))))))
 
 (deftest update-transform-with-routing-fails-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
@@ -869,7 +888,7 @@
                                                     :user_attribute "db_name"}
                            :model/Transform transform {:name   "Gadget Products"
                                                        :source {:type "query" :query query}
-                                                       :target {:type "table" :schema schema :name table-name}}]
+                                                       :target {:type "table" :schema schema :name table-name :database (mt/id)}}]
               (is (= "Transforms are not supported on databases with DB routing enabled."
                      (mt/user-http-request :crowberto :put 400 (format "ee/transform/%s" (:id transform))
                                            (assoc transform :name "Gadget Products 2")))))))))))
@@ -901,7 +920,8 @@
                                      :query (make-query "Gadget")}
                             :target {:type   "table"
                                      :schema (get-test-schema)
-                                     :name   table-name}}
+                                     :name   table-name
+                                     :database (mt/id)}}
                 transform-id (test-transform-revisions :post "ee/transform" gadget-req 1)
                 widget-req {:name   "Widget Products"
                             :description "The widget products"
@@ -910,5 +930,97 @@
                             :tag_ids [4]
                             :target {:type   "table"
                                      :schema (get-test-schema)
-                                     :name   table-name}}]
+                                     :name   table-name
+                                     :database (mt/id)}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
+
+(defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:clickhouse :redshift :bigquery-cloud-sdk :snowflake]]
+  (defmethod driver/database-supports? [driver ::extract-columns-from-query]
+    [_driver _feature _database]
+    false))
+
+(deftest ^:parallel extract-columns-from-query-test
+  (testing "POST /api/ee/transform/extract-columns"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
+                                                           ::extract-columns-from-query]})
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (letfn [(make-native-query [sql]
+                    {:lib/type :mbql/query
+                     :database (mt/id)
+                     :stages [{:lib/type :mbql.stage/native
+                               :native sql}]})]
+            (testing "Successfully extracts columns from a simple SELECT query"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
+                (is (= ["id" "name" "category" "price"] (:columns response)))))
+
+            (testing "Returns nil for invalid SQL"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT * FORM invalid_table")})]
+                (is (nil? (:columns response)))))
+
+            (testing "Extracts columns from query with aliases"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
+                (is (= ["product_id" "product_name"] (:columns response)))))
+
+            (testing "Requires superuser permissions"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "ee/transform/extract-columns"
+                                           {:query (make-native-query "SELECT * FROM transforms_products")}))))
+
+            (testing "Returns 404 for non-existent database"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 "ee/transform/extract-columns"
+                                           {:query {:lib/type :mbql/query
+                                                    :database 999999
+                                                    :stages [{:lib/type :mbql.stage/native
+                                                              :native "SELECT * FROM transforms_products"}]}}))))))))))
+
+(deftest ^:parallel is-simple-query-test
+  (testing "POST /api/ee/transform/is-simple-query"
+    (mt/with-premium-features #{:transforms}
+      (testing "Returns true for simple SELECT queries"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products"})]
+          (is (true? (:is_simple response)))
+          (is (nil? (:reason response)))))
+
+      (testing "Returns true for simple SELECT with WHERE clause"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products WHERE category = 'Electronics'"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns true for simple SELECT with JOIN"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT p.id, p.name, c.name FROM products p JOIN categories c ON p.category_id = c.id"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns false for query with LIMIT"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains an OFFSET" (:reason response)))))
+
+      (testing "Returns false for query with LIMIT and OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10 OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with CTE"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a CTE" (:reason response))))))))

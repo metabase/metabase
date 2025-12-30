@@ -27,6 +27,7 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
+import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import { getTokenFeature } from "metabase/setup/selectors";
 import { getFont } from "metabase/styled-components/selectors";
 import type { IconName, IconProps } from "metabase/ui";
@@ -103,6 +104,7 @@ type StateProps = {
   isRawTable: boolean;
   isEmbeddingSdk: boolean;
   scrollToLastColumn: boolean;
+  isDownloadingToImage: boolean;
 };
 
 type ForwardedRefProps = {
@@ -161,8 +163,6 @@ type VisualizationOwnProps = {
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
-  uuid?: string;
-  token?: string;
   zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
@@ -205,6 +205,7 @@ const mapStateToProps = (state: State): StateProps => ({
   isRawTable: getIsShowingRawTable(state),
   isEmbeddingSdk: isEmbeddingSdk(),
   scrollToLastColumn: getUiControls(state)?.scrollToLastColumn,
+  isDownloadingToImage: getIsDownloadingToImage(state),
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
@@ -660,6 +661,7 @@ class Visualization extends PureComponent<
       isShowingDetailsOnlyColumns,
       isShowingSummarySidebar,
       isSlow,
+      isDownloadingToImage,
       metadata,
       mode,
       onEditSummary,
@@ -682,9 +684,7 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
-      token,
       totalNumGridCols,
-      uuid,
       width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
@@ -710,6 +710,11 @@ class Visualization extends PureComponent<
 
     // disable hover when click action is active
     if (clickActions.length > 0) {
+      hovered = null;
+    }
+
+    // disable hover when exporting chart as an image (png download)
+    if (isDownloadingToImage) {
       hovered = null;
     }
 
@@ -939,8 +944,6 @@ class Visualization extends PureComponent<
                     totalNumGridCols={totalNumGridCols}
                     visualizationIsClickable={this.visualizationIsClickable}
                     width={rawWidth}
-                    uuid={uuid}
-                    token={token}
                     zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={

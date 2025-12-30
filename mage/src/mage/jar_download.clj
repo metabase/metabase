@@ -255,7 +255,7 @@
         dir                (some-> (or dir (u/env "JARS" (fn [] (println "JARS not set in env, defaulting to"
                                                                          (str u/project-root-directory "/jars"))))
                                        (str u/project-root-directory "/jars"))
-                                   u/without-slash)
+                                   (str/replace #"/$" ""))
         ;; latest-version could be a version string like 1.50.35 or a map with :branch key
         {:keys [latest-version jar-path]} (download-jar! version dir delete?)]
     (when run?

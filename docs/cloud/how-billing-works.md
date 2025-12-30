@@ -60,9 +60,9 @@ A user account is any account which has been added to your Metabase instance (ma
 
 ## How billing works with embedding
 
-Interactive Embedding requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
+Full app embedding and modular embedding (unless using guest embeds) requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
 
-Static Embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
+Guest embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
 
 ## How we count active user accounts each day
 
@@ -79,7 +79,7 @@ For example, say you're running two Metabase instances, A and B, that both use t
 
 Then the number of user accounts would total 8 for that day.
 
-If you're on Metabase Cloud, counting active users works the same: each day we count the maxium number of user accounts at any one time over the previous 36 hours.
+If you're on Metabase Cloud, counting active users works the same: each day we count the maximum number of user accounts at any one time over the previous 36 hours.
 
 We refresh the user count you see in your [Metabase Store account page](https://store.metabase.com) every day. Since the refresh only happens once a day, there might be a delay between when you adjust the number of user accounts in your Metabase and when your accounts sync with your Store page.
 

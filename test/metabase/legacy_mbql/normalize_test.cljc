@@ -777,9 +777,12 @@
 
 (deftest ^:parallel canonicalize-aggregations-test-11
   (normalize-tests
-   "subclauses of `:aggregation-options` should get canonicalized correctly"
+   "subclauses of `:aggregation-options` should get canonicalized correctly; unwrap :aggregation-options with empty options"
    {{:query {:aggregation [[:aggregation-options [:sum 10] {}]]}}
-    {:query {:aggregation [[:aggregation-options [:sum [:field 10 nil]] {}]]}}}))
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}
+
+    {:query {:aggregation [[:aggregation-options [:sum 10] nil]]}}
+    {:query {:aggregation [[:sum [:field 10 nil]]]}}}))
 
 (deftest ^:parallel canonicalize-aggregations-test-12
   (normalize-tests
@@ -1678,3 +1681,17 @@
              ["field" 3]
              nil]]
            {"default" ["field" 5 {}]}]))))
+
+(deftest ^:parallel normalize-literal-strings-in-custom-aggregations-test
+  (testing "Strings are allowed as arguments to a custom aggregation (#66199)"
+    (is (= [:max "Literal String"]
+           (mbql.normalize/normalize ["max" "Literal String"])))
+    (is (= [:aggregation-options
+            [:max "Literal String"]
+            {:name         "foo"
+             :display-name "Foo"}]
+           (mbql.normalize/normalize
+            ["aggregation-options"
+             ["max" "Literal String"]
+             {"name"         "foo"
+              "display-name" "Foo"}])))))

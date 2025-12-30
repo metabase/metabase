@@ -4,7 +4,6 @@ import type {
 } from "metabase/public/lib/types";
 import type {
   BaseEntityId,
-  CardCreatorInfo,
   CardDisplayType,
   ClickBehavior,
   Collection,
@@ -19,9 +18,11 @@ import type {
   ParameterValueOrArray,
   Table,
   UserId,
+  UserInfo,
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type {
   ActionDisplayType,
@@ -48,7 +49,7 @@ export interface Dashboard {
   entity_id: BaseEntityId;
   created_at: string;
   creator_id: UserId;
-  creator?: CardCreatorInfo;
+  creator?: UserInfo;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;
@@ -345,7 +346,8 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id: DashboardId;
+  dashboard_id?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

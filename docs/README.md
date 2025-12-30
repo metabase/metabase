@@ -204,11 +204,12 @@ Metabase's reference documentation.
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Interactive embedding](./embedding/interactive-embedding.md)
-- [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
-- [Static embedding](./embedding/static-embedding.md)
-- [Parameters for static embeds](./embedding/static-embedding-parameters.md)
-- [Securing embedded Metabase](./embedding/securing-embeds.md)
+- Modular embedding
+  - [SSO](./embedding/modular-embedding.md)
+  - [Guest](./embedding/guest-embedding.md)
+  - [SDK](./embedding/sdk/introduction.md)
+- [Full app embedding](./embedding/full-app-embedding.md)
+- [Securing embeds](./embedding/securing-embeds.md)
 
 ### Configuration
 

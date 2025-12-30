@@ -12,7 +12,6 @@ import {
   Stack,
 } from "metabase/ui";
 import { useExportChangesMutation } from "metabase-enterprise/api";
-import type { Collection } from "metabase-types/api";
 
 import { trackPushChanges } from "../../analytics";
 import { type SyncError, parseSyncError } from "../../utils";
@@ -22,7 +21,6 @@ import { SyncConflictModal } from "../SyncConflictModal";
 import { CommitMessageSection } from "./CommitMessageSection";
 
 interface PushChangesModalProps {
-  collections: Collection[];
   currentBranch: string;
   onClose: () => void;
 }
@@ -30,7 +28,6 @@ interface PushChangesModalProps {
 export const PushChangesModal = ({
   onClose,
   currentBranch,
-  collections,
 }: PushChangesModalProps) => {
   const [commitMessage, setCommitMessage] = useState("");
 
@@ -61,7 +58,7 @@ export const PushChangesModal = ({
     });
 
     trackPushChanges({
-      triggeredFrom: "sidebar",
+      triggeredFrom: "app-bar",
       force: false,
     });
   }, [commitMessage, exportChanges, currentBranch]);
@@ -69,7 +66,6 @@ export const PushChangesModal = ({
   if (hasConflict) {
     return (
       <SyncConflictModal
-        collections={collections}
         currentBranch={currentBranch}
         onClose={onClose}
         variant="push"
@@ -93,7 +89,7 @@ export const PushChangesModal = ({
         )}
 
         <Stack gap="lg">
-          <ChangesLists collections={collections} title={t`Changes to push`} />
+          <ChangesLists title={t`Changes to push`} />
 
           <CommitMessageSection
             value={commitMessage}
