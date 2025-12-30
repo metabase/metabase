@@ -34,11 +34,11 @@
     (try
       (let [database (t2/select-one :model/Database :id (:database_id workspace))]
         (ws.isolation/destroy-workspace-isolation! database workspace))
-      ;; Mark all inputs as un-granted since the user was dropped
       (catch Exception e
-        (log/warnf e "Failed to cleanup isolation resources for workspace %s, proceeding with archive" workspace-id))
-      (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
-                  {:access_granted false})))
+        (log/warnf e "Failed to cleanup isolation resources for workspace %s, proceeding with archive" workspace-id)))
+    ;; Mark all inputs as un-granted since the user was dropped
+    (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
+                {:access_granted false}))
   (t2/update! :model/Workspace workspace-id {:status :archived}))
 
 (defn unarchive!
