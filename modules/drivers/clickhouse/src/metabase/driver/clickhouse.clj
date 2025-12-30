@@ -44,7 +44,7 @@
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
                               :describe-is-generated            false
                               :describe-is-nullable             true
-                              :workspace                        true
+                              :isolation                        true
                               :expression-literals              true
                               :expressions/date                 true
                               :expressions/float                true

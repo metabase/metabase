@@ -887,7 +887,7 @@
     :describe-is-generated
 
     ;; Does this driver support the workspace feature
-    :workspace})
+    :isolation})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -934,7 +934,7 @@
                               :test/uuids-in-create-table-statements  true
                               :metadata/table-existence-check         false
                               :metadata/table-writable-check          false
-                              :workspace                              false}]
+                              :isolation                              false}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
 
 ;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
@@ -1818,7 +1818,7 @@
    - Grant appropriate permissions (CREATE, INSERT, SELECT, etc.) on the isolated schema
 
    This is an enterprise feature. Drivers must also return true for
-   (database-supports? driver :workspace database) to indicate support."
+   (database-supports? driver :isolation database) to indicate support."
   {:added "0.59.0" :arglists '([driver database workspace])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

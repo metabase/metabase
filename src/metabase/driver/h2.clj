@@ -75,7 +75,7 @@
                               :test/jvm-timezone-setting false
                               :uuid-type                 true
                               :uploads                   true
-                              :workspace                 true
+                              :isolation                 true
                               :database-routing          true
                               :describe-is-generated     true
                               :describe-is-nullable      true

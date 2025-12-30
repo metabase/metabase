@@ -115,7 +115,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest init-and-destroy-workspace-isolation-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (let [workspace {:id (rand-int 100000)}]
       (try
         (testing "init-workspace-isolation! creates resources and returns expected structure"
@@ -151,7 +151,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest connection-swapping-integration-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (testing "with-swapped-connection-details affects query execution"
       (let [query-succeeded? (fn []
                                (try
@@ -168,7 +168,7 @@
             (is (not (query-succeeded?)))))))))
 
 (deftest isolated-connection-execution-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (let [workspace {:id (rand-int 100000)}]
       (try
         ;; Setup isolation
@@ -190,7 +190,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest grant-workspace-read-access-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (let [workspace {:id (rand-int 100000)}]
       (try
         ;; Setup isolation first
@@ -211,7 +211,7 @@
           (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
 
 (deftest check-isolation-permissions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (testing "check-isolation-permissions returns success for properly configured database"
       (let [result (driver/check-isolation-permissions driver/*driver* (mt/db))]
         (is (map? result))

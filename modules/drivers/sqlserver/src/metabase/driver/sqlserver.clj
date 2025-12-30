@@ -63,7 +63,7 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :workspace                              true}]
+                              :isolation                              true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]

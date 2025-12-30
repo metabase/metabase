@@ -54,7 +54,7 @@
                               :transforms/python                true
                               :transforms/table                 true
                               :uuid-type                        false
-                              :workspace                        true}]
+                              :isolation                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

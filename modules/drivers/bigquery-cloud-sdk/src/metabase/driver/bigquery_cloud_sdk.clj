@@ -831,7 +831,7 @@
                               :transforms/python                true
                               :transforms/table                 true
                               ;; Workspace isolation using service account impersonation
-                              :workspace                        true}]
+                              :isolation                        true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 ;; BigQuery is always in UTC
