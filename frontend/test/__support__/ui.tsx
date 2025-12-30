@@ -235,6 +235,7 @@ export function TestWrapper({
   withDND,
   withUndos,
   theme,
+  displayTheme,
   withCssVariables = false,
 }: {
   children: React.ReactElement;
@@ -245,13 +246,14 @@ export function TestWrapper({
   withDND: boolean;
   withUndos?: boolean;
   theme?: MantineThemeOverride;
+  displayTheme?: "light" | "dark";
   withCssVariables?: boolean;
 }): JSX.Element {
   return (
     <MetabaseReduxProvider store={store}>
       <MaybeDNDProvider hasDND={withDND}>
         <ThemeProviderContext.Provider value={{ withCssVariables }}>
-          <ThemeProvider theme={theme}>
+          <ThemeProvider theme={theme} displayTheme={displayTheme}>
             <GlobalStylesForTest />
 
             <MaybeKBar hasKBar={withKBar}>
