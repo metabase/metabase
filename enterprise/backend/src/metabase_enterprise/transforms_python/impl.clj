@@ -5,8 +5,7 @@
 
 (defmethod transforms.i/target-db-id :python
   [transform]
-  (or (get-in transform [:target :database])
-      (:target_db_id transform)))
+  (-> transform :target :database))
 
 (defmethod transforms.i/source-db-id :python
   [transform]
