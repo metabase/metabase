@@ -810,11 +810,10 @@
         (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
                        :model/Table {table-id :id} {:name "test-table" :db_id db-id}
                        :model/Field {field-id :id} {:name "test-field" :table_id table-id :base_type :type/Text}
-                       :model/Collection {coll-id :id}
-                       {:name "Test Collection"
-                        :is_remote_synced true
-                        :entity_id "test-collection-1xxxx"
-                        :location "/"}]
+                       :model/Collection _ {:name "Test Collection"
+                                            :is_remote_synced true
+                                            :entity_id "test-collection-1xxxx"
+                                            :location "/"}]
           (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
                                     "databases/test-db/tables/test-table/fields/test-field.yaml"
@@ -836,11 +835,10 @@
         (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
                        :model/Table {table-id :id} {:name "test-table" :db_id db-id}
                        :model/Field {field-id :id} {:name "test-field" :table_id table-id :base_type :type/Integer}
-                       :model/Collection {coll-id :id}
-                       {:name "Test Collection"
-                        :is_remote_synced true
-                        :entity_id "test-collection-1xxxx"
-                        :location "/"}
+                       :model/Collection _ {:name "Test Collection"
+                                            :is_remote_synced true
+                                            :entity_id "test-collection-1xxxx"
+                                            :location "/"}
                        :model/Segment {segment-id :id}
                        {:name "Test Segment"
                         :table_id table-id
@@ -873,11 +871,10 @@
       (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})]
         (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
                        :model/Table {table-id :id} {:name "test-table" :db_id db-id :schema "PUBLIC"}
-                       :model/Collection {coll-id :id}
-                       {:name "Test Collection"
-                        :is_remote_synced true
-                        :entity_id "test-collection-1xxxx"
-                        :location "/"}]
+                       :model/Collection _ {:name "Test Collection"
+                                            :is_remote_synced true
+                                            :entity_id "test-collection-1xxxx"
+                                            :location "/"}]
           (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
                                     "databases/test-db/schemas/PUBLIC/tables/test-table/test-table.yaml"

@@ -49,6 +49,7 @@
    ```"
   (:require
    [clojure.set :as set]
+   [metabase.app-db.core :as mdb]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -97,11 +98,18 @@
 
 ;;; -------------------------------------------- Select Clause Generation ----------------------------------------------
 
+(defn- null-integer-column
+  "Return a HoneySQL expression for a NULL integer value that works across databases.
+   MySQL requires CAST(NULL AS SIGNED), while PostgreSQL/H2 use CAST(NULL AS INTEGER)."
+  [alias]
+  (let [int-type (if (= :mysql (mdb/db-type)) :signed :integer)]
+    [[:cast nil int-type] alias]))
+
 (defn- build-select-clause
   "Build HoneySQL select clause for a model based on its config.
    Generates the standard set of columns needed for dirty-state queries."
   [table-key {:keys [model-label has-description has-authority-level has-updated-at
-                     collection-id-source table-join extra-columns]
+                     collection-id-source extra-columns]
               :or   {has-description      true
                      has-authority-level  false
                      has-updated-at       true
@@ -126,7 +134,7 @@
       ;; Extra columns (display, query_type) - nil if not present
       [(if (extra-set :display) (col :display) [nil :display])]
       [(if (extra-set :query_type) (col :query_type) [nil :query_type])]
-      [(if (extra-set :table_id) (col :table_id) [[:cast nil :int] :table_id])]
+      [(if (extra-set :table_id) (col :table_id) (null-integer-column :table_id))]
       [(if (extra-set :table_name) [:metabase_table.name :table_name] [nil :table_name])]
       ;; Description
       [(if has-description (col :description) [nil :description])]

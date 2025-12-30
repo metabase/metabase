@@ -1039,9 +1039,9 @@
                 (first table-entries))))))
   (testing "unpublished tables are not tracked when collection becomes remote-synced"
     (mt/with-temp [:model/Collection collection {:name "Soon Remote-Sync"}
-                   :model/Table table {:name "Test Table"
-                                       :is_published false
-                                       :collection_id (:id collection)}]
+                   :model/Table _ {:name "Test Table"
+                                   :is_published false
+                                   :collection_id (:id collection)}]
       (t2/delete! :model/RemoteSyncObject)
       ;; Make collection remote-synced
       (events/publish-event! :event/collection-update

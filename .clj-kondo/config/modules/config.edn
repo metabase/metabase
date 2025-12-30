@@ -1193,6 +1193,7 @@
    :api  #{metabase.remote-sync.core
            metabase.remote-sync.init}
    :uses #{api
+           app-db
            models
            premium-features}}
 

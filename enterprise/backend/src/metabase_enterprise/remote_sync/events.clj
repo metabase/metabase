@@ -151,22 +151,22 @@
 
 ;; Standard model change handlers
 
-(defmodel-change-handler card
+(defmodel-change-handler :card
   {:model-type   "Card"
    :event-prefix :event/card
    :log-name     "card"})
 
-(defmodel-change-handler dashboard
+(defmodel-change-handler :dashboard
   {:model-type   "Dashboard"
    :event-prefix :event/dashboard
    :log-name     "dashboard"})
 
-(defmodel-change-handler document
+(defmodel-change-handler :document
   {:model-type   "Document"
    :event-prefix :event/document
    :log-name     "document"})
 
-(defmodel-change-handler snippet
+(defmodel-change-handler :snippet
   {:model-type   "NativeQuerySnippet"
    :event-prefix :event/snippet
    :log-name     "snippet"})
@@ -222,7 +222,7 @@
         (log/infof "Collection %s type changed from remote-synced, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" user-id)))))
 
-(defmodel-change-handler timeline
+(defmodel-change-handler :timeline
   {:model-type   "Timeline"
    :event-prefix :event/timeline
    :log-name     "timeline"})
@@ -248,7 +248,7 @@
      (when-let [table (t2/select-one :model/Table :id table_id)]
        (published-table-in-remote-synced-collection? table)))))
 
-(defmodel-change-handler table
+(defmodel-change-handler :table
   {:model-type   "Table"
    :event-prefix :event/table
    :log-name     "table"
@@ -257,7 +257,7 @@
 
 ;; Segment events - track segments in published tables in remote-synced collections
 
-(defmodel-change-handler segment
+(defmodel-change-handler :segment
   {:model-type   "Segment"
    :event-prefix :event/segment
    :log-name     "segment"
@@ -265,7 +265,7 @@
 
 ;; Field events - track fields in published tables in remote-synced collections
 
-(defmodel-change-handler field
+(defmodel-change-handler :field
   {:model-type   "Field"
    :event-prefix :event/field
    :log-name     "field"
