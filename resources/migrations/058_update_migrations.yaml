@@ -4575,7 +4575,8 @@ databaseChangeLog:
   - changeSet:
       id: v58.2025-12-29T19:00:00
       author: christruter
-      comment: Add db_status column to workspace for tracking database isolation state
+      comment: Add db_status column for tracking database isolation state
+      rollback: empty
       changes:
         - addColumn:
             tableName: workspace
@@ -4587,47 +4588,69 @@ databaseChangeLog:
                   defaultValue: "uninitialized"
                   constraints:
                     nullable: false
-      rollback:
-        - dropColumn:
-            tableName: workspace
-            columnName: db_status
 
   - changeSet:
       id: v58.2025-12-29T19:00:01
       author: christruter
-      comment: Migrate workspace status to db_status before renaming
+      comment: Add base_status column for tracking workspace lifecycle
+      rollback: empty
       changes:
-        - sql:
-            sql: |
-              UPDATE workspace SET db_status = status WHERE status IN ('uninitialized', 'pending', 'ready', 'setup-failed')
-            splitStatements: false
-      rollback:
-        # No rollback needed - will be handled by next migration's rollback
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: base_status
+                  type: varchar(20)
+                  remarks: Workspace lifecycle status (empty, active, archived)
+                  defaultValue: "empty"
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v58.2025-12-29T19:00:02
       author: christruter
-      comment: Rename workspace status to base_status and migrate values
+      comment: Copy status to db_status for non-archived workspaces
+      rollback: empty
       changes:
-        - renameColumn:
-            tableName: workspace
-            oldColumnName: status
-            newColumnName: base_status
-            columnDataType: varchar(20)
         - sql:
             sql: |
-              UPDATE workspace SET base_status = 'active' WHERE base_status IN ('uninitialized', 'pending', 'ready', 'setup-failed')
+              UPDATE workspace SET db_status = status
+              WHERE status IN ('uninitialized', 'pending', 'ready', 'setup-failed')
             splitStatements: false
-      rollback:
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:03
+      author: christruter
+      comment: Set base_status to active for initialized workspaces
+      rollback: empty
+      changes:
         - sql:
             sql: |
-              UPDATE workspace SET base_status = db_status WHERE base_status = 'active'
+              UPDATE workspace SET base_status = 'active'
+              WHERE status IN ('pending', 'ready', 'setup-failed')
             splitStatements: false
-        - renameColumn:
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:04
+      author: christruter
+      comment: Set base_status to archived for archived workspaces
+      rollback: empty
+      changes:
+        - sql:
+            sql: |
+              UPDATE workspace SET base_status = 'archived'
+              WHERE status = 'archived'
+            splitStatements: false
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:05
+      author: christruter
+      comment: Drop legacy status column
+      rollback: empty
+      changes:
+        - dropColumn:
             tableName: workspace
-            oldColumnName: base_status
-            newColumnName: status
-            columnDataType: varchar(20)
+            columnName: status
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
