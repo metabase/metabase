@@ -20,6 +20,7 @@ export function usePalette(): ColorPalette {
       "text-light": theme.fn.themeColor("text-light"),
       "text-white": theme.fn.themeColor("text-white"),
       "text-primary": theme.fn.themeColor("text-primary"),
+      "text-secondary": theme.fn.themeColor("text-secondary"),
       "bg-white": theme.fn.themeColor("bg-white"),
     };
   }, [theme]);
