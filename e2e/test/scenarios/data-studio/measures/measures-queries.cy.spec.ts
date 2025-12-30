@@ -661,6 +661,7 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       }).then(({ body: measure }) => {
+        cy.log("Create a question that uses the measure");
         createQuestionWithMeasure({
           measureName: MEASURE_NAME,
           questionDetails: {
@@ -672,6 +673,7 @@ describe("scenarios > data studio > measures > queries", () => {
           },
         });
 
+        cy.log("Create a model that uses the measure");
         createQuestionWithMeasure({
           measureName: MEASURE_NAME,
           questionDetails: {
@@ -683,6 +685,20 @@ describe("scenarios > data studio > measures > queries", () => {
           },
         });
 
+        cy.log("Create a metric that uses the measure");
+        createQuestionWithMeasure({
+          measureName: MEASURE_NAME,
+          questionDetails: {
+            type: "metric",
+            name: "Metric using measure",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+            },
+          },
+        });
+
+        cy.log("Create a measure that uses the measure");
         H.createMeasure({
           name: "Measure using measure",
           table_id: ORDERS_ID,
@@ -722,6 +738,15 @@ describe("scenarios > data studio > measures > queries", () => {
           .click();
         H.DependencyGraph.dependencyPanel()
           .findByText("Model using measure")
+          .should("be.visible");
+
+        cy.log("verify model dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("1 metric")
+          .click();
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Metric using measure")
           .should("be.visible");
 
         cy.log("verify measure dependency");
@@ -918,11 +943,17 @@ function createQuestionWithMeasure({
   ).then(() => {
     if (details.type === "model") {
       H.openQuestionActions("Edit query definition");
+    } else if (details.type === "metric") {
+      H.openQuestionActions("Edit metric definition");
     } else {
       H.openNotebook();
     }
 
-    H.summarize({ mode: "notebook" });
+    if (details.type === "metric") {
+      H.getNotebookStep("summarize").findByText("Count").click();
+    } else {
+      H.summarize({ mode: "notebook" });
+    }
     H.popover().within(() => {
       cy.findByText("Measures").click();
       cy.findByText(measureName).click();
@@ -932,6 +963,8 @@ function createQuestionWithMeasure({
 
     if (details.type === "model") {
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    } else if (details.type === "metric") {
+      cy.findByTestId("edit-bar").button("Save changes").click();
     } else {
       cy.findByTestId("qb-header").button("Save").click();
       H.modal().findByText("Save").click();
