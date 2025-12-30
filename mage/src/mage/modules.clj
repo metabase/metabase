@@ -1,5 +1,6 @@
 (ns mage.modules
   (:require
+   ^:clj-kondo/ignore
    [cheshire.core :as json]
    [clojure.edn :as edn]
    [clojure.set :as set]
@@ -9,7 +10,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:dynamic *github-output-only?* false)
+(def ^:dynamic ^:private *github-output-only?* false)
 
 ;;; TODO (Cam 2025-11-07) changes to test files should only cause us to run tests for that module as well, not
 ;;; everything that depends on that module directly or indirectly in `src`
@@ -180,7 +181,7 @@
 ;;;; Driver test decisions - consolidated logic for which drivers to run
 ;;;; =============================================================================
 
-(def ^:private cloud-drivers
+(def cloud-drivers
   "Drivers that run on cloud infrastructure and require secrets. These are more expensive to run,
   since they need round trip times, so we skip them on PRs unless specifically needed."
   #{:athena :bigquery :databricks :redshift :snowflake})
@@ -273,20 +274,8 @@
 
    Returns a map with :should-run (boolean) and :reason (string).
 
-   ## Decision Priority (first match wins)
-
-   | Priority | Condition                              | Result | Reason                                    |
-   |----------|----------------------------------------|--------|-------------------------------------------|
-   | 1        | Driver is quarantined                  | SKIP   | driver is quarantined                     |
-   | 1a       | ...but has break-quarantine-X label    | RUN    | anti-quarantine label present             |
-   | 2        | Global skip (no backend changes)       | SKIP   | workflow skip (no backend changes)        |
-   | 3        | Driver is :h2                          | RUN    | H2 always runs                            |
-   | 4        | On master or release branch            | RUN    | master/release branch                     |
-   | 5        | Driver module affected by changes      | RUN    | driver module affected by shared code     |
-   | 6        | Cloud driver + ci:all-cloud-drivers    | RUN    | ci:all-cloud-drivers label                |
-   | 7        | Cloud driver + its files changed       | RUN    | driver files changed                      |
-   | 8        | Cloud driver, no relevant changes      | SKIP   | no relevant changes for cloud driver      |
-   | 9        | Self-hosted driver, not affected       | SKIP   | driver module not affected                |
+   For the decision priority order, see: mage -driver-decisions -h
+   (or see [[driver-decision-priority-rules]] for the data structure)
 
    ## What counts as 'driver module affected'?
 
@@ -460,7 +449,7 @@
     (u/exit 0)))
 
 (defn -main
-  "See [[cli-driver-decisions]]"
+  "See [[cli-driver-decisions]]."
   [{:keys [options] :as parsed}]
   (binding [*github-output-only?* (:github-output-only options)]
     (cli-driver-decisions parsed)))

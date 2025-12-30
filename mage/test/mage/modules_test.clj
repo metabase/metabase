@@ -1,18 +1,6 @@
 (ns mage.modules-test
   "Tests for driver decision logic.
-
-   These tests verify the priority order documented in [[mage.modules/driver-decision]].
-   The priority order (first match wins) is:
-
-   1. Quarantined driver -> SKIP (unless break-quarantine label present)
-   2. Global skip (no backend changes) -> SKIP
-   3. H2 driver -> RUN (always)
-   4. Master/release branch -> RUN
-   5. Driver module affected -> RUN
-   6. Cloud driver + ci:all-cloud-drivers label -> RUN
-   7. Cloud driver + its files changed -> RUN
-   8. Cloud driver, no relevant changes -> SKIP
-   9. Self-hosted driver, not affected -> SKIP"
+   Run `mage -driver-decisions -h` to see the priority order."
   (:require
    [clojure.test :refer [deftest is testing]]
    [mage.modules]))
