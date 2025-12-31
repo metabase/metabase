@@ -814,51 +814,48 @@ describe("scenarios > data studio > measures > queries", () => {
           "source-table": ORDERS_ID,
           aggregation: [["count"]],
         },
-      }).then(({ body: otherMeasure }) => {
-        H.createSegment({
-          name: "Table Segment",
-          table_id: ORDERS_ID,
-          definition: {
-            "source-table": ORDERS_ID,
-            filter: [">", ["field", ORDERS.TOTAL, null], 100],
-          },
-        }).then(({ body: segment }) => {
-          H.createMeasure({
-            name: MEASURE_NAME,
-            table_id: ORDERS_ID,
-            definition: {
-              "source-table": ORDERS_ID,
-              aggregation: [
-                // TODO: this does not work for some reason
-                [
-                  "+",
-                  1,
-                  ["measure", otherMeasure.id],
-                  ["count-where", ["segment", segment.id]],
-                ],
-              ],
-            },
-          }).then(({ body: measure }) => {
-            visitDependencyGraph("measure", measure.id);
+      });
+      H.createSegment({
+        name: "Table Segment",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          filter: [">", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
 
-            cy.log("verify table dependency");
-            H.DependencyGraph.graph()
-              .findByLabelText("Orders")
-              .should("be.visible")
-              .within(() => {
-                cy.findByText("1 segment").should("be.visible");
-                cy.findByText("2 measures").should("be.visible");
-              });
+      // Create measure using GUI since referencing Product table is tricky using
+      // H.createMeasure
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type(
+        "1 + CountIf([Table Segment]) + Sum([Product -> Price])",
+      );
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure().then((measure) => {
+        visitDependencyGraph("measure", measure.id);
 
-            cy.log("verify measure dependency");
-            H.DependencyGraph.graph()
-              .findByLabelText("Other Measure")
-              .should("be.visible")
-              .within(() => {
-                cy.findByText("1 measure").should("be.visible");
-              });
-          });
-        });
+        cy.log("verify table dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText("Orders")
+          .should("be.visible");
+
+        cy.log("verify implicit table dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText("Products")
+          .should("be.visible");
+
+        cy.log("verify segment dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText("Table Segment")
+          .should("be.visible");
+
+        cy.log("verify measure dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText("Other Measure")
+          .should("be.visible");
       });
     });
   });
@@ -877,8 +874,13 @@ function startNewMeasure({
 }
 
 function saveMeasure() {
+  cy.intercept("POST", "/api/measure").as("measureCreate");
   MeasureEditor.getSaveButton().click();
-  H.undoToast().should("contain.text", "Measure created");
+
+  return cy.wait("@measureCreate").then(({ response }) => {
+    H.undoToast().should("contain.text", "Measure created");
+    return cy.wrap(response.body);
+  });
 }
 
 function useMeasureInAdhocQuestion({
