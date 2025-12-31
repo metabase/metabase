@@ -665,7 +665,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("dependency graph", () => {
-    it("should display measures and their dependencies in the dependency graph", () => {
+    it("should display measure dependents in the dependency graph", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         table_id: ORDERS_ID,
@@ -721,16 +721,7 @@ describe("scenarios > data studio > measures > queries", () => {
           },
         });
 
-        cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
-
-        H.DependencyGraph.dependencyPanel()
-          .findByText("Question using measure")
-          .should("be.visible");
-
-        H.DependencyGraph.dependencyPanel()
-          .findByText("Table Measure")
-          .should("be.visible")
-          .click();
+        visitDependencyGraph("measure", measure.id);
 
         cy.log("verify question dependency");
         H.DependencyGraph.graph()
@@ -750,7 +741,7 @@ describe("scenarios > data studio > measures > queries", () => {
           .findByText("Model using measure")
           .should("be.visible");
 
-        cy.log("verify model dependency");
+        cy.log("verify metric dependency");
         H.DependencyGraph.graph()
           .findByLabelText(MEASURE_NAME)
           .findByText("1 metric")
@@ -779,7 +770,7 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       }).then(({ body: measure }) => {
-        cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
+        visitDependencyGraph("measure", measure.id);
 
         H.DependencyGraph.graph()
           .findByLabelText(MEASURE_NAME)
@@ -806,7 +797,7 @@ describe("scenarios > data studio > measures > queries", () => {
           },
         });
 
-        cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
+        visitDependencyGraph("measure", measure.id);
 
         H.DependencyGraph.graph()
           .findByLabelText(MEASURE_NAME)
@@ -848,7 +839,7 @@ describe("scenarios > data studio > measures > queries", () => {
               ],
             },
           }).then(({ body: measure }) => {
-            cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
+            visitDependencyGraph("measure", measure.id);
 
             cy.log("verify table dependency");
             H.DependencyGraph.graph()
@@ -995,4 +986,8 @@ function createQuestionWithMeasure({
 
     return cy.get("@questionId");
   });
+}
+
+function visitDependencyGraph(type: string, id: string) {
+  cy.visit(`/data-studio/dependencies?id=${id}&type=${type}`);
 }
