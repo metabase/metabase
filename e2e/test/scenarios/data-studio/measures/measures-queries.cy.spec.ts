@@ -1,7 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import type { TableId } from "metabase-types/api";
+import type { Measure, TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
@@ -873,13 +873,13 @@ function startNewMeasure({
   MeasureEditor.getNameInput().type(name);
 }
 
-function saveMeasure() {
+function saveMeasure(): Cypress.Chainable<Measure> {
   cy.intercept("POST", "/api/measure").as("measureCreate");
   MeasureEditor.getSaveButton().click();
 
   return cy.wait("@measureCreate").then(({ response }) => {
     H.undoToast().should("contain.text", "Measure created");
-    return cy.wrap(response.body);
+    return cy.wrap(response.body as Measure);
   });
 }
 
@@ -990,6 +990,6 @@ function createQuestionWithMeasure({
   });
 }
 
-function visitDependencyGraph(type: string, id: string) {
+function visitDependencyGraph(type: string, id: number | string) {
   cy.visit(`/data-studio/dependencies?id=${id}&type=${type}`);
 }
