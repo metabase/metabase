@@ -262,7 +262,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.only("[FLAKY] should be able to check out existing transform into a new workspace from the transform page", () => {
+    it("[FLAKY] should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
@@ -948,6 +948,114 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
   });
+
+  describe("transform -> workspace", () => {
+    it("should check out transform into a new workspace from the transform page", () => {
+      cy.log("Create 2 workspaces, add transform to the second one");
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceA");
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceB");
+
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Check that all workspaces are available and sorted by checked status")
+      cy.visit("/data-studio/transforms");
+      Transforms.list()
+        .findByRole("row", { name: /SQL transform/ })
+        .click();
+
+      cy.findByRole("button", { name: /Edit transform/ }).click();
+      H.popover().within(() => {
+        cy.get<string>('@workspaceA').then((workspaceA) => {
+          cy.get<string>('@workspaceB').then((workspaceB) => {
+            cy.findAllByRole('menuitem').eq(0).contains("New workspace");
+            cy.findAllByRole('menuitem').eq(1).contains(workspaceB);
+            cy.log("Check that edit redirects to correct workspace")
+            cy.findAllByRole('menuitem').eq(2).contains(workspaceA).click();
+          })
+        })
+      });
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .should("not.exist");
+    })
+
+    it("should open checked out transform in existing workspace from the transform page", () => {
+      cy.log("Create 2 workspaces, add transform to the second one");
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceA");
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceB");
+
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      cy.visit("/data-studio/transforms");
+      Transforms.list()
+        .findByRole("row", { name: /SQL transform/ })
+        .click();
+
+      cy.findByRole("button", { name: /Edit transform/ }).click();
+      H.popover().within(() => {
+        cy.get<string>('@workspaceA').then((workspaceA) => {
+          cy.get<string>('@workspaceB').then((workspaceB) => {
+            cy.findAllByRole('menuitem').eq(0).contains("New workspace");
+            cy.findAllByRole('menuitem').eq(2).contains(workspaceA);
+            cy.log("Edit transform in a workspace where it's been checked out")
+            cy.findAllByRole('menuitem').eq(1).contains(workspaceB).click();
+          })
+        })
+      });
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+      H.NativeEditor.value().should("contain", " LIMIT 2");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .click();
+      cy.log("Tabs state should stay the same, because this transform is already checked and its tab should be opened after redirect")
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+    })
+  })
 });
 
 function createWorkspace() {
