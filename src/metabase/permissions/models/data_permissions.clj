@@ -815,8 +815,10 @@
                                                  [:not= :table_id nil]
                                                  [:not [:in :table_id table-ids]]]})
         existing-table-values (set (map :perm_value existing-table-perms))]
-    (if (and (= (count existing-table-values) 1)
-             (= values existing-table-values))
+    (if (or (and (empty? existing-table-values)
+                 (= (count values) 1))
+            (and (= (count existing-table-values) 1)
+                 (= values existing-table-values)))
       ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
       ;; perms with a DB-level perm instead.
       (build-database-permission group-id db-id perm-type (first values))
