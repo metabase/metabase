@@ -3,12 +3,14 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { CollectionTreeItem } from "metabase/entities/collections";
+import type {
+  GitSyncSetupMenuItemProps,
+  SyncedCollectionsSidebarSectionProps,
+} from "metabase/plugins";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-
-import type { SyncedCollectionsSidebarSectionProps } from "../types";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
@@ -32,6 +34,7 @@ const getDefaultPluginRemoteSync = () => ({
   GitSyncAppBarControls:
     PluginPlaceholder as ComponentType<GitSyncAppBarControlsProps>,
   GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
+  GitSyncSetupMenuItem: PluginPlaceholder,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
@@ -43,7 +46,6 @@ const getDefaultPluginRemoteSync = () => ({
     progressModal: null,
   }),
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
-  useGitSettingsVisible: () => false,
   useHasLibraryDirtyChanges: () => false,
 });
 
@@ -53,6 +55,7 @@ export const PLUGIN_REMOTE_SYNC: {
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType<GitSyncAppBarControlsProps>;
   GitSettingsModal: ComponentType<GitSettingsModalProps>;
+  GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;
@@ -67,7 +70,6 @@ export const PLUGIN_REMOTE_SYNC: {
     isVisible: boolean;
     currentBranch: string | null | undefined;
   };
-  useGitSettingsVisible: () => boolean;
   useHasLibraryDirtyChanges: () => boolean;
 } = getDefaultPluginRemoteSync();
 
