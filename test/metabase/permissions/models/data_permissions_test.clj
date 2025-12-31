@@ -671,9 +671,7 @@
           (data-perms/set-table-permission! group-id-2 table-id-3 :perms/create-queries :no)
 
           ;; Group 3: native permissions (most permissive)
-          (data-perms/set-table-permission! group-id-3 table-id-1 :perms/create-queries :query-builder-and-native)
-          (data-perms/set-table-permission! group-id-3 table-id-2 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id-3 table-id-3 :perms/create-queries :no)
+          (data-perms/set-database-permission! group-id-3 database-id :perms/create-queries :query-builder-and-native)
 
           ;; Should return the most permissive permission found across all tables and groups
           (is (= :query-builder-and-native
