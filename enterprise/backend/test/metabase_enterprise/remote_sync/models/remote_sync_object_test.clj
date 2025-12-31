@@ -373,7 +373,7 @@
         (let [item (first dirty-items)]
           (is (= (:id table) (:id item)))
           (is (= "Test Table" (:name item)))
-          (is (= "Table" (:model item)))
+          (is (= "table" (:model item)))
           (is (= "pending" (:sync_status item)))
           ;; For tables, table_id and table_name refer to themselves
           (is (= (:id table) (:table_id item)))
@@ -404,7 +404,7 @@
         (let [item (first dirty-items)]
           (is (= (:id field) (:id item)))
           (is (= "test_field" (:name item)))
-          (is (= "Field" (:model item)))
+          (is (= "field" (:model item)))
           (is (= "update" (:sync_status item)))
           ;; collection_id should come from the parent table
           (is (= (:id collection) (:collection_id item)))
@@ -442,7 +442,7 @@
         (let [item (first dirty-items)]
           (is (= (:id segment) (:id item)))
           (is (= "Test Segment" (:name item)))
-          (is (= "Segment" (:model item)))
+          (is (= "segment" (:model item)))
           (is (= "create" (:sync_status item)))
           ;; collection_id should come from the parent table
           (is (= (:id collection) (:collection_id item)))
@@ -534,4 +534,4 @@
       (let [dirty-items (rs-object/dirty-for-global)
             models (set (map :model dirty-items))]
         (is (= 8 (count dirty-items)))
-        (is (= #{"Collection" "Card" "Dashboard" "Document" "NativeQuerySnippet" "Table" "Field" "Segment"} models))))))
+        (is (= #{"collection" "card" "dashboard" "document" "nativequerysnippet" "table" "field" "segment"} models))))))

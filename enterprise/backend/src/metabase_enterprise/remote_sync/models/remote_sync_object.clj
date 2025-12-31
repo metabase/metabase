@@ -6,6 +6,7 @@
    and for Field/Segment/Table models, parent table information."
   (:require
    [clojure.set :as set]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -19,14 +20,14 @@
 
 (defn dirty-global?
   "Checks if any collection has changes since the last sync.
-   Returns true if any remote-synced object has a status other than 'synced', false otherwise."
+  Returns true if any remote-synced object has a status other than 'synced', false otherwise."
   []
   (t2/exists? :model/RemoteSyncObject :status [:not= "synced"]))
 
 (defn dirty-for-global
   "Gets all models in any collection that are dirty with their sync status.
-   Returns a sequence of model maps that have changed since the last remote sync,
-   including details about their current state and sync status."
+  Returns a sequence of model maps that have changed since the last remote sync,
+  including details about their current state and sync status."
   []
   (->> (t2/select :model/RemoteSyncObject :status [:not= "synced"])
        (map #(-> %
@@ -38,5 +39,6 @@
                                    :model_display :display
                                    :model_table_id :table_id
                                    :model_table_name :table_name
-                                   :status :sync_status})))
+                                   :status :sync_status})
+                 (update :model u/lower-case-en)))
        (into [])))
