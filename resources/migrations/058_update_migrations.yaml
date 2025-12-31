@@ -3599,20 +3599,20 @@ databaseChangeLog:
         - customChange:
             class: "metabase.app_db.custom_migrations.BackfillTransformTargetDbId"
 
-  - changeSet:
-      id: v58.2025-12-15T12:16:17
-      author: piranha
-      comment: Make transform.target_db_id column NOT NULL
-      changes:
-        - addNotNullConstraint:
-            tableName: transform
-            columnName: target_db_id
-            columnDataType: int
-      rollback:
-        - dropNotNullConstraint:
-            tableName: transform
-            columnName: target_db_id
-            columnDataType: int
+            #- changeSet:
+            #    id: v58.2025-12-15T12:16:17
+            #    author: piranha
+            #    comment: Make transform.target_db_id column NOT NULL
+            #    changes:
+            #      - addNotNullConstraint:
+            #          tableName: transform
+            #          columnName: target_db_id
+            #          columnDataType: int
+            #    rollback:
+            #      - dropNotNullConstraint:
+            #          tableName: transform
+            #          columnName: target_db_id
+            #          columnDataType: int
 
   - changeSet:
       id: v58.2025-12-15T12:16:18
