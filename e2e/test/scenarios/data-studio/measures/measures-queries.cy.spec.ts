@@ -23,7 +23,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().findByText("Count of rows").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("18,760");
     });
 
@@ -37,7 +37,7 @@ describe("scenarios > data studio > measures > queries", () => {
           });
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
 
@@ -51,7 +51,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure(() => {
+      useMeasureInAdhocQuestion(() => {
         breakout("Created At");
       });
       verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
@@ -68,7 +68,7 @@ describe("scenarios > data studio > measures > queries", () => {
           });
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("55.69");
     });
 
@@ -84,7 +84,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure(() => {
+      useMeasureInAdhocQuestion(() => {
         breakout("Created At");
       });
       verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
@@ -102,7 +102,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("18,867");
     });
 
@@ -124,7 +124,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("13,005");
     });
 
@@ -146,7 +146,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
 
@@ -168,7 +168,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621");
     });
 
@@ -190,7 +190,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
 
@@ -250,7 +250,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("18,758");
     });
 
@@ -277,7 +277,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("18,758");
     });
 
@@ -321,7 +321,7 @@ describe("scenarios > data studio > measures > queries", () => {
           H.popover().button("Done").click();
         },
       });
-      useMeasure();
+      useMeasureInAdhocQuestion();
       verifyScalarValue("18,759");
     });
 
@@ -335,7 +335,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasure(() => {
+      useMeasureInAdhocQuestion(() => {
         H.getNotebookStep("summarize").findByText("Table Measure").click();
         H.CustomExpressionEditor.clear().type(`Offset([${MEASURE_NAME}], -1)`);
         H.popover().button("Update").click();
@@ -357,7 +357,7 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    useMeasure(() => {
+    useMeasureInAdhocQuestion(() => {
       breakout("Created At");
 
       H.sort();
@@ -378,7 +378,7 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    useMeasure(() => {
+    useMeasureInAdhocQuestion(() => {
       H.getNotebookStep("summarize").findByText("Table Measure").click();
       cy.log("Use weird formula to get different ordering in results");
       H.CustomExpressionEditor.clear().type(
@@ -410,7 +410,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasure(() => {
+      useMeasureInAdhocQuestion(() => {
         breakout("Created At");
 
         H.getNotebookStep("summarize").button("Filter").click();
@@ -448,7 +448,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasure(() => {
+      useMeasureInAdhocQuestion(() => {
         breakout("Created At");
 
         H.getNotebookStep("summarize").button("Join data").click();
@@ -474,7 +474,7 @@ describe("scenarios > data studio > measures > queries", () => {
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
       },
     });
-    useMeasure(() => {
+    useMeasureInAdhocQuestion(() => {
       breakout("Created At");
 
       H.getNotebookStep("summarize").button("Join data").click();
@@ -504,7 +504,7 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       }).then(({ body: measure }) => {
-        useMeasure();
+        useMeasureInAdhocQuestion();
 
         H.updateMeasure({
           id: measure.id,
@@ -526,7 +526,7 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasure(() => {
+      useMeasureInAdhocQuestion(() => {
         H.getNotebookStep("summarize").findByText("Table Measure").click();
         H.CustomExpressionEditor.nameInput()
           .clear()
@@ -872,7 +872,7 @@ function buildNewMeasure({ createQuery }: { createQuery: () => void }) {
   H.undoToast().should("contain.text", "Measure created");
 }
 
-function useMeasure(beforeVisualize?: () => void) {
+function useMeasureInAdhocQuestion(beforeVisualize?: () => void) {
   cy.log("verify the measure works in query builder");
   H.openTable({ table: ORDERS_ID, mode: "notebook" });
   H.summarize({ mode: "notebook" });
