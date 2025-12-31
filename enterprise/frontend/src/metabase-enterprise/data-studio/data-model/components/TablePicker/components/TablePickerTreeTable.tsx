@@ -31,16 +31,19 @@ import {
 import { TYPE_ICONS } from "../constants";
 import type {
   ChangeOptions,
-  DatabaseNode,
   RootNode,
-  SchemaNode,
-  TableNode,
   TablePickerTreeNode,
   TreePath,
 } from "../types";
-import { nodeToTreePath, transformToTreeTableFormat } from "../utils";
+import {
+  getDatabases,
+  getSchemas,
+  getTables,
+  nodeToTreePath,
+  transformToTreeTableFormat,
+} from "../utils";
 
-type OriginalNode = DatabaseNode | SchemaNode | TableNode;
+const NUMBER_FORMAT_OPTIONS = { maximumFractionDigits: 0 };
 
 interface Props {
   tree: RootNode;
@@ -69,8 +72,7 @@ export function TablePickerTreeTable({
     selectedItemsCount,
   } = useSelection();
 
-  const numberFormatOptions = useMemo(() => ({ maximumFractionDigits: 0 }), []);
-  const formatNumber = useNumberFormatter(numberFormatOptions);
+  const formatNumber = useNumberFormatter(NUMBER_FORMAT_OPTIONS);
   const lastSelectedTableIndex = useRef<number | null>(null);
   const instanceRef = useRef<ReturnType<
     typeof useTreeTableInstance<TablePickerTreeNode>
@@ -101,17 +103,11 @@ export function TablePickerTreeTable({
   }, [treeData]);
 
   const nodeKeyToOriginal = useMemo(() => {
-    const map = new Map<string, OriginalNode>();
-    for (const db of tree.children) {
-      map.set(db.key, db);
-      for (const schema of db.children) {
-        map.set(schema.key, schema);
-        for (const table of schema.children) {
-          map.set(table.key, table);
-        }
-      }
-    }
-    return map;
+    return new Map(
+      [...getDatabases(tree), ...getSchemas(tree), ...getTables(tree)].map(
+        (n) => [n.key, n],
+      ),
+    );
   }, [tree]);
 
   const expandedIds = useMemo(() => {
@@ -133,11 +129,7 @@ export function TablePickerTreeTable({
     };
 
     for (const [key, originalNode] of nodeKeyToOriginal) {
-      const result = isItemSelected(originalNode, selection);
-      map.set(
-        key,
-        result === "yes" ? "all" : result === "some" ? "some" : "none",
-      );
+      map.set(key, isItemSelected(originalNode, selection));
     }
     return map;
   }, [nodeKeyToOriginal, selectedTables, selectedSchemas, selectedDatabases]);
@@ -174,13 +166,12 @@ export function TablePickerTreeTable({
       };
 
       const isTable = row.original.type === "table";
-      const hasRangeAnchor = lastSelectedTableIndex.current != null;
-      const isRangeSelection = isShiftPressed && isTable && hasRangeAnchor;
+      const lastIndex = lastSelectedTableIndex.current;
 
-      if (isRangeSelection && lastSelectedTableIndex.current != null) {
+      if (isShiftPressed && isTable && lastIndex != null) {
         const rows = instanceRef.current?.rows ?? [];
-        const start = Math.min(lastSelectedTableIndex.current, index);
-        const end = Math.max(lastSelectedTableIndex.current, index);
+        const start = Math.min(lastIndex, index);
+        const end = Math.max(lastIndex, index);
         const rangeRows = rows
           .slice(start, end + 1)
           .filter((r) => !r.original.isDisabled && r.original.type === "table");
@@ -210,10 +201,9 @@ export function TablePickerTreeTable({
           return;
         }
 
-        const isSelected = selectedTables.has(tableId);
         setSelectedTables((prev) => {
           const newSet = new Set(prev);
-          isSelected ? newSet.delete(tableId) : newSet.add(tableId);
+          newSet.has(tableId) ? newSet.delete(tableId) : newSet.add(tableId);
           return newSet;
         });
         lastSelectedTableIndex.current = index;
@@ -354,13 +344,10 @@ export function TablePickerTreeTable({
     [ownerNameById, formatNumber],
   );
 
-  const expandedState = useMemo(() => {
-    const state: Record<string, boolean> = {};
-    for (const id of expandedIds) {
-      state[id] = true;
-    }
-    return state;
-  }, [expandedIds]);
+  const expandedState = useMemo(
+    () => Object.fromEntries([...expandedIds].map((id) => [id, true])),
+    [expandedIds],
+  );
 
   const handleExpandedStateChange: OnChangeFn<ExpandedState> = useCallback(
     (updater) => {
@@ -443,21 +430,13 @@ export function TablePickerTreeTable({
     }
   }, [instance.rows, reload]);
 
-  const isChildrenLoading = useCallback((row: Row<TablePickerTreeNode>) => {
-    return (
-      row.getIsExpanded() &&
-      row.getCanExpand() &&
-      row.original.children?.length === 0
-    );
-  }, []);
-
   const handleRowClick = useCallback(
     (row: Row<TablePickerTreeNode>) => {
       if (row.original.isDisabled) {
         return;
       }
 
-      const isActive = isNodeActive(row.original, path, selectedItemsCount);
+      const isActive = isNodeActive(row.original, path);
       const hasChildren = row.original.type !== "table";
 
       if (selectedItemsCount > 0) {
@@ -500,11 +479,6 @@ export function TablePickerTreeTable({
     [],
   );
 
-  const isRowDisabled = useCallback(
-    (row: Row<TablePickerTreeNode>) => Boolean(row.original.isDisabled),
-    [],
-  );
-
   return (
     <TreeTable
       instance={instance}
@@ -520,15 +494,19 @@ export function TablePickerTreeTable({
   );
 }
 
-function isNodeActive(
-  node: TablePickerTreeNode,
-  path: TreePath,
-  selectedItemsCount: number,
-): boolean {
-  if (selectedItemsCount > 0) {
-    return false;
-  }
+function isChildrenLoading(row: Row<TablePickerTreeNode>): boolean {
+  return (
+    row.getIsExpanded() &&
+    row.getCanExpand() &&
+    row.original.children?.length === 0
+  );
+}
 
+function isRowDisabled(row: Row<TablePickerTreeNode>): boolean {
+  return Boolean(row.original.isDisabled);
+}
+
+function isNodeActive(node: TablePickerTreeNode, path: TreePath): boolean {
   if (node.type === "database") {
     return (
       node.databaseId === path.databaseId &&

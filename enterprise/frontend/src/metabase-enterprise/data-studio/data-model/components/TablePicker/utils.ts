@@ -14,6 +14,18 @@ import type {
   TreePath,
 } from "./types";
 
+export function getDatabases(tree: RootNode): DatabaseNode[] {
+  return tree.children;
+}
+
+export function getSchemas(tree: RootNode): SchemaNode[] {
+  return getDatabases(tree).flatMap((db) => db.children);
+}
+
+export function getTables(tree: RootNode): TableNode[] {
+  return getSchemas(tree).flatMap((schema) => schema.children);
+}
+
 // Returns a new state object with all the nodes along the path expanded.
 // Note: This only expands parent containers (database, schema) but NOT tables,
 // to prevent unwanted expansion when navigating via checkbox selection.
@@ -71,9 +83,9 @@ export function merge(
   const children = [];
 
   for (let index = 0; index < len; index++) {
-    const aa = a.children?.[index];
-    const bb = b.children?.[index];
-    children.push(merge(aa, bb));
+    const childA = a.children?.[index];
+    const childB = b.children?.[index];
+    children.push(merge(childA, childB));
   }
 
   const merged = { ...a, ...b };
@@ -110,25 +122,12 @@ export function rootNode(children: DatabaseNode[] = []): RootNode {
 }
 
 export function getFiltersCount(filters: FilterState): number {
-  let count = 0;
-
-  if (filters.dataSource != null) {
-    ++count;
-  }
-
-  if (filters.dataLayer != null) {
-    ++count;
-  }
-
-  if (filters.ownerEmail != null || filters.ownerUserId != null) {
-    ++count;
-  }
-
-  if (filters.unusedOnly === true) {
-    ++count;
-  }
-
-  return count;
+  return [
+    filters.dataSource != null,
+    filters.dataLayer != null,
+    filters.ownerEmail != null || filters.ownerUserId != null,
+    filters.unusedOnly === true,
+  ].filter(Boolean).length;
 }
 
 export function transformToTreeTableFormat(
@@ -149,15 +148,12 @@ function transformDatabaseNode(
   const shouldFlattenSingleSchema = canFlattenSingleSchema && isSingleSchema;
 
   let children: TablePickerTreeNode[];
-  if (shouldFlattenSingleSchema && database.children[0]) {
-    const singleSchema = database.children[0];
-    children = sort(singleSchema.children).map((table) =>
-      transformTableNode(table),
-    );
+  if (shouldFlattenSingleSchema) {
+    children = sort(database.children[0].children).map(transformTableNode);
   } else {
     children = sort(database.children).flatMap((schema) => {
       if (schema.label === UNNAMED_SCHEMA_NAME) {
-        return sort(schema.children).map((table) => transformTableNode(table));
+        return sort(schema.children).map(transformTableNode);
       }
       return [transformSchemaNode(schema)];
     });
@@ -183,7 +179,7 @@ function transformSchemaNode(schema: SchemaNode): TablePickerTreeNode {
     nodeKey: schema.key,
     databaseId,
     schemaName,
-    children: sort(schema.children).map((table) => transformTableNode(table)),
+    children: sort(schema.children).map(transformTableNode),
   };
 }
 
@@ -216,17 +212,9 @@ export function findSelectedTableNodes(
   tree: RootNode,
   selectedTables: Set<TableId>,
 ): TableNode[] {
-  const result: TableNode[] = [];
-  for (const db of tree.children) {
-    for (const schema of db.children) {
-      for (const table of schema.children) {
-        if (selectedTables.has(table.value.tableId)) {
-          result.push(table);
-        }
-      }
-    }
-  }
-  return result;
+  return getTables(tree).filter((table) =>
+    selectedTables.has(table.value.tableId),
+  );
 }
 
 export function getExpandedSelectedSchemas(
@@ -234,19 +222,12 @@ export function getExpandedSelectedSchemas(
   selectedSchemas: Set<string>,
   isExpanded: (key: string) => boolean,
 ): SchemaNode[] {
-  const result: SchemaNode[] = [];
-  for (const db of tree.children) {
-    for (const schema of db.children) {
-      if (
-        selectedSchemas.has(getSchemaId(schema)) &&
-        isExpanded(schema.key) &&
-        schema.children.length > 0
-      ) {
-        result.push(schema);
-      }
-    }
-  }
-  return result;
+  return getSchemas(tree).filter(
+    (schema) =>
+      selectedSchemas.has(getSchemaId(schema)) &&
+      isExpanded(schema.key) &&
+      schema.children.length > 0,
+  );
 }
 
 export function getExpandedSelectedDatabases(
@@ -254,17 +235,12 @@ export function getExpandedSelectedDatabases(
   selectedDatabases: Set<DatabaseId>,
   isExpanded: (key: string) => boolean,
 ): DatabaseNode[] {
-  const result: DatabaseNode[] = [];
-  for (const db of tree.children) {
-    if (
+  return getDatabases(tree).filter(
+    (db) =>
       selectedDatabases.has(db.value.databaseId) &&
       isExpanded(db.key) &&
-      db.children.length > 0
-    ) {
-      result.push(db);
-    }
-  }
-  return result;
+      db.children.length > 0,
+  );
 }
 
 export function hasManuallySelectedTables(

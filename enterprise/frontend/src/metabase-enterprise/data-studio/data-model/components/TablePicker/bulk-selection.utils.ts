@@ -1,3 +1,4 @@
+import type { SelectionState } from "metabase/ui";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import type { DatabaseNode, SchemaNode, TreeNode } from "./types";
@@ -9,38 +10,36 @@ export interface NodeSelection {
   databases: Set<DatabaseId>;
 }
 
-type NodeSelectionValues = "yes" | "no" | "some";
-
 export function isItemSelected(
   node: TreeNode,
   selection: NodeSelection,
-): NodeSelectionValues {
+): SelectionState {
   if (isTableNode(node)) {
-    return selection.tables.has(node.value.tableId) ? "yes" : "no";
+    return selection.tables.has(node.value.tableId) ? "all" : "none";
   }
   if (isSchemaNode(node)) {
     if (selection.schemas.has(getSchemaId(node))) {
-      return "yes";
+      return "all";
     }
 
     return areChildTablesSelected(node, selection.tables);
   }
   if (node.type === "database") {
     if (selection.databases.has(node.value.databaseId)) {
-      return "yes";
+      return "all";
     }
     return areChildSchemasSelected(node, selection);
   }
 
-  return "no";
+  return "none";
 }
 
 function areChildTablesSelected(
   node: TreeNode,
   selectedTables: Set<TableId>,
-): NodeSelectionValues {
+): SelectionState {
   if (node.children.length === 0) {
-    return "no";
+    return "none";
   }
 
   const selectedTablesCount = node.children.filter(
@@ -49,28 +48,28 @@ function areChildTablesSelected(
   ).length;
 
   return selectedTablesCount === node.children.length
-    ? "yes"
+    ? "all"
     : selectedTablesCount > 0
       ? "some"
-      : "no";
+      : "none";
 }
 
 function areChildSchemasSelected(
   node: TreeNode,
   selection: NodeSelection,
-): NodeSelectionValues {
+): SelectionState {
   if (node.children.length === 0) {
-    return "no";
+    return "none";
   }
 
   const selectedSchemasResult = node.children.map((child) =>
     isItemSelected(child, selection),
   );
 
-  return selectedSchemasResult.every((x) => x === "yes")
-    ? "yes"
-    : selectedSchemasResult.every((x) => x === "no")
-      ? "no"
+  return selectedSchemasResult.every((x) => x === "all")
+    ? "all"
+    : selectedSchemasResult.every((x) => x === "none")
+      ? "none"
       : "some";
 }
 
@@ -98,7 +97,7 @@ export function getSchemaChildrenTableIds(schema: SchemaNode): TableId[] {
 
 export function markAllSchemas(
   database: DatabaseNode,
-  targetChecked: "yes" | "no",
+  targetChecked: "all" | "none",
   selection: NodeSelection,
 ): NodeSelection {
   const schemas = new Set(selection.schemas);
@@ -107,7 +106,7 @@ export function markAllSchemas(
   for (const schema of database.children) {
     const schemaId = getSchemaId(schema);
     if (schema.children.length === 0) {
-      targetChecked === "yes"
+      targetChecked === "all"
         ? schemas.add(schemaId)
         : schemas.delete(schemaId);
     } else {
@@ -124,11 +123,11 @@ export function markAllSchemas(
 
 function markAllTables(
   schema: SchemaNode,
-  targetChecked: "yes" | "no",
+  targetChecked: "all" | "none",
   tablesSelection: Set<TableId>,
 ) {
   for (const tableId of getSchemaChildrenTableIds(schema)) {
-    targetChecked === "yes"
+    targetChecked === "all"
       ? tablesSelection.add(tableId)
       : tablesSelection.delete(tableId);
   }
@@ -139,7 +138,7 @@ export function toggleDatabaseSelection(
   selection: NodeSelection,
 ): NodeSelection {
   const isSelected = isItemSelected(item, selection);
-  const targetChecked = isSelected === "yes" ? "no" : "yes";
+  const targetChecked = isSelected === "all" ? "none" : "all";
 
   return markAllSchemas(item, targetChecked, selection);
 }
@@ -151,7 +150,7 @@ export function toggleSchemaSelection(
   const isSelected = isItemSelected(item, selection);
   const tables = new Set(selection.tables);
 
-  if (isSelected === "yes") {
+  if (isSelected === "all") {
     const tableIds = getSchemaChildrenTableIds(item);
     tableIds.forEach((x) => {
       tables.delete(x);

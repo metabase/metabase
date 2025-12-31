@@ -47,7 +47,7 @@ describe("bulk-selection.utils", () => {
 
   describe("isItemSelected", () => {
     describe("table selection", () => {
-      it("should return 'yes' when table is selected", () => {
+      it("should return 'all' when table is selected", () => {
         const table = createMockTableNode(1, "public", 101);
         const selection: NodeSelection = {
           tables: new Set([101]),
@@ -55,10 +55,10 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(table, selection)).toBe("yes");
+        expect(isItemSelected(table, selection)).toBe("all");
       });
 
-      it("should return 'no' when table is not selected", () => {
+      it("should return 'none' when table is not selected", () => {
         const table = createMockTableNode(1, "public", 101);
         const selection: NodeSelection = {
           tables: new Set([102]),
@@ -66,12 +66,12 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(table, selection)).toBe("no");
+        expect(isItemSelected(table, selection)).toBe("none");
       });
     });
 
     describe("schema selection", () => {
-      it("should return 'yes' when schema is directly selected", () => {
+      it("should return 'all' when schema is directly selected", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const schema = createMockSchemaNode(1, "public", [table1, table2]);
@@ -81,10 +81,10 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(schema, selection)).toBe("yes");
+        expect(isItemSelected(schema, selection)).toBe("all");
       });
 
-      it("should return 'yes' when all tables in schema are selected", () => {
+      it("should return 'all' when all tables in schema are selected", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const schema = createMockSchemaNode(1, "public", [table1, table2]);
@@ -94,7 +94,7 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(schema, selection)).toBe("yes");
+        expect(isItemSelected(schema, selection)).toBe("all");
       });
 
       it("should return 'some' when only some tables in schema are selected", () => {
@@ -110,7 +110,7 @@ describe("bulk-selection.utils", () => {
         expect(isItemSelected(schema, selection)).toBe("some");
       });
 
-      it("should return 'no' when no tables in schema are selected", () => {
+      it("should return 'none' when no tables in schema are selected", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const schema = createMockSchemaNode(1, "public", [table1, table2]);
@@ -120,10 +120,10 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(schema, selection)).toBe("no");
+        expect(isItemSelected(schema, selection)).toBe("none");
       });
 
-      it("should return 'no' when schema has no children", () => {
+      it("should return 'none' when schema has no children", () => {
         const schema = createMockSchemaNode(1, "public", []);
         const selection: NodeSelection = {
           tables: new Set(),
@@ -131,12 +131,12 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(schema, selection)).toBe("no");
+        expect(isItemSelected(schema, selection)).toBe("none");
       });
     });
 
     describe("database selection", () => {
-      it("should return 'yes' when database is directly selected", () => {
+      it("should return 'all' when database is directly selected", () => {
         const schema = createMockSchemaNode(1, "public", []);
         const database = createMockDatabaseNode(1, [schema]);
         const selection: NodeSelection = {
@@ -145,10 +145,10 @@ describe("bulk-selection.utils", () => {
           databases: new Set([1]),
         };
 
-        expect(isItemSelected(database, selection)).toBe("yes");
+        expect(isItemSelected(database, selection)).toBe("all");
       });
 
-      it("should return 'yes' when all schemas in database are selected", () => {
+      it("should return 'all' when all schemas in database are selected", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const table3 = createMockTableNode(1, "private", 103);
@@ -161,10 +161,10 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(database, selection)).toBe("yes");
+        expect(isItemSelected(database, selection)).toBe("all");
       });
 
-      it("should return 'yes' when all tables in all schemas are selected", () => {
+      it("should return 'all' when all tables in all schemas are selected", () => {
         const table1 = createMockTableNode(1, "public", 101);
         const table2 = createMockTableNode(1, "public", 102);
         const table3 = createMockTableNode(1, "private", 103);
@@ -177,7 +177,7 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(database, selection)).toBe("yes");
+        expect(isItemSelected(database, selection)).toBe("all");
       });
 
       it("should return 'some' when only some schemas are selected", () => {
@@ -209,7 +209,7 @@ describe("bulk-selection.utils", () => {
         expect(isItemSelected(database, selection)).toBe("some");
       });
 
-      it("should return 'no' when database has no children", () => {
+      it("should return 'none' when database has no children", () => {
         const database = createMockDatabaseNode(1, []);
         const selection: NodeSelection = {
           tables: new Set(),
@@ -217,7 +217,7 @@ describe("bulk-selection.utils", () => {
           databases: new Set(),
         };
 
-        expect(isItemSelected(database, selection)).toBe("no");
+        expect(isItemSelected(database, selection)).toBe("none");
       });
     });
   });
@@ -305,7 +305,7 @@ describe("bulk-selection.utils", () => {
         databases: new Set([1]),
       };
 
-      expect(isItemSelected(database, selection)).toBe("yes");
+      expect(isItemSelected(database, selection)).toBe("all");
     });
 
     it("selecting a schema selects all tables in it", () => {
@@ -318,9 +318,9 @@ describe("bulk-selection.utils", () => {
         databases: new Set(),
       };
 
-      expect(isItemSelected(schema, selection)).toBe("yes");
-      expect(isItemSelected(table1, selection)).toBe("no");
-      expect(isItemSelected(table2, selection)).toBe("no");
+      expect(isItemSelected(schema, selection)).toBe("all");
+      expect(isItemSelected(table1, selection)).toBe("none");
+      expect(isItemSelected(table2, selection)).toBe("none");
     });
 
     it("selecting all tables in a schema selects the schema", () => {
@@ -333,7 +333,7 @@ describe("bulk-selection.utils", () => {
         databases: new Set(),
       };
 
-      expect(isItemSelected(schema, selection)).toBe("yes");
+      expect(isItemSelected(schema, selection)).toBe("all");
     });
 
     it("selecting all schemas in a database selects the database", () => {
@@ -348,7 +348,7 @@ describe("bulk-selection.utils", () => {
         databases: new Set(),
       };
 
-      expect(isItemSelected(database, selection)).toBe("yes");
+      expect(isItemSelected(database, selection)).toBe("all");
     });
 
     it("selecting all tables in a database selects the database", () => {
@@ -364,9 +364,9 @@ describe("bulk-selection.utils", () => {
         databases: new Set(),
       };
 
-      expect(isItemSelected(database, selection)).toBe("yes");
-      expect(isItemSelected(schema1, selection)).toBe("yes");
-      expect(isItemSelected(schema2, selection)).toBe("yes");
+      expect(isItemSelected(database, selection)).toBe("all");
+      expect(isItemSelected(schema1, selection)).toBe("all");
+      expect(isItemSelected(schema2, selection)).toBe("all");
     });
 
     it("deselecting a database deselects all schemas and tables", () => {
@@ -379,9 +379,9 @@ describe("bulk-selection.utils", () => {
         databases: new Set(),
       };
 
-      expect(isItemSelected(database, selection)).toBe("no");
-      expect(isItemSelected(schema1, selection)).toBe("no");
-      expect(isItemSelected(table1, selection)).toBe("no");
+      expect(isItemSelected(database, selection)).toBe("none");
+      expect(isItemSelected(schema1, selection)).toBe("none");
+      expect(isItemSelected(table1, selection)).toBe("none");
     });
 
     it("deselecting a schema deselects all tables in it", () => {
@@ -394,9 +394,9 @@ describe("bulk-selection.utils", () => {
         databases: new Set(),
       };
 
-      expect(isItemSelected(schema, selection)).toBe("no");
-      expect(isItemSelected(table1, selection)).toBe("no");
-      expect(isItemSelected(table2, selection)).toBe("no");
+      expect(isItemSelected(schema, selection)).toBe("none");
+      expect(isItemSelected(table1, selection)).toBe("none");
+      expect(isItemSelected(table2, selection)).toBe("none");
     });
 
     it("deselecting one table in a schema changes schema to 'some'", () => {
