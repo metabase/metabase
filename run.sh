@@ -27,7 +27,7 @@ export JWT_IDP_PORT
 MB_SITE_URL=https://${OVERMIND_TITLE:-dev}.metabase.localhost
 export MB_SITE_URL
 
-OVERMIND_SOCKET=./.$OVERMIND_TITLE.sock
+OVERMIND_SOCKET=./.overmind.$OVERMIND_TITLE.sock
 export OVERMIND_SOCKET
 
 # Ensure shared Caddy is running (single instance on 80/443)
