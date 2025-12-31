@@ -711,7 +711,6 @@
             granted-schemas (when user-exists
                               (schemas-with-user-grants t-conn username))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          ;; Only revoke if user exists
           (when user-exists
             (doseq [schema granted-schemas]
               (.addBatch ^Statement stmt
@@ -720,12 +719,10 @@
               (.addBatch ^Statement stmt
                          ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
                                          schema username)))
-            ;; Only revoke default privileges if both user and schema exist
             (when schema-exists
               (.addBatch ^Statement stmt
                          ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
                                          schema-name username))))
-          ;; These are safe with IF EXISTS
           (.addBatch ^Statement stmt
                      ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
           (.addBatch ^Statement stmt

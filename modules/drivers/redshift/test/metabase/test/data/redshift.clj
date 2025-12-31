@@ -229,7 +229,6 @@
         {expired-isolation :expired}  (classify-isolation-schemas conn isolation)
         drop-sql                      (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema-name))]
     (with-open [stmt (.createStatement conn)]
-      ;; Drop schemas first
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]

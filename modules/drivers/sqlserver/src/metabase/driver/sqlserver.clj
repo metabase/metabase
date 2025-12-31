@@ -1108,20 +1108,15 @@
         login-name  (isolation-login-name workspace)
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-    ;; SQL Server requires dropping objects in schema before dropping schema
-    (doseq [sql [;; Drop all tables in the schema first
-                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+    (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
                               "SELECT @sql += 'DROP TABLE [%s].[' + name + ']; ' "
                               "FROM sys.tables WHERE schema_id = SCHEMA_ID('%s'); "
                               "EXEC sp_executesql @sql")
                          schema-name schema-name)
-                 ;; Drop schema (must be empty)
                  (format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s]"
                          schema-name schema-name)
-                 ;; Drop database user
                  (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
                          username username)
-                 ;; Drop server login
                  (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
                          login-name login-name)]]
       (jdbc/execute! conn-spec [sql]))))
