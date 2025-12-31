@@ -1,7 +1,6 @@
 import dedent from "ts-dedent";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   PythonTransformTableAliases,
   TransformTagId,
@@ -11,15 +10,9 @@ const { H } = cy;
 const { DataStudio, Workspaces } = H;
 const { Transforms } = DataStudio;
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
-
-const DB_NAME = "Worms";
 const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
-const TARGET_TABLE_2 = "T2";
 const TARGET_SCHEMA = "Schema A";
-const TARGET_SCHEMA_2 = "S2";
-const CUSTOM_SCHEMA = "CS";
 
 describe("scenarios > data studio > workspaces", () => {
   beforeEach(() => {
@@ -30,6 +23,7 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
+    // TODO: Is this correct way to grant querying permissions?
     cy.request("PUT", "/api/permissions/graph", {
       groups: {
         "1": {
@@ -50,6 +44,7 @@ describe("scenarios > data studio > workspaces", () => {
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
       "runTransform",
     );
+    cy.intercept("POST", "/api/dataset").as("dataset");
     // cy.intercept("PUT", "/api/field/*").as("updateField");
     // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
     // cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
@@ -96,7 +91,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Worms")
+          .should("have.value", "Writable Postgres12")
           .should("be.enabled");
 
         cy.log("Doesn't show workspace setup logs");
@@ -356,7 +351,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.findByLabelText(targetTable).should("be.visible").click();
-      cy.wait("@runTransform");
+      cy.wait("@dataset");
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(targetTable, [
@@ -783,7 +778,7 @@ describe("scenarios > data studio > workspaces", () => {
           .should("have.value", "test_table")
           .clear()
           .type("new_table");
-        Workspaces.getTransformTargetButton().click();
+        cy.findByRole("button", { name: /Change target/ }).click();
       });
 
       Workspaces.getWorkspaceSidebar().within(() => {
@@ -830,13 +825,16 @@ describe("scenarios > data studio > workspaces", () => {
 
       H.modal().within(() => {
         cy.findByDisplayValue("new_transform").clear();
-        cy.findByText("Target table name is required").should('be.visible');
+        cy.findByText("Target table name is required").should("be.visible");
         cy.realType("transform_table");
-        cy.findByText("Another transform in this workspace already targets that table").should('be.visible');
+        cy.findByText(
+          "Another transform in this workspace already targets that table",
+        ).should("be.visible");
         cy.realType("1");
-        cy.findByText("Another transform in this workspace already targets that table").should('not.exist');
+        cy.findByText(
+          "Another transform in this workspace already targets that table",
+        ).should("not.exist");
       });
-
     });
   });
 
