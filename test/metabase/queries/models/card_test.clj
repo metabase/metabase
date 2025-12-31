@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -1294,3 +1295,28 @@
       (t2/save! card')
       (is (= :question
              (t2/select-one-fn :type :model/Card :id (:id card)))))))
+
+(deftest create-card-no-remaps
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
+                                       :name                    "User ID"
+                                       :human_readable_field_id (mt/id :people :name)
+                                       :type                    :external}
+                   :model/Dimension _ {:field_id                (mt/id :orders :product_id)
+                                       :name                    "Product ID"
+                                       :human_readable_field_id (mt/id :products :title)
+                                       :type                    :external}]
+      (let [mp (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            card (card/create-card! {:database_id (mt/id),
+                                     :display :table,
+                                     :visualization_settings {},
+                                     :type :model
+                                     :name "orders model"
+                                     :dataset_query query}
+                                    @api/*current-user*)]
+        (try
+          (is (= 9
+                 (count (:result_metadata card))))
+          (finally
+            (t2/delete! :model/Card (:id card))))))))
