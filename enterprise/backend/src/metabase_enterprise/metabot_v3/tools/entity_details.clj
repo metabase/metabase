@@ -18,21 +18,10 @@
 
 (set! *warn-on-reflection* true)
 
-;; ============================================
-;; Helper functions for Measures and Segments
-;; ============================================
-
-(defn- convert-measure
-  "Convert a measure metadata object to the format expected by the API."
-  [measure-metadata]
-  (select-keys measure-metadata [:id :name :display-name :description :definition]))
-
-(defn- convert-segment
-  "Convert a segment metadata object to the format expected by the API."
-  [segment-metadata]
-  (select-keys segment-metadata [:id :name :display-name :description :definition]))
-
-;; ============================================
+(defn- convert-measure-or-segment
+  "Convert a measure or segment metadata object to the format expected by the API."
+  [metadata]
+  (select-keys metadata [:id :name :display-name :description :definition]))
 
 (defn verified-review?
   "Return true if the most recent ModerationReview for the given item id/type is verified."
@@ -158,7 +147,7 @@
 
        with-segments?
        (assoc :segments (if-let [segments (lib/available-segments metric-query)]
-                          (mapv convert-segment segments)
+                          (mapv convert-measure-or-segment segments)
                           []))))))
 
 (comment
@@ -224,10 +213,10 @@
                                     (not-empty (mapv #(convert-metric % mp options)
                                                      (lib/available-metrics table-query))))
                          :measures (when with-measures?
-                                     (not-empty (mapv convert-measure
+                                     (not-empty (mapv convert-measure-or-segment
                                                       (lib/available-measures table-query))))
                          :segments (when with-segments?
-                                     (not-empty (mapv convert-segment
+                                     (not-empty (mapv convert-measure-or-segment
                                                       (lib/available-segments table-query))))))))))
 
 (defn related-tables
@@ -318,10 +307,10 @@
                      (not-empty (mapv #(convert-metric % metadata-provider options)
                                       (lib/available-metrics card-query))))
           :measures (when with-measures?
-                      (not-empty (mapv convert-measure
+                      (not-empty (mapv convert-measure-or-segment
                                        (lib/available-measures card-query))))
           :segments (when with-segments?
-                      (not-empty (mapv convert-segment
+                      (not-empty (mapv convert-measure-or-segment
                                        (lib/available-segments card-query)))))))))
 
 (defn cards-details
