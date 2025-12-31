@@ -1320,5 +1320,3 @@
                  (count (:result_metadata card))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
-
-
