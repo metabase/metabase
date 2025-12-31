@@ -170,3 +170,20 @@
         :blocked       [:perms/view-data #{:sandboxed :blocked}]
         :blocked       [:perms/view-data #{:sandboxed}]
         :impersonated  [:perms/view-data #{:impersonated :sandboxed :legacy-no-self-service :blocked}]))))
+
+(deftest ^:parallel sandbox-at-least-as-permissive?-test
+  (testing "With :sandboxes feature enabled, :sandboxed is treated as :unrestricted for permission checks"
+    (mt/with-premium-features #{:sandboxes}
+      ;; :sandboxed is now considered at least as permissive as :unrestricted
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)
+          ":sandboxed should be at least as permissive as :unrestricted when feature is enabled")
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :blocked)))))
+
+(deftest ^:parallel sandboxed-permission-ee-test
+  (testing "With :sandboxes feature enabled, :sandboxed works normally"
+    (mt/with-premium-features #{:sandboxes}
+      (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed})))
+      (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed :blocked})))
+      (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed}))))))
