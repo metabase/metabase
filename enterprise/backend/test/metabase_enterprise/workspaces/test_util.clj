@@ -64,6 +64,7 @@
   (let [creator-id (or (:creator_id props) (mt/user->id :crowberto))
         props      (-> props
                        (dissoc :creator_id)
+                       (assoc :provisional? true)
                        (update :database_id #(or % (mt/id))))]
     (ws-ready (mt/with-current-user creator-id
                 (ws.common/create-workspace! creator-id props)))))
