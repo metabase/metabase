@@ -117,6 +117,12 @@
       (let [cases [[:unrestricted           :query-builder-and-native true]
                    [:unrestricted           :query-builder            true]
                    [:unrestricted           :no                       true]
+                   [:sandboxed              :query-builder-and-native false] ;; we don't have the `:sandboxes` feature
+                   [:sandboxed              :query-builder            false] ;; we don't have the `:sandboxes` feature
+                   [:sandboxed              :no                       false] ;; we don't have the `:sandboxes` feature
+                   [:impersonated           :query-builder-and-native true]
+                   [:impersonated           :query-builder            true]
+                   [:impersonated           :no                       true]
                    [:legacy-no-self-service :no                       false]
                    [:blocked                :no                       false]]
             ;; These are invalid permission combinations, so we don't test them:
@@ -138,6 +144,25 @@
                 (if should-succeed?
                   (is (= 1 (count (mt/rows response))))
                   (is (thrown? clojure.lang.ExceptionInfo (mt/rows response))))))))))))
+
+(deftest sandboxing-permissions-work-as-expected
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
+    (mt/with-temp [:model/User                       {user-id :id} {}
+                   :model/PermissionsGroup           group         {}
+                   :model/Collection                 {coll-id :id} {}
+                   :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
+                                                                                                      :type :query,
+                                                                                                      :query {:source-table (mt/id :venues)
+                                                                                                              :limit 1}}
+                                                                    :collection_id coll-id}]
+
+      (perms/add-user-to-group! user-id group)
+      (perms/grant-collection-read-permissions! group coll-id)
+      (mt/with-no-data-perms-for-all-users!
+        (testing "Sandboxed => can query"
+          (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data :sandboxed)
+          (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
+            (is (= 1 (count (mt/rows response))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"

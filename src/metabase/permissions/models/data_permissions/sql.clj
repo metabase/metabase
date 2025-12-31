@@ -43,42 +43,53 @@
    column :- :keyword]
   ;; Custom priority ordering for view-data permissions:
   ;; - :blocked has higher priority than :legacy-no-self-service (blocked wins)
-  ;; - :restricted-access overrides :blocked (like :unrestricted does)
-  ;; Schema order: [:unrestricted :restricted-access :legacy-no-self-service :blocked] = indices [0 1 2 3]
+  ;; - :sandboxed and :impersonated override :blocked (like :unrestricted does)
+  ;; Schema order: [:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked] = indices [0 1 2 3 4]
   (let [minimum-perm-value [:min
                             [:case
                              [:= column [:inline "unrestricted"]] [:inline 0]
-                             [:= column [:inline "restricted-access"]] [:inline 1]
-                             [:= column [:inline "blocked"]] [:inline 2]
-                             [:= column [:inline "legacy-no-self-service"]] [:inline 3]]]]
-    ;; Remap to schema indices: blocked is at 3, legacy-no-self-service is at 2
+                             [:= column [:inline "sandboxed"]] [:inline 1]
+                             [:= column [:inline "impersonated"]] [:inline 2]
+                             [:= column [:inline "blocked"]] [:inline 3]
+                             [:= column [:inline "legacy-no-self-service"]] [:inline 4]]]]
+    ;; Remap to schema indices: blocked is at 4, legacy-no-self-service is at 3
     [:case
      [:= minimum-perm-value [:inline 0]] [:inline 0]  ;; unrestricted → 0
-     [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; restricted-access → 1
-     [:= minimum-perm-value [:inline 2]] [:inline 3]  ;; blocked → 3
-     [:= minimum-perm-value [:inline 3]] [:inline 2]  ;; legacy-no-self-service → 2
+     [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; sandboxed → 1
+     [:= minimum-perm-value [:inline 2]] [:inline 2]  ;; impersonated → 2
+     [:= minimum-perm-value [:inline 3]] [:inline 4]  ;; blocked → 4
+     [:= minimum-perm-value [:inline 4]] [:inline 3]  ;; legacy-no-self-service → 3
      ]))
 
 (defn- effective-required-level
   "Returns the effective required permission level, accounting for feature flags.
 
    For :perms/view-data:
-   - When sandboxes feature is ENABLED: asking for :unrestricted also accepts :restricted-access
-     (because sandboxed/impersonated users can view data, just filtered)
-   - When sandboxes feature is DISABLED: asking for :restricted-access only accepts :unrestricted
-     (because :restricted-access is equivalent to :blocked without the feature)"
-  [perm-type required-level]
+   - When sandboxes feature is ENABLED: asking for :unrestricted also accepts :sandboxed
+   - When advanced-permissions feature is ENABLED: asking for :unrestricted also accepts :impersonated
+   - When features are DISABLED: :sandboxed/:impersonated are equivalent to :blocked"
+  [perm-type required-level & [most-or-least]]
   (if (= perm-type :perms/view-data)
     (cond
-      ;; With sandboxes enabled: :unrestricted should also include :restricted-access tables
+      ;; With both features enabled: :unrestricted should include both :sandboxed and :impersonated
+      ;; Return the most restrictive acceptable value (impersonated is at index 2)
       (and (= required-level :unrestricted)
-           (premium-features/enable-sandboxes?))
-      :restricted-access
+           (premium-features/enable-sandboxes?)
+           (premium-features/enable-advanced-permissions?)
+           (not= most-or-least :most))
+      :impersonated
 
-      ;; Without sandboxes: :restricted-access is equivalent to :blocked, so only accept :unrestricted
-      (and (= required-level :restricted-access)
-           (not (premium-features/enable-sandboxes?)))
-      :unrestricted
+      ;; With only sandboxes enabled: :unrestricted should include :sandboxed
+      (and (= required-level :unrestricted)
+           (premium-features/enable-sandboxes?)
+           (not= most-or-least :most))
+      :sandboxed
+
+      ;; With only advanced-permissions enabled: :unrestricted should include :impersonated
+      (and (= required-level :unrestricted)
+           (premium-features/enable-advanced-permissions?)
+           (not= most-or-least :most))
+      :impersonated
 
       :else required-level)
     required-level))
@@ -88,9 +99,9 @@
                   (let [[level most-or-least] (if (sequential? perm-value)
                                                 perm-value
                                                 [perm-value nil])]
-                    [level (if most-or-least
-                             [(effective-required-level perm-type level) most-or-least]
-                             (effective-required-level perm-type level))]))
+                    [perm-type (if most-or-least
+                                 [(effective-required-level perm-type level most-or-least) most-or-least]
+                                 (effective-required-level perm-type level))]))
                 perm-mapping)))
 
 (mu/defn- perm-type-to-int-inline :- [:tuple [:= :inline] nat-int?]
@@ -108,7 +119,7 @@
   [perm-type      :- :keyword
    required-level :- :keyword
    most-or-least  :- [:enum :most :least]]
-  (let [required-level (effective-required-level perm-type required-level)]
+  (let [required-level (effective-required-level perm-type required-level most-or-least)]
     [(case most-or-least
        :most  :>=
        :least :<=)
@@ -182,7 +193,7 @@
   [perm-type      :- :keyword
    required-level :- :keyword
    most-or-least  :- [:enum :most :least]]
-  (let [required-level (effective-required-level perm-type required-level)
+  (let [required-level (effective-required-level perm-type required-level most-or-least)
         agg-fn (case most-or-least
                  :most  :max
                  :least :min)
@@ -195,20 +206,22 @@
        :least :<=)
      (if (= perm-type :perms/view-data)
        ;; Special handling for view-data permission priority (same logic as perm-type-to-least-int-case)
-       ;; Schema order: [:unrestricted :restricted-access :legacy-no-self-service :blocked] = indices [0 1 2 3]
+       ;; Schema order: [:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked] = indices [0 1 2 3 4]
        (let [minimum-perm-value [agg-fn
                                  [:case
                                   [:= :dp.perm_type (h2x/literal perm-type)]
                                   [:case
                                    [:= :dp.perm_value [:inline "unrestricted"]] [:inline 0]
-                                   [:= :dp.perm_value [:inline "restricted-access"]] [:inline 1]
-                                   [:= :dp.perm_value [:inline "blocked"]] [:inline 2]
-                                   [:= :dp.perm_value [:inline "legacy-no-self-service"]] [:inline 3]]]]]
+                                   [:= :dp.perm_value [:inline "sandboxed"]] [:inline 1]
+                                   [:= :dp.perm_value [:inline "impersonated"]] [:inline 2]
+                                   [:= :dp.perm_value [:inline "blocked"]] [:inline 3]
+                                   [:= :dp.perm_value [:inline "legacy-no-self-service"]] [:inline 4]]]]]
          [:case
           [:= minimum-perm-value [:inline 0]] [:inline 0]  ;; unrestricted → 0
-          [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; restricted-access → 1
-          [:= minimum-perm-value [:inline 2]] [:inline 3]  ;; blocked → 3
-          [:= minimum-perm-value [:inline 3]] [:inline 2]  ;; legacy-no-self-service → 2
+          [:= minimum-perm-value [:inline 1]] [:inline 1]  ;; sandboxed → 1
+          [:= minimum-perm-value [:inline 2]] [:inline 2]  ;; impersonated → 2
+          [:= minimum-perm-value [:inline 3]] [:inline 4]  ;; blocked → 4
+          [:= minimum-perm-value [:inline 4]] [:inline 3]  ;; legacy-no-self-service → 3
           ])
        [agg-fn conditional-case])
      (perm-type-to-int-inline perm-type required-level)]))

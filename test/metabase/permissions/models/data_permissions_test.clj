@@ -7,7 +7,6 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -16,55 +15,116 @@
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted      [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
-      :unrestricted      [:perms/view-data #{:unrestricted :restricted-access :legacy-no-self-service :blocked}]
-      :unrestricted      [:perms/view-data #{:unrestricted :legacy-no-self-service}]
-      :restricted-access [:perms/view-data #{:restricted-access :legacy-no-self-service :blocked}]
-      :restricted-access [:perms/view-data #{:restricted-access :blocked}]
-      :restricted-access [:perms/view-data #{:restricted-access}]
-      :blocked           [:perms/view-data #{:legacy-no-self-service :blocked}]
-      :blocked           [:perms/view-data #{:blocked}]
-      nil                [:perms/view-data #{}])))
+      :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+      :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+      :sandboxed     [:perms/view-data #{:sandboxed :impersonated :legacy-no-self-service :blocked}]
+      :sandboxed     [:perms/view-data #{:sandboxed :blocked}]
+      :sandboxed     [:perms/view-data #{:sandboxed}]
+      :impersonated  [:perms/view-data #{:impersonated :legacy-no-self-service :blocked}]
+      :impersonated  [:perms/view-data #{:impersonated :blocked}]
+      :impersonated  [:perms/view-data #{:impersonated}]
+      :blocked       [:perms/view-data #{:legacy-no-self-service :blocked}]
+      :blocked       [:perms/view-data #{:blocked}]
+      nil            [:perms/view-data #{}])))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
     ;; :unrestricted is most permissive
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
-    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :restricted-access))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :sandboxed))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :impersonated))
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
-    ;; :restricted-access is second most permissive
-    (is (not (data-perms/at-least-as-permissive? :perms/view-data :restricted-access :unrestricted)))
-    (is (data-perms/at-least-as-permissive? :perms/view-data :restricted-access :restricted-access))
-    (is (data-perms/at-least-as-permissive? :perms/view-data :restricted-access :legacy-no-self-service))
-    (is (data-perms/at-least-as-permissive? :perms/view-data :restricted-access :blocked))
-    ;; :legacy-no-self-service is third most permissive
+    ;; :sandboxed is second most permissive (without feature flag)
+    (mt/with-premium-features #{}
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :legacy-no-self-service))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :blocked)))
+    ;; when sandboxing is *enabled*, `:sandboxed` is equivalent to `:unrestricted`
+    (mt/with-premium-features #{:sandboxes}
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :legacy-no-self-service))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :blocked)))
+    ;; :impersonated is third most permissive (without feature flag)
+    (mt/with-premium-features #{}
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :impersonated :unrestricted)))
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :impersonated :sandboxed)))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :legacy-no-self-service))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :blocked)))
+    ;; when advanced-permissions are *enabled*, `:impersonated` is equivalent to `:unrestricted`
+    (mt/with-premium-features #{:advanced-permissions}
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :unrestricted))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :legacy-no-self-service))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :blocked)))
+    ;; :legacy-no-self-service is fourth most permissive
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
-    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :restricted-access)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :sandboxed)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :impersonated)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
     (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
     ;; :blocked is least permissive
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
-    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :restricted-access)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :sandboxed)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :impersonated)))
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
-(deftest restricted-access-permission-oss-invariant-test
-  (testing "INVARIANT: Without the :sandboxes feature, :restricted-access is treated as :blocked"
-    (mt/with-premium-features #{}
-      (testing "coalesce treats :restricted-access as :blocked when feature is disabled"
-        ;; :restricted-access alone becomes :blocked
-        (is (= :blocked (data-perms/coalesce :perms/view-data #{:restricted-access})))
-        ;; :restricted-access + :legacy-no-self-service - :blocked wins (from translated :restricted-access)
-        (is (= :blocked (data-perms/coalesce :perms/view-data #{:restricted-access :legacy-no-self-service})))
-        ;; :unrestricted still wins over translated :restricted-access->:blocked
-        (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :restricted-access}))))))
-
-  (testing "With :sandboxes feature enabled, :restricted-access works normally"
+(deftest at-least-as-permissive?-with-feature-flags-test
+  (testing "With :sandboxes feature enabled, :sandboxed is treated as :unrestricted for permission checks"
     (mt/with-premium-features #{:sandboxes}
-      (is (= :restricted-access (data-perms/coalesce :perms/view-data #{:restricted-access})))
-      (is (= :restricted-access (data-perms/coalesce :perms/view-data #{:restricted-access :blocked})))
-      (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :restricted-access}))))))
+      ;; :sandboxed is now considered at least as permissive as :unrestricted
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)
+          ":sandboxed should be at least as permissive as :unrestricted when feature is enabled")
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :blocked))))
+
+  (testing "With :advanced-permissions feature enabled, :impersonated is treated as :unrestricted for permission checks"
+    (mt/with-premium-features #{:advanced-permissions}
+      ;; :impersonated is now considered at least as permissive as :unrestricted
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :unrestricted)
+          ":impersonated should be at least as permissive as :unrestricted when feature is enabled")
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :blocked))))
+
+  (testing "Without feature flags, :sandboxed and :impersonated are NOT at least as permissive as :unrestricted"
+    (mt/with-premium-features #{}
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)))
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :impersonated :unrestricted))))))
+
+(deftest sandboxed-impersonated-permission-oss-invariant-test
+  (testing "INVARIANT: Without the appropriate features, :sandboxed/:impersonated are treated as :blocked"
+    (mt/with-premium-features #{}
+      (testing "coalesce treats :sandboxed as :blocked when :sandboxes feature is disabled"
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:sandboxed})))
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:sandboxed :legacy-no-self-service})))
+        (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed}))))
+
+      (testing "coalesce treats :impersonated as :blocked when :advanced-permissions feature is disabled"
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:impersonated})))
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:impersonated :legacy-no-self-service})))
+        (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :impersonated}))))))
+
+  (testing "With :sandboxes feature enabled, :sandboxed works normally"
+    (mt/with-premium-features #{:sandboxes}
+      (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed})))
+      (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed :blocked})))
+      (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed})))))
+
+  (testing "With :advanced-permissions feature enabled, :impersonated works normally"
+    (mt/with-premium-features #{:advanced-permissions}
+      (is (= :impersonated (data-perms/coalesce :perms/view-data #{:impersonated})))
+      (is (= :impersonated (data-perms/coalesce :perms/view-data #{:impersonated :blocked})))
+      (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :impersonated}))))))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}

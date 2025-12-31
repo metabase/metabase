@@ -178,8 +178,8 @@
         (is (some #(and (= (:id %) (:id table2)) (= (:group_id %) (:id group2))) results)
             "Should include table2 from group2")))))
 
-(deftest restricted-access-permission-value-test
-  (testing "tables with :restricted-access permission are returned when asking for :restricted-access"
+(deftest sandboxed-permission-value-test
+  (testing "tables with :sandboxed permission are returned when asking for :sandboxed"
     (mt/with-temp [:model/Database db {}
                    :model/Table table1 {:db_id (:id db)}
                    :model/Table table2 {:db_id (:id db)}
@@ -188,16 +188,16 @@
                    :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! group db :perms/view-data :unrestricted)
-        (perms/set-table-permission! group table1 :perms/view-data :restricted-access)
+        (perms/set-table-permission! group table1 :perms/view-data :sandboxed)
         (let [user-info {:user-id (:id user) :is-superuser? false}
-              permission-mapping {:perms/view-data :restricted-access}
+              permission-mapping {:perms/view-data :sandboxed}
               query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
               results (t2/query query)]
-          (is (seq results) "User requesting :restricted-access should get results")
-          (is (some #(= (:id %) (:id table1)) results) "Should include restricted-access table")
-          (is (some #(= (:id %) (:id table2)) results) "Should include unrestricted table (more permissive than restricted-access)")))))
+          (is (seq results) "User requesting :sandboxed should get results")
+          (is (some #(= (:id %) (:id table1)) results) "Should include sandboxed table")
+          (is (some #(= (:id %) (:id table2)) results) "Should include unrestricted table (more permissive than sandboxed)")))))
 
-  (testing "tables with :blocked permission are NOT returned when asking for :restricted-access"
+  (testing "tables with :blocked permission are NOT returned when asking for :sandboxed"
     (mt/with-restored-data-perms!
       (mt/with-temp [:model/Database db {}
                      :model/Table table1 {:db_id (:id db)}
@@ -207,14 +207,14 @@
         (t2/delete! :model/DataPermissions :group_id (u/the-id (perms/all-users-group)))
         (perms/set-table-permission! group table1 :perms/view-data :blocked)
         (let [user-info {:user-id (:id user) :is-superuser? false}
-              permission-mapping {:perms/view-data :restricted-access}
+              permission-mapping {:perms/view-data :sandboxed}
               query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
               results (t2/query query)]
           (is (not (some #(= (:id %) (:id table1)) results))
-              "Should NOT include blocked table when asking for restricted-access"))))))
+              "Should NOT include blocked table when asking for sandboxed"))))))
 
-(deftest unrestricted-includes-restricted-access-with-feature-test
-  (testing "With :sandboxes feature enabled, asking for :unrestricted also returns :restricted-access tables"
+(deftest unrestricted-includes-sandboxed-with-feature-test
+  (testing "With :sandboxes feature enabled, asking for :unrestricted also returns :sandboxed tables"
     (mt/with-premium-features #{:sandboxes}
       (mt/with-temp [:model/Database db {}
                      :model/Table table1 {:db_id (:id db)}
@@ -224,17 +224,17 @@
                      :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! group db :perms/view-data :unrestricted)
-          (perms/set-table-permission! group table1 :perms/view-data :restricted-access)
+          (perms/set-table-permission! group table1 :perms/view-data :sandboxed)
           (let [user-info {:user-id (:id user) :is-superuser? false}
-                ;; Callers ask for :unrestricted, but with sandboxes enabled this includes :restricted-access
+                ;; Callers ask for :unrestricted, but with sandboxes enabled this includes :sandboxed
                 permission-mapping {:perms/view-data :unrestricted}
                 query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
                 results (t2/query query)]
             (is (seq results) "User requesting :unrestricted should get results")
-            (is (some #(= (:id %) (:id table1)) results) "Should include restricted-access table (with feature enabled)")
+            (is (some #(= (:id %) (:id table1)) results) "Should include sandboxed table (with feature enabled)")
             (is (some #(= (:id %) (:id table2)) results) "Should include unrestricted table"))))))
 
-  (testing "Without :sandboxes feature, asking for :unrestricted does NOT return :restricted-access tables"
+  (testing "Without :sandboxes feature, asking for :unrestricted does NOT return :sandboxed tables"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Database db {}
                      :model/Table table1 {:db_id (:id db)}
@@ -244,11 +244,11 @@
                      :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
         (mt/with-no-data-perms-for-all-users!
           (perms/set-database-permission! group db :perms/view-data :unrestricted)
-          (perms/set-table-permission! group table2 :perms/view-data :restricted-access)
+          (perms/set-table-permission! group table2 :perms/view-data :sandboxed)
           (let [user-info {:user-id (:id user) :is-superuser? false}
                 permission-mapping {:perms/view-data :unrestricted}
                 query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
                 results (t2/query query)]
             (is (some #(= (:id %) (:id table1)) results) "Should include unrestricted table")
             (is (not (some #(= (:id %) (:id table2)) results))
-                "Should NOT include restricted-access table (without feature, :restricted-access is like :blocked)")))))))
+                "Should NOT include sandboxed table (without feature, :sandboxed is like :blocked)")))))))

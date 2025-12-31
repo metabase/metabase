@@ -64,12 +64,27 @@
   (-> permissions.schema/data-permissions perm-type :values first))
 
 (mu/defn at-least-as-permissive?
-  "Returns true if value1 is at least as permissive as value2 for the given permission type."
+  "Returns true if value1 is at least as permissive as value2 for the given permission type.
+
+   For :perms/view-data, :sandboxed and :impersonated are treated as equivalent to :unrestricted
+   when their respective feature flags are enabled. This is because sandboxed/impersonated users
+   have valid access to the data (just filtered or via impersonation)."
   [perm-type :- ::permissions.schema/data-permission-type
    value1    :- ::permissions.schema/data-permission-value
    value2    :- ::permissions.schema/data-permission-value]
-  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
-    (<= (.indexOf values value1)
+  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)
+        ;; For view-data permission, sandboxed/impersonated users have valid access (just filtered)
+        effective-value1 (if (= perm-type :perms/view-data)
+                           (cond
+                             (and (= value1 :sandboxed) (premium-features/enable-sandboxes?))
+                             :unrestricted
+
+                             (and (= value1 :impersonated) (premium-features/enable-advanced-permissions?))
+                             :unrestricted
+
+                             :else value1)
+                           value1)]
+    (<= (.indexOf values effective-value1)
         (.indexOf values value2))))
 
 (def ^:private model-by-perm-type
@@ -220,17 +235,23 @@
 (defmethod coalesce :perms/view-data
   [perm-type perm-values]
   (let [perm-values (set perm-values)
-        ;; IMPORTANT: Without the :sandboxes feature (e.g., in OSS), :restricted-access is equivalent to :blocked.
-        ;; This ensures that users don't accidentally get access to sandboxed/impersonated tables when the feature is disabled.
-        perm-values (if (and (perm-values :restricted-access)
+        ;; IMPORTANT: Without the appropriate feature flags, :sandboxed and :impersonated are equivalent to :blocked.
+        ;; :sandboxed requires :sandboxes feature
+        perm-values (if (and (perm-values :sandboxed)
                              (not (premium-features/enable-sandboxes?)))
-                      (-> perm-values (disj :restricted-access) (conj :blocked))
+                      (-> perm-values (disj :sandboxed) (conj :blocked))
+                      perm-values)
+        ;; :impersonated requires :advanced-permissions feature
+        perm-values (if (and (perm-values :impersonated)
+                             (not (premium-features/enable-advanced-permissions?)))
+                      (-> perm-values (disj :impersonated) (conj :blocked))
                       perm-values)
         ordered-values (-> permissions.schema/data-permissions perm-type :values)]
     (if (and (perm-values :blocked)
              (not (perm-values :unrestricted))
-             (not (perm-values :restricted-access)))
-      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted or restricted-access
+             (not (perm-values :sandboxed))
+             (not (perm-values :impersonated)))
+      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted, sandboxed, or impersonated
       :blocked
       (first (filter perm-values ordered-values)))))
 
