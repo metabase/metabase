@@ -14,19 +14,51 @@
 
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
-    (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
-      :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
-      :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service}]
-      :sandboxed     [:perms/view-data #{:sandboxed :impersonated :legacy-no-self-service :blocked}]
-      :sandboxed     [:perms/view-data #{:sandboxed :blocked}]
-      :sandboxed     [:perms/view-data #{:sandboxed}]
-      :impersonated  [:perms/view-data #{:impersonated :legacy-no-self-service :blocked}]
-      :impersonated  [:perms/view-data #{:impersonated :blocked}]
-      :impersonated  [:perms/view-data #{:impersonated}]
-      :blocked       [:perms/view-data #{:legacy-no-self-service :blocked}]
-      :blocked       [:perms/view-data #{:blocked}]
-      nil            [:perms/view-data #{}])))
+    (testing "Without any premium features, sandboxed and impersonated are equivalent to blocked"
+      (mt/with-premium-features #{}
+        (are [expected args] (= expected (apply data-perms/coalesce args))
+          :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+          :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+          :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+          :blocked       [:perms/view-data #{:sandboxed :impersonated :legacy-no-self-service :blocked}]
+          :blocked       [:perms/view-data #{:sandboxed :blocked}]
+          :blocked       [:perms/view-data #{:sandboxed}]
+          :blocked       [:perms/view-data #{:impersonated :legacy-no-self-service :blocked}]
+          :blocked       [:perms/view-data #{:impersonated :blocked}]
+          :blocked       [:perms/view-data #{:impersonated}]
+          :blocked       [:perms/view-data #{:legacy-no-self-service :blocked}]
+          :blocked       [:perms/view-data #{:blocked}]
+          nil            [:perms/view-data #{}])))
+    (testing "with advanced permissions, impersonated is more permissive than blocked"
+      (mt/with-premium-features #{:advanced-permissions}
+        (are [expected args] (= expected (apply data-perms/coalesce args))
+          :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+          :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+          :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+          :blocked       [:perms/view-data #{:sandboxed :legacy-no-self-service :blocked}]
+          :blocked       [:perms/view-data #{:sandboxed :blocked}]
+          :blocked       [:perms/view-data #{:sandboxed}]
+          :impersonated  [:perms/view-data #{:impersonated :legacy-no-self-service :blocked}]
+          :impersonated  [:perms/view-data #{:impersonated :blocked}]
+          :impersonated  [:perms/view-data #{:impersonated}]
+          :blocked       [:perms/view-data #{:legacy-no-self-service :blocked}]
+          :blocked       [:perms/view-data #{:blocked}]
+          nil            [:perms/view-data #{}])))
+    (testing "with sandboxing, sandboxed is more permissive than blocked"
+      (mt/with-premium-features #{:advanced-permissions :sandboxes}
+        (are [expected args] (= expected (apply data-perms/coalesce args))
+          :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+          :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+          :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+          :sandboxed     [:perms/view-data #{:sandboxed :legacy-no-self-service :blocked}]
+          :sandboxed     [:perms/view-data #{:sandboxed :blocked}]
+          :sandboxed     [:perms/view-data #{:sandboxed}]
+          :impersonated  [:perms/view-data #{:impersonated :legacy-no-self-service :blocked}]
+          :impersonated  [:perms/view-data #{:impersonated :blocked}]
+          :impersonated  [:perms/view-data #{:impersonated}]
+          :blocked       [:perms/view-data #{:legacy-no-self-service :blocked}]
+          :blocked       [:perms/view-data #{:blocked}]
+          nil            [:perms/view-data #{}])))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"

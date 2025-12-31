@@ -807,7 +807,7 @@
           ;; Therefore, we need to create a *database*-level permission!
           {:to-insert [{:perm_type perm-type
                         :group_id group-id
-                        :perm_value (first #p values)
+                        :perm_value (first values)
                         :db_id db-id}]
            :to-delete [existing-db-perm]}
           {:to-delete [existing-db-perm]
