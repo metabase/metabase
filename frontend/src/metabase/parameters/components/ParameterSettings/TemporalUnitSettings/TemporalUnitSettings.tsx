@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,6 +8,7 @@ import {
   Divider,
   Icon,
   Popover,
+  Stack,
   Text,
   rem,
 } from "metabase/ui";
@@ -26,34 +28,57 @@ export function TemporalUnitSettings({
   parameter,
   onChangeTemporalUnits,
 }: TemporalUnitSettingsProps) {
+  /**
+   * Using manual touched state instead of Formik because the parent form
+   * is not Formik-based, and introducing Formik here would be a regression
+   */
+  const [isTouched, setIsTouched] = useState(false);
   const availableUnits = Lib.availableTemporalUnits();
   const selectedUnits = parameter.temporal_units ?? availableUnits;
   const isAll = selectedUnits.length === availableUnits.length;
   const isNone = selectedUnits.length === 0;
+  const showError = isTouched && isNone;
 
   return (
-    <Popover width="target">
-      <Popover.Target>
-        <Button
-          fw="normal"
-          rightSection={<Icon name="chevrondown" />}
-          fullWidth
-          px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
-          styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7
-        >
-          {getSelectedText(selectedUnits, isAll, isNone)}
-        </Button>
-      </Popover.Target>
-      <Popover.Dropdown>
-        <TemporalUnitDropdown
-          selectedUnits={selectedUnits}
-          availableUnits={availableUnits}
-          isAll={isAll}
-          isNone={isNone}
-          onChange={onChangeTemporalUnits}
-        />
-      </Popover.Dropdown>
-    </Popover>
+    <Stack gap="xs">
+      <Popover width="target" onClose={() => setIsTouched(true)}>
+        <Popover.Target>
+          <Button
+            fw="normal"
+            rightSection={
+              <Icon name="chevrondown" c={showError ? "error" : undefined} />
+            }
+            fullWidth
+            px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
+            styles={{
+              root: showError
+                ? {
+                    color: "var(--mb-color-error)",
+                    borderColor: "var(--mb-color-error)",
+                  }
+                : undefined,
+              inner: { justifyContent: "space-between" }, // justify prop in mantine v7
+            }}
+          >
+            {getSelectedText(selectedUnits, isAll, isNone)}
+          </Button>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <TemporalUnitDropdown
+            selectedUnits={selectedUnits}
+            availableUnits={availableUnits}
+            isAll={isAll}
+            isNone={isNone}
+            onChange={onChangeTemporalUnits}
+          />
+        </Popover.Dropdown>
+      </Popover>
+      {showError && (
+        <Text c="error" size="sm">
+          {t`Select at least one option`}
+        </Text>
+      )}
+    </Stack>
   );
 }
 
