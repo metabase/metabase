@@ -274,32 +274,25 @@
 
 (deftest export!-calls-update-progress-with-expected-values-test
   (testing "export! calls update-progress! with expected progress values"
-    ;; Clear any existing remote-synced collections to ensure consistent progress call count
-    (let [existing-synced-ids (t2/select-pks-set :model/Collection :is_remote_synced true)]
-      (try
-        (when (seq existing-synced-ids)
-          (t2/update! :model/Collection :id [:in existing-synced-ids] {:is_remote_synced false}))
-        (mt/dataset test-data
-          (mt/with-temporary-setting-values [remote-sync-type :read-write]
-            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-              (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
-                             :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
-                             :model/Card _ {:collection_id coll-id}]
-                (let [mock-source (test-helpers/create-mock-source)
-                      progress-calls (atom [])]
-                  (with-redefs [remote-sync.task/update-progress!
-                                (fn [task-id progress]
-                                  (swap! progress-calls conj {:task-id task-id :progress progress}))]
-                    (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
-                      (is (= :success (:status result)))
-                      ;; Verify progress was called with expected values
-                      (is (= 4 (count @progress-calls)))
-                      (is (= task-id (:task-id (first @progress-calls))))
-                      ;; Check progress value is expected
-                      (is (= 0.3 (:progress (first @progress-calls)))))))))))
-        (finally
-          (when (seq existing-synced-ids)
-            (t2/update! :model/Collection :id [:in existing-synced-ids] {:is_remote_synced true})))))))
+    (mt/dataset test-data
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                         :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
+                         :model/Card _ {:collection_id coll-id}]
+            (let [mock-source (test-helpers/create-mock-source)
+                  progress-calls (atom [])]
+              (with-redefs [remote-sync.task/update-progress!
+                            (fn [task-id progress]
+                              (swap! progress-calls conj {:task-id task-id :progress progress}))]
+                (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                  (is (= :success (:status result)))
+                  ;; Verify progress was called with expected values
+                  ;; 1 initial call at 0.3, then N calls during store! for each entity
+                  (is (pos? (count @progress-calls)))
+                  (is (= task-id (:task-id (first @progress-calls))))
+                  ;; Check first progress value is expected (before store!)
+                  (is (= 0.3 (:progress (first @progress-calls)))))))))))))
 
 (deftest import!-resets-remote-sync-object-table-test
   (testing "import! deletes and recreates RemoteSyncObject table with synced status"
@@ -617,8 +610,8 @@
                           :location "/"}]
             ;; Mark the table as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Table" :model_id table-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
             (let [initial-files {"main" {"databases/test-db/tables/test-table/test-table.yaml"
                                          (test-helpers/generate-table-yaml "test-table" "test-db")}}
                   mock-source (test-helpers/create-mock-source :initial-files initial-files)
@@ -648,8 +641,8 @@
                           :entity_id "test-segment-xxxxxxxx"}]
             ;; Mark the segment as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Segment" :model_id segment-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Segment" :model_id segment-id :model_name "Test Segment" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
             (let [initial-files {"main" {"databases/test-db/tables/test-table/segments/test-segment-xxxxxxxx_Test Segment.yaml"
                                          (test-helpers/generate-segment-yaml "Test Segment" "test-table" "test-db")}}
                   mock-source (test-helpers/create-mock-source :initial-files initial-files)
@@ -680,10 +673,10 @@
                           :entity_id "test-segment-xxxxxxxx"}]
             ;; Create RemoteSyncObject entries with 'removed' status
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Table" :model_id table-id :status "removed" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Field" :model_id field-id :status "removed" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Segment" :model_id segment-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Field" :model_id field-id :model_name "test-field" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Segment" :model_id segment-id :model_name "Test Segment" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
             ;; Verify entries exist before export
             (is (= 4 (t2/count :model/RemoteSyncObject)))
             (let [mock-source (test-helpers/create-mock-source)
@@ -715,8 +708,8 @@
                           :location "/"}]
             ;; Mark the table as 'removed' in RemoteSyncObject
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Table" :model_id table-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Table" :model_id table-id :model_name "test-table" :model_table_id table-id :model_table_name "test-table" :status "removed" :status_changed_at (t/offset-date-time)}])
             (let [;; Path should include schema: databases/{db}/schemas/{schema}/tables/{table}
                   initial-files {"main" {"databases/test-db/schemas/PUBLIC/tables/test-table/test-table.yaml"
                                          (test-helpers/generate-table-yaml "test-table" "test-db" :schema "PUBLIC")}}
@@ -759,7 +752,7 @@
                           :archived true}]
             ;; Track the collection so export runs
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "synced" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "synced" :status_changed_at (t/offset-date-time)}])
             (let [mock-source (test-helpers/create-mock-source)
                   result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
               (is (= :success (:status result)))

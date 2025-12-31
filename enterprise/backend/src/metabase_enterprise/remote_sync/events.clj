@@ -52,6 +52,26 @@
   [_model-type model-id]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id model-id))
 
+(defmethod remote-sync-model-details "Table"
+  [_model-type model-id]
+  (when-let [table (t2/select-one [:model/Table :name :collection_id] :id model-id)]
+    ;; For tables, table_id and table_name refer to themselves
+    (assoc table :table_id model-id :table_name (:name table))))
+
+(defmethod remote-sync-model-details "Field"
+  [_model-type model-id]
+  (first (t2/query {:select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+                    :from [[:metabase_field :f]]
+                    :join [[:metabase_table :t] [:= :f.table_id :t.id]]
+                    :where [:= :f.id model-id]})))
+
+(defmethod remote-sync-model-details "Segment"
+  [_model-type model-id]
+  (first (t2/query {:select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+                    :from [[:segment :s]]
+                    :join [[:metabase_table :t] [:= :s.table_id :t.id]]
+                    :where [:= :s.id model-id]})))
+
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change. Takes a model-type (type of model: 'Card',
   'Dashboard', 'Document', 'Collection'), a model-id (ID of the affected model), a status (status of the sync:
@@ -68,6 +88,8 @@
                      :model_name (:name model-details)
                      :model_collection_id (:collection_id model-details)
                      :model_display (some-> model-details :display name)
+                     :model_table_id (:table_id model-details)
+                     :model_table_name (:table_name model-details)
                      :status status
                      :status_changed_at (t/offset-date-time)}))
 
@@ -89,7 +111,9 @@
                      :status_changed_at (t/offset-date-time)
                      :model_name (:name model)
                      :model_collection_id (:collection_id model)
-                     :model_display (some-> model :display name)})))))
+                     :model_display (some-> model :display name)
+                     :model_table_id (:table_id model)
+                     :model_table_name (:table_name model)})))))
 
 ;; Model change tracking event handlers
 

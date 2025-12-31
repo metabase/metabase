@@ -973,6 +973,9 @@
       ;; First, create an entry with status "synced" directly
       (t2/insert! :model/RemoteSyncObject {:model_type "Table"
                                            :model_id (:id table)
+                                           :model_name "Test Table"
+                                           :model_table_id (:id table)
+                                           :model_table_name "Test Table"
                                            :status "synced"
                                            :status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
@@ -995,6 +998,9 @@
       ;; First, create an entry with status "synced" directly
       (t2/insert! :model/RemoteSyncObject {:model_type "Table"
                                            :model_id (:id table)
+                                           :model_name "Test Table"
+                                           :model_table_id (:id table)
+                                           :model_table_name "Test Table"
                                            :status "synced"
                                            :status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Table" :model_id (:id table))]
@@ -1205,6 +1211,9 @@
       ;; First create a synced entry
       (t2/insert! :model/RemoteSyncObject {:model_type "Segment"
                                            :model_id (:id segment)
+                                           :model_name "Test Segment"
+                                           :model_table_id (:id table)
+                                           :model_table_name "Test Table"
                                            :status "synced"
                                            :status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Segment" :model_id (:id segment))]
@@ -1289,6 +1298,9 @@
       ;; First create a synced entry
       (t2/insert! :model/RemoteSyncObject {:model_type "Field"
                                            :model_id (:id field)
+                                           :model_name "test_field"
+                                           :model_table_id (:id table)
+                                           :model_table_name "Test Table"
                                            :status "synced"
                                            :status_changed_at (t/offset-date-time)})
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Field" :model_id (:id field))]

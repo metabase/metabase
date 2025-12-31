@@ -34,6 +34,7 @@
     "Card" [:id :name :collection_id :display]
     "NativeQuerySnippet" [:id :name]
     "Collection" [:id :name [:id :collection_id]]
+    "Segment" [:id :name :table_id]
     [:id :name :collection_id]))
 
 (defn- sync-objects!
@@ -44,8 +45,8 @@
   and separate path collections for Table and Field models which use name-based identity."
   [timestamp imported-entities-by-model table-paths field-paths]
   (t2/delete! :model/RemoteSyncObject)
-  (let [;; Standard models use entity_id UUIDs (including Segment)
-        standard-inserts (->> imported-entities-by-model
+  (let [;; Standard models use entity_id UUIDs (excluding Segment which needs special handling)
+        standard-inserts (->> (dissoc imported-entities-by-model "Segment")
                               (mapcat (fn [[model entity-ids]]
                                         (when (seq entity-ids)
                                           (let [fields (model-fields-for-sync model)
@@ -57,9 +58,29 @@
                                       :model_name name
                                       :model_collection_id collection_id
                                       :model_display (some-> display clojure.core/name)
+                                      :model_table_id nil
+                                      :model_table_name nil
                                       :status "synced"
                                       :status_changed_at timestamp})))
+        ;; Segments: need to join to get table info
+        segment-entity-ids (get imported-entities-by-model "Segment")
+        segment-inserts (when (seq segment-entity-ids)
+                          (->> (t2/query {:select [:s.id :s.name :s.table_id [:t.name :table_name] [:t.collection_id :collection_id]]
+                                          :from [[:segment :s]]
+                                          :join [[:metabase_table :t] [:= :s.table_id :t.id]]
+                                          :where [:in :s.entity_id segment-entity-ids]})
+                               (map (fn [{:keys [id name table_id table_name collection_id]}]
+                                      {:model_type "Segment"
+                                       :model_id id
+                                       :model_name name
+                                       :model_collection_id collection_id
+                                       :model_display nil
+                                       :model_table_id table_id
+                                       :model_table_name table_name
+                                       :status "synced"
+                                       :status_changed_at timestamp}))))
         ;; Tables: batch lookup using join - include name and collection_id
+        ;; For tables, table_id = self id, table_name = self name
         table-inserts (when (seq table-paths)
                         (->> (t2/query {:select [:t.id :t.name :t.collection_id]
                                         :from [[:metabase_table :t]]
@@ -76,11 +97,13 @@
                                      :model_name name
                                      :model_collection_id collection_id
                                      :model_display nil
+                                     :model_table_id id
+                                     :model_table_name name
                                      :status "synced"
                                      :status_changed_at timestamp}))))
         ;; Fields: batch lookup using join through table - include name and collection_id from table
         field-inserts (when (seq field-paths)
-                        (->> (t2/query {:select [:f.id :f.name [:t.collection_id :collection_id]]
+                        (->> (t2/query {:select [:f.id :f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
                                         :from [[:metabase_field :f]]
                                         :join [[:metabase_table :t] [:= :t.id :f.table_id]
                                                [:metabase_database :db] [:= :db.id :t.db_id]]
@@ -91,15 +114,17 @@
                                                         (if schema [:= :t.schema schema] [:is :t.schema nil])
                                                         [:= :t.name table_name]
                                                         [:= :f.name field_name]]))})
-                             (map (fn [{:keys [id name collection_id]}]
+                             (map (fn [{:keys [id name table_id table_name collection_id]}]
                                     {:model_type "Field"
                                      :model_id id
                                      :model_name name
                                      :model_collection_id collection_id
                                      :model_display nil
+                                     :model_table_id table_id
+                                     :model_table_name table_name
                                      :status "synced"
                                      :status_changed_at timestamp}))))
-        all-inserts (concat standard-inserts table-inserts field-inserts)]
+        all-inserts (concat standard-inserts segment-inserts table-inserts field-inserts)]
     (when (seq all-inserts)
       (t2/insert! :model/RemoteSyncObject all-inserts))))
 
