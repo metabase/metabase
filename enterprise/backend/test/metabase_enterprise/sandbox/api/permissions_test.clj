@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -151,3 +152,21 @@
                               :query {:source-table (str "card__" (u/the-id card))}
                               :type :query}))
                     "metabase_cache"))))))))
+
+(deftest ^:parallel sandbox-coalesce-test
+  (testing "with sandboxing, sandboxed is more permissive than blocked"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (are [expected args] (= expected (apply data-perms/coalesce args))
+        :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+        :sandboxed     [:perms/view-data #{:sandboxed :legacy-no-self-service :blocked}]
+        :sandboxed     [:perms/view-data #{:sandboxed :blocked}]
+        :sandboxed     [:perms/view-data #{:sandboxed}]
+        :sandboxed     [:perms/view-data #{:impersonated :sandboxed :legacy-no-self-service :blocked}])))
+  (testing "without sandboxing, sandboxing is equivalent to blocked"
+    (mt/with-premium-features #{:advanced-permissions}
+      (are [expected args] (= expected (apply data-perms/coalesce args))
+        :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+        :blocked       [:perms/view-data #{:sandboxed :legacy-no-self-service :blocked}]
+        :blocked       [:perms/view-data #{:sandboxed :blocked}]
+        :blocked       [:perms/view-data #{:sandboxed}]
+        :impersonated  [:perms/view-data #{:impersonated :sandboxed :legacy-no-self-service :blocked}]))))
