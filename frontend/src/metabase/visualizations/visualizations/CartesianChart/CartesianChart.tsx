@@ -1,12 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
@@ -28,7 +21,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
+import { getGridSizeAdjustedSettings } from "./utils";
 
 const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
@@ -99,10 +92,6 @@ function _CartesianChart(props: VisualizationProps) {
     [chartModel, showAllLegendItems],
   );
   const hasLegend = legendItems.length > 0;
-
-  useEffect(() => {
-    validateChartModel(chartModel);
-  }, [chartModel]);
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
