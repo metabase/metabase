@@ -234,7 +234,7 @@ export const AllChangesView = ({ entities, title }: AllChangesViewProps) => {
                               mt="0.75rem"
                               style={{
                                 borderLeft:
-                                  "2px solid var(--mb-color-border-light)",
+                                  "2px solid var(--mb-color-border-subtle)",
                               }}
                             >
                               {tableGroup.children.map((child) => (
