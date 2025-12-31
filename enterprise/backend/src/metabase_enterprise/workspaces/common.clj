@@ -107,26 +107,29 @@
       (t2/update! :model/Workspace ws-id {:status :setup-failed})
       (throw e))))
 
-(defn initialize-workspace!
+(defn- initialize-workspace!
   "Initialize an uninitialized workspace with the given database_id.
-   Updates database_id (if different from provisional), sets schema, creates isolation resources async,
-   and transitions to :pending status. Returns the updated workspace with schema set."
-  [workspace database-id]
+  Updates database_id (if different from provisional), sets schema, creates isolation resources async,
+  and transitions to :pending status. Returns the updated workspace with schema set."
+  [workspace database-id async?]
   (let [database (t2/select-one :model/Database :id database-id)
         schema   (ws.u/isolation-namespace-name workspace)
         res      (t2/update! :model/Workspace {:id     (:id workspace)
                                                :status :uninitialized}
                              {:database_id database-id
                               :schema      schema
-                              :status      :pending})]
+                              :status      :pending})
+        new-ws  (t2/select-one :model/Workspace :id (:id workspace))]
     (when (zero? res)
       (let [new-db-id (t2/select-one-fn :database_id :model/Workspace (:id workspace))]
         (when (not= database-id new-db-id)
           (throw (ex-info "Workspace has been initialized already with a different database"
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
-    (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
-      (quick-task/submit-task! #(run-workspace-setup! <> database)))))
+    (if async?
+      (quick-task/submit-task! #(run-workspace-setup! new-ws database))
+      (run-workspace-setup! new-ws database))
+    (t2/select-one :model/Workspace :id (:id workspace))))
 
 (defn- create-uninitialized-workspace!
   "Create a workspace with a provisional database_id but no isolation resources.
@@ -157,7 +160,7 @@
         ws      (create-uninitialized-workspace! creator-id db-id ws-name 5)]
     (if provisional?
       ws
-      (initialize-workspace! ws db-id))))
+      (initialize-workspace! ws db-id true))))
 
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.
@@ -168,7 +171,7 @@
   (let [workspace (if (= :uninitialized (:status workspace))
                     (let [target-db-id (transforms.i/target-db-id body)]
                       (api/check-400 target-db-id "Transform must have a target database")
-                      (initialize-workspace! workspace target-db-id))
+                      (initialize-workspace! workspace target-db-id false))
                     workspace)]
     (t2/with-transaction [_]
       (let [workspace-id    (:id workspace)
