@@ -8,7 +8,18 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]))
+   [metabase.query-permissions.core :as query-perms]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]))
+
+(defn- check-card-data-permissions
+  "Check if the current user has data permissions to run queries based on the given card.
+   Throws an agent error if the user lacks permissions."
+  [card entity-type]
+  (when-not (query-perms/can-run-query? (:dataset_query card))
+    (throw (ex-info (tru "The user does not have permission to access the data underlying this {0}." entity-type)
+                    {:agent-error? true
+                     :card-id (:id card)}))))
 
 (defn- apply-filter-bucket
   [column bucket]
@@ -148,6 +159,7 @@
 (defn- query-metric*
   [{:keys [metric-id filters group-by] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
+        _ (check-card-data-permissions card "metric")
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
@@ -232,6 +244,7 @@
 (defn- query-model*
   [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
   (let [card (metabot-v3.tools.u/get-card model-id)
+        _ (check-card-data-permissions card "model")
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
@@ -280,14 +293,22 @@
 
 (defn- resolve-datasource
   "Resolve datasource parameters to [field-id-prefix base-query] tuple.
-   Accepts either {:table-id id} or {:model-id id}."
+   Accepts either {:table-id id} or {:model-id id}.
+   Also checks data permissions for the datasource."
   [{:keys [table-id model-id]}]
   (cond
     model-id
-    [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)]
+    (let [card (metabot-v3.tools.u/get-card model-id)]
+      (check-card-data-permissions card "model")
+      [(metabot-v3.tools.u/card-field-id-prefix model-id) (metabot-v3.tools.u/card-query model-id)])
 
     table-id
-    [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)]
+    (let [table (metabot-v3.tools.u/get-table table-id :db_id)]
+      (when-not (query-perms/can-query-table? (:db_id table) table-id)
+        (throw (ex-info (tru "The user does not have permission to access this table''s data.")
+                        {:agent-error? true
+                         :table-id table-id})))
+      [(metabot-v3.tools.u/table-field-id-prefix table-id) (metabot-v3.tools.u/table-query table-id)])
 
     :else
     (throw (ex-info "Either table-id or model-id must be provided" {:agent-error? true}))))
