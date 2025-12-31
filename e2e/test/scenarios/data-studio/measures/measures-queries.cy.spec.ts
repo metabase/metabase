@@ -36,23 +36,24 @@ describe("scenarios > data studio > measures > queries", () => {
         cy.findByText("Total").click();
       });
       saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure with with a column from the main data source using offset", () => {
       startNewMeasure();
-
       MeasureEditor.getAggregationPlaceholder().click();
       H.popover().findByText("Custom Expression").click();
       H.CustomExpressionEditor.type("Offset(Sum([Total]), -1)");
       H.CustomExpressionEditor.nameInput().type("Offset Measure");
       H.popover().button("Done").click();
-
       saveMeasure();
 
-      useMeasureInAdhocQuestion(() => {
-        breakout("Created At");
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          breakout("Created At");
+        },
       });
       verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
     });
@@ -66,6 +67,7 @@ describe("scenarios > data studio > measures > queries", () => {
         cy.findByText("Price").click();
       });
       saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("55.69");
     });
@@ -79,8 +81,10 @@ describe("scenarios > data studio > measures > queries", () => {
       H.popover().button("Done").click();
       saveMeasure();
 
-      useMeasureInAdhocQuestion(() => {
-        breakout("Created At");
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          breakout("Created At");
+        },
       });
       verifyRowValues([["April 2022"], ["May 2022", "49.54"]]);
     });
@@ -326,12 +330,16 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasureInAdhocQuestion(() => {
-        H.getNotebookStep("summarize").findByText("Table Measure").click();
-        H.CustomExpressionEditor.clear().type(`Offset([${MEASURE_NAME}], -1)`);
-        H.popover().button("Update").click();
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          H.getNotebookStep("summarize").findByText("Table Measure").click();
+          H.CustomExpressionEditor.clear().type(
+            `Offset([${MEASURE_NAME}], -1)`,
+          );
+          H.popover().button("Update").click();
 
-        breakout("Created At");
+          breakout("Created At");
+        },
       });
 
       verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
@@ -348,11 +356,13 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    useMeasureInAdhocQuestion(() => {
-      breakout("Created At");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        breakout("Created At");
 
-      H.sort();
-      H.popover().findByText("Table Measure").click();
+        H.sort();
+        H.popover().findByText("Table Measure").click();
+      },
     });
 
     // TODO: fix this when sorting works
@@ -369,18 +379,20 @@ describe("scenarios > data studio > measures > queries", () => {
       },
     });
 
-    useMeasureInAdhocQuestion(() => {
-      H.getNotebookStep("summarize").findByText("Table Measure").click();
-      cy.log("Use weird formula to get different ordering in results");
-      H.CustomExpressionEditor.clear().type(
-        `length(text(log([${MEASURE_NAME}])))`,
-      );
-      H.popover().button("Update").click();
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        H.getNotebookStep("summarize").findByText("Table Measure").click();
+        cy.log("Use weird formula to get different ordering in results");
+        H.CustomExpressionEditor.clear().type(
+          `length(text(log([${MEASURE_NAME}])))`,
+        );
+        H.popover().button("Update").click();
 
-      breakout("Created At");
+        breakout("Created At");
 
-      H.sort();
-      H.popover().findByText("Table Measure").click();
+        H.sort();
+        H.popover().findByText("Table Measure").click();
+      },
     });
 
     verifyRowValues([
@@ -401,30 +413,32 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasureInAdhocQuestion(() => {
-        breakout("Created At");
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          breakout("Created At");
 
-        H.getNotebookStep("summarize").button("Filter").click();
-        H.popover().within(() => {
-          cy.findByText(MEASURE_NAME).click();
-          cy.findByPlaceholderText("Min").type("100");
-          cy.button("Add filter").click();
-        });
+          H.getNotebookStep("summarize").button("Filter").click();
+          H.popover().within(() => {
+            cy.findByText(MEASURE_NAME).click();
+            cy.findByPlaceholderText("Min").type("100");
+            cy.button("Add filter").click();
+          });
 
-        H.getNotebookStep("summarize").button("Custom column").click();
-        H.enterCustomColumnDetails({
-          formula: `floor([${MEASURE_NAME}] * 2)`,
-          name: "Double measure",
-          clickDone: true,
-        });
+          H.getNotebookStep("summarize").button("Custom column").click();
+          H.enterCustomColumnDetails({
+            formula: `floor([${MEASURE_NAME}] * 2)`,
+            name: "Double measure",
+            clickDone: true,
+          });
 
-        H.getNotebookStep("filter", { stage: 1 })
-          .findByText("Summarize")
-          .click();
-        H.popover().within(() => {
-          cy.findByText("Minimum of ...").click();
-          cy.findByText("Double measure").click();
-        });
+          H.getNotebookStep("filter", { stage: 1 })
+            .findByText("Summarize")
+            .click();
+          H.popover().within(() => {
+            cy.findByText("Minimum of ...").click();
+            cy.findByText("Double measure").click();
+          });
+        },
       });
       verifyScalarValue("2,531");
     });
@@ -439,17 +453,19 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasureInAdhocQuestion(() => {
-        breakout("Created At");
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          breakout("Created At");
 
-        H.getNotebookStep("summarize").button("Join data").click();
-        H.popover().within(() => {
-          cy.findByText("Sample Database").click();
-          cy.findByText("Orders").click();
-        });
+          H.getNotebookStep("summarize").button("Join data").click();
+          H.popover().within(() => {
+            cy.findByText("Sample Database").click();
+            cy.findByText("Orders").click();
+          });
 
-        H.popover().findByText("Table Measure").click();
-        H.popover().findByText("Total").click();
+          H.popover().findByText("Table Measure").click();
+          H.popover().findByText("Total").click();
+        },
       });
 
       verifyRowValues([["April 2022", "52.76", "8685"]]);
@@ -465,21 +481,25 @@ describe("scenarios > data studio > measures > queries", () => {
         aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
       },
     });
-    useMeasureInAdhocQuestion(() => {
-      breakout("Created At");
+    useMeasureInAdhocQuestion({
+      customizeQuery() {
+        breakout("Created At");
 
-      H.getNotebookStep("summarize").button("Join data").click();
-      H.popover().within(() => {
-        cy.findByText("Sample Database").click();
-        cy.findByText("Orders").click();
-      });
+        H.getNotebookStep("summarize").button("Join data").click();
+        H.popover().within(() => {
+          cy.findByText("Sample Database").click();
+          cy.findByText("Orders").click();
+        });
 
-      H.popover().findByText("Custom Expression").click();
+        H.popover().findByText("Custom Expression").click();
 
-      H.CustomExpressionEditor.clear().type("floor([Table Measure]/10)").blur();
-      H.popover().findByText("Done").click();
+        H.CustomExpressionEditor.clear()
+          .type("floor([Table Measure]/10)")
+          .blur();
+        H.popover().findByText("Done").click();
 
-      H.popover().findByText("ID").click();
+        H.popover().findByText("ID").click();
+      },
     });
 
     verifyRowValues([["April 2022", "52.76", "5", "1"]]);
@@ -517,12 +537,14 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      useMeasureInAdhocQuestion(() => {
-        H.getNotebookStep("summarize").findByText("Table Measure").click();
-        H.CustomExpressionEditor.nameInput()
-          .clear()
-          .type("Renamed aggregation");
-        H.popover().button("Update").click();
+      useMeasureInAdhocQuestion({
+        customizeQuery() {
+          H.getNotebookStep("summarize").findByText("Table Measure").click();
+          H.CustomExpressionEditor.nameInput()
+            .clear()
+            .type("Renamed aggregation");
+          H.popover().button("Update").click();
+        },
       });
 
       verifyScalarValue("1,510,621.68");
@@ -871,12 +893,20 @@ function saveMeasure() {
   H.undoToast().should("contain.text", "Measure created");
 }
 
-function useMeasureInAdhocQuestion(customizeQuery?: () => void) {
+function useMeasureInAdhocQuestion({
+  measureName = MEASURE_NAME,
+  tableId = ORDERS_ID,
+  customizeQuery,
+}: {
+  measureName?: string;
+  tableId?: TableId;
+  customizeQuery?: () => void;
+} = {}) {
   cy.log("verify the measure works in query builder");
-  H.openTable({ table: ORDERS_ID, mode: "notebook" });
+  H.openTable({ table: tableId, mode: "notebook" });
   H.summarize({ mode: "notebook" });
   H.popover().findByText("Measures").click();
-  H.popover().findByText(MEASURE_NAME).click();
+  H.popover().findByText(measureName).click();
 
   customizeQuery?.();
 
@@ -890,12 +920,6 @@ function breakout(columnName = "Created At") {
   H.popover().findByText(columnName).click();
 }
 
-function switchToData() {
-  cy.findByTestId("view-footer").within(() => {
-    cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
-  });
-}
-
 function verifyScalarValue(scalarValue: string) {
   H.queryBuilderMain()
     .findByTestId("scalar-value")
@@ -903,9 +927,12 @@ function verifyScalarValue(scalarValue: string) {
   H.assertQueryBuilderRowCount(1);
 }
 
+// Custom implementation of H.assertTableData that allows for empty cells
 function verifyRowValues(rowValues: string[][]) {
-  switchToData();
-  // Custom implemtation that allows for empty cells
+  cy.findByTestId("view-footer").within(() => {
+    cy.findByLabelText("Switch to data").click(); // Switch to the tabular view...
+  });
+
   rowValues.flat().forEach((value, index) => {
     H.tableInteractiveBody()
       .findAllByTestId("cell-data")
