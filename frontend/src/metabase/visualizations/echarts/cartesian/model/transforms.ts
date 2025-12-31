@@ -12,7 +12,7 @@ export function signedSquareRoot(value: number) {
 }
 
 export function signedLog(value: number) {
-  return getSign(value) * Math.log10(Math.abs(value));
+  return getSign(value) * Math.log10(1 + Math.abs(value));
 }
 
 export function getAxisTransforms(
@@ -38,14 +38,10 @@ export function getAxisTransforms(
           return null;
         }
 
-        if (value === 0) {
-          return value;
-        }
-
         return signedLog(value);
       },
       fromEChartsAxisValue: (value) => {
-        return Math.pow(10, Math.abs(value)) * getSign(value);
+        return getSign(value) * (Math.pow(10, Math.abs(value)) - 1);
       },
     };
   }
