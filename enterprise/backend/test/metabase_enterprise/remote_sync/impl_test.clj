@@ -764,6 +764,41 @@
                 (is (not (some #(str/includes? % "archived-segment-xxxx") file-keys))
                     "Archived segment should NOT be exported")))))))))
 
+(deftest export!-deletes-files-for-archived-segments-test
+  (testing "export! deletes files from git source for segments with 'delete' status (archived segments)"
+    (mt/with-model-cleanup [:model/RemoteSyncObject :model/Segment]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Database {db-id :id} {:name "test-db"}
+                         :model/Table {table-id :id} {:name "test-table" :db_id db-id}
+                         :model/Collection {coll-id :id}
+                         {:name "Active Collection"
+                          :is_remote_synced true
+                          :entity_id "active-coll-xxxxxxxxx"
+                          :location "/"}
+                         :model/Segment {segment-id :id}
+                         {:name "Archived Segment"
+                          :table_id table-id
+                          :definition {:source-table table-id
+                                       :filter [:> [:field 1 nil] 0]}
+                          :entity_id "archived-seg-xxxxxxxx"
+                          :archived true}]
+            ;; Mark the segment as 'delete' in RemoteSyncObject (simulating archival event)
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Segment" :model_id segment-id :model_name "Archived Segment" :model_table_id table-id :model_table_name "test-table" :status "delete" :status_changed_at (t/offset-date-time)}])
+            (let [initial-files {"main" {"databases/test-db/tables/test-table/segments/archived-seg-xxxxxxxx_Archived Segment.yaml"
+                                         (test-helpers/generate-segment-yaml "Archived Segment" "test-table" "test-db")}}
+                  mock-source (test-helpers/create-mock-source :initial-files initial-files)
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+              (is (= :success (:status result)))
+              (let [files-after-export (get @(:files-atom mock-source) "main")]
+                (is (not (some #(str/includes? % "archived-seg-xxxxxxxx") (keys files-after-export)))
+                    "Archived segment files should be deleted after export"))
+              (testing "RemoteSyncObject entry is cleaned up after export"
+                (is (nil? (t2/select-one :model/RemoteSyncObject :model_type "Segment" :model_id segment-id))
+                    "RemoteSyncObject entry for archived segment should be deleted")))))))))
+
 ;; Import Table/Field/Segment tracking tests
 
 (deftest import!-tracks-tables-in-remote-sync-object-test

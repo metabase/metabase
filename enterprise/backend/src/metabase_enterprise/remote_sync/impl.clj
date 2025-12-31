@@ -325,8 +325,9 @@
                                                     (str/join "/" (cond-> ["databases" db_name]
                                                                     schema (conj "schemas" schema)
                                                                     true   (conj "tables" table_name))))))
-                    ;; Add removed segment paths - join to get all path components in one query
+                    ;; Add removed/deleted segment paths - join to get all path components in one query
                     ;; Segments use entity_id for path construction
+                    ;; Include both "removed" (moved out of remote-synced collection) and "delete" (archived)
                     removed-segment-paths (->> (t2/query {:select [:s.entity_id
                                                                    [:t.name :table_name]
                                                                    :t.schema
@@ -334,7 +335,7 @@
                                                           :from [[:segment :s]]
                                                           :join [[:remote_sync_object :rso]
                                                                  [:and [:= :rso.model_type [:inline "Segment"]]
-                                                                  [:= :rso.status [:inline "removed"]]
+                                                                  [:in :rso.status [[:inline "removed"] [:inline "delete"]]]
                                                                   [:= :rso.model_id :s.id]]
                                                                  [:metabase_table :t] [:= :t.id :s.table_id]
                                                                  [:metabase_database :db] [:= :db.id :t.db_id]]})
@@ -351,6 +352,10 @@
               (t2/delete! :model/RemoteSyncObject
                           :model_type [:in ["Table" "Field" "Segment"]]
                           :status "removed")
+              ;; Also delete archived Segment entries (status "delete")
+              (t2/delete! :model/RemoteSyncObject
+                          :model_type "Segment"
+                          :status "delete")
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success
            :version (source.p/version snapshot)}
