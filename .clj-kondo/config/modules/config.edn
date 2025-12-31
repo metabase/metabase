@@ -2141,7 +2141,6 @@
            metabase-enterprise.remote-sync.init}
    :uses #{analytics
            api
-           app-db
            collections
            events
            models
