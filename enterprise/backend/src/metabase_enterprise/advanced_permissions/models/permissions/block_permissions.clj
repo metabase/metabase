@@ -63,7 +63,7 @@
     ;; Make sure we don't have block permissions for the entire DB or individual tables referenced by the query.
     (or
      (not= :blocked full-db-permission)
-     (and (seq other-table-permissions) (every? #{:unrestricted :sandboxed} other-table-permissions))
+     (and (seq other-table-permissions) (every? #{:unrestricted :sandboxed :impersonated} other-table-permissions))
      ;; Sandboxed users can view native queries as long as they're not blocked on any table. (Sandboxed tables don't count here.)
      (and native? (all-non-sandboxed-tables-unrestricted? database-id))
      (throw-block-permissions-exception))
