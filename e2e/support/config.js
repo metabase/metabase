@@ -132,7 +132,7 @@ const defaultConfig = {
     config.env.IS_ENTERPRISE = isEnterprise;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
 
-    require("@cypress/grep/src/plugin")(config);
+    require("@bahmutov/cy-grep/src/plugin")(config);
 
     if (isCI) {
       cypressSplit(on, config);
