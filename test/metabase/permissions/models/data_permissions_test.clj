@@ -340,7 +340,8 @@
                    :model/PermissionsGroupMembership {}                {:user_id  user-id
                                                                         :group_id group-id-1}
                    :model/Database                   {database-id :id} {}
-                   :model/Table                      {table-id-1 :id}  {:db_id database-id}]
+                   :model/Table                      {table-id-1 :id}  {:db_id database-id}
+                   :model/Table                      _other-table      {:db_id database-id}]
       ;; Revoke All Users perms so that it doesn't override perms in the new groups
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! group-id-1 database-id :perms/view-data :blocked)
