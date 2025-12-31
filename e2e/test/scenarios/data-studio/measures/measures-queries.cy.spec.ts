@@ -1,6 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import type { TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
@@ -17,40 +18,39 @@ describe("scenarios > data studio > measures > queries", () => {
 
   describe("measures queries", () => {
     it("should create a measure with an aggregation without columns", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Count of rows").click();
-        },
-      });
+      startNewMeasure();
+
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Count of rows").click();
+
+      saveMeasure();
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,760");
     });
 
     it("should create a measure with with a column from the main data source", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().within(() => {
-            cy.findByText("Sum of ...").click();
-            cy.findByText("Total").click();
-          });
-        },
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().within(() => {
+        cy.findByText("Sum of ...").click();
+        cy.findByText("Total").click();
       });
+      saveMeasure();
       useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
 
     it("should create a measure with with a column from the main data source using offset", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("Offset(Sum([Total]), -1)");
-          H.CustomExpressionEditor.nameInput().type("Offset Measure");
-          H.popover().button("Done").click();
-        },
-      });
+      startNewMeasure();
+
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("Offset(Sum([Total]), -1)");
+      H.CustomExpressionEditor.nameInput().type("Offset Measure");
+      H.popover().button("Done").click();
+
+      saveMeasure();
+
       useMeasureInAdhocQuestion(() => {
         breakout("Created At");
       });
@@ -58,32 +58,27 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     it("should create a measure with a column from an implicit join", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().within(() => {
-            cy.findByText("Average of ...").click();
-            cy.findByText("Product").click();
-            cy.findByText("Price").click();
-          });
-        },
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().within(() => {
+        cy.findByText("Average of ...").click();
+        cy.findByText("Product").click();
+        cy.findByText("Price").click();
       });
+      saveMeasure();
       useMeasureInAdhocQuestion();
       verifyScalarValue("55.69");
     });
 
     it("should create a measure with a column from an implicit join using offset", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type(
-            "Offset(Average([Product -> Price]), -1)",
-          );
-          H.CustomExpressionEditor.nameInput().type("Offset Measure");
-          H.popover().button("Done").click();
-        },
-      });
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("Offset(Average([Product -> Price]), -1)");
+      H.CustomExpressionEditor.nameInput().type("Offset Measure");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion(() => {
         breakout("Created At");
       });
@@ -91,17 +86,16 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     it("should create a measure with a custom aggregation expression", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type(
-            "DistinctIf([Product → ID], [ID] > 1) + DistinctIf([ID], [Product → ID] > 1)",
-          );
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type(
+        "DistinctIf([Product → ID], [ID] > 1) + DistinctIf([ID], [Product → ID] > 1)",
+      );
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,867");
     });
@@ -115,15 +109,15 @@ describe("scenarios > data studio > measures > queries", () => {
           filter: ["<", ["field", ORDERS.TOTAL, null], 100],
         },
       });
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("CountIf([TotalSegment])");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("CountIf([TotalSegment])");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("13,005");
     });
@@ -137,15 +131,15 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("[TotalMeasure]");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("[TotalMeasure]");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
@@ -159,15 +153,15 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("floor([TotalMeasure])");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("floor([TotalMeasure])");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621");
     });
@@ -181,15 +175,15 @@ describe("scenarios > data studio > measures > queries", () => {
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
       });
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("[TotalMeasure]");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("[TotalMeasure]");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("1,510,621.68");
     });
@@ -241,15 +235,14 @@ describe("scenarios > data studio > measures > queries", () => {
     });
 
     it("should be possible to create measures with filters like CountIf", () => {
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("CountIf([Total] > 10)");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("CountIf([Total] > 10)");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,758");
     });
@@ -268,15 +261,14 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       });
 
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("CountIf([LargeTotal])");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("CountIf([LargeTotal])");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,758");
     });
@@ -312,15 +304,14 @@ describe("scenarios > data studio > measures > queries", () => {
         });
       });
 
-      buildNewMeasure({
-        createQuery: () => {
-          MeasureEditor.getAggregationPlaceholder().click();
-          H.popover().findByText("Custom Expression").click();
-          H.CustomExpressionEditor.type("CountIf([NestedSegment])");
-          H.CustomExpressionEditor.nameInput().type("Custom");
-          H.popover().button("Done").click();
-        },
-      });
+      startNewMeasure();
+      MeasureEditor.getAggregationPlaceholder().click();
+      H.popover().findByText("Custom Expression").click();
+      H.CustomExpressionEditor.type("CountIf([NestedSegment])");
+      H.CustomExpressionEditor.nameInput().type("Custom");
+      H.popover().button("Done").click();
+      saveMeasure();
+
       useMeasureInAdhocQuestion();
       verifyScalarValue("18,759");
     });
@@ -863,23 +854,31 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 });
 
-function buildNewMeasure({ createQuery }: { createQuery: () => void }) {
+function startNewMeasure({
+  name = MEASURE_NAME,
+  tableId = ORDERS_ID,
+}: {
+  name?: string;
+  tableId?: TableId;
+} = {}) {
   cy.log("create a new measure");
-  H.DataStudio.Tables.visitNewMeasurePage(ORDERS_ID);
-  MeasureEditor.getNameInput().type(MEASURE_NAME);
-  createQuery();
+  H.DataStudio.Tables.visitNewMeasurePage(tableId);
+  MeasureEditor.getNameInput().type(name);
+}
+
+function saveMeasure() {
   MeasureEditor.getSaveButton().click();
   H.undoToast().should("contain.text", "Measure created");
 }
 
-function useMeasureInAdhocQuestion(beforeVisualize?: () => void) {
+function useMeasureInAdhocQuestion(customizeQuery?: () => void) {
   cy.log("verify the measure works in query builder");
   H.openTable({ table: ORDERS_ID, mode: "notebook" });
   H.summarize({ mode: "notebook" });
   H.popover().findByText("Measures").click();
   H.popover().findByText(MEASURE_NAME).click();
 
-  beforeVisualize?.();
+  customizeQuery?.();
 
   H.visualize();
 }
