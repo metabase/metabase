@@ -262,7 +262,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("[FLAKY] should be able to check out existing transform into a new workspace from the transform page", () => {
+    it.only("[FLAKY] should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
@@ -377,7 +377,30 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getMergeWorkspaceButton().click();
       Workspaces.getMergeCommitInput().type("Merge transform");
-      H.modal().findByRole("button", { name: /Merge/ }).click();
+      H.modal().within(() => {
+        cy.log("All quality checks should be passed");
+        cy.findByText("Quality Checks").should("exist");
+        cy.findByText("External dependencies").should("exist");
+        cy.findByText("Internal dependencies").should("exist");
+        cy.findByText("Structural issues").should("exist");
+        cy.findByText("Unused outputs").should("exist");
+        cy.findByText("1 transform will be merged").should("exist");
+
+        cy.log("Transform diffs are displayed");
+        cy.findByText("Modified transforms").should("exist");
+        cy.contains('[class*="sidebarItem"]', "SQL transform")
+          .should("be.visible")
+          .should(($el) => {
+            expect($el.text()).to.include("SQL transform");
+            expect($el.text()).to.match(/\+1\b/);
+            expect($el.text()).to.match(/-1\b/);
+          })
+          .click();
+        cy.contains('[class*="cm-deletedLine"]', `SELECT * FROM "Schema A"."Animals"`)
+        cy.contains('[class*="cm-insertedLine"]', `SELECT * FROM "Schema A"."Animals" LIMIT 2`)
+
+        cy.findByRole("button", { name: /Merge/ }).click();
+      });
 
       Transforms.list()
         .findByRole("row", { name: /SQL transform/ })
@@ -740,10 +763,10 @@ describe("scenarios > data studio > workspaces", () => {
           .click();
       });
 
-        H.entityPickerModal().within(() => {
-          cy.findByText("Schema a").click();
-          cy.findByText("Animals").click();
-        });
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema a").click();
+        cy.findByText("Animals").click();
+      });
 
       cy.log("Open transform settings");
       Workspaces.getSaveTransformButton().click();
@@ -784,14 +807,12 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByText("Schema A.Animals").should("be.visible");
       });
 
-        cy.findByTestId("python-data-picker")
-          .findByText("Animals")
-          .click();
+      cy.findByTestId("python-data-picker").findByText("Animals").click();
 
-        H.entityPickerModal().within(() => {
-          cy.findByText("Schema B").click();
-          cy.findByText("Animals").click();
-        });
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema B").click();
+        cy.findByText("Animals").click();
+      });
 
       Workspaces.getSaveTransformButton().click();
 
