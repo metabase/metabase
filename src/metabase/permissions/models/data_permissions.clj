@@ -801,8 +801,17 @@
                                             :db_id       db-id
                                             :table_id    (:id table)
                                             :schema_name (:schema table)}))))]
-        {:to-delete [existing-db-perm]
-         :to-insert (concat other-new-perms new-perms)}))))
+        (if (and (not (seq other-new-perms))
+                 (= (count values) 1))
+          ;; in this case, we are setting this permission for *EVERY* table in the database to a single value.
+          ;; Therefore, we need to create a *database*-level permission!
+          {:to-insert [{:perm_type perm-type
+                        :group_id group-id
+                        :perm_value (first #p values)
+                        :db_id db-id}]
+           :to-delete [existing-db-perm]}
+          {:to-delete [existing-db-perm]
+           :to-insert (concat other-new-perms new-perms)})))))
 
 (defn- handle-no-db-permission
   "Handles the case where there's no existing database-level permission."

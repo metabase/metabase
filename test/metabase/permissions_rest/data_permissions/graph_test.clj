@@ -34,14 +34,14 @@
             {:view-data :impersonated}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :blocked}}}
+            {:perms/view-data :impersonated}}}
 
           {group-id-1
            {database-id-1
             {:view-data {"PUBLIC" {table-id-1 :sandboxed}}}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :blocked}}}
+            {:perms/view-data :sandboxed}}}
 
           {group-id-1
            {database-id-1
@@ -55,14 +55,17 @@
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                  :schema "PUBLIC"}
+                   :model/Table            {table-id-2 :id}      {:db_id database-id-1
                                                                   :schema "PUBLIC"}]
       (testing "data permissions can be updated via API-style graph"
-        (are [api-graph db-graph] (= db-graph
-                                     (do
+        (are [api-graph db-graph] (=? db-graph
+                                      (do
                                        ;; Clear default perms for the group
-                                       (t2/delete! :model/DataPermissions :group_id group-id-1)
-                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                       (data-perms.graph/data-permissions-graph :group-id group-id-1)))
+                                        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/view-data :blocked)
+                                        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :no)
+                                        (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
             {:create-queries :query-builder-and-native
@@ -94,15 +97,15 @@
              :view-data {"PUBLIC" :unrestricted}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+            {:perms/create-queries :query-builder
+             :perms/view-data :unrestricted}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" :no}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}}
+            {:perms/create-queries :no}}}
 
           {group-id-1
            {database-id-1
@@ -110,15 +113,17 @@
              :view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder
+                                              table-id-2 :no}}
+             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted
+                                         table-id-2 :blocked}}}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" {table-id-1 :no}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
+            {:perms/create-queries :no}}})))))
 
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}

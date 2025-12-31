@@ -159,10 +159,11 @@
   (if (or
        (t2/exists? :model/DataPermissions
                    :perm_type :perms/view-data
-                   :perm_value :blocked
+                   :perm_value [:in [:blocked :impersonated :sandboxed]]
                    :group_id group-id)
-       (t2/exists? :model/ConnectionImpersonation
-                   :group_id group-id)
+       ;; these shouldn't be necessary going forward, but older setups had `:unrestricted` data access for impersonation/sandboxing
+       ;; If we migrate them, we can remove these additional checks.
+       (t2/exists? :model/ConnectionImpersonation :group_id group-id)
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists? :model/Sandbox
@@ -182,8 +183,10 @@
        (t2/exists? :model/DataPermissions
                    :db_id db-id
                    :perm_type :perms/view-data
-                   :perm_value :blocked
+                   :perm_value [:in [:blocked :sandboxed]]
                    :group_id group-id)
+       ;; these shouldn't be necessary going forward, but older setups had `:unrestricted` data access for impersonation/sandboxing
+       ;; If we migrate them, we can remove these additional checks.
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists?
