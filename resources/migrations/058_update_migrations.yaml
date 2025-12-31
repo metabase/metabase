@@ -1236,6 +1236,26 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
+      id: v58.2025-12-18T16:14:03
+      author: winlost
+      comment: Add disable_links column to pulse table
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable email subscription links"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: pulse
+            columnName: disable_links
+
+  - changeSet:
       id: v58.2025-12-30T22:48:02
       author: edpaget
       comment: Add remote_sync_object.model_table_id for parent table reference
@@ -1264,28 +1284,6 @@ databaseChangeLog:
                   remarks: Parent table name for Field/Segment/Table models
                   constraints:
                     nullable: true
-
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
-  - changeSet:
-      id: v58.2025-12-18T16:14:03
-      author: winlost
-      comment: Add disable_links column to pulse table
-      changes:
-        - addColumn:
-            tableName: pulse
-            columns:
-              - column:
-                  name: disable_links
-                  type: ${boolean.type}
-                  remarks: "Whether to disable email subscription links"
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: pulse
-            columnName: disable_links
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
