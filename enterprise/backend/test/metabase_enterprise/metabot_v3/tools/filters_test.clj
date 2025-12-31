@@ -687,15 +687,16 @@
                                                 :database_id (mt/id)
                                                 :name "Test Metric"
                                                 :type :metric}]
-      (testing "No user throws permission error"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/query-metric
-                               {:metric-id metric-id
-                                :filters []
-                                :group-by []}))))
+      (testing "No user returns error output"
+        (let [result (metabot-v3.tools.filters/query-metric
+                      {:metric-id metric-id
+                       :filters []
+                       :group-by []})]
+          (is (some? (:output result)))
+          (is (nil? (:structured-output result)))))
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-no-data-perms-for-all-users!
-          (testing "User with collection access but no data permissions gets agent error"
+          (testing "User with collection access but no data permissions gets error output"
             (let [result (metabot-v3.tools.filters/query-metric
                           {:metric-id metric-id
                            :filters []
@@ -708,15 +709,16 @@
                                              :database_id (mt/id)
                                              :name "Test Model"
                                              :type :model}]
-    (testing "No user throws permission error"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.filters/query-model
-                             {:model-id model-id
-                              :filters []
-                              :group-by []}))))
+    (testing "No user returns error output"
+      (let [result (metabot-v3.tools.filters/query-model
+                    {:model-id model-id
+                     :filters []
+                     :group-by []})]
+        (is (some? (:output result)))
+        (is (nil? (:structured-output result)))))
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-no-data-perms-for-all-users!
-        (testing "User with collection access but no data permissions gets agent error"
+        (testing "User with collection access but no data permissions gets error output"
           (let [result (metabot-v3.tools.filters/query-model
                         {:model-id model-id
                          :filters []
@@ -729,17 +731,19 @@
                                              :database_id (mt/id)
                                              :name "Test Model"
                                              :type :model}]
-    (testing "No user throws permission error for table"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.filters/query-datasource
-                             {:table-id (mt/id :orders)}))))
-    (testing "No user throws permission error for model"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                            (metabot-v3.tools.filters/query-datasource
-                             {:model-id model-id}))))
+    (testing "No user returns error output for table"
+      (let [result (metabot-v3.tools.filters/query-datasource
+                    {:table-id (mt/id :orders)})]
+        (is (some? (:output result)))
+        (is (nil? (:structured-output result)))))
+    (testing "No user returns error output for model"
+      (let [result (metabot-v3.tools.filters/query-datasource
+                    {:model-id model-id})]
+        (is (some? (:output result)))
+        (is (nil? (:structured-output result)))))
     (mt/with-current-user (mt/user->id :rasta)
       (mt/with-no-data-perms-for-all-users!
-        (testing "User with collection access but no data permissions gets agent error for model"
+        (testing "User with collection access but no data permissions gets error output for model"
           (let [result (metabot-v3.tools.filters/query-datasource
                         {:model-id model-id})]
             (is (some? (:output result)))
@@ -757,24 +761,27 @@
                                                   :database_id (mt/id)
                                                   :name "Test Question"
                                                   :type :question}]
-      (testing "No user throws permission error for table"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/filter-records
-                               {:data-source {:table-id (mt/id :orders)}
-                                :filters []}))))
-      (testing "No user throws permission error for model"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/filter-records
-                               {:data-source {:table-id (str "card__" model-id)}
-                                :filters []}))))
-      (testing "No user throws permission error for question"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                              (metabot-v3.tools.filters/filter-records
-                               {:data-source {:report-id question-id}
-                                :filters []}))))
+      (testing "No user returns error output for table"
+        (let [result (metabot-v3.tools.filters/filter-records
+                      {:data-source {:table-id (mt/id :orders)}
+                       :filters []})]
+          (is (some? (:output result)))
+          (is (nil? (:structured-output result)))))
+      (testing "No user returns error output for model"
+        (let [result (metabot-v3.tools.filters/filter-records
+                      {:data-source {:table-id (str "card__" model-id)}
+                       :filters []})]
+          (is (some? (:output result)))
+          (is (nil? (:structured-output result)))))
+      (testing "No user returns error output for question"
+        (let [result (metabot-v3.tools.filters/filter-records
+                      {:data-source {:report-id question-id}
+                       :filters []})]
+          (is (some? (:output result)))
+          (is (nil? (:structured-output result)))))
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-no-data-perms-for-all-users!
-          (testing "User with collection access but no data permissions gets agent error for model"
+          (testing "User with collection access but no data permissions gets error output for model"
             (let [result (metabot-v3.tools.filters/filter-records
                           {:data-source {:model-id model-id}
                            :filters []})]

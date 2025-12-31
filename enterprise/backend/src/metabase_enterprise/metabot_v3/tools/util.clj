@@ -10,8 +10,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
+   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -138,23 +140,33 @@
                     {:agent-error? true
                      :field-id field-id}))))
 
+(defn- read-check-with-agent-error
+  "Check if current user can read entity, throwing an agent-friendly error if not."
+  [entity entity-type]
+  (when-not (mi/can-read? entity)
+    (throw (ex-info (tru "The user does not have permission to access this {0}." entity-type)
+                    {:agent-error? true}))))
+
 (defn get-database
   "Get the `fields` of the database with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Database :id] fields) id)
-      api/read-check))
+  (let [database (api/check-404 (t2/select-one (into [:model/Database :id] fields) id))]
+    (read-check-with-agent-error database "database")
+    database))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Table :id] fields) id)
-      api/read-check))
+  (let [table (api/check-404 (t2/select-one (into [:model/Table :id] fields) id))]
+    (read-check-with-agent-error table "table")
+    table))
 
 (defn get-card
   "Retrieve the card with `id` from the app DB."
   [id]
-  (-> (t2/select-one :model/Card :id id)
-      api/read-check))
+  (let [card (api/check-404 (t2/select-one :model/Card :id id))]
+    (read-check-with-agent-error card (name (:type card)))
+    card))
 
 (defn card-query
   "Return a query based on the model with ID `model-id`."

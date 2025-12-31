@@ -9,9 +9,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.models.interface :as mi]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
-   [metabase.util.i18n :as i18n]
+   [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -27,6 +29,16 @@
                               :most_recent true
                               {:order-by [[:id :desc]]})]
     (= (:status review) "verified")))
+
+(defn- check-card-data-permissions
+  "Check if the current user has data permissions to access the given card's underlying data.
+   Throws an agent error if the user lacks permissions."
+  [card]
+  (when-not (query-perms/can-run-query? (:dataset_query card))
+    (throw (ex-info (tru "The user does not have permission query this {0}."
+                         (name (:type card)))
+                    {:agent-error? true
+                     :card-id (:id card)}))))
 
 (def ^:private max-glossary-items
   "Maximal number of items from glossary to include in Metabot's context."
@@ -164,8 +176,8 @@
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
                      (metabot-v3.tools.u/get-table id :db_id :description :name :schema))]
-     (let [query-needed? (or with-fields? with-related-tables? with-metrics?)
-           db-id (if metadata-provider (:db-id base) (:db_id base))
+     (let [db-id (if metadata-provider (:db-id base) (:db_id base))
+           query-needed? (or with-fields? with-related-tables? with-metrics?)
            db-engine (:engine (if metadata-provider
                                 (lib.metadata/database metadata-provider)
                                 (metabot-v3.tools.u/get-database db-id :engine)))
@@ -200,7 +212,8 @@
 
 (defn related-tables
   "Constructs a list of tables, optionally including their fields, that are related to the given query via foreign key.
-   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys."
+   Creates separate entries for each FK path when the same table is reachable through multiple foreign keys.
+   Tables the user doesn't have permission to access are silently skipped."
   [query main-field-id-prefix with-fields? field-values-fn]
   (let [all-main-cols    (lib/visible-columns query)
         ;; Map [table-id fk-field-id field-name] -> index in the main query
@@ -214,26 +227,30 @@
         ;; { [table-id fk-field-id] [fk-col ...] }
         grouped-fks      (group-by (juxt :table-id :fk-field-id) fk-cols)]
     (when (seq grouped-fks)
-      (mapv
-       (fn [[[table-id fk-field-id] _]]
-         (let [base-details   (table-details table-id
-                                             {:with-fields?          with-fields?
-                                              :field-values-fn       field-values-fn
-                                              :with-related-tables?  false
-                                              :with-metrics?         false})
-               base-table-col (lib.metadata/field query fk-field-id)
-               fk-field-name  (:name base-table-col)
-               updated-fields
-               (when with-fields?
-                 (->> (:fields base-details)
-                      (keep
-                       (fn [{:keys [name] :as field}]
-                         (when-let [idx (get contextual-index [table-id fk-field-id name])]
-                           (assoc field :field_id (str main-field-id-prefix idx)))))))]
-           (-> (cond-> base-details
-                 updated-fields (assoc :fields updated-fields))
-               (assoc :related_by fk-field-name))))
-       grouped-fks))))
+      (into []
+            (keep
+             (fn [[[table-id fk-field-id] _]]
+               ;; Skip tables the user doesn't have permission to access
+               (when-let [table (t2/select-one :model/Table :id table-id)]
+                 (when (mi/can-read? table)
+                   (let [base-details   (table-details table-id
+                                                       {:with-fields?          with-fields?
+                                                        :field-values-fn       field-values-fn
+                                                        :with-related-tables?  false
+                                                        :with-metrics?         false})
+                         base-table-col (lib.metadata/field query fk-field-id)
+                         fk-field-name  (:name base-table-col)
+                         updated-fields
+                         (when with-fields?
+                           (->> (:fields base-details)
+                                (keep
+                                 (fn [{:keys [name] :as field}]
+                                   (when-let [idx (get contextual-index [table-id fk-field-id name])]
+                                     (assoc field :field_id (str main-field-id-prefix idx)))))))]
+                     (-> (cond-> base-details
+                           updated-fields (assoc :fields updated-fields))
+                         (assoc :related_by fk-field-name)))))))
+            grouped-fks))))
 
 (defn- card-details
   "Get details for a card."
@@ -285,16 +302,19 @@
 
 (defn cards-details
   "Get the details of metrics or models as specified by `card-type` and `cards`
-  from the database with ID `database-id` respecting `options`."
+  from the database with ID `database-id` respecting `options`.
+  Cards the user doesn't have data permissions for are filtered out."
   [card-type database-id cards options]
   (let [mp (lib-be/application-database-metadata-provider database-id)
         detail-fn (case card-type
                     :metric metric-details
-                    :model card-details)]
-    (lib.metadata/bulk-metadata mp :metadata/card (map :id cards))
+                    :model card-details)
+        ;; Filter to only cards the user has data permissions for
+        permitted-cards (filter #(query-perms/can-run-query? (:dataset_query %)) cards)]
+    (lib.metadata/bulk-metadata mp :metadata/card (map :id permitted-cards))
     (map #(-> (detail-fn % mp (u/assoc-default options :field-values-fn identity))
               (assoc :type card-type))
-         cards)))
+         permitted-cards)))
 
 (defn answer-sources
   "Get the details of metrics and models in the scope of the Metabot instance with ID `metabot-id`.
@@ -329,6 +349,16 @@
           (tap> (queries)))))
   -)
 
+(defn- check-table-data-permissions
+  "Check if the current user has data permissions to query the given table.
+   Throws an agent error if the user lacks permissions."
+  [table-id]
+  (let [table (metabot-v3.tools.u/get-table table-id :db_id)]
+    (when-not (query-perms/can-query-table? (:db_id table) table-id)
+      (throw (ex-info (tru "The user does not have permission to access this table''s data.")
+                      {:agent-error? true
+                       :table-id table-id})))))
+
 (defn get-table-details
   "Get information about the table or model with ID `table-id`.
   `table-id` is string either encoding an integer that is the ID of a table
@@ -337,24 +367,38 @@
   `model-id` is an integer ID of a model (card). Exactly one of `table-id` or `model-id`
   should be supplied."
   [{:keys [model-id table-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (cond
-                    (int? model-id)    (let [card (card-details model-id (assoc options :only-model true))]
-                                         (if (= :model (:type card))
-                                           card
-                                           (format "ID %s is not a valid model id, it's a question" model-id)))
-                    (int? table-id)    (table-details table-id options)
-                    (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
-                                         (card-details (parse-long card-id) options)
-                                         (if (re-matches #"\d+" table-id)
-                                           (table-details (parse-long table-id) options)
-                                           "invalid table_id"))
-                    :else "invalid arguments")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "table not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (cond
+                      (int? model-id)    (let [card (metabot-v3.tools.u/get-card model-id)]
+                                           (check-card-data-permissions card)
+                                           (let [details (card-details card
+                                                                       (lib-be/application-database-metadata-provider (:database_id card))
+                                                                       (assoc options :only-model true))]
+                                             (if (= :model (:type details))
+                                               details
+                                               (format "ID %s is not a valid model id, it's a question" model-id))))
+                      (int? table-id)    (do (check-table-data-permissions table-id)
+                                             (table-details table-id options))
+                      (string? table-id) (if-let [[_ card-id] (re-matches #"card__(\d+)" table-id)]
+                                           (let [card (metabot-v3.tools.u/get-card (parse-long card-id))]
+                                             (check-card-data-permissions card)
+                                             (card-details card
+                                                           (lib-be/application-database-metadata-provider (:database_id card))
+                                                           options))
+                                           (if (re-matches #"\d+" table-id)
+                                             (let [tid (parse-long table-id)]
+                                               (check-table-data-permissions tid)
+                                               (table-details tid options))
+                                             "invalid table_id"))
+                      :else "invalid arguments")]
+        (if (map? details)
+          {:structured-output details}
+          {:output (or details "table not found")})))
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (comment
   (binding [api/*current-user-permissions-set* (delay #{"/"})
@@ -367,31 +411,45 @@
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
   [{:keys [metric-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (if (int? metric-id)
-                    (metric-details metric-id options)
-                    "invalid metric_id")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "metric not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (if (int? metric-id)
+                      (let [card (metabot-v3.tools.u/get-card metric-id)]
+                        (check-card-data-permissions card)
+                        (metric-details card
+                                        (lib-be/application-database-metadata-provider (:database_id card))
+                                        options))
+                      "invalid metric_id")]
+        (if (map? details)
+          {:structured-output details}
+          {:output (or details "metric not found")})))
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (defn get-report-details
   "Get information about the report (card) with ID `report-id`."
   [{:keys [report-id] :as arguments}]
-  (lib-be/with-metadata-provider-cache
-    (let [options (cond-> arguments
-                    (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
-          details (if (int? report-id)
-                    (let [details (card-details report-id options)]
-                      (some-> details
-                              (select-keys [:id :type :description :name :verified])
-                              (assoc :result-columns (:fields details))))
-                    "invalid report_id")]
-      (if (map? details)
-        {:structured-output details}
-        {:output (or details "report not found")}))))
+  (try
+    (lib-be/with-metadata-provider-cache
+      (let [options (cond-> arguments
+                      (= (:with-field-values? arguments) false) (assoc :field-values-fn identity))
+            details (if (int? report-id)
+                      (let [card (metabot-v3.tools.u/get-card report-id)]
+                        (check-card-data-permissions card)
+                        (let [details (card-details card
+                                                    (lib-be/application-database-metadata-provider (:database_id card))
+                                                    options)]
+                          (some-> details
+                                  (select-keys [:id :type :description :name :verified])
+                                  (assoc :result-columns (:fields details)))))
+                      "invalid report_id")]
+        (if (map? details)
+          {:structured-output details}
+          {:output (or details "report not found")})))
+    (catch Exception e
+      (metabot-v3.tools.u/handle-agent-error e))))
 
 (defn get-document-details
   "Get information about the document with ID `document-id`."
