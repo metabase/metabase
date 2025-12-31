@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -698,17 +699,18 @@
 
 (defmethod driver/init-workspace-isolation! :h2
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        username    (driver.u/workspace-isolation-user-name workspace)
-        password    (driver.u/random-workspace-password)
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        username         (driver.u/workspace-isolation-user-name workspace)
+        password         (driver.u/random-workspace-password)
+        escaped-password (sql.u/escape-sql password :ansi)
         ;; H2 embeds credentials in the :db connection string, so we need to build a new one
-        original-db (get-in database [:details :db])
-        new-db      (replace-credentials original-db username password)]
+        original-db      (get-in database [:details :db])
+        new-db           (replace-credentials original-db username password)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
                      ;; H2 syntax: CREATE USER userName PASSWORD 'password'
-                     (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username password)
+                     (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD '%s'" username escaped-password)
                      ;; Grant access on the isolation schema
                      (format "GRANT ALL ON SCHEMA \"%s\" TO \"%s\"" schema-name username)]]
           (.addBatch ^Statement stmt ^String sql))

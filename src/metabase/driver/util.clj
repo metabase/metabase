@@ -27,7 +27,7 @@
    [metabase.util.performance :as perf :refer [mapv empty?]])
   (:import
    (java.io ByteArrayInputStream)
-   (java.security KeyFactory KeyStore PrivateKey)
+   (java.security KeyFactory KeyStore PrivateKey SecureRandom)
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
    (javax.net SocketFactory)
@@ -708,8 +708,9 @@
 (defn workspace-isolation-user-name
   "Generate username for workspace isolation."
   [workspace]
-  (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
-    (format "%s_%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
+  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
+        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
 
 (def ^:private workspace-password-char-sets
   "Character sets for password generation. Cycles through these to ensure representation from each."
@@ -718,13 +719,26 @@
    "123456789"
    "!#$%&*+-="])
 
+(defn- secure-rand-nth
+  "Like rand-nth but uses SecureRandom for cryptographic security."
+  [^SecureRandom rng coll]
+  (nth coll (.nextInt rng (count coll))))
+
+(defn- secure-shuffle
+  "Like shuffle but uses SecureRandom for cryptographic security."
+  [^SecureRandom rng coll]
+  (let [arr (java.util.ArrayList. ^java.util.Collection coll)]
+    (java.util.Collections/shuffle arr rng)
+    (vec arr)))
+
 (defn random-workspace-password
   "Generate a random password suitable for most database engines.
-   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
-   by cycling through the character sets. Result is shuffled for randomness."
+   Uses SecureRandom for cryptographic security. Cycles through character sets
+   (uppercase, lowercase, digits, special) to ensure good distribution."
   []
-  (->> (cycle workspace-password-char-sets)
-       (take (+ 32 (rand-int 32)))
-       (map rand-nth)
-       shuffle
-       (apply str)))
+  (let [rng (SecureRandom.)]
+    (->> (cycle workspace-password-char-sets)
+         (take (+ 32 (.nextInt rng 32)))
+         (map #(secure-rand-nth rng %))
+         (secure-shuffle rng)
+         (apply str))))

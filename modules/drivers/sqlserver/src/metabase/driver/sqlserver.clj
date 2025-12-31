@@ -1083,15 +1083,16 @@
 
 (defmethod driver/init-workspace-isolation! :sqlserver
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        login-name  (isolation-login-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        login-name       (isolation-login-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; SQL Server: create login (server level), then user (database level), then schema
     (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
                               "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
-                         login-name login-name (:password read-user))
+                         login-name login-name escaped-password)
                  (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
                          (:user read-user) (:user read-user) login-name)
                  (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"

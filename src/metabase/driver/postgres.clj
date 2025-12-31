@@ -1319,15 +1319,16 @@
 
 (defmethod driver/init-workspace-isolation! :postgres
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       ;; Create user if not exists, otherwise update password
       ;; PostgreSQL doesn't support CREATE USER IF NOT EXISTS, so we need to check first
       (let [user-sql (if (user-exists? t-conn (:user read-user))
-                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user))
-                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) (:password read-user)))]
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) escaped-password)
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) escaped-password))]
         (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
           (doseq [sql [;; PostgreSQL supports IF NOT EXISTS for schemas
                        (format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)

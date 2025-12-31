@@ -972,13 +972,14 @@
 
 (defmethod driver/init-workspace-isolation! :snowflake
   [_driver database workspace]
-  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        db-name     (-> database :details :db)
-        warehouse   (-> database :details :warehouse)
-        role-name   (isolation-role-name workspace)
-        read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
-                     :password (driver.u/random-workspace-password)}
-        conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        db-name          (-> database :details :db)
+        warehouse        (-> database :details :warehouse)
+        role-name        (isolation-role-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (when-not db-name
       (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
                       {:database-id (:id database) :step :init})))
@@ -994,7 +995,7 @@
                  (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
                  (format "GRANT ALL ON FUTURE TABLES IN SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema-name role-name)
                  (format "CREATE USER IF NOT EXISTS \"%s\" PASSWORD = '%s' MUST_CHANGE_PASSWORD = FALSE DEFAULT_ROLE = \"%s\""
-                         (:user read-user) (:password read-user) role-name)
+                         (:user read-user) escaped-password role-name)
                  (format "GRANT ROLE \"%s\" TO USER \"%s\"" role-name (:user read-user))]]
       (jdbc/execute! conn-spec [sql]))
     {:schema           schema-name
