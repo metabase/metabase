@@ -479,10 +479,12 @@
                                                                 :schema "PUBLIC"}
                  :model/Table            {table-id-3 :id}      {:db_id database-id-2
                                                                 :schema nil}]
+    ;; initialize permissions
+    (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :no)
+    (data-perms/set-database-permission! group-id-1 database-id-2 :perms/create-queries :no)
+    (data-perms/set-database-permission! group-id-1 database-id-1 :perms/view-data :blocked)
+    (data-perms/set-database-permission! group-id-1 database-id-2 :perms/view-data :blocked)
     (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
-      ;; Clear the default permissions for the groups
-      (t2/delete! :model/DataPermissions :group_id group-id-1)
-      (t2/delete! :model/DataPermissions :group_id group-id-2)
       (testing "Data and query permissions can be fetched as a graph"
         (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :query-builder-and-native)
         (data-perms/set-database-permission! group-id-1 database-id-2 :perms/create-queries :no)
@@ -497,9 +499,7 @@
                                {table-id-1 :unrestricted
                                 table-id-2 :legacy-no-self-service}}
                               :perms/create-queries :query-builder-and-native}
-               database-id-2 {:perms/view-data
-                              {""
-                               {table-id-3 :unrestricted}}
+               database-id-2 {:perms/view-data :unrestricted
                               :perms/create-queries :no}}
               group-id-2
               {database-id-1 {:perms/view-data
@@ -516,43 +516,38 @@
               {database-id-1 {:perms/manage-table-metadata
                               {"PUBLIC"
                                {table-id-1 :yes}}}
-               database-id-2 {:perms/download-results
-                              {""
-                               {table-id-3 :one-million-rows}}
+               database-id-2 {:perms/download-results :one-million-rows
                               :perms/manage-database :yes}}}
              (data-perms.graph/data-permissions-graph))))
 
       (testing "Data permissions graph can be filtered by group ID, database ID, and permission type"
-        (is (= {group-id-1
-                {database-id-1 {:perms/view-data
-                                {"PUBLIC"
-                                 {table-id-1 :unrestricted
-                                  table-id-2 :legacy-no-self-service}}
-                                :perms/create-queries :query-builder-and-native
-                                :perms/manage-table-metadata
-                                {"PUBLIC"
-                                 {table-id-1 :yes}}}
-                 database-id-2 {:perms/view-data
-                                {""
-                                 {table-id-3 :unrestricted}}
-                                :perms/download-results
-                                {""
-                                 {table-id-3 :one-million-rows}}
-                                :perms/manage-database :yes
-                                :perms/create-queries :no}}}
-               (data-perms.graph/data-permissions-graph :group-id group-id-1)))
+        (is (partial= {group-id-1
+                       {database-id-1 {:perms/view-data
+                                       {"PUBLIC"
+                                        {table-id-1 :unrestricted
+                                         table-id-2 :legacy-no-self-service}}
+                                       :perms/create-queries :query-builder-and-native
+                                       :perms/manage-table-metadata {"PUBLIC"
+                                                                     {table-id-1 :yes}}
+                                       :perms/download-results :one-million-rows
+                                       :perms/manage-database :no}
+                        database-id-2 {:perms/view-data :unrestricted
+                                       :perms/download-results :one-million-rows
+                                       :perms/manage-database :yes
+                                       :perms/create-queries :no}}}
+                      (data-perms.graph/data-permissions-graph :group-id group-id-1)))
 
-        (is (= {group-id-1
-                {database-id-1 {:perms/view-data
-                                {"PUBLIC"
-                                 {table-id-1 :unrestricted
-                                  table-id-2 :legacy-no-self-service}}
-                                :perms/create-queries :query-builder-and-native
-                                :perms/manage-table-metadata
-                                {"PUBLIC"
-                                 {table-id-1 :yes}}}}}
-               (data-perms.graph/data-permissions-graph :group-id group-id-1
-                                                        :db-id database-id-1)))
+        (is (partial= {group-id-1
+                       {database-id-1 {:perms/view-data
+                                       {"PUBLIC"
+                                        {table-id-1 :unrestricted
+                                         table-id-2 :legacy-no-self-service}}
+                                       :perms/create-queries :query-builder-and-native
+                                       :perms/manage-table-metadata
+                                       {"PUBLIC"
+                                        {table-id-1 :yes}}}}}
+                      (data-perms.graph/data-permissions-graph :group-id group-id-1
+                                                               :db-id database-id-1)))
 
         (is (= {group-id-1
                 {database-id-1 {:perms/view-data
