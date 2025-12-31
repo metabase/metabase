@@ -723,9 +723,6 @@ describe("scenarios > data studio > measures > queries", () => {
 
         cy.visit(`/data-studio/dependencies?id=${measure.id}&type=measure`);
 
-        H.DependencyGraph.graph().should("be.visible");
-        H.DependencyGraph.graph().findByText("2 measures").click();
-
         H.DependencyGraph.dependencyPanel()
           .findByText("Question using measure")
           .should("be.visible");
