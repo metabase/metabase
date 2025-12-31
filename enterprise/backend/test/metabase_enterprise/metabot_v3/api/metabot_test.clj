@@ -383,7 +383,8 @@
                                                                :collection_id accessible-coll-id
                                                                :dataset_query model-query}
                          :model/Card {restricted-card-id :id} {:name "Restricted Model"
-                                                               :type :model :collection_id restricted-coll-id
+                                                               :type :model
+                                                               :collection_id restricted-coll-id
                                                                :dataset_query model-query}
                          :model/Metabot {metabot-id :id} {:name "Test Metabot"}
                          :model/MetabotPrompt _ {:metabot_id metabot-id
@@ -393,10 +394,7 @@
                          :model/MetabotPrompt _ {:metabot_id metabot-id
                                                  :prompt "Restricted prompt"
                                                  :model :model
-                                                 :card_id restricted-card-id}
-                         :model/PermissionsGroup {group-id :id} {:name "Test Group"}
-                         :model/PermissionsGroupMembership _ {:group_id group-id
-                                                              :user_id (mt/user->id :rasta)}]
+                                                 :card_id restricted-card-id}]
             ;; Revoke default All Users access to restricted collection
             (perms/revoke-collection-permissions! (perms-group/all-users) restricted-coll-id)
 
