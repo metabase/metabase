@@ -721,6 +721,20 @@ describe("scenarios > data studio > measures > queries", () => {
           },
         });
 
+        cy.log("Create a transform that uses the measure");
+        H.createTransform({
+          name: "Transform using measure",
+          target: {
+            type: "table",
+            database: SAMPLE_DB_ID,
+            name: "Tranformed table",
+          },
+          source: {
+            "source-table": ORDERS_ID,
+            aggregation: [["*", 2, ["measure", measure.id]]],
+          },
+        });
+
         visitDependencyGraph("measure", measure.id);
 
         cy.log("verify question dependency");
@@ -757,6 +771,15 @@ describe("scenarios > data studio > measures > queries", () => {
           .click();
         H.DependencyGraph.dependencyPanel()
           .findByText("Measure using measure")
+          .should("be.visible");
+
+        cy.log("verify transform dependency");
+        H.DependencyGraph.graph()
+          .findByLabelText(MEASURE_NAME)
+          .findByText("1 transform")
+          .click();
+        H.DependencyGraph.dependencyPanel()
+          .findByText("Transform using measure")
           .should("be.visible");
       });
     });
