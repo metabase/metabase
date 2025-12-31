@@ -194,11 +194,6 @@
        (map :component)
        (map #(normalize-table-spec driver %))))
 
-(mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
-  [driver :- :keyword
-   query  :- :metabase.lib.schema/native-only-query]
-  (into #{} (parsed-table-refs driver query)))
-
 (mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
   [driver :- :keyword
    query  :- :metabase.lib.schema/native-only-query]

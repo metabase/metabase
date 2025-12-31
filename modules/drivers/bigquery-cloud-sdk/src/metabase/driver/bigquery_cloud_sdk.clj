@@ -1425,7 +1425,7 @@
       (let [table-id (TableId/of project-id schema name)]
         (ws-grant-table-read-access! client table-id ws-sa-email)))))
 
-(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+(def ^:private perm-check-workspace-id 0)
 
 (defmethod driver/check-isolation-permissions :bigquery-cloud-sdk
   [driver database test-table]

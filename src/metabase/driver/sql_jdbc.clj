@@ -336,7 +336,7 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+(def ^:private perm-check-workspace-id 0)
 
 (defmethod driver/check-isolation-permissions :sql-jdbc
   [driver database test-table]
