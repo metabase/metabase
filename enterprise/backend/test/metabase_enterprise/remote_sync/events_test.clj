@@ -911,7 +911,7 @@
 
 (deftest new-timeline-moved-out-of-remote-synced-collection-test
   (testing "new timeline moved out of remote-synced collection is no longer tracked"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+    (mt/with-temp [:model/Collection remote-sync-collection {:name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal Collection"}
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
@@ -927,7 +927,7 @@
 
 (deftest soft-delete-then-hard-delete-preserves-dirty-status-test
   (testing "doc that is soft-deleted then hard-deleted should maintain dirty status"
-    (mt/with-temp [:model/Collection remote-sync-collection {:is_remote_synced true :name "Remote-Sync"}
+    (mt/with-temp [:model/Collection remote-sync-collection {:name "Remote-Sync"}
                    :model/Document doc {:name "Test Doc"
                                         :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
