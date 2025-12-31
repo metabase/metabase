@@ -514,8 +514,9 @@
   (testing "create-remote-sync-object-entry! creates new entry when none exists"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-      (let [existing-card-id (t2/select-one-fn :id [:model/Card :id])]
-        (#'lib.events/create-or-update-remote-sync-object-entry! "Card" existing-card-id "create" 456)
+      (let [existing-card-id (t2/select-one-fn :id [:model/Card :id])
+            hydrate-fn (fn [id] (t2/select-one [:model/Card :name :collection_id :display] :id id))]
+        (#'lib.events/create-or-update-remote-sync-object-entry! "Card" existing-card-id "create" hydrate-fn)
         (let [entries (t2/select :model/RemoteSyncObject)]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Card"
@@ -528,14 +529,15 @@
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
-            existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])]
+            existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])
+            hydrate-fn (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))]
         (t/with-clock clock-t1
-          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "update"))
+          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "update" hydrate-fn))
         (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)
               initial-time (:status_changed_at initial-entry)
               clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
           (t/with-clock clock-t2
-            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced"))
+            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced" hydrate-fn))
           (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
@@ -548,13 +550,14 @@
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
-            existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])]
+            existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])
+            hydrate-fn (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))]
         (t/with-clock clock-t1
-          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "create"))
+          (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "create" hydrate-fn))
         (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)
               clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
           (t/with-clock clock-t2
-            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced"))
+            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced" hydrate-fn))
           (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
@@ -562,12 +565,13 @@
               (is (= "create" (:status update-entry)))
               (is (= (:status_changed_at initial-entry) (:status_changed_at update-entry))))))))))
 
-(deftest create-remote-sync-object-entry-uses-current-user-test
-  (testing "create-remote-sync-object-entry! uses current user when user-id not specified"
+(deftest create-remote-sync-object-entry-with-hydrate-fn-test
+  (testing "create-remote-sync-object-entry! creates entry with hydrated details from hydrate-fn"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-      (let [existing-collection-id (t2/select-one-fn :id [:model/Collection :id])]
-        (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create")
+      (let [existing-collection-id (t2/select-one-fn :id [:model/Collection :id])
+            hydrate-fn (fn [id] (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))]
+        (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create" hydrate-fn)
         (let [entries (t2/select :model/RemoteSyncObject)]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Collection"
