@@ -213,27 +213,7 @@
           (is (not (some #(= (:id %) (:id table1)) results))
               "Should NOT include blocked table when asking for sandboxed"))))))
 
-(deftest unrestricted-includes-sandboxed-with-feature-test
-  (testing "With :sandboxes feature enabled, asking for :unrestricted also returns :sandboxed tables"
-    (mt/with-premium-features #{:sandboxes}
-      (mt/with-temp [:model/Database db {}
-                     :model/Table table1 {:db_id (:id db)}
-                     :model/Table table2 {:db_id (:id db)}
-                     :model/PermissionsGroup group {}
-                     :model/User user {}
-                     :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
-        (mt/with-no-data-perms-for-all-users!
-          (perms/set-database-permission! group db :perms/view-data :unrestricted)
-          (perms/set-table-permission! group table1 :perms/view-data :sandboxed)
-          (let [user-info {:user-id (:id user) :is-superuser? false}
-                ;; Callers ask for :unrestricted, but with sandboxes enabled this includes :sandboxed
-                permission-mapping {:perms/view-data :unrestricted}
-                query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
-                results (t2/query query)]
-            (is (seq results) "User requesting :unrestricted should get results")
-            (is (some #(= (:id %) (:id table1)) results) "Should include sandboxed table (with feature enabled)")
-            (is (some #(= (:id %) (:id table2)) results) "Should include unrestricted table"))))))
-
+(deftest unrestricted-does-not-include-sandboxed-without-feature-test
   (testing "Without :sandboxes feature, asking for :unrestricted does NOT return :sandboxed tables"
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Database db {}

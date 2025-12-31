@@ -4,7 +4,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.data-permissions.sql :as sql]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -187,3 +189,24 @@
       (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed})))
       (is (= :sandboxed (data-perms/coalesce :perms/view-data #{:sandboxed :blocked})))
       (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed}))))))
+
+(deftest unrestricted-includes-sandboxed-with-feature-test
+  (testing "With :sandboxes feature enabled, asking for :unrestricted also returns :sandboxed tables"
+    (mt/with-premium-features #{:sandboxes}
+      (mt/with-temp [:model/Database db {}
+                     :model/Table table1 {:db_id (:id db)}
+                     :model/Table table2 {:db_id (:id db)}
+                     :model/PermissionsGroup group {}
+                     :model/User user {}
+                     :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! group db :perms/view-data :unrestricted)
+          (perms/set-table-permission! group table1 :perms/view-data :sandboxed)
+          (let [user-info {:user-id (:id user) :is-superuser? false}
+                ;; Callers ask for :unrestricted, but with sandboxes enabled this includes :sandboxed
+                permission-mapping {:perms/view-data :unrestricted}
+                query (sql/select-tables-and-groups-granting-perm user-info permission-mapping)
+                results (t2/query query)]
+            (is (seq results) "User requesting :unrestricted should get results")
+            (is (some #(= (:id %) (:id table1)) results) "Should include sandboxed table (with feature enabled)")
+            (is (some #(= (:id %) (:id table2)) results) "Should include unrestricted table")))))))
