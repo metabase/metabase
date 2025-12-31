@@ -348,9 +348,6 @@ if (shouldEnableHotRefresh) {
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
 
-  // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
-  config.output.publicPath =
-    `http://localhost:${PORT}/` + config.output.publicPath;
 
   config.devServer = {
     port: PORT, // make the port explicit so it errors if it's already in use
@@ -358,6 +355,7 @@ if (shouldEnableHotRefresh) {
     client: {
       progress: false,
       overlay: false,
+      webSocketURL: 'auto://0.0.0.0:0/ws',
     },
     headers: {
       "Access-Control-Allow-Origin": "*",
