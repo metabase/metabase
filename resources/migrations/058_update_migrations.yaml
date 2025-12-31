@@ -3630,17 +3630,17 @@ databaseChangeLog:
             tableName: transform
             indexName: idx_transform_target_db_id
 
-  - changeSet:
-      id: v58.2025-12-15T12:16:19
-      author: piranha
-      comment: Add foreign key constraint for transform.target_db_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: transform
-            baseColumnNames: target_db_id
-            referencedTableName: metabase_database
-            referencedColumnNames: id
-            constraintName: fk_transform_ref_target_db_id
+            #- changeSet:
+            #    id: v58.2025-12-15T12:16:19
+            #    author: piranha
+            #    comment: Add foreign key constraint for transform.target_db_id
+            #    changes:
+            #      - addForeignKeyConstraint:
+            #          baseTableName: transform
+            #          baseColumnNames: target_db_id
+            #          referencedTableName: metabase_database
+            #          referencedColumnNames: id
+            #          constraintName: fk_transform_ref_target_db_id
 
   - changeSet:
       id: v58.2025-12-17T10:00:00
