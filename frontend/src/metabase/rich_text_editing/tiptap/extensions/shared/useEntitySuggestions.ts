@@ -1,9 +1,9 @@
 import type { Editor, Range } from "@tiptap/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { QuestionPickerValueItem } from "metabase/common/components/Pickers/QuestionPicker/types";
 import { getTranslatedEntityName } from "metabase/common/utils/model-names";
 import { modelToUrl } from "metabase/lib/urls/modelToUrl";
+import type { DocumentLinkedEntityPickerItemValue } from "metabase/rich_text_editing/tiptap/extensions/shared/LinkedEntityPickerModal/types";
 import type {
   MentionableUser,
   RecentItem,
@@ -15,8 +15,8 @@ import {
   entityToUrlableModel,
   getBrowseAllItemIndex,
 } from "./suggestionUtils";
-import type { SuggestionModel } from "./types";
-import { useEntitySearch } from "./useEntitySearch";
+import type { SuggestionModel, SuggestionPickerModalType } from "./types";
+import { type EntitySearchOptions, useEntitySearch } from "./useEntitySearch";
 
 interface UseEntitySuggestionsOptions {
   query: string;
@@ -30,6 +30,7 @@ interface UseEntitySuggestionsOptions {
   }) => void;
   enabled?: boolean;
   searchModels?: SuggestionModel[];
+  searchOptions?: EntitySearchOptions;
   canFilterSearchModels: boolean;
   canBrowseAll: boolean;
   canCreateNewQuestion?: boolean;
@@ -41,7 +42,7 @@ interface UseEntitySuggestionsResult {
   isLoading: boolean;
   searchResults: SearchResult[];
   selectedIndex: number;
-  modal: "question-picker" | null;
+  modal: SuggestionPickerModalType;
   totalItems: number;
   selectedSearchModelName?: string;
   handlers: {
@@ -50,7 +51,7 @@ interface UseEntitySuggestionsResult {
     downHandler: () => void;
     enterHandler: () => void;
     onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-    handleModalSelect: (item: QuestionPickerValueItem) => void;
+    handleModalSelect: (item: DocumentLinkedEntityPickerItemValue) => void;
     handleModalClose: () => void;
     openModal: () => void;
     hoverHandler: (index: number) => void;
@@ -65,13 +66,14 @@ export function useEntitySuggestions({
   onSelectEntity,
   enabled = true,
   searchModels,
+  searchOptions,
   canFilterSearchModels,
   canBrowseAll = false,
   canCreateNewQuestion = false,
   onTriggerCreateNewQuestion,
 }: UseEntitySuggestionsOptions): UseEntitySuggestionsResult {
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [modal, setModal] = useState<"question-picker" | null>(null);
+  const [modal, setModal] = useState<SuggestionPickerModalType>(null);
   const [selectedSearchModel, setSelectedSearchModel] =
     useState<SuggestionModel | null>(null);
 
@@ -178,6 +180,7 @@ export function useEntitySuggestions({
       !isInModelSelectionMode &&
       !selectedSearchModel,
     searchModels: effectiveSearchModels,
+    searchOptions,
   });
 
   const menuItems = useMemo(() => {
@@ -261,7 +264,7 @@ export function useEntitySuggestions({
   );
 
   const handleModalSelect = useCallback(
-    (item: QuestionPickerValueItem) => {
+    (item: DocumentLinkedEntityPickerItemValue) => {
       onSelectEntity({
         id: item.id,
         model: item.model,

@@ -23,6 +23,7 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   Box,
   Divider,
@@ -102,9 +103,7 @@ export const CommandSuggestion = forwardRef<
   const document = useSelector(getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const [viewMode, setViewMode] = useState<
-    "linkTo" | "embedQuestion" | "newQuestionType" | null
-  >(null);
+  const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
   const [newQuestionType, setNewQuestionType] = useState<
     "notebook" | "native" | null
   >(null);
@@ -378,6 +377,7 @@ export const CommandSuggestion = forwardRef<
           query={query}
           searchResults={searchResults}
           modal={entityModal}
+          viewMode={viewMode}
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
           canBrowseAll

@@ -1,6 +1,5 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
-
   - changeSet:
       id: v58.2025-10-30T09:03:00
       author: sanex3339
@@ -894,7 +893,6 @@ databaseChangeLog:
                   remarks: JSON object containing custom tenant attributes
                   constraints:
                     nullable: true
-
   - changeSet:
       id: v58.2025-11-18T12:31:54
       author: johnswanson
@@ -1002,6 +1000,13 @@ databaseChangeLog:
       id: v58.2025-11-25T17:04:00
       author: dependencies
       comment: Add dependency_analysis_version to segment table for tracking dependency changes
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            changeSetExecuted:
+              id: v57.2025-11-25T17:04:00
+              author: dependencies
+              changeLogFile: migrations/057_update_migrations.yaml
       changes:
         - addColumn:
             tableName: segment
@@ -1089,6 +1094,43 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v58.2025-12-03T17:08:36
+      author: nvoxland
+      comment: Add collection_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The collection the transform is in
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:37
+      author: nvoxland
+      comment: Add index on transform.collection_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v58.2025-12-03T17:08:38
+      author: nvoxland
+      comment: Add fk_transform_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_transform_collection_id
+
+  - changeSet:
       id: v58.2025-12-05T17:41:51
       author: ranquild
       comment: Drop fk_report_card_published_table
@@ -1139,6 +1181,7 @@ databaseChangeLog:
                   remarks: The table id that is 'published' by this model
                   constraints:
                     nullable: true
+
 
   - changeSet:
       id: v58.2025-12-05T17:41:54
@@ -1192,211 +1235,27 @@ databaseChangeLog:
             path: instance_analytics_views/tables/v1/h2-tables.sql
             relativeToChangelogFile: true
 
-  - changeSet:
-      id: v58.2025-12-10T16:00:00
-      author: noahmoss
-      comment: Create metabot_use_case table
-      changes:
-        - createTable:
-            tableName: metabot_use_case
-            remarks: Use cases available for a metabot instance
-            columns:
-              - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  remarks: Unique identifier for the use case
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
-                  name: metabot_id
-                  type: int
-                  remarks: The metabot this use case belongs to
-                  constraints:
-                    nullable: false
-              - column:
-                  name: entity_id
-                  type: char(21)
-                  remarks: Random NanoID tag for entity
-                  constraints:
-                    nullable: true
-              - column:
-                  name: name
-                  type: varchar(255)
-                  remarks: The name of the use case (e.g., nlq, sql, transforms, omnibot, embedding)
-                  constraints:
-                    nullable: false
-              - column:
-                  name: profile
-                  type: varchar(255)
-                  remarks: The AI service profile to use for this use case
-                  constraints:
-                    nullable: false
-              - column:
-                  name: enabled
-                  type: ${boolean.type}
-                  remarks: Whether this use case is enabled
-                  defaultValueBoolean: true
-                  constraints:
-                    nullable: false
-              - column:
-                  name: created_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when this use case was created
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-              - column:
-                  name: updated_at
-                  type: ${timestamp_type}
-                  remarks: Timestamp when this use case was last updated
-                  defaultValueComputed: current_timestamp
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropTable:
-            tableName: metabot_use_case
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
   - changeSet:
-      id: v58.2025-12-10T16:01:00
-      author: noahmoss
-      comment: Add index on metabot_use_case.metabot_id
-      changes:
-        - createIndex:
-            tableName: metabot_use_case
-            indexName: idx_metabot_use_case_metabot_id
-            columns:
-              - column:
-                  name: metabot_id
-      rollback:
-        - dropIndex:
-            tableName: metabot_use_case
-            indexName: idx_metabot_use_case_metabot_id
-
-  - changeSet:
-      id: v58.2025-12-10T16:02:00
-      author: noahmoss
-      comment: Add unique constraint on metabot_use_case (metabot_id, name)
-      changes:
-        - addUniqueConstraint:
-            tableName: metabot_use_case
-            columnNames: metabot_id, name
-            constraintName: unique_metabot_use_case_metabot_id_name
-      rollback:
-        - dropUniqueConstraint:
-            tableName: metabot_use_case
-            constraintName: unique_metabot_use_case_metabot_id_name
-
-  - changeSet:
-      id: v58.2025-12-10T16:03:00
-      author: noahmoss
-      comment: Add unique constraint on metabot_use_case.entity_id
-      changes:
-        - addUniqueConstraint:
-            tableName: metabot_use_case
-            columnNames: entity_id
-            constraintName: metabot_use_case_entity_id_key
-      rollback:
-        - dropUniqueConstraint:
-            tableName: metabot_use_case
-            constraintName: metabot_use_case_entity_id_key
-
-  - changeSet:
-      id: v58.2025-12-10T16:04:00
-      author: noahmoss
-      comment: Add foreign key constraint on metabot_use_case.metabot_id
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metabot_use_case
-            baseColumnNames: metabot_id
-            constraintName: fk_metabot_use_case_metabot_id
-            referencedTableName: metabot
-            referencedColumnNames: id
-            onDelete: CASCADE
-      rollback:
-        - dropForeignKeyConstraint:
-            baseTableName: metabot_use_case
-            constraintName: fk_metabot_use_case_metabot_id
-
-  - changeSet:
-      id: v58.2025-12-10T16:05:00
-      author: noahmoss
-      comment: Create default use cases for internal metabot
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: >-
-              SELECT COUNT(*) FROM metabot_use_case
-              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot');
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO metabot_use_case (metabot_id, entity_id, name, profile, enabled, created_at, updated_at)
-              VALUES
-                  ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecasenlqinternal000', 'nlq', 'internal', true, now(), now())
-                , ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecasesqlinternal000', 'sql', 'internal', true, now(), now())
-                , ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecasetransforms000', 'transforms', 'transforms_codegen', true, now(), now())
-                , ((SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot'), 'usecaseomnibot000000', 'omnibot', 'internal', true, now(), now());
-      rollback:
-        - sql:
-            sql: >-
-              DELETE FROM metabot_use_case
-              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'metabotmetabotmetabot');
-
-  - changeSet:
-      id: v58.2025-12-10T16:06:00
-      author: noahmoss
-      comment: Create default use cases for embedded metabot
-      preConditions:
-        - onFail: MARK_RAN
-        - sqlCheck:
-            expectedResult: 0
-            sql: >-
-              SELECT COUNT(*) FROM metabot_use_case
-              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'embeddedmetabotmetabo');
-      changes:
-        - sql:
-            sql: >-
-              INSERT INTO metabot_use_case (metabot_id, entity_id, name, profile, enabled, created_at, updated_at)
-              VALUES
-                  ((SELECT id FROM metabot WHERE entity_id = 'embeddedmetabotmetabo'), 'usecaseembedding0000', 'embedding', 'embedding', true, now(), now());
-      rollback:
-        - sql:
-            sql: >-
-              DELETE FROM metabot_use_case
-              WHERE metabot_id = (SELECT id FROM metabot WHERE entity_id = 'embeddedmetabotmetabo');
-
-  - changeSet:
-      id: v58.2025-12-10T16:07:00
-      author: noahmoss
-      comment: Add use_case column to metabot_message
+      id: v58.2025-12-18T16:14:03
+      author: winlost
+      comment: Add disable_links column to pulse table
       changes:
         - addColumn:
-            tableName: metabot_message
+            tableName: pulse
             columns:
               - column:
-                  name: use_case
-                  type: ${text.type}
-                  remarks: Name of the use case this message belongs to
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable email subscription links"
+                  defaultValueBoolean: false
                   constraints:
                     nullable: true
-
-  - changeSet:
-      id: v58.2025-12-10T16:08:00
-      author: noahmoss
-      comment: Make profile_id nullable on metabot_message
-      changes:
-        - dropNotNullConstraint:
-            tableName: metabot_message
-            columnName: profile_id
-            columnDataType: ${text.type}
       rollback:
-        - addNotNullConstraint:
-            tableName: metabot_message
-            columnName: profile_id
-            columnDataType: ${text.type}
+        - dropColumn:
+            tableName: pulse
+            columnName: disable_links
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

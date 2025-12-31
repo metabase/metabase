@@ -123,25 +123,33 @@
 
   See `:pivots` key, which holds a map `{t [breakouts...]}` where `t` is `:category`, `:location`, or `:time`.
   If a key is missing, there are no breakouts of that kind."
-  [query                                         :- ::lib.schema/query
-   _stage-number                                 :- :int
+  [query :- ::lib.schema/query
+   _stage-number :- :int
    {:keys [column dimensions value] :as context} :- ::lib.schema.drill-thru/context]
-  (let [stage-number (lib.underlying/top-level-stage-number query)]
+  (let [stage-number                (lib.underlying/top-level-stage-number query)
+        ;; Filter dimensions to only those that can be traced back to the top-level query. Dimensions that reference
+        ;; expressions defined in later stages (after aggregation) cannot be used for filtering, since those
+        ;; expressions don't exist in the top-level query. See issue #66715.
+        traceable-dimensions        (lib.underlying/traceable-dimensions query dimensions)
+        ;; If dimensions were provided but none are traceable, we can't offer this drill - it would create
+        ;; invalid filters. Only proceed when there were no dimensions to begin with or some are traceable.
+        dimensions-are-untraceable? (and (seq dimensions) (not traceable-dimensions))]
     (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
                column
                (some? value)
+               (not dimensions-are-untraceable?)
                (lib.underlying/aggregation-sourced? query column)
                (-> (lib.aggregation/aggregations query stage-number) count pos?))
       (let [breakout-pivot-types (permitted-pivot-types query stage-number)
             pivots               (into {} (for [pivot-type breakout-pivot-types
-                                                :let [pred    (get pivot-type-predicates pivot-type)
-                                                      columns (pivot-drill-pred query stage-number context pred)]
-                                                :when (not-empty columns)]
+                                                :let       [pred (get pivot-type-predicates pivot-type)
+                                                            columns (pivot-drill-pred query stage-number context pred)]
+                                                :when      (not-empty columns)]
                                             [pivot-type columns]))]
         (when-not (empty? pivots)
           {:lib/type     :metabase.lib.drill-thru/drill-thru
            :type         :drill-thru/pivot
-           :dimensions   dimensions
+           :dimensions   traceable-dimensions
            :pivots       pivots
            :stage-number stage-number})))))
 
@@ -165,9 +173,11 @@
   (get-in drill-thru [:pivots pivot-type]))
 
 (defn- breakouts->filters [query stage-number {:keys [column value] :as _dimension}]
-  (let [resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number column)]
+  (let [col-for-stage   (or (lib.underlying/top-level-column query column)
+                            column)
+        resolved-column (lib.drill-thru.common/breakout->resolved-column query stage-number col-for-stage)]
     (-> query
-        (lib.breakout/remove-existing-breakouts-for-column stage-number column)
+        (lib.breakout/remove-existing-breakouts-for-column stage-number col-for-stage)
         (lib.filter/filter stage-number (lib.filter/= resolved-column value)))))
 
 ;; Pivot drills are in play when clicking an aggregation cell. Pivoting is applied by:

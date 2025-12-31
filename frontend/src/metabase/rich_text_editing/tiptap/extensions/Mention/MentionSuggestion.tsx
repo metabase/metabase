@@ -12,6 +12,7 @@ import type { SearchResult } from "metabase-types/api";
 
 import { EntitySearchSection } from "../shared/EntitySearchSection";
 import type { SuggestionModel } from "../shared/types";
+import type { EntitySearchOptions } from "../shared/useEntitySearch";
 import { useEntitySuggestions } from "../shared/useEntitySuggestions";
 
 import type { MentionCommandProps } from "./MentionExtension";
@@ -23,6 +24,7 @@ export interface MentionSuggestionProps {
   range: Range;
   query: string;
   searchModels?: SuggestionModel[];
+  searchOptions?: EntitySearchOptions;
   canFilterSearchModels?: boolean;
   canBrowseAll?: boolean;
 }
@@ -42,6 +44,7 @@ const MentionSuggestionComponent = forwardRef<
     range,
     query,
     searchModels,
+    searchOptions,
     canFilterSearchModels = false,
     canBrowseAll = true,
   },
@@ -79,6 +82,7 @@ const MentionSuggestionComponent = forwardRef<
     editor,
     range,
     searchModels,
+    searchOptions,
     onSelectEntity,
     canFilterSearchModels,
     canBrowseAll,
@@ -105,6 +109,7 @@ const MentionSuggestionComponent = forwardRef<
         query={query}
         searchResults={searchResults}
         modal={modal}
+        viewMode="linkTo"
         onModalSelect={handlers.handleModalSelect}
         onModalClose={handlers.handleModalClose}
         onItemHover={handlers.hoverHandler}
@@ -117,27 +122,16 @@ const MentionSuggestionComponent = forwardRef<
 
 export const MentionSuggestion = MentionSuggestionComponent;
 
-export const createMentionSuggestion = ({
-  searchModels,
-  canFilterSearchModels,
-  canBrowseAll,
-}: {
-  searchModels: SuggestionModel[];
-  canFilterSearchModels?: boolean;
-  canBrowseAll?: boolean;
-}) => {
+export const createMentionSuggestion = (
+  outerProps: Pick<
+    MentionSuggestionProps,
+    "searchModels" | "searchOptions" | "canFilterSearchModels" | "canBrowseAll"
+  >,
+) => {
   return forwardRef<
     SuggestionRef,
     Omit<MentionSuggestionProps, "searchModels">
   >(function MentionSuggestionWrapper(props, ref) {
-    return (
-      <MentionSuggestion
-        {...props}
-        ref={ref}
-        searchModels={searchModels}
-        canFilterSearchModels={canFilterSearchModels}
-        canBrowseAll={canBrowseAll}
-      />
-    );
+    return <MentionSuggestion {...props} ref={ref} {...outerProps} />;
   });
 };

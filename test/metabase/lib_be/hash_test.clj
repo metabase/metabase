@@ -3,6 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.test :refer :all]
    [metabase.lib-be.hash :as lib-be.hash]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -223,3 +224,187 @@
                             :database Integer/MAX_VALUE
                             :stages   [{:lib/type     :mbql.stage/mbql
                                         :source-table 14303}]})))))
+
+(defn- query-with-aggregation-order-by
+  "Build a query with an aggregation and order-by referencing that aggregation.
+   Each call generates fresh UUIDs."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/count))
+      (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0)))))
+
+(defn- query-with-aggregation-expression
+  "Build a query with aggregations and an expression that references them.
+   Each call generates fresh UUIDs."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/count))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+      (as-> $q
+          ;; Add an aggregation expression that references the first two aggregations
+            (lib/aggregate $q (lib/+ (lib/aggregation-ref $q 0)
+                                     (lib/aggregation-ref $q 1))))))
+
+(defn- query-with-aggregation-in-breakout
+  "Try to build a query with an aggregation ref in breakout."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/count))
+      (as-> $q (lib/breakout $q (lib/aggregation-ref $q 0)))))
+
+(defn- query-with-aggregation-in-filter
+  "Try to build a query with an aggregation ref in a filter."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/count))
+      (as-> $q (lib/filter $q (lib/> (lib/aggregation-ref $q 0) 5)))))
+
+(defn- query-with-aggregation-in-fields
+  "Try to build a query with an aggregation ref in fields."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/count))
+      (as-> $q (lib/with-fields $q [(lib/aggregation-ref $q 0)]))))
+
+(defn- query-with-aggregation-in-join-condition
+  "Try to build a query with an aggregation ref in a join condition."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/count))
+      (as-> $q
+            (lib/join $q (lib/join-clause (meta/table-metadata :categories)
+                                          [(lib/= (lib/aggregation-ref $q 0)
+                                                  (meta/field-metadata :categories :id))])))))
+
+(defn- query-with-simple-join
+  "Build a query with a simple join (no aggregation refs)."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/join (lib/join-clause (meta/table-metadata :categories)
+                                 [(lib/= (meta/field-metadata :venues :category-id)
+                                         (meta/field-metadata :categories :id))]))))
+
+(defn- query-with-join-subquery-aggregation
+  "Build a query with a join that has a subquery with aggregations and order-by.
+   This tests that aggregation refs in join stages are properly handled by the encoder."
+  []
+  (let [subquery (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                     (lib/aggregate (lib/count))
+                     (lib/breakout (meta/field-metadata :categories :name))
+                     (as-> $q (lib/order-by $q (lib/aggregation-ref $q 0))))]
+    (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+        (lib/join (lib/join-clause subquery
+                                   [(lib/= (meta/field-metadata :venues :name)
+                                           (meta/field-metadata :categories :name))])))))
+
+(deftest ^:parallel mbql5-aggregation-ref-uuid-test
+  (testing "MBQL 5 queries with aggregation references should hash the same regardless of UUID values"
+    ;; In MBQL 5, aggregation refs look like [:aggregation {:lib/uuid "ref-uuid"} "agg-uuid"]
+    ;; where "agg-uuid" is the :lib/uuid of the aggregation being referenced.
+    ;; Two semantically identical queries created at different times will have different UUIDs,
+    ;; but should produce the same hash.
+    (are [query-fn] (= (query-hash-hex (query-fn))
+                       (query-hash-hex (query-fn)))
+      query-with-aggregation-order-by
+      query-with-aggregation-expression
+      ;; The following are nonsensical but allowed by the schema
+      query-with-aggregation-in-breakout
+      query-with-aggregation-in-filter
+      query-with-aggregation-in-fields
+      query-with-aggregation-in-join-condition
+      query-with-simple-join
+      query-with-join-subquery-aggregation)
+    (testing "ordering by different aggregations should produce different hashes"
+      (letfn [(query-order-by-aggregation [agg-index]
+                (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                    (as-> $q (lib/order-by $q (lib/aggregation-ref $q agg-index)))))]
+        (is (not= (query-hash-hex (query-order-by-aggregation 0))
+                  (query-hash-hex (query-order-by-aggregation 1))))))))
+
+;; Test cases for :any typed schema positions that can contain :lib/uuid
+;; These test the issue where Malli encoders don't apply to values typed as :any
+
+(defn- query-with-arithmetic-expression
+  "Build a query with an arithmetic expression like (+ field1 field2).
+   The :+ clause schema uses [:+ {:min 2} :any] for its args, so nested
+   field refs with :lib/uuid won't get their options maps encoded."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/expression "sum-fields" (lib/+ (meta/field-metadata :venues :price)
+                                          (meta/field-metadata :venues :id)))))
+
+(defn- query-with-nested-arithmetic
+  "Build a query with nested arithmetic like (+ (* field1 2) field2).
+   Tests that deeply nested clauses with :lib/uuid are handled."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/expression "nested" (lib/+ (lib/* (meta/field-metadata :venues :price) 2)
+                                      (meta/field-metadata :venues :id)))))
+
+(defn- query-with-case-expression
+  "Build a query with a case expression containing field refs.
+   Tests that case/if expressions properly strip :lib/uuid from nested clauses."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/expression "case-expr"
+                      (lib/case [[(lib/> (meta/field-metadata :venues :price) 5)
+                                  (meta/field-metadata :venues :id)]]
+                        (meta/field-metadata :venues :price)))))
+
+(defn- query-with-coalesce-expression
+  "Build a query with a coalesce expression containing field refs.
+   Tests that coalesce expressions properly strip :lib/uuid from nested clauses."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/expression "coalesce-expr"
+                      (lib/coalesce (meta/field-metadata :venues :price)
+                                    (meta/field-metadata :venues :id)))))
+
+(defn- query-with-concat-expression
+  "Build a query with a concat expression.
+   Tests string expressions with :any typed args."
+  []
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/expression "concat-expr"
+                      (lib/concat (meta/field-metadata :venues :name)
+                                  (meta/field-metadata :venues :name)))))
+
+(deftest ^:parallel any-typed-schema-positions-test
+  (testing "Expressions using :any typed schema positions should hash consistently"
+    ;; The :+ clause schema uses [:+ {:min 2} :any] for its args, so nested
+    ;; field refs with :lib/uuid need post-processing to strip UUIDs.
+    (are [query-fn] (= (query-hash-hex (query-fn))
+                       (query-hash-hex (query-fn)))
+      query-with-arithmetic-expression
+      query-with-nested-arithmetic
+      query-with-case-expression
+      query-with-coalesce-expression
+      query-with-concat-expression)))
+
+(deftest ^:parallel maps-under-any-schema-are-sorted-test
+  (testing "Maps nested under :any typed schema positions should be sorted for consistent hashing"
+    (testing "field ref options inside :+ args (uses [:+ {:min 2} :any])"
+      ;; The :+ clause schema uses [:+ {:min 2} :any] for its args, so the options
+      ;; map inside a :field ref won't be sorted by the Malli encoder.
+      ;; We use array-map to create maps with guaranteed different key orders.
+      (let [query-1 {:lib/type :mbql/query
+                     :database 1
+                     :stages   [{:lib/type     :mbql.stage/mbql
+                                 :source-table 1
+                                 :expressions  [[:+ (array-map :lib/uuid "expr-uuid"
+                                                               :lib/expression-name "sum")
+                                                 [:field (array-map :a 1 :b 2) 100]
+                                                 [:field (array-map :c 3 :d 4) 200]]]}]}
+            query-2 {:lib/type :mbql/query
+                     :database 1
+                     :stages   [{:lib/type     :mbql.stage/mbql
+                                 :source-table 1
+                                 :expressions  [[:+ (array-map :lib/expression-name "sum"
+                                                               :lib/uuid "expr-uuid")
+                                                 [:field (array-map :b 2 :a 1) 100]
+                                                 [:field (array-map :d 4 :c 3) 200]]]}]}]
+        (is (= (query-hash-hex query-1)
+               (query-hash-hex query-2))
+            "Maps with same content but different key order should hash the same")))))

@@ -15,7 +15,7 @@ export const EnableEmbeddedAnalyticsCard = () => {
 
   return (
     <EnableEmbeddingCard
-      embeddingType="Modular embedding"
+      embeddingType="modular embedding"
       isEnabled={isSimpleEmbeddingEnabled}
       termsAccepted={isSimpleEmbeddingTermsAccepted}
       settingsToUpdate={{

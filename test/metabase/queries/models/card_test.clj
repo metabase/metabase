@@ -721,24 +721,13 @@
              (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))
 
 (deftest ^:parallel changed?-test
-  (letfn [(changed? [before after]
-            (#'card/changed? @#'card/card-compare-keys before after))]
-    (testing "Ignores keyword/string"
-      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-    (testing "Ignores properties not in `api.card/card-compare-keys"
-      (is (false? (changed? {:collection_id 1
-                             :collection_position 0}
-                            {:collection_id 2
-                             :collection_position 1}))))
-    (testing "Sees changes"
-      (is (true? (changed? {:dataset_query {:type :query}}
-                           {:dataset_query {:type :query
-                                            :query {}}})))
-      (testing "But only when they are different in the after, not just omitted"
-        (is (false? (changed? {:dataset_query {} :collection_id 1}
-                              {:collection_id 1})))
-        (is (true? (changed? {:dataset_query {} :collection_id 1}
-                             {:dataset_query nil :collection_id 1})))))))
+  (let [changed? (fn [a b] (#'card/changed? a b))]
+    (is (changed? {:a "a"} {:a "b"}))
+    (is (not (changed? {:a "a" :b "b"} {:b "b"})))
+    (is (not (changed? {:a "a"} {})))
+    (is (not (changed? {} {})))
+    (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:b "b"})))
+    (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:a "a" :b "b"})))))
 
 (deftest hydrate-dashboard-count-test
   (testing "cards associated with more than 1 dashboard"

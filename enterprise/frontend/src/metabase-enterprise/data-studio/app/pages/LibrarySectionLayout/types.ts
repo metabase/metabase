@@ -7,16 +7,16 @@ import type {
 } from "metabase-types/api";
 
 export type TreeItem = {
+  id: string;
   name: string;
   icon: IconName;
   updatedAt?: string;
   model: CollectionItemModel;
   data: (Collection | Omit<CollectionItem, "getUrl">) & {
     model: CollectionItem["model"];
-    namespace?: CollectionNamespace;
+    namespace?: CollectionNamespace | null;
   };
   children?: TreeItem[];
-  id: number | string;
 };
 
 export const isCollection = (

@@ -197,7 +197,7 @@ export type AIStreamingConfig = {
   onError?: (error: StreamPartValue<"error">) => void;
 };
 
-interface ProcessedChatResponse extends AccumulatedStreamParts {
+export interface ProcessedChatResponse extends AccumulatedStreamParts {
   aborted: boolean;
 }
 

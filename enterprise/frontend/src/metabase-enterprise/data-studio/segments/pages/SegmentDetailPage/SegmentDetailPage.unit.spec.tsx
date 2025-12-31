@@ -121,7 +121,7 @@ describe("SegmentDetailPage", () => {
     setup();
 
     expect(screen.getByDisplayValue("High Value Orders")).toBeInTheDocument();
-    expect(screen.getByLabelText("Description")).toHaveValue(
+    expect(screen.getByLabelText("Give it a description")).toHaveValue(
       "Orders with total > 100",
     );
     expect(screen.getByText("Definition")).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("SegmentDetailPage", () => {
   it("shows Save/Cancel buttons when description is modified", async () => {
     setup();
 
-    const descriptionInput = screen.getByLabelText("Description");
+    const descriptionInput = screen.getByLabelText("Give it a description");
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "New description");
 
@@ -154,7 +154,7 @@ describe("SegmentDetailPage", () => {
   it("resets form when Cancel is clicked after modifying description", async () => {
     setup();
 
-    const descriptionInput = screen.getByLabelText("Description");
+    const descriptionInput = screen.getByLabelText("Give it a description");
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Modified description");
     expect(descriptionInput).toHaveValue("Modified description");
@@ -177,7 +177,7 @@ describe("SegmentDetailPage", () => {
 
     setup();
 
-    const descriptionInput = screen.getByLabelText("Description");
+    const descriptionInput = screen.getByLabelText("Give it a description");
     await userEvent.clear(descriptionInput);
     await userEvent.type(descriptionInput, "Updated description");
 

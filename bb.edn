@@ -274,16 +274,34 @@
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
   -install-merge-drivers
-  {:doc      "Installs custom git merge drivers for YAML migration files."
+  {:doc "Installs custom git merge drivers for YAML migration files."
+   :requires [[mage.util :as u]
+              [clojure.string :as str]]
+   :task (task!
+          (let [git-dir (u/sh "git rev-parse --git-dir")
+                git-config-file (str git-dir "/config")
+                the-include (str "\n"
+                                 "[include]\n"
+                                 "    path=../.gitconfig\n")]
+            (when-not (str/includes? (slurp git-config-file) the-include)
+              (println "Merge driver not installed, installing now.")
+              (spit git-config-file the-include :append true))))}
+
+  ;; opposite of -install-merge-drivers, removes the include while it's causing issues.
+  -uninstall-merge-drivers
+  {:doc "Uninstalls custom git merge drivers for YAML migration files."
    :requires [[clojure.string :as str]
               [mage.util :as u]]
-   :task     (task!
-              (let [git-config-file (str u/project-root-directory "/.git/config")
-                    the-include     (str "\n"
-                                         "[include]\n"
-                                         "    path=../.gitconfig\n")]
-                (when-not (str/includes? (slurp git-config-file) the-include)
-                  (spit git-config-file the-include :append true))))}
+   :task (task!
+          (let [git-dir (u/sh "git rev-parse --git-dir")
+                git-config-file (str git-dir "/config")
+                the-include (str "\n"
+                                 "[include]\n"
+                                 "    path=../.gitconfig\n")]
+            (when (str/includes? (slurp git-config-file) the-include)
+              (println "Merge driver is installed, uninstalling now.")
+              (let [includeless (-> (slurp git-config-file) (str/replace the-include ""))]
+                (spit git-config-file includeless)))))}
 
   -merge-yaml-migrations
   {:doc "Custom git merge driver for YAML migration files."
@@ -399,10 +417,17 @@
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
-         :requires [[mage.core-test] ;; loads the actual tests
-                    [mage.util :as u]
-                    [clojure.test]]
-         :task     (let [results (clojure.test/run-all-tests (re-pattern "^mage\\..*"))]
+         :requires [[clojure.string :as str]
+                    [clojure.test]
+                    [mage.core-test] ;; loads the actual tests
+                    [mage.util :as u]]
+         :arg-schema [:sequential [:string {:name "test-matching-pattern"}]]
+         :task     (let [{:keys [arguments]} (task! parsed)
+                         pattern (if (seq arguments)
+                                   (str "^mage\\..*(" (str/join "|" arguments) ").*")
+                                   "^mage\\..*")
+                         _ (u/debug ["test regex matching pattern" pattern])
+                         results (clojure.test/run-all-tests (re-pattern pattern))]
                      (if (zero? (+ (:fail results) (:error results)))
                        (println (c/green "All mage tests passed!"))
                        (do

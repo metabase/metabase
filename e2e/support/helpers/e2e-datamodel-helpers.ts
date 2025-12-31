@@ -21,6 +21,7 @@ export const DataModel = {
     getTables: getTablePickerTables,
     getTable: getTablePickerTable,
     getSearchInput: getTablePickerSearchInput,
+    getFilterForm: getTablePickerFilter,
   },
   TableSection: {
     get: getTableSection,
@@ -38,6 +39,7 @@ export const DataModel = {
     getSortableFields: getTableSectionSortableFields,
     getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
+    getCloseButton: getTableSectionCloseButton,
   },
   FieldSection: {
     get: getFieldSection,
@@ -62,6 +64,7 @@ export const DataModel = {
     getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
+    getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
     get: getPreviewSection,
@@ -258,6 +261,10 @@ function getTablePickerSearchInput() {
   return cy.findByPlaceholderText("Search tables");
 }
 
+function getTablePickerFilter() {
+  return cy.findByTestId("table-picker-filter");
+}
+
 function getTablePickerTables() {
   return cy.findAllByTestId("tree-item").filter('[data-type="table"]');
 }
@@ -266,6 +273,10 @@ function getTablePickerTables() {
 
 function getTableSection() {
   return cy.findByTestId("table-section");
+}
+
+function getTableSectionHeader() {
+  return cy.findByTestId("table-section-header");
 }
 
 function getTableNameInput() {
@@ -329,10 +340,18 @@ function clickTableSectionField(name: string) {
   return getTableSectionField(name).findByRole("img").scrollIntoView().click();
 }
 
+function getTableSectionCloseButton() {
+  return getTableSectionHeader().findByRole("link", { name: /close/ });
+}
+
 /** field section helpers */
 
 function getFieldSection() {
   return cy.findByTestId("field-section");
+}
+
+function getFieldSectioHeader() {
+  return cy.findByTestId("field-section-header");
 }
 
 function getFieldNameInput() {
@@ -423,6 +442,10 @@ function getFieldSuffixInput() {
   return getFieldSection().findByTestId("suffix");
 }
 
+function getFieldSectionCloseButton() {
+  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+}
+
 /** preview section helpers */
 
 function getPreviewSection() {
@@ -482,7 +505,7 @@ function getSegmentEditorNameInput() {
 }
 
 function getSegmentEditorDescriptionInput() {
-  return getSegmentEditor().findByLabelText("Description");
+  return getSegmentEditor().findByLabelText("Give it a description");
 }
 
 function getSegmentEditorFilterPlaceholder() {

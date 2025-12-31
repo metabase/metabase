@@ -61,7 +61,7 @@
   [:fn
    {:error/message "Valid MBQL clause"
     :decode/normalize normalize-mbql-clause}
-   helpers/mbql-clause?])
+   helpers/normalized-mbql-clause?])
 
 (mr/def ::options-style
   "For convenience of converting back and forth between MBQL 5, from now on we can record info about the options style
@@ -315,7 +315,7 @@
    [:fn
     {:error/message    ":expression should not have empty opts"
      :decode/normalize (fn [x]
-                         (when (helpers/mbql-clause? x)
+                         (when (helpers/possibly-unnormalized-mbql-clause? x)
                            (if (and (= (count x) 3)
                                     (empty? (last x)))
                              (pop (vec x)) ; remove nil/empty options maps.
@@ -357,8 +357,8 @@
 
 (defn- normalize-field [x]
   (case (cond
-          (pos-int? x)             ::raw-int
-          (helpers/mbql-clause? x) (helpers/actual-clause-tag x))
+          (pos-int? x)                                   ::raw-int
+          (helpers/possibly-unnormalized-mbql-clause? x) (helpers/actual-clause-tag x))
     ::raw-int         [:field x nil]
     :field-id         (let [[_tag id] x]
                         ;; sometimes the old FE code was dumb and passed in `:field-literal` wrapped inside` `:field-id`
@@ -433,16 +433,26 @@
 ;; wouldn't it
 ;;
 ;; As of 0.42.0 `:aggregation` references can have an optional options map.
+(mr/def ::AggregationRefOptions
+  [:map
+   {:decode/normalize (fn [m]
+                        (when-let [m (lib.schema.ref/normalize-aggregation-ref-options m)]
+                          (not-empty (dissoc m :lib/uuid))))}
+   [:name           {:optional true} ::lib.schema.common/non-blank-string]
+   [:display-name   {:optional true} ::lib.schema.common/non-blank-string]
+   [:base-type      {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]])
+
 (defclause* aggregation
   [:and
    (helpers/clause
     :aggregation
     "aggregation-clause-index" :int
-    "options"                  [:optional :map])
+    "options"                  [:optional [:ref ::AggregationRefOptions]])
    [:fn
     {:error/message    ":aggregation should not have empty opts"
      :decode/normalize (fn [x]
-                         (when (helpers/mbql-clause? x)
+                         (when (helpers/possibly-unnormalized-mbql-clause? x)
                            (if (and (= (count x) 3)
                                     (empty? (last x)))
                              (pop (vec x)) ; remove nil/empty options maps.
@@ -503,7 +513,7 @@
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match `::DatetimeExpression`."
-  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today})
+  #{:+ :datetime-add :datetime-subtract :convert-timezone :now :date :datetime :today :coalesce :case :if})
 
 (mr/def ::NumericExpressionArg
   [:multi
@@ -548,6 +558,7 @@
                        (is-clause? numeric-functions x)  :numeric-expression
                        (is-clause? datetime-functions x) :datetime-expression
                        (is-clause? aggregations x)       :aggregation
+                       (is-clause? :aggregation x)       :aggregation-ref
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
@@ -558,6 +569,7 @@
    [:numeric-expression   [:ref ::NumericExpression]]
    [:datetime-expression  [:ref ::DatetimeExpression]]
    [:aggregation          [:ref ::Aggregation]]
+   [:aggregation-ref      [:ref ::aggregation]]
    [:string               :string]
    [:string-expression    [:ref ::StringExpression]]
    [:value                [:ref ::value]]
@@ -629,7 +641,7 @@
   replacement :string)
 
 (defclause text
-  x :any)
+  x [:ref ::ExpressionArg])
 
 ;; Relax the arg types to ExpressionArg for concat since many DBs allow to concatenate non-string types. This also
 ;; aligns with the corresponding MLv2 schema and with the reference docs we publish.
@@ -669,7 +681,7 @@
   more (rest [:ref ::Addable]))
 
 (defclause -
-  x    [:ref ::NumericExpressionArg]
+  x    [:ref ::Addable]
   y    [:ref ::Addable]
   more (rest [:ref ::Addable]))
 
@@ -811,7 +823,7 @@
 
 (mr/def ::DatetimeExpression
   "Schema for the definition of a date function expression."
-  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today))
+  (one-of + datetime-add datetime-subtract convert-timezone now date datetime today coalesce case if))
 
 (defn- compound-filter-schema [tag]
   [:multi
@@ -1041,8 +1053,8 @@
   lon-max   [:ref ::OrderComparable])
 
 ;; SUGAR CLAUSES: These are rewritten as `[:= <field> nil]` and `[:not= <field> nil]` respectively
-(defclause is-null,  field [:ref ::FieldOrExpressionRef])
-(defclause not-null, field [:ref ::FieldOrExpressionRef])
+(defclause is-null,  field [:ref ::FieldOrExpressionDef])
+(defclause not-null, field [:ref ::FieldOrExpressionDef])
 
 (mr/def ::Emptyable
   "Schema for a valid is-empty or not-empty argument."
@@ -1193,6 +1205,7 @@
 
 (defmethod options-style-method :case [_tag] ::options-style.last-unless-empty)
 
+;; `:if` is just an alias for `:case`
 (defclause if
   clauses [:ref ::CaseSubclauses], options (optional [:ref ::CaseOptions]))
 
@@ -1216,31 +1229,50 @@
    {:error/message ":field or :expression reference or expression"
     :dispatch      (fn [x]
                      (cond
-                       (is-clause? numeric-functions x)  :numeric
-                       (is-clause? string-functions x)   :string
-                       (is-clause? boolean-functions x)  :boolean
-                       (is-clause? datetime-functions x) :datetime
-                       (is-clause? :case x)              :case
-                       (is-clause? :if   x)              :if
-                       (is-clause? :offset x)            :offset
-                       (is-clause? :value x)             :value
-                       :else                             :else))}
-   [:numeric  [:ref ::NumericExpression]]
-   [:string   [:ref ::StringExpression]]
-   [:boolean  [:ref ::BooleanExpression]]
-   [:datetime [:ref ::DatetimeExpression]]
-   [:case     [:ref ::case]]
-   [:if       [:ref ::if]]
-   [:offset   [:ref ::offset]]
-   [:value    [:ref ::value]]
-   [:else     [:ref ::FieldOrExpressionRef]]])
+                       (is-clause? numeric-functions x)                   :numeric
+                       (number? x)                                        :number-literal
+                       (is-clause? string-functions x)                    :string
+                       (string? x)                                        :string-literal
+                       (is-clause? boolean-functions x)                   :boolean
+                       (boolean? x)                                       :boolean-literal
+                       (is-clause? datetime-functions x)                  :datetime
+                       #?(:clj (instance? java.time.temporal.Temporal x)) #?(:clj :temporal-literal)
+                       (is-clause? :case x)                               :case
+                       (is-clause? :if   x)                               :if
+                       (is-clause? :offset x)                             :offset
+                       (is-clause? :value x)                              :value
+                       :else                                              :else))}
+   [:numeric         [:ref ::NumericExpression]]
+   [:number-literal  number?]
+   [:string          [:ref ::StringExpression]]
+   [:string-literal  string?]
+   [:boolean         [:ref ::BooleanExpression]]
+   [:boolean-literal boolean?]
+   [:datetime        [:ref ::DatetimeExpression]]
+   #?(:clj
+      [:temporal-literal (lib.schema.common/instance-of-class java.time.temporal.Temporal)])
+   [:case            [:ref ::case]]
+   [:if              [:ref ::if]]
+   [:offset          [:ref ::offset]]
+   [:value           [:ref ::value]]
+   [:else            [:ref ::FieldOrExpressionRef]]])
 
 (mr/def ::AggregationArg
   "Schema for the argument to an aggregation clause like `:sum`.
 
-  Strings are allowed as literals here, unlike at the top level as `::Expressions`, so `::FieldOrExpressionDef` is
-  not enough. However, nested aggregations are not allowed here, so we can't use `::ExpressionArg` either. (#66199)"
-  [:or ::FieldOrExpressionDef :string])
+  Nested aggregations are not allowed here, so we can't use `::ExpressionArg` directly. (#66199)
+
+  Unlike `::FieldOrExpressionDef`, raw integers are treated as unwrapped `:field` clauses for backwards compatibility
+  with MBQL 1 and 2, e.g.
+
+    [:sum 1] => [:sum [:field 1 nil]]"
+  [:and
+   [:ref ::FieldOrExpressionDef]
+   [:any
+    {:decode/normalize (fn [x]
+                         (if (pos-int? x)
+                           [:field x nil]
+                           x))}]])
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
 
@@ -1300,13 +1332,15 @@
   "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
   a single aggregation clause.
 
-  (This is mostly copied from [[metabase.lib.schema.aggregation/aggregation-expression?]]"
+  (This is mostly copied from [[metabase.lib.schema.aggregation/aggregation-expression?]])"
   [x]
-  (when (vector? x)
+  (when (helpers/normalized-mbql-clause? x)
     (when-let [[tag & args] x]
       (or (lib.hierarchy/isa? tag ::lib.schema.aggregation/aggregation-clause-tag)
-          ;; Case has the following shape [:case [[cond expr]...] default-expr?]
-          (if (= :case tag)
+          ;; `:case` has the following shape [:case [[cond expr]...] default-expr?]
+          ;;
+          ;; `:if` is an alias for `:case`
+          (if (#{:if :case} tag)
             (or (some aggregation-expression? (ffirst args))
                 (some aggregation-expression? (fnext args)))
             (some aggregation-expression? args))))))
@@ -1322,7 +1356,11 @@
   "Additional options for any aggregation clause when wrapping it in `:aggregation-options`."
   [:map
    {:error/message    ":aggregation-options options"
-    :decode/normalize lib.schema.common/normalize-map}
+    :decode/normalize (fn [m]
+                        (let [m (if (nil? m)
+                                  {}
+                                  m)]
+                          (lib.schema.common/normalize-map m)))}
    ;; name to use for this aggregation in the native query instead of the default name (e.g. `count`)
    [:name         {:optional true} ::lib.schema.common/non-blank-string]
    ;; user-facing display name for this aggregation instead of the default one
@@ -1330,6 +1368,7 @@
 
 (defclause* aggregation-options
   [:and
+   ;; this schema normalizes the MBQL 3 (?) `:named` clause to `:aggregation-options`
    [:schema
     {:decode/normalize (fn [x]
                          ;; [:named <subclase> <name>] was the MBQL 3 (?) version of `:aggregation-options`
@@ -1341,6 +1380,7 @@
                              [:aggregation-options subclause {(if use-as-display-name? :display-name :name) display-name}])
                            x))}
     :any]
+   ;; this schema is the schema for `:aggregation-options` itself
    (helpers/clause
     :aggregation-options
     "aggregation" [:ref ::UnnamedAggregation]
@@ -1350,14 +1390,23 @@
 
 (mr/def ::Aggregation
   "Schema for anything that is a valid `:aggregation` clause."
-  [:multi
-   {:error/message "aggregation clause or numeric expression"
-    :dispatch      (fn [x]
-                     (if (is-clause? #{:aggregation-options :named} x)
-                       :aggregation-options
-                       :unnamed-aggregation))}
-   [:aggregation-options [:ref ::aggregation-options]]
-   [:unnamed-aggregation [:ref ::UnnamedAggregation]]])
+  [:and
+   [:multi
+    {:error/message "aggregation clause or numeric expression"
+     :dispatch      (fn [x]
+                      (if (is-clause? #{:aggregation-options :named} x)
+                        :aggregation-options
+                        :unnamed-aggregation))}
+    [:aggregation-options [:ref ::aggregation-options]]
+    [:unnamed-aggregation [:ref ::UnnamedAggregation]]]
+   [:any
+    {:description      "Normalization should automatically unwrap :aggregation-options with an empty options map"
+     :decode/normalize (fn [x]
+                         (or (when (is-clause? :aggregation-options x)
+                               (let [[_tag wrapped options] x]
+                                 (when (empty? options)
+                                   wrapped)))
+                             x))}]])
 
 (defn- normalize-aggregations [x]
   (let [xs (cond
@@ -1500,6 +1549,14 @@
 ;;     :type         :dimension,
 ;;     :dimension    [:field 4 nil]
 ;;     :widget-type  :date/all-options}
+(mr/def ::TemplateTag.FieldFilter.Options
+  [:map-of
+   {:decode/normalize (fn [m]
+                        (when (map? m)
+                          (update-keys m lib.schema.common/normalize-keyword)))}
+   :keyword
+   :any])
+
 (mr/def ::TemplateTag.FieldFilter
   "Schema for a field filter template tag."
   [:merge
@@ -1520,7 +1577,7 @@
     [:options
      {:optional    true
       :description "optional map to be appended to filter clause"}
-     [:maybe [:map-of :keyword :any]]]]])
+     [:maybe [:ref ::TemplateTag.FieldFilter.Options]]]]])
 
 ;; Example:
 ;;
@@ -1590,7 +1647,7 @@
 
   Field filters and raw values usually have their value specified by `:parameters`."
   [:multi
-   {:dispatch (comp keyword :type)}
+   {:dispatch (comp keyword (some-fn :type #(get % "type")))}
    [:dimension     [:ref ::TemplateTag.FieldFilter]]
    [:snippet       [:ref ::TemplateTag.Snippet]]
    [:card          [:ref ::TemplateTag.SourceQuery]]
@@ -1902,7 +1959,8 @@
      :breakout     "A join should not have top-level 'inner' query keys like :breakout"
      :aggreggation "A join should not have top-level 'inner' query keys like :aggreggation"
      :expressions  "A join should not have top-level 'inner' query keys like :expressions"
-     :joins        "A join should not have top-level 'inner' query keys like :joins"})])
+     :joins        "A join should not have top-level 'inner' query keys like :joins"
+     :ident        ":ident is deprecated and should not be included in joins"})])
 
 (mr/def ::Joins
   "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
@@ -2007,12 +2065,16 @@
     (fn [query]
       (= 1 (count (select-keys query [:source-query :source-table]))))]
    [:ref ::RemoveFieldRefsFromFieldsAlreadyInBreakout]
+   ;; `disallowed-keys` will remove these keys if we see them automatically during normalization.
    (lib.schema.common/disallowed-keys
-    {:lib/type "Legacy MBQL inner queries must not have :lib/type"
-     :type     "An inner query must not include :type, this will cause us to mix it up with an outer query"})])
+    {:lib/type           "Legacy MBQL inner queries must not have :lib/type"
+     :type               "An inner query must not include :type, this will cause us to mix it up with an outer query"
+     :aggregation-idents ":aggregation-idents is deprecated and should not be used"
+     :breakout-idents    ":breakout-idents is deprecated and should not be used"
+     :expression-idents  ":expression-idents is deprecated and should not be used"})])
 
 (mr/def ::WidgetType
-  "Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]]."
+  "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`."
   [:ref :metabase.lib.schema.parameter/widget-type])
 
 ;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in

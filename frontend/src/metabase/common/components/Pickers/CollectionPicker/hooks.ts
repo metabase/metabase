@@ -8,7 +8,7 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { isRootCollection } from "metabase/collections/utils";
-import { useSetting } from "metabase/common/hooks";
+import { useGetPersonalCollection, useSetting } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_DATA_STUDIO, PLUGIN_TENANTS } from "metabase/plugins";
@@ -52,20 +52,16 @@ const getTenantSpecificCollectionsRoot = (): CollectionPickerItem | null => {
 export const useRootCollectionPickerItems = (
   options: CollectionItemListProps["options"],
 ) => {
-  const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
 
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.showDatabases });
   const databases = databaseData?.data ?? [];
   const tenantsEnabled = useSetting("use-tenants");
+  const currentUser = useSelector(getUser);
 
-  const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
-    useGetCollectionQuery(
-      currentUser?.personal_collection_id
-        ? { id: currentUser.personal_collection_id }
-        : skipToken,
-    );
+  const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
+    useGetPersonalCollection();
 
   const { data: libraryCollection } =
     PLUGIN_DATA_STUDIO.useGetLibraryCollection({
@@ -76,9 +72,9 @@ export const useRootCollectionPickerItems = (
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
   } = useListCollectionItemsQuery(
-    currentUser?.personal_collection_id
+    personalCollection
       ? {
-          id: currentUser?.personal_collection_id,
+          id: personalCollection.id,
           models: ["collection", "dashboard"],
           limit: 0, // we only want total number of items
         }
@@ -88,7 +84,7 @@ export const useRootCollectionPickerItems = (
 
   const {
     data: rootCollection,
-    isLoading: isLoadingRootCollecton,
+    isLoading: isLoadingRootCollection,
     error: rootCollectionError,
   } = useGetCollectionQuery({ id: "root" });
 
@@ -116,7 +112,8 @@ export const useRootCollectionPickerItems = (
     if (
       options.showLibrary &&
       libraryCollection &&
-      options.namespace !== "snippets"
+      options.namespace !== "snippets" &&
+      options.namespace !== "transforms"
     ) {
       collectionItems.push({
         ...libraryCollection,
@@ -137,7 +134,11 @@ export const useRootCollectionPickerItems = (
       });
     }
 
-    if (options?.showRootCollection || options?.namespace === "snippets") {
+    if (
+      options?.showRootCollection ||
+      options?.namespace === "snippets" ||
+      options?.namespace === "transforms"
+    ) {
       if (rootCollection && !rootCollectionError) {
         collectionItems.push({
           ...rootCollection,
@@ -147,7 +148,9 @@ export const useRootCollectionPickerItems = (
           name:
             options.namespace === "snippets"
               ? t`SQL snippets`
-              : rootCollection.name,
+              : options.namespace === "transforms"
+                ? t`Transforms`
+                : rootCollection.name,
         });
       } else if (rootCollectionError) {
         collectionItems.push({
@@ -165,6 +168,7 @@ export const useRootCollectionPickerItems = (
     if (
       options?.showPersonalCollections &&
       options?.namespace !== "snippets" &&
+      options?.namespace !== "transforms" &&
       currentUser &&
       !!personalCollection
     ) {
@@ -203,7 +207,7 @@ export const useRootCollectionPickerItems = (
     const userTenantCollectionId = currentUser?.tenant_collection_id;
     if (shouldShowTenantCollections && userTenantCollectionId) {
       collectionItems.push({
-        name: t`My Tenant Collection`,
+        name: t`Our data`,
         id: userTenantCollectionId,
         here: ["collection", "card", "dashboard"],
         description: null,
@@ -223,7 +227,6 @@ export const useRootCollectionPickerItems = (
 
     return collectionItems;
   }, [
-    currentUser,
     personalCollection,
     rootCollection,
     isAdmin,
@@ -233,12 +236,13 @@ export const useRootCollectionPickerItems = (
     totalPersonalCollectionItems,
     libraryCollection,
     tenantsEnabled,
+    currentUser,
   ]);
 
   const isLoading =
     isLoadingDatabases ||
-    isLoadingRootCollecton ||
-    isLoadingPersonalCollecton ||
+    isLoadingRootCollection ||
+    isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
 
   return { items, isLoading };

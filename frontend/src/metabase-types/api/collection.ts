@@ -1,5 +1,5 @@
 import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName, IconProps } from "metabase/ui";
+import type { IconName } from "metabase/ui";
 import type {
   BaseEntityId,
   CollectionEssentials,
@@ -19,6 +19,7 @@ import type { UserId, UserInfo } from "./user";
 export type CollectionNamespace =
   | null
   | "snippets"
+  | "transforms"
   | "tenant-specific"
   | "shared-tenant-collection";
 
@@ -86,7 +87,7 @@ export interface Collection {
   authority_level?: CollectionAuthorityLevel;
   type?: CollectionType;
   is_remote_synced?: boolean;
-  namespace: CollectionNamespace;
+  namespace: CollectionNamespace | null;
 
   parent_id?: CollectionId | null;
   personal_owner_id?: UserId;
@@ -153,8 +154,6 @@ export interface CollectionItem {
   effective_location?: string;
   authority_level?: CollectionAuthorityLevel;
   dashboard_count?: number | null;
-  getIcon?: () => IconProps;
-  getUrl: (opts?: Record<string, unknown>) => string;
   setArchived?: (
     isArchived: boolean,
     opts?: Record<string, unknown>,

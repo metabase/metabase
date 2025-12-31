@@ -10,7 +10,7 @@ import {
   useHasTokenFeature,
   useSearchListQuery,
 } from "metabase/common/hooks";
-import Collections from "metabase/entities/collections/collections";
+import { Collections } from "metabase/entities/collections/collections";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
@@ -192,8 +192,8 @@ export const useCommandPaletteBasicActions = ({
     }
 
     actions.push({
-      id: "report-issue",
-      name: t`Report an issue`,
+      id: "download-diagnostics",
+      name: t`Download diagnostics`,
       section: "basic",
       icon: "bug",
       keywords: "bug, issue, problem, error, diagnostic",

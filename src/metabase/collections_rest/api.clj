@@ -167,9 +167,11 @@
           (cons root))))
     (t2/hydrate collections :can_write :is_personal :can_delete :is_remote_synced :parent_id)
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
-    ;; and for personal collections we translate the name to user's locale
-    (collection/personal-collections-with-ui-details  (for [collection collections]
-                                                        (dissoc collection ::collection.root/is-root?)))))
+    ;; and for personal/tenant collections we translate the name to user's locale
+    (->> (for [collection collections]
+           (dissoc collection ::collection.root/is-root?))
+         collection/personal-collections-with-ui-details
+         collection/maybe-localize-tenant-collection-names)))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -187,7 +189,8 @@
   ```"
   [colls]
   (->> colls
-       (map collection/personal-collection-with-ui-details)
+       (map (comp collection/maybe-localize-tenant-collection-name
+                  collection/personal-collection-with-ui-details))
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
@@ -222,7 +225,10 @@
 
   By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a
   `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look
-  at. For example, `namespaces=analytics&namespaces=` would match the default behavior."
+  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.
+
+  When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or
+  the root, if `collection-id` is `nil`)."
   [_route-params
    {:keys [exclude-archived exclude-other-user-collections include-library
            namespace namespaces shallow collection-id]}
@@ -271,7 +277,9 @@
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map collection/personal-collection-with-ui-details collections)]
+            collections-with-details (map (comp collection/maybe-localize-tenant-collection-name
+                                                collection/personal-collection-with-ui-details)
+                                          collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -472,6 +480,14 @@
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
             [:= :archived (boolean archived?)]]})
+
+(defmethod collection-children-query :transform
+  [_model collection {:keys [pinned-state]}]
+  {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
+   :from   [[:transform :transform]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :collection_id (:id collection)]]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -704,7 +720,7 @@
             [:= :archived true]
             [:= :id (collection/trash-collection-id)]]
            [:and [:= :archived false] [:not= :id (collection/trash-collection-id)]])]
-        (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+        (perms/namespace-clause :namespace (u/qualified-name collection-namespace) (collection/is-trash? collection))
         (snippets-collection-filter-clause))
        ;; We get from the effective-children-query a normal set of columns selected:
        ;; want to make it fit the others to make UNION ALL work
@@ -836,6 +852,7 @@
       (let [type-value (:type row)]
         (-> (t2/instance :model/Collection row)
             collection/maybe-localize-system-collection-name
+            collection/maybe-localize-tenant-collection-name
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
@@ -881,7 +898,8 @@
     :pulse      :model/Pulse
     :snippet    :model/NativeQuerySnippet
     :table      :model/Table
-    :timeline   :model/Timeline))
+    :timeline   :model/Timeline
+    :transform  :model/Transform))
 
 (defn post-process-rows
   "Post process any data. Have a chance to process all of the same type at once using
@@ -1069,7 +1087,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document  :transform]
                                       ;; Tables in collections are an EE feature (data-studio)
                                       (premium-features/has-feature? :data-studio) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
@@ -1093,6 +1111,7 @@
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
       collection/personal-collection-with-ui-details
+      collection/maybe-localize-tenant-collection-name
       (t2/hydrate :parent_id
                   :effective_location
                   [:effective_ancestors :can_write]
@@ -1579,6 +1598,9 @@
                                                                   [:authority_level  {:optional true} [:maybe collection/AuthorityLevel]]]]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+    ;; tenant-specific-root-collection collections cannot be updated
+    (api/check-400
+     (not= (:type collection-before-update) "tenant-specific-root-collection"))
     ;; if authority_level is changing, make sure we're allowed to do that
     (when (and (contains? collection-updates :authority_level)
                (not= (keyword authority-level) (:authority_level collection-before-update)))

@@ -84,7 +84,7 @@
 (api.macros/defendpoint :get "/dictionary/:token"
   "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`."
   [{:keys [token]} :- [:map
-                       [:token string?]]
+                       [:token ms/NonBlankString]]
    {:keys [locale]}]
   ;; this will error if bad
   (embedding.jwt/unsign token)

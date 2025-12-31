@@ -14,5 +14,4 @@ export type SidebarFeatures = {
   snippets?: boolean;
   promptInput?: boolean;
   formatQuery?: boolean;
-  aiGeneration?: boolean;
 };

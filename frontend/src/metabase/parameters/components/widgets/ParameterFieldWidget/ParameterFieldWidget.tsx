@@ -34,7 +34,6 @@ interface ParameterFieldWidgetProps {
   value?: string | string[];
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: string | null;
 }
 
 export function ParameterFieldWidget({
@@ -46,7 +45,6 @@ export function ParameterFieldWidget({
   parameters,
   cardId,
   dashboardId,
-  token,
 }: ParameterFieldWidgetProps) {
   const [unsavedValue, setUnsavedValue] = useState<RowValue[]>(() =>
     normalizeValue(value),
@@ -106,15 +104,16 @@ export function ParameterFieldWidget({
               parameters={parameters}
               cardId={cardId}
               dashboardId={dashboardId}
-              token={token}
               onChange={onValueChange}
               placeholder={isEditing ? t`Enter a default value…` : undefined}
               fields={fields}
               autoFocus={index === 0}
               multi={supportsMultipleValues}
-              formatOptions={
-                operator && getFilterArgumentFormatOptions(operator, index)
-              }
+              formatOptions={{
+                ...(operator &&
+                  getFilterArgumentFormatOptions(operator, index)),
+                ...fields?.[0]?.settings,
+              }}
               color="brand"
               minWidth={300}
               maxWidth={400}

@@ -61,6 +61,10 @@
       opacity: 1;
     }
   }
+
+  &:last-child {
+    border-bottom: none;
+  }
 }
 
 .icon {
@@ -89,8 +93,7 @@
 }
 
 .checkboxColumn {
-  flex-shrink: 0;
-  width: rem(40px);
+  flex: 0 0 rem(40px);
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -121,6 +124,9 @@
   user-select: none;
   overflow-wrap: anywhere;
   white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 0;
 }
 
 .content {

@@ -4,7 +4,10 @@ import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/co
 import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Table } from "metabase-types/api";
 
-import { PaneHeader } from "../../../common/components/PaneHeader";
+import {
+  PaneHeader,
+  type PaneHeaderProps,
+} from "../../../common/components/PaneHeader";
 
 import { TableMoreMenu } from "./TableMoreMenu";
 import { TableNameInput } from "./TableNameInput";
@@ -12,9 +15,9 @@ import { TableTabs } from "./TableTabs";
 
 type TableHeaderProps = {
   table: Table;
-};
+} & PaneHeaderProps;
 
-export function TableHeader({ table }: TableHeaderProps) {
+export function TableHeader({ table, ...rest }: TableHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
     collectionId: table.collection_id,
   });
@@ -40,6 +43,7 @@ export function TableHeader({ table }: TableHeaderProps) {
           <span>{table.display_name}</span>
         </DataStudioBreadcrumbs>
       }
+      {...rest}
     />
   );
 }

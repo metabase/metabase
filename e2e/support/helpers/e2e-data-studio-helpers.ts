@@ -19,7 +19,7 @@ export const DataStudio = {
     editDefinition: () => cy.findByRole("link", { name: "Edit definition" }),
     queryEditor: () => cy.findByTestId("transform-query-editor"),
     runTab: () => DataStudio.Transforms.header().findByText("Run"),
-    targetTab: () => DataStudio.Transforms.header().findByText("Target"),
+    settingsTab: () => DataStudio.Transforms.header().findByText("Settings"),
     dependenciesTab: () =>
       DataStudio.Transforms.header().findByText("Dependencies"),
   },
@@ -78,6 +78,8 @@ export const DataStudio = {
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}`),
+    visitFieldsPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/fields`),
     visitSegmentsPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/segments`),
     visitSegmentPage: (tableId: TableId, segmentId: SegmentId) =>
@@ -102,14 +104,20 @@ export const DataStudio = {
     },
   },
   Library: {
-    emptyPage: () =>
+    visit: () => {
+      cy.visit("/data-studio/library");
+      DataStudio.Library.libraryPage().should("be.visible");
+    },
+    noResults: () =>
       libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
     metricItem: (name: string) =>
       cy.findAllByTestId("metric-name").contains(name),
+    allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
-      libraryPage().findAllByTestId("table-name").contains(name),
-    result: (name: string) => libraryPage().findByText(name).closest("tr"),
+      DataStudio.Library.allTableItems().contains(name),
+    result: (name: string) =>
+      libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),

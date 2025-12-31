@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {com.databricks/databricks-jdbc-thin {:mvn/version "3.0.5"}}}
+ {com.databricks/databricks-jdbc-thin {:mvn/version "3.0.7"}}}
