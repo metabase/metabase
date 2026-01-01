@@ -218,4 +218,37 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.tableInteractive().should("contain", "April 1, 2022");
     });
   });
+
+  describe("missing field", () => {
+    beforeEach(() => {
+      H.restore("postgres-12");
+    });
+
+    it("should show error message when the field mapping is missing", () => {
+      cy.log("Set up field filter");
+
+      H.startNewNativeQuestion();
+      SQLFilter.enterParameterizedQuery(
+        "SELECT * FROM products WHERE {{my_filter}}",
+      );
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+
+      FieldFilter.mapTo({
+        table: "Products",
+        field: "ID",
+      });
+
+      SQLFilter.getRunQueryButton().should("not.be.disabled");
+
+      cy.log("change base database");
+      cy.findByTestId("gui-builder-data").click();
+      H.popover().findByText("QA Postgres12").click();
+
+      SQLFilter.getRunQueryButton().should("be.disabled").realHover();
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field')
+        .should("be.visible");
+    });
+  });
 });
