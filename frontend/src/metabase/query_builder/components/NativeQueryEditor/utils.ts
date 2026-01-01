@@ -1,6 +1,7 @@
 import type { FormatOptionsWithLanguage, SqlLanguage } from "sql-formatter";
 
 import { getEngineNativeType } from "metabase/lib/engine";
+import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 
 import { MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
@@ -112,4 +113,12 @@ export function formatQuery(queryText: string, engine: string) {
       ],
     },
   });
+}
+
+export function getQuestionErrors(question: Question) {
+  if (!question.isNative()) {
+    return null;
+  }
+
+  return question.legacyNativeQuery()?.validateTemplateTags() ?? null;
 }
