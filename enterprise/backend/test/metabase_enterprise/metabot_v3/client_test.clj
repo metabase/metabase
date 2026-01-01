@@ -86,6 +86,29 @@
                      {:_type :FINISH_MESSAGE :finish_reason "stop"}]
                     (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
 
+(deftest client-error-test
+  (mt/with-premium-features #{:metabot-v3}
+    (let [input         ["oof " "bad " "error!"]
+          mock-response (make-mock-error-stream-response input {"some-model" {:prompt 8 :completion 2}})
+          cid           (str (random-uuid))
+          req           {:context         {:some "context"}
+                         :message         {:role :user :content "stuff"}
+                         :history         []
+                         :profile-id      "test-profile"
+                         :conversation-id cid
+                         :session-id      "test-session"
+                         :state           {:some "state"}}]
+      (mt/with-dynamic-fn-redefs [http/post (mock-post! mock-response)]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [res  (metabot-v3.client/streaming-request req)
+                body (consume-streaming-response res)]
+            (is (instance? StreamingResponse res))
+            (is (= "text/event-stream; charset=utf-8" (:content-type (.options ^StreamingResponse res))))
+            (is (string? body))
+            (is (=? [{:_type :ERROR :content "oof bad error!"}
+                     {:_type :FINISH_MESSAGE :finish_reason "error"}]
+                    (metabot-v3.util/aisdk->messages :assistant (str/split-lines body))))))))))
+
 (deftest streaming-request-error-excludes-headers-test
   (testing "When streaming-request gets an error response, the exception should not include headers"
     (mt/with-premium-features #{:metabot-v3}
