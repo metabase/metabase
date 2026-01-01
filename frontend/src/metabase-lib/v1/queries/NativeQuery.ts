@@ -295,7 +295,7 @@ export default class NativeQuery {
       .filter((cardId): cardId is number => cardId != null);
   }
 
-  private _validateTemplateTags() {
+  validateTemplateTags() {
     return this.templateTags()
       .map((tag) => {
         if (!tag["display-name"]) {
@@ -318,7 +318,7 @@ export default class NativeQuery {
   }
 
   private _allTemplateTagsAreValid() {
-    const tagErrors = this._validateTemplateTags();
+    const tagErrors = this.validateTemplateTags();
     return tagErrors.length === 0;
   }
 
