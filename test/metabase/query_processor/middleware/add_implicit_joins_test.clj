@@ -1173,3 +1173,26 @@
                                                 [:field {} "C__D_ID"]
                                                 [:field {:join-alias "D__via__D_ID_2"} 40]]]}]}]}
               (qp.preprocess/preprocess query))))))
+
+(deftest filter-creator-full-name-test
+  (testing "Implicit join through a filter on field with a remap only shows field once (#66418)"
+    (let [mp (-> (mt/metadata-provider)
+                 (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title))
+                 (as-> $mp
+                       (let [model-query (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))]
+                         (lib.tu/mock-metadata-provider
+                          $mp
+                          {:cards [{:id            1
+                                    :dataset-query model-query}]}))))
+          q (-> (lib/query mp (lib.metadata/card mp 1))
+                (lib/filter (lib/= (-> (lib.metadata/field mp (mt/id :products :title))
+                                       (lib/ref)
+                                       ;; these options can get passed in from the frontend
+                                       (lib/update-options assoc
+                                                           :source-field-name "PRODUCT_ID"
+                                                           :source-field   (mt/id :orders :product_id)))
+                                   "Blah")))]
+      (is (=? [[:field {} (mt/id :products :title)]] ;; should only have one product title
+              (->> (get-in (qp.preprocess/preprocess q) [:stages 0 :fields])
+                   (filter #(= (mt/id :products :title)
+                               (lib/field-ref-id %)))))))))
