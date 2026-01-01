@@ -4,7 +4,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.metabot-v3.util :as metabot.u]))
 
-(deftest aisdk-line-parse-test
+(deftest ^:parallel aisdk-line-parse-test
   (testing "We should be able to parse AI SDK streaming format to ai-service format 1"
     (is (=? [{:role       "assistant"
               :_type      :TOOL_CALL
