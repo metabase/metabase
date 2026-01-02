@@ -1,4 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
@@ -18,6 +19,7 @@ import {
 } from "../SyncConflictModal";
 
 import { BranchDropdown } from "./BranchDropdown";
+import S from "./GitSyncControls.module.css";
 import { GitSyncOptionsDropdown } from "./GitSyncOptionsDropdown";
 
 type DropdownView = "options" | "branch";
@@ -152,7 +154,6 @@ export const GitSyncControls = () => {
           <Button
             p="sm"
             size="compact-sm"
-            justify="flex-start"
             bd="none"
             mr="lg"
             disabled={isLoading}
@@ -169,12 +170,9 @@ export const GitSyncControls = () => {
                   name="chevrondown"
                   c="text-medium"
                   size={8}
-                  style={{
-                    transform: combobox.dropdownOpened
-                      ? "rotate(180deg)"
-                      : "rotate(0deg)",
-                    transition: "transform 200ms ease",
-                  }}
+                  className={cx(S.chevronIcon, {
+                    [S.opened]: combobox.dropdownOpened,
+                  })}
                 />
               )
             }
