@@ -6,12 +6,9 @@
 // frontend/src/metabase/styled-components/theme/css-variables.ts
 // NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
-import C from "color";
-
 import type { ColorSettings } from "metabase-types/api/settings";
+
 import { generateSteps } from "./utils";
-import { CssColor } from "@adobe/leonardo-contrast-colors";
-import Color from "color";
 
 const win = typeof window !== "undefined" ? window : ({} as Window);
 const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
@@ -246,11 +243,12 @@ const baseColors = {
 };
 
 const getColorConfig = (settings: ColorSettings = {}) => {
+  console.log(whitelabelColors);
   const {
     background = baseColors.white,
     text = baseColors.orionAlpha[80],
     brand = baseColors.blue[40],
-  } = settings;
+  } = { ...settings, ...whitelabelColors };
 
   const config = generateSteps({
     text,

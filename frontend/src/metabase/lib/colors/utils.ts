@@ -1,4 +1,5 @@
 import {
+  contrast,
   BackgroundColor,
   Color,
   ContrastColor,
@@ -69,7 +70,20 @@ export const generateSteps = <const T extends string>(
   const { contrastColors } = theme;
 
   return contrastColors.slice(1).reduce((acc, cc) => {
-    const { name, values: contrastColorValues } = cc;
+    const { name, values: contrastColorValues } = cc as ContrastColor;
+
+    const ogColor = colors[name];
+    const ogColorContrast = contrast(C(ogColor).rgb().color, [255, 255, 255]);
+
+    const ogColorStepIndex = RATIOS.reduce((prevIndex, val, index, arr) => {
+      const preVal = arr[prevIndex];
+      return Math.abs(preVal - ogColorContrast) <
+        Math.abs(val - ogColorContrast)
+        ? prevIndex
+        : index;
+    });
+
+    console.log(name, ogColorContrast, ogColorStepIndex);
 
     const steps = {
       110: contrastColorValues[11].value,
@@ -89,26 +103,45 @@ export const generateSteps = <const T extends string>(
     return {
       ...acc,
       [name]: steps,
-      [`${name}Alpha`]: generateAplhaSteps(steps[100]),
-      [`${name}AlphaInverse`]: generateAplhaSteps(steps[5]),
+      [`${name}Alpha`]: generateAplhaSteps(
+        contrastColorValues[ogColorStepIndex].value,
+      ),
+      [`${name}AlphaInverse`]: generateAplhaSteps(
+        contrastColorValues[ogColorStepIndex].value,
+        true,
+      ),
     };
   }, {});
 };
 
-const generateAplhaSteps = (input: CssColor) => {
+const generateAplhaSteps = (input: CssColor, reverse: boolean = false) => {
   const color = C(input);
 
-  return {
-    100: color.alpha(1).toString(),
-    90: color.alpha(0.93).toString(),
-    80: color.alpha(0.84).toString(),
-    70: color.alpha(0.74).toString(),
-    60: color.alpha(0.62).toString(),
-    50: color.alpha(0.51).toString(),
-    40: color.alpha(0.44).toString(),
-    30: color.alpha(0.29).toString(),
-    20: color.alpha(0.17).toString(),
-    10: color.alpha(0.05).toString(),
-    5: color.alpha(0.02).toString(),
-  };
+  return reverse
+    ? {
+        5: color.alpha(1).toString(),
+        10: color.alpha(0.93).toString(),
+        20: color.alpha(0.84).toString(),
+        30: color.alpha(0.74).toString(),
+        40: color.alpha(0.62).toString(),
+        50: color.alpha(0.51).toString(),
+        60: color.alpha(0.44).toString(),
+        70: color.alpha(0.29).toString(),
+        80: color.alpha(0.17).toString(),
+        90: color.alpha(0.05).toString(),
+        100: color.alpha(0.02).toString(),
+      }
+    : {
+        100: color.alpha(1).toString(),
+        90: color.alpha(0.93).toString(),
+        80: color.alpha(0.84).toString(),
+        70: color.alpha(0.74).toString(),
+        60: color.alpha(0.62).toString(),
+        50: color.alpha(0.51).toString(),
+        40: color.alpha(0.44).toString(),
+        30: color.alpha(0.29).toString(),
+        20: color.alpha(0.17).toString(),
+        10: color.alpha(0.05).toString(),
+        5: color.alpha(0.02).toString(),
+      };
 };
