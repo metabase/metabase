@@ -83,18 +83,16 @@ export function useTreeTableKeyboard<TData extends TreeNodeData>({
         case "Enter": {
           event.preventDefault();
           if (currentRow) {
-            if (currentRow.getCanExpand()) {
-              currentRow.toggleExpanded();
-            } else {
-              onRowActivate?.(currentRow);
-            }
+            onRowActivate?.(currentRow);
           }
           break;
         }
 
         case " ": {
           event.preventDefault();
-          if (enableRowSelection && currentRow?.getCanSelect()) {
+          if (currentRow?.getCanExpand()) {
+            currentRow.toggleExpanded();
+          } else if (enableRowSelection && currentRow?.getCanSelect()) {
             currentRow.toggleSelected();
           }
           break;

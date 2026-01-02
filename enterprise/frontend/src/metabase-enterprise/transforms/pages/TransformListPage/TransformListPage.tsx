@@ -25,6 +25,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { useListTransformsQuery } from "metabase-enterprise/api";
@@ -33,7 +34,6 @@ import { PageContainer } from "metabase-enterprise/data-studio/common/components
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { CreateTransformMenu } from "metabase-enterprise/transforms/components/CreateTransformMenu";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
@@ -281,7 +281,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
 
         <Card withBorder p={0}>
           {isLoading ? (
-            <ListLoadingState />
+            <TreeTableSkeleton columnWidths={[0.4, 0.2, 0.25, 0.05]} />
           ) : (
             <TreeTable
               instance={treeTableInstance}

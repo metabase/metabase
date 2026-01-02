@@ -24,6 +24,7 @@ import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
 import { SearchNew } from "./SearchNew";
+import S from "./TablePicker.module.css";
 import { Tree } from "./Tree";
 
 interface TablePickerProps {
@@ -71,7 +72,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="sm" p={0}>
+      <Group gap="sm">
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -136,17 +137,24 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Card mih={0} flex="1 1 auto" withBorder px={0} pb={0}>
-        {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree
-            path={path}
-            onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
-        ) : (
-          <SearchNew query={deferredQuery} params={params} filters={filters} />
-        )}
-      </Card>
+      <Box mih={0} flex="0 1 auto" display="flex" className={S.treeContainer}>
+        <Card withBorder p={0} flex={1} mih={0} display="flex">
+          {deferredQuery === "" && filtersCount === 0 ? (
+            <Tree
+              path={path}
+              onChange={onChange}
+              setOnUpdateCallback={setOnUpdateCallback}
+            />
+          ) : (
+            <SearchNew
+              query={deferredQuery}
+              params={params}
+              filters={filters}
+              onChange={onChange}
+            />
+          )}
+        </Card>
+      </Box>
     </Stack>
   );
 }
