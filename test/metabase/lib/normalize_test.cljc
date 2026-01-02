@@ -2,8 +2,10 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -212,3 +214,124 @@
                         :lib/type     :mbql.stage/mbql}]
             :lib/type :mbql/query}
            (lib/normalize query)))))
+
+;;; ---------------------------------- Expression flattening tests ----------------------------------
+;;; These tests verify that deeply nested expressions are flattened before Malli validation
+;;; to avoid excessive memory allocation. The flattening happens in `flatten-expressions`.
+
+(defn- normalize-and-strip-uuids
+  "Normalize an expression and recursively remove :lib/uuid from all maps for easier comparison."
+  [x]
+  (let [result (lib.normalize/normalize x)]
+    (walk/postwalk
+     (fn [form]
+       (if (map? form)
+         (dissoc form :lib/uuid)
+         form))
+     result)))
+
+(deftest ^:parallel flatten-case-test
+  (testing "nested :case in default branch is flattened"
+    (is (= [:case {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"]] "c"]
+           (normalize-and-strip-uuids
+            [:case {} [[[:= {} 1 1] "a"]] [:case {} [[[:= {} 2 2] "b"]] "c"]]))))
+  (testing "nested :if in default branch is flattened"
+    (is (= [:if {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"]] "c"]
+           (normalize-and-strip-uuids
+            [:if {} [[[:= {} 1 1] "a"]] [:if {} [[[:= {} 2 2] "b"]] "c"]]))))
+  (testing "deeply nested case is fully flattened"
+    (is (= [:case {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"] [[:= {} 3 3] "c"]] "d"]
+           (normalize-and-strip-uuids
+            [:case {} [[[:= {} 1 1] "a"]]
+             [:case {} [[[:= {} 2 2] "b"]]
+              [:case {} [[[:= {} 3 3] "c"]] "d"]]]))))
+  (testing "string tags are handled"
+    (is (= [:case {} [[[:= {} 1 1] "a"] [[:= {} 2 2] "b"]] "c"]
+           (normalize-and-strip-uuids
+            ["case" {} [[["=" {} 1 1] "a"]] ["case" {} [[["=" {} 2 2] "b"]] "c"]])))))
+
+(deftest ^:parallel flatten-and-test
+  (testing "nested :and is flattened"
+    (is (= [:and {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3]]
+           (normalize-and-strip-uuids
+            [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:= {} 3 3]]]))))
+  (testing "deeply nested :and is fully flattened"
+    (is (= [:and {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3] [:= {} 4 4]]
+           (normalize-and-strip-uuids
+            [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:and {} [:= {} 3 3] [:= {} 4 4]]]]))))
+  (testing "string tags are handled"
+    (is (= [:and {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3]]
+           (normalize-and-strip-uuids
+            ["and" {} ["=" {} 1 1] ["and" {} ["=" {} 2 2] ["=" {} 3 3]]])))))
+
+(deftest ^:parallel flatten-or-test
+  (testing "nested :or is flattened"
+    (is (= [:or {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3]]
+           (normalize-and-strip-uuids
+            [:or {} [:= {} 1 1] [:or {} [:= {} 2 2] [:= {} 3 3]]]))))
+  (testing "deeply nested :or is fully flattened"
+    (is (= [:or {} [:= {} 1 1] [:= {} 2 2] [:= {} 3 3] [:= {} 4 4]]
+           (normalize-and-strip-uuids
+            [:or {} [:= {} 1 1] [:or {} [:= {} 2 2] [:or {} [:= {} 3 3] [:= {} 4 4]]]])))))
+
+(deftest ^:parallel flatten-coalesce-test
+  (testing "nested :coalesce is flattened"
+    (is (= [:coalesce {} [:field {} 1] [:field {} 2] [:field {} 3]]
+           (normalize-and-strip-uuids
+            [:coalesce {} [:field {} 1] [:coalesce {} [:field {} 2] [:field {} 3]]]))))
+  (testing "deeply nested :coalesce is fully flattened"
+    (is (= [:coalesce {} [:field {} 1] [:field {} 2] [:field {} 3] "default"]
+           (normalize-and-strip-uuids
+            [:coalesce {} [:field {} 1]
+             [:coalesce {} [:field {} 2]
+              [:coalesce {} [:field {} 3] "default"]]])))))
+
+(deftest ^:parallel flatten-plus-test
+  (testing "nested :+ is flattened"
+    (is (= [:+ {} 1 2 3]
+           (normalize-and-strip-uuids
+            [:+ {} 1 [:+ {} 2 3]]))))
+  (testing "deeply nested :+ is fully flattened"
+    (is (= [:+ {} 1 2 3 4]
+           (normalize-and-strip-uuids
+            [:+ {} 1 [:+ {} 2 [:+ {} 3 4]]])))))
+
+(deftest ^:parallel flatten-multiply-test
+  (testing "nested :* is flattened"
+    (is (= [:* {} 1 2 3]
+           (normalize-and-strip-uuids
+            [:* {} 1 [:* {} 2 3]]))))
+  (testing "deeply nested :* is fully flattened"
+    (is (= [:* {} 1 2 3 4]
+           (normalize-and-strip-uuids
+            [:* {} 1 [:* {} 2 [:* {} 3 4]]])))))
+
+(deftest ^:parallel flatten-concat-test
+  (testing "nested :concat is flattened"
+    (is (= [:concat {} "a" "b" "c"]
+           (normalize-and-strip-uuids
+            [:concat {} "a" [:concat {} "b" "c"]]))))
+  (testing "deeply nested :concat is fully flattened"
+    (is (= [:concat {} "a" "b" "c" "d"]
+           (normalize-and-strip-uuids
+            [:concat {} "a" [:concat {} "b" [:concat {} "c" "d"]]])))))
+
+(deftest ^:parallel no-flatten-non-associative-test
+  (testing ":- is not flattened (not associative)"
+    (is (= [:- {} 1 [:- {} 2 3]]
+           (normalize-and-strip-uuids
+            [:- {} 1 [:- {} 2 3]]))))
+  (testing ":/ is not flattened (not associative)"
+    (is (= [:/ {} 1 [:/ {} 2 3]]
+           (normalize-and-strip-uuids
+            [:/ {} 1 [:/ {} 2 3]])))))
+
+(deftest ^:parallel flatten-mixed-operators-test
+  (testing "different operators are not flattened together"
+    (is (= [:and {} [:= {} 1 1] [:or {} [:= {} 2 2] [:= {} 3 3]]]
+           (normalize-and-strip-uuids
+            [:and {} [:= {} 1 1] [:or {} [:= {} 2 2] [:= {} 3 3]]]))))
+  (testing "flattening happens at each level independently"
+    (is (= [:and {} [:= {} 1 1] [:= {} 2 2] [:or {} [:= {} 3 3] [:= {} 4 4] [:= {} 5 5]]]
+           (normalize-and-strip-uuids
+            [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:or {} [:= {} 3 3] [:or {} [:= {} 4 4] [:= {} 5 5]]]]])))))
