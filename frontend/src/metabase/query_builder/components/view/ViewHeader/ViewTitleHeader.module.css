@@ -315,7 +315,7 @@
   align-items: center;
   flex-wrap: wrap;
 
-  @container query-builder (max-width: 70em) {
+  @container query-builder (max-width: 40em) {
     flex-direction: column;
     align-items: start;
   }
