@@ -1,10 +1,5 @@
 .AdHocLeftSideRoot {
   @container query-builder (max-width: 60em) {
-    margin-left: 2rem;
     align-self: start;
-
-    @media (max-width: 40em) {
-      margin-left: 1.25rem;
-    }
   }
 }

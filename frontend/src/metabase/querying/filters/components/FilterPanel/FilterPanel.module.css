@@ -3,10 +3,10 @@
   padding-inline: var(--mantine-spacing-xl);
 
   @container query-builder (max-width: 60em) {
-    padding-inline: 1.25rem;
+    padding-inline: 1.325rem;
   }
 
   @media screen and (max-width: 40em) {
-    padding-inline: 1.25rem;
+    padding-inline: 1.325rem;
   }
 }
