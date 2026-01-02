@@ -124,7 +124,7 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
-      const doc = yaml.load(str);
+      const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);
 
@@ -176,23 +176,17 @@ const ensureGitSyncMenuOpen = () => {
 
 export const getPullOption = () => {
   ensureGitSyncMenuOpen();
-  return cy
-    .findByRole("presentation")
-    .findByRole("option", { name: /Pull changes/ });
+  return popover().findByRole("option", { name: /Pull changes/ });
 };
 
 export const getPushOption = () => {
   ensureGitSyncMenuOpen();
-  return cy
-    .findByRole("presentation")
-    .findByRole("option", { name: /Push changes/ });
+  return popover().findByRole("option", { name: /Push changes/ });
 };
 
 export const getSwitchBranchOption = () => {
   ensureGitSyncMenuOpen();
-  return cy
-    .findByRole("presentation")
-    .findByRole("option", { name: /Switch branch/ });
+  return popover().findByRole("option", { name: /Switch branch/ });
 };
 
 // Enable tenants feature for testing
@@ -220,10 +214,10 @@ export const waitForTask = (
     throw Error(`Too many retries waiting for ${taskName}`);
   }
   cy.wait("@currentTask").then(({ response }) => {
-    const { body } = response;
-    if (body.sync_task_type !== taskName) {
+    const { body } = response || {};
+    if (body?.sync_task_type !== taskName) {
       waitForTask({ taskName });
-    } else if (body.status !== "successful") {
+    } else if (body?.status !== "successful") {
       waitForTask({ taskName }, retries + 1);
     }
   });
