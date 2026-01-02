@@ -733,7 +733,7 @@
 (deftest non-admin-sync-schema-test
   (mt/test-helpers-set-global-values!
     (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
-      ;; Don't actually run the sync task in this test — just test the API-level permission enforcement
+      ;; Don't actually run the sync task in this test — just test the API-level permission enforcement
       (with-redefs [quick-task/submit-task! (constantly nil)]
         (testing "A non-admin cannot trigger a sync of the DB schema if they do not have DB details permissions"
           (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
