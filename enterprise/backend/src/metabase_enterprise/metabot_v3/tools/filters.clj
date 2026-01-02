@@ -146,7 +146,7 @@
     (lib/breakout query expr)))
 
 (defn- query-metric*
-  [{:keys [metric-id filters group-by] :as _arguments}]
+  [{:keys [metric-id filters group-by]}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
@@ -222,7 +222,7 @@
   (cond-> query limit (lib/limit limit)))
 
 (defn- query-model*
-  [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
+  [{:keys [model-id fields filters aggregations group-by order-by limit]}]
   (let [card (metabot-v3.tools.u/get-card model-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
@@ -380,7 +380,7 @@
 
 (defn filter-records
   "Add `filters` to the query referenced by `data-source`"
-  [{:keys [data-source filters] :as _arguments}]
+  [{:keys [data-source filters]}]
   (try
     (let [[filter-field-id-prefix base] (base-query data-source)
           returned-cols (lib/returned-columns base)
@@ -397,4 +397,3 @@
                               (lib/returned-columns query))}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
-
