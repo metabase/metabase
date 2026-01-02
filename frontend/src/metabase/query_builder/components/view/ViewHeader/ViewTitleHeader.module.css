@@ -27,6 +27,7 @@
 
 @container query-builder (max-width: 50em) {
   .ActionButtonRoot[data-variant="default"] {
+    flex-shrink: 0;
     padding: 11px;
   }
 
@@ -154,6 +155,10 @@
   }
 }
 
+.Divider {
+  flex-grow: 1;
+}
+
 .ViewHeaderActionPanel {
   display: flex;
   align-items: center;
@@ -164,14 +169,14 @@
   @container query-builder (max-width: 60em) {
     margin-left: 0;
     width: 100%;
-    justify-content: space-between;
+    justify-content: start;
     border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
-    padding: 0.5rem 2.5rem 0 2rem;
+    padding: 0.5rem 1.25rem 0 1.25rem;
   }
 
   @media screen and (max-width: 40em) {
-    padding-left: 1.25rem;
+    padding-inline: 1.25rem;
   }
 
   /* increase specificity */
