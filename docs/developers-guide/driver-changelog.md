@@ -8,12 +8,6 @@ title: Driver interface changelog
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
 
-- Added `metabase.driver/create-index!`, `metabase.driver/drop-index!` multimethods.
-  For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
-  `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
-  Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
-  These methods are invoked only when the `:transforms/index-ddl` feature is enabled, and are otherwise optional.
-
 ## Metabase 0.58.0
 
 - Added a `:collate` feature for drivers that support collation settings on text fields
@@ -22,6 +16,12 @@ title: Driver interface changelog
 
 - All tests in `metabase.query-processor-test.*` namespaces have been moved to `metabase.query-processor.*` (This is
   only relevant if you run individual test namespaces as part of your development workflow).
+
+- Added `metabase.driver/create-index!`, `metabase.driver/drop-index!` multimethods.
+  For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
+  `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
+  Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
+  These methods are invoked only when the `:transforms/index-ddl` feature is enabled and therefore are opt-in.
 
 ## Metabase 0.57.7
 
