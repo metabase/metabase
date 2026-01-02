@@ -8,14 +8,11 @@ title: Driver interface changelog
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
 
-- To support secondary indexes on incremental transform (target) tables, added the following index maintenance methods:
-    - `metabase.driver/create-index!`
-    - `metabase.driver/drop-index!`
-    - `metabase.driver.sql-jdbc/create-index-sql`
-    - `metabase.driver.sql-jdbc/drop-index-sql`
+- Added `metabase.driver/create-index!`, `metabase.driver/drop-index!` multimethods.
+  For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
+  `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
   Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
-  We only use them where the `:transforms/index-ddl` feature is enabled.
-  Implementing these methods is optional, transforms work without them.
+  These methods are invoked only when the `:transforms/index-ddl` feature is enabled, and are otherwise optional.
 
 ## Metabase 0.58.0
 
