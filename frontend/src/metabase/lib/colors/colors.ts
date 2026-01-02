@@ -11,6 +11,7 @@ import C from "color";
 import type { ColorSettings } from "metabase-types/api/settings";
 import { generateSteps } from "./utils";
 import { CssColor } from "@adobe/leonardo-contrast-colors";
+import Color from "color";
 
 const win = typeof window !== "undefined" ? window : ({} as Window);
 const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
@@ -245,24 +246,35 @@ const baseColors = {
 };
 
 const getColorConfig = (settings: ColorSettings = {}) => {
-  console.log({ settings });
-  const background = "hsla(240, 11%, 98%, 1)"; //settings.background;
-  // ? C(settings.background).hsl().alpha(1).toString()
-  // : (baseColors.orion[5] as CssColor);
+  const {
+    background = baseColors.white,
+    text = baseColors.orionAlpha[80],
+    brand = baseColors.blue[40],
+  } = settings;
 
-  const text = settings.text;
-  // ? C(settings.text).hsl().alpha(1).toString()
-  // : (baseColors.orion[90] as CssColor);
+  const config = generateSteps({
+    text,
+    brand,
+    background,
+  });
 
-  const config = {
-    ...generateSteps(background, background, "background"),
-    ...generateSteps(text, background, "text"),
-    ...generateSteps(
-      (settings.brand as CssColor) || (baseColors.blue[40] as CssColor),
-      background,
-      "brand",
-    ),
-  };
+  // const config = {
+  //   ...generateSteps(
+  //     Color(background).hsl().toString(),
+  //     Color(background).hsl().toString(),
+  //     "background",
+  //   ),
+  //   ...generateSteps(
+  //     Color(text).hsl().toString(),
+  //     Color(background).hsl().toString(),
+  //     "text",
+  //   ),
+  //   ...generateSteps(
+  //     Color(brand).hsl().toString(),
+  //     Color(background).hsl().toString(),
+  //     "brand",
+  //   ),
+  // };
 
   return {
     "accent-gray-dark": baseColors.orion[20],

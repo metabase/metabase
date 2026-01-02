@@ -172,7 +172,7 @@ export const globalShortcuts = {
       return t`Theme modal`;
     },
     shortcutGroup: "global" as const,
-    shortcut: ["$mod+e"],
+    shortcut: ["$mod+Shift+KeyV"],
     icon: "pencil",
   },
 };

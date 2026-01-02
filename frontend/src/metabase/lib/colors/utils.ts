@@ -1,9 +1,12 @@
 import {
   BackgroundColor,
   Color,
+  ContrastColor,
   type CssColor,
   Theme,
 } from "@adobe/leonardo-contrast-colors";
+
+import _ from "underscore";
 
 import C from "color";
 
@@ -31,62 +34,65 @@ type MapWithSuffixes<T extends string, N extends string> = {
 };
 
 export const generateSteps = <const T extends string>(
-  color: CssColor,
-  backgroundColor: CssColor,
-  name: T,
-): MapWithSuffixes<T, "" | "Alpha" | "AlphaInverse"> => {
-  console.log({
-    color,
-    backgroundColor,
-  });
+  colors: Record<T, CssColor>,
+): MapWithSuffixes<T | "background", "" | "Alpha" | "AlphaInverse"> => {
   const background = new BackgroundColor({
     name: "background",
-    colorKeys: [backgroundColor],
+    colorKeys: ["#FFF"],
     ratios: RATIOS,
     smooth: false,
+    colorspace: "HSL",
   });
 
-  const input = new Color({
-    name,
-    colorKeys: [color],
-    ratios: RATIOS,
-    smooth: false,
-  });
-
-  console.log({ lightness: C(backgroundColor).lightness() });
+  const input = [
+    ...Object.keys(colors).map(
+      (name) =>
+        new Color({
+          name,
+          colorKeys: [colors[name]],
+          ratios: RATIOS,
+          smooth: false,
+          colorspace: "HSL",
+        }),
+    ),
+  ];
 
   const theme = new Theme({
-    colors: [input],
+    colors: input,
     backgroundColor: background,
-    lightness: C(backgroundColor).lightness(),
+    lightness: 100,
     contrast: 1,
     saturation: 100,
-    output: "HEX",
-    formula: "wcag2",
+    output: "HSL",
   });
 
-  const { contrastColorValues } = theme;
+  const { contrastColors } = theme;
 
-  const steps = {
-    110: contrastColorValues[11],
-    100: contrastColorValues[10],
-    90: contrastColorValues[9],
-    80: contrastColorValues[8],
-    70: contrastColorValues[7],
-    60: contrastColorValues[6],
-    50: contrastColorValues[5],
-    40: contrastColorValues[4],
-    30: contrastColorValues[3],
-    20: contrastColorValues[2],
-    10: contrastColorValues[1],
-    5: contrastColorValues[0],
-  };
+  return contrastColors.slice(1).reduce((acc, cc) => {
+    const { name, values: contrastColorValues } = cc;
 
-  return {
-    [name]: steps,
-    [`${name}Alpha`]: generateAplhaSteps(steps[100]),
-    [`${name}AlphaInverse`]: generateAplhaSteps(steps[5]),
-  };
+    const steps = {
+      110: contrastColorValues[11].value,
+      100: contrastColorValues[10].value,
+      90: contrastColorValues[9].value,
+      80: contrastColorValues[8].value,
+      70: contrastColorValues[7].value,
+      60: contrastColorValues[6].value,
+      50: contrastColorValues[5].value,
+      40: contrastColorValues[4].value,
+      30: contrastColorValues[3].value,
+      20: contrastColorValues[2].value,
+      10: contrastColorValues[1].value,
+      5: contrastColorValues[0].value,
+    };
+
+    return {
+      ...acc,
+      [name]: steps,
+      [`${name}Alpha`]: generateAplhaSteps(steps[100]),
+      [`${name}AlphaInverse`]: generateAplhaSteps(steps[5]),
+    };
+  }, {});
 };
 
 const generateAplhaSteps = (input: CssColor) => {
