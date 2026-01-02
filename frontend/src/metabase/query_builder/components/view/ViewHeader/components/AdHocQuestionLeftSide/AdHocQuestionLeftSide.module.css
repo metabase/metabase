@@ -1,5 +1,5 @@
 .AdHocLeftSideRoot {
-  @media screen and (max-width: 50em) {
+  @media screen and (max-width: 60em) {
     margin-left: 2rem;
     align-self: start;
   }
