@@ -18,6 +18,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [next.jdbc :as next.jdbc]
    [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
