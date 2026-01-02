@@ -70,19 +70,6 @@
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
 
-(comment
-  (t2/select-pk->fn :field_id :model/FieldValues)
-  (sort-by key (t2/select-pk->fn :name :model/Table))
-  (sort-by first (t2/select-fn-vec (juxt :position :name) :model/Field :table_id 8))
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (let [table-id 25]
-      (-> (for [col-pos (range 15)]
-            [col-pos (table-field-stats table-id (str (metabot-v3.tools.u/table-field-id-prefix table-id) col-pos) 15)])
-          vec)))
-  -)
-
 (defn field-values
   "Return statistics and/or values for a given field of a given entity."
   [{:keys [entity-type entity-id field-id limit]}]

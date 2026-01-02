@@ -226,14 +226,6 @@
       (integer? limit)
       (assoc :limit limit))))
 
-(comment
-  (binding [api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (t2/select-fn-vec #(select-keys % [:id :name :type])
-                      :model/Card
-                      (metabot-metrics-and-models-query 1)))
-  -)
-
 (defn get-metrics-and-models
   "Retrieve the metric and model cards for the Metabot instance with ID `metabot-id` from the app DB.
 

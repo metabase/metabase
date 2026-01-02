@@ -138,11 +138,6 @@
                                           (->> (lib/filterable-columns base-query)
                                                field-values-fn)))))))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (metric-details 135))
-  -)
-
 (defn- convert-metric
   ([db-metric metadata-provider]
    (convert-metric db-metric metadata-provider nil))
@@ -313,22 +308,6 @@
     (throw (ex-info (i18n/tru "Invalid metabot_id {0}" metabot-id)
                     {:metabot_id metabot-id, :status-code 400}))))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    #_(table-details 30 nil)
-    (card-details 110)
-    #_(metric-details 108)
-    #_(dev.toucan2-monitor/with-queries [queries]
-        (u/prog1 (answer-sources "__METABOT__"
-                                 {:with-fields?                    false
-                                  :with-metrics?                   true
-                                  :with-default-temporal-breakout? false
-                                  :with-queryable-dimensions?      false})
-          (tap> (queries)))))
-  -)
-
 (defn get-table-details
   "Get information about the table or model with ID `table-id`.
   `table-id` is string either encoding an integer that is the ID of a table
@@ -355,14 +334,6 @@
       (if (map? details)
         {:structured-output details}
         {:output (or details "table not found")}))))
-
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (let [id #_"card__137" #_"card__136" #_27 "27"]
-      (get-table-details {:table-id id})))
-  -)
 
 (defn get-metric-details
   "Get information about the metric with ID `metric-id`."
