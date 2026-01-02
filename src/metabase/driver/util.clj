@@ -429,6 +429,47 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(defn- resolve-transitive-visible-if
+  "Resolves transitive visible-if dependencies for a property.
+
+  If property x depends on y having a value, but y itself depends on z having a value,
+  then x should be hidden if y is. This function computes the full transitive closure
+  of visible-if dependencies.
+
+  Throws an exception if a cycle is detected in the dependency graph."
+  [prop props-by-name driver]
+  (let [v-ifs*
+        (loop [props* [prop]
+               acc    {}]
+          (if (seq props*)
+            (let [all-visible-ifs  (reduce
+                                    #(reduce-kv (fn [acc prop-name v]
+                                                  (if (or (contains? props-by-name (->str prop-name))
+                                                          ;; If v is false then this depended on a removed :checked-section
+                                                          ;; and the dependency should be dropped.
+                                                          (not (false? v)))
+                                                    (assoc acc prop-name v)
+                                                    acc))
+                                                %1 (:visible-if %2))
+                                    {} props*)
+                  visible-keys     (keys all-visible-ifs)
+                  transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
+                  next-acc         (into acc all-visible-ifs)]
+              (if-not (perf/some #(contains? acc %) visible-keys)
+                (recur transitive-props next-acc)
+                (let [cyclic-props (set/intersection (set visible-keys)
+                                                     (set (keys acc)))]
+                  (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                           driver cyclic-props)
+                      (ex-info {:type               qp.error-type/driver
+                                :driver             driver
+                                :cyclic-visible-ifs cyclic-props})
+                      throw))))
+            acc))]
+    (cond-> prop
+      (seq v-ifs*) (assoc :visible-if v-ifs*)
+      (empty? v-ifs*) (dissoc :visible-if))))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -467,39 +508,7 @@
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
     ;; should be hidden if y is)
-    (mapv (fn [prop]
-            (let [v-ifs*
-                  (loop [props* [prop]
-                         acc    {}]
-                    (if (seq props*)
-                      (let [all-visible-ifs  (reduce
-                                              #(reduce-kv (fn [acc prop-name v]
-                                                            (if (or (contains? props-by-name (->str prop-name))
-                                                                    ;; If v is false then this depended on a removed :checked-section
-                                                                    ;; and the dependency should be dropped.
-                                                                    (not (false? v)))
-                                                              (assoc acc prop-name v)
-                                                              acc))
-                                                          %1 (:visible-if %2))
-                                              {} props*)
-                            visible-keys     (keys all-visible-ifs)
-                            transitive-props (perf/mapv (comp (partial get props-by-name) ->str) visible-keys)
-                            next-acc         (into acc all-visible-ifs)]
-                        (if-not (perf/some #(contains? acc %) visible-keys)
-                          (recur transitive-props next-acc)
-                          (let [cyclic-props (set/intersection (set visible-keys)
-                                                               (set (keys acc)))]
-                            (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     driver cyclic-props)
-                                (ex-info {:type               qp.error-type/driver
-                                          :driver             driver
-                                          :cyclic-visible-ifs cyclic-props})
-                                throw))))
-                      acc))]
-              (cond-> prop
-                (seq v-ifs*) (assoc :visible-if v-ifs*)
-                (empty? v-ifs*) (dissoc :visible-if))))
-          final-props)))
+    (mapv #(resolve-transitive-visible-if % props-by-name driver) final-props)))
 
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"
