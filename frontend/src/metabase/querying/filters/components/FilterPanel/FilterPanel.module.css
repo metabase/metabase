@@ -2,7 +2,7 @@
   border-bottom: 1px solid var(--mb-color-border);
   padding-inline: var(--mantine-spacing-xl);
 
-  @container query-builder (max-width: 60em) {
+  @container query-builder (max-width: 70em) {
     padding-inline: 1.325rem;
   }
 

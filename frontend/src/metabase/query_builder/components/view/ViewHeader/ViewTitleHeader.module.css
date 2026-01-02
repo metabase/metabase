@@ -166,7 +166,7 @@
   gap: 0.5rem;
   position: relative;
 
-  @container query-builder (max-width: 60em) {
+  @container query-builder (max-width: 70em) {
     margin-left: 0;
     width: 100%;
     justify-content: start;
@@ -219,7 +219,7 @@
     }
   }
 
-  @container query-builder (max-width: 60em) {
+  @container query-builder (max-width: 70em) {
     flex-direction: column;
     align-items: start;
     padding: 0.5rem 0;
@@ -258,7 +258,7 @@
   width: 100%;
   gap: 0.5rem;
 
-  @container query-builder (max-width: 60em) {
+  @container query-builder (max-width: 70em) {
     padding-left: 1.325rem;
   }
 }
@@ -299,7 +299,7 @@
     }
   }
 
-  @container query-builder (max-width: 60em) {
+  @container query-builder (max-width: 70em) {
     .SavedQuestionHeaderButtonContainer {
       top: 0;
     }
@@ -315,7 +315,7 @@
   align-items: center;
   flex-wrap: wrap;
 
-  @container query-builder (max-width: 60em) {
+  @container query-builder (max-width: 70em) {
     flex-direction: column;
     align-items: start;
   }
