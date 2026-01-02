@@ -252,6 +252,12 @@
   }
 }
 
+.ViewHeaderLeftSideWrapper {
+  flex-grow: 1;
+  align-items: center;
+  width: 100%;
+}
+
 .SavedQuestionLeftSideRoot {
   width: 100%;
   min-width: 0;
@@ -289,8 +295,6 @@
   }
 
   @container query-builder (max-width: 60em) {
-    padding: 0 2rem;
-
     .SavedQuestionHeaderButtonContainer {
       top: 0;
     }

@@ -1,3 +1,7 @@
 .QueryBuilderBackButton {
   border-color: color-mix(in srgb, var(--mb-color-border), black 5%) !important;
+
+  @container query-builder (max-width: 60em) {
+    margin-left: 1.25rem;
+  }
 }
