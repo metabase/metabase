@@ -375,7 +375,8 @@
   (testing "GET /api/ee/metabot-v3/metabot/:id/prompt-suggestions respects collection permissions"
     (mt/dataset test-data
       (mt/with-premium-features #{:metabot-v3}
-        (let [model-query {:type :query, :database (mt/id), :query {:source-table (mt/id :products)}}]
+        (let [mp (mt/metadata-provider)
+              model-query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
           (mt/with-temp [:model/Collection {accessible-coll-id :id} {:name "Accessible Collection"}
                          :model/Collection {restricted-coll-id :id} {:name "Restricted Collection"}
                          :model/Card {accessible-card-id :id} {:name "Accessible Model"
