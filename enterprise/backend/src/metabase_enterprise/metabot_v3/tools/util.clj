@@ -23,6 +23,18 @@
     {:output (ex-message e)}
     (throw e)))
 
+;;; -------------------------------------------------- Permissions ---------------------------------------------------
+
+(defn check-entity-read-permission
+  "Check if current user can read entity, throwing an agent-friendly error if not.
+   This checks collection-level access - whether the user can see the entity exists."
+  [entity entity-type]
+  (when-not (mi/can-read? entity)
+    (throw (ex-info (tru "The user does not have permission to access this {0}." entity-type)
+                    {:agent-error? true}))))
+
+;;; ------------------------------------------------ Field utilities -------------------------------------------------
+
 (defn convert-field-type
   "Return tool type for `column`."
   [column]
@@ -140,32 +152,25 @@
                     {:agent-error? true
                      :field-id field-id}))))
 
-(defn- read-check-with-agent-error
-  "Check if current user can read entity, throwing an agent-friendly error if not."
-  [entity entity-type]
-  (when-not (mi/can-read? entity)
-    (throw (ex-info (tru "The user does not have permission to access this {0}." entity-type)
-                    {:agent-error? true}))))
-
 (defn get-database
   "Get the `fields` of the database with ID `id`."
   [id & fields]
   (let [database (api/check-404 (t2/select-one (into [:model/Database :id] fields) id))]
-    (read-check-with-agent-error database "database")
+    (check-entity-read-permission database "database")
     database))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
   (let [table (api/check-404 (t2/select-one (into [:model/Table :id] fields) id))]
-    (read-check-with-agent-error table "table")
+    (check-entity-read-permission table "table")
     table))
 
 (defn get-card
   "Retrieve the card with `id` from the app DB."
   [id]
   (let [card (api/check-404 (t2/select-one :model/Card :id id))]
-    (read-check-with-agent-error card (name (:type card)))
+    (check-entity-read-permission card (name (:type card)))
     card))
 
 (defn card-query

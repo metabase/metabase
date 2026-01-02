@@ -30,7 +30,13 @@
                                                 :name "Average Order Value"
                                                 :description "The average subtotal of orders."
                                                 :type :metric}]
-      (mt/with-current-user (mt/user->id :rasta)
+      (testing "User has to have execution rights."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot-v3.tools.filters/query-metric
+                               {:metric-id metric-id
+                                :filters []
+                                :group-by []}))))
+      (mt/with-current-user (mt/user->id :crowberto)
         (let [metric-details (metabot-v3.tools.entity-details/metric-details metric-id)
               ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
                             (when-not <>
@@ -162,7 +168,13 @@
                                              :name "Orders Model"
                                              :description "The _real_ orders."
                                              :type :model}]
-    (mt/with-current-user (mt/user->id :rasta)
+    (testing "User has to have execution rights."
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot-v3.tools.filters/query-model
+                             {:model-id model-id
+                              :filters []
+                              :group-by []}))))
+    (mt/with-current-user (mt/user->id :crowberto)
       (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
@@ -294,7 +306,12 @@
                (metabot-v3.tools.filters/query-model {:model-id (str model-id)})))))))
 
 (deftest ^:parallel filter-records-table-test
-  (mt/with-current-user (mt/user->id :rasta)
+  (testing "User has to have execution rights, otherwise the table should be invisible."
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                          (metabot-v3.tools.filters/filter-records
+                           {:data-source {:table-id (mt/id :orders)}
+                            :filters []}))))
+  (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
           table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
@@ -350,7 +367,12 @@
                                                :name "Orders"
                                                :description "The orders."
                                                :type :model}]
-      (mt/with-current-user (mt/user->id :rasta)
+      (testing "User has to have execution rights."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot-v3.tools.filters/filter-records
+                               {:data-source {:table-id (str "card__" model-id)}
+                                :filters []}))))
+      (mt/with-current-user (mt/user->id :crowberto)
         (let [model-details (#'metabot-v3.tools.entity-details/card-details model-id)
               table-id (str "card__" model-id)
               ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
@@ -392,7 +414,12 @@
                                               :name "Orders"
                                               :description "The orders."
                                               :type :question}]
-      (mt/with-current-user (mt/user->id :rasta)
+      (testing "User has to have execution rights."
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                              (metabot-v3.tools.filters/filter-records
+                               {:data-source {:report-id card-id}
+                                :filters []}))))
+      (mt/with-current-user (mt/user->id :crowberto)
         (let [report-details (#'metabot-v3.tools.entity-details/card-details card-id)
               ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                             (when-not <>
@@ -433,7 +460,7 @@
         table-id (mt/id :orders)
         query (lib/query mp (lib.metadata/table mp table-id))
         legacy-query (lib.convert/->legacy-MBQL query)
-        query-details (mt/with-current-user (mt/user->id :rasta)
+        query-details (mt/with-current-user (mt/user->id :crowberto)
                         (#'metabot-v3.tools.entity-details/execute-query query-id legacy-query))
         ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
@@ -452,7 +479,7 @@
                                                                 "DISCOUNT"
                                                                 {:base-type :type/Float}]
                                                                3]}}}}]
-    (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-current-user (mt/user->id :crowberto)
       (testing "Filtering works."
         (testing "new tool call with query and query-id"
           (is (=? expected
@@ -468,7 +495,7 @@
                    (assoc input :data-source {:query query})))))))))
 
 (deftest ^:parallel query-datasource-table-test
-  (mt/with-current-user (mt/user->id :rasta)
+  (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
           table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
@@ -572,7 +599,7 @@
                                              :name "Orders Model"
                                              :description "Test model for orders"
                                              :type :model}]
-    (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-current-user (mt/user->id :crowberto)
       (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
@@ -645,7 +672,7 @@
                     :limit 50}))))))))
 
 (deftest ^:parallel query-datasource-validation-test
-  (mt/with-current-user (mt/user->id :rasta)
+  (mt/with-current-user (mt/user->id :crowberto)
     (testing "Error when neither table-id nor model-id provided"
       (is (= {:output "Either table_id or model_id must be provided"}
              (metabot-v3.tools.filters/query-datasource {}))))
@@ -676,114 +703,17 @@
              (metabot-v3.tools.filters/query-datasource
               {:model-id Integer/MAX_VALUE}))))))
 
-(deftest query-metric-permissions-test
-  (let [mp (mt/metadata-provider)
-        created-at-meta (lib.metadata/field mp (mt/id :orders :created_at))
-        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :orders :subtotal))))
-                         (lib/breakout (lib/with-temporal-bucket created-at-meta :month)))
-        legacy-metric-query (lib.convert/->legacy-MBQL metric-query)]
-    (mt/with-temp [:model/Card {metric-id :id} {:dataset_query legacy-metric-query
-                                                :database_id (mt/id)
-                                                :name "Test Metric"
-                                                :type :metric}]
-      (testing "No user returns error output"
-        (let [result (metabot-v3.tools.filters/query-metric
-                      {:metric-id metric-id
-                       :filters []
-                       :group-by []})]
-          (is (some? (:output result)))
-          (is (nil? (:structured-output result)))))
-      (mt/with-current-user (mt/user->id :rasta)
-        (mt/with-no-data-perms-for-all-users!
-          (testing "User with collection access but no data permissions gets error output"
-            (let [result (metabot-v3.tools.filters/query-metric
-                          {:metric-id metric-id
-                           :filters []
-                           :group-by []})]
-              (is (some? (:output result)))
-              (is (nil? (:structured-output result))))))))))
-
-(deftest query-model-permissions-test
+(deftest ^:parallel query-datasource-permissions-test
   (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
                                              :database_id (mt/id)
-                                             :name "Test Model"
+                                             :name "Orders Model"
                                              :type :model}]
-    (testing "No user returns error output"
-      (let [result (metabot-v3.tools.filters/query-model
-                    {:model-id model-id
-                     :filters []
-                     :group-by []})]
-        (is (some? (:output result)))
-        (is (nil? (:structured-output result)))))
-    (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-no-data-perms-for-all-users!
-        (testing "User with collection access but no data permissions gets error output"
-          (let [result (metabot-v3.tools.filters/query-model
-                        {:model-id model-id
-                         :filters []
-                         :group-by []})]
-            (is (some? (:output result)))
-            (is (nil? (:structured-output result)))))))))
+    (testing "User without permissions gets error for table"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot-v3.tools.filters/query-datasource
+                             {:table-id (mt/id :orders)}))))
 
-(deftest query-datasource-permissions-test
-  (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders {})
-                                             :database_id (mt/id)
-                                             :name "Test Model"
-                                             :type :model}]
-    (testing "No user returns error output for table"
-      (let [result (metabot-v3.tools.filters/query-datasource
-                    {:table-id (mt/id :orders)})]
-        (is (some? (:output result)))
-        (is (nil? (:structured-output result)))))
-    (testing "No user returns error output for model"
-      (let [result (metabot-v3.tools.filters/query-datasource
-                    {:model-id model-id})]
-        (is (some? (:output result)))
-        (is (nil? (:structured-output result)))))
-    (mt/with-current-user (mt/user->id :rasta)
-      (mt/with-no-data-perms-for-all-users!
-        (testing "User with collection access but no data permissions gets error output for model"
-          (let [result (metabot-v3.tools.filters/query-datasource
-                        {:model-id model-id})]
-            (is (some? (:output result)))
-            (is (nil? (:structured-output result)))))))))
-
-(deftest filter-records-permissions-test
-  (let [mp (mt/metadata-provider)
-        query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-        legacy-query (lib.convert/->legacy-MBQL query)]
-    (mt/with-temp [:model/Card {model-id :id} {:dataset_query legacy-query
-                                               :database_id (mt/id)
-                                               :name "Test Model"
-                                               :type :model}
-                   :model/Card {question-id :id} {:dataset_query legacy-query
-                                                  :database_id (mt/id)
-                                                  :name "Test Question"
-                                                  :type :question}]
-      (testing "No user returns error output for table"
-        (let [result (metabot-v3.tools.filters/filter-records
-                      {:data-source {:table-id (mt/id :orders)}
-                       :filters []})]
-          (is (some? (:output result)))
-          (is (nil? (:structured-output result)))))
-      (testing "No user returns error output for model"
-        (let [result (metabot-v3.tools.filters/filter-records
-                      {:data-source {:table-id (str "card__" model-id)}
-                       :filters []})]
-          (is (some? (:output result)))
-          (is (nil? (:structured-output result)))))
-      (testing "No user returns error output for question"
-        (let [result (metabot-v3.tools.filters/filter-records
-                      {:data-source {:report-id question-id}
-                       :filters []})]
-          (is (some? (:output result)))
-          (is (nil? (:structured-output result)))))
-      (mt/with-current-user (mt/user->id :rasta)
-        (mt/with-no-data-perms-for-all-users!
-          (testing "User with collection access but no data permissions gets error output for model"
-            (let [result (metabot-v3.tools.filters/filter-records
-                          {:data-source {:model-id model-id}
-                           :filters []})]
-              (is (some? (:output result)))
-              (is (nil? (:structured-output result))))))))))
+    (testing "User without permissions gets error for model"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
+                            (metabot-v3.tools.filters/query-datasource
+                             {:model-id model-id}))))))
