@@ -156,6 +156,10 @@
     padding: 0.5rem 2.5rem 0 2rem;
   }
 
+  @media screen and (max-width: 40em) {
+    padding-left: 1.25rem;
+  }
+
   /* increase specificity */
   .SaveButton {
     &[data-disabled="true"] {
@@ -266,7 +270,7 @@
   }
 
   @container query-builder (max-width: 60em) {
-    padding: 0 1.25rem;
+    padding: 0 2rem;
 
     .SavedQuestionHeaderButtonContainer {
       top: 0;
@@ -275,6 +279,10 @@
     .ViewHeaderLeftSubHeading {
       opacity: 1;
     }
+  }
+
+  @media screen and (max-width: 40em) {
+    padding-left: 1.25rem;
   }
 }
 
