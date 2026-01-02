@@ -25,6 +25,20 @@
   }
 }
 
+@container query-builder (max-width: 50em) {
+  .ActionButtonRoot[data-variant="default"] {
+    padding: 11px;
+  }
+
+  .ActionButtonLabel {
+    display: none;
+  }
+
+  .ActionButtonSection[data-position="left"] {
+    margin-right: 0;
+  }
+}
+
 .FilterButtonAttachment {
   &[data-variant="default"] {
     padding: 0.5rem;
