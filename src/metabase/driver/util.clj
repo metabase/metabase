@@ -429,6 +429,29 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
+(defn- collect-all-props-by-name
+  "Recursively collect all properties into a flat map by name, including nested group fields.
+  This creates a complete lookup map for transitive dependency resolution.
+
+  Groups have :type :group and contain a :fields array with nested properties. This function
+  flattens the structure to make all properties available for visible-if dependency resolution."
+  [props]
+  (reduce (fn [acc prop]
+            (cond
+              ;; Group with nested fields - recursively collect from nested fields
+              (= :group (:type prop))
+              (merge acc (collect-all-props-by-name (:fields prop)))
+
+              ;; Regular property with a name - add to map
+              (:name prop)
+              (assoc acc (:name prop) prop)
+
+              ;; Other cases (properties without names) - skip
+              :else
+              acc))
+          {}
+          props))
+
 (defn- resolve-transitive-visible-if
   "Resolves transitive visible-if dependencies for a property.
 
@@ -470,6 +493,25 @@
       (seq v-ifs*) (assoc :visible-if v-ifs*)
       (empty? v-ifs*) (dissoc :visible-if))))
 
+(defn- resolve-transitive-visible-if-recursive
+  "Recursively resolve transitive visible-if for properties, including nested groups.
+
+  Groups are processed recursively to maintain their structure while resolving dependencies
+  for all nested fields. This allows dependencies to cross group boundaries - top-level fields
+  can depend on nested fields and vice versa."
+  [prop props-by-name driver]
+  (cond
+    ;; If it's a group, recursively process its nested fields while preserving group structure
+    (= :group (:type prop))
+    (update prop :fields
+            (fn [fields]
+              (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver)
+                    fields)))
+
+    ;; Regular property - resolve its transitive visible-if dependencies
+    :else
+    (resolve-transitive-visible-if prop props-by-name driver)))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -504,11 +546,12 @@
                      (reduce conj! acc expanded-props)))
                  (transient [])
                  conn-props))
-        props-by-name (reduce #(assoc %1 (:name %2) %2) {} final-props)]
+        ;; Build complete props-by-name map including nested fields from groups
+        props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
     ;; dependencies (if property x depends on y having a value, but y itself depends on z having a value, then x
-    ;; should be hidden if y is)
-    (mapv #(resolve-transitive-visible-if % props-by-name driver) final-props)))
+    ;; should be hidden if y is). This works recursively to handle nested groups.
+    (mapv #(resolve-transitive-visible-if-recursive % props-by-name driver) final-props)))
 
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"

@@ -295,6 +295,123 @@
           (is (= :driver (:type (ex-data e))))
           (is (set? (:cyclic-visible-ifs (ex-data e)))))))))
 
+(deftest ^:parallel collect-all-props-by-name-test
+  (testing "collect-all-props-by-name flattens nested groups"
+    (testing "flat properties without groups"
+      (let [props [{:name "prop-a"} {:name "prop-b"}]]
+        (is (= {"prop-a" {:name "prop-a"}
+                "prop-b" {:name "prop-b"}}
+               (#'driver.u/collect-all-props-by-name props)))))
+
+    (testing "single group with nested fields"
+      (let [props [{:name "top-level"}
+                   {:type :group
+                    :container-style ["grid" "1fr 1fr"]
+                    :fields [{:name "nested-1"}
+                             {:name "nested-2"}]}]]
+        (is (= {"top-level" {:name "top-level"}
+                "nested-1" {:name "nested-1"}
+                "nested-2" {:name "nested-2"}}
+               (#'driver.u/collect-all-props-by-name props)))))
+
+    (testing "deeply nested groups"
+      (let [props [{:name "top"}
+                   {:type :group
+                    :fields [{:name "level-1"}
+                             {:type :group
+                              :fields [{:name "level-2"}
+                                       {:name "level-2-b"}]}]}]]
+        (is (= {"top" {:name "top"}
+                "level-1" {:name "level-1"}
+                "level-2" {:name "level-2"}
+                "level-2-b" {:name "level-2-b"}}
+               (#'driver.u/collect-all-props-by-name props)))))
+
+    (testing "properties without names are skipped"
+      (let [props [{:name "has-name"}
+                   {:type :info :placeholder "no name"}]]
+        (is (= {"has-name" {:name "has-name"}}
+               (#'driver.u/collect-all-props-by-name props)))))))
+
+(deftest ^:parallel resolve-transitive-visible-if-recursive-test
+  (testing "resolve-transitive-visible-if-recursive handles groups"
+    (testing "simple group structure is preserved"
+      (let [props-by-name {"field-a" {:name "field-a"}}
+            group {:type :group
+                   :container-style ["grid" "1fr"]
+                   :fields [{:name "nested-field"}]}]
+        (is (= {:type :group
+                :container-style ["grid" "1fr"]
+                :fields [{:name "nested-field"}]}
+               (#'driver.u/resolve-transitive-visible-if-recursive
+                group
+                props-by-name
+                :test-driver)))))
+
+    (testing "nested field with transitive dependency"
+      (let [props-by-name {"field-a" {:name "field-a"}
+                           "field-b" {:name "field-b" :visible-if {:field-a "val-a"}}
+                           "nested" {:name "nested" :visible-if {:field-b "val-b"}}}
+            group {:type :group
+                   :fields [{:name "nested" :visible-if {:field-b "val-b"}}]}]
+        (is (= {:type :group
+                :fields [{:name "nested" :visible-if {:field-b "val-b"
+                                                      :field-a "val-a"}}]}
+               (#'driver.u/resolve-transitive-visible-if-recursive
+                group
+                props-by-name
+                :test-driver)))))
+
+    (testing "top-level field depending on nested field"
+      (let [props-by-name {"nested-a" {:name "nested-a"}
+                           "nested-b" {:name "nested-b" :visible-if {:nested-a "val"}}}
+            prop {:name "top-level" :visible-if {:nested-b "val-b"}}]
+        (is (= {:name "top-level" :visible-if {:nested-b "val-b"
+                                               :nested-a "val"}}
+               (#'driver.u/resolve-transitive-visible-if-recursive
+                prop
+                props-by-name
+                :test-driver)))))))
+
+(deftest ^:parallel connection-props-server->client-with-groups-test
+  (testing "connection-props-server->client handles transitive dependencies across group boundaries"
+    (testing "top-level field depends on nested field"
+      (let [props [{:type :group
+                    :fields [{:name "nested-field"}]}
+                   {:name "top-field" :visible-if {:nested-field "value"}}]
+            result (driver.u/connection-props-server->client :test-driver props)]
+        (is (= 2 (count result)))
+        (is (= :group (:type (first result))))
+        (is (= {:name "top-field" :visible-if {:nested-field "value"}}
+               (second result)))))
+
+    (testing "nested field depends on top-level field with transitive chain"
+      (let [props [{:name "field-a"}
+                   {:name "field-b" :visible-if {:field-a "val-a"}}
+                   {:type :group
+                    :container-style ["grid" "1fr"]
+                    :fields [{:name "nested" :visible-if {:field-b "val-b"}}]}]
+            result (driver.u/connection-props-server->client :test-driver props)]
+        (is (= 3 (count result)))
+        ;; Check that the nested field has transitive dependencies resolved
+        (let [group (nth result 2)
+              nested-field (first (:fields group))]
+          (is (= {:field-b "val-b" :field-a "val-a"}
+                 (:visible-if nested-field))))))
+
+    (testing "deeply nested groups with cross-boundary dependencies"
+      (let [props [{:name "root-field"}
+                   {:type :group
+                    :fields [{:name "level-1" :visible-if {:root-field "val"}}
+                             {:type :group
+                              :fields [{:name "level-2" :visible-if {:level-1 "val-1"}}]}]}]
+            result (driver.u/connection-props-server->client :test-driver props)
+            outer-group (second result)
+            inner-group (second (:fields outer-group))
+            level-2-field (first (:fields inner-group))]
+        (is (= {:level-1 "val-1" :root-field "val"}
+               (:visible-if level-2-field)))))))
+
 (deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
