@@ -29,7 +29,6 @@ export function FilterPanel({ query, onChange }: FilterPanelProps) {
       align="center"
       wrap="wrap"
       gap="sm"
-      px="xl"
       py="sm"
       data-testid="qb-filters-panel"
     >
