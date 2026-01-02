@@ -707,7 +707,7 @@
 ;;; |                                  Database details permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest update-database-test
+(deftest non-admin-update-database-test
   (testing "PUT /api/database/:id"
     (mt/with-temp [:model/Database {db-id :id}]
       (testing "A non-admin cannot update database metadata if the advanced-permissions feature flag is not present"
@@ -715,82 +715,91 @@
           (mt/with-premium-features #{}
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"}))))))
-
       (testing "A non-admin cannot update database metadata if they do not have DB details permissions"
         (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (format "database/%d" db-id) {:name "Database Test"})))))
-
       (testing "A non-admin can update database metadata if they have DB details permissions"
         (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
           (is (=? {:id db-id}
                   (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"}))))))))
 
-(deftest delete-database-test
+(deftest non-admin-delete-database-test
   (mt/with-temp [:model/Database {db-id :id}]
     (testing "A non-admin cannot delete a database even if they have DB details permissions"
       (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
         (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
-(deftest db-operations-test
+(deftest non-admin-sync-schema-test
   (mt/test-helpers-set-global-values!
-    (mt/with-temp [:model/Database    {db-id :id}     {:engine "h2", :details (:details (mt/db))}
-                   :model/Table       {table-id :id}  {:db_id db-id}
-                   :model/Field       {field-id :id}  {:table_id table-id}
-                   :model/FieldValues {values-id :id} {:field_id field-id, :values [1 2 3 4]}]
-      ;; Manually activate Field values since they are not created during sync (#53387)
-      (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
-      (with-redefs [api.database/*rescan-values-async* false]
+    (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
+      ;; Don't actually run the sync task in this test — just test the API-level permission enforcement
+      (with-redefs [quick-task/submit-task! (constantly nil)]
+        (testing "A non-admin cannot trigger a sync of the DB schema if they do not have DB details permissions"
+          (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
+            (mt/user-http-request :rasta :post 403 (format "database/%d/sync_schema" db-id))))
+
         (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
           (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
-            (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
+            (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))))))
 
-        (testing "A non-admin can discard saved field values if they have DB details permissions"
-          (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
-            (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
+(deftest non-admin-discard-field-values-test
+  (mt/with-temp [:model/Database    {db-id :id}    {:engine "h2", :details (:details (mt/db))}
+                 :model/Table       {table-id :id} {:db_id db-id}
+                 :model/Field       {field-id :id} {:table_id table-id}
+                 :model/FieldValues _              {:field_id field-id, :values [1 2 3 4]}]
+    (testing "A non-admin cannot discard field values if they do not have DB details permissions"
+      (mt/with-all-users-data-perms-graph! {db-id {:details :no}}
+        (mt/user-http-request :rasta :post 403 (format "database/%d/discard_values" db-id))))
+    (testing "A non-admin can discard field values if they have DB details permissions"
+      (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
+    (testing "A non-admin with blocked data access can discard field values if they have DB details permissions"
+      (t2/insert! :model/FieldValues {:field_id field-id, :values [1 2 3 4]})
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
+                                                   :create-queries :no
+                                                   :details        :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
+      (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id field-id))))))
 
-        (testing "A non-admin with no data access can discard field values if they have DB details perms"
-          (t2/insert! :model/FieldValues :id values-id :field_id field-id :values [1 2 3 4])
-          (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
+(deftest non-admin-rescan-field-values-test
+  ;; Use the shared test database so we can verify that the rescan actually succeeds (field values change)
+  (mt/test-helpers-set-global-values!
+    ;; Manually activate Field values since they are not created during sync (#53387)
+    (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
+    (with-redefs [api.database/*rescan-values-async* false]
+      (testing "A non-admin cannot rescan field values if they do not have DB details permissions"
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:details :no}}
+          (mt/user-http-request :rasta :post 403 (format "database/%d/rescan_values" (mt/id)))))
+      (testing "A non-admin can rescan field values if they have DB details permissions"
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
+      (testing "A non-admin with blocked data access can rescan field values if they have DB details permissions"
+        (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
+        (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
+        (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
                                                        :create-queries :no
                                                        :details        :yes}}
-            (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
-          (is (= nil (t2/select-one-fn :values :model/FieldValues, :field_id field-id)))
-          (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
+          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
+        (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))))))
 
-        ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
-        (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
-          (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
-            (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
-
-        (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
-          (t2/update! :model/FieldValues :field_id (mt/id :venues :price) {:values [10 20 30 40]})
-          (is (= [10 20 30 40] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price))))
-          (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
-                                                         :create-queries :no
-                                                         :details        :yes}}
-            (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
-          (is (= [1 2 3 4] (t2/select-one-fn :values :model/FieldValues, :field_id (mt/id :venues :price)))))))))
-
-(deftest fetch-db-test
+(deftest non-admin-fetch-database-test
   (mt/with-temp [:model/Database {db-id :id}]
-    (testing "A non-admin without self-service perms for a DB cannot fetch the DB normally"
+    (testing "A non-admin cannot fetch the DB if they do not have DB details permissions"
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                   :create-queries :no}}
+                                                   :create-queries :no
+                                                   :details        :no}}
         (mt/user-http-request :rasta :get 403 (format "database/%d?exclude_uneditable_details=true" db-id))))
-
-    (testing "A non-admin without self-service perms for a DB can fetch the DB if they have DB details permissions"
+    (testing "A non-admin can fetch the DB if they have DB details permissions"
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
                                                    :create-queries :no
                                                    :details        :yes}}
         (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))
-
-    (testing "A non-admin with block perms for a DB can fetch the DB if they have DB details permissions"
+    (testing "A non-admin with blocked data access can fetch the DB if they have DB details permissions"
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                    :create-queries :no
                                                    :details        :yes}}
         (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))
-
     (testing "The returned database contains a :details field for a user with DB details permissions"
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                    :create-queries :no
