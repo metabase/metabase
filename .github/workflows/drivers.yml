@@ -148,11 +148,10 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
     env:
       CI: 'true'
       DRIVERS: bigquery-cloud-sdk
@@ -1275,12 +1274,10 @@ jobs:
               :only-tags [:mb/driver-tests]
               :exclude-tags [:mb/transforms-python-test]
               :fail-fast? true
-
-# DS 2025-09-26 temporarily disabled while we diagnose flakes
-#          - name: Transforms Python Tests
-#            test-args: >-
-#              :only-tags [:mb/transforms-python-test]
-#            needs-python-runner: true
+          - name: Transforms Python Tests
+            test-args: >-
+              :only-tags [:mb/transforms-python-test]
+            needs-python-runner: true
     env:
       CI: 'true'
       DRIVERS: snowflake
