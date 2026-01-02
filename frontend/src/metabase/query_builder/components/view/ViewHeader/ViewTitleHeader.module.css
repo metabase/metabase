@@ -172,11 +172,11 @@
     justify-content: start;
     border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
-    padding: 0.5rem 1.25rem 0 1.25rem;
+    padding: 0.5rem 1.325rem 0 1.325rem;
   }
 
   @media screen and (max-width: 40em) {
-    padding-inline: 1.25rem;
+    padding-inline: 1.325rem;
   }
 
   /* increase specificity */
@@ -256,6 +256,11 @@
   flex-grow: 1;
   align-items: center;
   width: 100%;
+  gap: 0.5rem;
+
+  @container query-builder (max-width: 60em) {
+    padding-left: 1.325rem;
+  }
 }
 
 .SavedQuestionLeftSideRoot {
@@ -302,10 +307,6 @@
     .ViewHeaderLeftSubHeading {
       opacity: 1;
     }
-  }
-
-  @media screen and (max-width: 40em) {
-    padding-left: 1.25rem;
   }
 }
 
