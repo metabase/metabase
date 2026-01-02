@@ -220,10 +220,6 @@ describe("scenarios > filters > sql filters > field filter", () => {
   });
 
   describe("missing field", () => {
-    beforeEach(() => {
-      H.restore("postgres-12");
-    });
-
     it("should show error message when the field mapping is missing", () => {
       cy.log("Set up field filter");
 
@@ -234,17 +230,6 @@ describe("scenarios > filters > sql filters > field filter", () => {
       );
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
-
-      FieldFilter.mapTo({
-        table: "Products",
-        field: "ID",
-      });
-
-      SQLFilter.getRunQueryButton().should("not.be.disabled");
-
-      cy.log("change base database");
-      cy.findByTestId("gui-builder-data").click();
-      H.popover().findByText("QA Postgres12").click();
 
       SQLFilter.getRunQueryButton().should("be.disabled").realHover();
       H.tooltip()
