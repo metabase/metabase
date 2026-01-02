@@ -3,7 +3,6 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
@@ -169,7 +168,6 @@ export function ViewTitleHeaderRightSide({
         isActionListVisible,
       }) && (
         <FilterHeaderButton
-          className={cx(CS.hide, CS.smShow)}
           question={question}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
@@ -183,7 +181,6 @@ export function ViewTitleHeaderRightSide({
         isActionListVisible,
       }) && (
         <QuestionSummarizeWidget
-          className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}

@@ -1,5 +1,4 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import { t } from "ttag";
 
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
@@ -12,7 +11,6 @@ export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
-  className,
 }) {
   const handleClick = () => {
     if (isShowingSummarySidebar) {
@@ -39,7 +37,12 @@ export function QuestionSummarizeWidget({
       leftSection={<Icon name="sum" />}
       onClick={handleClick}
       data-active={isShowingSummarySidebar}
-      className={cx(className, ViewTitleHeaderS.SummarizeButton)}
+      className={ViewTitleHeaderS.SummarizeButton}
+      classNames={{
+        root: ViewTitleHeaderS.ActionButtonRoot,
+        label: ViewTitleHeaderS.ActionButtonLabel,
+        section: ViewTitleHeaderS.ActionButtonSection,
+      }}
     >
       {t`Summarize`}
     </Button>
