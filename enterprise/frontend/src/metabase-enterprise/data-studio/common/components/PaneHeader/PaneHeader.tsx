@@ -92,6 +92,7 @@ type PaneHeaderInputProps = {
   placeholder?: string;
   maxLength?: number;
   isOptional?: boolean;
+  readOnly?: boolean;
   "data-testid"?: string;
   onChange?: (value: string) => void;
   onContentChange?: (value: string) => void;
@@ -103,6 +104,7 @@ export function PaneHeaderInput({
   maxLength,
   "data-testid": dataTestId,
   isOptional,
+  readOnly = false,
   onChange,
   onContentChange,
 }: PaneHeaderInputProps) {
@@ -118,6 +120,7 @@ export function PaneHeaderInput({
       px={isOptional ? "xs" : undefined}
       bd={isOptional ? "1px solid var(--mb-color-border)" : undefined}
       isOptional={isOptional}
+      isDisabled={readOnly}
       data-testid={dataTestId}
       onChange={onChange}
       onContentChange={onContentChange}

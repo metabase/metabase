@@ -2,7 +2,11 @@ import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import type { Segment, Table } from "metabase-types/api";
-import { createMockSegment, createMockTable } from "metabase-types/api/mocks";
+import {
+  createMockSegment,
+  createMockTable,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { SegmentList } from "./SegmentList";
 
@@ -22,7 +26,12 @@ function setup({ segments = [], table = {} }: SetupOpts = {}) {
 
   renderWithProviders(
     <Route path="/" component={() => <SegmentList table={mockTable} />} />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
+    },
   );
 }
 

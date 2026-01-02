@@ -1,10 +1,15 @@
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  USER_GROUPS,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
 const { SegmentList, SegmentEditor, SegmentRevisionHistory } = H.DataModel;
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("scenarios > data studio > data model > segments", () => {
   beforeEach(() => {
@@ -608,6 +613,77 @@ describe("scenarios > data studio > data model > segments", () => {
         .should("be.visible");
     });
   });
+
+  describe("Readonly access with data model permissions", () => {
+    it("should show segments in list but hide New segment button for non-admin", () => {
+      createTestSegment({ name: "Readonly Test Segment" });
+
+      H.activateToken("pro-self-hosted");
+      setDataModelPermissions({ tableIds: [ORDERS_ID] });
+      cy.signIn("none");
+
+      cy.log("verify segment is visible in list");
+      visitDataStudioSegments(ORDERS_ID);
+      SegmentList.getSegment("Readonly Test Segment")
+        .scrollIntoView()
+        .should("be.visible");
+
+      cy.log("verify New segment button is not visible");
+      SegmentList.get()
+        .findByRole("link", { name: /New segment/i })
+        .should("not.exist");
+
+      cy.log("verify direct navigation to new segment page is blocked");
+      cy.visit(
+        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments/new`,
+      );
+      H.main()
+        .findByText("Sorry, you don’t have permission to see that.")
+        .should("be.visible");
+    });
+
+    it("should display segment detail in readonly mode for non-admin", () => {
+      createTestSegment({
+        name: "Readonly Detail Segment",
+        description: "Test description for readonly",
+      });
+
+      cy.get<number>("@segmentId").then((segmentId) => {
+        H.activateToken("pro-self-hosted");
+        setDataModelPermissions({ tableIds: [ORDERS_ID] });
+        cy.signIn("none");
+
+        visitDataModelSegment(ORDERS_ID, segmentId);
+
+        cy.log("verify segment name input is disabled");
+        SegmentEditor.get()
+          .findByDisplayValue("Readonly Detail Segment")
+          .should("be.disabled");
+
+        cy.log("verify description input is readonly");
+        SegmentEditor.getDescriptionInput().should("have.attr", "readonly");
+
+        cy.log("verify Save button is not visible");
+        SegmentEditor.get()
+          .findByRole("button", { name: /Save/i })
+          .should("not.exist");
+
+        cy.log("verify Remove segment option is hidden in actions menu");
+        SegmentEditor.getActionsButton().click();
+        H.popover().findByText("Preview").should("be.visible");
+        H.popover().findByText("Remove segment").should("not.exist");
+        cy.realPress("Escape");
+
+        cy.log("verify revision history is still accessible");
+        SegmentEditor.getRevisionHistoryTab().click();
+        SegmentRevisionHistory.get().within(() => {
+          cy.findByText(/created this segment/i)
+            .scrollIntoView()
+            .should("be.visible");
+        });
+      });
+    });
+  });
 });
 
 function visitDataStudioTable(tableId: number) {
@@ -687,4 +763,21 @@ function verifySegmentNotInQueryBuilder(
 
   H.getNotebookStep("data").button("Filter").click();
   H.popover().findByText(segmentName).should("not.exist");
+}
+
+function setDataModelPermissions({ tableIds = [] }: { tableIds: number[] }) {
+  const permissions = Object.fromEntries(tableIds.map((id) => [id, "all"]));
+
+  // @ts-expect-error invalid cy.updatePermissionsGraph typing
+  cy.updatePermissionsGraph({
+    [ALL_USERS_GROUP]: {
+      [SAMPLE_DB_ID]: {
+        "data-model": {
+          schemas: {
+            PUBLIC: permissions,
+          },
+        },
+      },
+    },
+  });
 }
