@@ -215,6 +215,86 @@
               :display-name "Schemas"}
              {:name "last-prop"}])))))
 
+(deftest ^:parallel resolve-transitive-visible-if-test
+  (testing "resolve-transitive-visible-if resolves transitive dependencies"
+    (let [props-by-name {"prop-a" {:name "prop-a"}
+                         "prop-b" {:name "prop-b" :visible-if {:prop-a "value-a"}}
+                         "prop-c" {:name "prop-c" :visible-if {:prop-b "value-b"}}}]
+      (testing "property with no visible-if remains unchanged"
+        (is (= {:name "prop-a"}
+               (#'driver.u/resolve-transitive-visible-if
+                {:name "prop-a"}
+                props-by-name
+                :test-driver))))
+
+      (testing "property with single-level visible-if is preserved"
+        (is (= {:name "prop-b" :visible-if {:prop-a "value-a"}}
+               (#'driver.u/resolve-transitive-visible-if
+                {:name "prop-b" :visible-if {:prop-a "value-a"}}
+                props-by-name
+                :test-driver))))
+
+      (testing "property with transitive visible-if includes all dependencies"
+        (is (= {:name "prop-c" :visible-if {:prop-b "value-b"
+                                            :prop-a "value-a"}}
+               (#'driver.u/resolve-transitive-visible-if
+                {:name "prop-c" :visible-if {:prop-b "value-b"}}
+                props-by-name
+                :test-driver))))))
+
+  (testing "empty visible-if is removed"
+    (is (= {:name "prop-x"}
+           (#'driver.u/resolve-transitive-visible-if
+            {:name "prop-x" :visible-if {}}
+            {}
+            :test-driver))))
+
+  (testing "dependencies on non-existent properties are kept (not filtered)"
+    (let [props-by-name {"prop-a" {:name "prop-a"}}]
+      (is (= {:name "prop-b" :visible-if {:non-existent-prop "value"}}
+             (#'driver.u/resolve-transitive-visible-if
+              {:name "prop-b" :visible-if {:non-existent-prop "value"}}
+              props-by-name
+              :test-driver)))))
+
+  (testing "false dependencies (from removed :checked-section) are filtered out"
+    (let [props-by-name {"prop-a" {:name "prop-a"}}]
+      (is (= {:name "prop-b" :visible-if {:prop-a "value-a"}}
+             (#'driver.u/resolve-transitive-visible-if
+              {:name "prop-b" :visible-if {:prop-a "value-a"
+                                           :removed-section false}}
+              props-by-name
+              :test-driver)))))
+
+  (testing "multi-level transitive dependencies are fully resolved"
+    (let [props-by-name {"prop-a" {:name "prop-a"}
+                         "prop-b" {:name "prop-b" :visible-if {:prop-a "value-a"}}
+                         "prop-c" {:name "prop-c" :visible-if {:prop-b "value-b"}}
+                         "prop-d" {:name "prop-d" :visible-if {:prop-c "value-c"}}}]
+      (is (= {:name "prop-d" :visible-if {:prop-c "value-c"
+                                          :prop-b "value-b"
+                                          :prop-a "value-a"}}
+             (#'driver.u/resolve-transitive-visible-if
+              {:name "prop-d" :visible-if {:prop-c "value-c"}}
+              props-by-name
+              :test-driver)))))
+
+  (testing "cycle detection throws exception with appropriate error data"
+    (let [props-by-name {"prop-a" {:name "prop-a" :visible-if {:prop-c "value-c"}}
+                         "prop-b" {:name "prop-b" :visible-if {:prop-a "value-a"}}
+                         "prop-c" {:name "prop-c" :visible-if {:prop-b "value-b"}}}]
+      (try
+        (#'driver.u/resolve-transitive-visible-if
+         {:name "prop-a" :visible-if {:prop-c "value-c"}}
+         props-by-name
+         :test-driver)
+        (is false "Should have thrown an exception")
+        (catch clojure.lang.ExceptionInfo e
+          (is (str/includes? (ex-message e) "Cycle detected"))
+          (is (= :test-driver (:driver (ex-data e))))
+          (is (= :driver (:type (ex-data e))))
+          (is (set? (:cyclic-visible-ifs (ex-data e)))))))))
+
 (deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
     (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
