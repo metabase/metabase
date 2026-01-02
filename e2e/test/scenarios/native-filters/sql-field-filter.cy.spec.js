@@ -230,6 +230,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       H.startNewNativeQuestion();
       SQLFilter.enterParameterizedQuery(
         "SELECT * FROM products WHERE {{my_filter}}",
+        { allowFastSet: true },
       );
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
@@ -247,7 +248,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       SQLFilter.getRunQueryButton().should("be.disabled").realHover();
       H.tooltip()
-        .findByText('The variable "my_filter" needs to be mapped to a field')
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
         .should("be.visible");
     });
   });
