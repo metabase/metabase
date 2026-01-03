@@ -192,13 +192,21 @@
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
    (let [schema (or schema (infer-schema x))
          ;; Only flatten within :query/:stages, not in :parameters, :native :params, etc.
-         x      (if (map? x)
+         ;; For non-map inputs, only flatten if the schema indicates an MBQL clause.
+         x      (cond
+                  (map? x)
                   (-> x
                       (m/update-existing :stages flatten-expressions)
                       (m/update-existing "stages" flatten-expressions)
                       (m/update-existing :query flatten-expressions)
                       (m/update-existing "query" flatten-expressions))
-                  (flatten-expressions x))
+
+                  (and (qualified-keyword? schema)
+                       (= (namespace schema) "mbql.clause"))
+                  (flatten-expressions x)
+
+                  :else
+                  x)
          thunk  (^:once fn* []
                   ((coercer schema) x))]
      (if throw?
