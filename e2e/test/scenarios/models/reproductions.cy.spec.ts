@@ -1960,3 +1960,46 @@ describe("issue 50915", () => {
       .should("be.visible");
   });
 });
+
+describe("issue 38747", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow you to drill through with entity qualified ids", () => {
+    cy.visit("/model/new");
+    cy.findByRole("link", { name: /notebook editor/ }).click();
+
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Databases").click();
+    H.entityPickerModalItem(1, "Products").click();
+    H.runButtonInOverlay().click();
+
+    // Wait for the query to run so we can click the columns "button"
+    // ... It's actually a list item, so we can't check to see if it's
+    // actually disabled in any sane way
+    H.tableInteractive().should("exist");
+
+    H.datasetEditBar().findByText("Columns").click();
+    cy.findAllByTestId("model-column-header-content")
+      .contains("Vendor")
+      .click();
+
+    cy.findByPlaceholderText("Select a semantic type").click();
+    H.popover().findByText("Entity Key").click();
+    H.datasetEditBar().button("Save").click();
+
+    H.modal().button("Save").click();
+
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+
+    // Assert that we're at an adhoc question with aproprate filters
+    cy.location("pathname").should("equal", "/question");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "Vendor is Nolan-Wolff",
+    );
+    H.tableInteractive().should("have.attr", "data-rows-count", "1");
+  });
+});
