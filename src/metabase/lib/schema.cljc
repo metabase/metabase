@@ -232,6 +232,8 @@
       ;; reliable way to differentiate them since it gets populated by the QP.
       (merge (select-keys stage [:qp/stage-is-from-source-card :qp/stage-had-source-card]))))
 
+;;; NOTE: If you add expression-containing keys here, also update [[metabase.lib.normalize/flatten-stage]]
+;;; which pre-processes these keys before Malli validation to avoid OOM with deeply nested expressions.
 (mr/def ::stage.mbql
   [:and
    [:merge

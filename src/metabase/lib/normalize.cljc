@@ -87,7 +87,7 @@
     [(get clause 1) (subvec clause 2)]
     [nil (subvec clause 1)]))
 
-(declare flatten-expressions)
+(declare flatten-expression)
 
 (defn- flatten-case
   "Flatten a :case or :if clause by merging nested case/if from the default branch.
@@ -96,9 +96,9 @@
   (let [tag           (clause-tag clause)
         [opts [pairs default & _more]] (clause-opts-and-args clause)
         pairs'        (mapv (fn [[pred expr]]
-                              [(flatten-expressions pred) (flatten-expressions expr)])
+                              [(flatten-expression pred) (flatten-expression expr)])
                             pairs)
-        default'      (some-> default flatten-expressions)
+        default'      (some-> default flatten-expression)
         [nested-opts nested-args] (when (= tag (clause-tag default'))
                                     (clause-opts-and-args default'))
         ;; Preserve opts from outer clause, or use nested opts if outer had none
@@ -122,7 +122,7 @@
         [opts args] (clause-opts-and-args clause)]
     (into (if opts [tag opts] [tag])
           (mapcat (fn [arg]
-                    (let [arg' (flatten-expressions arg)]
+                    (let [arg' (flatten-expression arg)]
                       (if (= (clause-tag arg') tag)
                         ;; Same tag: splice in the nested args
                         (second (clause-opts-and-args arg'))
@@ -142,30 +142,49 @@
     ;; Other clause: just recurse into args
     (let [tag        (clause-tag clause)
           [opts args] (clause-opts-and-args clause)]
-      (into (if opts [tag opts] [tag]) (map flatten-expressions) args))))
+      (into (if opts [tag opts] [tag]) (map flatten-expression) args))))
 
-(defn- flatten-expressions
-  "Walk x and flatten nested expressions. Handles pre-normalized input (string or keyword tags)."
+(defn- flatten-expression
+  "Flatten a single expression (clause). Handles both keyword and string tags."
   [x]
-  (cond
-    (clause-tag x)
+  (if (clause-tag x)
     (flatten-clause x)
-
-    (map? x)
-    (reduce-kv (fn [m k v]
-                 (let [v' (flatten-expressions v)]
-                   (if (identical? v v')
-                     m
-                     (assoc m k v'))))
-               x
-               x)
-
-    (vector? x)
-    (let [x' (mapv flatten-expressions x)]
-      (if (= x x') x x'))
-
-    :else
     x))
+
+(defn- flatten-expression-list
+  "Flatten a sequence of expressions."
+  [exprs]
+  (mapv flatten-expression exprs))
+
+(declare flatten-stage)
+
+(defn- flatten-join
+  "Flatten expressions within a join. Joins have :stages and :conditions.
+
+  NOTE: Keep in sync with [[metabase.lib.schema.join/join]] - if expression-containing keys
+  are added there, they must be added here too."
+  [join]
+  (cond-> join
+    (:stages join)     (update :stages #(mapv flatten-stage %))
+    (:conditions join) (update :conditions flatten-expression-list)))
+
+(defn- flatten-stage
+  "Flatten expressions within a single MBQL stage. Only processes known expression-containing
+  keys to avoid converting non-expression data like parameter values.
+
+  NOTE: Keep in sync with [[metabase.lib.schema/stage.mbql]] - if expression-containing keys
+  are added there, they must be added here too."
+  [stage]
+  (if-not (map? stage)
+    stage
+    (cond-> stage
+      (:expressions stage) (update :expressions flatten-expression-list)
+      (:breakout stage)    (update :breakout flatten-expression-list)
+      (:aggregation stage) (update :aggregation flatten-expression-list)
+      (:fields stage)      (update :fields flatten-expression-list)
+      (:filters stage)     (update :filters flatten-expression-list)
+      (:order-by stage)    (update :order-by flatten-expression-list)
+      (:joins stage)       (update :joins #(mapv flatten-join %)))))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
@@ -191,19 +210,25 @@
 
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
    (let [schema (or schema (infer-schema x))
-         ;; Only flatten within :query/:stages, not in :parameters, :native :params, etc.
+         ;; Only flatten within known expression-containing keys in :stages.
          ;; For non-map inputs, only flatten if the schema indicates an MBQL clause.
+         flatten-stages #(mapv flatten-stage %)
+         ;; :query is a legacy query map that has :query (MBQL) or :native inside
+         flatten-query  (fn [q]
+                          (cond-> q
+                            (:query q)      (update :query flatten-stage)
+                            (get q "query") (update "query" flatten-stage)))
          x      (cond
                   (map? x)
                   (-> x
-                      (m/update-existing :stages flatten-expressions)
-                      (m/update-existing "stages" flatten-expressions)
-                      (m/update-existing :query flatten-expressions)
-                      (m/update-existing "query" flatten-expressions))
+                      (m/update-existing :stages flatten-stages)
+                      (m/update-existing "stages" flatten-stages)
+                      (m/update-existing :query flatten-query)
+                      (m/update-existing "query" flatten-query))
 
                   (and (qualified-keyword? schema)
                        (= (namespace schema) "mbql.clause"))
-                  (flatten-expressions x)
+                  (flatten-expression x)
 
                   :else
                   x)

@@ -112,6 +112,8 @@
                 (= (:join-alias opts) join-alias))
               fields)))])
 
+;;; NOTE: If you add expression-containing keys here, also update [[metabase.lib.normalize/flatten-join]]
+;;; which pre-processes these keys before Malli validation to avoid OOM with deeply nested expressions.
 (mr/def ::join
   [:and
    [:map
