@@ -48,6 +48,10 @@
   margin-top: 0.5rem;
 }
 
+.aiMarkdown a {
+  text-decoration: underline !important;
+}
+
 .smartLink {
   color: var(--mb-color-brand);
   font-weight: 700;
