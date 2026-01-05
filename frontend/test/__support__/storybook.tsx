@@ -55,7 +55,7 @@ export const VisualizationWrapper = ({
       withDND
       withCssVariables
     >
-      <>{children}</>
+      {children}
     </TestWrapper>
   );
 };
