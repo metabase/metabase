@@ -153,12 +153,15 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
         try {
           const result = await MetabaseApi.dataset(finalCard);
-          if (
-            result &&
-            result.status === "completed" &&
-            result.data.rows.length > 0
-          ) {
-            info["value"] = result.data.rows[0][0];
+          if (result && result.status === "completed") {
+            // Count queries should always return a row with the count value.
+            // If there are no matching rows, the count is 0, not "Unknown".
+            if (result.data.rows.length > 0) {
+              info["value"] = result.data.rows[0][0];
+            } else {
+              // Empty rows array means count is 0
+              info["value"] = 0;
+            }
           } else {
             info["value"] = "Unknown";
           }

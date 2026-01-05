@@ -105,4 +105,22 @@ describe("Object Relationships", () => {
     expect(screen.getByText("881")).toBeInTheDocument();
     expect(screen.getByText(/Reviews/i)).toBeInTheDocument();
   });
+
+  it("renders 0 when count is 0 (metabase#62156)", () => {
+    const ZERO_COUNT_REFERENCES = {
+      [ORDERS.PRODUCT_ID]: { status: 1, value: 0 },
+      [REVIEWS.PRODUCT_ID]: { status: 1, value: 0 },
+    };
+
+    setup({
+      database: MULTI_TABLE_DATABASE,
+      tableId: PRODUCTS_ID,
+      tableForeignKeyReferences: ZERO_COUNT_REFERENCES,
+    });
+
+    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
+    expect(screen.getAllByText("0")).toHaveLength(2);
+    expect(screen.getByText(/Orders/i)).toBeInTheDocument();
+    expect(screen.getByText(/Reviews/i)).toBeInTheDocument();
+  });
 });
