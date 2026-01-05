@@ -8,13 +8,11 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (deftest suggested-prompts-generator-test
-  (when (and (premium-features/has-feature? :metabot-v3)
-             (premium-features/has-feature? :content-verification))
+  (mt/with-premium-features #{:metabot-v3 :content-verification}
     (mt/with-empty-h2-app-db!
       (let [original-metabot (t2/select-one :model/Metabot
                                             :entity_id (get-in metabot-v3.config/metabot-config
@@ -31,7 +29,7 @@
               :dataset_query query}]
             (with-redefs [metabot-v3.client/generate-example-questions
                           (fn [input]
-                          ;; Return fake prompts if we have cards, empty otherwise
+                            ;; Return fake prompts if we have cards, empty otherwise
                             (if (or (seq (:metrics input)) (seq (:tables input)))
                               {:table_questions [{:questions ["What is the total for this model?"
                                                               "How many items are in this model?"]}]
