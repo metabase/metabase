@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { FormSelect, FormSwitch } from "metabase/forms";
@@ -13,6 +13,7 @@ import {
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase-enterprise/transforms/constants";
+import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { TransformSource } from "metabase-types/api";
@@ -98,31 +99,25 @@ export const IncrementalTransformSettings = ({
     return CHECKPOINT_TEMPLATE_TAG in tags;
   }, [libQuery, transformType]);
 
-  useEffect(() => {
-    async function checkExistingQueryComplexity() {
-      if (
-        checkOnMount &&
-        transformType === "native" &&
-        libQuery &&
-        !hasCheckpointTag &&
-        "source-incremental-strategy" in source
-      ) {
-        const { is_simple } = await checkQueryComplexity(
-          Lib.rawNativeQuery(libQuery),
-          true,
-        ).unwrap();
-        setShowComplexityWarning(!is_simple);
+  const tryCheckQueryComplexity = useCallback(
+    async (query: Query) => {
+      if (transformType !== "native" || hasCheckpointTag) {
+        return;
       }
+      const complexity = await checkQueryComplexity(
+        Lib.rawNativeQuery(query),
+        true,
+      ).unwrap();
+      setShowComplexityWarning(complexity?.is_simple === false);
+    },
+    [transformType, hasCheckpointTag, checkQueryComplexity],
+  );
+
+  useEffect(() => {
+    if (checkOnMount && libQuery && "source-incremental-strategy" in source) {
+      tryCheckQueryComplexity(libQuery);
     }
-    checkExistingQueryComplexity();
-  }, [
-    checkOnMount,
-    checkQueryComplexity,
-    libQuery,
-    transformType,
-    source,
-    hasCheckpointTag,
-  ]);
+  }, [checkOnMount, libQuery, source, tryCheckQueryComplexity]);
 
   const renderIncrementalSwitch = () => (
     <FormSwitch
@@ -134,18 +129,9 @@ export const IncrementalTransformSettings = ({
           ? t`Incremental transforms are only supported for single data source transforms.`
           : t`Only process new and changed data`
       }
-      onChange={async (e) => {
-        if (
-          e.target.checked &&
-          transformType === "native" &&
-          !hasCheckpointTag &&
-          query
-        ) {
-          const complexity = await checkQueryComplexity(
-            Lib.rawNativeQuery(query),
-            true,
-          ).unwrap();
-          setShowComplexityWarning(complexity?.is_simple === false);
+      onChange={(e) => {
+        if (e.target.checked && query) {
+          tryCheckQueryComplexity(query);
         }
       }}
       wrapperProps={{
