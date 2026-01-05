@@ -3,10 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import {
-  useGetDependencyGraphStatusQuery,
-  useListUnreferencedGraphNodesQuery,
-} from "metabase-enterprise/api";
+import { useListUnreferencedGraphNodesQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
   DependencyGroupType,
@@ -45,31 +42,15 @@ export function UnreferencedDependencyListPage() {
       : AVAILABLE_GROUP_TYPES;
 
   const {
-    data: status,
-    isLoading: isLoadingStatus,
-    isFetching: isFetchingStatus,
-    error: statusError,
-  } = useGetDependencyGraphStatusQuery();
-
-  const {
     data: nodes = EMPTY_NODES,
-    isFetching: isFetchingList,
-    isLoading: isLoadingList,
-    error: listError,
-  } = useListUnreferencedGraphNodesQuery(
-    {
-      query: searchQuery,
-      types: getDependencyTypes(groupTypes),
-      card_types: getCardTypes(groupTypes),
-    },
-    {
-      skip: !status?.dependencies_analyzed,
-    },
-  );
-
-  const isLoading = isLoadingStatus || isLoadingList;
-  const isFetching = isFetchingStatus || isFetchingList;
-  const error = listError ?? statusError;
+    isFetching,
+    isLoading,
+    error,
+  } = useListUnreferencedGraphNodesQuery({
+    query: searchQuery,
+    types: getDependencyTypes(groupTypes),
+    card_types: getCardTypes(groupTypes),
+  });
 
   return (
     <DependencyList

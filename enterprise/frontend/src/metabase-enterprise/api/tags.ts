@@ -9,25 +9,26 @@ import {
   provideTableTags,
   provideUserTags,
 } from "metabase/api/tags";
-import type {
-  BulkTableInfo,
-  BulkTableSelectionInfo,
-  CardDependencyNode,
-  DashboardDependencyNode,
-  DependencyGraph,
-  DependencyNode,
-  DocumentDependencyNode,
-  PythonLibrary,
-  SandboxDependencyNode,
-  SegmentDependencyNode,
-  SnippetDependencyNode,
-  SupportAccessGrant,
-  TableDependencyNode,
-  Transform,
-  TransformDependencyNode,
-  TransformJob,
-  TransformRun,
-  TransformTag,
+import {
+  type BulkTableInfo,
+  type BulkTableSelectionInfo,
+  type CardDependencyNode,
+  DEPENDENCY_TYPES,
+  type DashboardDependencyNode,
+  type DependencyGraph,
+  type DependencyNode,
+  type DocumentDependencyNode,
+  type PythonLibrary,
+  type SandboxDependencyNode,
+  type SegmentDependencyNode,
+  type SnippetDependencyNode,
+  type SupportAccessGrant,
+  type TableDependencyNode,
+  type Transform,
+  type TransformDependencyNode,
+  type TransformJob,
+  type TransformRun,
+  type TransformTag,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -260,7 +261,7 @@ export function provideDependencyNodeTags(
 
 export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
   return [
-    ...provideDependencyGraphStatusTags(),
+    ...DEPENDENCY_TYPES.map(listTag),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }
@@ -269,19 +270,6 @@ export function provideDependencyGraphTags(
   graph: DependencyGraph,
 ): TagDescription<EnterpriseTagType>[] {
   return provideDependencyNodeListTags(graph.nodes);
-}
-
-export function provideDependencyGraphStatusTags(): TagDescription<EnterpriseTagType>[] {
-  return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
-    listTag("dashboard"),
-    listTag("document"),
-    listTag("sandbox"),
-    listTag("segment"),
-  ];
 }
 
 export function provideSupportAccessGrantTags(

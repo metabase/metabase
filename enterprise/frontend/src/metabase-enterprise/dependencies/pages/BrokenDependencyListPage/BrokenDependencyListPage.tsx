@@ -3,10 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import {
-  useGetDependencyGraphStatusQuery,
-  useListBrokenGraphNodesQuery,
-} from "metabase-enterprise/api";
+import { useListBrokenGraphNodesQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
   DependencyGroupType,
@@ -46,26 +43,15 @@ export function BrokenDependencyListPage() {
       : AVAILABLE_GROUP_TYPES;
 
   const {
-    data: status,
-    isLoading: isLoadingStatus,
-    isFetching: isFetchingStatus,
-    error: statusError,
-  } = useGetDependencyGraphStatusQuery();
-
-  const {
     data: nodes = EMPTY_NODES,
-    isFetching: isFetchingList,
-    isLoading: isLoadingList,
-    error: listError,
+    isFetching,
+    isLoading,
+    error,
   } = useListBrokenGraphNodesQuery({
     query: searchQuery,
     types: getDependencyTypes(groupTypes),
     card_types: getCardTypes(groupTypes),
   });
-
-  const isLoading = isLoadingStatus || isLoadingList;
-  const isFetching = isFetchingStatus || isFetchingList;
-  const error = listError ?? statusError;
 
   return (
     <DependencyList
@@ -79,7 +65,7 @@ export function BrokenDependencyListPage() {
       isFetching={isFetching}
       error={error}
       withErrorsColumn={true}
-      withDependentsCountColumn={status?.dependencies_analyzed}
+      withDependentsCountColumn={true}
       onSelect={setSelectedEntry}
       onSearchValueChange={setSearchValue}
       onFilterOptionsChange={setFilterOptions}

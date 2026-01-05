@@ -683,31 +683,6 @@
         downstream-graph (graph/cached-graph (readable-graph-dependents))]
     (expanded-nodes downstream-graph all-ids {:include-errors? true})))
 
-(def ^:private graph-entities-with-analysis-version
-  "Entities that have the dependency_analysis_version field."
-  [[:model/Card :report_card]
-   [:model/Transform :transform]
-   [:model/NativeQuerySnippet :native_query_snippet]
-   [:model/Dashboard :report_dashboard]
-   [:model/Document :document]
-   [:model/Sandbox :sandboxes]
-   [:model/Segment :segment]])
-
-(api.macros/defendpoint :get "/graph/status" :- [:map [:dependencies_analyzed :boolean]]
-  "Returns the status of dependency analysis across all entities.
-
-   Returns an object with:
-   - dependencies_analyzed: true if all entities have been analyzed with the current version"
-  [_route-params _query-params]
-  (let [target-version dependency/current-dependency-analysis-version
-        outdated-exists-clauses (mapv (fn [[_model table-name]]
-                                        [:exists {:select [[[:inline 1]]]
-                                                  :from [table-name]
-                                                  :where [:< :dependency_analysis_version target-version]}])
-                                      graph-entities-with-analysis-version)
-        has-outdated? (t2/query-one {:select [[(into [:or] outdated-exists-clauses) :has_outdated]]})]
-    {:dependencies_analyzed (not (:has_outdated has-outdated?))}))
-
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
   (handlers/routes

@@ -42,7 +42,7 @@ type GraphNodeProps = NodeProps<NodeType>;
 export const GraphNode = memo(function ItemNode({
   data: node,
 }: GraphNodeProps) {
-  const { status, selection, setSelection } = useContext(GraphContext);
+  const { selection, setSelection } = useContext(GraphContext);
   const label = getNodeLabel(node);
   const typeInfo = getDependencyGroupTypeInfo(getDependencyGroupType(node));
   const groups = getDependentGroups(node);
@@ -80,22 +80,20 @@ export const GraphNode = memo(function ItemNode({
             {label}
           </Box>
         </Stack>
-        {status?.dependencies_analyzed && (
-          <Stack mt="md" gap="sm" align="start">
-            <Box c="text-secondary" fz="sm" lh="1rem">
-              {getDependencyGroupTitle(node, groups)}
-            </Box>
-            {groups.map((group) => (
-              <DependencyGroupButton
-                key={group.type}
-                node={node}
-                group={group}
-                selection={selection}
-                onSelectionChange={setSelection}
-              />
-            ))}
-          </Stack>
-        )}
+        <Stack mt="md" gap="sm" align="start">
+          <Box c="text-secondary" fz="sm" lh="1rem">
+            {getDependencyGroupTitle(node, groups)}
+          </Box>
+          {groups.map((group) => (
+            <DependencyGroupButton
+              key={group.type}
+              node={node}
+              group={group}
+              selection={selection}
+              onSelectionChange={setSelection}
+            />
+          ))}
+        </Stack>
       </Card>
       {sources.length > 0 && (
         <Handle

@@ -233,10 +233,6 @@ export type DependencyGraph = {
   edges: DependencyEdge[];
 };
 
-export type DependencyGraphStatus = {
-  dependencies_analyzed: boolean;
-};
-
 export type GetDependencyGraphRequest = {
   id: DependencyId;
   type: DependencyType;

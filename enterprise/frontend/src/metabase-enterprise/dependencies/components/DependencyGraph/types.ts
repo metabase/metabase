@@ -1,7 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 
 import type {
-  DependencyGraphStatus,
   DependencyGroupType,
   DependencyId,
   DependencyNode,
@@ -24,7 +23,6 @@ export type GraphSelection = {
 };
 
 export type GraphContextType = {
-  status: DependencyGraphStatus | null;
   selection: GraphSelection | null;
   setSelection: (selection: GraphSelection | null) => void;
 };

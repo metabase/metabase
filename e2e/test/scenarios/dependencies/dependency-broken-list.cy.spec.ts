@@ -249,7 +249,6 @@ function createValidEntities() {
     tableId: ORDERS_ID,
     fieldId: ORDERS.TOTAL,
   });
-  H.waitForDependencyGraph();
 }
 
 function createBrokenCards({ type }: { type: CardType }) {
@@ -290,7 +289,6 @@ function createBrokenCards({ type }: { type: CardType }) {
       query: "SELECT FROM",
     });
   }
-  H.waitForDependencyGraph();
 }
 
 function createBrokenSegments() {
@@ -299,7 +297,6 @@ function createBrokenSegments() {
     tableId: ORDERS_ID,
     fieldId: REVIEWS.RATING,
   });
-  H.waitForDependencyGraph();
 }
 
 function createBrokenTransforms() {
@@ -329,7 +326,6 @@ function createBrokenTransforms() {
       });
     },
   );
-  H.waitForDependencyGraph();
 }
 
 function createCardWithFieldIdRef({
