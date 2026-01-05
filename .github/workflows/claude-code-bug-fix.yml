@@ -72,13 +72,12 @@ jobs:
 
       - name: Assign linked Linear issue to tagger
         id: assign_linear
-        if: github.event_name == 'issues'
         continue-on-error: true
         uses: actions/github-script@v7
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
-          SENDER_LOGIN: ${{ github.event.sender.login }}
+          SENDER_LOGIN: ${{ github.actor }}
         with:
           script: |
             const { assignLinearIssue } = require('${{ github.workspace }}/.github/scripts/assign-linear-issue.js');
