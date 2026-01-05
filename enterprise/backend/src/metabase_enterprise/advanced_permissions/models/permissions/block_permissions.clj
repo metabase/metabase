@@ -1,13 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   (:require
-   [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.util.i18n :refer [tru]]
-   [toucan2.core :as t2]))
+   [metabase.util.i18n :refer [tru]]))
 
 (defn- throw-block-permissions-exception
   []
