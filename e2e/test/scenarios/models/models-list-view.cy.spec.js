@@ -1,3 +1,7 @@
+const Color = require("color");
+
+const { colors } = require("metabase/lib/colors");
+
 const { H } = cy;
 
 describe("scenarios > models list view", () => {
@@ -164,17 +168,22 @@ describe("scenarios > models list view", () => {
           .click();
         cy.findByTestId("list-view-icon-colors").then(($list) => {
           const $button = Cypress.$($list).find("button").eq(2);
-          expect($button.attr("style")).to.include(
-            "background: var(--mb-color-accent1)",
+          expect(window.getComputedStyle($button[0]).backgroundColor).to.equal(
+            Color(colors["accent1"]).rgb().toString(),
           );
+
           $button.click();
         });
       });
       cy.get("@listPreview").within(() => {
         cy.findAllByRole("img")
           .first()
-          .should("have.attr", "style", "color: var(--mb-color-accent1);")
-          .and("have.attr", "aria-label", "factory icon");
+          .should("have.attr", "aria-label", "factory icon")
+          .then(($el) => {
+            expect(window.getComputedStyle($el[0]).color).to.equal(
+              Color(colors["accent1"]).rgb().toString(),
+            );
+          });
       });
 
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();

@@ -60,8 +60,8 @@ export const StyledLauncher = styled.div<
     forRoot || inheritsRootStrategy ? "normal" : "bold"};
   background-color: ${({ forRoot }) =>
     forRoot
-      ? "var(--mb-color-background-tertiary"
-      : "var(--mb-color-background-primary"};
+      ? "var(--mb-color-background-tertiary)"
+      : "var(--mb-color-background-primary)"};
   ${({ forRoot }) =>
     !forRoot &&
     css`
