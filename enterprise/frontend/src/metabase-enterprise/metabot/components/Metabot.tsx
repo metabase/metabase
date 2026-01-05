@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
-import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
+import MetabotFailure from "assets/img/metabot-failure.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
 import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
@@ -27,7 +27,7 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
         justify="center"
         data-testid="metabot-error-fallback"
       >
-        <Box component={EmptyDashboardBot} w="6rem" />
+        <Box component={MetabotFailure} w="6rem" />
         <Text c="text-light" maw="12rem" ta="center">
           {t`Something went wrong.`}
         </Text>
@@ -36,33 +36,6 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
         </Button>
       </Flex>
     </Sidebar>
-  );
-};
-
-const SimulateError = () => {
-  const [shouldThrow, setShouldThrow] = useState(false);
-
-  if (shouldThrow) {
-    throw new Error("Simulated error for testing ErrorBoundary");
-  }
-
-  return (
-    <Button
-      onClick={() => setShouldThrow(true)}
-      variant="subtle"
-      size="xs"
-      c="text-dark"
-      style={{
-        position: "fixed",
-        right: 500,
-        top: 75,
-        width: 300,
-        height: 100,
-        background: "red",
-      }}
-    >
-      🧨🔥 {t`Simulate Error`}
-    </Button>
   );
 };
 
@@ -119,7 +92,6 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   return (
     <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
       <MetabotChat config={config} />
-      <SimulateError />
     </ErrorBoundary>
   );
 };
