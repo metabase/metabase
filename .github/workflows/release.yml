@@ -153,13 +153,13 @@ jobs:
         grep -q ${{ inputs.commit }} COMMIT-ID && echo "commit ids match" || (echo "commit-id mismatch" && exit 1)
 
         # ensure version.properties partial commit matches commit input
-        grep -q $(cut -c 1-7 <<< ${{ inputs.commit }}) version.properties && echo "version.properties commit matches" || (echo "version.properties commit mismatch" && exit 1)
+        grep -q $(cut -c 1-7 <<< ${{ inputs.commit }}) metabase/version.properties && echo "version.properties commit matches" || (echo "version.properties commit mismatch" && exit 1)
 
         # ensure version.properties version number matches input version (without v0/v1 to make it ee/oss agnostic)
-        grep -q $(cut -c 3-99 <<< ${{ inputs.version }}) version.properties && echo "version.properties version number matches" || (echo "version.properties version number mismatch" && exit 1)
+        grep -q $(cut -c 3-99 <<< ${{ inputs.version }}) metabase/version.properties && echo "version.properties version number matches" || (echo "version.properties version number mismatch" && exit 1)
 
         # ensure the build is not a snapshot build
-        grep -q "SNAPSHOT" version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
+        grep -q "SNAPSHOT" metabase/version.properties && (echo "jar is a snapshot" && exit 1) || echo "jar is not a snapshot build"
     - name: Upload Uberjar as artifact
       uses: actions/upload-artifact@v4
       with:
@@ -169,7 +169,7 @@ jobs:
           ./metabase.jar
           ./COMMIT-ID
           ./SHA256.sum
-          ./version.properties
+          ./metabase/version.properties
 
   upload-to-s3:
     runs-on: ubuntu-22.04

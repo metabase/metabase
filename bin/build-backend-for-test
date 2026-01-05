@@ -30,7 +30,7 @@ backend-source-hash() {
 
 backend-jar-hash() {
   # pulling the version.properties directly from the jar is much faster than starting the JVM
-  unzip -c "$JAR_PATH" version.properties | grep "$VERSION_PROPERTY_NAME" | cut -f2 -d=
+  unzip -c "$JAR_PATH" metabase/version.properties | grep "$VERSION_PROPERTY_NAME" | cut -f2 -d=
 }
 
 check-backend-jar-hash() {
@@ -48,7 +48,7 @@ build-backend-uberjar() {
   local source_hash
   source_hash=$(backend-source-hash)
   ./bin/build.sh :steps [:version]
-  echo -e "\n$VERSION_PROPERTY_NAME=$source_hash" >> resources/version.properties
+  echo -e "\n$VERSION_PROPERTY_NAME=$source_hash" >> resources/metabase/version.properties
   MB_JAR_FILENAME="$JAR_FILENAME" ./bin/build.sh :steps [:uberjar]
 }
 

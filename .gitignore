@@ -75,7 +75,7 @@ cypress.env.json
 /resources/license-frontend-third-party.txt
 /resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
-/resources/version.properties
+/resources/metabase/version.properties
 /screenshots
 /sqlite.db
 /stats.json

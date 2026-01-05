@@ -11,7 +11,7 @@ module.exports.getSdkBundleVersionFromVersionProperties = () => {
   try {
     const versionPropertiesContent = fs.readFileSync(
       path.resolve(
-        path.join(__dirname, "../../../../", "resources/version.properties"),
+        path.join(__dirname, "../../../../", "resources/metabase/version.properties"),
       ),
       "utf-8",
     );

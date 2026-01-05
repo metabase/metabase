@@ -1,5 +1,6 @@
 (ns metabase.channel.api.slack-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -140,3 +141,8 @@
                                               m))
                                     expected-blocks)]
               (is (= anonymous-blocks (#'api.slack/create-slack-message-blocks anonymous-info mock-file-info))))))))))
+
+(deftest ^:parallel slack-manifest-resource-namespaced-test
+  (testing "slack-manifest.yaml is loaded from metabase/ subdirectory to avoid classpath conflicts"
+    (let [url (io/resource "metabase/slack-manifest.yaml")]
+      (is (some? url) "Resource should exist at metabase/slack-manifest.yaml"))))

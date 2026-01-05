@@ -102,4 +102,4 @@ runs:
       shell: bash
       run: |
         echo "Extracting version.properties from: $JAR_PATH"
-        jar xf "$JAR_PATH" version.properties && cat version.properties
+        jar xf "$JAR_PATH" metabase/version.properties && cat metabase/version.properties
