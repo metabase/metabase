@@ -16,6 +16,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.models.interface :as mi]
    [metabase.native-query-snippets.core :as native-query-snippets]
@@ -89,8 +90,8 @@
 
 (mr/def ::transform-body
   [:map
-   [:id {:optional false} ms/PositiveInt]
-   [:name {:optional true} :string]
+   [:id     {:optional false} ms/PositiveInt]
+   [:name   {:optional true} :string]
    ;; TODO (Cam 10/8/25) -- no idea what the correct schema for these is supposed to be -- it was just `map` before --
    ;; this is my attempt to guess it
    [:source {:optional true} [:maybe [:map
@@ -129,8 +130,8 @@
    _query-params
    {:keys [id content], snippet-name :name}
    :- [:map
-       [:id {:optional false} ms/PositiveInt]
-       [:name {:optional true} native-query-snippets/NativeQuerySnippetName]
+       [:id      {:optional false} ms/PositiveInt]
+       [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
        [:content {:optional true} :string]]]
   (api/read-check :model/NativeQuerySnippet id)
   (let [original (t2/select-one :model/NativeQuerySnippet id)
@@ -148,12 +149,12 @@
     (broken-cards-response breakages)))
 
 (def ^:private entity-keys
-  {:table [:name :description :display_name :db_id :db :schema :fields]
-   :card [:name :type :display :database_id :view_count
-          :created_at :creator :creator_id :description
-          :result_metadata :last-edit-info
-          :collection :collection_id :dashboard :dashboard_id :document :document_id]
-   :snippet [:name :description :created_at :creator :creator_id :collection :collection_id]
+  {:table     [:name :description :display_name :db_id :db :schema :fields]
+   :card      [:name :type :display :database_id :view_count
+               :created_at :creator :creator_id :description
+               :result_metadata :last-edit-info
+               :collection :collection_id :dashboard :dashboard_id :document :document_id]
+   :snippet   [:name :description :created_at :creator :creator_id :collection :collection_id]
    :transform [:name :description :creator :table :last_run]
    :dashboard [:name :description :view_count
                :created_at :creator :creator_id :last-edit-info
@@ -168,22 +169,24 @@
 (defn- format-subentity [entity]
   (case (t2/model entity)
     :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
-    :model/Dashboard (select-keys entity [:id :name])
-    :model/Document (select-keys entity [:id :name])
+    :model/Dashboard  (select-keys entity [:id :name])
+    :model/Document   (select-keys entity [:id :name])
     entity))
+
+(mr/def ::entity-id pos-int?)
 
 (mr/def ::usages
   [:map-of
    [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric]
-   :int])
+   ::entity-id])
 
 (mr/def ::base-entity
   [:map
-   [:id :int]
-   [:type :keyword]
-   [:data [:map]]
+   [:id               pos-int?]
+   [:type             :keyword]
+   [:data             [:map]]
    [:dependents_count [:maybe [:ref ::usages]]]
-   [:errors {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
+   [:errors           {:optional true} [:set [:ref ::lib.schema.validate/error]]]])
 
 (defn- fields-for [entity-key]
   ;; these specs should really use something like
@@ -196,28 +199,28 @@
 (mr/def ::table-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/table]
+    [:id   ::lib.schema.id/table]
     [:type [:= :table]]
     [:data (fields-for :table)]]])
 
 (mr/def ::card-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/card]
+    [:id   ::lib.schema.id/card]
     [:type [:= :card]]
     [:data (fields-for :card)]]])
 
 (mr/def ::snippet-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/snippet]
+    [:id   ::lib.schema.id/snippet]
     [:type [:= :snippet]]
     [:data (fields-for :snippet)]]])
 
 (mr/def ::transform-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/transform]
+    [:id   ::lib.schema.id/transform]
     [:type [:= :transform]]
     [:data (fields-for :transform)]]])
 
@@ -231,34 +234,34 @@
 (mr/def ::document-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/document]
+    [:id   ::lib.schema.id/document]
     [:type [:= :document]]
     [:data (fields-for :document)]]])
 
 (mr/def ::sandbox-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/sandbox]
+    [:id   ::lib.schema.id/sandbox]
     [:type [:= :sandbox]]
     [:data (fields-for :sandbox)]]])
 
 (mr/def ::segment-entity
   [:merge ::base-entity
    [:map
-    [:id ::lib.schema.id/segment]
+    [:id   ::lib.schema.id/segment]
     [:type [:= :segment]]
     [:data (fields-for :card)]]])
 
 (mr/def ::entity
   [:multi {:dispatch :type}
-   [:table [:ref ::table-entity]]
-   [:card [:ref ::card-entity]]
-   [:snippet [:ref ::snippet-entity]]
+   [:table     [:ref ::table-entity]]
+   [:card      [:ref ::card-entity]]
+   [:snippet   [:ref ::snippet-entity]]
    [:transform [:ref ::transform-entity]]
    [:dashboard [:ref ::dashboard-entity]]
-   [:document [:ref ::document-entity]]
-   [:sandbox [:ref ::sandbox-entity]]
-   [:segment [:ref ::segment-entity]]])
+   [:document  [:ref ::document-entity]]
+   [:sandbox   [:ref ::sandbox-entity]]
+   [:segment   [:ref ::segment-entity]]])
 
 (mu/defn- entity-value :- ::entity
   [entity-type {:keys [id] :as entity} usages errors]
@@ -270,17 +273,14 @@
     errors (assoc :errors (get errors [entity-type id]))))
 
 (def ^:private entity-model
-  {:table :model/Table
-   :card :model/Card
-   :snippet :model/NativeQuerySnippet
+  {:table     :model/Table
+   :card      :model/Card
+   :snippet   :model/NativeQuerySnippet
    :transform :model/Transform
    :dashboard :model/Dashboard
-   :document :model/Document
-   :sandbox :model/Sandbox
-   :segment :model/Segment})
-
-(def ^:private card-types
-  [:question :model :metric])
+   :document  :model/Document
+   :sandbox   :model/Sandbox
+   :segment   :model/Segment})
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -291,18 +291,18 @@
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
-  {:card [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
-          :created_at :creator_id
+  {:card      [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
+               :created_at :creator_id
                ;; :card_schema always has to be selected
-          :card_schema]
+               :card_schema]
    :dashboard [:id :name :description :created_at :creator_id :collection_id]
-   :document [:id :name :created_at :creator_id :collection_id]
-   :table [:id :name :description :display_name :db_id :schema]
+   :document  [:id :name :created_at :creator_id :collection_id]
+   :table     [:id :name :description :display_name :db_id :schema]
    :transform [:id :name :description :creator_id
                ;; :source has to be selected otherwise the BE won't know what DB it belongs to
                :source]
-   :snippet [:id :name :description :created_at :creator_id :collection_id]
-   :sandbox [:id :table_id]
+   :snippet   [:id :name :description :created_at :creator_id :collection_id]
+   :sandbox   [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
@@ -360,8 +360,8 @@
                                                         ;; Filter by entity archived status
                                                         (case include-archived-items
                                                           :exclude [:= archived-column false]
-                                                          :only [:= archived-column true]
-                                                          :all nil)]}]]))
+                                                          :only    [:= archived-column true]
+                                                          :all     nil)]}]]))
 
                      ;; Table with visible-filter-clause and active/visibility_type filtering
                      :model/Table
@@ -431,7 +431,7 @@
     (fn [entity-type-field entity-id-field]
       (visible-entities-filter-clause entity-type-field entity-id-field opts)))))
 
-(defn- calc-usages
+(defn- node-usages
   "Calculates the count of direct dependents for all nodes in `nodes`, based on `graph`. "
   [graph nodes]
   (let [children-map (graph/children-of graph nodes)
@@ -452,7 +452,7 @@
                        (apply merge-with +)))
                 children-map)))
 
-(defn- calc-errors [nodes-by-type]
+(defn- node-errors [nodes-by-type]
   (-> (into {}
             (mapcat (fn [[type ids]]
                       (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :finding_details]
@@ -464,11 +464,11 @@
       not-empty))
 
 (defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
-  (let [usages (calc-usages downstream-graph nodes)
+  (let [usages (node-usages downstream-graph nodes)
         nodes-by-type (->> (group-by first nodes)
                            (m/map-vals #(map second %)))
         errors (when include-errors?
-                 (calc-errors nodes-by-type))
+                 (node-errors nodes-by-type))
         nodes-by-type-and-id
         (into {}
               (mapcat (fn [[entity-type entity-ids]]
@@ -527,17 +527,17 @@
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
           nodes (into (set starting-nodes)
                       (graph/transitive upstream-graph starting-nodes))
-          edges (graph/calc-edges-between downstream-graph nodes)]
+          edges (graph/edges-between downstream-graph nodes)]
       {:nodes (expanded-nodes downstream-graph nodes {:include-errors? false})
        :edges edges})))
 
 (def ^:private dependents-args
   [:map
-   [:id ms/PositiveInt]
-   [:type (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_type (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_card_type {:optional true} (ms/enum-decode-keyword card-types)]
-   [:archived {:optional true} :boolean]])
+   [:id                  ms/PositiveInt]
+   [:type                (ms/enum-decode-keyword (vec (keys entity-model)))]
+   [:dependent_type      (ms/enum-decode-keyword (vec (keys entity-model)))]
+   [:dependent_card_type {:optional true} (ms/enum-decode-keyword lib.schema.metadata/card-types)]
+   [:archived            {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/graph/dependents" :- [:sequential ::entity]
   "This endpoint takes an :id, :type, :dependent_type, and an optional :dependent_card_type, and returns a list of
@@ -592,8 +592,8 @@
                              (ms/enum-decode-keyword (vec (keys entity-model)))
                              [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
    [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword card-types)
-                                  [:sequential (ms/enum-decode-keyword card-types)]]]
+                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
+                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]])
 
 (api.macros/defendpoint :get "/graph/unreferenced" :- [:sequential ::entity]
@@ -609,7 +609,7 @@
   [_route-params
    {:keys [types card_types query]
     :or {types (vec (keys entity-model))
-         card_types card-types}} :- unreferenced-items-args]
+         card_types (seq lib.schema.metadata/card-types)}} :- unreferenced-items-args]
   (let [selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
@@ -628,8 +628,8 @@
                              (ms/enum-decode-keyword (vec (keys entity-model)))
                              [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
    [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword card-types)
-                                  [:sequential (ms/enum-decode-keyword card-types)]]]
+                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
+                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]])
 
 (defn- broken-query [entity-type card-types query]
@@ -670,7 +670,7 @@
   [_route-params
    {:keys [types card_types query]
     :or {types (vec (keys entity-model))
-         card_types card-types}} :- broken-items-args]
+         card_types (seq lib.schema.metadata/card-types)}} :- broken-items-args]
   (let [selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))

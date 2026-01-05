@@ -247,31 +247,31 @@
   "::lib.schema.parameter/type"
   ::lib.schema.parameter/type)
 
-(def validate.missing-column
-  lib/missing-column)
+(def missing-column-error
+  lib/missing-column-error)
 
-(def schema.validate.missing-column
-  ::lib.schema.validate/missing-column)
+(def schema.validate.missing-column-error
+  ::lib.schema.validate/missing-column-error)
 
-(def validate.missing-table-alias
-  lib/missing-table-alias)
+(def missing-table-alias-error
+  lib/missing-table-alias-error)
 
-(def schema.validate.missing-table-alias
-  ::lib.schema.validate/missing-table-alias)
+(def schema.validate.missing-table-alias-error
+  ::lib.schema.validate/missing-table-alias-error)
 
-(def validate.duplicate-column
-  lib/duplicate-column)
+(def duplicate-column-error
+  lib/duplicate-column-error)
 
-(def schema.validate.duplicate-column
-  ::lib.schema.validate/duplicate-column)
+(def schema.validate.duplicate-column-error
+  ::lib.schema.validate/duplicate-column-error)
 
-(def validate.syntax-error
+(def syntax-error
   lib/syntax-error)
 
 (def schema.validate.syntax-error
   ::lib.schema.validate/syntax-error)
 
-(def validate.validation-error
+(def validation-error
   lib/validation-error)
 
 (def schema.validate.validation-error

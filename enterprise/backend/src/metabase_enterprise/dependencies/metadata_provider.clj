@@ -112,9 +112,9 @@
                     (assoc-in m ks v))
                   % kvs)))
 
-(defn- get-returned-columns [mp queryable]
-  (deps.analysis/get-returned-columns (:engine (lib.metadata/database mp))
-                                      (lib/query mp queryable)))
+(defn- returned-columns [mp queryable]
+  (deps.analysis/returned-columns (:engine (lib.metadata/database mp))
+                                  (lib/query mp queryable)))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
@@ -126,7 +126,7 @@
                                              (dissoc :result-metadata)))
                                        updates))
      ;; This uses the outer OMP and so the overrides are visible!
-     [::card-columns id] (delay (get-returned-columns mp (lib.metadata/card mp id)))}))
+     [::card-columns id] (delay (returned-columns mp (lib.metadata/card mp id)))}))
 
 (defonce ^:private last-fake-id (atom 2000000000))
 
@@ -155,7 +155,7 @@
                          (lib/returned-columns (lib/query (inner-mp mp) existing-table)))
         output-cols    (delay
                          ;; Note that this will analyze the query with any upstream changes included!
-                         (let [new-cols (get-returned-columns mp (:query source))
+                         (let [new-cols (returned-columns mp (:query source))
                                by-name  (m/index-by :lib/desired-column-alias existing-cols)]
                            (into [] (for [col new-cols
                                           :let [old-col (by-name (:lib/desired-column-alias col))]]

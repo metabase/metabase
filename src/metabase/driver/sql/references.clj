@@ -142,8 +142,8 @@
                 ;; if we didn't find any potential sources, signal an error here
                 :errors (when-not (some #(some identity %) valid-sources)
                           #{(if-let [name (table-name raw-col)]
-                              (driver-api/validate.missing-table-alias name)
-                              (driver-api/validate.missing-column column))})}]))))
+                              (driver-api/missing-table-alias-error name)
+                              (driver-api/missing-column-error column))})}]))))
 
 (defmulti find-used-fields
   "Finds the fields used in a given sql expression."
@@ -244,7 +244,7 @@
   (or (some->> (find-source (col-fields driver expr) sources)
                :returned-fields
                (map wrap-col))
-      [{:errors #{(driver-api/validate.missing-table-alias (table-name expr))}}]))
+      [{:errors #{(driver-api/missing-table-alias-error (table-name expr))}}]))
 
 (defmethod find-returned-fields [:sql :macaw.ast/set-operation]
   [driver sources withs expr]
@@ -369,7 +369,7 @@
   {:used-fields #{}
    :returned-fields []
    :names nil
-   :errors #{(driver-api/validate.syntax-error)}})
+   :errors #{(driver-api/syntax-error)}})
 
 (mu/defn field-references :- [:ref ::field-references]
   "Takes a sql query in the macaw ast format and returns the fields referenced by a query.

@@ -8,22 +8,22 @@
    [metabase.lib.walk :as lib.walk]
    [metabase.util.malli :as mu]))
 
-(mu/defn missing-column :- [:ref ::lib.schema.validate/missing-column]
+(mu/defn missing-column-error :- [:ref ::lib.schema.validate/missing-column-error]
   "Create a missing-column lib validation error"
   [col-name :- :string]
-  {:type :validate/missing-column
+  {:type :validate/missing-column-error
    :name col-name})
 
-(mu/defn missing-table-alias :- [:ref ::lib.schema.validate/missing-table-alias]
+(mu/defn missing-table-alias-error :- [:ref ::lib.schema.validate/missing-table-alias-error]
   "Create a missing-table-alias lib validation error"
   [alias-name :- :string]
-  {:type :validate/missing-table-alias
+  {:type :validate/missing-table-alias-error
    :name alias-name})
 
-(mu/defn duplicate-column :- [:ref ::lib.schema.validate/duplicate-column]
+(mu/defn duplicate-column-error :- [:ref ::lib.schema.validate/duplicate-column-error]
   "Create a duplicate-column lib validation error"
   [col-name :- :string]
-  {:type :validate/duplicate-column
+  {:type :validate/duplicate-column-error
    :name col-name})
 
 (mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
@@ -55,7 +55,7 @@
            (when (or (not column)
                      (::lib.field.resolution/fallback-metadata? column)
                      (not (:active column true)))
-             (vswap! bad-fields conj (missing-column
+             (vswap! bad-fields conj (missing-column-error
                                       (lib.metadata.calculation/column-name query (second path) column))))))
        nil))
     @bad-fields))

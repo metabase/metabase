@@ -4,11 +4,12 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util.malli :as mu]))
 
-(mu/defn get-returned-columns
+(mu/defn returned-columns
   "Get the returned columns of a `query`"
   [driver :- :keyword
    query :- ::lib.schema/query]
@@ -40,7 +41,7 @@
   Returns any findings, and `nil` for a clean query."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
-   card-id           :- pos-int?]
+   card-id           :- ::lib.schema.id/card]
   (let [query  (lib/query metadata-provider (:dataset-query (lib.metadata/card metadata-provider card-id)))
         driver (:engine (lib.metadata/database query))]
     (check-query driver query)))
@@ -51,17 +52,17 @@
   Returns any findings, and `nil` for a clean transform."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
-   transform-id      :- pos-int?]
+   transform-id      :- ::lib.schema.id/transform]
   (let [{{query :query} :source
          :as _transform}  (lib.metadata/transform metadata-provider transform-id)
         driver            (:engine (lib.metadata/database metadata-provider))
         query             (lib/query metadata-provider query)
-        output-fields     (get-returned-columns driver query)
+        output-fields     (returned-columns driver query)
         duplicated-fields (->> output-fields
                                (group-by :name)
                                vals
                                (keep #(when (> (count %) 1)
-                                        (lib/duplicate-column (-> % first :name))))
+                                        (lib/duplicate-column-error (-> % first :name))))
                                seq)]
     (cond-> (check-query driver query)
       duplicated-fields (into duplicated-fields))))
@@ -69,7 +70,7 @@
 (mu/defmethod check-entity :segment :- [:set [:ref ::lib.schema.validate/error]]
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    _entity-type
-   segment-id        :- pos-int?]
+   segment-id        :- ::lib.schema.id/segment]
   (let [query (->> (lib.metadata/segment metadata-provider segment-id)
                    :definition
                    (lib/query metadata-provider))

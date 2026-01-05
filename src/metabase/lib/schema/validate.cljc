@@ -3,22 +3,22 @@
    [metabase.lib.schema.common :as common]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::missing-column
+(mr/def ::missing-column-error
   [:map
-   [:type [:= :validate/missing-column]]
+   [:type [:= :validate/missing-column-error]]
    [:name :string]])
 
-(mr/def ::missing-table-alias
+(mr/def ::missing-table-alias-error
   [:map
-   [:type [:= :validate/missing-table-alias]]
+   [:type [:= :validate/missing-table-alias-error]]
    [:name :string]])
 
-(mr/def ::duplicate-column
+(mr/def ::duplicate-column-error
   [:map
-   [:type [:= :validate/duplicate-column]]
+   [:type [:= :validate/duplicate-column-error]]
    [:name :string]])
 
-(mr/def ::syntax-error
+(mr/def ::syntax-error-error
   [:map
    [:type [:= :validate/syntax-error]]])
 
@@ -31,8 +31,8 @@
   [:and
    [:map [:type {:decode/normalize common/normalize-keyword} :keyword]]
    [:multi {:dispatch #(-> % :type keyword)}
-    [:validate/missing-column [:ref ::missing-column]]
-    [:validate/missing-table-alias [:ref ::missing-table-alias]]
-    [:validate/duplicate-column [:ref ::duplicate-column]]
-    [:validate/syntax-error [:ref ::syntax-error]]
-    [:validate/validation-error [:ref ::validation-error]]]])
+    [:validate/missing-column-error      [:ref ::missing-column-error]]
+    [:validate/missing-table-alias-error [:ref ::missing-table-alias-error]]
+    [:validate/duplicate-column-error    [:ref ::duplicate-column-error]]
+    [:validate/syntax-error              [:ref ::syntax-error]]
+    [:validate/validation-error          [:ref ::validation-error]]]])

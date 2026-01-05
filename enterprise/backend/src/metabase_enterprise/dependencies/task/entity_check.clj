@@ -17,9 +17,6 @@
   []
   (t/to-millis-from-epoch (t/instant)))
 
-(def ^:private entities
-  [:card :transform :segment])
-
 (defn- check-entities!
   []
   (when (premium-features/has-feature? :dependencies)
@@ -31,7 +28,7 @@
                         (log/info "Updated" processed "entities of type" entity-type))
                       (- batch-size processed))))
                 (deps.settings/dependency-entity-check-batch-size)
-                entities)
+                deps.findings/supported-entities)
         (< 1))))
 
 (declare schedule-next-run!)

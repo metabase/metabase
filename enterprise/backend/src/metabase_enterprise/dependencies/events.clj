@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
@@ -251,14 +252,6 @@
   [_ {:keys [object]}]
   (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object)))
 
-(def ^:private types-to-check
-  #{:card :transform :segment})
-
-(def ^:private dependency-type->model
-  {:card :model/Card
-   :transform :model/Transform
-   :segment :model/Segment})
-
 (defn- check-dependents [type object recur-through-transforms?]
   (let [graph (if recur-through-transforms?
                 (models.dependency/graph-dependents)
@@ -268,9 +261,9 @@
                    [:not= type-field "transform"])))
         children-map (models.dependency/transitive-dependents graph {type [object]})]
     (doseq [[type children] children-map
-            :when (types-to-check type)
+            :when (deps.findings/supported-entities type)
             instances (partition 50 50 nil children)]
-      (-> (t2/select (dependency-type->model type) :id [:in instances])
+      (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
           deps.findings/analyze-instances!))))
 
 (derive ::check-card-dependents :metabase/event)

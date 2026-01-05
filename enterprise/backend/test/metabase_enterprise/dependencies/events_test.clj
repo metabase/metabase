@@ -507,23 +507,23 @@
             (deps.findings/upsert-analysis! child-card)
             (deps.findings/upsert-analysis! other-card))
           (is (= #{{:analyzed_entity_id parent-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                    {:analyzed_entity_id child-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                    {:analyzed_entity_id other-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]]))))
-          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+          (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
             (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
           (is (= #{{:analyzed_entity_id parent-card-id
-                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                    :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
                    {:analyzed_entity_id child-card-id
-                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                    :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
                    {:analyzed_entity_id other-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
@@ -558,31 +558,31 @@
             (deps.findings/upsert-analysis! transform)
             (deps.findings/upsert-analysis! child-card))
           (is (= #{{:analyzed_entity_id parent-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                    {:analyzed_entity_id child-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [parent-card-id child-card-id]]))))
           (is (= #{{:analyzed_entity_id transform-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
                                   :analyzed_entity_id [:in [transform-id]]))))
-          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+          (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
             (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
           (is (= #{{:analyzed_entity_id parent-card-id
-                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                    :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
                    {:analyzed_entity_id child-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [parent-card-id child-card-id]]))))
           (is (= #{{:analyzed_entity_id transform-id
-                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}}
+                    :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
@@ -640,31 +640,31 @@
             (deps.findings/upsert-analysis! transform)
             (deps.findings/upsert-analysis! other-card))
           (is (= #{{:analyzed_entity_id card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                    {:analyzed_entity_id other-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [card-id other-card-id]]))))
           (is (= #{{:analyzed_entity_id transform-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
                                   :analyzed_entity_id [:in [transform-id]]))))
-          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+          (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
             (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*}))
           (is (= #{{:analyzed_entity_id card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                    {:analyzed_entity_id other-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [card-id other-card-id]]))))
           (is (= #{{:analyzed_entity_id transform-id
-                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}}
+                    :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
@@ -723,20 +723,20 @@
             (deps.findings/upsert-analysis! transform)
             (deps.findings/upsert-analysis! other-card))
           (is (= #{{:analyzed_entity_id card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                    {:analyzed_entity_id other-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [card-id other-card-id]]))))
           (is (= #{{:analyzed_entity_id transform-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
                                   :analyzed_entity_id [:in [transform-id]]))))
-          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+          (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
             (events/publish-event! :event/transform-run-complete
                                    {:object {:db-id (mt/id)
                                              :output-schema "public"
@@ -744,15 +744,15 @@
                                              :transform-id transform-id}
                                     :user-id api/*current-user-id*}))
           (is (= #{{:analyzed_entity_id card-id
-                    :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                    :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
                    {:analyzed_entity_id other-card-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :card
                                   :analyzed_entity_id [:in [card-id other-card-id]]))))
           (is (= #{{:analyzed_entity_id transform-id
-                    :analysis_version models.analysis-finding/*current-analysis-version*}}
+                    :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
                  (into #{}
                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                   :analyzed_entity_type :transform
@@ -800,24 +800,24 @@
             (deps.findings/upsert-analysis! segment)
             (deps.findings/upsert-analysis! card))
           (is (= {:analyzed_entity_id card-id
-                  :analysis_version models.analysis-finding/*current-analysis-version*}
+                  :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                  (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                 :analyzed_entity_type :card
                                 :analyzed_entity_id card-id)))
           (is (= {:analyzed_entity_id segment-id
-                  :analysis_version models.analysis-finding/*current-analysis-version*}
+                  :analysis_version models.analysis-finding/*current-analysis-finding-version*}
                  (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                 :analyzed_entity_type :segment
                                 :analyzed_entity_id segment-id)))
-          (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+          (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
             (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
           (is (= {:analyzed_entity_id card-id
-                  :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                  :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
                  (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                 :analyzed_entity_type :card
                                 :analyzed_entity_id card-id)))
           (is (= {:analyzed_entity_id segment-id
-                  :analysis_version (inc models.analysis-finding/*current-analysis-version*)}
+                  :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
                  (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
                                 :analyzed_entity_type :segment
                                 :analyzed_entity_id segment-id))))))))

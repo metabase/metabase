@@ -221,7 +221,7 @@
                (driver-api/active-fields metadata-provider)
                (map #(-> (assoc % :lib/desired-column-alias (:name %))
                          sql.references/wrap-col)))
-      [{:error (driver-api/validate.missing-table-alias
+      [{:error (driver-api/missing-table-alias-error
                 (sql.references/table-name (:table col-spec)))}]))
 
 (defmethod resolve-field :single-column
@@ -253,7 +253,7 @@
                               (some #(when (= (:name %) (:column col-spec))
                                        %))))))]
      {:col (assoc found :lib/desired-column-alias (or alias name))}
-     {:error (driver-api/validate.missing-column (:column col-spec))})])
+     {:error (driver-api/missing-column-error (:column col-spec))})])
 
 (defn- get-name [m]
   (or (:alias m) (str (gensym "new-col"))))

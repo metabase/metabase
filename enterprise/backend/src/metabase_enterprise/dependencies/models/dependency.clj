@@ -31,9 +31,7 @@
 
   When `source-filter-fn` is provided, it should be a function accepting two arguments
   (entity-type-field, entity-id-field) and returning a HoneySQL WHERE clause for filtering destination entities."
-  ([src-type src-id dst-type dst-id key-seq]
-   (deps-children src-type src-id dst-type dst-id key-seq nil nil))
-  ([src-type src-id dst-type dst-id key-seq destination-filter-fn source-filter-fn]
+  ([{:keys [src-type src-id dst-type dst-id key-seq destination-filter-fn source-filter-fn]}]
    (let [base-filter (cond-> [:and]
                        destination-filter-fn (conj (destination-filter-fn dst-type dst-id))
                        source-filter-fn (conj (source-filter-fn src-type src-id)))]
@@ -65,7 +63,14 @@
   ([key-seq]
    (key-dependents key-seq nil nil))
   ([key-seq destination-filter-fn source-filter-fn]
-   (deps-children :to_entity_type :to_entity_id :from_entity_type :from_entity_id key-seq destination-filter-fn source-filter-fn)))
+   (deps-children
+    {:src-type              :to_entity_type
+     :srd-id                :to_entity_id
+     :dst-type              :from_entity_type
+     :dst-id                :from_entity_id
+     :key-seq               key-seq
+     :destination-filter-fn destination-filter-fn
+     :source-filter-fn      source-filter-fn})))
 
 (defn- key-dependencies
   "Get the dependency entity keys for the entity keys in `key-seq`.
@@ -83,7 +88,14 @@
   ([key-seq]
    (key-dependencies key-seq nil nil))
   ([key-seq destination-filter-fn source-filter-fn]
-   (deps-children :from_entity_type :from_entity_id :to_entity_type :to_entity_id key-seq destination-filter-fn source-filter-fn)))
+   (deps-children
+    {:src-type              :from_entity_type
+     :src-id                :from_entity_id
+     :dst-type              :to_entity_type
+     :dst-id                :to_entity_id
+     :key-seq               key-seq
+     :destination-filter-fn destination-filter-fn
+     :source-filter-fn      source-filter-fn})))
 
 (p/deftype+ DependencyGraph [children-fn]
   graph/Graph

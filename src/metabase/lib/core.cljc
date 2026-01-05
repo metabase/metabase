@@ -493,10 +493,10 @@
   unique-name-generator
   unique-name-generator-with-options]
  [lib.validate
-  duplicate-column
+  duplicate-column-error
   find-bad-refs
-  missing-column
-  missing-table-alias
+  missing-column-error
+  missing-table-alias-error
   syntax-error
   validation-error]
  [metabase.lib.walk.util
