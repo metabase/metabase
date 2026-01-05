@@ -70,6 +70,35 @@ jobs:
               core.setFailed(error.message);
             }
 
+      - name: Assign linked Linear issue to tagger
+        if: github.event_name == 'issues'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
+          SENDER_LOGIN: ${{ github.event.sender.login }}
+        with:
+          script: |
+            const { assignLinearIssue } = require('${{ github.workspace }}/.github/scripts/assign-linear-issue.js');
+
+            const issueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
+
+            const result = await assignLinearIssue({
+              github,
+              issueUrl,
+              senderLogin: process.env.SENDER_LOGIN,
+              linearApiKey: process.env.LINEAR_API_KEY
+            });
+
+            if (!result.success) {
+              console.log(`Could not assign Linear issue: ${result.reason}`);
+            } else if (result.alreadyAssigned) {
+              console.log(`${result.issue} already assigned to ${result.assignee}`);
+            } else {
+              console.log(`Assigned ${result.issue} to ${result.assignee}`);
+            }
+
       - name: Set up git configuration
         run: |
           git config --global user.name "Claude Code[bot]"
@@ -259,6 +288,7 @@ jobs:
             core.setOutput('reviewers', issueCreator);
 
       - name: Create Pull Request
+        id: create_pr
         if: steps.check_changes.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -309,6 +339,32 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
+
+      - name: Link PR to Linear issue
+        if: steps.create_pr.outputs.pull-request-url
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
+          PR_URL: ${{ steps.create_pr.outputs.pull-request-url }}
+        with:
+          script: |
+            const { linkPrToLinearIssue } = require('${{ github.workspace }}/.github/scripts/assign-linear-issue.js');
+
+            const issueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
+
+            const result = await linkPrToLinearIssue({
+              issueUrl,
+              prUrl: process.env.PR_URL,
+              linearApiKey: process.env.LINEAR_API_KEY
+            });
+
+            if (result.success) {
+              console.log(`Linked PR to ${result.issue}`);
+            } else {
+              console.log(`Could not link PR to Linear: ${result.reason}`);
+            }
 
       - name: Log existing branch update
         if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'true'
