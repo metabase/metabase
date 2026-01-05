@@ -111,42 +111,4 @@ async function assignLinearIssue({
   return { success: false, reason: "Assignment mutation failed" };
 }
 
-async function linkPrToLinearIssue({ issueUrl, prUrl, linearApiKey }) {
-  const issueResponse = await linearGraphQL(
-    `
-    query {
-      attachmentsForURL(url: "${issueUrl}") {
-        nodes {
-          issue { id identifier }
-        }
-      }
-    }
-  `,
-    linearApiKey,
-  );
-
-  if (!issueResponse.data?.attachmentsForURL?.nodes?.length) {
-    return { success: false, reason: `No Linear issue linked to ${issueUrl}` };
-  }
-
-  const linearIssue = issueResponse.data.attachmentsForURL.nodes[0].issue;
-
-  const attachResponse = await linearGraphQL(
-    `
-    mutation {
-      attachmentCreate(input: { issueId: "${linearIssue.id}", url: "${prUrl}", title: "GitHub PR" }) {
-        success
-      }
-    }
-  `,
-    linearApiKey,
-  );
-
-  if (attachResponse.data?.attachmentCreate?.success) {
-    return { success: true, issue: linearIssue.identifier };
-  }
-
-  return { success: false, reason: "Attachment creation failed" };
-}
-
-module.exports = { assignLinearIssue, linkPrToLinearIssue };
+module.exports = { assignLinearIssue };
