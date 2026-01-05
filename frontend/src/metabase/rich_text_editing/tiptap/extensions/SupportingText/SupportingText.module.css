@@ -11,7 +11,7 @@
   &:hover {
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background-inverse) 2%,
+      var(--mb-color-background-primary-inverse) 2%,
       var(--mb-color-background-secondary)
     );
   }

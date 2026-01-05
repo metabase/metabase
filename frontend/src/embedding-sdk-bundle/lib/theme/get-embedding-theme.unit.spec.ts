@@ -40,7 +40,6 @@ describe("Transform Embedding Theme Override", () => {
         brand: expect.arrayContaining(["hotpink"]),
         "text-primary": expect.arrayContaining(["yellow"]),
         "text-disabled": expect.arrayContaining(["green"]),
-        background: expect.arrayContaining(["orange"]),
         "background-primary": expect.arrayContaining(["orange"]),
         "background-tertiary": expect.arrayContaining(["brown"]),
         "background-secondary": expect.arrayContaining(["brown"]),
@@ -66,7 +65,6 @@ describe("Transform Embedding Theme Override", () => {
     expect(theme).toEqual({
       fontFamily: "Roboto",
       colors: {
-        background: expect.arrayContaining(["green"]),
         "background-primary": expect.arrayContaining(["green"]),
         "background-tertiary": expect.arrayContaining(["green"]),
         "background-secondary": expect.arrayContaining(["green"]),
