@@ -1,16 +1,70 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { tinykeys } from "tinykeys";
+import { t } from "ttag";
 
+import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useSelector } from "metabase/lib/redux";
+import { Sidebar } from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { getUser } from "metabase/selectors/user";
+import { Box, Button, Flex, Text } from "metabase/ui";
 
 import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 import type { MetabotAgentId } from "../state";
 
 import { MetabotChat } from "./MetabotChat";
+
+const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
+  return (
+    <Sidebar isOpen side="right" width="30rem">
+      <Flex
+        h="100%"
+        gap="md"
+        direction="column"
+        align="center"
+        justify="center"
+        data-testid="metabot-error-fallback"
+      >
+        <Box component={EmptyDashboardBot} w="6rem" />
+        <Text c="text-light" maw="12rem" ta="center">
+          {t`Something went wrong.`}
+        </Text>
+        <Button variant="subtle" size="compact-lg" onClick={onRetry}>
+          {t`Try again`}
+        </Button>
+      </Flex>
+    </Sidebar>
+  );
+};
+
+const SimulateError = () => {
+  const [shouldThrow, setShouldThrow] = useState(false);
+
+  if (shouldThrow) {
+    throw new Error("Simulated error for testing ErrorBoundary");
+  }
+
+  return (
+    <Button
+      onClick={() => setShouldThrow(true)}
+      variant="subtle"
+      size="xs"
+      c="text-dark"
+      style={{
+        position: "fixed",
+        right: 500,
+        top: 75,
+        width: 300,
+        height: 100,
+        background: "red",
+      }}
+    >
+      🧨🔥 {t`Simulate Error`}
+    </Button>
+  );
+};
 
 // TODO: add test coverage for these
 export interface MetabotConfig {
@@ -29,6 +83,11 @@ export interface MetabotProps {
 
 export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent(config?.agentId ?? "omnibot");
+  const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
+
+  const handleRetry = () => {
+    setErrorBoundaryKey((prev) => prev + 1);
+  };
 
   useEffect(() => {
     return tinykeys(window, {
@@ -55,9 +114,12 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
     return null;
   }
 
+  const ErrorFallback = () => <MetabotErrorFallback onRetry={handleRetry} />;
+
   return (
-    <ErrorBoundary errorComponent={() => null}>
+    <ErrorBoundary key={errorBoundaryKey} errorComponent={ErrorFallback}>
       <MetabotChat config={config} />
+      <SimulateError />
     </ErrorBoundary>
   );
 };
