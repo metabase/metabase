@@ -129,7 +129,6 @@ export function LibrarySectionLayout() {
         id: "updatedAt",
         header: t`Updated At`,
         accessorKey: "updatedAt",
-        header: t`Updated At`,
         cell: ({ getValue }) => {
           const value = getValue() as string;
           return value && <DateTime value={value} />;
