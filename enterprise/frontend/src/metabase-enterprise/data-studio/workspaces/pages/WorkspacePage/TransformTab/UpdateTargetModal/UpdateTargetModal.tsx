@@ -25,6 +25,7 @@ import type {
   UpdateWorkspaceTransformRequest,
   WorkspaceTransform,
 } from "metabase-types/api";
+import { useTransformValidation } from "../TransformTab";
 
 type UpdateTargetModalProps = {
   transform: WorkspaceTransform;
@@ -60,13 +61,13 @@ export function UpdateTargetModal({
 }
 
 type EditTransformValues = {
-  name: string;
-  schema: string | null;
+  targetName: string;
+  targetSchema: string | null;
 };
 
 const EDIT_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  schema: Yup.string().nullable(),
+  targetName: Yup.string().required(Errors.required),
+  targetSchema: Yup.string().nullable(),
 });
 
 type UpdateTargetFormProps = {
@@ -84,7 +85,16 @@ function UpdateTargetForm({
   const databaseId = sourceDatabaseId(source);
   const [updateWorkspaceTransform] = useUpdateWorkspaceTransformMutation();
   const initialValues = useMemo(() => getInitialValues(transform), [transform]);
+  const validationSchemaExtension = useTransformValidation({
+    databaseId,
+    target: transform.target,
+    workspaceId: transform.workspace_id,
+  });
   // console.log(transform);
+
+  const validationSchema = useMemo(() => EDIT_TRANSFORM_SCHEMA.shape(
+    validationSchemaExtension,
+  ), [validationSchemaExtension]);
 
   const {
     data: database,
@@ -113,7 +123,7 @@ function UpdateTargetForm({
       throw new Error("Database ID is required");
     }
     const updatedTransform = await updateWorkspaceTransform(
-      getUpdateRequest(transform, values, databaseId),
+      getUpdateTargetRequest(transform, values, databaseId),
     ).unwrap();
 
     onUpdate(updatedTransform);
@@ -122,21 +132,22 @@ function UpdateTargetForm({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={EDIT_TRANSFORM_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
       enableReinitialize
+      validateOnMount
     >
       {({ dirty }) => (
         <Form>
           <Stack gap="lg">
             {supportsSchemas && (
               <SchemaFormSelect
-                name="schema"
+                name="targetSchema"
                 label={t`Schema`}
                 data={schemas}
               />
             )}
-            <FormTextInput name="name" label={t`New table name`} />
+            <FormTextInput name="targetName" label={t`New table name`} />
             <Group>
               <Box flex={1}>
                 <FormErrorMessage />
@@ -157,14 +168,14 @@ function UpdateTargetForm({
 
 function getInitialValues({ target }: WorkspaceTransform): EditTransformValues {
   return {
-    name: target.name,
-    schema: target.schema ?? null,
+    targetName: target.name,
+    targetSchema: target.schema ?? null,
   };
 }
 
-function getUpdateRequest(
+function getUpdateTargetRequest(
   { id, workspace_id }: WorkspaceTransform,
-  { name, schema }: EditTransformValues,
+  { targetName: name, targetSchema: schema }: EditTransformValues,
   databaseId: number,
 ): UpdateWorkspaceTransformRequest {
   return {

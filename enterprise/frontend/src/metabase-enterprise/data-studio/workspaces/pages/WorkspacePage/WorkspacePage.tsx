@@ -156,6 +156,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     [externalTransforms],
   );
   const [fetchTransform] = useLazyGetTransformQuery();
+  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   useEffect(() => {
     // Initialize transform tab if redirected from transform page.
     if (transformId) {
@@ -164,7 +165,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           return;
         }
 
-        const transform = [...availableTransforms, ...workspaceTransforms].find(
+        const transform = [...workspaceTransforms, ...availableTransforms].find(
           (transform) => {
             if ("global_id" in transform) {
               return transform.global_id === Number(transformId);
@@ -172,13 +173,23 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             return transform.id === Number(transformId);
           },
         );
-        if (transform) {
+
+        const isWsTransform = !!transform && "global_id" in transform;
+        if (transform && !isWsTransform) {
           const { data } = await fetchTransform(
-            "global_id" in transform && transform.global_id !== null
-              ? transform.global_id
-              : transform.id,
+              transform.id,
             true,
           );
+          if (data) {
+            addOpenedTransform(data);
+            setActiveTransform(data);
+            setTab(transformId);
+          }
+        } else if (transform && isWsTransform) {
+          const { data } = await fetchWorkspaceTransform({
+            workspaceId: id,
+            transformId: transform.ref_id,
+          });
           if (data) {
             addOpenedTransform(data);
             setActiveTransform(data);
@@ -190,21 +201,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         dispatch(replace(Urls.dataStudioWorkspace(id)));
       })();
     }
-  }, [
-    transformId,
-    setActiveTransform,
-    availableTransforms,
-    addOpenedTransform,
-    fetchTransform,
-    dispatch,
-    id,
-    isLoadingExternalTransforms,
-    sendErrorToast,
-    isLoadingWorkspaceTransforms,
-    workspaceTransforms,
-  ]);
+  }, [transformId, setActiveTransform, availableTransforms, addOpenedTransform, fetchTransform, dispatch, id, isLoadingExternalTransforms, sendErrorToast, isLoadingWorkspaceTransforms, workspaceTransforms, fetchWorkspaceTransform]);
 
-  const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
   const {
     data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
     refetch: refetchWorkspaceTables,
@@ -728,7 +726,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   items={openedTabs}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel}>
+                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel} data-testid="workspace-tabs">
                     <Tabs.Tab value="setup">
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="database" aria-hidden />

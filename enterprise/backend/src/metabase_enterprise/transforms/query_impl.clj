@@ -14,16 +14,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod transforms.i/source-db-id :query
-  [transform]
-  (-> transform :source :query :database))
-
 (defmethod transforms.i/target-db-id :query
   [transform]
   (or (get-in transform [:target :database])
-      (:target_db_id transform)
       ;; Fallback to source. https://github.com/metabase/metabase/pull/67084#discussion_r2630147855
-      (-> transform :source :query :database)))
+      (-> transform :source :query :database)
+      (:target_db_id transform)))
 
 (mr/def ::transform-details
   [:map

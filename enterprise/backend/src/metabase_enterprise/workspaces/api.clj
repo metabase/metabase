@@ -170,8 +170,10 @@
   "Get workspace tables"
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
-  (api/check-404 (t2/select-one :model/Workspace :id id))
-  (let [order-by         {:order-by [:db_id :global_schema :global_table]}
+  (let [workspace        (api/check-404 (t2/select-one :model/Workspace :id id))
+        ;; Trigger creation of the Workspace*External entries
+        _                (ws.impl/get-or-calculate-graph workspace)
+        order-by         {:order-by [:db_id :global_schema :global_table]}
         outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
                                      :isolated_schema :isolated_table :isolated_table_id :ref_id]
@@ -557,7 +559,7 @@
                               [:target [:map
                                         [:database {:optional true} ::ws.t/appdb-id]
                                         [:type :string]
-                                        [:schema :string]
+                                        [:schema [:maybe :string]]
                                         [:name :string]]]]]
   (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id :status] ws-id))
         target    (update target :database #(or % db_id))
@@ -574,7 +576,7 @@
       (not (or db_id ws-db-id))
       {:status 403 :body (deferred-tru "Must target a database")}
 
-      (str/starts-with? (:schema target) "mb__isolation_")
+      (when-let [schema (:schema target)] (str/starts-with? schema "mb__isolation_"))
       {:status 403 :body (deferred-tru "Must not target an isolated workspace schema")}
 
       ;; Within a workspace, we defer blocking on conflicts outside the workspace

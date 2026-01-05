@@ -116,8 +116,9 @@ export const CodeTab = ({
           {workspaceTransforms.map((transform) => {
             const isEdited = hasTransformEdits(transform);
             const isActive =
-              typeof activeTransformId === "string" &&
-              activeTransformId === transform.ref_id;
+              (typeof activeTransformId === "string" &&
+              activeTransformId === transform.ref_id) ||
+                (typeof activeTransformId === "number" && activeTransformId === transform.global_id);
 
             return (
               <TransformListItem

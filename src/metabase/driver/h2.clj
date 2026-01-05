@@ -1,5 +1,5 @@
 (ns metabase.driver.h2
-  (:refer-clojure :exclude [some every?])
+  (:refer-clojure :exclude [some every? get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.math.combinatorics :as math.combo]

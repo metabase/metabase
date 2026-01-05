@@ -1,7 +1,6 @@
 import dedent from "ts-dedent";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   PythonTransformTableAliases,
   TransformTagId,
@@ -11,15 +10,9 @@ const { H } = cy;
 const { DataStudio, Workspaces } = H;
 const { Transforms } = DataStudio;
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
-
-const DB_NAME = "Worms";
 const SOURCE_TABLE = "Animals";
 const TARGET_TABLE = "transform_table";
-const TARGET_TABLE_2 = "T2";
 const TARGET_SCHEMA = "Schema A";
-const TARGET_SCHEMA_2 = "S2";
-const CUSTOM_SCHEMA = "CS";
 
 describe("scenarios > data studio > workspaces", () => {
   beforeEach(() => {
@@ -30,10 +23,28 @@ describe("scenarios > data studio > workspaces", () => {
     H.activateToken("bleeding-edge");
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
+    // TODO: Is this correct way to grant querying permissions?
+    cy.request("PUT", "/api/permissions/graph", {
+      groups: {
+        "1": {
+          "1": { download: { schemas: "full" }, "view-data": "unrestricted" },
+          "2": {
+            "view-data": "unrestricted",
+            download: { schemas: "full" },
+            "create-queries": "query-builder-and-native",
+          },
+        },
+      },
+      revision: 1,
+      sandboxes: [],
+      impersonations: [],
+    });
+
     cy.intercept("POST", "/api/ee/workspace").as("createWorkspace");
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
       "runTransform",
     );
+    cy.intercept("POST", "/api/dataset").as("dataset");
     // cy.intercept("PUT", "/api/field/*").as("updateField");
     // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
     // cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
@@ -80,7 +91,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("shows workspace db");
         Workspaces.getWorkspaceDatabaseSelect()
-          .should("have.value", "Worms")
+          .should("have.value", "Writable Postgres12")
           .should("be.enabled");
 
         cy.log("Doesn't show workspace setup logs");
@@ -251,7 +262,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("should be able to check out existing transform into a new workspace from the transform page", () => {
+    it("[FLAKY] should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
@@ -340,8 +351,11 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       cy.findByLabelText(targetTable).should("be.visible").click();
-      cy.wait("@runTransform");
+      cy.wait("@dataset");
 
+      // This step is flaky, because for some reason the preview tab is not
+      // always opened on time.
+      // @uladzimirdev ☝️
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(targetTable, [
           "Setup",
@@ -363,7 +377,30 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getMergeWorkspaceButton().click();
       Workspaces.getMergeCommitInput().type("Merge transform");
-      H.modal().findByRole("button", { name: /Merge/ }).click();
+      H.modal().within(() => {
+        cy.log("All quality checks should be passed");
+        cy.findByText("Quality Checks").should("exist");
+        cy.findByText("External dependencies").should("exist");
+        cy.findByText("Internal dependencies").should("exist");
+        cy.findByText("Structural issues").should("exist");
+        cy.findByText("Unused outputs").should("exist");
+        cy.findByText("1 transform will be merged").should("exist");
+
+        cy.log("Transform diffs are displayed");
+        cy.findByText("Modified transforms").should("exist");
+        cy.contains('[class*="sidebarItem"]', "SQL transform")
+          .should("be.visible")
+          .should(($el) => {
+            expect($el.text()).to.include("SQL transform");
+            expect($el.text()).to.match(/\+1\b/);
+            expect($el.text()).to.match(/-1\b/);
+          })
+          .click();
+        cy.contains('[class*="cm-deletedLine"]', `SELECT * FROM "Schema A"."Animals"`)
+        cy.contains('[class*="cm-insertedLine"]', `SELECT * FROM "Schema A"."Animals" LIMIT 2`)
+
+        cy.findByRole("button", { name: /Merge/ }).click();
+      });
 
       Transforms.list()
         .findByRole("row", { name: /SQL transform/ })
@@ -578,12 +615,459 @@ describe("scenarios > data studio > workspaces", () => {
         .should("be.visible");
     });
   });
+
+  describe("transform tab", () => {
+    it("should create new transform - SQL", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Click Add Transform button");
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByLabelText("Add transform").click();
+      });
+
+      cy.log("Check that SQL and Python options are provided");
+      H.popover()
+        .findByRole("menuitem", { name: /Python Script/ })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .should("be.visible")
+        .click();
+
+      cy.log("Check that it opens new empty tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
+        H.NativeEditor.value().should("be.empty");
+        Workspaces.getSaveTransformButton().should("be.disabled");
+      });
+
+      cy.log(
+        "Check that 'New transform' is added to workspace transforms list",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      cy.log("Type a query in the editor");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.paste("SELECT * FROM many_schemas.animals");
+      });
+
+      cy.log("Open transform settings");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log(
+        "Check that table name gets automatically populated based on transform name",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/).should("have.value", "new_transform");
+        cy.findByDisplayValue("new_transform").clear().type("test_table");
+
+        cy.findByLabelText("Schema").click();
+        cy.document()
+          .findByRole("option", { name: /Schema B/ })
+          .click();
+
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+
+      cy.log("Verify transform is saved with new name");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
+      });
+
+      cy.log(
+        "Check transform appears in workspace transforms list with correct name",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      Workspaces.openDataTab().then(() => {
+        cy.findByText("Schema B.test_table").should("be.visible");
+      });
+
+      Workspaces.getTransformTargetButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Schema").should("have.value", "Schema B");
+        cy.findByLabelText("New table name")
+          .should("have.value", "test_table")
+          .clear()
+          .type("new_table");
+        cy.findByRole("button", { name: /Change target/ }).click();
+      });
+
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByText("Schema B.new_table").should("be.visible");
+      });
+
+      Workspaces.openCodeTab().then(() => {
+        Workspaces.getWorkspaceTransforms().within(() => {
+          Workspaces.getTransformStatusDot("New transform").should("not.exist");
+        });
+      });
+    });
+
+    it("should create new transform - Python", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Click Add Transform button");
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByLabelText("Add transform").click();
+      });
+
+      cy.log("Check that Python and SQL options are provided");
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .should("be.visible");
+      H.popover()
+        .findByRole("menuitem", { name: /Python Script/ })
+        .should("be.visible")
+        .click();
+
+      cy.log("Check that it opens new empty tab");
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
+      });
+      H.PythonEditor.value().should("not.be.empty");
+
+      cy.log(
+        "Check that 'New transform' is added to workspace transforms list",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      cy.log("Type a query in the editor");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.PythonEditor.clear().paste(TEST_PYTHON_TRANSFORM);
+
+        cy.findByTestId("python-data-picker")
+          .findByText("Select a table…")
+          .click();
+      });
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema a").click();
+        cy.findByText("Animals").click();
+      });
+
+      cy.log("Open transform settings");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log(
+        "Check that table name gets automatically populated based on transform name",
+      );
+      H.modal().within(() => {
+        cy.findByLabelText(/Table name/).should("have.value", "new_transform");
+        cy.findByDisplayValue("new_transform").clear().type("test_table");
+
+        cy.findByLabelText("Schema").click();
+        cy.document()
+          .findByRole("option", { name: /Schema B/ })
+          .click();
+
+        cy.findByRole("button", { name: /Save/ }).click();
+      });
+
+      cy.log("Verify transform is saved with new name");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("New transform", [
+          "Setup",
+          "Agent Chat",
+          "New transform",
+        ]);
+      });
+
+      cy.log(
+        "Check transform appears in workspace transforms list with correct name",
+      );
+      Workspaces.getWorkspaceTransforms()
+        .findByText("New transform")
+        .should("be.visible");
+
+      Workspaces.openDataTab().then(() => {
+        cy.findByText("Schema B.test_table").should("be.visible");
+        cy.findByText("Schema A.Animals").should("be.visible");
+      });
+
+      cy.findByTestId("python-data-picker").findByText("Animals").click();
+
+      H.entityPickerModal().within(() => {
+        cy.findByText("Schema B").click();
+        cy.findByText("Animals").click();
+      });
+
+      Workspaces.getSaveTransformButton().click();
+
+      Workspaces.openDataTab().then(() => {
+        cy.findByText("Schema B.Animals").should("be.visible");
+      });
+
+      Workspaces.getTransformTargetButton().click();
+      H.modal().within(() => {
+        cy.findByLabelText("Schema").should("have.value", "Schema B");
+        cy.findByLabelText("New table name")
+          .should("have.value", "test_table")
+          .clear()
+          .type("new_table");
+        cy.findByRole("button", { name: /Change target/ }).click();
+      });
+
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByText("Schema B.new_table").should("be.visible");
+      });
+
+      Workspaces.openCodeTab().then(() => {
+        Workspaces.getWorkspaceTransforms().within(() => {
+          Workspaces.getTransformStatusDot("New transform").should("not.exist");
+        });
+      });
+    });
+
+    it("should validate target name", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Add existing transform");
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      cy.log("Make changes to the transform");
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Create new transform");
+      Workspaces.getWorkspaceSidebar().within(() => {
+        cy.findByLabelText("Add transform").click();
+      });
+
+      H.popover()
+        .findByRole("menuitem", { name: /SQL Transform/ })
+        .click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.paste("any text");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      H.modal().within(() => {
+        cy.findByDisplayValue("new_transform").clear();
+        cy.findByText("Target table name is required").should("be.visible");
+        cy.realType("transform_table");
+        cy.findByText(
+          "Another transform in this workspace already targets that table",
+        ).should("be.visible");
+        cy.realType("1");
+        cy.findByText(
+          "Another transform in this workspace already targets that table",
+        ).should("not.exist");
+      });
+    });
+  });
+
+  describe("run transform", () => {
+    it("should run and fail transform runs", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Run transform");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      H.NativeEditor.type(" LIMIT");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getRunTransformButton().click();
+
+      H.undoToast().findByText("Failed to run transform");
+      Workspaces.getWorkspaceContent().findByText(
+        "This transform hasn't been run before.",
+      );
+
+      H.NativeEditor.type(" 1;");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getRunTransformButton().click();
+
+      // The run button state change happens very fast and behaves flaky. Not sure if we need to test it.
+      // Workspaces.getWorkspaceContent().findByText("Ran successfully");
+      Workspaces.getWorkspaceContent().findByText(
+        "Last ran a few seconds ago successfully.",
+      );
+
+      H.NativeEditor.type("{backspace}{backspace}");
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getRunTransformButton().click();
+
+      H.undoToast().findByText("Failed to run transform");
+    });
+
+    it("should show ad-hoc results", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      cy.log("Run ad-hoc query");
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      H.NativeEditor.type(" LIMIT 1;").runButton().click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+          "Preview (SQL transform)",
+        ]);
+        cy.findByText("Preview (SQL transform)").click();
+        // TODO: Is it expected that ad-hoc cols have lowercase names?
+        H.assertTableData({
+          columns: ["name", "score"],
+          firstRows: [["Duck", "10"]],
+        });
+      });
+    });
+  });
+
+  describe("transform -> workspace", () => {
+    it("should check out transform into a new workspace from the transform page", () => {
+      cy.log("Create 2 workspaces, add transform to the second one");
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceA");
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceB");
+
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Check that all workspaces are available and sorted by checked status")
+      cy.visit("/data-studio/transforms");
+      Transforms.list()
+        .findByRole("row", { name: /SQL transform/ })
+        .click();
+
+      cy.findByRole("button", { name: /Edit transform/ }).click();
+      H.popover().within(() => {
+        cy.get<string>('@workspaceA').then((workspaceA) => {
+          cy.get<string>('@workspaceB').then((workspaceB) => {
+            cy.findAllByRole('menuitem').eq(0).contains("New workspace");
+            cy.findAllByRole('menuitem').eq(1).contains(workspaceB);
+            cy.log("Check that edit redirects to correct workspace")
+            cy.findAllByRole('menuitem').eq(2).contains(workspaceA).click();
+          })
+        })
+      });
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .should("not.exist");
+    })
+
+    it("should open checked out transform in existing workspace from the transform page", () => {
+      cy.log("Create 2 workspaces, add transform to the second one");
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceA");
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceB");
+
+      Workspaces.getMainlandTransforms()
+        .findByText("SQL transform")
+        .should("be.visible")
+        .click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.NativeEditor.type(" LIMIT 2");
+      });
+      Workspaces.getSaveTransformButton().click();
+
+      cy.visit("/data-studio/transforms");
+      Transforms.list()
+        .findByRole("row", { name: /SQL transform/ })
+        .click();
+
+      cy.findByRole("button", { name: /Edit transform/ }).click();
+      H.popover().within(() => {
+        cy.get<string>('@workspaceA').then((workspaceA) => {
+          cy.get<string>('@workspaceB').then((workspaceB) => {
+            cy.findAllByRole('menuitem').eq(0).contains("New workspace");
+            cy.findAllByRole('menuitem').eq(2).contains(workspaceA);
+            cy.log("Edit transform in a workspace where it's been checked out")
+            cy.findAllByRole('menuitem').eq(1).contains(workspaceB).click();
+          })
+        })
+      });
+
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+      H.NativeEditor.value().should("contain", " LIMIT 2");
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .click();
+      cy.log("Tabs state should stay the same, because this transform is already checked and its tab should be opened after redirect")
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+        ]);
+      });
+    })
+  })
 });
 
 function createWorkspace() {
   Workspaces.getNewWorkspaceButton().click();
 }
 
+const TEST_PYTHON_TRANSFORM = dedent`
+  import pandas as pd
+
+  def transform(foo):
+      return pd.DataFrame([{"foo": 42 }])
+`;
 function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
     targetTable: TARGET_TABLE,
@@ -591,12 +1075,7 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
 
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
     createPythonTransform({
-      body: dedent`
-          import pandas as pd
-
-          def transform(foo):
-            return pd.DataFrame([{"foo": 42 }])
-        `,
+      body: TEST_PYTHON_TRANSFORM,
       sourceTables: { foo: id },
     });
   });

@@ -342,6 +342,7 @@ export const TransformTab = ({
   return (
     <Stack gap={0} h="100%">
       <Stack
+        data-testid="transform-tab-header"
         flex="0 0 auto"
         gap="sm"
         p="md"
@@ -383,7 +384,8 @@ export const TransformTab = ({
               <Button
                 leftSection={<Icon name="check" />}
                 size="sm"
-                disabled={isDisabled}
+                variant="filled"
+                disabled={isDisabled || !hasChanges}
                 onClick={() => setSaveModalOpen(true)}
               >{t`Save`}</Button>
             )}
@@ -446,6 +448,7 @@ export const TransformTab = ({
           schemas={allowedSchemas}
           showIncrementalSettings={true}
           validationSchemaExtension={validationSchemaExtension}
+          validateOnMount
           handleSubmit={handleSave}
           targetDescription={t`This is the main table this transform owns. Runs from this workspace write to an isolated workspace copy, so the original table isn't changed until you merge the workspace.`}
         />
@@ -465,6 +468,53 @@ export const useTransformValidation = ({
 }) => {
   const [validateTableName] = useValidateTableNameMutation();
 
+  const validateTableNameDebounceRef = useRef<{
+    timeoutId?: ReturnType<typeof setTimeout>;
+    pending?: { resolve: (message: string) => void };
+  }>({});
+
+  // I wasn't able to simplify this logic any further, but maybe a review would be nice.
+  // We wrap debounced validation call in a promise to properly set form state,
+  // and we need to handle pending state to prevent multiple validation calls.
+  const debouncedValidateTableName = useCallback(
+    ({ name, schema }: { name: string; schema?: string }) => {
+      const debounceState = validateTableNameDebounceRef.current;
+
+      if (debounceState.timeoutId) {
+        clearTimeout(debounceState.timeoutId);
+      }
+
+      debounceState.pending?.resolve("OK");
+      debounceState.pending = undefined;
+
+      return new Promise<string>((resolve) => {
+        const pending = { resolve };
+        debounceState.pending = pending;
+
+        debounceState.timeoutId = setTimeout(async () => {
+          debounceState.timeoutId = undefined;
+
+          let message: string;
+          try {
+            message = await validateTableName({
+              id: workspaceId,
+              db_id: databaseId,
+              target: { type: "table", name, schema: schema ?? null },
+            }).unwrap();
+          } catch (error) {
+            message = getErrorMessage(error);
+          }
+
+          if (debounceState.pending === pending) {
+            debounceState.pending = undefined;
+            resolve(message);
+          }
+        }, 300);
+      });
+    },
+    [databaseId, validateTableName, workspaceId],
+  );
+
   const yupSchema = useMemo(
     () => ({
       targetName: Yup.string()
@@ -482,21 +532,15 @@ export const useTransformValidation = ({
             return true;
           }
 
-          try {
-            const message = await validateTableName({
-              id: workspaceId,
-              db_id: databaseId,
-              target: { type: "table", name: value, schema },
-            }).unwrap();
+          const message = await debouncedValidateTableName({
+            name: value,
+            schema,
+          });
 
-            return message === "OK" ? true : context.createError({ message });
-          } catch (error) {
-            const message = getErrorMessage(error);
-            return context.createError({ message });
-          }
+          return message === "OK" ? true : context.createError({ message });
         }),
     }),
-    [databaseId, target, workspaceId, validateTableName],
+    [debouncedValidateTableName, target],
   );
 
   return yupSchema;
