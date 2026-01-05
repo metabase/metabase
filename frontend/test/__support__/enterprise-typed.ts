@@ -1,6 +1,7 @@
 export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   database_routing: "metabase-enterprise/database_routing",
   snippets: "metabase-enterprise/snippets",
+  embedding_iframe_sdk_setup: "metabase-enterprise/embedding_iframe_sdk_setup",
   settings: "metabase-enterprise/settings",
   model_persistence: "metabase-enterprise/model_persistence",
   comments: "metabase-enterprise/comments",
