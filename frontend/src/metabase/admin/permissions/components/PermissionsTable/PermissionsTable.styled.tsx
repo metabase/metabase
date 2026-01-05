@@ -18,8 +18,8 @@ const getHeaderBackground = (theme: Theme) =>
   `linear-gradient(
     to top,
     color-mix(in srgb, ${theme.fn.themeColor("border")} 50%, ${theme.fn.themeColor("background-primary")} 50%) 1px,
-    var(--mb-color-bg-white) 1px,
-    var(--mb-color-bg-white) 100%
+    var(--mb-color-background-primary) 1px,
+    var(--mb-color-background-primary) 100%
   )`;
 
 export const PermissionsTableRoot = styled.table`
@@ -35,7 +35,7 @@ export const PermissionsTableCell = styled.td`
   box-sizing: border-box;
   min-height: 40px;
   overflow: hidden;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
 
   &:first-of-type {
     max-width: 300px;
@@ -44,7 +44,7 @@ export const PermissionsTableCell = styled.td`
     position: sticky;
     padding-left: 0;
     padding-right: 1.5rem;
-    background: var(--mb-color-bg-white);
+    background: var(--mb-color-background-primary);
 
     &:after {
       position: absolute;

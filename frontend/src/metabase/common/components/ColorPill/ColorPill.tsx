@@ -61,7 +61,6 @@ export const ColorPill = ({
         className,
       )}
     >
-      {/* @ts-expect-error Color Pill needs to handle arbitrary color values due to whitelabelling */}
       <Box bg={color} w="100%" h="100%" style={{ borderRadius: "50%" }}></Box>
     </Center>
   );

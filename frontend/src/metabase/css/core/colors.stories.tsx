@@ -35,7 +35,7 @@ const COLOR_NAMES = [
   "--mb-color-text-selected",
   "--mb-color-text-brand",
   "--mb-color-text-primary-inverse",
-  "--mb-color-background",
+  "--mb-color-background-primary",
   "--mb-color-background-selected",
   "--mb-color-background-disabled",
   "--mb-color-background-primary-inverse",
@@ -54,7 +54,6 @@ export function Default() {
       {COLOR_NAMES.map((colorName) => {
         return (
           <Card
-            // @ts-expect-error story file
             bg={`var(${colorName})`}
             key={colorName}
             withBorder
@@ -62,7 +61,6 @@ export function Default() {
               flexBasis: "24%",
             }}
           >
-            {/* @ts-expect-error story file */}
             <Text c="black">{colorName}</Text>
           </Card>
         );

@@ -15,7 +15,6 @@ const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "background-hover",
   "background-disabled",
   "background-secondary",
-  "background-light",
   "text-primary",
   "text-secondary",
   "text-disabled",

@@ -58,7 +58,7 @@
 }
 
 .sendIcon {
-  color: var(--mb-color-bg-white);
+  color: var(--mb-color-background-primary);
   width: 0.8rem;
   transition: color 150ms ease;
 }

@@ -1,4 +1,3 @@
-import type { ColorName } from "metabase/lib/colors/types";
 import { Box, Center, Loader } from "metabase/ui";
 
 /**
@@ -10,7 +9,7 @@ export const EmbedPreviewLoadingOverlay = ({
   bg,
 }: {
   isVisible: boolean;
-  bg?: ColorName;
+  bg?: string;
 }) => {
   if (!isVisible) {
     return null;

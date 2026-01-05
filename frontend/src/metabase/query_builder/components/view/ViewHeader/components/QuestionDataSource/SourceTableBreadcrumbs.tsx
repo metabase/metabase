@@ -63,7 +63,7 @@ export function SourceTableBreadcrumbs({
           key="collection"
           to={Urls.collection(collection)}
           icon="repository"
-          inactiveColor="text-light"
+          inactiveColor="text-disabled"
         >
           {collection.name}
         </HeadBreadcrumbs.Badge>,
@@ -74,7 +74,7 @@ export function SourceTableBreadcrumbs({
               ? Urls.queryBuilderTable(table.id, table.db_id)
               : undefined
           }
-          inactiveColor={isSubhead ? "text-light" : "text-dark"}
+          inactiveColor={isSubhead ? "text-disabled" : "text-primary"}
         >
           <span>
             {table.display_name}

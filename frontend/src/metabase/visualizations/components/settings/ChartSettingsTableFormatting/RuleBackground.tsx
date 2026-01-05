@@ -16,6 +16,5 @@ export const RuleBackground = ({
   rule.type === "range" ? (
     <ColorRange colors={rule.colors} className={className} style={style} />
   ) : rule.type === "single" ? (
-    // @ts-expect-error whitelabel colors
     <Box className={className} style={style} bg={rule.color} />
   ) : null;

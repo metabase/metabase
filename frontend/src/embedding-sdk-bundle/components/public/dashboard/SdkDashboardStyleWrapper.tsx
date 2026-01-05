@@ -13,7 +13,6 @@ export const SdkDashboardStyledWrapper = forwardRef(
   ) {
     return (
       <Flex
-        // @ts-expect-error SDK Stuff... I don't know what to do
         bg="bg-dashboard"
         direction="column"
         justify="flex-start"

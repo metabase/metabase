@@ -32,7 +32,7 @@
       &[data-indeterminate],
       &[data-indeterminate="true"] {
         border-color: var(--mb-color-border);
-        background-color: var(--mb-color-background);
+        background-color: var(--mb-color-background-primary);
       }
 
       &:after {

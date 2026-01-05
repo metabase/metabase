@@ -33,7 +33,6 @@ const Wrapper = ({
   theme: MetabaseTheme;
 }) => (
   <ComponentProvider theme={theme} authConfig={storybookSdkAuthDefaultConfig}>
-    {/* @ts-expect-error Story stuff */}
     <Box p="xl" bg={theme.colors?.background}>
       {children}
     </Box>

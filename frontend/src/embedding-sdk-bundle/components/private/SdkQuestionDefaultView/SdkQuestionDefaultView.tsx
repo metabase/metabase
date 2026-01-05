@@ -212,7 +212,6 @@ export const SdkQuestionDefaultView = ({
                         <Divider
                           mx="xs"
                           orientation="vertical"
-                          // @ts-expect-error we have to do this for now because Mantine's divider overrides this color no matter what
                           color="var(--mb-color-border) !important"
                         />
                       )}

@@ -66,10 +66,10 @@ export const CollectionSyncList = ({
 
   return (
     <Box
+      bg="background-primary"
       style={{
         borderRadius: "var(--mantine-radius-md)",
         border: "1px solid var(--mb-color-border)",
-        backgroundColor: "var(--mb-color-bg-white)",
         overflow: "hidden",
       }}
     >

@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import { formatValue } from "metabase/lib/formatting";
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import type { OptionsType } from "metabase/lib/formatting/types";
@@ -39,7 +38,7 @@ import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 
 export type ComparisonResult = {
   changeArrowIconName: ChangeArrowType | undefined;
-  changeColor: ColorName | undefined;
+  changeColor: string | undefined;
   changeType: ChangeType;
   comparisonDescStr: string | undefined;
   comparisonValue: RowValue | undefined;
