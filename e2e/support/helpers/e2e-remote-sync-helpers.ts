@@ -1,4 +1,3 @@
-import type { MatcherOptions } from "@testing-library/cypress";
 import yaml from "js-yaml";
 
 import type { Collection } from "metabase-types/api";
@@ -125,7 +124,7 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
-      const doc = yaml.load(str);
+      const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);
 
@@ -167,15 +166,28 @@ export const goToSyncedCollection = (opts?: Partial<Cypress.ClickOptions>) =>
 // Git sync controls are now in the app bar, not the sidebar
 export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
 
-export const getPullButton = () =>
-  getGitSyncControls().findByTestId("git-pull-button");
+const ensureGitSyncMenuOpen = () => {
+  getGitSyncControls().then(($btn) => {
+    if ($btn.attr("data-expanded") !== "true") {
+      cy.wrap($btn).click();
+    }
+  });
+};
 
-export const getPushButton = () =>
-  getGitSyncControls().findByTestId("git-push-button");
+export const getPullOption = () => {
+  ensureGitSyncMenuOpen();
+  return popover().findByRole("option", { name: /Pull changes/ });
+};
 
-// Branch picker is now in the app bar (git-sync-controls), not the sidebar
-export const branchPicker = (opts?: Partial<MatcherOptions>) =>
-  getGitSyncControls().findByTestId("branch-picker-button", opts);
+export const getPushOption = () => {
+  ensureGitSyncMenuOpen();
+  return popover().findByRole("option", { name: /Push changes/ });
+};
+
+export const getSwitchBranchOption = () => {
+  ensureGitSyncMenuOpen();
+  return popover().findByRole("option", { name: /Switch branch/ });
+};
 
 // Enable tenants feature for testing
 export const enableTenants = () => {
@@ -202,10 +214,10 @@ export const waitForTask = (
     throw Error(`Too many retries waiting for ${taskName}`);
   }
   cy.wait("@currentTask").then(({ response }) => {
-    const { body } = response;
-    if (body.sync_task_type !== taskName) {
+    const { body } = response || {};
+    if (body?.sync_task_type !== taskName) {
       waitForTask({ taskName });
-    } else if (body.status !== "successful") {
+    } else if (body?.status !== "successful") {
       waitForTask({ taskName }, retries + 1);
     }
   });
