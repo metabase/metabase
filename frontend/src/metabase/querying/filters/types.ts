@@ -1,4 +1,5 @@
 import type * as Lib from "metabase-lib";
+import type { DateFormattingSettings } from "metabase-types/api";
 
 import type {
   DATE_PICKER_DIRECTIONS,
@@ -106,6 +107,7 @@ export type DateFilterValue =
 export type DateFilterDisplayOpts = {
   // whether to include `On` prefix for a single date filter
   withPrefix?: boolean;
+  formattingSettings?: DateFormattingSettings;
 };
 
 export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";

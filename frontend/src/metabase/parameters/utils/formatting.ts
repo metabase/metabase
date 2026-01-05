@@ -14,7 +14,11 @@ import {
   isFieldFilterParameter,
   isTemporalUnitParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import type { ParameterValue, RowValue } from "metabase-types/api";
+import type {
+  FormattingSettings,
+  ParameterValue,
+  RowValue,
+} from "metabase-types/api";
 
 import { formatDateValue } from "./date-formatting";
 
@@ -41,6 +45,7 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
 export function formatParameterValue(
   rawValue: string | number | number[] | ParameterValue,
   parameter: UiParameter,
+  formattingSettings?: FormattingSettings,
 ) {
   if (Array.isArray(rawValue) && rawValue.length > 1) {
     return renderNumberOfSelections(rawValue.length);
@@ -49,7 +54,11 @@ export function formatParameterValue(
   const value: RowValue = Array.isArray(rawValue) ? rawValue[0] : rawValue;
 
   if (isDateParameter(parameter)) {
-    return formatDateValue(parameter, String(value));
+    return formatDateValue(
+      parameter,
+      String(value),
+      formattingSettings?.["type/Temporal"],
+    );
   }
 
   if (isTemporalUnitParameter(parameter)) {
