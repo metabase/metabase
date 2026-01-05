@@ -1,17 +1,9 @@
-name: Generate llms.txt
+name: Generate llms.txt file
 
 on:
-  # For testing purposes
-  push:
-    branches:
-      - "github-actions-to-generate-llms-txt"
-    paths:
-      - ".github/workflows/llms-txt-generate.yml"
-      - ".github/scripts/generate-llms-txt.js"
-      - "docs/**"
   schedule:
-    # Every 2 days at 3AM UTC
-    - cron: "0 3 */2 * *"
+    # Every 3 days at 03:00 UTC
+    - cron: "0 3 */3 * *"
   workflow_dispatch:
 
 permissions:
@@ -142,7 +134,7 @@ jobs:
             Co-Authored-By: GitHub Actions <actions@github.com>
           committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
           author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          title: "Auto-update llms.txt for ${{ steps.determine_branch.outputs.target_branch }}"
+          title: "[chore] Update llms.txt for ${{ steps.determine_branch.outputs.target_branch }}"
           body: |
             ## Summary
             This PR contains automatically generated updates to `llms.txt` and `llms-embedding-full.txt` files.
