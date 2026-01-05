@@ -11,12 +11,10 @@ interface UseQuestionEditorSyncOptions {
 }
 
 /**
- * Manages the editor open/close state and query execution for SDK questions.
+ * Synchronizes the notebook editor open/close state with the question lifecycle.
  *
- * Handles three main scenarios:
- * 1. New question: Opens editor automatically
- * 2. Question saved: Closes editor and runs query if results aren't available
- * 3. Question switched: Closes editor without running query (SDK handles loading)
+ * The hook manages automatic editor state transitions based on whether the user
+ * is working with a new question or an existing one:
  */
 export function useQuestionEditorSync({
   originalId,

@@ -11,8 +11,11 @@ interface UseNewQuestionEditorSyncOptions {
 }
 
 /**
- * Handles editor state for new questions.
- * Opens editor automatically and runs query after saving.
+ * Manages editor state for new questions
+ * - Opens the editor automatically when the question is unsaved
+ * - Closes the editor when the question is saved
+ * - Runs the query after saving if no results are available yet
+ *   (handles the case when user saves without visualizing first)
  */
 export function useNewQuestionEditorSync({
   enabled,

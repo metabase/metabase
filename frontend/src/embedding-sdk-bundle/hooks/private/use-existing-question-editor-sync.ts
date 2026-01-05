@@ -8,6 +8,11 @@ interface UseExistingQuestionEditorSyncOptions {
   closeEditor: () => void;
 }
 
+/**
+ * Manages editor state for existing questions (originalId !== "new").
+ * - Closes the editor when transitioning from a new question to an existing one
+ * - Closes the editor when an existing question finishes loading
+ */
 export function useExistingQuestionEditorSync({
   enabled,
   originalId,
