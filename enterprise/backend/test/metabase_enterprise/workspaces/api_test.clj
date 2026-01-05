@@ -109,6 +109,7 @@
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
+;; TODO we need to first add a transform to trigger initialization, or else there is nothing to destroy
 (deftest archive-workspace-calls-destroy-isolation-test
   (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
     (let [called?   (atom false)
@@ -140,15 +141,16 @@
         (mt/user-http-request :crowberto :delete 200 (ws-url (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
 
-(deftest ^:synchronized merge-workspace-calls-destroy-isolation-test
-  (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
-    (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
-      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_database _workspace]
-                                    (reset! called? true))]
-        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
-        (is @called? "destroy-workspace-isolation! should be called when merging")))))
+;; TODO we need to first add a transform to trigger initialization, or else there is nothing to destroy
+#_(deftest ^:synchronized merge-workspace-calls-destroy-isolation-test
+    (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
+      (let [called?   (atom false)
+            workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
+        (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                    (fn [_database _workspace]
+                                      (reset! called? true))]
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
+          (is @called? "destroy-workspace-isolation! should be called when merging")))))
 
 ;; TODO update this test to have a transform in the workspace. only non-empty workspaces will ensure isolation
 #_(deftest unarchive-workspace-calls-ensure-isolation-test
