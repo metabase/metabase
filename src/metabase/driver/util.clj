@@ -514,6 +514,44 @@
     :else
     (resolve-transitive-visible-if prop props-by-name driver)))
 
+(defn- process-connection-prop
+  "Recursively processes a single connection property, handling special types like :secret, :info, :group, etc.
+
+  For :group types, this function:
+  - Flattens any vectors in the :fields array (e.g., ssh-tunnel-preferences)
+  - Recursively processes each nested field
+
+  Returns a vector of processed properties (most types return a single property, some like :secret may expand to multiple)."
+  [conn-prop]
+  (case (keyword (:type conn-prop))
+    :secret
+    (expand-secret-conn-prop conn-prop)
+
+    :info
+    (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
+      [conn-prop']
+      [])
+
+    :checked-section
+    (resolve-checked-section-conn-prop conn-prop)
+
+    :schema-filters
+    (expand-schema-filters-prop conn-prop)
+
+    :group
+    ;; Process group: flatten vectors in :fields and recursively process each field
+    (let [;; Flatten any vectors in the :fields array (e.g., ssh-tunnel-preferences)
+          flattened-fields (into [] (mapcat u/one-or-many) (:fields conn-prop))
+          ;; Recursively process each field
+          processed-fields (persistent!
+                            (reduce (fn [acc field]
+                                      (reduce conj! acc (process-connection-prop field)))
+                                    (transient [])
+                                    flattened-fields))]
+      [(assoc conn-prop :fields processed-fields)])
+
+    [conn-prop]))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -525,29 +563,11 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props
-        (persistent!
-         (reduce (fn [acc conn-prop]
-                   ;; TODO: change this to expanded- and use that as the basis for all calcs below (not conn-prop)
-                   (let [expanded-props (case (keyword (:type conn-prop))
-                                          :secret
-                                          (expand-secret-conn-prop conn-prop)
-
-                                          :info
-                                          (if-let [conn-prop' (resolve-info-conn-prop conn-prop)]
-                                            [conn-prop']
-                                            [])
-
-                                          :checked-section
-                                          (resolve-checked-section-conn-prop conn-prop)
-
-                                          :schema-filters
-                                          (expand-schema-filters-prop conn-prop)
-
-                                          [conn-prop])]
-                     (reduce conj! acc expanded-props)))
-                 (transient [])
-                 conn-props))
+  (let [final-props (persistent!
+                     (reduce (fn [acc conn-prop]
+                               (reduce conj! acc (process-connection-prop conn-prop)))
+                             (transient [])
+                             conn-props))
         ;; Build complete props-by-name map including nested fields from groups
         props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"

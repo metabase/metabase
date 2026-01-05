@@ -499,3 +499,119 @@
     (mt/with-premium-features #{:hosting}
       (testing "does not include sqlite in hosted environment"
         (is (not (contains? (driver.u/available-drivers) :sqlite)))))))
+
+(deftest ^:parallel process-connection-prop-test
+  (testing "process-connection-prop handles different property types"
+    (testing ":info type with getter function"
+      (let [info-prop {:name "test-info"
+                       :type :info
+                       :getter (constantly "Test message")}
+            result (#'driver.u/process-connection-prop info-prop)]
+        (is (= 1 (count result)))
+        (is (= "Test message" (:placeholder (first result))))
+        (is (nil? (:getter (first result))) "Getter should be removed after processing")))
+
+    (testing ":info type with nil getter returns empty vector"
+      (let [info-prop {:name "test-info"
+                       :type :info
+                       :getter (constantly nil)}
+            result (#'driver.u/process-connection-prop info-prop)]
+        (is (= [] result) "Should return empty vector when getter returns nil")))
+
+    (testing "regular property passes through unchanged"
+      (let [regular-prop {:name "host"
+                          :type :string
+                          :display-name "Host"}
+            result (#'driver.u/process-connection-prop regular-prop)]
+        (is (= [regular-prop] result))))
+
+    (testing ":group type with simple fields"
+      (let [group-prop {:type :group
+                        :container-style ["grid"]
+                        :fields [{:name "field1" :type :string}
+                                 {:name "field2" :type :integer}]}
+            result (#'driver.u/process-connection-prop group-prop)]
+        (is (= 1 (count result)))
+        (is (= :group (:type (first result))))
+        (is (= 2 (count (:fields (first result)))))))
+
+    (testing ":group type flattens vectors in :fields array"
+      (let [vector-of-props [{:name "tunnel-host" :type :string}
+                             {:name "tunnel-port" :type :integer}]
+            group-prop {:type :group
+                        :container-style ["backdrop"]
+                        :fields [{:name "ssl" :type :boolean}
+                                 vector-of-props]}
+            result (#'driver.u/process-connection-prop group-prop)]
+        (is (= 1 (count result)))
+        (let [processed-group (first result)
+              fields (:fields processed-group)]
+          (is (= 3 (count fields)) "Vector should be flattened into 3 separate fields")
+          (is (= ["ssl" "tunnel-host" "tunnel-port"] (map :name fields))))))
+
+    (testing ":group type recursively processes :info fields"
+      (let [group-prop {:type :group
+                        :fields [{:name "regular" :type :string}
+                                 {:name "info-field"
+                                  :type :info
+                                  :getter (constantly "Info message")}]}
+            result (#'driver.u/process-connection-prop group-prop)]
+        (is (= 1 (count result)))
+        (let [fields (:fields (first result))]
+          (is (= 2 (count fields)))
+          (is (= "Info message" (:placeholder (second fields))))
+          (is (nil? (:getter (second fields))) "Getter should be removed"))))
+
+    (testing ":group type handles nested groups"
+      (let [nested-group {:type :group
+                          :fields [{:name "inner1" :type :string}
+                                   {:name "inner-info"
+                                    :type :info
+                                    :getter (constantly "Nested info")}]}
+            outer-group {:type :group
+                         :fields [{:name "outer" :type :string}
+                                  nested-group]}
+            result (#'driver.u/process-connection-prop outer-group)]
+        (is (= 1 (count result)))
+        (let [outer-fields (:fields (first result))
+              inner-group (second outer-fields)
+              inner-fields (:fields inner-group)]
+          (is (= 2 (count outer-fields)))
+          (is (= :group (:type inner-group)))
+          (is (= 2 (count inner-fields)))
+          (is (= "Nested info" (:placeholder (second inner-fields)))))))))
+
+(deftest connection-props-server->client-processes-nested-groups-test
+  (testing "connection-props-server->client processes groups with nested fields and vectors correctly"
+    (let [mock-driver :test-driver
+          props [{:name "regular" :type :string}
+                 {:name "top-level-info"
+                  :type :info
+                  :getter (constantly "Top level message")}
+                 {:type :group
+                  :container-style ["backdrop"]
+                  :fields [{:name "ssl" :type :boolean}
+                           [{:name "tunnel-host" :type :string}
+                            {:name "tunnel-port" :type :integer}]
+                           {:name "group-info"
+                            :type :info
+                            :getter (constantly "Group info message")}]}]
+          result (driver.u/connection-props-server->client mock-driver props)]
+
+      (testing "top-level :info property is processed"
+        (let [top-info (first (filter #(= "top-level-info" (:name %)) result))]
+          (is (some? top-info))
+          (is (= "Top level message" (:placeholder top-info)))))
+
+      (testing "group contains flattened fields"
+        (let [group (first (filter #(= :group (:type %)) result))
+              fields (:fields group)]
+          (is (= 4 (count fields)) "Should have 4 fields: ssl, tunnel-host, tunnel-port, group-info")
+          (is (= ["ssl" "tunnel-host" "tunnel-port" "group-info"] (map :name fields)))))
+
+      (testing ":info property inside group is processed"
+        (let [group (first (filter #(= :group (:type %)) result))
+              group-info (first (filter #(= "group-info" (:name %)) (:fields group)))]
+          (is (some? group-info))
+          (is (= "Group info message" (:placeholder group-info)))
+          (is (nil? (:getter group-info)) "Getter should be removed"))))))
