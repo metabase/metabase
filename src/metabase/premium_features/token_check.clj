@@ -157,7 +157,11 @@
           (http/get {:query-params     (merge (stats-for-token-request)
                                               {:site-uuid  site-uuid
                                                :mb-version (:tag config/mb-version-info)})
-                     :throw-exceptions false})))
+                     :throw-exceptions   false
+                     ;; socket is data transfer, connection is handshake and create connection timeout
+                     :socket-timeout     5000     ;; in milliseconds
+                     :connection-timeout 2000     ;; in milliseconds
+                     })))
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
