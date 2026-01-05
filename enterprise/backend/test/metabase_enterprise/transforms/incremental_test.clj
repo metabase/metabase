@@ -18,6 +18,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
+   [next.jdbc :as next.jdbc]
+   [next.jdbc.result-set :as jdbc.rs]
    [toucan2.core :as t2]))
 
 (def checkpoint-configs
@@ -552,3 +554,99 @@
                           checkpoint (get-checkpoint-value (:id transform))]
                       (is (= 17 row-count) "Should append 1 new row (16 + 1 = 17)")
                       (is (some? checkpoint) "Checkpoint should be updated"))))))))))))
+
+(defn- pg-table-rows [db-spec table-name]
+  (next.jdbc/execute! db-spec [(format "SELECT * FROM %s" table-name)] {:builder-fn jdbc.rs/as-unqualified-lower-maps}))
+
+(deftest empty-table-test
+  (mt/test-drivers #{:postgres}                             ; no db specifics
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [target-table "empty_table_target"]
+        (let [db-id   (mt/id)
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+              source  {:type                        "query"
+                       :query                       {:database db-id
+                                                     :type     :native
+                                                     :native   {:query "SELECT * FROM (VALUES (42)) x(id) WHERE 1 = 2"}}
+                       :source-incremental-strategy {:type "checkpoint", :checkpoint-filter "id"}}
+              target  {:type                        "table-incremental"
+                       :schema                      "public"
+                       :name                        target-table
+                       :database                    db-id
+                       :target-incremental-strategy {:type "append"}}]
+          (mt/with-temp [:model/Transform transform {:name "test transform" :source source, :target target}]
+            (transforms.execute/execute! transform {:run-method :manual})
+            (testing "still creates target table"
+              (is (= 1 (count (next.jdbc/execute! db-spec ["SELECT true FROM information_schema.tables WHERE table_name = ?" target-table])))))
+            (testing "sync has picked up table"
+              (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
+            (testing "checkpoint is recognized"
+              (is (some? (transforms.u/next-checkpoint (:id transform)))))))))))
+
+(deftest checkpoint-field-does-not-exist-test
+  (mt/test-drivers #{:postgres}                             ; no db specifics
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [target-table "missing_field_target"]
+        (let [db-id   (mt/id)
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+              source  {:type                        "query"
+                       :query                       {:database db-id
+                                                     :type     :native
+                                                     :native   {:query "SELECT * FROM (VALUES (42)) x(id)"}}
+                       :source-incremental-strategy {:type "checkpoint", :checkpoint-filter "no_such_column"}}
+              target  {:type                        "table-incremental"
+                       :schema                      "public"
+                       :name                        target-table
+                       :database                    db-id
+                       :target-incremental-strategy {:type "append"}}]
+          (mt/with-temp [:model/Transform transform {:name "test transform" :source source, :target target}]
+            (transforms.execute/execute! transform {:run-method :manual})
+            (testing "still creates target table"
+              (is (= 1 (count (next.jdbc/execute! db-spec ["SELECT true FROM information_schema.tables WHERE table_name = ?" target-table])))))
+            (testing "sync has picked up table"
+              (is (=? {:name target-table, :fields [{:name "id"}]} (-> (t2/select-one :model/Table :name target-table) (t2/hydrate :fields)))))
+            (testing "target table has expected data"
+              (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
+            (testing "checkpoint is not recognized, so transform acts as if no checkpoint"
+              (is (nil? (transforms.u/next-checkpoint (:id transform)))))
+            ;; Maybe this is unrealistic - you cannot select a column that does not exist
+            ;; But the source tables schema can change, e.g. rename: you change event_time to event_ts or something
+            ;; so one would have to be careful to disable or delete transforms ahead of a schema change like this
+            ;; For now asserting behaviour is-what-it-is, but this should provoke a hmmm... maybe it is better to fail early?
+            (testing "running a second time will duplicate the existing data"
+              (transforms.execute/execute! transform {:run-method :manual})
+              (is (= [{:id 42} {:id 42}] (pg-table-rows db-spec target-table))))))))))
+
+(deftest changing-query-keeps-checkpoint-test
+  (mt/test-drivers #{:postgres}                             ; no db specifics
+    (mt/with-premium-features #{:transforms}
+      (with-transform-cleanup! [target-table "change_table_target"]
+        (let [db-id   (mt/id)
+              db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+              source  {:type                        "query"
+                       :query                       {:database db-id
+                                                     :type     :native
+                                                     :native   {:query "SELECT * FROM (VALUES (42)) x(id)"}}
+                       :source-incremental-strategy {:type "checkpoint", :checkpoint-filter "id"}}
+              target  {:type                        "table-incremental"
+                       :schema                      "public"
+                       :name                        target-table
+                       :database                    db-id
+                       :target-incremental-strategy {:type "append"}}]
+          (mt/with-temp [:model/Transform transform {:name "test transform" :source source, :target target}]
+            (testing "initial run"
+              (transforms.execute/execute! transform {:run-method :manual})
+              (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
+            (testing "initial increment"
+              (transforms.execute/execute! transform {:run-method :manual})
+              (is (= [{:id 42}] (pg-table-rows db-spec target-table))))
+            (t2/update! :model/Transform
+                        (:id transform)
+                        {:source {:type "query"
+                                  :query {:database db-id
+                                          :type     :native
+                                          :native   {:query "SELECT * FROM (VALUES (42), (43)) x(id)"}}
+                                  :source-incremental-strategy {:type "checkpoint", :checkpoint-filter "id"}}})
+            (testing "second increment"
+              (transforms.execute/execute! (t2/select-one :model/Transform (:id transform)) {:run-method :manual})
+              (is (= [{:id 42} {:id 43}] (pg-table-rows db-spec target-table))))))))))
