@@ -6,6 +6,7 @@ import { isMatching } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import { useDispatch } from "metabase/lib/redux";
 import { useRouter } from "metabase/router";
 import {
@@ -166,7 +167,7 @@ export const MetabotQueryBuilder = () => {
     <Box className={S.page}>
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
-          <Icon name="metabot" className={S.greetingIcon} c="brand" />
+          <MetabotLogo className={S.greetingIcon} />
           <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-dark">
             {title}
           </Text>
