@@ -230,14 +230,13 @@ jobs:
           mkdir -p .claude-scratchpad
           echo "Scratchpad directory created for Claude's temporary verification files"
 
-      TEMP: Disabled for testing Linear integration
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
         id: claude-app-token
         with:
           app-id: ${{ secrets.METABASE_BOT_APP_ID }}
           private-key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
-      
+
       - name: Generate Bug Fix with Claude Code
         uses: anthropics/claude-code-action@v1
         with:
