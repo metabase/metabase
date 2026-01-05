@@ -12,7 +12,8 @@
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
-  font-family: var(--mb-default-font-family), sans-serif;
+  font-family: "Twemoji Country Flags", var(--mb-default-font-family),
+    sans-serif;
   border-radius: var(--default-button-border-radius);
   transition: all 200ms linear;
   transition-property: color, border-color, background-color;

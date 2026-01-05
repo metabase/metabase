@@ -5,7 +5,18 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
   const localInstanceUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const basePath = `${localInstanceUrl}app/fonts`;
 
+  /// Reference: https://github.com/talkjs/country-flag-emoji-polyfill/blob/master/src/index.ts
   return css`
+    /* Twemoji Country Flags - for Windows/Chromium browsers that lack native flag emoji support */
+    @font-face {
+      font-family: "Twemoji Country Flags";
+      unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067,
+        U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+      src: url("https://cdn.jsdelivr.net/npm/country-flag-emoji-polyfill@0.1/dist/TwemojiCountryFlags.woff2")
+        format("woff2");
+      font-display: swap;
+    }
+
     /* lato-regular - latin */
     @font-face {
       font-family: Lato;

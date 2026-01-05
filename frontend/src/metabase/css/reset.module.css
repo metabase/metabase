@@ -50,8 +50,8 @@
   button,
   input,
   textarea {
-    font-family: var(--mb-default-font-family), "Helvetica Neue", Helvetica,
-      sans-serif;
+    font-family: "Twemoji Country Flags", var(--mb-default-font-family),
+      "Helvetica Neue", Helvetica, sans-serif;
   }
 
   textarea {
