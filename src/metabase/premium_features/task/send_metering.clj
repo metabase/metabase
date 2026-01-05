@@ -30,6 +30,6 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                   (simple/schedule
-                   (simple/with-interval-in-milliseconds (u/hours->ms 12))
+                   (simple/with-interval-in-milliseconds (u/minutes->ms 15))
                    (simple/repeat-forever))))]
     (task/schedule-task! job trigger)))
