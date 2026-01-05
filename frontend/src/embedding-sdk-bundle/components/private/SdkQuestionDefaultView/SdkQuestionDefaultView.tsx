@@ -10,6 +10,7 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
+import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
@@ -85,17 +86,19 @@ export const SdkQuestionDefaultView = ({
     withDownloads,
     onReset,
     onNavigateBack,
+    queryQuestion,
   } = useSdkQuestionContext();
 
   const { isBreadcrumbEnabled, reportLocation } = useSdkBreadcrumbs();
 
-  const isNewQuestion = originalId === "new";
   const isQuestionSaved = question?.isSaved();
 
-  const [
-    isEditorOpen,
-    { close: closeEditor, toggle: toggleEditor, open: openEditor },
-  ] = useDisclosure(isNewQuestion && !isQuestionSaved);
+  const { isEditorOpen, closeEditor, toggleEditor } = useQuestionEditorSync({
+    originalId,
+    isQuestionSaved,
+    queryResults,
+    queryQuestion,
+  });
 
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
@@ -109,17 +112,6 @@ export const SdkQuestionDefaultView = ({
 
     return isNative;
   }, [question]);
-
-  useEffect(() => {
-    if (isNewQuestion && !isQuestionSaved) {
-      // When switching to new question, open the notebook editor
-      openEditor();
-    } else if (!isNewQuestion) {
-      // When no longer in a notebook editor, switch back to visualization.
-      // When a question is saved, also switch back to visualization.
-      closeEditor();
-    }
-  }, [isNewQuestion, isQuestionSaved, openEditor, closeEditor]);
 
   // When visualizing a question for the first time, there is no query result yet.
   const isQueryResultLoading =
