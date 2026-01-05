@@ -1,0 +1,126 @@
+name: Generate llms.txt
+
+on:
+  schedule:
+    # Every 2 days at 3AM UTC
+    - cron: "0 3 */2 * *"
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: "Target branch for llms.txt generation"
+        required: false
+        default: "master"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  generate-llms-txt:
+    name: Generate llms.txt for ${{ inputs.target_branch || 'master' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - name: Determine target branch
+        id: determine_branch
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.target_branch }}" ]; then
+            TARGET_BRANCH="${{ inputs.target_branch }}"
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            TARGET_BRANCH="master"
+          else
+            TARGET_BRANCH="master"
+          fi
+          echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+          echo "Target branch: $TARGET_BRANCH"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ steps.determine_branch.outputs.target_branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate llms.txt
+        id: generate
+        run: |
+          node .github/scripts/generate-llms-txt.js docs llms.txt ${{ steps.determine_branch.outputs.target_branch }}
+
+      - name: Sanity check generated files
+        run: |
+          if [ ! -f "llms.txt" ]; then
+            echo "❌ Error: llms.txt was not generated"
+            exit 1
+          fi
+
+          if [ ! -f "llms-embedding-full.txt" ]; then
+            echo "❌ Error: llms-embedding-full.txt was not generated"
+            exit 1
+          fi
+
+          # Check that llms.txt contains URLs with the expected GitHub raw URL prefix
+          URL_COUNT=$(grep -o "https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ steps.determine_branch.outputs.target_branch }}/docs" llms.txt | wc -l)
+          if [ "$URL_COUNT" -lt 10 ]; then
+            echo "❌ Error: llms.txt appears to be malformed. Found only $URL_COUNT URLs (expected at least 10)"
+            exit 1
+          fi
+
+          echo "✅ Both llms.txt and llms-embedding-full.txt were generated successfully"
+          echo "✅ llms.txt contains $URL_COUNT documentation URLs"
+
+      - name: Set up git configuration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH_NAME="llms-txt/auto-update-${{ steps.determine_branch.outputs.target_branch }}-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "Branch name will be: $BRANCH_NAME"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          branch: ${{ env.BRANCH_NAME }}
+          base: ${{ steps.determine_branch.outputs.target_branch }}
+          commit-message: |
+            Update llms.txt (${{ steps.determine_branch.outputs.target_branch }})
+
+            Regenerated llms.txt to include all markdown files from the docs/ directory.
+            Also generated llms-embedding-full.txt files for the embedding section.
+
+            🤖 Generated automatically by llms-txt-generate workflow
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          title: "[chore] Update llms.txt with latest documentation"
+          body: |
+            ## Summary
+            This PR contains automatically generated updates to `llms.txt` and `llms-embedding-full.txt` files.
+
+            ## Changes
+            - The `llms.txt` file has been regenerated to include all markdown files from the `docs/` directory.
+            - The `llms-embedding-full.txt` file has been generated for the embedding section (concatenated documentation for RAG).
+
+            ## Generation
+
+            These files were generated using:
+            - Script: `.github/scripts/generate-llms-txt.js`
+            - Branch: `${{ steps.determine_branch.outputs.target_branch }}`
+            - Base URL: `https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ steps.determine_branch.outputs.target_branch }}`
+
+            🤖 Generated automatically by the `llms-txt-generate` workflow.
+
+            Co-Authored-By: GitHub Actions <actions@github.com>
+          labels: |
+            Type:Documentation
+            no-backport
+          add-paths: |
+            llms.txt
+            llms-embedding-full.txt
+
