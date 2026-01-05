@@ -1502,6 +1502,11 @@
                                                                  :filter_items_in_personal_collection filter-type)
                                            :data
                                            (map (juxt :model :id))
+                                           set))
+        search-default              (fn [user]
+                                      (->> (mt/user-http-request user :get 200 "search" :q search-term)
+                                           :data
+                                           (map (juxt :model :id))
                                            set))]
     (mt/with-temp
       [:model/Collection {coll-sub-public :id}     {:location "/" :name search-term}
@@ -1513,6 +1518,23 @@
        :model/Collection {coll-sub-crowberto :id}  {:location (format "/%d/" crowberto-personal-coll-id) :name search-term}
        :model/Card       {model-crowberto :id}     {:collection_id crowberto-personal-coll-id :type :model :name search-term}
        :model/Card       {model-sub-crowberto :id} {:collection_id coll-sub-crowberto :type :model :name search-term}]
+      (testing "default behavior excludes other users' personal items (#67465)"
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]
+                 ["dataset" model-crowberto]
+                 ["dataset" model-sub-crowberto]
+                 ["collection" coll-sub-crowberto]}
+               (search-default :crowberto))
+            "Admin should see their own personal items and non-personal items by default")
+        (is (= #{["dashboard" dash-public]
+                 ["dashboard" dash-sub-public]
+                 ["collection" coll-sub-public]
+                 ["card" card-rasta]
+                 ["card" card-sub-rasta]
+                 ["collection" coll-sub-rasta]}
+               (search-default :rasta))
+            "Non-admin should see their own personal items and non-personal items by default"))
       (testing "admin only"
         (is (= #{["dataset" model-crowberto]
                  ["dataset" model-sub-crowberto]

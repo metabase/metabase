@@ -173,7 +173,7 @@
   {:default         {:archived               false
                      ;; keys will typically those in [[filters]], but this is an atypical filter.
                      ;; we plan to generify it, by precalculating it on the index.
-                     :filter-items-in-personal-collection "all"}
+                     :filter-items-in-personal-collection "exclude-others"}
    :search-app      {:filter-items-in-personal-collection "exclude-others"}
    :command-palette {:filter-items-in-personal-collection "exclude-others"}})
 
