@@ -309,7 +309,7 @@ jobs:
             **Original Issue:** #${{ env.ISSUE_NUMBER }}
             **Reporter:** @${{ env.ISSUE_AUTHOR }}
             **Issue Title:** ${{ env.ISSUE_TITLE }}
-            **Linear Issue:** ${{ steps.find_linear.outputs.linear_issue && format(' {0}', steps.find_linear.outputs.linear_issue) || '' }}
+            Closes ${{ steps.find_linear.outputs.linear_issue && format(' {0}', steps.find_linear.outputs.linear_issue) || '' }}
 
             ## Automated Fix
             🤖 This fix was generated automatically by Claude Code based on the issue description.
