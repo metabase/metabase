@@ -304,8 +304,6 @@
                             #"Adding another user would exceed the maximum"
                             (token-check/assert-airgap-allows-user-creation!))))))
 
-(set! *warn-on-reflection* true)
-
 (deftest send-metering-events-test
   (testing "send-metering-events! makes a POST request with correct data"
     (let [request-data (atom nil)]
