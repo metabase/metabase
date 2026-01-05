@@ -17,6 +17,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+;; a change in enterprise/stale, which should not trigger driver tests
+
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection _permissions-set]

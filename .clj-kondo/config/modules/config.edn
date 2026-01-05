@@ -147,7 +147,7 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{api-routes
+   :uses #{;; api-routes
            config
            events
            models
