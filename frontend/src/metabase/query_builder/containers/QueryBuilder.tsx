@@ -17,7 +17,7 @@ import { useWebNotification } from "metabase/common/hooks/use-web-notification";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Timelines } from "metabase/entities/timelines";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
-import { isWithinIframe } from "metabase/lib/dom";
+import { getPathnameWithoutSubPath, isWithinIframe } from "metabase/lib/dom";
 import { connect, useSelector } from "metabase/lib/redux";
 import { closeNavbar } from "metabase/redux/app";
 import { getIsNavbarOpen } from "metabase/selectors/app";
@@ -331,9 +331,11 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
-    const isRouteInSync = window.location.pathname === location.pathname;
+    const isRouteInSync =
+      getPathnameWithoutSubPath(window.location.pathname) === location.pathname;
+
     if (isWithinIframe() && !isRouteInSync) {
-      return null; // Don't initialize query builder until route syncs (metabase#65500)
+      return; // Don't initialize query builder until route syncs (metabase#65500)
     }
     initializeQB(location, params);
   });
