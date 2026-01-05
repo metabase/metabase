@@ -178,12 +178,10 @@
    :command-palette {:filter-items-in-personal-collection "exclude-others"}})
 
 (defn filter-default
-  "Get the default value for the given filter in the given context. Is non-contextual for legacy search."
+  "Get the default value for the given filter in the given context."
   [engine context filter-key]
   (let [fetch (fn [ctx] (when ctx (-> filter-defaults-by-context (get ctx) (get filter-key))))]
-    (if (= engine :search.engine/in-place)
-      (fetch :default)
-      (or (fetch context) (fetch :default)))))
+    (or (fetch context) (fetch :default))))
 
 ;; This gets called *a lot* during a search request, so we'll almost certainly need to optimize it. Maybe just TTL.
 (defn weights

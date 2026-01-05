@@ -17,6 +17,8 @@
            (search.config/filter-default search-engine :command-palette :filter-items-in-personal-collection)))
     (is (= "exclude-others"
            (search.config/filter-default search-engine :search-app :filter-items-in-personal-collection))))
-  (testing "Legacy search does not support overrides"
-    (is (= "all"
-           (search.config/filter-default :search.engine/in-place :command-palette :filter-items-in-personal-collection)))))
+  (testing "Legacy search should also support overrides"
+    (is (= "exclude-others"
+           (search.config/filter-default :search.engine/in-place :command-palette :filter-items-in-personal-collection)))
+    (is (= "exclude-others"
+           (search.config/filter-default :search.engine/in-place :search-app :filter-items-in-personal-collection)))))
