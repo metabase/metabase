@@ -39,7 +39,8 @@
     (update table-name-prefix :name gen-table-name)
     (let [table-name (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))]
       ;; this caught me out when testing, was annoying to debug - hence assert
-      (assert (< (count table-name) 64) "identifiers in postgres cannot be 64 or more chars, use a shorter prefix!")
+      (assert (< (count table-name) (driver/table-name-length-limit driver/*driver*))
+              "chosen identifier prefix should not cause identifiers longer than the driver/table-name-length-limit")
       table-name)))
 
 (defmacro with-transform-cleanup!
