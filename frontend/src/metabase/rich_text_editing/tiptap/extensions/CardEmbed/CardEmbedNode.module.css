@@ -33,6 +33,11 @@
   -ms-user-select: none;
 }
 
+/* Firefox doesn't respect `user-select: none` when inside a contenteditable element. */
+.cardEmbed *:not(input, textarea)::selection {
+  background: transparent;
+}
+
 .questionHeader {
   padding: 0.5rem 1rem;
 }
