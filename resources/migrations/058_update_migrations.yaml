@@ -4572,6 +4572,102 @@ databaseChangeLog:
             sql: UPDATE workspace SET archived_at = current_timestamp WHERE status = 'archived'
             splitStatements: false
 
+  - changeSet:
+      id: v58.2025-12-29T19:00:00
+      author: christruter
+      comment: Add db_status column for tracking database isolation state
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: db_status
+                  type: varchar(20)
+                  remarks: Status of the database isolation resources (uninitialized, pending, ready, broken)
+                  defaultValue: "uninitialized"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: db_status
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:01
+      author: christruter
+      comment: Add base_status column for tracking workspace lifecycle
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: base_status
+                  type: varchar(20)
+                  remarks: Workspace lifecycle status (empty, active, archived)
+                  defaultValue: "empty"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace
+            columnName: base_status
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:02
+      author: christruter
+      comment: Copy status to db_status for non-archived workspaces
+      rollback: empty
+      changes:
+        - sql:
+            sql: |
+              UPDATE workspace SET db_status = status
+              WHERE status IN ('uninitialized', 'pending', 'ready', 'broken')
+            splitStatements: false
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:03
+      author: christruter
+      comment: Set base_status to active for initialized workspaces
+      rollback: empty
+      changes:
+        - sql:
+            sql: |
+              UPDATE workspace SET base_status = 'active'
+              WHERE status IN ('pending', 'ready', 'broken')
+            splitStatements: false
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:04
+      author: christruter
+      comment: Set base_status to archived for archived workspaces
+      rollback: empty
+      changes:
+        - sql:
+            sql: |
+              UPDATE workspace SET base_status = 'archived'
+              WHERE status = 'archived'
+            splitStatements: false
+
+  - changeSet:
+      id: v58.2025-12-29T19:00:05
+      author: christruter
+      comment: Drop legacy status column
+      changes:
+        - dropColumn:
+            tableName: workspace
+            columnName: status
+      rollback:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  remarks: Status of workspace setup
+                  defaultValue: "ready"
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
