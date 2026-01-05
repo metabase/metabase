@@ -19,4 +19,6 @@ export const setupRemoteSyncEndpoints = ({
   fetchMock.post("path:/api/ee/remote-sync/import", {});
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
   fetchMock.get("path:/api/ee/remote-sync/current-task", { status: "idle" });
+
+  fetchMock.put("path:/api/ee/remote-sync/settings", { success: true });
 };

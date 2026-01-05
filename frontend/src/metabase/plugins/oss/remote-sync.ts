@@ -3,12 +3,14 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import type { CollectionTreeItem } from "metabase/entities/collections";
+import type {
+  GitSyncSetupMenuItemProps,
+  SyncedCollectionsSidebarSectionProps,
+} from "metabase/plugins";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
 } from "metabase/plugins/components/PluginPlaceholder";
-
-import type { SyncedCollectionsSidebarSectionProps } from "../types";
 
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
@@ -20,12 +22,19 @@ export interface GitSyncAppBarControlsProps {
   fullWidth?: boolean;
 }
 
+export interface GitSettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
 const getDefaultPluginRemoteSync = () => ({
   LibraryNav: PluginPlaceholder,
   RemoteSyncSettings: NotFoundPlaceholder,
   SyncedCollectionsSidebarSection: PluginPlaceholder,
   GitSyncAppBarControls:
     PluginPlaceholder as ComponentType<GitSyncAppBarControlsProps>,
+  GitSettingsModal: PluginPlaceholder as ComponentType<GitSettingsModalProps>,
+  GitSyncSetupMenuItem: PluginPlaceholder,
   CollectionsNavTree: null as ComponentType<CollectionsNavTreeProps> | null,
   CollectionSyncStatusBadge: null as ComponentType | null,
   REMOTE_SYNC_INVALIDATION_TAGS: null,
@@ -45,6 +54,8 @@ export const PLUGIN_REMOTE_SYNC: {
   RemoteSyncSettings: ComponentType;
   SyncedCollectionsSidebarSection: ComponentType<SyncedCollectionsSidebarSectionProps>;
   GitSyncAppBarControls: ComponentType<GitSyncAppBarControlsProps>;
+  GitSettingsModal: ComponentType<GitSettingsModalProps>;
+  GitSyncSetupMenuItem: ComponentType<GitSyncSetupMenuItemProps>;
   CollectionsNavTree: ComponentType<CollectionsNavTreeProps> | null;
   CollectionSyncStatusBadge: ComponentType | null;
   REMOTE_SYNC_INVALIDATION_TAGS: TagDescription<any>[] | null;

@@ -103,7 +103,8 @@
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
+(defmethod driver/database-supports? [:mysql :nested-field-columns]
+  [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
 (doseq [feature [:actions :actions/custom :actions/data-editing]]
@@ -149,6 +150,11 @@
               (catch Exception e
                 (log/warn e "Failed to check table writable")
                 false)))))
+
+(defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -224,8 +230,10 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 3306)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 3306)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options #{:aws-iam})
@@ -1189,3 +1197,7 @@
              tiny-int-1-is-bit?)
       "BIT"
       db-type-name)))
+
+(defmethod driver/extra-info :mysql
+  [_driver]
+  nil)

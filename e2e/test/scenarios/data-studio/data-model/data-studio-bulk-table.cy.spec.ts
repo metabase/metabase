@@ -206,7 +206,10 @@ describe("bulk table operations", () => {
 
         cy.log("publish and check publish state column");
 
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
+        TablePicker.getTable("Accounts")
+          .find('input[type="checkbox"]')
+          .scrollIntoView()
+          .check();
         TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
@@ -235,16 +238,6 @@ describe("bulk table operations", () => {
         });
 
         cy.log("publish and check publish state column");
-
-        /**
-         * we need to wait a little until TableAttributesEditBulk component is destroyed (see enterprise/frontend/src/metabase-enterprise/data-studio/data-model/components/TablePicker/components/SearchNew.tsx:153)
-         * Otherwise, the button will be found, but it will be immediately removed.
-         * And then we have to reselect because when there is a filter rows are unselected after a change
-         */
-        cy.findByRole("button", { name: /Publish/ }).should("not.exist");
-
-        TablePicker.getTable("Accounts").find('input[type="checkbox"]').check();
-        TablePicker.getTable("Animals").find('input[type="checkbox"]').check();
         cy.findByRole("button", { name: /Publish/ }).click();
         H.modal().findByText("Publish these tables").click();
         cy.wait("@publishTables");

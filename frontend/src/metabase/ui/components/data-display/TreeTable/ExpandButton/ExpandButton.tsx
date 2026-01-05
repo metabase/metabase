@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { memo } from "react";
 import { t } from "ttag";
 
 import { Center, Icon, Loader } from "metabase/ui";
@@ -7,7 +8,7 @@ import type { ExpandButtonProps } from "../types";
 
 import S from "./ExpandButton.module.css";
 
-export function ExpandButton({
+export const ExpandButton = memo(function ExpandButton({
   canExpand,
   isExpanded,
   isLoading,
@@ -43,6 +44,7 @@ export function ExpandButton({
       className={cx(S.wrapper, S.button, className)}
       onClick={onClick}
       aria-label={isExpanded ? t`Collapse` : t`Expand`}
+      aria-expanded={isExpanded}
       tabIndex={-1}
     >
       <Icon
@@ -52,4 +54,4 @@ export function ExpandButton({
       />
     </Center>
   );
-}
+});

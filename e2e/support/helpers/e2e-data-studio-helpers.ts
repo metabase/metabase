@@ -78,6 +78,8 @@ export const DataStudio = {
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}`),
+    visitFieldsPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/fields`),
     visitSegmentsPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/segments`),
     visitSegmentPage: (tableId: TableId, segmentId: SegmentId) =>
@@ -114,7 +116,8 @@ export const DataStudio = {
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>
       DataStudio.Library.allTableItems().contains(name),
-    result: (name: string) => libraryPage().findByText(name).closest("tr"),
+    result: (name: string) =>
+      libraryPage().findByText(name).closest('[role="row"]'),
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),

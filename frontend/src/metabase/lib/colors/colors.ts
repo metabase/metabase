@@ -1,10 +1,5 @@
 /* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCHRONIZED WITH:
-// frontend/src/metabase/css/core/colors.module.css
-// frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// frontend/src/metabase/styled-components/theme/css-variables.ts
-// NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
 import type { ColorSettings } from "metabase-types/api/settings";
 

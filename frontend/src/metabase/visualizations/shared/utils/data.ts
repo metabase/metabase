@@ -173,20 +173,20 @@ const getBreakoutDistinctValues = (
   data: DatasetData,
   breakout: ColumnDescriptor,
   columnFormatter: ColumnFormatter,
-) => {
+): string[] => {
   const formattedDistinctValues: string[] = [];
   const usedRawValues = new Set<RowValue>();
 
-  data.rows.forEach((row) => {
+  for (const row of data.rows) {
     const rawValue = row[breakout.index];
 
     if (usedRawValues.has(rawValue)) {
-      return;
+      continue;
     }
 
     usedRawValues.add(rawValue);
     formattedDistinctValues.push(columnFormatter(rawValue, breakout.column));
-  });
+  }
 
   return formattedDistinctValues;
 };

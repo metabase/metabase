@@ -28,7 +28,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import { isMetric, isString } from "metabase-lib/v1/types/utils/isa";
 
-import ChartWithLegend from "./ChartWithLegend";
+import { ChartWithLegend } from "./ChartWithLegend";
 import LeafletChoropleth from "./LeafletChoropleth";
 import LegacyChoropleth from "./LegacyChoropleth";
 

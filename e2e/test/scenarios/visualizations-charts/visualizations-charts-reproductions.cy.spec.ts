@@ -1,5 +1,5 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
@@ -529,5 +529,92 @@ union all select 'Medium length category', 30 as count`;
         const width = $tooltip.width();
         expect(width).to.be.lte(550);
       });
+  });
+});
+
+describe("issue 55853", () => {
+  const questionDetails = {
+    name: "55853",
+    database: WRITABLE_DB_ID,
+    native: {
+      query: `select 'Category A' as category, 0.0001 as value union all
+        select 'Category B' as category, 0.0002 as value union all
+        select 'Category C' as category, 0.00015 as value union all
+        select 'Category D' as category, 0.00025 as value`,
+      "template-tags": {},
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["value"],
+      column_settings: {
+        '["name","value"]': {
+          number_style: "percent",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Verify that the chart renders successfully");
+    H.echartsContainer().should("be.visible");
+    H.echartsContainer().get("text").should("contain", "%");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+
+    cy.log("Check that axis labels and title don't overlap");
+    H.echartsContainer()
+      .get("text")
+      .then(($texts) => {
+        const percentTexts: Array<{ text: string; element: HTMLElement }> = [];
+        const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
+
+        $texts.each((i, el) => {
+          const text = (el as HTMLElement).textContent?.trim() || "";
+          if (text.includes("%") && text !== "value") {
+            percentTexts.push({ text, element: el as HTMLElement });
+          }
+          if (text === "value") {
+            axisTitle.push({ text, element: el as HTMLElement });
+          }
+        });
+
+        cy.log("Verify we have percentage labels");
+        expect(percentTexts.length).to.be.greaterThan(0);
+
+        cy.log("Check that axis labels and title don't overlap");
+        if (axisTitle.length > 0 && percentTexts.length > 0) {
+          const titleRect = axisTitle[0].element.getBoundingClientRect();
+
+          percentTexts.forEach(({ text, element }) => {
+            const labelRect = element.getBoundingClientRect();
+
+            expect(
+              labelRect.left - titleRect.right,
+              `Label "${text}" should not overlap with axis title "${axisTitle[0].text}"`,
+            ).to.be.greaterThan(5);
+          });
+        }
+      });
+
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.assertEChartsTooltip({
+      header: "Category A",
+      rows: [
+        {
+          name: "value",
+          value: "0.01%",
+        },
+      ],
+    });
   });
 });
