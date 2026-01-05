@@ -20,7 +20,7 @@ export function useExistingQuestionEditorSync({
   closeEditor,
 }: UseExistingQuestionEditorSyncOptions) {
   const prevOriginalId = usePrevious(originalId);
-  const prevIsQuestionSaved = usePrevious(isQuestionSaved);
+  const isPrevQuestionSaved = usePrevious(isQuestionSaved);
 
   useEffect(() => {
     if (!enabled) {
@@ -29,14 +29,14 @@ export function useExistingQuestionEditorSync({
 
     const isTransitionToExistingQuestion =
       prevOriginalId === "new" && originalId !== "new";
-    const isTransitionToSaved = !prevIsQuestionSaved && isQuestionSaved;
+    const isTransitionToSaved = !isPrevQuestionSaved && isQuestionSaved;
 
     if (isTransitionToExistingQuestion || isTransitionToSaved) {
       closeEditor();
     }
   }, [
     prevOriginalId,
-    prevIsQuestionSaved,
+    isPrevQuestionSaved,
     enabled,
     isQuestionSaved,
     closeEditor,

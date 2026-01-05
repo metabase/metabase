@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { usePrevious } from "react-use";
+import { useEffect } from "react";
+import { useLatest, usePrevious } from "react-use";
 
 interface UseNewQuestionEditorSyncOptions {
   enabled: boolean;
@@ -26,26 +26,32 @@ export function useNewQuestionEditorSync({
   closeEditor,
 }: UseNewQuestionEditorSyncOptions) {
   const isPrevQuestionSaved = usePrevious(isQuestionSaved);
-
-  const queryResultsRef = useRef(queryResults);
-  const queryQuestionRef = useRef(queryQuestion);
-
-  queryResultsRef.current = queryResults;
-  queryQuestionRef.current = queryQuestion;
+  const queryResultsRef = useLatest(queryResults);
+  const queryQuestionRef = useLatest(queryQuestion);
 
   useEffect(() => {
     if (!enabled) {
       return;
     }
 
+    const isTransitionToSaved = !isPrevQuestionSaved && isQuestionSaved;
+
     if (!isQuestionSaved) {
       openEditor();
-    } else if (isPrevQuestionSaved === false) {
+    } else if (isTransitionToSaved) {
       closeEditor();
 
       if (!queryResultsRef.current) {
         queryQuestionRef.current();
       }
     }
-  }, [enabled, isQuestionSaved, isPrevQuestionSaved, openEditor, closeEditor]);
+  }, [
+    enabled,
+    isQuestionSaved,
+    isPrevQuestionSaved,
+    openEditor,
+    closeEditor,
+    queryResultsRef,
+    queryQuestionRef,
+  ]);
 }
