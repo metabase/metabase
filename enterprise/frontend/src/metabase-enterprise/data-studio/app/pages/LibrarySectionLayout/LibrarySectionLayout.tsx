@@ -129,9 +129,13 @@ export function LibrarySectionLayout() {
         id: "updatedAt",
         header: t`Updated At`,
         accessorKey: "updatedAt",
+        enableSorting: true,
+        sortingFn: "datetime",
+        width: "auto",
+        widthPadding: 20,
         cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return value && <DateTime value={value} />;
+          const dateValue = getValue() as string | undefined;
+          return dateValue ? <DateTime value={dateValue} /> : null;
         },
       },
       {
