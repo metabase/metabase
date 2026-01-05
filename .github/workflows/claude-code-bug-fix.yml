@@ -70,35 +70,29 @@ jobs:
               core.setFailed(error.message);
             }
 
-      - name: Assign linked Linear issue to tagger
-        id: assign_linear
+      - name: Find linked Linear issue
+        id: find_linear
         continue-on-error: true
         uses: actions/github-script@v7
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
-          SENDER_LOGIN: ${{ github.actor }}
         with:
           script: |
-            const { assignLinearIssue } = require('${{ github.workspace }}/.github/scripts/assign-linear-issue.js');
+            const { findLinearIssue } = require('${{ github.workspace }}/.github/scripts/find-linear-issue.js');
 
             const issueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
 
-            const result = await assignLinearIssue({
-              github,
+            const result = await findLinearIssue({
               issueUrl,
-              senderLogin: process.env.SENDER_LOGIN,
               linearApiKey: process.env.LINEAR_API_KEY
             });
 
-            if (!result.success) {
-              console.log(`Could not assign Linear issue: ${result.reason}`);
-            } else if (result.alreadyAssigned) {
-              console.log(`${result.issue} already assigned to ${result.assignee}`);
+            if (result.success) {
+              console.log(`Found Linear issue: ${result.issue}`);
               core.setOutput('linear_issue', result.issue);
             } else {
-              console.log(`Assigned ${result.issue} to ${result.assignee}`);
-              core.setOutput('linear_issue', result.issue);
+              console.log(`Could not find Linear issue: ${result.reason}`);
             }
 
       - name: Set up git configuration
@@ -335,7 +329,7 @@ jobs:
             - If issues are found, either fix them or close this PR
 
             ---
-            Closes #${{ env.ISSUE_NUMBER }}${{ steps.assign_linear.outputs.linear_issue && format(' {0}', steps.assign_linear.outputs.linear_issue) || '' }}
+            Closes #${{ env.ISSUE_NUMBER }}${{ steps.find_linear.outputs.linear_issue && format(' {0}', steps.find_linear.outputs.linear_issue) || '' }}
 
             🤖 Generated with [Claude Code](https://claude.ai/code)
 
