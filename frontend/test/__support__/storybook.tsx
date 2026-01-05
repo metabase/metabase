@@ -1,5 +1,4 @@
 // Storybook helpers
-import { Global, css } from "@emotion/react";
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
@@ -11,9 +10,8 @@ import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
 import { StaticVisualization } from "metabase/static-viz/components/StaticVisualization";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
-import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { MantineThemeOverride } from "metabase/ui";
-import { Box, useMantineTheme } from "metabase/ui";
+import { Box } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { RawSeries } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -57,26 +55,10 @@ export const VisualizationWrapper = ({
       withDND
       withCssVariables
     >
-      <>
-        <GlobalStyles />
-        {children}
-      </>
+      <>{children}</>
     </TestWrapper>
   );
 };
-
-function GlobalStyles() {
-  const theme = useMantineTheme();
-  const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
-
-  const styles = useMemo(() => {
-    return css`
-      ${cssVariables}
-    `;
-  }, [cssVariables]);
-
-  return <Global styles={styles} />;
-}
 
 /**
  * Wrapper to simulate how visualizations are rendered in the SDK.
