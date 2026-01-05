@@ -22,7 +22,7 @@
 
 (deftest agent-streaming-test
   (mt/with-premium-features #{:metabot-v3}
-    (let [mock-response      (client-test/make-mock-stream-response
+    (let [mock-response      (client-test/make-mock-text-stream-response
                               ["Hello", " from", " streaming!"]
                               {"some-model" {:prompt 12 :completion 3}})
           conversation-id    (str (random-uuid))

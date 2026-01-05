@@ -45,7 +45,7 @@ export const useBuildTreeForCollection = (
       tree: [
         {
           name: collection.name,
-          id: collection.id,
+          id: `collection:${collection.id}`,
           icon: getIcon({ ...collection, model: "collection" }).name,
           data: { ...collection, model: "collection" },
           model: "collection",
@@ -54,7 +54,7 @@ export const useBuildTreeForCollection = (
             updatedAt: item["last-edit-info"]?.timestamp,
             icon: getIcon({ model: item.model }).name,
             data: item,
-            id: item.id,
+            id: `${item.model}:${item.id}`,
             model: item.model,
           })),
         },

@@ -224,9 +224,9 @@
 
       (testing "returns tables with correct structure for valid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (= [{:id table1-id :name "users" :schema "public"}
-                  {:id table3-id :name "products" :schema "inventory"}]
-                 (table-utils/used-tables-from-ids db-id [table1-id table3-id])))))
+          (is (= #{{:id table1-id :name "users" :schema "public"}
+                   {:id table3-id :name "products" :schema "inventory"}}
+                 (set (table-utils/used-tables-from-ids db-id [table1-id table3-id]))))))
 
       (testing "handles empty table-ids collection"
         (mt/with-current-user (mt/user->id :crowberto)
@@ -255,9 +255,9 @@
       (testing "handles mix of valid and invalid table-ids"
         (mt/with-current-user (mt/user->id :crowberto)
           (let [fake-id 999999]
-            (is (= [{:id table1-id :name "users" :schema "public"}
-                    {:id table2-id :name "orders" :schema "public"}]
-                   (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id])))))))))
+            (is (= #{{:id table1-id :name "users" :schema "public"}
+                     {:id table2-id :name "orders" :schema "public"}}
+                   (set (table-utils/used-tables-from-ids db-id [table1-id fake-id table2-id]))))))))))
 
 ;; ======================================
 ;; Edge Cases and Error Handling

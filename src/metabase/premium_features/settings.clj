@@ -316,7 +316,7 @@
   :data-studio)
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
-  "Is this a development instance that should have watermarks?"
+  "Should the multi-tenant feature be enabled?"
   :tenants)
 
 (defn- -token-features []

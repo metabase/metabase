@@ -147,8 +147,7 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{api-routes
-           config
+   :uses #{config
            events
            models
            settings
@@ -1010,6 +1009,7 @@
            collections
            config
            driver
+           embedding
            events
            lib
            models

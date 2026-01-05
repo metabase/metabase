@@ -1,4 +1,4 @@
-import { matchUrlPattern } from "./override-requests-for-guest-embeds";
+import { matchUrlPattern } from "./override-requests-for-embeds";
 
 describe("matchUrlPattern", () => {
   it("should match URL with single parameter", () => {

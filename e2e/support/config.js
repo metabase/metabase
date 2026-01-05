@@ -25,7 +25,7 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
-const isCI = process.env["CYPRESS_CI"] === "true";
+const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 

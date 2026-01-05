@@ -3945,6 +3945,41 @@
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.checkpoint-strategy"
         } ]
       },
+      "metabase-enterprise.transforms.schema.source-table-ref" : {
+        "description" : "A reference to a source table by name, for cases where table_id may not exist yet.\n  Also saves querying metadata in situations where we'll need the name.",
+        "type" : "object",
+        "properties" : {
+          "database_id" : {
+            "type" : "integer"
+          },
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "table" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "oneOf" : [ {
+              "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "database_id", "table" ]
+      },
+      "metabase-enterprise.transforms.schema.source-table-value" : {
+        "description" : "Either a table ID (int) or a reference map.",
+        "anyOf" : [ {
+          "type" : "integer"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.source-table-ref"
+        } ]
+      },
       "metabase-enterprise.transforms.schema.table-incremental-target" : {
         "type" : "object",
         "properties" : {
@@ -4029,7 +4064,7 @@
             "source-tables" : {
               "type" : "object",
               "additionalProperties" : {
-                "type" : "integer"
+                "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.source-table-value"
               }
             },
             "type" : {
@@ -32892,6 +32927,14 @@
                       "type" : "null"
                     } ]
                   },
+                  "disable_links" : {
+                    "default" : false,
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
                   "name" : {
                     "type" : "string",
                     "minLength" : 1
@@ -32905,7 +32948,7 @@
                     } ]
                   }
                 },
-                "required" : [ "name", "cards", "channels", "skip_if_empty" ]
+                "required" : [ "name", "cards", "channels", "skip_if_empty", "disable_links" ]
               }
             }
           }
