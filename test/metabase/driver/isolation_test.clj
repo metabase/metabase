@@ -213,7 +213,7 @@
 (deftest check-isolation-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (testing "check-isolation-permissions returns success for properly configured database"
-      (let [result (driver/check-isolation-permissions driver/*driver* (mt/db))]
+      (let [result (driver/check-isolation-permissions driver/*driver* (mt/db) nil)]
         (is (map? result))
         (is (contains? result :valid))
         (when-not (:valid result)
