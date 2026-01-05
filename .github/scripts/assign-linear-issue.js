@@ -23,19 +23,21 @@ async function assignLinearIssue({
   senderLogin,
   linearApiKey,
 }) {
-  // Get the sender's email from GitHub, fall back to constructed email
-  let senderEmail;
-  try {
-    const userResponse = await github.rest.users.getByUsername({
-      username: senderLogin,
-    });
-    senderEmail = userResponse.data.email || `${senderLogin}@metabase.com`;
-  } catch {
-    senderEmail = `${senderLogin}@metabase.com`;
+  // Get the sender's email from GitHub
+  const githubUser = await github.rest.users.getByUsername({
+    username: senderLogin,
+  });
+  const senderEmail = githubUser.data.email;
+
+  if (!senderEmail) {
+    return {
+      success: false,
+      reason: `GitHub user ${senderLogin} has no public email`,
+    };
   }
 
   // Find the Linear user by email
-  const userResponse = await linearGraphQL(
+  const linearUserResponse = await linearGraphQL(
     `
     query {
       users(filter: { email: { eq: "${senderEmail}" } }) {
@@ -46,14 +48,14 @@ async function assignLinearIssue({
     linearApiKey,
   );
 
-  if (!userResponse.data?.users?.nodes?.length) {
+  if (!linearUserResponse.data?.users?.nodes?.length) {
     return {
       success: false,
       reason: `No Linear user found for ${senderEmail}`,
     };
   }
 
-  const linearUser = userResponse.data.users.nodes[0];
+  const linearUser = linearUserResponse.data.users.nodes[0];
 
   // Find the Linear issue linked to this GitHub issue
   const issueResponse = await linearGraphQL(
