@@ -429,12 +429,14 @@
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
 
-(defn- collect-all-props-by-name
+(defn collect-all-props-by-name
   "Recursively collect all properties into a flat map by name, including nested group fields.
-  This creates a complete lookup map for transitive dependency resolution.
+  This creates a complete lookup map keyed by property name.
 
   Groups have :type :group and contain a :fields array with nested properties. This function
-  flattens the structure to make all properties available for visible-if dependency resolution."
+  flattens the structure to make all properties available for lookups and filtering.
+
+  Properties without a :name are skipped."
   [props]
   (reduce (fn [acc prop]
             (cond
@@ -450,23 +452,6 @@
               :else
               acc))
           {}
-          props))
-
-(defn flatten-connection-properties
-  "Recursively flatten connection properties, extracting fields from nested groups.
-  Groups have :type :group and contain a :fields array with nested properties.
-  Returns a flat sequence of all properties, preserving non-grouped properties as-is."
-  [props]
-  (reduce (fn [acc prop]
-            (cond
-              ;; Group with nested fields - recursively flatten nested fields
-              (= :group (:type prop))
-              (into acc (flatten-connection-properties (:fields prop)))
-
-              ;; Regular property - include it
-              :else
-              (conj acc prop)))
-          []
           props))
 
 (defn- resolve-transitive-visible-if

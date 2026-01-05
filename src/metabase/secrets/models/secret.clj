@@ -100,9 +100,9 @@
   (let [conn-props-fn (get-method driver/connection-properties driver)]
     (when (fn? conn-props-fn)
       (->> (conn-props-fn driver)
-           driver.u/flatten-connection-properties
-           (filter #(= :secret (keyword (:type %))))
-           (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})
+           driver.u/collect-all-props-by-name
+           (filter (fn [[_name prop]] (= :secret (keyword (:type prop)))))
+           (into {})
            not-empty))))
 
 (defn- reduce-over-details-secret-values
