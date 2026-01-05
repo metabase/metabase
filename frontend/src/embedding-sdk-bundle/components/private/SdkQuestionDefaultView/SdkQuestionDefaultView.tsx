@@ -124,17 +124,29 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery({ question, isGuestEmbed }) && !queryResults;
 
   useEffect(() => {
-    if (
+    const isNewQuestion = originalId === "new";
+    const isExistingQuestion =
+      question &&
       !isQuestionLoading &&
       question?.isSaved() &&
       originalId !== "new" &&
-      queryResults
-    ) {
+      queryResults;
+
+    const onNavigate = onNavigateBack ?? onReset ?? undefined;
+
+    if (isNewQuestion) {
+      reportLocation({
+        type: "question",
+        id: "new",
+        name: "New exploration",
+        onNavigate,
+      });
+    } else if (isExistingQuestion) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate: onNavigateBack ?? onReset ?? undefined,
+        onNavigate,
       });
     }
   }, [

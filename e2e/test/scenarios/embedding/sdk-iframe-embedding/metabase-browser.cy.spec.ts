@@ -146,4 +146,31 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
       });
     });
   });
+
+  it("should reset `Exploration` editor state when clicking 'new exploration' breadcrumb after selecting a filter", () => {
+    H.prepareSdkIframeEmbedTest({
+      withToken: "bleeding-edge",
+      signOut: false,
+    });
+
+    setupEmbed(`
+        <metabase-browser
+          initial-collection="root"
+          read-only="false"
+        />
+      `);
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("New exploration").click();
+
+      cy.findByText("Pick your starting data").should("be.visible");
+
+      cy.findByText("Orders").click();
+
+      cy.findByTestId("sdk-breadcrumbs").findByText("New exploration").click();
+
+      cy.findByText("Pick your starting data").should("be.visible");
+      cy.findByText("Orders").should("not.exist");
+    });
+  });
 });

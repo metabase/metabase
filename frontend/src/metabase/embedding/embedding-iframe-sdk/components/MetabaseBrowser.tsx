@@ -164,7 +164,6 @@ export function MetabaseBrowser({ settings }: MetabaseBrowserProps) {
 
   const handleNewExploration = () => {
     setCurrentView({ type: "exploration" });
-    reportLocation({ type: "question", id: "new", name: "New exploration" });
   };
 
   // Only show "New exploration" button if user has write access and it's enabled
