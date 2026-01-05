@@ -1066,17 +1066,6 @@
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.27.1"
 
-"@bahmutov/cy-grep@^2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@bahmutov/cy-grep/-/cy-grep-2.1.0.tgz#b6604445fa19a5370c751cb35824a1627a6758c2"
-  integrity sha512-/2k5+10zd0FN+UsE8t5g4ybnOgWRq+6n01CxMTTaes00Fg1wAjJ3z/h2F2dILVWWaOIDdPlRqJTpg3QqXenzZg==
-  dependencies:
-    cypress-plugin-config "^1.2.0"
-    debug "^4.3.2"
-    find-cypress-specs "^1.35.1"
-    find-test-names "1.29.19"
-    globby "^11.1.0"
-
 "@bahmutov/cypress-esbuild-preprocessor@^2.2.7":
   version "2.2.7"
   resolved "https://registry.yarnpkg.com/@bahmutov/cypress-esbuild-preprocessor/-/cypress-esbuild-preprocessor-2.2.7.tgz#738d4e6dbd167e404e9f5a5b4fd97272851dbf50"
@@ -9190,11 +9179,6 @@ cypress-on-fix@^1.1.0:
   dependencies:
     debug "^4.3.7"
 
-cypress-plugin-config@^1.2.0:
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/cypress-plugin-config/-/cypress-plugin-config-1.2.1.tgz#aa7eaa55ab5ce5e186ab7d0e37cc7e42bfb609b4"
-  integrity sha512-z+bQ7oyfDKun51HiCVNBOR+g38/nYRJ7zVdCZT2/9UozzE8P4iA1zF/yc85ePZLy5NOj/0atutoUPBBR5SqjSQ==
-
 cypress-real-events@^1.14.0:
   version "1.14.0"
   resolved "https://registry.yarnpkg.com/cypress-real-events/-/cypress-real-events-1.14.0.tgz#c5495db50a2bd247f4accde983af7153566945d3"
@@ -11561,24 +11545,6 @@ find-cypress-specs@1.54.5:
     spec-change "^1.11.17"
     tsx "^4.19.3"
 
-find-cypress-specs@^1.35.1:
-  version "1.54.8"
-  resolved "https://registry.yarnpkg.com/find-cypress-specs/-/find-cypress-specs-1.54.8.tgz#31e9f68f667328aa09861257e73ddfde07457141"
-  integrity sha512-SrYhCx2/+fgEIfhoxBMp+NO2xTtXosevNrUhK9MpTYiUCrJTGgPePhCgIgeb6abPxfLe2RSD00Rlz38aoBySIg==
-  dependencies:
-    "@actions/core" "^1.10.0"
-    arg "^5.0.1"
-    console.table "^0.10.0"
-    debug "^4.3.3"
-    find-test-names "1.29.19"
-    minimatch "^5.1.4"
-    pluralize "^8.0.0"
-    require-and-forget "^1.0.1"
-    shelljs "^0.10.0"
-    spec-change "^1.11.17"
-    tinyglobby "^0.2.15"
-    tsx "^4.19.3"
-
 find-free-port-sync@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/find-free-port-sync/-/find-free-port-sync-1.0.0.tgz#10c9007655b6b65a7900e79d391e8da21e31cc19"
@@ -11600,18 +11566,6 @@ find-test-names@1.29.17:
     debug "^4.3.3"
     globby "^11.0.4"
     simple-bin-help "^1.8.0"
-
-find-test-names@1.29.19:
-  version "1.29.19"
-  resolved "https://registry.yarnpkg.com/find-test-names/-/find-test-names-1.29.19.tgz#365a18aefbc55f88ba5c96b01145c9b616b0d0d2"
-  integrity sha512-fSO2GXgOU6dH+FdffmRXYN/kLdnd8zkBGIZrKsmAdfLSFUUDLpDFF7+F/h+wjmjDWQmMgD8hPfJZR+igiEUQHQ==
-  dependencies:
-    "@babel/parser" "^7.27.2"
-    "@babel/plugin-syntax-jsx" "^7.27.1"
-    acorn-walk "^8.2.0"
-    debug "^4.3.3"
-    simple-bin-help "^1.8.0"
-    tinyglobby "^0.2.13"
 
 find-test-names@^1.19.0:
   version "1.21.0"
@@ -21011,7 +20965,7 @@ tinyexec@^1.0.1:
   resolved "https://registry.yarnpkg.com/tinyexec/-/tinyexec-1.0.1.tgz#70c31ab7abbb4aea0a24f55d120e5990bfa1e0b1"
   integrity sha512-5uC6DDlmeqiOwCPmK9jMSdOuZTh8bU39Ys6yidB+UTt5hfZUPGAypSgFRiEp+jbi9qH40BLDvy85jIU88wKSqw==
 
-tinyglobby@^0.2.0, tinyglobby@^0.2.13, tinyglobby@^0.2.14, tinyglobby@^0.2.15:
+tinyglobby@^0.2.0, tinyglobby@^0.2.14:
   version "0.2.15"
   resolved "https://registry.yarnpkg.com/tinyglobby/-/tinyglobby-0.2.15.tgz#e228dd1e638cea993d2fdb4fcd2d4602a79951c2"
   integrity sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==
