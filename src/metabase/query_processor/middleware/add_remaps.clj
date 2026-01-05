@@ -68,10 +68,7 @@
   (lib/update-options a-ref (fn [opts]
                               (-> opts
                                   (->> (m/filter-keys simple-keyword?))
-                                  ;; Exclude :source-field-name for deduplication - two fields pointing
-                                  ;; to the same source-field should be considered the same regardless
-                                  ;; of what name the source field has in different contexts (see #66418, #60444)
-                                  (dissoc :base-type :effective-type :source-field-name)))))
+                                  (dissoc :base-type :effective-type)))))
 
 (mr/def ::external-remapping
   "Schema for the info we fetch about `external` type Dimensions that will be used for remappings in this Query. Fetched
