@@ -25,6 +25,13 @@ export function initializePlugin() {
       useTranslateFieldValuesInHoveredObject,
       useTranslateSeries,
       getDictionaryBasePath,
+      setEndpointsForAuthEmbedding: () => {
+        if (contentTranslationEndpoints.getDictionary) {
+          return;
+        }
+
+        contentTranslationEndpoints.getDictionary = getDictionaryBasePath;
+      },
       setEndpointsForStaticEmbedding: (encodedToken: string) => {
         if (contentTranslationEndpoints.getDictionary) {
           return;

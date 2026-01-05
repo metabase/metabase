@@ -9,6 +9,7 @@ import type { EntityToken } from "metabase-types/api/entity";
 const getDefaultPluginContentTranslation = () => ({
   isEnabled: false,
   getDictionaryBasePath: null as string | null,
+  setEndpointsForAuthEmbedding: () => {},
   setEndpointsForStaticEmbedding: (_encodedToken: EntityToken) => {},
   ContentTranslationConfiguration: PluginPlaceholder,
   useTranslateContent: <
