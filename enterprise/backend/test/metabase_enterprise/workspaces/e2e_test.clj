@@ -1,9 +1,11 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.e2e-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.driver :as driver]
@@ -11,6 +13,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.store :as qp.store]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -45,8 +48,7 @@
                                                                      :database (mt/id)
                                                                      :schema (t2/select-one-fn :schema :model/Table (mt/id :orders))}}]
           (ws.tu/with-workspaces! [workspace {:name        (mt/random-name)
-                                              :database_id (mt/id)
-                                              :upstream    {:transforms [transform-id]}}]
+                                              :database_id (mt/id)}]
             (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
                                          :transform transform-id
                                          (t2/select-one :model/Transform transform-id))
@@ -54,17 +56,21 @@
                                                :done?      #(= :ready (:status %))
                                                :timeout-ms 5000})
                   isolated-transform (t2/select-one :model/WorkspaceTransform :workspace_id (:id workspace))
-                  #_#_executed-transform (mt/with-current-user (mt/user->id :crowberto)
-                                           (ws.impl/run-transform! workspace isolated-transform))
-                  #_#_output-table       (-> executed-transform :table)]
-              ;; TODO: the table is synced but there are no fields even though the table and fields exist in the db
-              #_(testing "execute the transform with the original query is fine and the output is in an isolated schema"
-                  (u/poll {:thunk     #(t2/select-one :model/Table :name (:name output-table))
-                           :done?      some?
-                           :timeout-ms 1000})
-                  (transforms.tu/wait-for-table (:name output-table) 1000)
-                  (is (str/starts-with? (:schema output-table) "mb__isolation"))
-                  (is (= 1 (count (transforms.tu/table-rows (name output-table))))))
+                  executed-transform (mt/with-current-user (mt/user->id :crowberto)
+                                       (ws.impl/run-transform! workspace isolated-transform))
+                  output-table       (-> executed-transform :table)
+                  table-name          (:name output-table)
+                  schema              (:schema output-table)]
+              (testing "execute the transform with the original query is fine and the output is in an isolated schema"
+                (u/poll {:thunk     #(t2/select-one :model/Table :name table-name :schema schema)
+                         :done?      some?
+                         :timeout-ms 1000})
+                  ;; TODO: the table is synced but there are no fields even though the table and fields exist in the db
+                  ;;       ... even sync'ing it again doesn't seem to help ;_;
+                (sync/sync-table! (t2/select-one :model/Table :name table-name :schema schema))
+                #_(transforms.tu/wait-for-table (:name output-table) 1000)
+                (is (str/starts-with? (:schema output-table) "mb__isolation"))
+                #_(is (= 1 (count (transforms.tu/table-rows table-name)))))
 
               (testing "changing the query without granting access will fail"
                 (t2/update! :model/WorkspaceTransform

@@ -112,7 +112,7 @@
    Updates database_id (if different from provisional), sets schema, creates isolation resources async,
    and transitions to :pending status. Returns the updated workspace with schema set."
   [workspace database-id]
-  (let [database (t2/select-one :model/Database :id database-id)
+  (let [database (t2/select-one :model/Database database-id)
         schema   (ws.u/isolation-namespace-name workspace)
         res      (t2/update! :model/Workspace {:id     (:id workspace)
                                                :status :uninitialized}
@@ -125,9 +125,11 @@
           (throw (ex-info "Workspace has been initialized already with a different database"
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
-    (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
+    (let [ws (t2/select-one :model/Workspace (:id workspace))]
       ;; TODO allow this to be fully async as part of BOT-746
-      (quick-task/submit-task! #(run-workspace-setup! <> database)))))
+      @(quick-task/submit-task! #(run-workspace-setup! ws database))
+      ;; Querying again to get the database_details
+      (t2/select-one :model/Workspace (:id workspace)))))
 
 (defn- create-uninitialized-workspace!
   "Create a workspace with a provisional database_id but no isolation resources.
@@ -146,19 +148,12 @@
         (recur (inc attempt))
         workspace))))
 
-;; TODO internal: test!
 (defn create-workspace!
-  "Create workspace. If :provisional is true, creates an uninitialized workspace with a
-   provisional database_id (no isolation resources yet). Otherwise creates a pending
-   workspace and kicks off async setup."
+  "Create workspace."
   [creator-id {ws-name-maybe :name
-               db-id         :database_id
-               provisional?  :provisional?}]
-  (let [ws-name (or ws-name-maybe (ws.u/generate-name))
-        ws      (create-uninitialized-workspace! creator-id db-id ws-name 5)]
-    (if provisional?
-      ws
-      (initialize-workspace! ws db-id))))
+               db-id         :database_id}]
+  (let [ws-name (or ws-name-maybe (ws.u/generate-name))]
+    (create-uninitialized-workspace! creator-id db-id ws-name 5)))
 
 (defn add-to-changeset!
   "Add the given transform to the workspace changeset.

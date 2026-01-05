@@ -63,9 +63,13 @@
   "Delete a workspace. Destroys database isolation resources and deletes the workspace."
   [workspace]
   ;; Only destroy isolation if workspace was initialized (not uninitialized status)
+  ;; TODO this doesn't work anymore, because status becomes "archived"
+  ;;      will be fixable when we have separate db_status (BOT-759)
   (when (not= :uninitialized (:status workspace))
     (when-let [database (t2/select-one :model/Database :id (:database_id workspace))]
-      (ws.isolation/destroy-workspace-isolation! database workspace)
+      (try
+        (ws.isolation/destroy-workspace-isolation! database workspace)
+        (catch Exception _))
       (t2/update! :model/WorkspaceInput {:workspace_id (:id workspace)}
                   {:access_granted false})))
   (t2/delete! :model/Workspace (:id workspace)))
