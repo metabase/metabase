@@ -26,15 +26,12 @@
 
 (defn- update-ssl-db-details
   [db-details]
-  (let [client-ssl-key-2 (driver-api/secret-value-as-string :mongo db-details "client-ssl-key")]
-    (println "client-ssl-key-2:" client-ssl-key-2))
-
-  (println "mongo db-details:" (keys db-details))
-  (let [client-ssl-key-value (or (driver-api/secret-value-as-string :mongo db-details "client-ssl-key")
-                                 (:client-ssl-key-value db-details))]
+  ;; Must capture secret value BEFORE cleaning, as clean-secret-properties-from-details
+  ;; will remove the secret properties (client-ssl-key-value or client-ssl-key-id)
+  (let [client-ssl-key (driver-api/secret-value-as-string :mongo db-details "client-ssl-key")]
     (-> db-details
         (driver-api/clean-secret-properties-from-details :mongo)
-        (assoc :client-ssl-key client-ssl-key-value))))
+        (assoc :client-ssl-key client-ssl-key))))
 
 (defn details-normalized
   "Gets db-details for `database`. Details are then validated and ssl related keys are updated."
