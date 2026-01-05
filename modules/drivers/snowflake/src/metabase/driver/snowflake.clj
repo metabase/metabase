@@ -51,6 +51,8 @@
    (java.util Properties)
    (net.snowflake.client.jdbc SnowflakeConnectString SnowflakeSQLException)))
 
+;; a change in a cloud db
+
 (set! *warn-on-reflection* true)
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
