@@ -10,7 +10,6 @@ const { ORDERS_ID } = SAMPLE_DATABASE;
 const SETTINGS_INDEX = 0;
 const MONITORING_INDEX = 1;
 const SUBSCRIPTIONS_INDEX = 2;
-const DATA_STUDIO_INDEX = 3;
 
 const NORMAL_USER_ID = 2;
 
@@ -196,57 +195,6 @@ describe("scenarios > admin > permissions > application", () => {
         H.undoToast()
           .findByText(/changes saved/i)
           .should("be.visible");
-      });
-    });
-  });
-
-  describe("data studio permission", () => {
-    beforeEach(() => {
-      H.activateToken("bleeding-edge");
-    });
-
-    describe("granted", () => {
-      beforeEach(() => {
-        cy.visit("/admin/permissions/application");
-
-        H.modifyPermission("All Users", DATA_STUDIO_INDEX, "Yes");
-
-        cy.button("Save changes").click();
-
-        H.modal().within(() => {
-          cy.findByText("Save permissions?");
-          cy.findByText("Are you sure you want to do this?");
-          cy.button("Yes").click();
-        });
-
-        cy.signInAsNormalUser();
-      });
-
-      it("allows accessing data studio for non-admins", () => {
-        cy.visit("/data-studio");
-        cy.url().should("include", "/data-studio");
-        H.main()
-          .findByText("Pick a transform or create a new one")
-          .should("be.visible");
-      });
-    });
-
-    describe("revoked", () => {
-      it("does not allow accessing data studio and transforms API for non-admins", () => {
-        cy.signInAsNormalUser();
-
-        cy.visit("/data-studio");
-        H.main().findByText("Sorry, you don’t have permission to see that.");
-
-        cy.request({ url: "/api/ee/transform", failOnStatusCode: false })
-          .its("status")
-          .should("eq", 403);
-        cy.request({ url: "/api/ee/transform-tag", failOnStatusCode: false })
-          .its("status")
-          .should("eq", 403);
-        cy.request({ url: "/api/ee/transform-job", failOnStatusCode: false })
-          .its("status")
-          .should("eq", 403);
       });
     });
   });

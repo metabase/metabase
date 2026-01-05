@@ -19,7 +19,7 @@
 (api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
-  Requires data-studio application permission."
+  Requires superuser permissions."
   [_route
    _query
    _body]

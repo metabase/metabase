@@ -1,10 +1,6 @@
 import dedent from "ts-dedent";
 
-import {
-  SAMPLE_DB_ID,
-  USER_GROUPS,
-  WRITABLE_DB_ID,
-} from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
@@ -27,7 +23,7 @@ const TARGET_SCHEMA = "Schema A";
 const TARGET_SCHEMA_2 = "Schema B";
 const CUSTOM_SCHEMA = "custom_schema";
 
-describe("scenarios > data studio > transforms", () => {
+describe("scenarios > admin > transforms", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -2372,7 +2368,7 @@ LIMIT
   });
 });
 
-describe("scenarios > data studio > transforms > databases without :schemas", () => {
+describe("scenarios > admin > transforms > databases without :schemas", () => {
   const DB_NAME = "QA MySQL8";
 
   beforeEach(() => {
@@ -2421,7 +2417,7 @@ describe("scenarios > data studio > transforms > databases without :schemas", ()
   });
 });
 
-describe("scenarios > data studio > transforms > jobs", () => {
+describe("scenarios > admin > transforms > jobs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -2703,7 +2699,7 @@ describe("scenarios > data studio > transforms > jobs", () => {
   });
 });
 
-describe("scenarios > data studio > transforms > runs", () => {
+describe("scenarios > admin > transforms > runs", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });

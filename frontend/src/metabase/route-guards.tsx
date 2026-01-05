@@ -5,7 +5,6 @@ import { getAdminPaths } from "metabase/admin/app/selectors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
 import { MetabaseReduxContext } from "metabase/lib/redux";
 import {
-  PLUGIN_DATA_STUDIO,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
@@ -112,16 +111,6 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessDataStudio",
-  redirectPath: "/unauthorized",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) =>
-    PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
-
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -144,7 +133,7 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
 // Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/utils.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
-    AvailableInEmbedding(UserCanAccessDataStudio(({ children }) => children)),
+    UserIsAdmin(AvailableInEmbedding(({ children }) => children)),
   ),
 );
 

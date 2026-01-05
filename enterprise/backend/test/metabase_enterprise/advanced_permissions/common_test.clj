@@ -30,7 +30,6 @@
           (is (=? {:can_access_setting        true
                    :can_access_subscription   true
                    :can_access_monitoring     true
-                   :can_access_data_studio  true
                    :can_access_data_model     true
                    :is_group_manager          false
                    :can_access_db_details     true}
@@ -40,7 +39,6 @@
           (is (=? {:can_access_setting        false
                    :can_access_subscription   true
                    :can_access_monitoring     false
-                   :can_access_data_studio  false
                    :can_access_data_model     false
                    :is_group_manager          false
                    :can_access_db_details     false}
