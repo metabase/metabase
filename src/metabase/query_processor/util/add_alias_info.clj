@@ -40,7 +40,7 @@
 
   If this clause is 'selected' (i.e., appears in `:fields`, `:aggregation`, or `:breakout`), select the clause `AS`
   this alias. This alias is guaranteed to be unique."
-  (:refer-clojure :exclude [mapv ref select-keys some empty? not-empty])
+  (:refer-clojure :exclude [mapv ref select-keys some empty? not-empty get-in])
   (:require
    [medley.core :as m]
    [metabase.config.core :as config]
@@ -61,7 +61,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some empty? not-empty]]))
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty get-in]]))
 
 (mu/defn- ^:dynamic *escape-alias-fn* :- :string
   [driver :- :keyword

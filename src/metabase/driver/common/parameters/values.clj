@@ -17,7 +17,7 @@
   unused namespaces. We can't migrate to it if it's gone... please restore it when we start migrating usages of it
   over."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [every? some mapv not-empty])
+  (:refer-clojure :exclude [every? some mapv not-empty get-in])
   (:require
    [clojure.string :as str]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
@@ -38,7 +38,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some not-empty]])
+   [metabase.util.performance :refer [every? mapv some not-empty get-in]])
   (:import
    (clojure.lang ExceptionInfo)
    (java.util UUID)))

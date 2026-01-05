@@ -30,6 +30,7 @@ export type FormattedParameterValueProps = {
   dashboardId?: DashboardId;
   placeholder?: string;
   isPopoverOpen?: boolean;
+  dataTestId?: string;
 };
 
 function FormattedParameterValue({
@@ -85,8 +86,10 @@ function FormattedParameterValue({
     return (
       <Ellipsified
         showTooltip={!isPopoverOpen}
-        multiline
-        tooltipMaxWidth={hasLongValue ? 450 : undefined}
+        tooltipProps={{
+          multiline: true,
+          w: hasLongValue ? 450 : undefined,
+        }}
       >
         {renderContent()}
       </Ellipsified>

@@ -5,12 +5,17 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.permissions.validation :as perms.validation]
-   [metabase.request.session :as request.session]
+   [metabase.collections.schema :as collections.schema]
+   [metabase.permissions.core :as perms]
+   [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Creates the Library if it doesn't exist. Returns the created collection.
 
@@ -18,27 +23,33 @@
   [_route
    _query
    _body]
-  (perms.validation/check-has-application-permission :data-studio)
+  (perms/check-has-application-permission :data-studio)
   (api/check-400 (not (collections/library-collection)) "Library already exists")
   ;; Library creation requires admin-level collection permissions which the user may not have,
   ;; but we've verified they have data-studio permission above, so we run as admin
-  (request.session/as-admin
+  (request/as-admin
     (collections/create-library-collection!)))
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))
-        below          (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])]
+        below-card-types (t2/select-fn-set :type [:model/Card :type] :collection_id [:in descendent-ids])
+        below-tables? (t2/exists? :model/Table :is_published true :collection_id [:in descendent-ids])]
     ;; This function is only used on the root Library which cannot have items directly in it
     ;; So can assume :here is only collection, and all descendants are :below
-    (assoc collection :here #{:collection}
-           :below (cond-> below
-                    (contains? below :model)
+    (assoc collection :here #{"collection"}
+           :below (cond-> below-card-types
+                    (contains? below-card-types :model)
                     (-> (disj :model) (conj :dataset))
+                    below-tables? (conj :table)
+                    true sort
+                    true ((partial map name))))))
 
-                    true sort))))
-
-(api.macros/defendpoint :get "/"
-  "Get the Library. If no library exists, it doesn't fail but returns an empty response."
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/" :- [:or ::collections.schema/CollectionItem [:map [:data nil?]]]
+  "Get the Library. If no library exists, it doesn't fail but returns an empty response"
   [_route
    _query
    _body]
@@ -47,15 +58,16 @@
         (t2/hydrate
          :can_write
          :effective_children)
-        (add-here-and-below))
-    {:message "Library does not exist"}))
+        (add-here-and-below)
+        (assoc :model "collection"))
+    {:data nil}))
 
 (defn- select-collections
   []
   (t2/select :model/Collection
              {:where    [:and
                          [:in :type [collection/library-collection-type
-                                     collection/library-models-collection-type
+                                     collection/library-data-collection-type
                                      collection/library-metrics-collection-type]]
                          (collection/visible-collection-filter-clause
                           :id
@@ -65,6 +77,10 @@
                            :archive-operation-id      nil})]
               :order-by [[:%lower.name :asc]]}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tree"
   "This matches /api/collection/tree but only returns the library collection."
   [_route-params

@@ -4,15 +4,13 @@ import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
 import type { PythonTransformTableAliases, Table } from "metabase-types/api";
 
+import { isPythonTransformSource } from "../../utils";
+
 import { PythonDataPicker } from "./PythonDataPicker";
 import { PythonEditorBody } from "./PythonEditorBody";
 import { PythonEditorResults } from "./PythonEditorResults";
-import {
-  isPythonTransformSource,
-  updateTransformSignature,
-  useShouldShowPythonDebugger,
-  useTestPythonTransform,
-} from "./utils";
+import { useTestPythonTransform } from "./hooks";
+import { updateTransformSignature } from "./utils";
 
 export function PythonTransformEditor({
   source,
@@ -53,12 +51,7 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
-  const showDebugger = useShouldShowPythonDebugger();
-
   const handleCmdEnter = () => {
-    if (!showDebugger) {
-      return;
-    }
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
@@ -85,16 +78,14 @@ export function PythonTransformEditor({
           source={source.body}
           proposedSource={proposedSource?.body}
           onChange={handleScriptChange}
-          withDebugger={showDebugger}
+          withDebugger
           onAcceptProposed={onAcceptProposed}
           onRejectProposed={onRejectProposed}
         />
-        {showDebugger && (
-          <PythonEditorResults
-            isRunning={isRunning}
-            executionResult={executionResult}
-          />
-        )}
+        <PythonEditorResults
+          isRunning={isRunning}
+          executionResult={executionResult}
+        />
       </Stack>
     </Flex>
   );

@@ -8,7 +8,7 @@ import CopyWidget from "metabase/common/components/CopyWidget";
 import FormField from "metabase/common/components/FormField";
 import TextArea from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Actions from "metabase/entities/actions/actions";
+import { Actions } from "metabase/entities/actions/actions";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

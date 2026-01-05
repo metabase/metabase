@@ -1,10 +1,5 @@
 /* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCHRONIZED WITH:
-// frontend/src/metabase/css/core/colors.module.css
-// frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// frontend/src/metabase/styled-components/theme/css-variables.ts
-// NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
 import type { ColorSettings } from "metabase-types/api/settings";
 
@@ -316,6 +311,10 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
   "background-error": {
     light: baseColors.lobster[10],
     dark: baseColors.lobster[90],
+  },
+  "background-success": {
+    light: baseColors.palm[5],
+    dark: baseColors.palm[90],
   },
   "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[110] }, //should be background-secondary
   "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
@@ -664,6 +663,14 @@ export const getColors = (settings?: ColorSettings) =>
   ({
     ...Object.fromEntries(
       Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.light]),
+    ),
+    ...settings,
+  }) as Record<keyof typeof colorConfig, string>;
+
+export const getDarkColors = (settings?: ColorSettings) =>
+  ({
+    ...Object.fromEntries(
+      Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.dark]),
     ),
     ...settings,
   }) as Record<keyof typeof colorConfig, string>;

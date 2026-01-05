@@ -38,21 +38,3 @@
             (t/< (t/instant) (Instant/ofEpochSecond (Long/parseLong expiration))))
           (catch Exception _
             false)))))
-
-(defn- get-token-from-header
-  "Extract the token from the request headers"
-  [request]
-  (get-in request [:headers "x-metabase-sdk-jwt-hash"] nil))
-
-(defn with-token
-  "Add a newly generated token to a response"
-  [response]
-  (assoc response :hash (generate-token)))
-
-(defn has-token
-  "Check if a request has a valid token"
-  [request]
-  (let [token (get-token-from-header request)]
-    (if token
-      (validate-token token)
-      false)))

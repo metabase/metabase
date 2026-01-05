@@ -20,16 +20,6 @@ import type { State } from "metabase-types/store";
 
 import type { PluginGroupManagersType } from "../types";
 
-// Types
-export interface UserWithApplicationPermissions extends User {
-  permissions?: {
-    can_access_monitoring: boolean;
-    can_access_setting: boolean;
-    can_access_subscription: boolean;
-    can_access_data_studio: boolean;
-  };
-}
-
 const getDefaultAdminPermissionsDatabaseRoutes = () => [];
 const getDefaultAdminPermissionsDatabaseGroupRoutes = () => [];
 const getDefaultAdminPermissionsDatabasePostActions = () => ({
@@ -116,7 +106,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
 const getDefaultAdminUserMenuItems = (): Array<
   (user: User) => React.ReactNode
 > => [];
-const getDefaultAdminUserMenuRoutes = () => [];
+const getDefaultAdminUserMenuRoutes = (): (() => React.ReactNode)[] => [];
 
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = getDefaultAdminUserMenuItems();
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = getDefaultAdminUserMenuRoutes();
@@ -145,14 +135,17 @@ const getDefaultFeatureLevelPermissions = () => ({
     _entityId: DatabaseEntityId,
     _groupId: number,
     _isAdmin: boolean,
+    _isExternal: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: DataPermissionValue,
     _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
+    _permissionView?: "group" | "database",
   ) => {
     return [] as any;
   },
-  getDataColumns: (_subject: PermissionSubject) => [] as any,
+  getDataColumns: (_subject: PermissionSubject, _isExternal?: boolean) =>
+    [] as any,
   getDownloadWidgetMessageOverride: (_result: Dataset): string | null => null,
   canDownloadResults: (_result: Dataset): boolean => true,
   canAccessDataModel: (state: State): boolean => getUserIsAdmin(state),
@@ -162,6 +155,13 @@ const getDefaultFeatureLevelPermissions = () => ({
 
 export const PLUGIN_FEATURE_LEVEL_PERMISSIONS =
   getDefaultFeatureLevelPermissions();
+
+const getDefaultAdminPermissionsTabs = () => ({
+  getRoutes: (): ReactNode => null,
+  tabs: [] as { name: string; value: string }[],
+});
+
+export const PLUGIN_ADMIN_PERMISSIONS_TABS = getDefaultAdminPermissionsTabs();
 
 const getDefaultApplicationPermissions = () => ({
   getRoutes: (): ReactNode => null,
@@ -259,6 +259,12 @@ export function reinitialize() {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS,
     getDefaultFeatureLevelPermissions(),
   );
+
+  Object.assign(
+    PLUGIN_ADMIN_PERMISSIONS_TABS,
+    getDefaultAdminPermissionsTabs(),
+  );
+
   Object.assign(
     PLUGIN_APPLICATION_PERMISSIONS,
     getDefaultApplicationPermissions(),

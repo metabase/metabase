@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms.execute-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.query-test-util :as query-test-util]
    [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]
@@ -52,14 +52,14 @@
                                                 :source {:type  :query
                                                          :query t1-query}
                                                 :target target1}]
-              (transforms.i/execute! t1 {:run-method :manual})
+              (transforms.execute/execute! t1 {:run-method :manual})
               (let [table1       (transforms.tu/wait-for-table table1-name 10000)
                     t2-query     (make-query (->> table1 :name (table-name->qp-table (mt/metadata-provider))) "category" lib/= "Gizmo")]
                 (mt/with-temp [:model/Transform t2 {:name   "transform2"
                                                     :source {:type  :query
                                                              :query t2-query}
                                                     :target target2}]
-                  (transforms.i/execute! t2 {:run-method :cron})
+                  (transforms.execute/execute! t2 {:run-method :cron})
                   (let [table2      (transforms.tu/wait-for-table table2-name 10000)
                         check-query (lib/aggregate (make-query (->> table2 :name (table-name->qp-table (mt/metadata-provider)))) (lib/count))
                         query-result (qp/process-query check-query)]
@@ -109,7 +109,7 @@
                                                                       :query (lib/limit query-no-limit 5)}
                                                              :target limit-table}]
               (doseq [transform [transform-no-limit transform-limit]]
-                (transforms.i/execute! transform {:run-method :manual})
+                (transforms.execute/execute! transform {:run-method :manual})
                 (let [table-name (-> transform :target :name)
                       _            (transforms.tu/wait-for-table table-name 10000)
                       table-result (lib.metadata/table mp (mt/id (keyword table-name)))
@@ -162,7 +162,7 @@
                                                          :source {:type  :query
                                                                   :query query}
                                                          :target target-table}]
-                (transforms.i/execute! transform {:run-method :manual})
+                (transforms.execute/execute! transform {:run-method :manual})
                 (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
                       table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                       query-result (->> (lib/query mp table-result)
@@ -213,7 +213,7 @@
                                                                :source {:type  :query
                                                                         :query query}
                                                                :target target-table}]
-                      (transforms.i/execute! transform {:run-method :manual})
+                      (transforms.execute/execute! transform {:run-method :manual})
                       (let [_            (transforms.tu/wait-for-table (:name target-table) 10000)
                             table-result (lib.metadata/table mp (mt/id (keyword (:name target-table))))
                             query-result (->> (lib/query mp table-result)
@@ -238,7 +238,7 @@
                       (is (thrown-with-msg?
                            clojure.lang.ExceptionInfo
                            #"ERROR: permission denied for database transforms-test"
-                           (transforms.i/execute! transform {:run-method :manual})))))))))
+                           (transforms.execute/execute! transform {:run-method :manual})))))))))
           (finally
             (driver/execute-raw-queries! driver/*driver* spec
                                          [[(format "DROP OWNED BY %s;" no-schema-user)]
@@ -266,4 +266,4 @@
                  clojure.lang.ExceptionInfo
                  #"Transforms are not supported on databases with DB routing enabled."
                  (mt/with-current-user (mt/user->id :crowberto)
-                   (transforms.i/execute! transform {:run-method :manual}))))))))))
+                   (transforms.execute/execute! transform {:run-method :manual}))))))))))

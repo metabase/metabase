@@ -1,12 +1,15 @@
-{:min-bb-version "1.12.208"
+{:min-bb-version "1.12.212"
  ;; we put path as bin, and everything is in the ./mage subdirectory,
  ;; so the namespaces are mage.cli, mage.format, etc.
  :paths          ["mage/src" "mage/test" "bin/lint-migrations-file/src"]
- :deps           {dev.weavejester/cljfmt {:mvn/version "0.15.3"}
-                  org.babashka/json {:mvn/version "0.1.6"}
-                  metosin/malli     {:mvn/version "0.17.0"}
-                  table/table       {:mvn/version "0.5.0"}
-                  mvxcvi/puget      {:mvn/version "1.3.4"}}
+ :deps           {dev.weavejester/cljfmt     {:mvn/version "0.15.3"} ;; run cljfmt from bb
+                  io.github.paintparty/bling {:mvn/version "0.8.8"} ;; printing bells and whistles
+                  medley/medley              {:mvn/version "1.3.0"} ;; utilities
+                  metosin/malli              {:mvn/version "0.17.0"} ;; data validation
+                  mvxcvi/puget               {:mvn/version "1.3.4"} ;; pretty printing
+                  org.babashka/json          {:mvn/version "0.1.6"} ;; json parsing
+                  table/table                {:mvn/version "0.5.0"} ;; table printing
+                  }
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -20,11 +23,13 @@
   alias
   {:doc        "Installs 'mage' alias and autocomplete"
    :examples   [["./bin/mage alias" "Prints instructions to install the 'mage' alias and autocomplete"]
-                ["./bin/mage alias zsh" "Prints shell script to put into .zshrc for zsh users"]]
+                ["./bin/mage alias install fish" "Installs mage alias for fish shell"]
+                ["./bin/mage alias print zsh" "Prints shell script to put into .zshrc for zsh users"]]
    :requires   [[mage.alias :as alias]]
    :arg-schema [:or
-                [:tuple]
-                [:tuple [:enum "bash" "zsh" "fish"]]]
+                [:tuple [:enum {:name "shell-type"} "bash" "zsh" "fish"]]
+                [:tuple [:enum {:name "mode"} "install" "print"]
+                        [:enum {:name "shell-type"} "bash" "zsh" "fish"]]]
    :task       (task! (alias/instructions parsed))}
 
   cljfmt-staged
@@ -42,7 +47,8 @@
                 ["./bin/mage cljfmt-files src" "Format all files in src"]
                 ["./bin/mage cljfmt-files -c src" "Check all files in src"]]
    :options    [["-c" "--force-check" "Check staged files"]]
-   :arg-schema [:sequential [:string {:description "Files or directories to format."}]]
+   :arg-schema [:sequential [:string {:name "file-or-directory"
+                                      :description "Files or directories to format."}]]
    :task       (task! (format/files parsed))}
 
   cljfmt-all
@@ -58,7 +64,7 @@
    :examples   [["./bin/mage cljfmt-updated" "Format updated files relative to HEAD"]
                 ["./bin/mage cljfmt-updated master" "Format updated files relative to master"]]
    :options    [["-c" "--force-check" "Check staged files"]]
-   :arg-schema [:or [:tuple] [:tuple :string]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref" :description "Git ref to compare against"}]]]
    :task       (task! (format/updated parsed))}
 
   kondo
@@ -101,14 +107,20 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task     (task! (start-maildev/start-maildev!))}
 
+  start-python-runner
+  {:doc      "Start python-runner container with internal Moto S3 server for Python transforms"
+   :examples [["./bin/mage start-python-runner" "start python-runner with internal S3"]]
+   :requires [[mage.start-python-runner :as start-python-runner]]
+   :task     (task! (start-python-runner/start-python-runner!))}
+
   start-db
   {:doc        "Start a db on a default port in docker"
    :examples   [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
                 ["./bin/mage start-db mysql oldest" "start the oldest mysql db we support"]]
    :requires   [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb :mongo]
-                [:enum :oldest :latest]]
+                [:enum {:name "db"} :postgres :mysql :mariadb :mongo]
+                [:enum {:name "relative-version"} :oldest :latest]]
    :db-info      {:postgres {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
                   :mysql    {:ports {:oldest 3308  :latest 3309}  :eol-url "https://endoflife.date/api/mysql.json"}
                   :mariadb  {:ports {:oldest 3306  :latest 3307}  :eol-url "https://endoflife.date/api/mariadb.json"}
@@ -155,8 +167,8 @@
                 ["-d" "--delete" "delete the old jar if found, by default does not re-download it"]
                 ["-p" "--port PORT" "you can optionally provide a port to run the jar on, if not, we use a sane port."]]
    :arg-schema [:or
-                [:tuple [:string {:desc "version"}]]
-                [:tuple [:string {:desc "version"}] [:string {:desc "path"}]]]
+                [:tuple [:string {:name "version"}]]
+                [:tuple [:string {:name "version"}] [:string {:name "path"}]]]
    :usage-fn  (fn [_]
                 (-> "Version can have the following forms:"
                     (str "\n  -" (c/green "50")  " for the latest enterprise version of release 50")
@@ -178,56 +190,154 @@
    :requires [[mage.be-dev :refer [nrepl-eval]]]
    :options  [["-c" "--comment-id ID" "Notify about this comment id"]
               ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :examples [["./bin/mage notify -c 1234" "Notify about comment with id 1234"]
+              ["./bin/mage notify --comment-id 5678 --port 59498" "Notify about comment with id 5678 on nrepl port 59498"]]
    :task     (let [opts (:options (cli/parse! (current-task)))
                    ;; note: no quoting -> expect it to be int
                    code (format "(notify-comment-id! %d)" (parse-long (:comment-id opts)))]
                (if (:port opts)
-                 (nrepl-eval "metabase-enterprise.comments.core" code (:port opts))
-                 (nrepl-eval "metabase-enterprise.comments.core" code)))}
+                 (nrepl-eval "metabase.comments.core" code (:port opts))
+                 (nrepl-eval "metabase.comments.core" code)))}
 
   run-tests
-  {:doc        "Run a tests (or a single test) against nrepl server"
-   :requires   [[clojure.string :as str]
-                [mage.be-dev :refer [nrepl-eval]]]
-   :arg-schema [:tuple [:string {:name "NS/TEST" :desc "or just NS"}]]
-   :options    [["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
-   :task       (let [{:keys  [options]
-                      [test] :arguments} (cli/parse! (current-task))
-                     test                (if (or (str/starts-with? test "test/")
-                                                 (str/starts-with? test "enterprise/"))
-                                           ;; paths should come in as strings
-                                           (format "\"%s\"" test)
-                                           ;; ns or var should be a symbol
-                                           (str "'" test))
-                     code (format
-                           "(do ((requiring-resolve 'dev.reload/reload!)) (find-and-run-tests-repl {:only %s}))"
-                           test)]
-                 (nrepl-eval "mb.hawk.core" (str code) (:port options)))}
+  {:doc        "Quickly run tests locally. Pass dirs/files as arguments to run them."
+   :examples   [["./bin/mage run-tests" "launch interactive test picker"]
+                ["./bin/mage run-tests test/metabase/db" "run tests in test/metabase/db"]
+                ["./bin/mage run-tests test/metabase/logger test/metabase/api_keys" "run tests in test/metabase/logger and src/metabase/api_keys"]
+                ["./bin/mage run-tests test/metabase/config_test.clj" "run all tests in the metabase.config-test namespace"]]
+   ;; TODO: add option to select files as well as dirs from fzf with styles
+   :options    [["-s" "--selecting STYLE" "Style of test selection" :default "all"]
+                ;; all, file, dir
+                ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+   :arg-schema [:sequential
+                {:details "If none are given, you will be prompted to select directories recursively from test/ and enterprise/backend/test/"}
+                [:string {:name "file-or-dir" :description "Files or directories (recursive) to test"}]]
+   :requires   [[mage.quick-test-runner :as qtr]] 
+   :task       (task! (qtr/go parsed))}
 
   affected-modules
-  {:doc      "Prints information about which backend modules have changes compared to a Git ref e.g. `master`"
-   :examples [["./bin/mage affected-modules master"]
+  {:doc      "Which backend modules have changes?"
+   :examples [["./bin/mage affected-modules master" "prints changes compared to `master`"]
               ["./bin/mage affected-modules"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "git-ref"}]]]
    :requires [[mage.modules]]
    :task     (task! (mage.modules/cli-print-affected-modules (:arguments parsed)))}
 
   can-skip-driver-tests
-  {:doc      "Returns zero (success) if we can skip driver tests based on changes related to a Git ref e.g. `master`"
-   :examples [["./bin/mage can-skip-driver-tests master"]
-              ["./bin/mage can-skip-driver-tests"]]
+  {:doc      "Can we skip driver tests for this branch?"
+   :examples [["./bin/mage can-skip-driver-tests master" "Returns zero (success) if we can skip driver tests based on changes related to `master`"]
+              ["./bin/mage can-skip-driver-tests" "Returns zero (success) if we can skip driver tests based on changes? (defaults to master)"]]
    :requires [[mage.modules]]
    :task     (task! (mage.modules/cli-can-skip-driver-tests (:arguments parsed)))}
 
-  ls {:doc      "List all mage public and private tasks"
-      :examples [["./bin/mage ls" "List all tasks"]]
-      :requires [[mage.util :as u]]
-      :task     (task! (u/print-tasks parsed))}
+  ls
+  {:doc      "List all mage public and private tasks"
+   :examples [["./bin/mage ls" "List all tasks"]]
+   :requires [[mage.util :as u]]
+   :task     (task! (u/print-tasks parsed))}
 
+  analytics:setup
+  {:doc "Set up usage analytics development mode"
+   :examples [["./bin/mage analytics:setup" "Enable usage analytics dev mode and import content"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (analytics/setup!))}
+
+  analytics:export
+  {:doc "Export usage analytics content to YAML files"
+   :examples [["./bin/mage analytics:export" "Export to default location (resources/instance_analytics)"]
+              ["./bin/mage analytics:export my-custom-dir" "Export to custom directory"]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:string {:description "Target directory for export"}]]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (if-let [target-dir (first (:arguments parsed))]
+                  (analytics/export! target-dir)
+                  (analytics/export!)))}
+
+  analytics:teardown
+  {:doc "Tear down usage analytics development mode"
+   :examples [["./bin/mage analytics:teardown" "Remove usage analytics dev database and disable dev mode"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (analytics/teardown!))}
+
+  analytics:finalize
+  {:doc "Export usage analytics content and tear down development mode"
+   :examples [["./bin/mage analytics:finalize" "Export to default location and tear down"]]
+   :requires [[mage.analytics :as analytics]]
+   :task (task! (do
+                  (analytics/export!)
+                  (analytics/teardown!)))}
+
+  doctor
+  {:doc "Check your development environment for issues"
+   :examples [["./bin/mage doctor" "Run all health checks"]]
+   :requires [[mage.doctor :as doctor]]
+   :task (task! (doctor/doctor!))}
+  
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Private Tasks:
   ;; These tasks are more for internal tooling, e.g. for use from git hooks etc.
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
+  -install-merge-drivers
+  {:doc "Installs custom git merge drivers for YAML migration files."
+   :requires [[mage.util :as u]
+              [clojure.string :as str]]
+   :task (task!
+          (let [git-dir (u/sh "git rev-parse --git-dir")
+                git-config-file (str git-dir "/config")
+                the-include (str "\n"
+                                 "[include]\n"
+                                 "    path=../.gitconfig\n")]
+            (when-not (str/includes? (slurp git-config-file) the-include)
+              (println "Merge driver not installed, installing now.")
+              (spit git-config-file the-include :append true))))}
+
+  ;; opposite of -install-merge-drivers, removes the include while it's causing issues.
+  -uninstall-merge-drivers
+  {:doc "Uninstalls custom git merge drivers for YAML migration files."
+   :requires [[clojure.string :as str]
+              [mage.util :as u]]
+   :task (task!
+          (let [git-dir (u/sh "git rev-parse --git-dir")
+                git-config-file (str git-dir "/config")
+                the-include (str "\n"
+                                 "[include]\n"
+                                 "    path=../.gitconfig\n")]
+            (when (str/includes? (slurp git-config-file) the-include)
+              (println "Merge driver is installed, uninstalling now.")
+              (let [includeless (-> (slurp git-config-file) (str/replace the-include ""))]
+                (spit git-config-file includeless)))))}
+
+  -merge-yaml-migrations
+  {:doc "Custom git merge driver for YAML migration files."
+   :usage-fn (fn [_]
+               (str
+                "Treats each changeset as an atomic unit to avoid conflicts within changesets.\n"
+                "Preserves original formatting including blank lines and footer warnings"))
+   :arg-schema [:tuple
+                [:string {:name "base" :description "ancestor's version (base)"}]
+                [:string {:name "ours" :description "current version (ours)"}]
+                [:string {:name "theirs" :description "other branch's version (theirs)"}]
+                [:int    {:name "conflict-marker-size" :description "conflict marker size" :min 0}]
+                [:string {:name "file-path" :description "file path"}]]
+   :requires [[mage.merge-yaml-migrations]]
+   :task (task! (mage.merge-yaml-migrations/-main parsed))}
+  
+  -play
+  {:doc        "Play sounds from mage.sound"
+   :examples   [["./bin/mage -play success" "play success sound"] ["./bin/mage -play s" "play success sound"]
+                ["./bin/mage -play error" "play error sound"]     ["./bin/mage -play e" "play error sound"]
+                ["./bin/mage -play ping" "play ping sound"]       ["./bin/mage -play p" "play ping sound"]
+                ["./bin/mage -play warning" "play warning sound"] ["./bin/mage -play w" "play warning sound"]]
+   :requires   [[mage.sound :as sound]]
+   :arg-schema [:tuple [:enum "s" "success" "e" "error" "p" "ping" "w" "warning"]]
+   :task       (task! (case (first (:arguments parsed))
+                        ("s" "success") (sound/success)
+                        ("e" "error")   (sound/error)
+                        ("p" "ping")    (sound/ping)
+                        ("w" "warning") (sound/warning)))}
+  
   -token-scan
   {:doc        "Security token scanner for detecting leaked API keys and secrets"
    :examples   [["./bin/mage -token-scan deps.edn bb.edn" "Scan specific files"]
@@ -264,10 +374,13 @@
   {:doc      "Check that code is readable parens a file"
    :requires [[mage.readability-check :as readability]]
    :arg-schema [:or
-                [:tuple [:string {:description "File to check"}]]
+                [:tuple [:string {:name "file"
+                                  :description "File to check"}]]
                 [:tuple
-                 [:string {:description "File to check"}]
-                 [:int {:description "A line in the file" :min 1}]]]
+                 [:string {:name "file"
+                           :description "File to check"}]
+                 [:int {:name "line-number"
+                        :description "A line in the file" :min 1}]]]
    :examples [["./bin/mage -check-readable dev/src/dev.clj"
                "Check file for readability"]
               ["./bin/mage -check-readable dev/src/dev.clj 300"
@@ -298,7 +411,7 @@
    :options    [["-n" "--negate" "Negate the result of the calculation"]
                 ["-a" "--also-add N" "Add N to the result of the calculation"]]
    ;; (optional) `:arg-schema` is a malli schema for the arguments passed to the task, after the options
-   :arg-schema [:tuple :int [:enum :+ :-] :int]
+   :arg-schema [:tuple [:int {:name "number-a"}] [:enum {:name "operation"} :+ :-] [:int {:name "number-b"}]]
    ;; (optional) `:usage-fn` is a function called with the current-task map.
    ;; Returns a string containing extra-detailed usage information.
    :usage-fn   (fn [{:keys [doc] :as _task}]
@@ -310,14 +423,22 @@
    :data       {:a [:b :c] :b [:d]}}
 
   -test {:doc      "run all mage tests"
-         :requires [[mage.core-test]
-                    [clojure.test :refer [run-tests]]]
-         :task     (run-tests 'mage.core-test)}
-
-  -test-examples
-  {:doc      "Runs every example and checks that it exits with 0"
-   :requires [[mage.examples-test :as examples-test]]
-   :task     (System/exit (if (= :ok (examples-test/run-tests)) 0 1))}
+         :requires [[clojure.string :as str]
+                    [clojure.test]
+                    [mage.core-test] ;; loads the actual tests
+                    [mage.util :as u]]
+         :arg-schema [:sequential [:string {:name "test-matching-pattern"}]]
+         :task     (let [{:keys [arguments]} (task! parsed)
+                         pattern (if (seq arguments)
+                                   (str "^mage\\..*(" (str/join "|" arguments) ").*")
+                                   "^mage\\..*")
+                         _ (u/debug ["test regex matching pattern" pattern])
+                         results (clojure.test/run-all-tests (re-pattern pattern))]
+                     (if (zero? (+ (:fail results) (:error results)))
+                       (println (c/green "All mage tests passed!"))
+                       (do
+                         (println (c/red "Some mage tests failed."))
+                         (u/exit 1))))}
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Personal Tasks:
@@ -334,6 +455,6 @@
   -escherize-fix-whitespace
   {:doc "Removes all lines like '^<space>+$' from files in glob pattern."
    :requires [[mage.escherize.fix-whitespace :as fix-whitespace]]
-   :examples [["mage -escherize-fix-whitespace '**/*.clj'" "Removes all lines like '  ' from all clj files"]]
-   :arg-schema [:sequential [:string {:description "Glob pattern to match files"}]]
+   :examples [["mage -escherize-fix-whitespace '**/*.clj{,c,s}'" "Removes all lines like '  ' from all clj files"]]
+   :arg-schema [:sequential [:string {:name "glob-pattern" :description "Glob pattern to match files"}]]
    :task     (task! (fix-whitespace/run-clean parsed))}}}

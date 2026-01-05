@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some empty? not-empty])
+  (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -24,7 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some empty? not-empty]]
+   [metabase.util.performance :refer [mapv some empty? not-empty get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -775,30 +775,31 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
-                              :describe-fields                  true
-                              :nested-fields                    true
+                              :database-routing                 true
                               :datetime-diff                    true
+                              :describe-fields                  true
+                              :expression-literals              true
                               :expressions                      true
+                              :expressions/date                 true
+                              :expressions/float                true
+                              :expressions/integer              true
+                              :expressions/text                 true
+                              :identifiers-with-spaces          true
+                              :metadata/key-constraints         false
+                              :metadata/table-existence-check   true
+                              :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
-                              ;; we can't support `alter table .. rename ..`  in general
-                              ;; since it won't work for streaming tables
+                              :regex/lookaheads-and-lookbehinds false
+                              ;; we can't support `alter table .. rename ..` in general since it won't work for
+                              ;; streaming tables
                               :rename                           false
-                              :metadata/key-constraints         false
-                              :identifiers-with-spaces          true
-                              :expressions/integer              true
-                              :expressions/float                true
-                              :expressions/date                 true
-                              :expressions/text                 true
-                              :split-part                       true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
                               :set-timezone                     true
-                              :expression-literals              true
-                              :database-routing                 true
-                              :metadata/table-existence-check   true
+                              :split-part                       true
                               :transforms/python                true
                               :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
@@ -878,8 +879,17 @@
 
 (defmethod driver/compile-transform :bigquery-cloud-sdk
   [_driver {:keys [query output-table]}]
-  (let [table-str (get-table-str output-table)]
-    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str query)]))
+  (let [{sql-query :query sql-params :params} query
+        table-str (get-table-str output-table)]
+    [(format "CREATE OR REPLACE TABLE %s AS %s" table-str sql-query)
+     sql-params]))
+
+(defmethod driver/compile-insert :bigquery-cloud-sdk
+  [_driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        table-str (get-table-str output-table)]
+    [(format "INSERT INTO %s %s" table-str sql-query)
+     sql-params]))
 
 (defmethod driver/compile-drop-table :bigquery-cloud-sdk
   [_driver table]
@@ -927,7 +937,7 @@
     (u.date/format (u.date/parse value))
 
     :type/DateTime
-    (u.date/format (u.date/parse value))
+    (u.date/format :iso-local-date-time (u.date/parse value))
 
     :type/DateTimeWithLocalTZ
     (u.date/format (u.date/parse value))
@@ -974,9 +984,10 @@
     (try
       (doall
        (for [query queries]
-         (let [sql (if (string? query) query (first query))
+         (let [[sql params] (if (string? query) [query] query)
                _ (log/debugf "Executing BigQuery DDL: %s" sql)
                job-config (-> (QueryJobConfiguration/newBuilder sql)
+                              (bigquery.params/set-parameters! params)
                               (.setUseLegacySql false)
                               (.build))
                table-result (.query client job-config (into-array BigQuery$JobOption []))]

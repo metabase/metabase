@@ -95,7 +95,7 @@ export function NotebookStep({
 
   const { title, color, Step, StepHeader } = getStepConfig(step.type);
 
-  const canPreview = step.previewQuery != null;
+  const canPreview = step.previewQuery != null && !readOnly;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 

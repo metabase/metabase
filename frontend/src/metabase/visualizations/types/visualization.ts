@@ -142,8 +142,6 @@ export interface VisualizationProps {
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
   queryBuilderMode?: QueryBuilderMode;
-  uuid?: string;
-  token?: string;
 
   gridSize?: VisualizationGridSize;
   width: number;
@@ -232,10 +230,6 @@ export type VisualizationPassThroughProps = {
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
-
-  // Public & Embedded questions, needed for pin maps to generate the correct tile URL
-  uuid?: string;
-  token?: string;
 
   /**
    * Extra buttons to be shown in the table footer (if the visualization is a table)

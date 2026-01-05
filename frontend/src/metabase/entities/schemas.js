@@ -9,7 +9,7 @@ import {
   useListSyncableDatabaseSchemasQuery,
   useListVirtualDatabaseTablesQuery,
 } from "metabase/api";
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -29,7 +29,7 @@ import {
 /**
  * @deprecated use "metabase/api" instead
  */
-export default createEntity({
+export const Schemas = createEntity({
   name: "schemas",
   schema: SchemaSchema,
 
@@ -95,10 +95,6 @@ export default createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).schema(entityId),
-  },
-
-  objectSelectors: {
-    getIcon: () => ({ name: "folder" }),
   },
 
   reducer: (state = {}, { type, payload, error }) => {

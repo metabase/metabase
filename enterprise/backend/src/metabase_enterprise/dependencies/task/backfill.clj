@@ -15,10 +15,10 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -38,7 +38,8 @@
    :model/NativeQuerySnippet
    :model/Dashboard
    :model/Document
-   :model/Sandbox])
+   :model/Sandbox
+   :model/Segment])
 
 ;; In-memory state for tracking failed entities
 ;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}
@@ -75,16 +76,18 @@
                                  {:dependency_analysis_version target-version})]
     (when-let [card (and (pos? update-count)
                          (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-update {:object card :user-id config/internal-mb-user-id}))
+      (events/publish-event! :event/card-dependency-backfill {:object card}))
     update-count))
 
 (defn- backfill-entity!
   [model-kw id target-version]
-  (t2/with-transaction [_]
-    (case model-kw
-      :model/Card (backfill-card! id target-version)
-      (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                  {:dependency_analysis_version target-version}))))
+  (log/debug "Backfilling " (name model-kw) id)
+  (u/prog1 (t2/with-transaction [_]
+             (case model-kw
+               :model/Card (backfill-card! id target-version)
+               (t2/update! model-kw id :dependency_analysis_version [:< target-version]
+                           {:dependency_analysis_version target-version})))
+    (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
   [model-kw batch-size]

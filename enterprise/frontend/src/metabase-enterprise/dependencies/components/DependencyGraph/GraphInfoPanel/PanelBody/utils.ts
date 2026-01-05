@@ -16,6 +16,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
     case "document":
+    case "segment":
       return node.data.created_at;
     case "table":
     case "transform":
@@ -30,6 +31,7 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "card":
     case "dashboard":
     case "document":
+    case "segment":
       return node.data.creator ?? null;
     case "table":
     case "transform":
@@ -44,6 +46,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
+    case "segment":
     case "table":
     case "transform":
     case "snippet":
@@ -58,6 +61,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
     case "card":
     case "dashboard":
       return node.data["last-edit-info"] ?? null;
+    case "segment":
     case "table":
     case "transform":
     case "snippet":
@@ -88,17 +92,24 @@ export function getNodeTableInfo(
     },
     metadata: {
       label: t`View metadata`,
-      url: Urls.dataModelTable(table.db_id, table.schema, table.id),
+      url: Urls.dataModel({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+      }),
     },
     location: table.db
       ? [
           {
             label: table.db.name,
-            url: Urls.dataModelDatabase(table.db.id),
+            url: Urls.dataModel({ databaseId: table.db.id }),
           },
           {
             label: table.schema,
-            url: Urls.dataModelSchema(table.db.id, table.schema),
+            url: Urls.dataModel({
+              databaseId: table.db.id,
+              schemaName: table.schema,
+            }),
           },
         ]
       : null,
@@ -117,6 +128,7 @@ export function getNodeFields(node: DependencyNode): Field[] {
     case "snippet":
     case "dashboard":
     case "document":
+    case "segment":
       return [];
   }
 }

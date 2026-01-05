@@ -1,6 +1,4 @@
-import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
@@ -8,6 +6,7 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -16,25 +15,15 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
-import { useCreateTransformMutation } from "metabase-enterprise/api";
-import type {
-  CreateTransformRequest,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
+import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import type { Transform, TransformSource } from "metabase-types/api";
 
-import { trackTransformCreated } from "../../../analytics";
-import type { NewTransformValues } from "../types";
+import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
-import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
-
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-});
+import { TargetNameInput } from "./TargetNameInput";
+import type { NewTransformValues } from "./form";
+import { useCreateTransform } from "./hooks";
 
 type CreateTransformModalProps = {
   source: TransformSource;
@@ -94,13 +83,10 @@ function CreateTransformForm({
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
 
-  const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, defaultValues),
-    [schemas, defaultValues],
-  );
+  const { initialValues, validationSchema, createTransform } =
+    useCreateTransform(schemas, defaultValues);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -110,22 +96,18 @@ function CreateTransformForm({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    const request = getCreateRequest(source, values, databaseId);
-    const transform = await createTransform(request).unwrap();
-
-    trackTransformCreated({ transformId: transform.id });
-
+    const transform = await createTransform(databaseId, source, values);
     onCreate(transform);
   };
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={NEW_TRANSFORM_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg">
+        <Stack gap="lg" mt="sm">
           <FormTextInput
             name="name"
             label={t`Name`}
@@ -139,49 +121,23 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          <FormTextInput
-            name="targetName"
-            label={t`Table name`}
-            placeholder={t`descriptive_name`}
+          <TargetNameInput />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            type="transform-collections"
+            style={{ marginBottom: 0 }}
           />
+          <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+            <Button onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
         </Stack>
       </Form>
     </FormProvider>
   );
-}
-
-function getInitialValues(
-  schemas: string[],
-  defaultValues: Partial<NewTransformValues>,
-): NewTransformValues {
-  return {
-    name: "",
-    targetName: "",
-    targetSchema: schemas?.[0] || null,
-    ...defaultValues,
-  };
-}
-
-function getCreateRequest(
-  source: TransformSource,
-  { name, targetName, targetSchema }: NewTransformValues,
-  databaseId: number,
-): CreateTransformRequest {
-  return {
-    name: name,
-    source,
-    target: {
-      type: "table",
-      name: targetName,
-      schema: targetSchema ?? null,
-      database: databaseId,
-    },
-  };
 }

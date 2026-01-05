@@ -949,3 +949,94 @@
           (mt/user-http-request :rasta :put 403 (str "ee/transform/" (:id transform))
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:clickhouse :redshift :bigquery-cloud-sdk :snowflake]]
+  (defmethod driver/database-supports? [driver ::extract-columns-from-query]
+    [_driver _feature _database]
+    false))
+
+(deftest ^:parallel extract-columns-from-query-test
+  (testing "POST /api/ee/transform/extract-columns"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
+                                                           ::extract-columns-from-query]})
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (letfn [(make-native-query [sql]
+                    {:lib/type :mbql/query
+                     :database (mt/id)
+                     :stages [{:lib/type :mbql.stage/native
+                               :native sql}]})]
+            (testing "Successfully extracts columns from a simple SELECT query"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id, name, category, price FROM transforms_products")})]
+                (is (= ["id" "name" "category" "price"] (:columns response)))))
+
+            (testing "Returns nil for invalid SQL"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT * FORM invalid_table")})]
+                (is (nil? (:columns response)))))
+
+            (testing "Extracts columns from query with aliases"
+              (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/extract-columns"
+                                                   {:query (make-native-query "SELECT id AS product_id, name AS product_name FROM transforms_products")})]
+                (is (= ["product_id" "product_name"] (:columns response)))))
+
+            (testing "Requires superuser permissions"
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "ee/transform/extract-columns"
+                                           {:query (make-native-query "SELECT * FROM transforms_products")}))))
+
+            (testing "Returns 404 for non-existent database"
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 "ee/transform/extract-columns"
+                                           {:query {:lib/type :mbql/query
+                                                    :database 999999
+                                                    :stages [{:lib/type :mbql.stage/native
+                                                              :native "SELECT * FROM transforms_products"}]}}))))))))))
+
+(deftest ^:parallel is-simple-query-test
+  (testing "POST /api/ee/transform/is-simple-query"
+    (mt/with-premium-features #{:transforms}
+      (testing "Returns true for simple SELECT queries"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products"})]
+          (is (true? (:is_simple response)))
+          (is (nil? (:reason response)))))
+
+      (testing "Returns true for simple SELECT with WHERE clause"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products WHERE category = 'Electronics'"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns true for simple SELECT with JOIN"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT p.id, p.name, c.name FROM products p JOIN categories c ON p.category_id = c.id"})]
+          (is (true? (:is_simple response)))))
+
+      (testing "Returns false for query with LIMIT"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains an OFFSET" (:reason response)))))
+
+      (testing "Returns false for query with LIMIT and OFFSET"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "SELECT id, name FROM products LIMIT 10 OFFSET 5"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a LIMIT" (:reason response)))))
+
+      (testing "Returns false for query with CTE"
+        (let [response (mt/user-http-request :crowberto :post 200 "ee/transform/is-simple-query"
+                                             {:query "WITH category_counts AS (SELECT category, COUNT(*) as cnt FROM products GROUP BY category) SELECT * FROM category_counts"})]
+          (is (false? (:is_simple response)))
+          (is (= "Contains a CTE" (:reason response))))))))

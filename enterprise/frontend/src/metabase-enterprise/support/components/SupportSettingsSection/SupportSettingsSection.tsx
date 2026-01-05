@@ -34,7 +34,7 @@ export function SupportSettingsSection() {
         <>
           <Text c="text-medium" mt="sm">
             {/* eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins. */}
-            {t`Let a Metabase support agent log in to your instance with a troubleshooting account to help resolve problems for you.`}
+            {t`Let a Metabase Success Engineer log in to your instance with a troubleshooting account to help resolve problems for you.`}
           </Text>
           <Text c="text-medium">
             {t`Access always auto expires after the period you select.`}

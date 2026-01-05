@@ -71,9 +71,12 @@ export const ChartSettingSegmentsEditor = ({
                 <NumberInput
                   className={CS.full}
                   value={segment.min}
-                  onBlur={(e) =>
-                    onChangeProperty(index, "min", parseInt(e.target.value))
-                  }
+                  onBlur={(e) => {
+                    const newValue = parseFloat(e.target.value);
+                    if (newValue !== segment.min) {
+                      onChangeProperty(index, "min", newValue);
+                    }
+                  }}
                   placeholder={t`Min`}
                   w="4rem"
                 />
@@ -82,9 +85,12 @@ export const ChartSettingSegmentsEditor = ({
                 <NumberInput
                   className={CS.full}
                   value={segment.max}
-                  onBlur={(e) =>
-                    onChangeProperty(index, "max", parseInt(e.target.value))
-                  }
+                  onBlur={(e) => {
+                    const newValue = parseFloat(e.target.value);
+                    if (newValue !== segment.max) {
+                      onChangeProperty(index, "max", newValue);
+                    }
+                  }}
                   placeholder={t`Max`}
                   w="4rem"
                 />

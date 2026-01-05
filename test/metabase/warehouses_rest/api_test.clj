@@ -1945,6 +1945,16 @@
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
 
+(deftest ^:parallel get-schema-tables-publishing-test
+  (testing "GET /api/database/:id/schema/:schema"
+    (testing "should return is_published as true for published tables"
+      (mt/with-temp [:model/Database {database-id :id} {}
+                     :model/Table    _ {:db_id database-id :schema "public" :name "published-table" :is_published true}
+                     :model/Table    _ {:db_id database-id :schema "public" :name "unpublished-table" :is_published false}]
+        (let [tables (mt/user-http-request :rasta :get 200 (format "database/%s/schema/%s" database-id "public"))]
+          (is (true? (:is_published (m/find-first #(= "published-table" (:name %)) tables))))
+          (is (false? (:is_published (m/find-first #(= "unpublished-table" (:name %)) tables)))))))))
+
 (deftest get-schema-tables-unreadable-metrics-are-not-returned-test
   (mt/with-temp [:model/Collection model-coll   {:name "Model Collection"}
                  :model/Card       card         (card-with-native-query

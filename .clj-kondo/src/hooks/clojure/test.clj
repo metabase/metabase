@@ -2,7 +2,8 @@
   (:require
    [clj-kondo.hooks-api :as hooks]
    [clojure.string :as str]
-   [hooks.common]))
+   [hooks.common]
+   [hooks.common.modules :as modules]))
 
 (defn- warn-about-disallowed-parallel-forms [form config]
   (letfn [(error! [form message]
@@ -102,7 +103,39 @@
                (:children node))))]
     (walk node)))
 
-(defn deftest [{:keys [node cljc lang config]}]
+(defn- test-namespace-lives-outside-of-module-system? [ns-symb]
+  (some (fn [prefix]
+          (str/starts-with? (name ns-symb) prefix))
+        ["build-drivers."
+         "build."
+         "i18n." ; bin/i18n
+         "lint-migrations-file-test"
+         "main-test" ; bin/release-list
+         "metabase.deps-edn-test"
+         "metabase.driver."
+         "metabase.test."
+         "metabase.test.data."
+         "metabuild-common."])) ; utils for build scripts
+
+(let [warned-namespaces (atom #{})]
+  (defn deftest-check-in-valid-module
+    "Check whether a `deftest` lives in a known module -- important so our system to only run a subset of tests based on
+  which modules have changes picks them up correctly. (DEV-1125)"
+    [{:keys [node], ns-symb :ns, :as input}]
+    (when (and ns-symb
+               (not (test-namespace-lives-outside-of-module-system? ns-symb))
+               ;; only warn once per namespace
+               (not (contains? @warned-namespaces ns-symb)))
+      (swap! warned-namespaces conj ns-symb)
+      (let [known-modules  (set (keys (:metabase/modules (modules/config input))))
+            current-module (modules/module ns-symb)]
+        (when (or (not current-module)
+                  (not (contains? known-modules current-module)))
+          (hooks/reg-finding! (assoc (meta node)
+                                     :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
+                                     :type    :metabase/tests-must-live-in-known-modules)))))))
+
+(defn deftest [{:keys [node cljc lang config], :as input}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
@@ -110,7 +143,8 @@
     (deftest-check-parallel node (get-in config [:linters :metabase/validate-deftest])))
   (deftest-check-not-horrifically-long node (get-in config [:linters :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]))
   (deftest-check-no-driver-keywords node (get-in config [:linters :metabase/disallow-hardcoded-driver-names-in-tests]))
-  {:node node})
+  (deftest-check-in-valid-module input)
+  input)
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`
 ;;; will come back as `nil` if they are not.

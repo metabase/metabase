@@ -7,7 +7,7 @@
    SQL-based drivers can use the `:sql` driver as a parent, and JDBC-based SQL drivers can use `:sql-jdbc`. Both of
    these drivers define additional multimethods that child drivers should implement; see [[metabase.driver.sql]] and
    [[metabase.driver.sql-jdbc]] for more details."
-  (:refer-clojure :exclude [some mapv])
+  (:refer-clojure :exclude [some mapv empty?])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.java.io :as io]
@@ -23,7 +23,7 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv]]
+   [metabase.util.performance :refer [mapv empty?]]
    [potemkin :as p]))
 
 (set! *warn-on-reflection* true)
@@ -593,6 +593,11 @@
 
     :regex
 
+    ;; Added in 57.x; whether the driver in question supports lookaheads and lookbehinds in regular expressions; by
+    ;; default this is true if the driver supports `:regex` but can be disabled for drivers where this is not true,
+    ;; like BigQuery.
+    :regex/lookaheads-and-lookbehinds
+
     ;; Does the driver support advanced math expressions such as log, power, ...
     :advanced-math-expressions
 
@@ -849,6 +854,11 @@
   (and (database-supports? driver :native-parameters database)
        (database-supports? driver :nested-queries database)))
 
+;; by default a driver supports `:regex/lookaheads-and-lookbehinds` if it also supports `:regex` and vice versa
+(defmethod database-supports? [::driver :regex/lookaheads-and-lookbehinds]
+  [driver _feature database]
+  (database-supports? driver :regex database))
+
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
   existing columns; aggregate functions and other expressions; joined tables; and joined subqueries; be sure to return
@@ -1045,7 +1055,7 @@
   Much of the implementation for this method is shared across drivers and lives in the
   `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
   this method.`Driver-agnostic end-to-end native parameter tests live in
-  [[metabase.query-processor-test.parameters-test]] and other namespaces."
+  [[metabase.query-processor.parameters-test]] and other namespaces."
   {:added "0.34.0" :arglists '([driver inner-native-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1167,8 +1177,14 @@
   :hierarchy #'hierarchy)
 
 (defmulti compile-transform
-  "Compiles the sql for a transform statement, given an inner sql query and a destination."
+  "Compiles the sql for a transform statement (CREATE TABLE AS), given a compiled inner sql query and a destination."
   {:added "0.57.0", :arglists '([driver {:keys [query output-table]}])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmulti compile-insert
+  "Compiles the sql for an insert statement (INSERT INTO ... SELECT), given a compiled inner sql query and a destination."
+  {:added "0.58.0", :arglists '([driver {:keys [query output-table]}])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -1210,6 +1226,10 @@
   (fn [driver _database transform-details]
     [(dispatch-on-initialized-driver driver) (:type transform-details)])
   :hierarchy #'hierarchy)
+
+(defmethod drop-transform-target! [::driver :table-incremental]
+  [driver database target]
+  ((get-method drop-transform-target! [driver :table]) driver database target))
 
 (mr/def ::native-query-deps.table-dep
   [:map
@@ -1453,14 +1473,14 @@
 (defmethod insert-from-source! [::driver :jsonl-file]
   [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
   (with-open [rdr (io/reader file)]
-    (let [lines (line-seq rdr)
+    (let [lines     (line-seq rdr)
           data-rows (map (fn [line]
                            (let [m (json/decode line)]
                              (mapv (fn [column]
                                      (let [raw-val (get m (:name column))]
                                        (insert-col->val driver :jsonl-file column raw-val)))
                                    columns)))
-                         lines)]
+                         (filter (comp not empty?) lines))]
       (insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
 
 (defmulti add-columns!

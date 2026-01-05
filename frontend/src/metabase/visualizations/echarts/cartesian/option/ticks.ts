@@ -90,6 +90,18 @@ export const getTicksOptions = (
     });
   }
 
+  // HACK: For monthly ticks, we need to handle variable month lengths.
+  // Setting a fixed minInterval causes ECharts to skip months because some months
+  // (like February with 28 days) are shorter than others (31 days).
+  // Instead, we force ECharts to generate daily ticks and filter to month starts.
+  if (largestInterval.unit === "month") {
+    canRender = (date: Dayjs) => isWithinRange(date) && date.date() === 1;
+    maxInterval = getTimeSeriesIntervalDuration({
+      count: 1,
+      unit: "day",
+    });
+  }
+
   // HACK: Similarly to weekly ticks, ECharts does not support quarterly ticks natively.
   // If we let ECharts select ticks for quarterly data it can pick January and March which
   // will look like a duplication because both ticks will be formatted as Q1. So we need to

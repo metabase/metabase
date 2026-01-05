@@ -1,13 +1,19 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, screen } from "__support__/ui";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {
-  return setup({ ...opts, hasEnterprisePlugins: true });
+  return setup({
+    ...opts,
+    enterprisePlugins: ["advanced_permissions", "tenants"],
+  });
 };
 
 describe("CollectionMenu", () => {
@@ -23,5 +29,19 @@ describe("CollectionMenu", () => {
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should not be able to edit permissions for shared tenant collections", async () => {
+    setupEnterprise({
+      collection: createMockCollection({
+        can_write: true,
+        namespace: "shared-tenant-collection",
+      }),
+      isAdmin: true,
+      tokenFeatures: createMockTokenFeatures({ tenants: true }),
+    });
+
+    await userEvent.click(getIcon("ellipsis"));
+    expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
   });
 });

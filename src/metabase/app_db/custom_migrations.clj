@@ -26,6 +26,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
@@ -1829,3 +1830,5 @@
                         nil)]
       (t2/update! :transform (:id transform) {:source_database_id db-id}))))
 
+(define-migration MoveExistingAtSymbolUserAttributes
+  (reserve-at-symbol-user-attributes/migrate!))

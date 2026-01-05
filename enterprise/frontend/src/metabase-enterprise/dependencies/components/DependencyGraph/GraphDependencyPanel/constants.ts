@@ -1,8 +1,6 @@
 // defines the order of options in the UI
 export const FILTER_OPTIONS = [
-  "verified",
   "in-dashboard",
-  "in-official-collection",
   "not-in-personal-collection",
 ] as const;
 

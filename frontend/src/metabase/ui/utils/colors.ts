@@ -60,13 +60,19 @@ export function getThemeColors(
  * @param colorName
  * @returns string referencing a css variable
  */
-export function color(colorName: ColorName | string): string {
-  if (isColorName(colorName)) {
-    return `var(--mb-color-${colorName})`;
-  }
-  return colorName;
+export function color(colorName: ColorName): string {
+  return `var(--mb-color-${colorName})`;
 }
 
 export const isColorName = (name?: string | null): name is ColorName => {
   return !!name && allColorNames.includes(name);
+};
+
+/**
+ * Prefer to use `color()` instead.
+ * Only use `maybeColor()` if you can't be sure you're going to have a `ColorName` as input,
+ * e.g. the value comes from an endpoint, upstream type-checking is too loose, etc.
+ */
+export const maybeColor = (maybeColorName: ColorName | string): string => {
+  return isColorName(maybeColorName) ? color(maybeColorName) : maybeColorName;
 };

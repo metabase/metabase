@@ -11,6 +11,8 @@ import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 import { initAuth, refreshTokenAsync } from "./auth";
+import { initGuestEmbed } from "./guest-embed";
+const SET_IS_GUEST_EMBED = "sdk/SET_IS_GUEST_EMBED";
 const SET_METABASE_INSTANCE_VERSION = "sdk/SET_METABASE_INSTANCE_VERSION";
 const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
@@ -18,6 +20,7 @@ const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_ERROR = "sdk/SET_ERROR";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
 
+export const setIsGuestEmbed = createAction<boolean>(SET_IS_GUEST_EMBED);
 export const setMetabaseInstanceVersion = createAction<string>(
   SET_METABASE_INSTANCE_VERSION,
 );
@@ -50,6 +53,7 @@ export const setUsageProblem = createAction<SdkUsageProblem | null>(
 );
 
 const initialState: SdkState = {
+  isGuestEmbed: null,
   metabaseInstanceUrl: "",
   metabaseInstanceVersion: null,
   token: {
@@ -57,12 +61,11 @@ const initialState: SdkState = {
     loading: false,
     error: null,
   },
-  loginStatus: { status: "uninitialized" },
+  initStatus: { status: "uninitialized" },
   error: null,
   plugins: null,
   eventHandlers: null,
   usageProblem: null,
-  loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
 };
@@ -82,24 +85,37 @@ export const sdk = createReducer(initialState, (builder) => {
 
   builder.addCase(refreshTokenAsync.rejected, (state, action) => {
     const error = action.error as Error;
-    state.loginStatus = { status: "error", error };
+    state.initStatus = { status: "error", error };
   });
 
   builder.addCase(initAuth.pending, (state) => {
-    state.loginStatus = { status: "loading" };
+    state.initStatus = { status: "loading" };
   });
 
   builder.addCase(initAuth.fulfilled, (state) => {
-    state.loginStatus = { status: "success" };
+    state.initStatus = { status: "success" };
   });
 
   builder.addCase(initAuth.rejected, (state, action) => {
     const error = action.error as Error;
-    state.loginStatus = { status: "error", error };
+    state.initStatus = { status: "error", error };
   });
 
-  builder.addCase(setLoaderComponent, (state, action) => {
-    state.loaderComponent = action.payload;
+  builder.addCase(initGuestEmbed.pending, (state) => {
+    state.initStatus = { status: "loading" };
+  });
+
+  builder.addCase(initGuestEmbed.fulfilled, (state) => {
+    state.initStatus = { status: "success" };
+  });
+
+  builder.addCase(initGuestEmbed.rejected, (state, action) => {
+    const error = action.error as Error;
+    state.initStatus = { status: "error", error };
+  });
+
+  builder.addCase(setIsGuestEmbed, (state, action) => {
+    state.isGuestEmbed = action.payload;
   });
 
   builder.addCase(setPlugins, (state, action) => {

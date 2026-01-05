@@ -43,8 +43,7 @@
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
   (cond-> api/model->db-model
-    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document}
-                                "transform" {:db-model :model/Transform :alias :transform})))
+    config/ee-available? (assoc "transform" {:db-model :model/Transform :alias :transform})))
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -74,8 +73,8 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (concat ["document" "transform"])
+  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"]
+    config/ee-available? (concat ["transform"])
     :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")

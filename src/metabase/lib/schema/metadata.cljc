@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.metadata
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([metabase.util.regex :as u.regex]))
@@ -9,7 +10,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 ;;; Column vs Field?
 ;;;

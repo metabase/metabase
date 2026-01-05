@@ -5,8 +5,8 @@
    [clojurewerkz.quartzite.schedule.calendar-interval :as calendar-interval]
    [clojurewerkz.quartzite.triggers :as triggers]
    [flatland.ordered.set :as ordered-set]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.instrumentation :as transforms.instrumentation]
-   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.job-run :as transforms.job-run]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.ordering :as transforms.ordering]
@@ -76,7 +76,7 @@
           (when (transform-run/running-run-for-transform-id transform-id)
             (recur))))
       (log/info "Executing job transform" (pr-str transform-id))
-      (transforms.i/execute! transform {:run-method run-method})
+      (transforms.execute/execute! transform {:run-method run-method})
       (transforms.job-run/add-run-activity! run-id))))
 
 (defn run-transforms!

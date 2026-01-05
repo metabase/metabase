@@ -246,3 +246,27 @@
         (testing "localhost mixed with other origins should work"
           (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
           (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk))))))))
+
+(deftest toggle-full-app-embedding-test
+  (mt/discard-setting-changes [embedding-app-origins-interactive]
+    (testing "can't change embedding-app-origins-interactive if :embedding feature is not available"
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting embedding-app-origins-interactive is not enabled because feature :embedding is not available"
+             (embed.settings/embedding-app-origins-interactive! "https://metabase.com")))
+        (testing "even if env is set, return the default value"
+          (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "https://metabase.com"]
+            (is (nil? (embed.settings/embedding-app-origins-interactive)))))))))
+
+(deftest toggle-full-app-embedding-test-2
+  (mt/discard-setting-changes [embedding-app-origins-interactive]
+    (testing "can change embedding-app-origins-interactive if :embedding is enabled"
+      (mt/with-premium-features #{:embedding}
+        (embed.settings/embedding-app-origins-interactive! "https://metabase.com")
+        (is (= "https://metabase.com"
+               (embed.settings/embedding-app-origins-interactive)))
+        (testing "it works with env too"
+          (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "ssh://metabase.com"]
+            (is (= "ssh://metabase.com"
+                   (embed.settings/embedding-app-origins-interactive)))))))))

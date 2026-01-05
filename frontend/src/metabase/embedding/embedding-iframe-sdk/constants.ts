@@ -25,11 +25,13 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "preferredAuthMethod",
     "fetchRequestToken",
     "useExistingUserSession",
+    "isGuest",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",
     "withTitle",
     "withDownloads",
+    "withSubscriptions",
     "initialParameters",
     "hiddenParameters",
     "drills",
@@ -63,6 +65,31 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
   ] satisfies (keyof BrowserEmbedOptions)[],
   metabot: ["layout"] satisfies (keyof MetabotEmbedOptions)[],
 } as const;
+export const ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP = {
+  base: [
+    "apiKey",
+    "instanceUrl",
+    "theme",
+    "locale",
+    "isGuest",
+  ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
+  dashboard: [
+    "token",
+    "withTitle",
+    "withDownloads",
+    "initialParameters",
+  ] satisfies (keyof DashboardEmbedOptions)[],
+  chart: [
+    "token",
+    "withTitle",
+    "withDownloads",
+    "entityTypes",
+    "initialSqlParameters",
+  ] satisfies (keyof QuestionEmbedOptions)[],
+  exploration: [] satisfies (keyof ExplorationEmbedOptions)[],
+  browser: [] satisfies (keyof BrowserEmbedOptions)[],
+  metabot: [] satisfies (keyof MetabotEmbedOptions)[],
+} as const;
 
 // This file is used by embed.js, so we shouldn't import external dependencies.
 const uniq = <T>(list: T[]): T[] => Array.from(new Set(list));
@@ -76,14 +103,25 @@ export const ALLOWED_EMBED_SETTING_KEYS = uniq([
   ...ALLOWED_EMBED_SETTING_KEYS_MAP.metabot,
 ]) satisfies SdkIframeEmbedSettingKey[];
 
-export type AllowedEmbedSettingKey =
-  (typeof ALLOWED_EMBED_SETTING_KEYS)[number];
+export const ALLOWED_GUEST_EMBED_SETTING_KEYS = uniq([
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.base,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.dashboard,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.chart,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.exploration,
+  ...ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP.browser,
+]) satisfies SdkIframeEmbedSettingKey[];
+
+export type AllowedEmbedSettingKey = (
+  | typeof ALLOWED_EMBED_SETTING_KEYS
+  | typeof ALLOWED_GUEST_EMBED_SETTING_KEYS
+)[number];
 
 /** Prevent updating these fields with `embed.updateSettings()` after the embed is created. */
 export const DISABLE_UPDATE_FOR_KEYS = [
   "instanceUrl",
   "useExistingUserSession",
   "fetchRequestToken",
+  "isGuest",
 ] as const satisfies AllowedEmbedSettingKey[];
 
 export const METABASE_CONFIG_IS_PROXY_FIELD_NAME = "__isProxy";

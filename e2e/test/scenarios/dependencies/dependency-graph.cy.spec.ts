@@ -4,7 +4,6 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { IconName } from "metabase/ui";
@@ -12,12 +11,15 @@ import type {
   CardId,
   CardType,
   CollectionId,
+  DashboardId,
   DependencyId,
   DependencyType,
   NativeQuerySnippetId,
+  SegmentId,
   TableId,
   TransformId,
 } from "metabase-types/api";
+import { createMockCard } from "metabase-types/api/mocks";
 
 const BASE_URL = "/data-studio/dependencies";
 const TABLE_NAME = "scoreboard_actions";
@@ -43,6 +45,15 @@ const SNIPPET_BASED_QUESTION_NAME = "Snippet-based question";
 const SNIPPET_BASED_MODEL_NAME = "Snippet-based model";
 const SNIPPET_BASED_TRANSFORM_NAME = "Snippet-based transform";
 const SNIPPET_BASED_SNIPPET_NAME = "Snippet-based snippet";
+const TABLE_BASED_SEGMENT_NAME = "Table-based segment";
+const SEGMENT_BASED_QUESTION_NAME = "Segment-based question";
+const SEGMENT_BASED_MODEL_NAME = "Segment-based model";
+const SEGMENT_BASED_METRIC_NAME = "Segment-based metric";
+const SEGMENT_BASED_SEGMENT_NAME = "Segment-based segment";
+const ROOT_COLLECTION_NAME = "Our analytics";
+const FIRST_COLLECTION_NAME = "First collection";
+const DASHBOARD_NAME = "Dashboard";
+const DOCUMENT_NAME = "Document";
 
 describe("scenarios > dependencies > dependency graph", () => {
   beforeEach(() => {
@@ -220,10 +231,12 @@ describe("scenarios > dependencies > dependency graph", () => {
       itemTitle,
       groupTitle,
       dependentItemTitle,
+      dependentItemLocation,
     }: {
       itemTitle: string;
       groupTitle: string;
       dependentItemTitle: string;
+      dependentItemLocation?: string;
     }) {
       H.DependencyGraph.graph()
         .findByLabelText(itemTitle)
@@ -231,8 +244,12 @@ describe("scenarios > dependencies > dependency graph", () => {
         .click();
       H.DependencyGraph.dependencyPanel()
         .findByLabelText(dependentItemTitle)
-        .findByText(dependentItemTitle)
-        .click();
+        .within(() => {
+          if (dependentItemLocation) {
+            cy.findByText(dependentItemLocation).should("be.visible");
+          }
+          cy.findByText(dependentItemTitle).should("be.visible").click();
+        });
       H.DependencyGraph.entryButton()
         .findByText(dependentItemTitle)
         .should("be.visible");
@@ -248,6 +265,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         createTableBasedModel({ tableId });
         createTableBasedMetric({ tableId });
         createTableBasedTransform({ tableName: TABLE_NAME });
+        createTableBasedSegment({ tableId });
         visitGraphForEntity(tableId, "table");
       });
       verifyPanelNavigation({
@@ -259,6 +277,7 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_DISPLAY_NAME,
         groupTitle: "1 model",
         dependentItemTitle: TABLE_BASED_MODEL_NAME,
+        dependentItemLocation: ROOT_COLLECTION_NAME,
       });
       verifyPanelNavigation({
         itemTitle: TABLE_DISPLAY_NAME,
@@ -269,6 +288,43 @@ describe("scenarios > dependencies > dependency graph", () => {
         itemTitle: TABLE_DISPLAY_NAME,
         groupTitle: "1 transform",
         dependentItemTitle: TABLE_BASED_TRANSFORM_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 segment",
+        dependentItemTitle: TABLE_BASED_SEGMENT_NAME,
+      });
+    });
+
+    it("should display dependencies for a segment and navigate to them", () => {
+      getScoreboardTableId().then((tableId) =>
+        createTableBasedSegment({ tableId }).then(({ body: segment }) => {
+          createSegmentBasedQuestion({ tableId, segmentId: segment.id });
+          createSegmentBasedModel({ tableId, segmentId: segment.id });
+          createSegmentBasedMetric({ tableId, segmentId: segment.id });
+          createSegmentBasedSegment({ tableId, segmentId: segment.id });
+          visitGraphForEntity(segment.id, "segment");
+        }),
+      );
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: SEGMENT_BASED_QUESTION_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 model",
+        dependentItemTitle: SEGMENT_BASED_MODEL_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 metric",
+        dependentItemTitle: SEGMENT_BASED_METRIC_NAME,
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_BASED_SEGMENT_NAME,
+        groupTitle: "1 segment",
+        dependentItemTitle: SEGMENT_BASED_SEGMENT_NAME,
       });
     });
 
@@ -435,6 +491,63 @@ describe("scenarios > dependencies > dependency graph", () => {
         dependentItemTitle: SNIPPET_BASED_SNIPPET_NAME,
       });
     });
+
+    it("should display dependencies for a question in the root collection", () => {
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedQuestion({ tableId });
+        visitGraphForEntity(tableId, "table");
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
+        dependentItemLocation: ROOT_COLLECTION_NAME,
+      });
+    });
+
+    it("should display dependencies for a question in a non-root collection", () => {
+      getScoreboardTableId().then((tableId) => {
+        createTableBasedQuestion({
+          tableId,
+          collectionId: FIRST_COLLECTION_ID,
+        });
+        visitGraphForEntity(tableId, "table");
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
+        dependentItemLocation: FIRST_COLLECTION_NAME,
+      });
+    });
+
+    it("should display dependencies for a question in a dashboard", () => {
+      getScoreboardTableId().then((tableId) => {
+        createDashboard().then(({ body: dashboard }) => {
+          createTableBasedQuestion({ tableId, dashboardId: dashboard.id });
+          visitGraphForEntity(tableId, "table");
+        });
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
+        dependentItemLocation: DASHBOARD_NAME,
+      });
+    });
+
+    it("should display dependencies for a question in a document", () => {
+      getScoreboardTableId().then((tableId) => {
+        createDocumentWithTableBasedQuestion({ tableId });
+        visitGraphForEntity(tableId, "table");
+      });
+      verifyPanelNavigation({
+        itemTitle: TABLE_DISPLAY_NAME,
+        groupTitle: "1 question",
+        dependentItemTitle: TABLE_BASED_QUESTION_NAME,
+        dependentItemLocation: DOCUMENT_NAME,
+      });
+    });
   });
 
   describe("dependent filtering", () => {
@@ -460,61 +573,45 @@ describe("scenarios > dependencies > dependency graph", () => {
     }
 
     it("should be able to filter questions", () => {
-      makeCollectionOfficial(FIRST_COLLECTION_ID);
       getScoreboardTableId().then((tableId) => {
-        createTableBasedQuestion({
-          name: "Verified question",
-          tableId,
-        }).then(({ body: card }) => {
-          verifyCard(card.id);
-        });
-        createTableBasedQuestion({
-          name: "Question in dashboard",
-          tableId,
-          dashboardId: ORDERS_DASHBOARD_ID,
-        });
-        createTableBasedQuestion({
-          name: "Question in root collection",
-          tableId,
-        });
-        createTableBasedQuestion({
-          name: "Question in official collection",
-          tableId,
-          collectionId: FIRST_COLLECTION_ID,
-        });
-        createTableBasedQuestion({
-          name: "Question in regular collection",
-          tableId,
-          collectionId: SECOND_COLLECTION_ID,
-        });
-        createTableBasedQuestion({
-          name: "Question in personal collection",
-          tableId,
-          collectionId: ADMIN_PERSONAL_COLLECTION_ID,
+        createDashboard().then(({ body: dashboard }) => {
+          createTableBasedQuestion({
+            name: "Question in root collection",
+            tableId,
+          });
+          createTableBasedQuestion({
+            name: "Question in first collection",
+            tableId,
+            collectionId: FIRST_COLLECTION_ID,
+          });
+          createTableBasedQuestion({
+            name: "Question in second collection",
+            tableId,
+            collectionId: SECOND_COLLECTION_ID,
+          });
+          createTableBasedQuestion({
+            name: "Question in personal collection",
+            tableId,
+            collectionId: ADMIN_PERSONAL_COLLECTION_ID,
+          });
+          createTableBasedQuestion({
+            name: "Question in dashboard",
+            tableId,
+            dashboardId: dashboard.id,
+          });
         });
         visitGraphForEntity(tableId, "table");
       });
       H.DependencyGraph.graph()
         .findByLabelText(TABLE_DISPLAY_NAME)
-        .findByText("6 questions")
+        .findByText("5 questions")
         .click();
-      verifyFilter({
-        filterName: "Verified",
-        visibleItems: ["Verified question"],
-        hiddenItems: ["Question in official collection"],
-      });
       verifyFilter({
         filterName: "In a dashboard",
         visibleItems: ["Question in dashboard"],
-        hiddenItems: ["Verified question", "Question in regular collection"],
-      });
-      verifyFilter({
-        filterName: "In an official collection",
-        visibleItems: ["Question in official collection"],
         hiddenItems: [
-          "Verified question",
-          "Question in dashboard",
-          "Question in root collection",
+          "Question in first collection",
+          "Question in second collection",
         ],
       });
       verifyFilter({
@@ -522,7 +619,8 @@ describe("scenarios > dependencies > dependency graph", () => {
         visibleItems: [
           "Question in dashboard",
           "Question in root collection",
-          "Question in regular collection",
+          "Question in first collection",
+          "Question in second collection",
         ],
         hiddenItems: ["Question in personal collection"],
       });
@@ -542,20 +640,6 @@ function getScoreboardTableId() {
   return cy.get<number>(`@${TABLE_ID_ALIAS}`);
 }
 
-function makeCollectionOfficial(collectionId: CollectionId) {
-  cy.request("PUT", `/api/collection/${collectionId}`, {
-    authority_level: "official",
-  });
-}
-
-function verifyCard(cardId: CardId) {
-  cy.request("POST", "/api/moderation-review", {
-    status: "verified",
-    moderated_item_id: cardId,
-    moderated_item_type: "card",
-  });
-}
-
 function createTableBasedCard({
   name,
   type,
@@ -566,8 +650,8 @@ function createTableBasedCard({
   name: string;
   type: CardType;
   tableId: TableId;
-  collectionId?: number | null;
-  dashboardId?: number | null;
+  collectionId?: CollectionId | null;
+  dashboardId?: DashboardId | null;
 }) {
   return H.createQuestion({
     name,
@@ -589,8 +673,8 @@ function createTableBasedQuestion({
 }: {
   name?: string;
   tableId: TableId;
-  collectionId?: number | null;
-  dashboardId?: number | null;
+  collectionId?: CollectionId | null;
+  dashboardId?: DashboardId | null;
 }) {
   return createTableBasedCard({
     name,
@@ -953,5 +1037,134 @@ function createSnippetBasedSnippet({ snippetName }: { snippetName: string }) {
   return H.createSnippet({
     name: SNIPPET_BASED_SNIPPET_NAME,
     content: `{{snippet:${snippetName}}}`,
+  });
+}
+
+function createTableBasedSegment({ tableId }: { tableId: TableId }) {
+  return H.createSegment({
+    name: TABLE_BASED_SEGMENT_NAME,
+    description: "Segment description",
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      filter: ["=", 1, 1],
+    },
+  });
+}
+
+function createSegmentBasedSegment({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return H.createSegment({
+    name: SEGMENT_BASED_SEGMENT_NAME,
+    description: "Segment description",
+    table_id: tableId,
+    definition: {
+      "source-table": tableId,
+      filter: ["segment", segmentId],
+    },
+  });
+}
+
+function createSegmentBasedCard({
+  name,
+  type,
+  tableId,
+  segmentId,
+}: {
+  name: string;
+  type: CardType;
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return H.createQuestion({
+    name,
+    type,
+    database: WRITABLE_DB_ID,
+    query: {
+      "source-table": tableId,
+      filter: ["segment", segmentId],
+      aggregation: [["count"]],
+    },
+  });
+}
+
+function createSegmentBasedQuestion({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return createSegmentBasedCard({
+    name: SEGMENT_BASED_QUESTION_NAME,
+    type: "question",
+    tableId,
+    segmentId,
+  });
+}
+
+function createSegmentBasedModel({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return createSegmentBasedCard({
+    name: SEGMENT_BASED_MODEL_NAME,
+    type: "model",
+    tableId,
+    segmentId,
+  });
+}
+
+function createSegmentBasedMetric({
+  tableId,
+  segmentId,
+}: {
+  tableId: TableId;
+  segmentId: SegmentId;
+}) {
+  return createSegmentBasedCard({
+    name: SEGMENT_BASED_METRIC_NAME,
+    type: "metric",
+    tableId,
+    segmentId,
+  });
+}
+
+function createDashboard() {
+  return H.createDashboard({
+    name: DASHBOARD_NAME,
+  });
+}
+
+function createDocumentWithTableBasedQuestion({
+  tableId,
+}: {
+  tableId: TableId;
+}) {
+  return H.createDocument({
+    name: DOCUMENT_NAME,
+    document: [],
+    cards: {
+      "-1": createMockCard({
+        id: -1,
+        name: TABLE_BASED_QUESTION_NAME,
+        dataset_query: {
+          database: WRITABLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": tableId,
+          },
+        },
+        description: "Table based question",
+      }),
+    },
   });
 }

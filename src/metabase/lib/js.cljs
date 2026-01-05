@@ -72,6 +72,7 @@
    [metabase.lib.js.metadata :as js.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.column :as lib.metadata.column]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.order-by :as lib.order-by]
@@ -1493,6 +1494,14 @@
   (-> a-ref
       lib.convert/->legacy-MBQL
       normalize-legacy-ref))
+
+(defn ^:export column-unique-key
+  "Given a column metadata from eg. [[fieldable-columns]], return an opaque unique key for it.
+  This key is stable based on the column's alias and can be used to identify columns across operations.
+
+  > **Code health:** Healthy. Prefer this over [[ref]] for identifying columns in UI state."
+  [column]
+  (lib.metadata.column/column-unique-key column))
 
 (defn ^:export legacy-ref
   "Given a column, metric or segment metadata from eg. [[fieldable-columns]] or [[available-segments]],

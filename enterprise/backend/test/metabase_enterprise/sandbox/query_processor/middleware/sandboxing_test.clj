@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
@@ -29,6 +30,8 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
    [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -878,7 +881,7 @@
           (met/with-user-attributes! :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
-              (is (= {"cat" 40}
+              (is (= {"cat" "40"} ;; attributes are always stringified
                      (:login_attributes @api/*current-user*)))
               (let [result (run-query)]
                 (is (= nil
@@ -1718,3 +1721,95 @@
       (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
         (mt/with-premium-features #{}
           (is (thrown-with-msg? clojure.lang.ExceptionInfo sandboxing-disabled-error (run-venues-count-query))))))))
+
+(def ^:private long-names-dataset
+  (tx/dataset-definition
+   "long-column-names"
+   [["long_table"
+     [{:field-name "column_name_with_an_incredibly_verbose_and_exceedingly_detailed_description_that_never_seems_to_end"
+       :base-type  :type/Text}
+      {:field-name "second_column_name_that_is_even_more_over_the_top_with_its_unnecessarily_expansive_wording"
+       :base-type  :type/Text}]
+     [["First row, first column" "First row, second column"]
+      ["Second row, first column" "Second row, second column"]]]]))
+
+(deftest long-native-query-names-sandboxed-basic-test
+  (testing "Issue #66405: Sandboxing with native SQL query should work with long column names"
+    (data/dataset long-names-dataset
+      (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE"})}}}
+        (is (=? {:status "completed"
+                 :row_count 2}
+                (mt/user-http-request :rasta :post 202 "dataset"
+                                      (mt/mbql-query long_table {:limit 5}))))))))
+
+(deftest long-native-query-names-sandboxed-row-filtering-test
+  (testing "Issue #66405: with row filtering (verifies sandbox is actually applied)"
+    (data/dataset long-names-dataset
+      (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT * FROM LONG_TABLE WHERE LONG_TABLE.COLUMN_NAME_WITH_AN_INCREDIBLY_VERBOSE_AND_EXCEEDINGLY_DETAILED_DESCRIPTION_THAT_NEVER_SEEMS_TO_END LIKE 'First%'"})}}}
+        (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                           (mt/mbql-query long_table))]
+          (is (=? {:status    "completed"
+                   :row_count 1}
+                  result))
+          (is (= "First row, first column"
+                 ;; The first column (index 0) is the auto-generated ID, the text column is at index 1
+                 (-> result :data :rows first second))))))))
+
+(deftest long-native-query-names-sandboxed-column-filtering-test
+  (testing "Issue #66405: with column restriction (only returns subset of columns)"
+    (data/dataset long-names-dataset
+      (met/with-gtaps! {:gtaps {:long_table {:query (mt/native-query {:query "SELECT COLUMN_NAME_WITH_AN_INCREDIBLY_VERBOSE_AND_EXCEEDINGLY_DETAILED_DESCRIPTION_THAT_NEVER_SEEMS_TO_END FROM LONG_TABLE"})}}}
+        (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                           (mt/mbql-query long_table))]
+          (is (=? {:status    "completed"
+                   :row_count 2}
+                  result))
+          ;; Should only have 1 column (the long-named one), not 2 text columns + ID
+          (is (= 1 (count (-> result :data :cols))))
+          (is (= [["First row, first column"]
+                  ["Second row, first column"]]
+                 (-> result :data :rows))))))))
+
+(deftest long-native-query-names-sandboxed-attribute-test
+  (testing "Issue #66405: with attribute-based sandbox (no query, just remappings)"
+    (data/dataset long-names-dataset
+      (met/with-gtaps! {:gtaps      {:long_table {:remappings {:col1 ["variable" [:field (data/id :long_table :column_name_with_an_incredibly_verbose_and_exceedingly_detailed_description_that_never_seems_to_end) nil]]}}}
+                        :attributes {:col1 "First row, first column"}}
+        (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                           (mt/mbql-query long_table))]
+          (is (=? {:status    "completed"
+                   :row_count 1}
+                  result))
+          (is (= ["First row, first column" "First row, second column"]
+                 (->> result :data :rows first (drop 1)))))))))
+
+(deftest test-66781
+  (testing "Handle user attribute filters against implicitly joined tables that are also sandboxed correctly (#66781)"
+    (met/with-gtaps! (let [mp (mt/metadata-provider)]
+                       {:gtaps      {:orders {:query      (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                              (as-> $query (lib/remove-field $query
+                                                                                             -1
+                                                                                             (lib.tu.notebook/find-col-with-spec
+                                                                                              $query
+                                                                                              (lib/returned-columns $query)
+                                                                                              {:display-name "Orders"}
+                                                                                              {:display-name "Total"}))))
+                                              :remappings {:user_id [:variable [:field
+                                                                                (mt/id :people :id)
+                                                                                {:source-field (mt/id :orders :user_id)}]]}}
+                                     :people {:query (-> (lib/query mp (lib.metadata/table mp (mt/id :people)))
+                                                         (as-> $query (lib/remove-field $query
+                                                                                        -1
+                                                                                        (lib.tu.notebook/find-col-with-spec
+                                                                                         $query
+                                                                                         (lib/returned-columns $query)
+                                                                                         {:display-name "People"}
+                                                                                         {:display-name "Email"})))
+                                                         (lib/order-by (lib.metadata/field mp (mt/id :people :id))))
+                                              :remappings {:user_id [:variable [:field (mt/id :people :id)]]}}}
+                        :attributes {:user_id 1}})
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :quantity)))))]
+        (is (= [[44]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset" query))))))))

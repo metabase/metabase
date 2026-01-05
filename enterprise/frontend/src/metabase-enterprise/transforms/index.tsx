@@ -1,7 +1,9 @@
+import type { UserWithFeaturePermissions } from "metabase-enterprise/feature_level_permissions/types/user";
+
 import { PLUGIN_ENTITIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { useGetTransformQuery } from "metabase-enterprise/api";
 import { Transforms } from "metabase-enterprise/entities/transforms";
-import type { UserWithFeaturePermissions } from "metabase-enterprise/feature_level_permissions/types/user";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
 
@@ -27,5 +29,6 @@ export function initializePlugin() {
     PLUGIN_TRANSFORMS.getDataStudioTransformRoutes =
       getDataStudioTransformRoutes;
     PLUGIN_TRANSFORMS.TransformPicker = TransformPicker;
+    PLUGIN_TRANSFORMS.useGetTransformQuery = useGetTransformQuery;
   }
 }

@@ -150,6 +150,8 @@ export const StaticRowChart = ({
           height={fullChartHeight}
           width={width}
           preserveAspectRatio="xMinYMin slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

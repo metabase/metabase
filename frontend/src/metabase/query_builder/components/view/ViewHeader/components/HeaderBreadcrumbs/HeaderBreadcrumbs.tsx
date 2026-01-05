@@ -35,6 +35,7 @@ function getBadgeInactiveColor({
 }
 
 interface HeadBreadcrumbsProps {
+  className?: string;
   variant?: "head" | "subhead";
   parts: DataSourcePart[];
   divider?: string | ReactElement;

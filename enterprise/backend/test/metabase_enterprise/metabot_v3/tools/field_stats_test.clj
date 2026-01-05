@@ -43,9 +43,9 @@
         people-query (table-query mp people-id)
         birth-date-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "Birth Date")
         state-id (visible-field-id people-query (metabot-v3.tools.u/table-field-id-prefix people-id) "State")
-        orders-id (mt/id :orders)
-        orders-query (table-query mp orders-id)
-        category-id (visible-field-id orders-query (metabot-v3.tools.u/table-field-id-prefix orders-id) "Category")]
+        products-id (mt/id :products)
+        products-query (table-query mp products-id)
+        category-id (visible-field-id products-query (metabot-v3.tools.u/table-field-id-prefix products-id) "Category")]
     (testing "No read permission results in an error."
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                             (metabot-v3.tools.field-stats/field-values
@@ -69,7 +69,7 @@
                                                 :percent-state  1.0
                                                 :average-length 2.0}
                                    :values     ["AK" "AL" "AR" "AZ" "CA"]}
-          orders-id category-id   {:statistics {:distinct-count 4
+          products-id category-id {:statistics {:distinct-count 4
                                                 :percent-null   0.0
                                                 :percent-json   0.0
                                                 :percent-url    0.0
@@ -79,16 +79,18 @@
                                    :values     ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
 
 (deftest field-values-model-test
+  (ensure-fresh-field-values! (mt/id :orders :quantity))
   (ensure-fresh-field-values! (mt/id :people :state))
   (ensure-fresh-field-values! (mt/id :products :category))
   (mt/with-temp [:model/Card {model-id :id} {:dataset_query (mt/mbql-query orders)
                                              :type :model}]
     (let [mp (mt/metadata-provider)
           model-query (lib/query mp (lib.metadata/card mp model-id))
-          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
-          birth-date-id (visible-field-id model-query field-id-prefix "Birth Date")
-          state-id (visible-field-id model-query field-id-prefix "State")
-          category-id (visible-field-id model-query field-id-prefix "Category")]
+          card-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
+          ;; All fields use c<card-id> syntax with indices from model's visible-columns
+          quantity-id (visible-field-id model-query card-field-id-prefix "Quantity")
+          state-id (visible-field-id model-query card-field-id-prefix "State")
+          category-id (visible-field-id model-query card-field-id-prefix "Category")]
       (testing "No read permission results in an error."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                               (metabot-v3.tools.field-stats/field-values
@@ -96,40 +98,42 @@
       (testing "Getting statistics and values for model fields works."
         (mt/as-admin
           (are [field-id output]
-               (= {:structured-output output}
-                  (metabot-v3.tools.field-stats/field-values
-                   {:entity-type "model", :entity-id model-id, :field-id field-id, :limit 5}))
-            birth-date-id {:statistics
-                           {:distinct-count 2308
-                            :percent-null   0.0
-                            :earliest       "1958-04-26"
-                            :latest         "2000-04-03"}}
-            state-id      {:statistics {:distinct-count 49
-                                        :percent-null   0.0
-                                        :percent-json   0.0
-                                        :percent-url    0.0
-                                        :percent-email  0.0
-                                        :percent-state  1.0
-                                        :average-length 2.0}
-                           :values     ["AK" "AL" "AR" "AZ" "CA"]}
-            category-id   {:statistics {:distinct-count 4
-                                        :percent-null   0.0
-                                        :percent-json   0.0
-                                        :percent-url    0.0
-                                        :percent-email  0.0
-                                        :percent-state  0.0
-                                        :average-length 6.375}
-                           :values     ["Doohickey" "Gadget" "Gizmo" "Widget"]}))))))
+               (=? {:structured-output output}
+                   (metabot-v3.tools.field-stats/field-values
+                    {:entity-type "model", :entity-id model-id, :field-id field-id, :limit 5}))
+            quantity-id {:statistics {:distinct-count 62
+                                      :percent-null   0.0}
+                         :values     [0 1 2 3 4]}
+            state-id    {:statistics {:distinct-count 49
+                                      :percent-null   0.0
+                                      :percent-json   0.0
+                                      :percent-url    0.0
+                                      :percent-email  0.0
+                                      :percent-state  1.0
+                                      :average-length 2.0}
+                         :values     ["AK" "AL" "AR" "AZ" "CA"]}
+            category-id {:statistics {:distinct-count 4
+                                      :percent-null   0.0
+                                      :percent-json   0.0
+                                      :percent-url    0.0
+                                      :percent-email  0.0
+                                      :percent-state  0.0
+                                      :average-length 6.375}
+                         :values     ["Doohickey" "Gadget" "Gizmo" "Widget"]}))))))
 
-(deftest ^:parallel field-values-metric-test
+(deftest field-values-metric-test
+  (ensure-fresh-field-values! (mt/id :orders :quantity))
   (mt/with-temp [:model/Card {metric-id :id} {:dataset_query (mt/mbql-query orders
                                                                {:aggregation [[:count]]
-                                                                :breakout    [!year.user_id->people.birth_date]})
+                                                                :breakout    [$quantity
+                                                                              !year.user_id->people.birth_date]})
                                               :type :metric}]
     (let [mp (mt/metadata-provider)
           metric-query (lib/query mp (lib.metadata/metric mp metric-id))
-          field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
-          birth-date-id (filterable-field-id metric-query field-id-prefix "Birth Date")]
+          card-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
+          ;; All fields use c<card-id> syntax with indices from metric's filterable-columns
+          quantity-id (filterable-field-id metric-query card-field-id-prefix "Quantity")
+          birth-date-id (filterable-field-id metric-query card-field-id-prefix "Birth Date")]
       (testing "No read permission results in an error."
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                               (metabot-v3.tools.field-stats/field-values
@@ -137,9 +141,12 @@
       (testing "Getting statistics and values for metric fields works."
         (mt/as-admin
           (are [field-id output]
-               (= {:structured-output output}
-                  (metabot-v3.tools.field-stats/field-values
-                   {:entity-type "metric", :entity-id metric-id, :field-id field-id, :limit 5}))
+               (=? {:structured-output output}
+                   (metabot-v3.tools.field-stats/field-values
+                    {:entity-type "metric", :entity-id metric-id, :field-id field-id, :limit 5}))
+            quantity-id   {:statistics {:distinct-count 62
+                                        :percent-null   0.0}
+                           :values     [0 1 2 3 4]}
             birth-date-id {:statistics
                            {:distinct-count 2308
                             :percent-null   0.0

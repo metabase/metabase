@@ -34,6 +34,8 @@
 (derive ::card-deps :metabase/event)
 (derive :event/card-create ::card-deps)
 (derive :event/card-update ::card-deps)
+;; Backfill-only event that triggers dependency calculation without creating a revision (#66365)
+(derive :event/card-dependency-backfill ::card-deps)
 
 (methodical/defmethod events/publish-event! ::card-deps
   [_ {:keys [object]}]
@@ -221,3 +223,27 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :sandbox :from_entity_id (:id object))))
+
+;; ### Segments
+(derive ::segment-deps :metabase/event)
+(derive :event/segment-create ::segment-deps)
+(derive :event/segment-update ::segment-deps)
+
+(methodical/defmethod events/publish-event! ::segment-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/with-transaction [_conn]
+      (models.dependency/replace-dependencies! :segment (:id object)
+                                               (ignore-errors
+                                                (deps.calculation/upstream-deps:segment object)))
+      (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
+        (t2/update! :model/Segment (:id object)
+                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
+
+(derive ::segment-delete :metabase/event)
+(derive :event/segment-delete ::segment-delete)
+
+(methodical/defmethod events/publish-event! ::segment-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))

@@ -31,19 +31,19 @@ export const setupSdkState = ({
   tokenFeatures = createMockTokenFeatures({ embedding_sdk: true }),
   settingDefinitions = [],
   sdkState = createMockSdkState({
-    loginStatus: createMockLoginStatusState({ status: "success" }),
+    initStatus: createMockLoginStatusState({ status: "success" }),
   }),
   ...stateOpts
 }: {
   currentUser?: User;
   settingValues?: EnterpriseSettings;
-  tokenFeatures?: TokenFeatures;
+  tokenFeatures?: Partial<TokenFeatures>;
   settingDefinitions?: SettingDefinition[];
   sdkState?: SdkState;
 } & Partial<SdkStoreState> = {}) => {
   const settingValuesWithToken = {
     ...settingValues,
-    "token-features": tokenFeatures,
+    "token-features": createMockTokenFeatures(tokenFeatures),
   };
 
   setupCurrentUserEndpoint(currentUser);

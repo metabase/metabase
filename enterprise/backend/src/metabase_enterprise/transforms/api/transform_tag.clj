@@ -17,6 +17,10 @@
   []
   (api/check-403 (transforms.util/current-user-has-transforms-read-permission?)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new transform tag."
   [_route-params
@@ -29,6 +33,10 @@
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:tag-id"
   "Update a transform tag."
   [{:keys [tag-id]} :- [:map
@@ -44,6 +52,10 @@
   (t2/update! :model/TransformTag tag-id {:name name})
   (t2/select-one :model/TransformTag :id tag-id))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:tag-id"
   "Delete a transform tag. Removes it from all transforms and jobs."
   [{:keys [tag-id]} :- [:map
@@ -54,6 +66,10 @@
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get a list of all transform tags."
   [_route-params

@@ -726,7 +726,7 @@
                   :field-ref       [:expression "prev_month"]}]
                 (column-info query {:cols [{}]})))))))
 
-;;; adapted from [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
+;;; adapted from [[metabase.query-processor.nested-queries-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
                 "break out a *YEAR*")

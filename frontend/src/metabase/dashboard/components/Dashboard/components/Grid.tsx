@@ -1,12 +1,13 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useSelector } from "metabase/lib/redux";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { getUser } from "metabase/selectors/user";
-import { Loader, Stack, Text } from "metabase/ui";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
+import { Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import {
@@ -53,20 +54,9 @@ export const Grid = ({
    * on `GET /api/database`. After the consolidation every dashboard uses the same component, so we probably
    * missed this case.
    */
-  const isLoggedIn = useSelector((state) => !!getUser(state));
-  const { data: databasesResponse, isError } = useListDatabasesQuery(
-    isLoggedIn ? undefined : skipToken,
-  );
-  const databases = useMemo(
-    () => databasesResponse?.data ?? [],
-    [databasesResponse],
-  );
-  const hasDataAccess = useMemo(() => getHasDataAccess(databases), [databases]);
-  const hasNativeWrite = useMemo(
-    () => getHasNativeWrite(databases),
-    [databases],
-  );
-  const canCreateQuestions = !isError && (hasDataAccess || hasNativeWrite);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
+  const canCreateQuestions = hasDataAccess || hasNativeWrite;
 
   const handleSetEditing = useCallback(() => {
     if (!isEditing) {
@@ -82,12 +72,7 @@ export const Grid = ({
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
   if (isLoadingWithoutCards) {
-    return (
-      <Stack justify="center" align="center" gap="sm" mt="xl">
-        <Loader size="lg" />
-        <Text c="text-light" size="xl">{t`Loading…`}</Text>
-      </Stack>
-    );
+    return <Loader size="lg" label={t`Loading…`} />;
   }
 
   if (isEmpty) {

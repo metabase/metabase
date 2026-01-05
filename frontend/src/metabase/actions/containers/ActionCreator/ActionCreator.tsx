@@ -12,9 +12,9 @@ import type {
   CreateActionParams,
   UpdateActionParams,
 } from "metabase/entities/actions";
-import Actions from "metabase/entities/actions";
-import Database from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
+import { Actions } from "metabase/entities/actions";
+import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
 import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
@@ -230,6 +230,6 @@ export default _.compose(
     id: (state: State, props: OwnProps) => props?.modelId,
     entityAlias: "model",
   }),
-  Database.loadList(),
+  Databases.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
 )(ActionCreatorWithContext);

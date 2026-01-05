@@ -1,8 +1,8 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import InputBlurChange from "metabase/common/components/InputBlurChange";
+import { TextInputBlurChange } from "metabase/ui";
 
-export const NumericInputBlurChange = styled(InputBlurChange)`
+export const NumericInputBlurChange = styled(TextInputBlurChange)`
   width: auto;
 `;

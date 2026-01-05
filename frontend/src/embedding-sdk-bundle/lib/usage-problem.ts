@@ -5,7 +5,7 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
@@ -13,6 +13,7 @@ import { getIsLocalhost } from "./get-is-localhost";
 interface SdkProblemOptions {
   authConfig: MetabaseAuthConfig;
   isEnabled: boolean;
+  isGuestEmbed: boolean | null;
   hasTokenFeature: boolean;
   isDevelopmentMode?: boolean;
   session: MetabaseEmbeddingSessionToken | null;
@@ -67,6 +68,7 @@ export function getSdkUsageProblem(
 ): SdkUsageProblem | null {
   const {
     isEnabled,
+    isGuestEmbed,
     hasTokenFeature,
     authConfig,
     isDevelopmentMode,
@@ -83,6 +85,14 @@ export function getSdkUsageProblem(
   // in case of a local app running a distant MB instance
   const isLocalhost = isLocalHost ?? getIsLocalhost();
 
+  if (isDevelopmentMode) {
+    return toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE");
+  }
+
+  if (isGuestEmbed === null || isGuestEmbed) {
+    return null;
+  }
+
   /**
    * TODO: these checks for non-localhost environments are pending on
    *       the "allowing CORS for /api/session/properties" PR to be merged
@@ -98,12 +108,8 @@ export function getSdkUsageProblem(
       isApiKey,
       isLocalhost,
       isEnabled,
-      isDevelopmentMode,
       session,
     })
-      .with({ isDevelopmentMode: true }, () =>
-        toWarning("DEVELOPMENT_MODE_CLOUD_INSTANCE"),
-      )
       .with({ isSSO: true, hasTokenFeature: false, isLocalhost: true }, () =>
         toError("SSO_WITHOUT_LICENSE"),
       )
@@ -150,9 +156,9 @@ const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 });
 
 const getTitle = () => {
-  if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
+  if (isEmbeddingEajs()) {
     // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
-    return "This embed is powered by the Metabase Embedded Analytics JS";
+    return "This embed is powered by Metabase";
   }
 
   // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.

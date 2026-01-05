@@ -3,6 +3,7 @@ import { c } from "ttag";
 
 import Link from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
+import { getIcon } from "metabase/lib/icon";
 import { useSelector } from "metabase/lib/redux";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
@@ -10,7 +11,6 @@ import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
 import { getDataSourceParts } from "../../../ViewHeader/components/QuestionDataSource/utils";
 
 import type { QuestionSource } from "./types";
-import { getIconPropsForSource } from "./utils";
 
 export const QuestionSources = () => {
   /** Retrieve current question from the Redux store */
@@ -23,11 +23,11 @@ export const QuestionSources = () => {
           subHead: false,
           isObjectDetail: true,
           formatTableAsComponent: false,
-        }) as QuestionSource[])
+        }) as QuestionSource[]) // note: this type cast is horrendous
       : [];
     return sources.map((source) => ({
       ...source,
-      iconProps: getIconPropsForSource(source),
+      iconProps: getIcon({ model: source.model ?? "card" }),
     }));
   }, [underlyingQuestion]);
 

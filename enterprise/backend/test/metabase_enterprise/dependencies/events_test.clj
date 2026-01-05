@@ -376,3 +376,88 @@
                   (is (= models.dependency/current-dependency-analysis-version
                          (t2/select-one-fn :dependency_analysis_version :model/Sandbox :id sandbox-id)))
                   (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox))))))))))))
+
+(deftest segment-update-sets-correct-dependencies
+  (mt/with-test-user :rasta
+    (let [products-id (mt/id :products)
+          price-field-id (mt/id :products :price)
+          category-field-id (mt/id :products :category)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                    :definition {:filter [:> [:field price-field-id nil] 50]}}]
+          (testing "creating a segment creates dependency to its table"
+            (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
+            (is (= #{{:from_entity_type :segment
+                      :from_entity_id segment-id
+                      :to_entity_type :table
+                      :to_entity_id products-id}}
+                   (into #{} (map #(dissoc % :id)
+                                  (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
+          (testing "updating segment definition recalculates dependencies"
+            (t2/update! :model/Segment segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
+            (let [updated-segment (t2/select-one :model/Segment :id segment-id)]
+              (events/publish-event! :event/segment-update {:object updated-segment :user-id api/*current-user-id*})
+              (is (= #{{:from_entity_type :segment
+                        :from_entity_id segment-id
+                        :to_entity_type :table
+                        :to_entity_id products-id}}
+                     (into #{} (map #(dissoc % :id)
+                                    (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))
+          (testing "deleting segment removes all dependencies"
+            (t2/delete! :model/Segment segment-id)
+            (events/publish-event! :event/segment-delete {:object segment :user-id api/*current-user-id*})
+            (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
+
+(deftest card-with-segment-dependencies
+  (mt/with-test-user :rasta
+    (let [products-id (mt/id :products)
+          price-field-id (mt/id :products :price)]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                    :definition {:filter [:> [:field price-field-id nil] 50]}}]
+          (testing "creating a card using a segment creates dependencies to both segment and table"
+            (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
+            (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query {:database (mt/id)
+                                                                               :type :query
+                                                                               :query {:source-table products-id
+                                                                                       :filter [:segment segment-id]}}}]
+              (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
+              (is (= #{{:from_entity_type :card
+                        :from_entity_id card-id
+                        :to_entity_type :segment
+                        :to_entity_id segment-id}
+                       {:from_entity_type :card
+                        :from_entity_id card-id
+                        :to_entity_type :table
+                        :to_entity_id products-id}}
+                     (into #{} (map #(dissoc % :id)
+                                    (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card))))))))))))
+
+(deftest segment-dependency-calculation-error-handling-test
+  (testing "When segment dependency calculation throws an error, it should be logged and the version should still be updated"
+    (mt/with-test-user :rasta
+      (let [products-id (mt/id :products)
+            price-field-id (mt/id :products :price)]
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}]
+            (log.capture/with-log-messages-for-level [messages ["metabase-enterprise.dependencies.events" :error]]
+              (with-redefs [deps.calculation/upstream-deps:segment (fn [_]
+                                                                     (throw (ex-info "Segment dependency calculation failed"
+                                                                                     {:segment-id segment-id})))]
+                (testing "on create event"
+                  (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
+                  (is (some #(and (= "Segment dependency calculation failed" (ex-message (:e %)))
+                                  (= :error (:level %)))
+                            (messages)))
+                  (is (= models.dependency/current-dependency-analysis-version
+                         (t2/select-one-fn :dependency_analysis_version :model/Segment :id segment-id)))
+                  (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))
+                (testing "on update event"
+                  (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+                  (is (some #(and (= "Segment dependency calculation failed" (ex-message (:e %)))
+                                  (= :error (:level %)))
+                            (messages)))
+                  (is (= models.dependency/current-dependency-analysis-version
+                         (t2/select-one-fn :dependency_analysis_version :model/Segment :id segment-id)))
+                  (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))))))))

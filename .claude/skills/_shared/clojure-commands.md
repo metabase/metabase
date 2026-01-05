@@ -14,6 +14,12 @@
 
 - **Run a test:** `./bin/mage run-tests namespace/test-name`
 - **Run all tests in a namespace:** `./bin/mage run-tests namespace`
+- **Run all tests for a module:** `./bin/mage run-tests test/metabase/notification` Because the module lives in that directory.
+
+Note: the `./bin/mage run-tests` command accepts multiple args, so you can pass
+`./bin/mage run-tests namespace/test-name namespace/other-test namespace/third-test`
+to run 3 tests, or
+`./bin/mage run-tests test/metabase/module1 test/metabase/module2` to run 2 modules.
 
 ## Code Readability
 
@@ -22,6 +28,11 @@
   - Check specific line first, then entire file if readable
 
 ## REPL Usage
+
+> **Note:** If you have `clojure-mcp` tools available (check for tools like `clojure_eval`),
+> **always prefer those over `./bin/mage -repl`**. The MCP tools provide better integration,
+> richer feedback, and avoid shell escaping issues. Only use `./bin/mage -repl` as a fallback
+> when clojure-mcp is not available.
 
 - **Evaluating Clojure Code:** `./bin/mage -repl '<code>'`
   - See "Sending Code to the REPL" section for more details

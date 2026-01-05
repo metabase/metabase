@@ -146,6 +146,8 @@ export function getNodeIconWithType(
       return "document";
     case "sandbox":
       return "permissions_limited";
+    case "segment":
+      return "segment";
   }
 }
 
@@ -174,7 +176,11 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "table":
       return {
         label: t`View metadata`,
-        url: Urls.dataModelTable(node.data.db_id, node.data.schema, node.id),
+        url: Urls.dataModel({
+          databaseId: node.data.db_id,
+          schemaName: node.data.schema,
+          tableId: node.id,
+        }),
       };
     case "transform":
       return {
@@ -203,6 +209,11 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         };
       }
       return null;
+    case "segment":
+      return {
+        label: t`View this segment`,
+        url: Urls.dataModelSegment(node.id),
+      };
     case "snippet":
       return null;
   }
@@ -216,6 +227,14 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
           {
             label: node.data.dashboard.name,
             url: Urls.dashboard(node.data.dashboard),
+          },
+        ];
+      }
+      if (node.data.document != null) {
+        return [
+          {
+            label: node.data.document.name,
+            url: Urls.document(node.data.document),
           },
         ];
       }
@@ -233,11 +252,14 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         return [
           {
             label: node.data.db.name,
-            url: Urls.dataModelDatabase(node.data.db_id),
+            url: Urls.dataModel({ databaseId: node.data.db_id }),
           },
           {
             label: node.data.schema,
-            url: Urls.dataModelSchema(node.data.db_id, node.data.schema),
+            url: Urls.dataModel({
+              databaseId: node.data.db_id,
+              schemaName: node.data.schema,
+            }),
           },
         ];
       }
@@ -249,6 +271,20 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
           {
             label: node.data.collection.name,
             url: Urls.collection(node.data.collection),
+          },
+        ];
+      }
+      return null;
+    case "segment":
+      if (node.data.table != null) {
+        return [
+          {
+            label: node.data.table.display_name,
+            url: Urls.dataModel({
+              databaseId: node.data.table.db_id,
+              schemaName: node.data.table.schema,
+              tableId: node.data.table.id,
+            }),
           },
         ];
       }
@@ -275,6 +311,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "transform":
     case "snippet":
     case "sandbox":
+    case "segment":
       return null;
   }
 }
@@ -327,5 +364,7 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
       return { label: t`Document`, color: "text-secondary" };
     case "sandbox":
       return { label: t`Row and column security rule`, color: "error" };
+    case "segment":
+      return { label: t`Segment`, color: "accent2" };
   }
 }

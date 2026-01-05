@@ -9,6 +9,7 @@ function SnippetFormModal({
   collection,
   onSaved,
   onClose,
+  opened = true,
 }: SnippetFormModalProps) {
   const isEditing = collection.id != null;
   const title = isEditing
@@ -21,7 +22,7 @@ function SnippetFormModal({
   };
 
   return (
-    <Modal opened onClose={onClose} title={title}>
+    <Modal opened={opened} onClose={onClose} title={title}>
       <SnippetCollectionForm
         collection={collection}
         onSave={handleSave}

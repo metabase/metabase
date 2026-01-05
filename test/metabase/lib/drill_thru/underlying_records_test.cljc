@@ -3,7 +3,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
        :clj  ([java-time.api :as t]
               [metabase.util.malli.fn :as mu.fn]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru :as lib.drill-thru]
@@ -20,6 +20,8 @@
    [metabase.lib.underlying :as lib.underlying]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel underlying-records-availability-test
   (testing "underlying-records is available for non-header clicks with at least one breakout"
@@ -602,6 +604,41 @@
                         (lib.underlying/top-level-column query (:column bucket-dim)))))
       (is (=? [[:= {} [:expression {} "cost bucket"] "12"]]
               (lib/filters (lib/drill-thru query drill)))))))
+
+(deftest ^:parallel expression-after-aggregation-test
+  (testing "custom column defined after aggregation should not offer underlying-records drill (#66715)"
+    (let [;; Stage 0: Count of products by category
+          ;; Stage 1: Add custom column "Custom Category" that references the breakout result
+          base-query     (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                             (lib/aggregate (lib/count))
+                             (lib/breakout (meta/field-metadata :products :category))
+                             lib/append-stage)
+          category-col   (m/find-first #(= (:name %) "CATEGORY")
+                                       (lib/returned-columns base-query))
+          query          (lib/expression base-query "Custom Category" (lib/ref category-col))
+          cols           (lib/returned-columns query)
+          custom-cat-col (m/find-first #(= (:name %) "Custom Category") cols)
+          count-col      (m/find-first #(= (:name %) "count") cols)
+          ;; Simulate clicking on a bar chart with Custom Category on X axis
+          context        {:column     custom-cat-col
+                          :column-ref (lib/ref custom-cat-col)
+                          :value      42
+                          :row        [{:column     custom-cat-col
+                                        :column-ref (lib/ref custom-cat-col)
+                                        :value      "Doohickey"}
+                                       {:column     count-col
+                                        :column-ref (lib/ref count-col)
+                                        :value      42}]
+                          :dimensions [{:column     custom-cat-col
+                                        :column-ref (lib/ref custom-cat-col)
+                                        :value      "Doohickey"}]}
+          ;; No underlying-records drill:
+          drill          (m/find-first #(= (:type %) :drill-thru/underlying-records)
+                                       (lib/available-drill-thrus query context))]
+      (testing "Custom Category expression can't be traced to top-level query"
+        (is (nil? (lib.underlying/top-level-column query custom-cat-col))))
+      (testing "drill should not be available when dimension can't be traced back"
+        (is (nil? drill))))))
 
 (deftest ^:parallel native-query-with-multiple-breakouts-on-same-column-test
   (let [mp               (lib.tu/mock-metadata-provider

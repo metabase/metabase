@@ -1021,7 +1021,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
 
       H.saveDashboard({ waitMs: 250 });
 
-      onNextAnchorClick((anchor) => {
+      H.onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
@@ -1078,7 +1078,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.button("Add filter").click();
       });
 
-      onNextAnchorClick((anchor) => {
+      H.onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
@@ -1641,7 +1641,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
           cy.findByPlaceholderText("Search the list").type("Dell Adams");
           cy.button("Update filter").click();
         });
-        onNextAnchorClick((anchor) => {
+        H.onNextAnchorClick((anchor) => {
           expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
           expect(anchor).to.have.attr("rel", "noopener");
           expect(anchor).to.have.attr("target", "_blank");
@@ -1813,7 +1813,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         cy.findByPlaceholderText("Search the list").type("Dell Adams");
         cy.button("Add filter").click();
       });
-      onNextAnchorClick((anchor) => {
+      H.onNextAnchorClick((anchor) => {
         expect(anchor).to.have.attr("href", URL_WITH_FILLED_PARAMS);
         expect(anchor).to.have.attr("rel", "noopener");
         expect(anchor).to.have.attr("target", "_blank");
@@ -1958,12 +1958,15 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
         })
         .then(({ body: dashCard }) => {
           H.visitDashboard(dashCard.dashboard_id);
+
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashCard.dashboard_id,
+            activeTab: "parameters",
+            unpublishBeforeOpen: false,
+          });
         });
 
-      H.openStaticEmbeddingModal({
-        activeTab: "parameters",
-        acceptTerms: false,
-      });
       H.visitIframe();
       clickLineChartPoint();
 
@@ -2749,23 +2752,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       .should("be.visible");
   });
 });
-
-/**
- * This function exists to work around custom dynamic anchor creation.
- * @see https://github.com/metabase/metabase/blob/master/frontend/src/metabase/lib/dom.js#L301-L312
- *
- * WARNING: For the assertions to work, ensure that a click event occurs on an anchor element afterwards.
- */
-const onNextAnchorClick = (callback) => {
-  cy.window().then((window) => {
-    const originalClick = window.HTMLAnchorElement.prototype.click;
-
-    window.HTMLAnchorElement.prototype.click = function () {
-      callback(this);
-      window.HTMLAnchorElement.prototype.click = originalClick;
-    };
-  });
-};
 
 const clickLineChartPoint = () => {
   // eslint-disable-next-line no-unsafe-element-filtering

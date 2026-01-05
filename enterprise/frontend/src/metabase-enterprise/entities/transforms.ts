@@ -1,5 +1,4 @@
 import { createEntity } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
 import { TransformSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
 import type { Transform } from "metabase-types/api";
@@ -16,8 +15,6 @@ export const Transforms = createEntity({
 
   objectSelectors: {
     getName: (transform: Transform) => transform && transform.name,
-    getUrl: (transform: Transform) => transform && Urls.transform(transform.id),
-    getIcon: () => ({ name: "transform" }),
     getColor: () => color("brand"),
   },
 });

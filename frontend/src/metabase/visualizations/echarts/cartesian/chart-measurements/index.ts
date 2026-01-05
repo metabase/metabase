@@ -57,8 +57,6 @@ const getEvenlySpacedIndices = (
   return Array.from(result);
 };
 
-const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
-
 const getValuesToMeasure = (min: number, max: number): number[] => {
   if (min === max) {
     return [min];
@@ -132,9 +130,8 @@ const getYAxisTicksWidth = (
       settings.column?.(axisModel.column).number_style === "percent";
 
     let value = rawValue;
-    if (isPercent) {
-      value = roundToHundredth(rawValue);
-    } else if (!areDecimalTicksExpected) {
+
+    if (!isPercent && !areDecimalTicksExpected) {
       value = Math.round(rawValue);
     }
 

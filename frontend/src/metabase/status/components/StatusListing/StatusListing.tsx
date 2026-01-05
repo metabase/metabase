@@ -8,6 +8,7 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
 
 import DatabaseStatus from "../../containers/DatabaseStatus";
+import { AnalyticsExportStatus } from "../AnalyticsExportStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
 
@@ -31,6 +32,7 @@ const StatusListing = () => {
       <StatusListingRoot data-testid="status-root-container">
         {isAdmin && <DatabaseStatus />}
         <FileUploadStatus />
+        <AnalyticsExportStatus />
         <DownloadsStatus />
         {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
       </StatusListingRoot>

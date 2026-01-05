@@ -55,10 +55,9 @@
 
 (defmethod check-permissions-for-model :document
   [search-ctx instance]
-  (and (premium-features/enable-documents?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    true))
 
 (defmethod check-permissions-for-model :transform
   [search-ctx instance]
@@ -184,7 +183,9 @@
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
                                         [:id :name :authority_level :type])
-                           (merge {:id              collection_id
+                           (merge {:id              (if (and (nil? collection_id) (some? collection_name))
+                                                      "root"
+                                                      collection_id)
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}
@@ -215,12 +216,6 @@
     (not (zero? v))
     v))
 
-(defn default-engine
-  "In the absence of an explicit engine argument in a request, which engine should be used?"
-  []
-  ;; TODO (Chris 2025-11-07) It would be good to have a warning on start up whenever this is *not* what's configured.
-  (first (search.engine/supported-engines)))
-
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
         (let [engine (keyword "search.engine" value)]
@@ -233,12 +228,12 @@
 
             :else
             engine)))
-      (default-engine)))
+      (search.engine/default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (let [default (default-engine)]
+  (let [default (search.engine/default-engine)]
     (when (= default search-engine)
       (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
@@ -375,7 +370,9 @@
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-system-collection-name))
+    collection/maybe-localize-system-collection-name
+    :always
+    collection/maybe-localize-tenant-collection-name))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]

@@ -25,7 +25,8 @@
 
 (def ^:private serialization-sorted-map (memoize serialization-sorted-map*))
 
-(defn- serialization-deep-sort
+(defn serialization-deep-sort
+  "Provide a deterministic sort for maps before serialization."
   ([m]
    (let [model (-> (:serdes/meta m) last :model)]
      (serialization-deep-sort m [(keyword model)])))

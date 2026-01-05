@@ -151,7 +151,7 @@ jobs:
     # E2E tests already have a step where they wait for the instance health check.
     if: |
       always() && !cancelled() &&
-      (github.ref == 'master' || startsWith(github.ref, 'release-')) &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) &&
       (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
     timeout-minutes: 10
     strategy:

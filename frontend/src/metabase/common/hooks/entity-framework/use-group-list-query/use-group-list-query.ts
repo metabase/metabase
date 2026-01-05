@@ -3,7 +3,7 @@ import type {
   UseEntityListQueryResult,
 } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
-import Groups from "metabase/entities/groups";
+import { Groups } from "metabase/entities/groups";
 import type { GroupListQuery } from "metabase-types/api";
 
 /**

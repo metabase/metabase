@@ -658,12 +658,13 @@ describe("issue 26988", () => {
       },
     }).then(({ body: card }) => {
       H.visitDashboard(card.dashboard_id);
-    });
 
-    H.openStaticEmbeddingModal({
-      activeTab: "lookAndFeel",
-      previewMode: "preview",
-      acceptTerms: false,
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: card.dashboard_id,
+        activeTab: "lookAndFeel",
+        previewMode: "preview",
+      });
     });
 
     cy.wait("@previewDashboard");

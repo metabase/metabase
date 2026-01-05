@@ -9,7 +9,7 @@ import {
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
-const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > notebook > data source", () => {
   describe("empty app db", () => {
@@ -191,6 +191,85 @@ describe("scenarios > notebook > data source", () => {
       H.miniPicker().within(() => {
         H.miniPickerHeader().should("contain", "Sample Database");
         cy.findByText("Orders").should("exist");
+      });
+    });
+  });
+
+  describe("library table as a source", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("bleeding-edge");
+      H.createLibrary();
+    });
+
+    it("should allow to pick a published table from the mini picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Orders").click();
+      H.join();
+      H.popover().findByText("Products").click();
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      cy.log("verify the picker when there is a selected item");
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().findByText("Products").click();
+      H.getNotebookStep("data").findByText("Products").should("be.visible");
+    });
+
+    it("should allow to pick a publish table from the data picker", () => {
+      H.publishTables({ table_ids: [ORDERS_ID, PRODUCTS_ID] });
+      H.startNewQuestion();
+
+      cy.log("verify the picker when nothing is selected");
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Orders").click();
+      });
+
+      H.join();
+      H.popover().findByText("Browse all").click();
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalTab("Data").click();
+        H.entityPickerModalLevel(0).findByText("Library").click();
+        H.entityPickerModalLevel(1).findByText("Data").click();
+        cy.findByText("Products").click();
+      });
+
+      H.visualize();
+      H.tableHeaderColumn("User ID").should("be.visible");
+      H.tableHeaderColumn("Products → ID").should("be.visible");
+
+      H.openNotebook();
+      H.getNotebookStep("data").findByText("Orders").click();
+      H.popover().within(() => {
+        cy.findByText("Data").click();
+        cy.findByText("Browse all").click();
+      });
+
+      H.entityPickerModal().within(() => {
+        H.entityPickerModalItem(0, "Library").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(1, "Data").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
+        H.entityPickerModalItem(2, "Orders").should(
+          "have.attr",
+          "data-active",
+          "true",
+        );
       });
     });
   });

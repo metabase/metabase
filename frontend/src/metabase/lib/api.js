@@ -4,10 +4,9 @@ import querystring from "querystring";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
+import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
 import { delay } from "metabase/lib/promise";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-
-import { IS_EMBED_PREVIEW } from "./embed";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
@@ -80,7 +79,7 @@ export class Api extends EventEmitter {
        * This header is only used for analytics and for checking if we want to disable some features in the
        * embedding iframe (only for Documents at the time of this comment)
        */
-      if (!IS_EMBED_PREVIEW) {
+      if (!IFRAMED_IN_SELF) {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = "embedding-iframe";
       }
@@ -378,25 +377,8 @@ export class Api extends EventEmitter {
   }
 
   /**
-   /**
-   * @typedef {{
-   *    method: "GET" | "POST";
-   *    url: string;
-   *    options: {
-   *      headers?: Record<string, string>;
-   *      hasBody: boolean;
-   *    } & Record<string, unknown>;
-   * }} OnBeforeRequestHandlerData
-   *
-   * @typedef {(data: OnBeforeRequestHandlerData) => (Promise<void | OnBeforeRequestHandlerData>)} OnBeforeRequestHandler
-   *
-   * @typedef {{
-   *   key: string;
-   *   handler: OnBeforeRequestHandler
-   * }} OnBeforeRequestHandlerDescriptor
-   *
-   * @param data {OnBeforeRequestHandlerData}
-   * @return data {Promise<OnBeforeRequestHandlerData>}
+   * @param data {import('metabase/plugins').OnBeforeRequestHandlerData}
+   * @return data {Promise<import('metabase/plugins').OnBeforeRequestHandlerData>}
    */
   async apiRequestManipulationMiddleware(data) {
     let { method, url, options } = data;
@@ -404,20 +386,26 @@ export class Api extends EventEmitter {
     /**
      * Handlers order is important.
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
-     * @type {OnBeforeRequestHandler[]}
+     * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
      */
     const handlers = [];
 
     if (isEmbeddingSdk()) {
-      if (
-        PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers.getOrRefreshSessionHandler
-      ) {
-        // A handler that set's `getOrRefreshSession` logic for SDK
-        handlers.push(
+      handlers.push(
+        ...[
           PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
             .getOrRefreshSessionHandler,
-        );
-      }
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .overrideRequestsForGuestEmbeds,
+        ],
+      );
+    } else {
+      handlers.push(
+        ...[
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
+        ],
+      );
     }
 
     if (handlers.length) {

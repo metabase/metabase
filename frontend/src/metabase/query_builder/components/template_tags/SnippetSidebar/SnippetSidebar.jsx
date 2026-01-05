@@ -6,9 +6,9 @@ import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import CS from "metabase/css/core/index.css";
-import Search from "metabase/entities/search";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
+import { Search } from "metabase/entities/search";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { Snippets } from "metabase/entities/snippets";
 import { connect } from "metabase/lib/redux";
 import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,

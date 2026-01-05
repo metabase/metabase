@@ -7,6 +7,7 @@ import type {
   CollectionAuthorityLevelConfig,
   CollectionId,
   CollectionInstanceAnaltyicsConfig,
+  CollectionType,
 } from "metabase-types/api";
 
 import {
@@ -53,9 +54,12 @@ export function isSyncedCollection(
   return collection.is_remote_synced === true;
 }
 
-export const getIcon = (item: ObjectWithModel): IconData => {
+export const getIcon = (
+  item: ObjectWithModel,
+  { isTenantUser = false }: { isTenantUser?: boolean } = {},
+): IconData => {
   const collectionType = getCollectionType({
-    type: item.type || item.collection_type,
+    type: (item.type as CollectionType) || item.collection_type,
   }).type;
   if (collectionType === "instance-analytics") {
     return {
@@ -63,21 +67,27 @@ export const getIcon = (item: ObjectWithModel): IconData => {
     };
   }
 
-  if (item.is_remote_synced) {
-    return {
-      name: REMOTE_SYNC_COLLECTION.icon,
-    };
+  if (item.model === "collection") {
+    // tenant users see the normal icon, they don't know what a synced collection is
+    if (item.is_remote_synced && !isTenantUser) {
+      return {
+        name: REMOTE_SYNC_COLLECTION.icon,
+      };
+    }
+
+    if (
+      item.authority_level === "official" ||
+      item.collection_authority_level === "official"
+    ) {
+      return {
+        name: OFFICIAL_COLLECTION.icon,
+        color: OFFICIAL_COLLECTION.color,
+      };
+    }
   }
 
-  if (
-    item.model === "collection" &&
-    (item.authority_level === "official" ||
-      item.collection_authority_level === "official")
-  ) {
-    return {
-      name: OFFICIAL_COLLECTION.icon,
-      color: OFFICIAL_COLLECTION.color,
-    };
+  if (item.model === "dataset" && item.moderated_status === "verified") {
+    return { name: "model_with_badge" };
   }
 
   return getIconBase(item);

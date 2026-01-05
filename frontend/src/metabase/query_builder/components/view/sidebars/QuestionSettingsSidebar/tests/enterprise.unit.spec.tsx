@@ -15,13 +15,13 @@ const setupEnterprise = (
 ) => {
   return setup({
     ...opts,
+    enterprisePlugins: ["caching", "model_persistence"],
     settings: createMockSettings({
       ...opts.settings,
       "token-features": createMockTokenFeatures({
         ...tokenFeatures,
       }),
     }),
-    hasEnterprisePlugins: true,
   });
 };
 

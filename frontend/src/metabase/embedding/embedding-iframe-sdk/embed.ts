@@ -486,8 +486,10 @@ function createCustomElement<Arr extends readonly string[]>(
 
 const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
   "dashboard-id",
+  "token",
   "with-title",
   "with-downloads",
+  "with-subscriptions",
   "drills",
   "initial-parameters",
   "hidden-parameters",
@@ -495,6 +497,7 @@ const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
 
 const MetabaseQuestionElement = createCustomElement("metabase-question", [
   "question-id",
+  "token",
   "with-title",
   "with-downloads",
   "drills",

@@ -16,34 +16,27 @@
       :dataset_query))
 
 (defn- find-dataset-query
-  [{:keys [query query-id report-id metric-id] :as data-source}]
-  (letfn [(handle-query [query query-id]
-            (api/read-check :model/Database (:database query))
-            [(if query-id
-               (metabot-v3.tools.u/query-field-id-prefix query-id)
-               metabot-v3.tools.u/any-prefix-pattern)
-             query])]
-    (cond
-      metric-id (if (int? metric-id)
-                  [(metabot-v3.tools.u/card-field-id-prefix metric-id)
-                   (checked-card-dataset-query metric-id)]
-                  (throw (ex-info "Invalid metric_id as data_source" {:agent-error? true
-                                                                      :data-source data-source})))
-      report-id (if (int? report-id)
-                  [(metabot-v3.tools.u/card-field-id-prefix report-id)
-                   (checked-card-dataset-query report-id)]
-                  (throw (ex-info "Invalid report_id as data_source" {:agent-error? true
-                                                                      :data-source data-source})))
-      query     (handle-query query query-id)
-      :else     (throw (ex-info "Invalid data_source" {:agent-error? true
-                                                       :data-source data-source})))))
+  [{:keys [query report-id metric-id] :as data-source}]
+  (cond
+    metric-id (if (int? metric-id)
+                (checked-card-dataset-query metric-id)
+                (throw (ex-info "Invalid metric_id as data_source" {:agent-error? true
+                                                                    :data-source data-source})))
+    report-id (if (int? report-id)
+                (checked-card-dataset-query report-id)
+                (throw (ex-info "Invalid report_id as data_source" {:agent-error? true
+                                                                    :data-source data-source})))
+    query     (do (api/read-check :model/Database (:database query))
+                  query)
+    :else     (throw (ex-info "Invalid data_source" {:agent-error? true
+                                                     :data-source data-source}))))
 
 (defn find-outliers
   "Find outliers in the values provided by `data-source` for a given column."
   [{:keys [data-source]}]
   (let [{:keys [metric-id result-field-id]} data-source]
     (try
-      (let [[field-id-prefix dataset-query] (find-dataset-query data-source)
+      (let [dataset-query (find-dataset-query data-source)
             {:keys [data]} (u/prog1 (-> dataset-query
                                         (qp/userland-query-with-default-constraints {:context :ad-hoc})
                                         qp/process-query)
@@ -67,7 +60,12 @@
                                      first)
                                 (throw (ex-info "Could not determine result field."
                                                 {:agent-error? true})))
-                            (metabot-v3.tools.u/resolve-column-index result-field-id field-id-prefix))]
+                            ;; Parse field-id and extract the numeric index
+                            (if-let [{:keys [field-index]} (metabot-v3.tools.u/parse-field-id result-field-id)]
+                              field-index
+                              (throw (ex-info (str "Invalid result_field_id format: " result-field-id)
+                                              {:agent-error? true
+                                               :result-field-id result-field-id}))))]
         (when-not (< -1 value-col-idx (-> data :rows first count))
           (throw (ex-info (str "Invalid result_field_id " result-field-id)
                           {:agent-error? true})))

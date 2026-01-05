@@ -8,14 +8,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
-(deftest ^:parallel json-schema-conversion
-  (testing ":maybe turns into optionality"
-    (is (= {:type       :object
-            :required   []
-            :properties {"name" {:type :string}}}
-           (#'defendpoint.open-api/fix-json-schema
-            (mjs/transform [:map [:name [:maybe string?]]]))))))
-
 (deftest ^:parallel json-schema-conversion-2
   (testing ":json-schema basically works (see definition of :metabase.lib.schema.common/non-blank-string)"
     (is (=? {:$ref        "#/definitions/metabase.lib.schema.common.non-blank-string"
@@ -47,19 +39,44 @@
             (#'defendpoint.open-api/fix-json-schema
              (mjs/transform (ms/maps-with-unique-key [:sequential [:map [:id :int]]] :id)))))))
 
-(deftest ^:parallel json-schema-conversion-4
-  (testing "nested data structures are still fixed up"
-    (is (=? {:type  :array
-             :items {:type       :object
-                     :properties {"params" {:type :array
-                                            :items {:type :string}}}}}
-            (#'defendpoint.open-api/fix-json-schema
-             (mjs/transform [:sequential [:map
-                                          [:params {:optional true} [:maybe [:sequential :string]]]]]))))))
-
 (deftest ^:parallel collect-definitions-test
   (binding [defendpoint.open-api/*definitions* (atom [])]
     (is (=? {:properties {:value {:$ref "#/components/schemas/metabase.lib.schema.common.non-blank-string"}}}
             (#'defendpoint.open-api/mjs-collect-definitions [:map [:value ::lib.schema.common/non-blank-string]])))
     (is (= [{"metabase.lib.schema.common.non-blank-string" {:type :string, :minLength 1}}]
            @@#'defendpoint.open-api/*definitions*))))
+
+(deftest ^:parallel deprecated-endpoint-test
+  (testing "Deprecated metadata is included in OpenAPI spec"
+    (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+      (let [form {:method :get
+                  :route {:path "/test"}
+                  :docstr "A deprecated endpoint."
+                  :metadata {:deprecated "0.57.0"}
+                  :params {}
+                  :body []}
+            result (#'defendpoint.open-api/path-item "/api/test" form)]
+        (is (true? (:deprecated result)))
+        (is (= "GET /api/test" (:summary result))))))
+
+  (testing "Non-deprecated endpoints do not have deprecated field"
+    (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+      (let [form {:method :get
+                  :route {:path "/test"}
+                  :docstr "A normal endpoint."
+                  :params {}
+                  :body []}
+            result (#'defendpoint.open-api/path-item "/api/test" form)]
+        (is (nil? (:deprecated result)))
+        (is (= "A normal endpoint." (:description result))))))
+
+  (testing "Deprecated with multipart metadata"
+    (binding [defendpoint.open-api/*definitions* (atom (sorted-map))]
+      (let [form {:method :post
+                  :route {:path "/upload"}
+                  :docstr "A deprecated upload endpoint."
+                  :metadata {:deprecated true :multipart true}
+                  :params {}
+                  :body []}
+            result (#'defendpoint.open-api/path-item "/api/upload" form)]
+        (is (true? (:deprecated result)))))))

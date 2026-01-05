@@ -88,7 +88,7 @@ export const LicenseTokenForm = ({
                   </HoverCard>
                 </Box>
               }
-              rightSectionWidth="1rem"
+              rightSectionWidth="2rem"
             />
             <FormErrorMessage />
           </Box>

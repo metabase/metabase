@@ -53,7 +53,7 @@ export const setup = ({
 
   const { state } = setupSdkState({
     sdkState: createMockSdkState({
-      loginStatus: createMockLoginStatusState({ status: "uninitialized" }),
+      initStatus: createMockLoginStatusState({ status: "uninitialized" }),
     }),
   });
 

@@ -27,8 +27,8 @@
     :model/Collection                        metabase.collections.models.collection
     :model/CollectionBookmark                metabase.bookmarks.models.bookmark
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
-    :model/Comment                           metabase-enterprise.comments.models.comment
-    :model/CommentReaction                   metabase-enterprise.comments.models.comment-reaction
+    :model/Comment                           metabase.comments.models.comment
+    :model/CommentReaction                   metabase.comments.models.comment-reaction
     :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
     :model/ContentTranslation                metabase.content-translation.models
     :model/Dashboard                         metabase.dashboards.models.dashboard
@@ -41,8 +41,8 @@
     :model/DatabaseRouter                    metabase-enterprise.database-routing.model
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
     :model/Dimension                         metabase.warehouse-schema.models.dimension
-    :model/Document                          metabase-enterprise.documents.models.document
-    :model/DocumentBookmark                  metabase-enterprise.bookmarks.models.bookmark
+    :model/Document                          metabase.documents.models.document
+    :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
     :model/Field                             metabase.warehouse-schema.models.field
     :model/FieldUserSettings                 metabase.warehouse-schema.models.field-user-settings
     :model/FieldValues                       metabase.warehouse-schema.models.field-values
@@ -94,6 +94,7 @@
     :model/SupportAccessGrantLog metabase-enterprise.support-access-grants.models.support-access-grant-log
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
+    :model/Tenant                            metabase-enterprise.tenants.model
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
     :model/Transform                         metabase-enterprise.transforms.models.transform

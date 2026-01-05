@@ -8,6 +8,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import Toggle from "metabase/common/components/Toggle";
+import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { trackSimpleEvent } from "metabase/lib/analytics";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { Box, Flex } from "metabase/ui";
@@ -27,13 +28,13 @@ enum DisabledReasonKey {
   MissingDriverFeature = "driver-feature-missing",
   NoWriteableTable = "permissions/no-writable-table",
   SyncInProgress = "database-metadata/sync-in-progress",
-  DatabaseEmtpy = "database-metadata/not-populated",
+  DatabaseEmpty = "database-metadata/not-populated",
 }
 
 const VISIBLE_REASONS: string[] = [
   DisabledReasonKey.NoWriteableTable,
   DisabledReasonKey.SyncInProgress,
-  DisabledReasonKey.DatabaseEmtpy,
+  DisabledReasonKey.DatabaseEmpty,
 ];
 
 export function AdminDatabaseTableEditingSection({
@@ -69,6 +70,11 @@ export function AdminDatabaseTableEditingSection({
     }
   };
 
+  // Only Postgres and MySQL support table data editing
+  const allowedToEnableTableEditing =
+    database.engine &&
+    ALLOWED_ENGINES_FOR_TABLE_EDITING.includes(database.engine);
+
   const dataEditingSetting =
     settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
 
@@ -83,7 +89,11 @@ export function AdminDatabaseTableEditingSection({
   const shouldShowSection =
     !firstDisabledReason || VISIBLE_REASONS.includes(firstDisabledReason.key);
 
-  if (!dataEditingSetting || !shouldShowSection) {
+  if (
+    !dataEditingSetting ||
+    !shouldShowSection ||
+    !allowedToEnableTableEditing
+  ) {
     return null;
   }
 

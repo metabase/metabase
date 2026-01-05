@@ -63,6 +63,10 @@
     (:body (http/get (str url "/api/v2" endpoint) {:as :json}))
     (throw (ex-info (tru "Please configure store-api-url") {:status-code 400}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/plans"
   "Get plans information from the Metabase Store API."
   []
@@ -78,6 +82,10 @@
         (log/warn e "Error fetching plans information")
         (handle-store-api-error e)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/addons"
   "Get addons information from the Metabase Store API."
   []
@@ -93,6 +101,10 @@
         (log/warn e "Error fetching addons information")
         (handle-store-api-error e)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:product-type"
   "Purchase an add-on."
   [{:keys [product-type]} :- [:map

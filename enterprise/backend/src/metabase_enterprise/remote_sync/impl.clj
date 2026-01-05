@@ -27,6 +27,15 @@
   []
   (t2/select-pks-vec :model/Collection :is_remote_synced true))
 
+(defn- model-fields-for-sync
+  "Returns the fields to select for a given model type when syncing."
+  [model-name]
+  (case model-name
+    "Card" [:id :name :collection_id :display]
+    "NativeQuerySnippet" [:id :name]
+    "Collection" [:id :name [:id :collection_id]]
+    [:id :name :collection_id]))
+
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
   inserts new ones for each imported entity, marking them as 'synced' with the given timestamp.
@@ -37,10 +46,15 @@
   (t2/delete! :model/RemoteSyncObject)
   (let [inserts (->> imported-entities-by-model
                      (mapcat (fn [[model entity-ids]]
-                               (t2/select [(keyword "model" model) :id] :entity_id [:in entity-ids])))
-                     (map (fn [{:keys [id] :as model}]
-                            {:model_type (name (t2/model model))
+                               (let [fields (model-fields-for-sync model)
+                                     model-kw (keyword "model" model)]
+                                 (t2/select (into [model-kw] fields) :entity_id [:in entity-ids]))))
+                     (map (fn [{:keys [id name collection_id display] :as model}]
+                            {:model_type (clojure.core/name (t2/model model))
                              :model_id id
+                             :model_name name
+                             :model_collection_id collection_id
+                             :model_display (some-> display clojure.core/name)
                              :status "synced"
                              :status_changed_at timestamp})))]
     (t2/insert! :model/RemoteSyncObject inserts)))
@@ -199,7 +213,15 @@
                                                  :continue-on-error false
                                                  :skip-archived true})]
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [written-version (source/store! models snapshot task-id message)]
+              (let [top-level-removed-prefixes (->> (t2/query {:select [:c.entity_id]
+                                                               :from [[:collection :c]]
+                                                               :join [[:remote_sync_object :rso]
+                                                                      [:and [:= :rso.model_type [:inline "Collection"]]
+                                                                       [:= :rso.status [:inline "removed"]]
+                                                                       [:= :rso.model_id :c.id]]]
+                                                               :where [:= :location "/"]})
+                                                    (map #(str "collections/" (:entity_id %))))
+                    written-version (source/store! models top-level-removed-prefixes snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success

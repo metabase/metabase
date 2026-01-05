@@ -215,7 +215,7 @@
 }
 
 .GuiBuilderData {
-  border-right: 1px solid var(--mb-color-border);
+  line-height: 1rem;
   z-index: 1; /* moved the arrow thingy above the filter outline */
 }
 
@@ -243,7 +243,7 @@
 
 .GuiBuilderSection {
   position: relative;
-  min-height: 55px;
+  min-height: 3rem;
   min-width: 100px;
 }
 

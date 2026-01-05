@@ -21,7 +21,7 @@ dataset_query: {}
 result_metadata: null
 visualization_settings:
   column_settings: null
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - id: XsxiHuzwlGIFNq245HdZC
   label: series_question_b
@@ -30,7 +30,6 @@ archived_directly: false
 dashboard_id: null
 document_id: null
 embedding_type: null
-metabase_version: v1.57.1-SNAPSHOT (d027b42)
-published_table_id: null
+metabase_version: v1.58.0-SNAPSHOT (d5e5626)
 source_card_id: null
 type: question

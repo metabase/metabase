@@ -23,6 +23,7 @@ export type TableItem = {
   name: string;
   model: "table";
   database_id?: DatabaseId;
+  is_published?: boolean;
 };
 
 export type TablePickerValue = {
@@ -53,10 +54,3 @@ export const isTablePickerFolder = (
   input?: TablePickerItem | CollectionPickerItem,
 ): input is TablePickerFolderItem =>
   input?.model === "database" || input?.model === "schema";
-
-export const isTablePickerItem = (
-  input?: TablePickerItem | CollectionPickerItem,
-): input is TablePickerItem =>
-  input?.model === "database" ||
-  input?.model === "schema" ||
-  input?.model === "table";

@@ -15,6 +15,8 @@ import type {
   TransformSource,
 } from "metabase-types/api";
 
+import { CHECKPOINT_TEMPLATE_TAG } from "./constants";
+
 export function parseTimestampWithTimezone(
   timestamp: string,
   systemTimezone: string | undefined,
@@ -174,6 +176,8 @@ export function isNotDraftSource(
   return source.type !== "python" || source["source-database"] != null;
 }
 
+const ALLOWED_TRANSFORM_VARIABLES = [CHECKPOINT_TEMPLATE_TAG];
+
 export type ValidationResult = {
   isValid: boolean;
   errorMessage?: string;
@@ -183,7 +187,14 @@ export function getValidationResult(query: Lib.Query): ValidationResult {
   const { isNative } = Lib.queryDisplayInfo(query);
   if (isNative) {
     const tags = Object.values(Lib.templateTags(query));
-    if (tags.some((t) => t.type !== "card" && t.type !== "snippet")) {
+    // Allow snippets, cards, and the special transform variables ({checkpoint})
+    const hasInvalidTags = tags.some(
+      (t) =>
+        t.type !== "card" &&
+        t.type !== "snippet" &&
+        !ALLOWED_TRANSFORM_VARIABLES.includes(t.name),
+    );
+    if (hasInvalidTags) {
       return {
         isValid: false,
         errorMessage: t`In transforms, you can use snippets and question or model references, but not variables.`,

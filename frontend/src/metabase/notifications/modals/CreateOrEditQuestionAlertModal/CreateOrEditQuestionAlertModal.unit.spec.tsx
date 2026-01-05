@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -11,7 +11,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
   ChannelApiResponse,
   Notification,
@@ -408,7 +407,8 @@ function setup({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("advanced_permissions");
+  setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
     display: "line",
@@ -432,7 +432,7 @@ function setup({
   );
 
   if (userCanAccessSettings) {
-    (currentUser as UserWithApplicationPermissions).permissions = {
+    currentUser.permissions = {
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,

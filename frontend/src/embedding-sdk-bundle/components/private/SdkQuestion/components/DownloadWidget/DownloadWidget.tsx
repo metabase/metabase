@@ -1,3 +1,4 @@
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { QuestionDownloadWidget } from "metabase/query_builder/components/QuestionDownloadWidget";
 import {
   type UseDownloadDataParams,
@@ -21,9 +22,12 @@ const DownloadWidgetInner = ({
 }: DownloadWidgetProps &
   Pick<UseDownloadDataParams, "question" | "result">) => {
   const { withDownloads } = useSdkQuestionContext();
+  const { token } = useEmbeddingEntityContext();
+
   const [, handleDownload] = useDownloadData({
     question,
     result,
+    token,
   });
 
   return (

@@ -53,7 +53,11 @@ export const userApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("user"), listTag("permissions-group")]),
+        invalidateTags(error, [
+          listTag("user"),
+          listTag("tenant"),
+          listTag("permissions-group"),
+        ]),
       onQueryStarted: (request, { dispatch, queryFulfilled }) =>
         handleQueryFulfilled(queryFulfilled, (user) => {
           if (request.password) {

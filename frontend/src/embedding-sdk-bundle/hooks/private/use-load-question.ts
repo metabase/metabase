@@ -7,16 +7,20 @@ import {
   runQuestionQuerySdk,
   updateQuestionSdk,
 } from "embedding-sdk-bundle/lib/sdk-question";
-import { useSdkDispatch } from "embedding-sdk-bundle/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { setError } from "embedding-sdk-bundle/store/reducer";
+import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
   SdkQuestionState,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { type Deferred, defer } from "metabase/lib/promise";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { isObject } from "metabase-types/guards";
 
 type LoadQuestionResult = Promise<
@@ -54,14 +58,20 @@ export interface LoadQuestionHookResult {
     | null;
 }
 
+type UseLoadQuestionParams = LoadSdkQuestionParams & {
+  isGuestEmbed: boolean;
+  token: EntityToken | null | undefined;
+};
+
 export function useLoadQuestion({
   questionId,
+  token,
   options,
   // Passed when navigating from `InteractiveDashboard` or `EditableDashboard`
   deserializedCard,
   initialSqlParameters,
   targetDashboardId,
-}: LoadSdkQuestionParams): LoadQuestionHookResult {
+}: UseLoadQuestionParams): LoadQuestionHookResult {
   const dispatch = useSdkDispatch();
 
   // Keep track of the latest question and query results.
@@ -69,6 +79,8 @@ export function useLoadQuestion({
   const [questionState, mergeQuestionState] = useReducer(questionReducer, {});
   const { question, originalQuestion, queryResults, parameterValues } =
     questionState;
+
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
   const deferredRef = useRef<Deferred>();
 
@@ -96,12 +108,14 @@ export function useLoadQuestion({
     if (shouldLoadQuestion) {
       setIsQuestionLoading(true);
     }
+
     try {
       const questionState = await dispatch(
         loadQuestionSdk({
           options,
           deserializedCard,
           questionId,
+          token,
           initialSqlParameters,
           targetDashboardId,
         }),
@@ -111,7 +125,10 @@ export function useLoadQuestion({
 
       const results = await runQuestionQuerySdk({
         question: questionState.question,
+        isGuestEmbed,
+        token,
         originalQuestion: questionState.originalQuestion,
+        parameterValues: questionState.parameterValues,
         cancelDeferred: deferred(),
       });
 
@@ -124,6 +141,15 @@ export function useLoadQuestion({
       // React simulates unmounting on strict mode, therefore "Question not found" will be shown without this.
       if (isCancelledRequestError(err)) {
         return {};
+      }
+
+      if (isStaticEmbeddingEntityLoadingError(err, { isGuestEmbed })) {
+        dispatch(
+          setError({
+            status: err.status,
+            message: err.data,
+          }),
+        );
       }
 
       mergeQuestionState({
@@ -140,8 +166,10 @@ export function useLoadQuestion({
     dispatch,
     options,
     deserializedCard,
-    questionId,
+    isGuestEmbed,
     sqlParameterKey,
+    questionId,
+    token,
     targetDashboardId,
   ]);
 
@@ -152,14 +180,24 @@ export function useLoadQuestion({
 
     const state = await runQuestionQuerySdk({
       question,
+      isGuestEmbed,
+      token,
       originalQuestion,
+      parameterValues,
       cancelDeferred: deferred(),
     });
 
     mergeQuestionState(state);
 
     return state.question;
-  }, [dispatch, question, originalQuestion]);
+  }, [
+    dispatch,
+    question,
+    isGuestEmbed,
+    token,
+    originalQuestion,
+    parameterValues,
+  ]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {
@@ -180,12 +218,21 @@ export function useLoadQuestion({
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: run,
           shouldStartAdHocQuestion: true,
+          isGuestEmbed,
+          token,
         }),
       );
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion, parameterValues],
+    [
+      dispatch,
+      question,
+      originalQuestion,
+      parameterValues,
+      isGuestEmbed,
+      token,
+    ],
   );
 
   const [updateParameterValuesState, updateParameterValues] = useAsyncFn(
@@ -209,12 +256,21 @@ export function useLoadQuestion({
             mergeQuestionState({ question }),
           shouldRunQueryOnQuestionChange: true,
           shouldStartAdHocQuestion: false,
+          isGuestEmbed,
+          token,
         }),
       );
 
       mergeQuestionState(state);
     },
-    [dispatch, question, originalQuestion, parameterValues],
+    [
+      dispatch,
+      question,
+      originalQuestion,
+      parameterValues,
+      isGuestEmbed,
+      token,
+    ],
   );
 
   const [navigateToNewCardState, navigateToNewCard] = useAsyncFn(
@@ -222,7 +278,10 @@ export function useLoadQuestion({
       const state = await dispatch(
         runQuestionOnNavigateSdk({
           ...params,
+          isGuestEmbed,
+          token,
           originalQuestion,
+          parameterValues,
           cancelDeferred: deferred(),
           onQuestionChange: (question) => mergeQuestionState({ question }),
           onClearQueryResults: () =>
@@ -235,7 +294,7 @@ export function useLoadQuestion({
 
       mergeQuestionState(state);
     },
-    [dispatch, originalQuestion],
+    [dispatch, originalQuestion, isGuestEmbed, token, parameterValues],
   );
 
   const isQueryRunning =

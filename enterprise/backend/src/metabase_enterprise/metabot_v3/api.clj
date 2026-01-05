@@ -71,6 +71,10 @@
                          (store-message! conversation_id profile-id (metabot-v3.u/aisdk->messages :assistant lines))
                          :store-in-db)})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/agent-streaming"
   "Send a chat message to the LLM via the AI Proxy."
   [_route-params
@@ -86,6 +90,10 @@
   (metabot-v3.context/log body :llm.log/fe->be)
   (streaming-request body))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/feedback"
   "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
   [_route-params

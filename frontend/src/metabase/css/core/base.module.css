@@ -19,3 +19,8 @@
 .circle {
   border-radius: 99px;
 }
+
+:global(.sync-status-visible) .syncStatusAwarePagination {
+  /* move pagination component up when database sync is in progress to avoid overlapping */
+  margin-bottom: 6.5rem;
+}

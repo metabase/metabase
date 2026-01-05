@@ -1,12 +1,20 @@
 import { createContext, useContext, useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
+import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
-import { getError, getPlugins } from "embedding-sdk-bundle/store/selectors";
+import {
+  getError,
+  getIsGuestEmbed,
+  getPlugins,
+} from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type OnCreateOptions,
   useCreateQuestion,
@@ -33,7 +41,8 @@ export const SdkQuestionContext = createContext<
 const DEFAULT_OPTIONS = {};
 
 export const SdkQuestionProvider = ({
-  questionId,
+  questionId: rawQuestionId,
+  token: rawToken,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -54,6 +63,26 @@ export const SdkQuestionProvider = ({
   navigateToNewCard: userNavigateToNewCard,
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
+  const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+
+  const {
+    resourceId: questionId,
+    token,
+    tokenError,
+  } = useExtractResourceIdFromJwtToken({
+    isGuestEmbed,
+    resourceId: rawQuestionId,
+    token: rawToken ?? undefined,
+  });
+
+  useEffect(() => {
+    if (isGuestEmbed && token) {
+      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
+    }
+  }, [isGuestEmbed, token]);
+
+  const isNewQuestion = questionId === "new";
+
   const error = useSdkSelector(getError);
 
   const handleCreateQuestion = useCreateQuestion();
@@ -113,6 +142,8 @@ export const SdkQuestionProvider = ({
     navigateToNewCard,
   } = useLoadQuestion({
     questionId,
+    isGuestEmbed,
+    token,
     options,
     deserializedCard,
     initialSqlParameters,
@@ -142,6 +173,7 @@ export const SdkQuestionProvider = ({
 
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    token,
     isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadAndQueryQuestion,
@@ -173,8 +205,12 @@ export const SdkQuestionProvider = ({
   };
 
   useEffect(() => {
+    if (tokenError) {
+      return;
+    }
+
     loadAndQueryQuestion();
-  }, [loadAndQueryQuestion]);
+  }, [loadAndQueryQuestion, tokenError]);
 
   const dispatch = useSdkDispatch();
 
@@ -182,13 +218,27 @@ export const SdkQuestionProvider = ({
     dispatch(setEntityTypes(entityTypes));
   }, [dispatch, entityTypes]);
 
+  if (isGuestEmbed && isNewQuestion) {
+    return (
+      <SdkError
+        message={t`You can't explore or save questions in Guest Embed mode`}
+      />
+    );
+  }
+
+  if (tokenError) {
+    return <SdkError message={tokenError} />;
+  }
+
   if (error) {
     return <SdkError message={error.message} />;
   }
 
   return (
     <SdkQuestionContext.Provider value={questionContext}>
-      {children}
+      <EmbeddingEntityContextProvider uuid={null} token={token}>
+        {children}
+      </EmbeddingEntityContextProvider>
     </SdkQuestionContext.Provider>
   );
 };

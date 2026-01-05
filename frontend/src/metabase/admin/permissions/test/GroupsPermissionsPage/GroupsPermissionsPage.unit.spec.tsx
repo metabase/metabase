@@ -26,8 +26,12 @@ const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 const TEST_DATABASE = createSampleDatabase();
 
 const TEST_GROUPS = [
-  createMockGroup({ id: 2, name: "Administrators" }),
-  createMockGroup({ name: "All Users" }),
+  createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
+  createMockGroup({
+    id: 1,
+    name: "All internal users",
+    magic_group_type: "all-internal-users",
+  }),
 ];
 
 const setup = async ({

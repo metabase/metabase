@@ -25,7 +25,7 @@ in the top right corner and select **Keyboard shortcuts**.
 | Browse databases         | g > d       |
 | Browse models            | g > m       |
 | Browse metrics           | g > k       |
-| Report an issue          | Ctrl/Cmd+f1 |
+| Download diagnostics     | Ctrl/Cmd+f1 |
 | View shortcuts           | ?           |
 | Open trash               | g > t       |
 | Open personal collection | g > p       |

@@ -1,21 +1,22 @@
 import { t } from "ttag";
 
 import Markdown from "metabase/common/components/Markdown";
+import { getIcon } from "metabase/lib/icon";
 import { isEmpty } from "metabase/lib/validate";
 import { Icon } from "metabase/ui";
+import type { UnrestrictedLinkEntity } from "metabase-types/api";
 
 import {
   EllipsifiedEntityContainer,
   EntityDisplayContainer,
   LeftContainer,
 } from "./EntityDisplay.styled";
-import type { WrappedUnrestrictedLinkEntity } from "./types";
 
 export const EntityDisplay = ({
   entity,
   showDescription = false,
 }: {
-  entity: WrappedUnrestrictedLinkEntity;
+  entity: UnrestrictedLinkEntity;
   showDescription?: boolean;
 }) => {
   return (
@@ -64,8 +65,8 @@ export const UrlLinkDisplay = ({ url }: { url?: string }) => {
   );
 };
 
-function getSearchIconName(entity: WrappedUnrestrictedLinkEntity) {
-  const entityIcon = entity.getIcon?.() ?? { name: "link" };
+function getSearchIconName(entity: UnrestrictedLinkEntity) {
+  const entityIcon = getIcon(entity) ?? { name: "link" };
 
   // we need to change this icon to make it match the icon in the search results
   if (entity.model === "table") {

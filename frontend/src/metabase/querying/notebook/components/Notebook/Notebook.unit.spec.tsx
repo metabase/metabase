@@ -33,11 +33,7 @@ import {
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import type {
-  CardType,
-  CollectionItemModel,
-  RecentItem,
-} from "metabase-types/api";
+import type { CardType, RecentItem } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
@@ -160,7 +156,7 @@ function setup({
 
   const collectionItems = TEST_ENTITY_TYPES.map((entityType) =>
     createMockCollectionItem({
-      model: entityType as CollectionItemModel,
+      model: entityType,
       collection: TEST_COLLECTION,
       collection_id: TEST_COLLECTION.id,
       name: entityType,
@@ -350,7 +346,7 @@ describe("Notebook", () => {
       });
     });
 
-    describe.each<DataPickerValue["model"]>(TEST_ENTITY_TYPES)(
+    describe.each<DataPickerValue["model"]>(["metric", "card", "dataset"])(
       "when filtering with %s",
       (entityType) => {
         it(`should show the Collection item picker when modelsFilterList=[${entityType}]`, async () => {

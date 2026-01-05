@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 export type SdkIframeEmbedSetupModalProps = {
   opened: boolean;
   onClose: () => void;
@@ -9,15 +7,12 @@ export type SdkIframeEmbedSetupModalProps = {
 export type SdkIframeEmbedSetupModalInitialState = {
   resourceType?: string | null;
   resourceId?: string | number | null;
+  isGuest?: boolean;
   useExistingUserSession?: boolean;
 };
 
 const getDefaultPluginEmbeddingIframeSdkSetup = () => ({
-  isFeatureEnabled: () => false,
-  shouldShowEmbedInNewItemMenu: () => false,
-  SdkIframeEmbedSetupModal: (
-    _props: SdkIframeEmbedSetupModalProps,
-  ): ReactNode => null,
+  isEnabled: () => false,
 });
 
 export const PLUGIN_EMBEDDING_IFRAME_SDK_SETUP =

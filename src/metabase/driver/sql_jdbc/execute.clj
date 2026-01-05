@@ -4,7 +4,7 @@
   `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
   for JDBC drivers that do not support `java.time` classes can be found in
   `metabase.driver.sql-jdbc.execute.legacy-impl`. "
-  (:refer-clojure :exclude [mapv empty?])
+  (:refer-clojure :exclude [mapv empty? get-in])
   #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
    [clojure.core.async :as a]
@@ -25,7 +25,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf :refer [mapv empty?]]
+   [metabase.util.performance :as perf :refer [mapv empty? get-in]]
    [potemkin :as p])
   (:import
    (java.sql
@@ -45,6 +45,7 @@
     OffsetDateTime
     OffsetTime
     ZonedDateTime)
+   (java.util.concurrent Executors)
    (javax.sql DataSource)))
 
 (set! *warn-on-reflection* true)
@@ -171,6 +172,12 @@
   `.execute()` for the given sql on the given statement, and then `.getResultSet()` if that returns true (throwing an
   exception if not). It is unlikely you will need to override this."
   {:added "0.39.0", :arglists '(^java.sql.ResultSet [driver ^java.sql.Statement stmt ^String sql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti db-type-name
+  "Return the type name of a column given the rsmeta and the column-index. The default implementation fetches this information from rsmeta."
+  {:added "0.59.0" :arglists '([driver ^java.sql.ResultSetMetaData rsmeta column-index])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
@@ -346,6 +353,9 @@
           (with-open [conn ^Connection (get-conn)]
             (f conn)))))))
 
+(defonce ^:private network-timeout-executor
+  (delay (Executors/newCachedThreadPool)))
+
 (mu/defn set-default-connection-options!
   "Part of the default implementation of [[do-with-connection-with-options]]: set options for a newly fetched
   Connection."
@@ -405,6 +415,12 @@
             (.setAutoCommit conn false)
             (catch Throwable e
               (log/debug e "Error setting connection autoCommit to false"))))
+    (try
+      ;; setNetworkTimeout sets Socket.setSoTimeout() which releases from blocked socker reads.
+      ;; This is necessary because .close() doesn't interrupt threads stuck in native socket reads
+      (.setNetworkTimeout conn @network-timeout-executor driver.settings/*network-timeout-ms*)
+      (catch Throwable e
+        (log/debug e "Error setting network timeout for connection")))
     (try
       (log/trace (pr-str '(.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)))
       (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
@@ -687,12 +703,16 @@
         metadatas))
     metadatas))
 
+(defmethod db-type-name :sql-jdbc
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (.getColumnTypeName rsmeta column-index))
+
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (->> (mapv
         (fn [^Long i]
           (let [col-name     (.getColumnLabel rsmeta i)
-                db-type-name (.getColumnTypeName rsmeta i)
+                db-type-name (db-type-name driver rsmeta i)
                 base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
             (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                         i col-name db-type-name base-type driver)
@@ -768,10 +788,12 @@
                                    (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                    (catch Throwable e
                                      (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                     {:driver driver
-                                                      :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                      :params params
-                                                      :type   driver-api/qp.error-type.invalid-query}
+                                                     (cond-> {:driver driver
+                                                              :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                                                              :params params
+                                                              :type   driver-api/qp.error-type.invalid-query}
+                                                       (driver/query-canceled? driver e)
+                                                       (assoc :query/query-canceled? true))
                                                      e))))]
          (let [rsmeta           (.getMetaData rs)
                results-metadata {:cols (column-metadata driver rsmeta)}]

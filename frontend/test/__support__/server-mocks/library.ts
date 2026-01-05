@@ -1,6 +1,9 @@
 import fetchMock from "fetch-mock";
 
-import { createMockCollectionItem } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockCollectionItem,
+} from "metabase-types/api/mocks";
 
 export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
   if (hasLibrary) {
@@ -23,3 +26,13 @@ export const setupLibraryEndpoints = (hasLibrary?: boolean) => {
     });
   }
 };
+
+export function setupCreateLibraryEndpoint(
+  collection = createMockCollection(),
+) {
+  fetchMock.post("path:/api/ee/library", collection);
+}
+
+export function setupCreateLibraryEndpointError() {
+  fetchMock.post("path:/api/ee/library", { status: 500 });
+}

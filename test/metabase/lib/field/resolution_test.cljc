@@ -723,7 +723,7 @@
                    {:display-name "Sum of Total"}]
                   (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-model-metadata-test
   (let [mp        (metabase.lib.card-test/preserve-edited-metadata-test-mock-metadata-provider
                    {:result-metadata-style :metabase.lib.card-test/legacy-snake-case-qp})
@@ -982,7 +982,7 @@
                    2
                    [:field {:base-type :type/Integer, :lib/uuid "00000000-0000-0000-0000-000000000000"} "max"]))))))))
 
-;;; adapted from [[metabase.query-processor-test.uuid-test/joined-uuid-query-test]]
+;;; adapted from [[metabase.query-processor.uuid-test/joined-uuid-query-test]]
 (deftest ^:parallel resolve-field-missing-join-alias-test
   (testing "should resolve broken refs missing join-alias correctly and return appropriate metadata"
     (let [mp      lib.tu.uuid-dogs-metadata-provider/metadata-provider
@@ -1355,7 +1355,7 @@
                -1
                [:field {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000000"} "ID"]))))))
 
-;;; See also [[metabase.query-processor-test.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]]
+;;; See also [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]]
 (deftest ^:parallel resolve-unreturned-column-from-reified-implicit-join-in-previous-stage-test
   (let [query     (lib/query
                    meta/metadata-provider

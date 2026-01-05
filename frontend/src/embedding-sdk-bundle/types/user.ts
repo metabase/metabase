@@ -1,3 +1,5 @@
+import type { InitializationStatus, InitializationStatusError } from "./ui";
+
 export type SdkUserId = number;
 
 /**
@@ -18,34 +20,6 @@ export type MetabaseUser = {
 /**
  * @inline
  */
-type LoginStatusUninitialized = {
-  status: "uninitialized";
-};
+export type LoginStatusError = InitializationStatusError;
 
-/**
- * @inline
- */
-type LoginStatusSuccess = {
-  status: "success";
-};
-
-/**
- * @inline
- */
-type LoginStatusLoading = {
-  status: "loading";
-};
-
-/**
- * @inline
- */
-export type LoginStatusError = {
-  status: "error";
-  error: Error;
-};
-
-export type LoginStatus =
-  | LoginStatusUninitialized
-  | LoginStatusSuccess
-  | LoginStatusLoading
-  | LoginStatusError;
+export type LoginStatus = InitializationStatus;

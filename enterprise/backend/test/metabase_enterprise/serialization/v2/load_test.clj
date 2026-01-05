@@ -14,6 +14,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [toucan2.core :as t2]))
 
 ;; `reindex!` below is ok in a parallel test since it's not actually executing anything
@@ -845,6 +846,59 @@
             (is (= (dissoc @fv2s :id :field_id :created_at :updated_at)
                    (dissoc @fv2d :id :field_id :created_at :updated_at)))))))))
 
+(deftest table-publishing-round-trip-test
+  ;; Tests that is_published and collection_id survive a round-trip through serialization.
+  ;; The collection_id FK transform converts DB id to entity_id and back.
+  (testing "published table with collection_id survives round-trip"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          coll1s     (atom nil)
+          table2s    (atom nil)
+
+          db1d       (atom nil)
+          table1d    (atom nil)
+          coll1d     (atom nil)
+          table2d    (atom nil)]
+
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing published tables"
+          (ts/with-db source-db
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
+            (reset! coll1s  (ts/create! :model/Collection :name "Publishing Collection"))
+            (reset! table1s (ts/create! :model/Table :name "published_table" :db_id (:id @db1s)
+                                        :is_published true :collection_id (:id @coll1s)))
+            (reset! table2s (ts/create! :model/Table :name "unpublished_table" :db_id (:id @db1s)
+                                        :is_published false))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (testing "serialized form has collection entity_id, not DB id"
+          (let [pub-table (->> @serialized
+                               (filter #(and (-> % :serdes/meta last :model (= "Table"))
+                                             (= (:name %) "published_table")))
+                               first)]
+            (is (true? (:is_published pub-table)))
+            (is (= (:entity_id @coll1s) (:collection_id pub-table)))))
+
+        (testing "deserializing restores collection_id correctly"
+          (ts/with-db dest-db
+            ;; Load the serialized content
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
+            (reset! coll1d  (t2/select-one :model/Collection :name "Publishing Collection"))
+            (reset! table1d (t2/select-one :model/Table :name "published_table" :db_id (:id @db1d)))
+            (reset! table2d (t2/select-one :model/Table :name "unpublished_table" :db_id (:id @db1d)))
+
+            (testing "published table has correct is_published and collection_id"
+              (is (true? (:is_published @table1d)))
+              (is (= (:id @coll1d) (:collection_id @table1d))))
+
+            (testing "unpublished table has is_published=false and no collection"
+              (is (false? (:is_published @table2d)))
+              (is (nil? (:collection_id @table2d))))))))))
+
 (deftest bare-import-test
   ;; If the dependencies of an entity exist in the receiving database, they don't need to be in the export.
   ;; This tests that such an import will succeed, and that it still fails when the dependency is not found in
@@ -1291,7 +1345,7 @@
                        (vec (for [entity ser]
                               (merge entity (get changes (:entity_id entity))))))
         logs-extract (fn [re logs]
-                       (keep #(rest (re-find re %))
+                       (keep #(not-empty (rest (re-find re %)))
                              (map :message logs)))]
     (mt/with-empty-h2-app-db!
       (mt/with-temp [:model/Collection coll {:name "coll"}
@@ -1480,3 +1534,96 @@
       (testing "absent :entity_id also works"
         (serdes.load/load-metabase! (ingestion-in-memory [(dissoc coll-ser :entity_id)]))
         (is (= 4 (coll-count)))))))
+
+(deftest warn-if-version-mismatch-test
+  (ts/with-dbs [source-db dest-db dest-db2]
+    (ts/with-db source-db
+      (mt/with-temp [:model/Collection _ {:name "col-1"}]
+        (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
+          (ts/with-db dest-db
+            (testing "logs a warning when version in serdes/meta differs from current version"
+              (let [old-version-extract (map #(assoc % :metabase_version "v1.0.0 (oldcommit)") extract)]
+                (log.capture/with-log-messages-for-level [messages [metabase-enterprise.serialization.v2.load :warn]]
+                  (serdes.load/load-metabase! (ingestion-in-memory old-version-extract))
+                  (is (some #(str/includes? % "Version mismatch loading") (messages)))
+                  (is (= 1 (count (filter #(str/includes? % "Version mismatch loading") (messages))))
+                      "Should log a version mismatch warning only once per load")))))
+          (ts/with-db dest-db2
+            (testing "No warnings when version in serdes/meta matches current version"
+              (log.capture/with-log-messages-for-level [messages :warn]
+                (serdes.load/load-metabase! (ingestion-in-memory extract))
+                (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages)))))))))))))
+
+(deftest import-published-table-with-existing-database-test
+  (testing "Importing a published table works when database already exists on target"
+    (let [serialized (atom nil)
+          coll-eid   (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        ;; Export from source (with no-data-model, so Database is not in export)
+        (testing "export published table without database"
+          (ts/with-db source-db
+            (let [db   (ts/create! :model/Database :name "shared-db")
+                  coll (ts/create! :model/Collection :name "My Collection")
+                  _    (ts/create! :model/Table
+                                   :name "published_table"
+                                   :db_id (:id db)
+                                   :is_published true
+                                   :collection_id (:id coll)
+                                   :description "A published table")]
+              (reset! coll-eid (:entity_id coll))
+              (reset! serialized
+                      (into [] (serdes.extract/extract
+                                {:targets       [["Collection" (:id coll)]]
+                                 :no-data-model true
+                                 :no-settings   true}))))))
+
+        (testing "serialized data contains table but not database"
+          (is (some #(= "Table" (-> % :serdes/meta last :model)) @serialized))
+          (is (not-any? #(= "Database" (-> % :serdes/meta last :model)) @serialized)))
+
+        ;; Import to destination (where database already exists)
+        (testing "import succeeds when database exists on target"
+          (ts/with-db dest-db
+            ;; Pre-create the database on target
+            (let [target-db (ts/create! :model/Database :name "shared-db")]
+              ;; Load the serialized content
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+              ;; Verify the table was imported correctly
+              (let [imported-table (t2/select-one :model/Table :name "published_table")
+                    imported-coll  (t2/select-one :model/Collection :entity_id @coll-eid)]
+                (testing "table exists with correct properties"
+                  (is (some? imported-table))
+                  (is (= "A published table" (:description imported-table)))
+                  (is (true? (:is_published imported-table))))
+                (testing "table is linked to correct database"
+                  (is (= (:id target-db) (:db_id imported-table))))
+                (testing "table is linked to imported collection"
+                  (is (= (:id imported-coll) (:collection_id imported-table))))))))))))
+
+(deftest import-published-table-without-database-fails-test
+  (testing "Importing a published table fails when database doesn't exist on target"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "export published table"
+          (ts/with-db source-db
+            (let [db   (ts/create! :model/Database :name "source-only-db")
+                  coll (ts/create! :model/Collection :name "My Collection")
+                  _    (ts/create! :model/Table
+                                   :name "published_table"
+                                   :db_id (:id db)
+                                   :is_published true
+                                   :collection_id (:id coll))]
+              (reset! serialized
+                      (into [] (serdes.extract/extract
+                                {:targets       [["Collection" (:id coll)]]
+                                 :no-data-model true
+                                 :no-settings   true}))))))
+
+        (testing "import fails when database doesn't exist"
+          (ts/with-db dest-db
+            ;; Don't create the database - import should fail
+            (is (thrown-with-msg?
+                 Exception
+                 #"source-only-db|not found|Failed"
+                 (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))

@@ -14,5 +14,7 @@
   (cond-> [:email :first_name :last_name :sso_source]
     (some premium-features/has-feature? [:sso-ldap :sso-jwt :sso-saml])
     (conj :login_attributes)
+    (premium-features/has-feature? :tenants)
+    (conj :tenant_id)
     (premium-features/has-feature? :sso-jwt)
     (conj :jwt_attributes)))

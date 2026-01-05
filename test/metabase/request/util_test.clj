@@ -40,7 +40,7 @@
             :embedded           true
             :ip_address         "0:0:0:0:0:0:0:1"}
            (req.util/device-info (update @mock-request :headers assoc "x-metabase-client" "embedding-sdk-react")))))
-  (testing "Embedded Analytics JS request"
+  (testing "Modular embedding request"
     (is (= {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
             :device_description "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.72 Safari/537.36"
             :embedded           true

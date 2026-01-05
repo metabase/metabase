@@ -29,7 +29,9 @@ describe("issue 29943", () => {
     getHeaderCell(1, "Total").should("exist");
     getHeaderCell(2, "Custom").should("exist");
 
-    H.moveDnDKitElement(H.tableHeaderColumn("Custom"), { horizontal: -100 });
+    const tableHeaderAlias = "customHeader";
+    H.tableHeaderColumn("Custom").as(tableHeaderAlias);
+    H.moveDnDKitElementByAlias(`@${tableHeaderAlias}`, { horizontal: -100 });
 
     getHeaderCell(1, "Custom").should("exist");
     getHeaderCell(2, "Total").should("exist");
@@ -104,7 +106,7 @@ describe("issue 29943", () => {
   });
 });
 
-describe("issue 35711", () => {
+describe("issues with metadata editing on models with custom expressions", () => {
   const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
   const DISCOUNT_FIELD_REF: FieldReference = [
@@ -118,9 +120,10 @@ describe("issue 35711", () => {
   function reorderTaxAndTotalColumns() {
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Tax");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
+    H.tableHeaderColumn("Total").as("totalColumn");
 
     // drag & drop the Total column 80 px to the left to switch it with Tax column
-    H.moveDnDKitElement(H.tableHeaderColumn("Total"), { horizontal: -80 });
+    H.moveDnDKitElementByAlias("@totalColumn", { horizontal: -80 });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
@@ -139,7 +142,7 @@ describe("issue 35711", () => {
     cy.signInAsAdmin();
   });
 
-  it("can edit metadata of a model with a custom column (metabase#35711)", () => {
+  it("can edit metadata of a model with a custom column (metabase#35711, metabase#39993)", () => {
     H.createQuestion(
       {
         type: "model",
@@ -951,45 +954,6 @@ describe("issue 43088", () => {
   });
 });
 
-describe("issue 39993", () => {
-  const columnName = "Exp";
-
-  const modelDetails: StructuredQuestionDetails = {
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-      fields: [
-        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-        ["expression", columnName, { "base-type": "type/Integer" }],
-      ],
-      expressions: { [columnName]: ["+", 1, 1] },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
-  });
-
-  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
-    H.createQuestion(modelDetails).then(({ body: card }) =>
-      H.visitModel(card.id),
-    );
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-    cy.log("drag & drop the custom column 100 px to the left");
-    H.moveDnDKitElement(H.tableHeaderColumn(columnName), {
-      horizontal: -100,
-    });
-    cy.button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
-  });
-});
-
 describe("issue 34574", () => {
   beforeEach(() => {
     H.restore();
@@ -1152,12 +1116,15 @@ describe("issue 36161", () => {
   });
 
   it("should allow to override metadata for custom columns (metabase#36161)", () => {
-    H.visitModel(ORDERS_MODEL_ID);
-    cy.wait("@dataset");
+    cy.log("Go straight to model query definition");
+    cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+    H.tableInteractiveBody().should("be.visible").and("contain", "37.65");
 
-    H.openQuestionActions("Edit query definition");
+    cy.log("Deselect all columns (except for ID)");
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").click();
+
+    cy.log("Add two custom columns based on the ID");
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
     H.popover().button("Done").click();
@@ -1166,6 +1133,8 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
+
+    cy.log("Rename custom columns");
     cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
@@ -1173,6 +1142,7 @@ describe("issue 36161", () => {
     H.renameColumn("ID3", "ID3 custom");
     H.saveMetadataChanges();
 
+    cy.log("Assert that the renamed columns appear in filter options");
     H.openNotebook();
     H.getNotebookStep("data").button("Filter").click();
     H.popover().within(() => {
@@ -1915,7 +1885,7 @@ describe("Issue 56913", () => {
   });
 });
 
-describe.skip("issue 45919", () => {
+describe("issue 45919", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -1927,7 +1897,8 @@ describe.skip("issue 45919", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().findByText("People").click();
+    H.popover().findByText("Sample Database").click();
+    H.popover().findByText("People").click();
     H.runButtonOverlay().click();
     H.tableInteractive().should("be.visible");
     cy.findByTestId("dataset-edit-bar").button("Save").click();
@@ -1987,5 +1958,48 @@ describe("issue 50915", () => {
     H.getNotebookStep("data")
       .findByText("Orders + People")
       .should("be.visible");
+  });
+});
+
+describe("issue 38747", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow you to drill through with entity qualified ids", () => {
+    cy.visit("/model/new");
+    cy.findByRole("link", { name: /notebook editor/ }).click();
+
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Databases").click();
+    H.entityPickerModalItem(1, "Products").click();
+    H.runButtonInOverlay().click();
+
+    // Wait for the query to run so we can click the columns "button"
+    // ... It's actually a list item, so we can't check to see if it's
+    // actually disabled in any sane way
+    H.tableInteractive().should("exist");
+
+    H.datasetEditBar().findByText("Columns").click();
+    cy.findAllByTestId("model-column-header-content")
+      .contains("Vendor")
+      .click();
+
+    cy.findByPlaceholderText("Select a semantic type").click();
+    H.popover().findByText("Entity Key").click();
+    H.datasetEditBar().button("Save").click();
+
+    H.modal().button("Save").click();
+
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+
+    // Assert that we're at an adhoc question with aproprate filters
+    cy.location("pathname").should("equal", "/question");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "Vendor is Nolan-Wolff",
+    );
+    H.tableInteractive().should("have.attr", "data-rows-count", "1");
   });
 });

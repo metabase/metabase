@@ -43,7 +43,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-export const SegmentQuestions = ({ style, table, segment, metadata }) => {
+const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
   const {
     data = [],
     isLoading,
@@ -92,11 +92,14 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
   );
 };
 
-SegmentQuestions.propTypes = {
+SegmentQuestionsInner.propTypes = {
   table: PropTypes.object,
   segment: PropTypes.object.isRequired,
   style: PropTypes.object.isRequired,
   metadata: PropTypes.object.isRequired,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentQuestions);
+export const SegmentQuestions = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(SegmentQuestionsInner);
