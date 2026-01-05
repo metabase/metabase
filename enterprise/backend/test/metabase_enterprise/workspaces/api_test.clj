@@ -222,9 +222,9 @@
                                                                          :database (mt/id)
                                                                          :schema   "public"
                                                                          :name     "merge_test_table"}}]
-      (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                            {:name        (mt/random-name)
-                                                                             :database_id (mt/id)}))
+      (let [{ws-id :id ws-name :name} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                            {:name        (mt/random-name)
+                                                             :database_id (mt/id)})
             {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                             (merge {:global_id (:id x1)}
                                                                    (select-keys x1 [:name :description :source :target])))
@@ -258,10 +258,9 @@
       ;; mt/with-temp with users will trigger their cleanup and those tables fail with their fks to core_user
       (mt/with-model-cleanup [:model/WorkspaceMerge :model/ApiKey]
         ;; User A creates the workspace
-        (let [{ws-id :id ws-name :name} (ws.tu/ws-ready
-                                         (mt/user-http-request user-a :post 200 "ee/workspace"
-                                                               {:name        (mt/random-name)
-                                                                :database_id (mt/id)}))
+        (let [{ws-id :id ws-name :name} (mt/user-http-request user-a :post 200 "ee/workspace"
+                                                              {:name        (mt/random-name)
+                                                               :database_id (mt/id)})
               ;; User B creates a new workspace transform (not a checkout of existing)
               {ws-tx-ref-id :ref_id}    (mt/user-http-request user-b :post 200 (ws-url ws-id "/transform")
                                                               {:name   "Transform created by User B"
@@ -310,9 +309,9 @@
                                                       :schema   "public"
                                                       :name     "merge_test_table_2"}}]
       (let [;; Create a workspace
-            {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                              {:name        "Merge test"
-                                                               :database_id  (mt/id)}))
+            {ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                              {:name        "Merge test"
+                                               :database_id (mt/id)})
             ;; Add 2 transforms
             {ws-x-1-id :ref_id}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -322,6 +321,7 @@
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x2)}
                                          (select-keys x2 [:name :description :source :target])))
+
             ;; Update transform names
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :put 200
@@ -387,9 +387,9 @@
                                                           :schema   "public"
                                                           :name     "merge_test_table_2"}}]
       (let [;; Create a workspace
-            {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                              {:name        "Merge test"
-                                                               :database_id (mt/id)}))
+            {ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                              {:name        "Merge test"
+                                               :database_id (mt/id)})
             ;; Add 2 transforms
             {ws-x-1-id :ref_id}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -399,6 +399,7 @@
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                   (merge {:global_id (:id x2)}
                                          (select-keys x2 [:name :description :source :target])))
+
             ;; Update transform names
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :put 200
@@ -445,9 +446,9 @@
           (is (not (t2/exists? :model/Workspace :id ws-id))))))))
 
 (deftest merge-empty-workspace-test
-  (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                          {:name        "Merge test"
-                                                           :database_id  (mt/id)}))]
+  (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                          {:name        "Merge test"
+                                           :database_id (mt/id)})]
 
     (testing "API response: empty errors, empty updates"
       (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
@@ -474,9 +475,9 @@
                                                     :schema   "public"
                                                     :name     "merge_test_table_2"}}]
     (let [;; Create a workspace
-          {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                            {:name        "Merge test"
-                                                             :database_id  (mt/id)}))
+          {ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                            {:name        "Merge test"
+                                             :database_id (mt/id)})
           ;; Add 2 transforms
           {ws-x-1-id :ref_id}
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -486,6 +487,7 @@
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                 (merge {:global_id (:id x2)}
                                        (select-keys x2 [:name :description :source :target])))
+
           ;; Update transform names
           {ws-x-1-id :ref_id :as ws-x-1}
           (mt/user-http-request :crowberto :put 200
@@ -553,9 +555,9 @@
                                                           :database (mt/id)
                                                           :schema   "public"
                                                           :name     "merge_history_test_table"}}]
-      (let [{ws-id :id ws-name :name} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                            {:name        (mt/random-name)
-                                                                             :database_id (mt/id)}))
+      (let [{ws-id :id ws-name :name} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                            {:name        (mt/random-name)
+                                                             :database_id (mt/id)})
             {ws-tx-ref-id :ref_id}    (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                             (merge {:global_id (:id x1)}
                                                                    (select-keys x1 [:name :description :source :target])))
@@ -596,9 +598,9 @@
                                                     :schema   "public"
                                                     :name     "merge_test_table"}}]
     (let [;; Create a workspace
-          {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                            {:name        "Merge test"
-                                                             :database_id  (mt/id)}))
+          {ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                            {:name        "Merge test"
+                                             :database_id (mt/id)})
           ;; Add transform
           {ws-x-1-id :ref_id :as ws-x-1}
           (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -642,9 +644,9 @@
                                                       :schema   "public"
                                                       :name     "merge_test_table_2"}}]
       (let [;; Create a workspace
-            {ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                              {:name        "Merge test"
-                                                               :database_id  (mt/id)}))
+            {ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                              {:name        "Merge test"
+                                               :database_id (mt/id)})
             ;; Add 2 transforms
             {ws-x-1-id :ref_id :as ws-x-1}
             (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -733,9 +735,9 @@
                                                                    :database (mt/id)
                                                                    :schema   "public"
                                                                    :name     orig-name}}]
-        (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                {:name        "Add Transforms Test"
-                                                                 :database_id (mt/id)}))]
+        (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                {:name        "Add Transforms Test"
+                                                 :database_id (mt/id)})]
           (is (int? ws-id))
           (testing "Can check out a global transform into workspace"
             (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
@@ -785,9 +787,9 @@
 
 (deftest create-workspace-transform-test
   (mt/dataset transforms-dataset/transforms-test
-    (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                            {:name        "Test Workspace"
-                                                             :database_id (mt/id)}))]
+    (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                            {:name        "Test Workspace"
+                                             :database_id (mt/id)})]
       (with-transform-cleanup! [table-name "workspace_transform_test"]
         (is (=? {:ref_id       string?
                  :workspace_id ws-id
@@ -862,9 +864,9 @@
                                                    :name     target-name}}]
         ;; create the global table
         (transforms.execute/execute! x1 {:run-method :manual})
-        (let [workspace    (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                                 {:name        "Test Workspace"
-                                                                  :database_id (mt/id)}))
+        (let [workspace    (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                                 {:name        "Test Workspace"
+                                                  :database_id (mt/id)})
               create-url   (ws-url (:id workspace) "/transform")
               create-req   (assoc (select-keys x1 [:name :source :target]) :global_id (:id x1))
               ;; add the transform
