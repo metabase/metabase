@@ -1,0 +1,57 @@
+import { t } from "ttag";
+
+import { Combobox, Group, Icon, Text, Tooltip } from "metabase/ui";
+
+export interface GitSyncOptionsDropdownProps {
+  isPushDisabled: boolean;
+  onPullClick: VoidFunction;
+  onPushClick: VoidFunction;
+  onSwitchBranchClick: VoidFunction;
+}
+
+export const GitSyncOptionsDropdown = ({
+  onPullClick,
+  onPushClick,
+  onSwitchBranchClick,
+  isPushDisabled,
+}: GitSyncOptionsDropdownProps) => {
+  return (
+    <Combobox.Dropdown p={0}>
+      <Combobox.Options>
+        <Tooltip
+          label={isPushDisabled ? t`No changes to push` : t`Push changes`}
+        >
+          <Combobox.Option
+            disabled={isPushDisabled}
+            onClick={onPushClick}
+            py="sm"
+            value="push"
+          >
+            <Group gap="md" wrap="nowrap">
+              <Icon name="arrow_up" size={12} />
+              <Text>{t`Push changes`}</Text>
+            </Group>
+          </Combobox.Option>
+        </Tooltip>
+
+        <Combobox.Option onClick={onPullClick} py="sm" value="pull">
+          <Group gap="md" wrap="nowrap">
+            <Icon name="arrow_down" size={12} />
+            <Text>{t`Pull changes`}</Text>
+          </Group>
+        </Combobox.Option>
+
+        <Combobox.Option
+          onClick={onSwitchBranchClick}
+          py="sm"
+          value="switch-branch"
+        >
+          <Group gap="md" wrap="nowrap">
+            <Icon name="git_branch" size={12} />
+            <Text>{t`Switch branch`}</Text>
+          </Group>
+        </Combobox.Option>
+      </Combobox.Options>
+    </Combobox.Dropdown>
+  );
+};

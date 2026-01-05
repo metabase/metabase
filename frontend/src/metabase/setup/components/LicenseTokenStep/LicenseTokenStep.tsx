@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import { useStep } from "metabase/setup/useStep";
 import { Text } from "metabase/ui";
 
@@ -19,11 +19,12 @@ export const LicenseTokenStep = ({ stepLabel }: NumberedStepProps) => {
   const storeToken = useSelector((state) => state.setup.licenseToken);
 
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const handleSubmit = async (token: string | null) => {
     try {
       await dispatch(submitLicenseToken(token)).unwrap();
-      dispatch(addUndo({ message: t`Your license is activated` }));
+      sendToast({ message: t`Your license is activated` });
     } catch (err) {
       console.error(err);
       throw new Error(
