@@ -452,6 +452,23 @@
           {}
           props))
 
+(defn flatten-connection-properties
+  "Recursively flatten connection properties, extracting fields from nested groups.
+  Groups have :type :group and contain a :fields array with nested properties.
+  Returns a flat sequence of all properties, preserving non-grouped properties as-is."
+  [props]
+  (reduce (fn [acc prop]
+            (cond
+              ;; Group with nested fields - recursively flatten nested fields
+              (= :group (:type prop))
+              (into acc (flatten-connection-properties (:fields prop)))
+
+              ;; Regular property - include it
+              :else
+              (conj acc prop)))
+          []
+          props))
+
 (defn- resolve-transitive-visible-if
   "Resolves transitive visible-if dependencies for a property.
 

@@ -93,22 +93,6 @@
   "The string to replace passwords with when serializing Databases."
   "**MetabasePass**")
 
-(defn- flatten-connection-properties
-  "Recursively flatten connection properties, extracting fields from groups.
-  Groups have :type :group and contain a :fields array with nested properties."
-  [props]
-  (reduce (fn [acc prop]
-            (cond
-              ;; Group with nested fields - recursively flatten nested fields
-              (= :group (:type prop))
-              (into acc (flatten-connection-properties (:fields prop)))
-
-              ;; Regular property - include it
-              :else
-              (conj acc prop)))
-          []
-          props))
-
 (defn secret-conn-props-by-name
   "For the driver return a map of all `:type` `:secret` properties, keyed by property name.
   Handles both top-level and grouped (nested) connection properties."
@@ -116,7 +100,7 @@
   (let [conn-props-fn (get-method driver/connection-properties driver)]
     (when (fn? conn-props-fn)
       (->> (conn-props-fn driver)
-           flatten-connection-properties
+           driver.u/flatten-connection-properties
            (filter #(= :secret (keyword (:type %))))
            (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})
            not-empty))))
