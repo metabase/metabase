@@ -1,5 +1,5 @@
 (ns metabase.lib.normalize
-  (:refer-clojure :exclude [mapv some])
+  (:refer-clojure :exclude [every? mapv some])
   (:require
    [malli.core :as mc]
    [malli.error :as me]
@@ -14,7 +14,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv some]]))
+   [metabase.util.performance :refer [every? mapv some]]))
 
 (defn- lib-type [x]
   (when (map? x)
@@ -89,28 +89,40 @@
 
 (declare flatten-expression)
 
+(defn- flattenable-case-opts?
+  "Returns true if opts only contains keys that are safe to discard when flattening :case/:if."
+  [opts]
+  (or (nil? opts)
+      (every? #{:lib/uuid :default} (keys opts))))
+
 (defn- flatten-case
   "Flatten a :case or :if clause by merging nested case/if from the default branch.
-  Structure: [tag opts? [[pred1 expr1] ...] default?]"
+  Structure: [tag opts? [[pred1 expr1] ...] default?]
+  Only flattens if outer opts contains nothing beyond :lib/uuid and :default."
   [clause]
-  (let [tag           (clause-tag clause)
-        [opts [pairs default & _more]] (clause-opts-and-args clause)
-        pairs'        (mapv (fn [[pred expr]]
-                              [(flatten-expression pred) (flatten-expression expr)])
-                            pairs)
-        default'      (some-> default flatten-expression)
-        [nested-opts nested-args] (when (= tag (clause-tag default'))
+  (let [tag                       (clause-tag clause)
+        [opts [pairs default]]    (clause-opts-and-args clause)
+        pairs'                    (mapv (fn [[pred expr]]
+                                          [(flatten-expression pred) (flatten-expression expr)])
+                                        pairs)
+        default'                  (flatten-expression default)
+        [nested-opts nested-args] (when (and (= tag (clause-tag default'))
+                                             (flattenable-case-opts? opts))
                                     (clause-opts-and-args default'))
-        ;; Preserve opts from outer clause, or use nested opts if outer had none
-        merged-opts   (or opts nested-opts)]
+        ;; Keep :lib/uuid from outer clause, merge with nested opts
+        merged-opts               (when (or opts nested-opts)
+                                    (cond-> (or nested-opts {})
+                                      (:lib/uuid opts) (assoc :lib/uuid (:lib/uuid opts))))]
     (if nested-args
       ;; Flatten: merge nested case/if branches
-      (let [[nested-pairs nested-default & _] nested-args]
-        (cond-> (if merged-opts [tag merged-opts] [tag])
-          true                     (conj (into pairs' nested-pairs))
-          (some? nested-default)   (conj nested-default)))
+      (let [[nested-pairs nested-default] nested-args]
+        (cond-> [tag]
+          merged-opts            (conj merged-opts)
+          true                   (conj (into pairs' nested-pairs))
+          (some? nested-default) (conj nested-default)))
       ;; No flattening needed
-      (cond-> (if opts [tag opts] [tag])
+      (cond-> [tag]
+        opts             (conj opts)
         true             (conj pairs')
         (some? default') (conj default')))))
 
@@ -118,9 +130,10 @@
   "Flatten a variadic clause (:and, :or, :coalesce) by merging nested clauses of the same type.
   Structure: [tag opts? & args]"
   [clause]
-  (let [tag        (clause-tag clause)
+  (let [tag         (clause-tag clause)
         [opts args] (clause-opts-and-args clause)]
-    (into (if opts [tag opts] [tag])
+    (into (cond-> [tag]
+            opts (conj opts))
           (mapcat (fn [arg]
                     (let [arg' (flatten-expression arg)]
                       (if (= (clause-tag arg') tag)
@@ -140,9 +153,12 @@
     (flatten-variadic clause)
 
     ;; Other clause: just recurse into args
-    (let [tag        (clause-tag clause)
+    (let [tag         (clause-tag clause)
           [opts args] (clause-opts-and-args clause)]
-      (into (if opts [tag opts] [tag]) (map flatten-expression) args))))
+      (into (cond-> [tag]
+              opts (conj opts))
+            (map flatten-expression)
+            args))))
 
 (defn- flatten-expression
   "Flatten a single expression (clause). Handles both keyword and string tags."
@@ -164,9 +180,9 @@
   NOTE: Keep in sync with [[metabase.lib.schema.join/join]] - if expression-containing keys
   are added there, they must be added here too."
   [join]
-  (cond-> join
-    (:stages join)     (update :stages #(mapv flatten-stage %))
-    (:conditions join) (update :conditions flatten-expression-list)))
+  (-> join
+      (m/update-existing :stages     #(mapv flatten-stage %))
+      (m/update-existing :conditions flatten-expression-list)))
 
 (defn- flatten-stage
   "Flatten expressions within a single MBQL stage. Only processes known expression-containing
@@ -177,14 +193,14 @@
   [stage]
   (if-not (map? stage)
     stage
-    (cond-> stage
-      (:expressions stage) (update :expressions flatten-expression-list)
-      (:breakout stage)    (update :breakout flatten-expression-list)
-      (:aggregation stage) (update :aggregation flatten-expression-list)
-      (:fields stage)      (update :fields flatten-expression-list)
-      (:filters stage)     (update :filters flatten-expression-list)
-      (:order-by stage)    (update :order-by flatten-expression-list)
-      (:joins stage)       (update :joins #(mapv flatten-join %)))))
+    (-> stage
+        (m/update-existing :expressions flatten-expression-list)
+        (m/update-existing :breakout    flatten-expression-list)
+        (m/update-existing :aggregation flatten-expression-list)
+        (m/update-existing :fields      flatten-expression-list)
+        (m/update-existing :filters     flatten-expression-list)
+        (m/update-existing :order-by    flatten-expression-list)
+        (m/update-existing :joins       #(mapv flatten-join %)))))
 
 (defn normalize
   "Ensure some part of an MBQL query `x`, e.g. a clause or map, is in the right shape after coming in from JavaScript or
@@ -215,9 +231,9 @@
          flatten-stages #(mapv flatten-stage %)
          ;; :query is a legacy query map that has :query (MBQL) or :native inside
          flatten-query  (fn [q]
-                          (cond-> q
-                            (:query q)      (update :query flatten-stage)
-                            (get q "query") (update "query" flatten-stage)))
+                          (-> q
+                              (m/update-existing :query flatten-stage)
+                              (m/update-existing "query" flatten-stage)))
          x      (cond
                   (map? x)
                   (-> x
