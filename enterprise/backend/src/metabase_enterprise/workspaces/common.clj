@@ -126,6 +126,7 @@
                           {:requested-db-id database-id
                            :actual-db-id    new-db-id})))))
     (u/prog1 (t2/select-one :model/Workspace :id (:id workspace))
+      ;; TODO allow this to be fully async as part of BOT-746
       (quick-task/submit-task! #(run-workspace-setup! <> database)))))
 
 (defn- create-uninitialized-workspace!
