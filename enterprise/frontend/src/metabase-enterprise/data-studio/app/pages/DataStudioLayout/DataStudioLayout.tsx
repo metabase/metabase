@@ -55,7 +55,7 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
         perform: () => setIsNavbarOpened(!isNavbarOpened),
       },
     ],
-    [isNavbarOpened, setIsNavbarOpened],
+    [isNavbarOpened],
   );
 
   return isLoading ? (
