@@ -2,7 +2,6 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
-   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.sync.core :as sync]
    [metabase.warehouse-schema.models.field-values :as field-values]
