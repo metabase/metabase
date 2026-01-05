@@ -54,7 +54,10 @@ const defaultConfig = {
 
     // Use cypress-on-fix to enable multiple handlers
     const on = cypressOnFix(cypressOn);
-    require("@bahmutov/cy-grep/src/plugin")(config);
+
+    // CLI grep can't handle commas in the name
+    // needed when we want to run only specific tests
+    config.env.grep ??= process.env.GREP;
 
     // cypress-terminal-report
     if (isCI) {
@@ -120,14 +123,16 @@ const defaultConfig = {
      **                          CONFIG                                **
      ********************************************************************/
 
-    // CLI grep can't handle commas in the name
-    // needed when we want to run only specific tests
-    config.env.grep ??= process.env.GREP;
+    // `grepIntegrationFolder` needs to point to the root!
+    // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
+    config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
     config.env.grepOmitFiltered = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
+
+    require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
       cypressSplit(on, config);
