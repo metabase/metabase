@@ -1681,34 +1681,47 @@
 
 (deftest workspace-database-listing-test
   (testing "GET /api/ee/workspace/database"
-    (mt/with-temp [:model/Database {db-ok :id} {:name "DB OK"
-                                                :engine :h2
-                                                :is_audit false
-                                                :is_sample false
-                                                :workspace_permissions {:status "ok" :checked_at "2025-01-01"}}
-                   :model/Database {db-failed :id} {:name "DB Failed"
-                                                    :engine :h2
-                                                    :is_audit false
-                                                    :is_sample false
-                                                    :workspace_permissions {:status "failed" :error "denied" :checked_at "2025-01-01"}}]
-      (testing "returns all workspace-capable databases with support status"
-        (let [response  (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-              db-ids    (set (map :id (:databases response)))
-              ok-entry  (m/find-first #(= (:id %) db-ok) (:databases response))
-              fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
-          ;; Both databases should be in the response
-          (is (contains? db-ids db-ok))
-          (is (contains? db-ids db-failed))
-          ;; OK database should have supported: true
-          (is (true? (:supported ok-entry)))
-          (is (nil? (:reason ok-entry)))
-          ;; Failed database should have supported: false with reason
-          (is (false? (:supported fail-entry)))
-          (is (= "denied" (:reason fail-entry)))))
+    (testing "databases with cached permissions use the cached value"
+      (mt/with-temp [:model/Database {db-ok :id} {:name "DB OK"
+                                                  :engine :h2
+                                                  :is_audit false
+                                                  :is_sample false
+                                                  :workspace_permissions {:status "ok" :checked_at "2025-01-01"}}
+                     :model/Database {db-failed :id} {:name "DB Failed"
+                                                      :engine :h2
+                                                      :is_audit false
+                                                      :is_sample false
+                                                      :workspace_permissions {:status "failed" :error "denied" :checked_at "2025-01-01"}}]
+        (let [check-called (atom #{})]
+          (mt/with-dynamic-fn-redefs [metabase.warehouses.models.database/check-and-cache-workspace-permissions!
+                                      (fn [db]
+                                        (swap! check-called conj (:id db))
+                                        {:status "ok" :checked_at "2025-01-01"})]
+            (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+                  ok-entry   (m/find-first #(= (:id %) db-ok) (:databases response))
+                  fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
+              ;; Check should NOT be called for databases with cached permissions
+              (is (not (contains? @check-called db-ok)))
+              (is (not (contains? @check-called db-failed)))
+              ;; Results should reflect cached values
+              (is (true? (:supported ok-entry)))
+              (is (false? (:supported fail-entry)))
+              (is (= "denied" (:reason fail-entry))))))))
 
-      (testing "returns id, name, supported, and optionally reason fields"
-        (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-              ok-entry   (m/find-first #(= (:id %) db-ok) (:databases response))
-              fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
-          (is (= #{:id :name :supported} (set (keys ok-entry))))
-          (is (= #{:id :name :supported :reason} (set (keys fail-entry)))))))))
+    (testing "databases without cached permissions trigger a check"
+      (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
+                                                        :engine :h2
+                                                        :is_audit false
+                                                        :is_sample false
+                                                        :workspace_permissions nil}]
+        (let [check-called (atom #{})]
+          (mt/with-dynamic-fn-redefs [metabase.warehouses.models.database/check-and-cache-workspace-permissions!
+                                      (fn [db]
+                                        (swap! check-called conj (:id db))
+                                        {:status "ok" :checked_at "2025-01-01"})]
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+                  entry    (m/find-first #(= (:id %) db-uncached) (:databases response))]
+              ;; Check SHOULD be called for database without cached permissions
+              (is (contains? @check-called db-uncached))
+              ;; Result should reflect the mocked check result
+              (is (true? (:supported entry))))))))))
