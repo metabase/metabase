@@ -1060,7 +1060,6 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the table name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
         cy.signIn("none");
@@ -1136,7 +1135,6 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
         H.DataModel.visitDataStudio({
@@ -1529,7 +1527,6 @@ describe("scenarios > data studio > datamodel", () => {
       });
 
       it("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
         H.DataModel.visitDataStudio({
@@ -1977,7 +1974,6 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change the field foreign key target with no permissions to Reviews table", () => {
-          H.activateToken("pro-self-hosted");
           setDataModelPermissions({
             tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
           });
@@ -2034,7 +2030,6 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should not allow setting foreign key target for inaccessible tables", () => {
-          H.activateToken("pro-self-hosted");
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
@@ -2651,7 +2646,6 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should allow to change foreign key target for accessible tables", () => {
-          H.activateToken("pro-self-hosted");
           setDataModelPermissions({
             tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
           });
@@ -2867,7 +2861,6 @@ describe("scenarios > data studio > datamodel", () => {
         });
 
         it("should show a proper error message when using custom mapping", () => {
-          H.activateToken("pro-self-hosted");
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
