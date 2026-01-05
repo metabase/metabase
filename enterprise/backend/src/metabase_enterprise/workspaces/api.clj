@@ -26,6 +26,7 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -86,6 +87,15 @@
                    (deferred-tru "The database does not support the requested transform target type."))
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
+
+(defn- ensure-workspace-permissions-cached!
+  "Ensure workspace_permissions is cached for the database.
+   If not cached, run the check synchronously and cache it.
+   Returns the database with :workspace_permissions populated."
+  [db]
+  (if (:workspace_permissions db)
+    db
+    (assoc db :workspace_permissions (database/check-and-cache-workspace-permissions! db))))
 
 (defn- ws->response [ws]
   (select-keys ws [:id :name :collection_id :database_id :status :created_at :updated_at]))
@@ -315,20 +325,19 @@
                                              [:databases
                                               [:sequential [:map
                                                             [:id ms/PositiveInt]
-                                                            [:name :string]
-                                                            [:supported :boolean]
-                                                            [:reason {:optional true} :string]]]]]
-  "Get a list of databases to show in the workspace picker, along with whether they're supported."
+                                                            [:name :string]]]]]
+  "Get a list of databases that support workspaces and have valid isolation permissions."
   [_url-params
    _query-params]
-  {:databases (->> (t2/select :model/Database :is_audit false :is_sample false {:order-by [:name]})
-                   ;; Omit those we don't even support
-                   (filter #(driver.u/supports? (:engine %) :workspace %))
-                   (mapv (fn [db]
-                           (merge (select-keys db [:id :name])
-                                  (if-let [reason (db-unsupported-reason db)]
-                                    {:supported false, :reason reason}
-                                    {:supported true})))))})
+  (let [;; Get all workspace-capable databases
+        databases (->> (t2/select [:model/Database :id :name :engine :workspace_permissions]
+                                  :is_audit false :is_sample false {:order-by [:name]})
+                       (filter #(driver.u/supports? (:engine %) :workspace %)))
+        ;; Ensure all have permissions cached (sync check if missing)
+        databases-with-perms (mapv ensure-workspace-permissions-cached! databases)
+        ;; Filter to only those with ok status
+        ok-databases (filter #(= "ok" (get-in % [:workspace_permissions :status])) databases-with-perms)]
+    {:databases (mapv #(select-keys % [:id :name]) ok-databases)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
   "Update simple workspace properties.

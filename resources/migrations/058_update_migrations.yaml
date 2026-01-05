@@ -4572,6 +4572,23 @@ databaseChangeLog:
             sql: UPDATE workspace SET archived_at = current_timestamp WHERE status = 'archived'
             splitStatements: false
 
+  - changeSet:
+      id: v58.2026-01-05T10:00:00
+      author: qnkhuat
+      comment: Add workspace_permissions column to cache isolation permission check results
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: workspace_permissions
+                  type: ${text.type}
+                  remarks: "JSON cache for workspace isolation permission check results: {status, error, checked_at}"
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspace_permissions
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

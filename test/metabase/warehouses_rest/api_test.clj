@@ -2450,3 +2450,37 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
+
+;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
+
+(deftest check-workspace-permissions-endpoint-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "POST /api/database/:id/check-workspace-permissions"
+      (testing "returns ok status when permissions are valid"
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/check-workspace-permissions" (mt/id)))]
+          (is (= "ok" (:status response)))
+          (is (some? (:checked_at response)))
+          (is (nil? (:error response)))))
+
+      (testing "caches the result in the database"
+        (mt/user-http-request :crowberto :post 200
+                              (format "database/%d/check-workspace-permissions" (mt/id)))
+        (let [db (t2/select-one :model/Database (mt/id))]
+          (is (= "ok" (get-in db [:workspace_permissions :status])))))
+
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (:message (mt/user-http-request :rasta :post 403
+                                               (format "database/%d/check-workspace-permissions" (mt/id))))))))))
+
+(deftest check-workspace-permissions-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
+    (testing "returns failed status when permissions check fails"
+      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
+                                  (fn [_driver _database _table]
+                                    "permission denied")]
+        (let [response (mt/user-http-request :crowberto :post 200
+                                             (format "database/%d/check-workspace-permissions" (mt/id)))]
+          (is (= "failed" (:status response)))
+          (is (= "permission denied" (:error response))))))))

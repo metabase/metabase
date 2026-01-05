@@ -1229,6 +1229,20 @@
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
+(api.macros/defendpoint :post "/:id/check-workspace-permissions"
+  :- [:map
+      [:status :string]
+      [:checked_at :string]
+      [:error {:optional true} :string]]
+  "Force refresh the workspace isolation permissions check for this database.
+   Returns the new permission status."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (let [db (api/check-404 (t2/select-one :model/Database id))
+        _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
+                          "Database does not support workspaces")]
+    (database/check-and-cache-workspace-permissions! db)))
+
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
 (defenterprise current-user-can-manage-schema-metadata?

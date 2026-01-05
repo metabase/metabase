@@ -1674,11 +1674,30 @@
       (testing "Supported driver"
         (is (= {:supported true}
                (mt/user-http-request :crowberto :get 200 (str url "?database-id=" db-1)))))
-      (testing "Listing"
-        (is (= {:databases [{:id db-1, :name "Y", :supported true}]}
-               (-> (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-                   (update :databases #(filter (comp #{db-1 db-2} :id) %))))))
       (testing "Audit not returned"
         (is (nil?
              (m/find-first (comp #{audit/audit-db-id} :id)
                            (:databases (mt/user-http-request :crowberto :get 200 "ee/workspace/database")))))))))
+
+(deftest workspace-database-listing-test
+  (testing "GET /api/ee/workspace/database"
+    (mt/with-temp [:model/Database {db-ok :id} {:name "DB OK"
+                                                :engine :h2
+                                                :is_audit false
+                                                :is_sample false
+                                                :workspace_permissions {:status "ok" :checked_at "2025-01-01"}}
+                   :model/Database {db-failed :id} {:name "DB Failed"
+                                                    :engine :h2
+                                                    :is_audit false
+                                                    :is_sample false
+                                                    :workspace_permissions {:status "failed" :error "denied" :checked_at "2025-01-01"}}]
+      (testing "returns only databases with ok permissions"
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              db-ids   (set (map :id (:databases response)))]
+          (is (contains? db-ids db-ok))
+          (is (not (contains? db-ids db-failed)))))
+
+      (testing "returns only id and name fields"
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              db-entry (m/find-first #(= (:id %) db-ok) (:databases response))]
+          (is (= #{:id :name} (set (keys db-entry)))))))))
