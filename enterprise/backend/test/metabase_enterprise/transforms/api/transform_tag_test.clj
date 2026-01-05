@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.models.transform-tag]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]

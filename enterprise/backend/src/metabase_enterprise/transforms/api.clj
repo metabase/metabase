@@ -21,8 +21,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.permissions.validation :as perms.validation]
-   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.request.core :as request]

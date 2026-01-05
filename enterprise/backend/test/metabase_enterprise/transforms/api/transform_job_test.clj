@@ -5,7 +5,6 @@
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase-enterprise.transforms.test-util :refer [parse-instant utc-timestamp]]
-   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
