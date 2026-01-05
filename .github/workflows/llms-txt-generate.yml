@@ -1,16 +1,18 @@
 name: Generate llms.txt
 
 on:
+  # For testing purposes
+  push:
+    branches:
+      - "github-actions-to-generate-llms-txt"
+    paths:
+      - ".github/workflows/llms-txt-generate.yml"
+      - ".github/scripts/generate-llms-txt.js"
+      - "docs/**"
   schedule:
     # Every 2 days at 3AM UTC
     - cron: "0 3 */2 * *"
   workflow_dispatch:
-    inputs:
-      target_branch:
-        description: "Target branch for llms.txt generation"
-        required: false
-        default: "master"
-        type: string
 
 permissions:
   contents: write
@@ -18,19 +20,18 @@ permissions:
 
 jobs:
   generate-llms-txt:
-    name: Generate llms.txt for ${{ inputs.target_branch || 'master' }}
+    name: Generate llms.txt for ${{ github.ref_name }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
       - name: Determine target branch
         id: determine_branch
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.target_branch }}" ]; then
-            TARGET_BRANCH="${{ inputs.target_branch }}"
-          elif [ "${{ github.event_name }}" == "schedule" ]; then
+          if [ "${{ github.event_name }}" == "schedule" ]; then
             TARGET_BRANCH="master"
           else
-            TARGET_BRANCH="master"
+            # For push and workflow_dispatch, use the branch the workflow is running on
+            TARGET_BRANCH="${{ github.ref_name }}"
           fi
           echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
           echo "Target branch: $TARGET_BRANCH"
