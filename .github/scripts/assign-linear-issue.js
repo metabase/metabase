@@ -8,11 +8,13 @@ async function linearGraphQL(query, linearApiKey) {
     body: JSON.stringify({ query }),
   });
 
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error(`Linear API error: ${response.status}`);
+    throw new Error(`Linear API error: ${response.status} - ${JSON.stringify(data)}`);
   }
 
-  return response.json();
+  return data;
 }
 
 async function assignLinearIssue({
@@ -132,7 +134,7 @@ async function linkPrToLinearIssue({ issueUrl, prUrl, linearApiKey }) {
   const attachResponse = await linearGraphQL(
     `
     mutation {
-      attachmentCreate(input: { issueId: "${linearIssue.id}", url: "${prUrl}" }) {
+      attachmentCreate(input: { issueId: "${linearIssue.id}", url: "${prUrl}", title: "GitHub PR" }) {
         success
       }
     }
