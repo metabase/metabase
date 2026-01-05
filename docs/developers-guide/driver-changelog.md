@@ -21,7 +21,7 @@ title: Driver interface changelog
   For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
   `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
   Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
-  These methods are invoked only when the `:transforms/index-ddl` feature is enabled and therefore are opt-in.
+  These methods run only when the `:transforms/index-ddl` feature is enabled, making them opt-in.
 
 ## Metabase 0.57.7
 
