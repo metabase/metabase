@@ -1,5 +1,4 @@
 import type { StoryFn } from "@storybook/react";
-import { merge } from "icepick";
 
 import {
   SdkVisualizationWrapper,
@@ -28,31 +27,28 @@ export default {
 registerVisualization(PieChart);
 
 const Template: StoryFn = (args) => {
-  const { backgroundColor, theme: themeOverride, ...props } = args;
+  const { backgroundColor, ...props } = args;
 
-  const theme: MetabaseTheme = merge(
-    {
-      colors: {
-        charts: [
-          "#171938",
-          "#BB7A75",
-          "#70495C",
-          "#3F9DC9",
-          "#3E70B9",
-          "#535482",
-          "#A797C6",
-          "#435763",
-        ],
-      },
-      components: {
-        dashboard: {
-          card: { backgroundColor },
-        },
-        question: { backgroundColor },
-      },
+  const theme: MetabaseTheme = {
+    colors: {
+      charts: [
+        "#171938",
+        "#BB7A75",
+        "#70495C",
+        "#3F9DC9",
+        "#3E70B9",
+        "#535482",
+        "#A797C6",
+        "#435763",
+      ],
     },
-    themeOverride,
-  );
+    components: {
+      dashboard: {
+        card: { backgroundColor },
+      },
+      question: { backgroundColor },
+    },
+  };
 
   return (
     <SdkVisualizationWrapper theme={theme}>
