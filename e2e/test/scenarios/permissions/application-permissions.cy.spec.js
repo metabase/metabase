@@ -222,33 +222,31 @@ describe("scenarios > admin > permissions > application", () => {
         cy.signInAsNormalUser();
       });
 
-      it("allows accessing data studio for non-admins but not transforms", () => {
+      it("allows accessing data studio for non-admins", () => {
         cy.visit("/data-studio");
         cy.url().should("include", "/data-studio");
-        H.main().should("be.visible");
-
-        cy.log("transforms tab should not be visible for non-admins");
-        cy.findByRole("link", { href: "/data-studio/transforms" }).should(
-          "not.exist",
-        );
-
-        cy.log("transforms page should not be accessible for non-admins");
-        cy.visit("/data-studio/transforms");
-        H.main().findByText("Sorry, you don’t have permission to see that.");
-
-        cy.log("transforms API should still be admin-only");
-        cy.request({ url: "/api/ee/transform", failOnStatusCode: false })
-          .its("status")
-          .should("eq", 403);
+        H.main()
+          .findByText("Pick a transform or create a new one")
+          .should("be.visible");
       });
     });
 
     describe("revoked", () => {
-      it("does not allow accessing data studio for non-admins", () => {
+      it("does not allow accessing data studio and transforms API for non-admins", () => {
         cy.signInAsNormalUser();
 
         cy.visit("/data-studio");
         H.main().findByText("Sorry, you don’t have permission to see that.");
+
+        cy.request({ url: "/api/ee/transform", failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403);
+        cy.request({ url: "/api/ee/transform-tag", failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403);
+        cy.request({ url: "/api/ee/transform-job", failOnStatusCode: false })
+          .its("status")
+          .should("eq", 403);
       });
     });
   });

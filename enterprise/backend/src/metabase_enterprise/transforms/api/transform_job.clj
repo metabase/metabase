@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.permissions.validation :as perms.validation]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]

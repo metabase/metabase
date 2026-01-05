@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
@@ -936,7 +937,7 @@
   (testing "Transform endpoints require transforms permission"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform {}]
-        (testing "Regular users get 403"
+        (testing "Regular users without data-studio permission get 403"
           (mt/user-http-request :rasta :get 403 "ee/transform")
           (mt/user-http-request :rasta :get 403 (str "ee/transform/" (:id transform)))
           (mt/user-http-request :rasta :post 403 "ee/transform"
@@ -948,7 +949,14 @@
                                  :target {:type "table" :name "test_table"}})
           (mt/user-http-request :rasta :put 403 (str "ee/transform/" (:id transform))
                                 {:name "Updated"})
-          (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))))))
+          (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))
+
+        (testing "Users with data-studio permission can access endpoints"
+          (mt/with-user-in-groups [group {:name "Data Studio Group"}
+                                   user  [group]]
+            (perms/grant-application-permissions! group :data-studio)
+            (mt/user-http-request user :get 200 "ee/transform")
+            (mt/user-http-request user :get 200 (str "ee/transform/" (:id transform)))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
   [_driver _feature _database]

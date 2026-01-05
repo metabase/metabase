@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.transforms.models.transform-tag]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -102,18 +103,31 @@
               (is (= (sort tag-names) tag-names)))))))))
 
 (deftest permissions-test
-  (testing "Transform tag endpoints require superuser permissions"
-    (mt/with-premium-features #{:transforms}
-      (testing "POST /api/ee/transform-tag"
-        (is (string? (mt/user-http-request :rasta :post 403 "ee/transform-tag"
-                                           {:name "test"}))))
+  (testing "Transform tag endpoints require superuser or data-studio permission"
+    (mt/with-premium-features #{:transforms :advanced-permissions}
+      (testing "Regular users without data-studio permission get 403"
+        (testing "POST /api/ee/transform-tag"
+          (is (string? (mt/user-http-request :rasta :post 403 "ee/transform-tag"
+                                             {:name "test"}))))
 
-      (testing "GET /api/ee/transform-tag"
-        (is (string? (mt/user-http-request :rasta :get 403 "ee/transform-tag"))))
+        (testing "GET /api/ee/transform-tag"
+          (is (string? (mt/user-http-request :rasta :get 403 "ee/transform-tag"))))
 
-      (testing "PUT /api/ee/transform-tag/:tag-id"
-        (is (string? (mt/user-http-request :rasta :put 403 "ee/transform-tag/1"
-                                           {:name "test"}))))
+        (testing "PUT /api/ee/transform-tag/:tag-id"
+          (is (string? (mt/user-http-request :rasta :put 403 "ee/transform-tag/1"
+                                             {:name "test"}))))
 
-      (testing "DELETE /api/ee/transform-tag/:tag-id"
-        (is (string? (mt/user-http-request :rasta :delete 403 "ee/transform-tag/1")))))))
+        (testing "DELETE /api/ee/transform-tag/:tag-id"
+          (is (string? (mt/user-http-request :rasta :delete 403 "ee/transform-tag/1")))))
+
+      (testing "Users with data-studio permission can access endpoints"
+        (mt/with-user-in-groups [group {:name "Data Studio Group"}
+                                 user  [group]]
+          (perms/grant-application-permissions! group :data-studio)
+          (mt/user-http-request user :get 200 "ee/transform-tag")
+          (let [tag-name (str "user-tag-" (u/generate-nano-id))
+                new-tag  (mt/user-http-request user :post 200 "ee/transform-tag"
+                                               {:name tag-name})]
+            (mt/user-http-request user :put 200 (str "ee/transform-tag/" (:id new-tag))
+                                  {:name (str tag-name "-updated")})
+            (mt/user-http-request user :delete 204 (str "ee/transform-tag/" (:id new-tag)))))))))

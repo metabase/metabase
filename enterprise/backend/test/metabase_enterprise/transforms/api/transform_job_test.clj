@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.models.transform-tag]
    [metabase-enterprise.transforms.schedule :as transforms.schedule]
    [metabase-enterprise.transforms.test-util :refer [parse-instant utc-timestamp]]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -212,11 +213,24 @@
   (testing "All endpoints require transform permissions"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/TransformJob job {:name "Test" :schedule "0 0 0 * * ?"}]
-        (mt/user-http-request :rasta :post 403 "ee/transform-job"
-                              {:name "New" :schedule "0 0 0 * * ?"})
-        (mt/user-http-request :rasta :get 403 "ee/transform-job")
-        (mt/user-http-request :rasta :get 403 (str "ee/transform-job/" (:id job)))
-        (mt/user-http-request :rasta :put 403 (str "ee/transform-job/" (:id job))
-                              {:name "Updated"})
-        (mt/user-http-request :rasta :delete 403 (str "ee/transform-job/" (:id job)))
-        (mt/user-http-request :rasta :post 403 (str "ee/transform-job/" (:id job) "/run"))))))
+        (testing "Regular users without data-studio permission get 403"
+          (mt/user-http-request :rasta :post 403 "ee/transform-job"
+                                {:name "New" :schedule "0 0 0 * * ?"})
+          (mt/user-http-request :rasta :get 403 "ee/transform-job")
+          (mt/user-http-request :rasta :get 403 (str "ee/transform-job/" (:id job)))
+          (mt/user-http-request :rasta :put 403 (str "ee/transform-job/" (:id job))
+                                {:name "Updated"})
+          (mt/user-http-request :rasta :delete 403 (str "ee/transform-job/" (:id job)))
+          (mt/user-http-request :rasta :post 403 (str "ee/transform-job/" (:id job) "/run")))
+
+        (testing "Users with data-studio permission can access endpoints"
+          (mt/with-user-in-groups [group {:name "Data Studio Group"}
+                                   user  [group]]
+            (perms/grant-application-permissions! group :data-studio)
+            (mt/user-http-request user :get 200 "ee/transform-job")
+            (mt/user-http-request user :get 200 (str "ee/transform-job/" (:id job)))
+            (let [new-job (mt/user-http-request user :post 200 "ee/transform-job"
+                                                {:name "User Created" :schedule "0 0 0 * * ?"})]
+              (mt/user-http-request user :put 200 (str "ee/transform-job/" (:id new-job))
+                                    {:name "User Updated"})
+              (mt/user-http-request user :delete 204 (str "ee/transform-job/" (:id new-job))))))))))
