@@ -10,11 +10,11 @@
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
 (def ^:private base-statuses
-  "Set of valid base_status values, representing the synchronous lifecycle of the workspace, ignoring resources."
+  "Set of valid base_status values, representing the synchronous lifecycle."
   #{:empty :active :archived})
 
 (def ^:private db-statuses
-  "Set of valid db_status values, representing the status of the isolated resources in the data warehouse."
+  "Set of valid db_status values, representing the status of the data warehouse."
   #{:uninitialized :pending :ready :broken})
 
 (t2/deftransforms :model/Workspace

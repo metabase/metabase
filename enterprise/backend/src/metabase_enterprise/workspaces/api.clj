@@ -35,7 +35,7 @@
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
 (def ^:private computed-statuses
-  "All possible values returned by computed-status (union of db-statuses and :archived from base-statuses)"
+  "All possible values returned by computed-status (computed from base_status, etc.)"
   #{:uninitialized :pending :ready :broken :archived})
 
 (mr/def ::status (into [:enum] computed-statuses))
