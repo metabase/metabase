@@ -102,8 +102,12 @@ describe("scenarios > data studio > datamodel", () => {
       );
 
       H.DataModel.get().within(() => {
+        cy.findByText("Table details").should("be.visible");
         cy.findByText("Field details").should("be.visible");
-        cy.findByText("Not found.").should("be.visible");
+        cy.findByText("Not found.")
+          .should("exist")
+          .scrollIntoView()
+          .should("be.visible");
       });
     });
 
