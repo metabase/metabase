@@ -394,31 +394,6 @@ describe("scenarios > data studio > datamodel", () => {
               `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-
-          cy.log("databases, schemas, and tables should be links");
-          TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}`,
-            );
-          TablePicker.getSchema("Domestic")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
-            );
-          TablePicker.getTable("Orders")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-            );
         });
 
         it("should allow to search for tables", () => {
@@ -458,6 +433,7 @@ describe("scenarios > data studio > datamodel", () => {
             "aria-selected",
             "true",
           );
+
           TablePicker.getTable("Birds").find('input[type="checkbox"]').check();
           TablePicker.getTable("Birds").should(
             "not.have.attr",
@@ -763,30 +739,20 @@ describe("scenarios > data studio > datamodel", () => {
       const getSchemaCheckbox = (schemaName: string) =>
         TablePicker.getSchema(schemaName).find('input[type="checkbox"]');
       const getWpTableCheckbox = (schemaName: string, tableName: string) =>
-        getTableCheckbox(
-          WRITABLE_DB_ID,
-          `${WRITABLE_DB_ID}:${schemaName}`,
-          tableName,
-        );
+        getTableCheckbox(WRITABLE_DB_ID, schemaName, tableName);
       const getSampleTableCheckbox = (tableName: string) =>
-        getTableCheckbox(SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID, tableName);
+        getTableCheckbox(SAMPLE_DB_ID, "PUBLIC", tableName);
 
       function getTableCheckbox(
         databaseId: number,
-        schemaFragment: string,
+        schemaName: string,
         tableName: string,
       ) {
         return TablePicker.getTables()
-          .filter((_, element) => {
-            const href = element.getAttribute("href") ?? "";
-            const text = element.textContent ?? "";
-
-            return (
-              href.includes(`/database/${databaseId}/`) &&
-              href.includes(`/schema/${schemaFragment}`) &&
-              text.toLowerCase().includes(tableName.toLowerCase())
-            );
-          })
+          .filter(
+            `[data-database-id="${databaseId}"][data-schema-name="${schemaName}"]`,
+          )
+          .filter(`:contains("${tableName}")`)
           .find('input[type="checkbox"]');
       }
 
@@ -803,6 +769,7 @@ describe("scenarios > data studio > datamodel", () => {
       for (const tableName of domesticTables) {
         getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
       }
+
       for (const tableName of wildTables) {
         getWpTableCheckbox(wildSchema, tableName).should("be.checked");
       }
@@ -864,8 +831,7 @@ describe("scenarios > data studio > datamodel", () => {
       getSchemaCheckbox(wildSchema).should("not.be.checked");
       // partially selected now, so clicking twice to make it unchecked
       getDatabaseCheckbox().should("not.be.checked");
-
-      getDatabaseCheckbox().uncheck();
+      getDatabaseCheckbox().check();
       getDatabaseCheckbox().uncheck();
       for (const { schema, table } of tablesInDatabase) {
         getWpTableCheckbox(schema, table).should("not.be.checked");
@@ -3987,11 +3953,7 @@ function expectTableNotVisible(tableId: TableId) {
 }
 
 function findSearchResultByTableId(tableId: TableId) {
-  return cy.findAllByTestId("tree-item").filter((_, element) => {
-    const href = element.getAttribute("href") ?? "";
-    const pattern = new RegExp(`/table/${tableId}(?:/|$)`);
-    return pattern.test(href);
-  });
+  return cy.findAllByTestId("tree-item").filter(`[data-table-id="${tableId}"]`);
 }
 
 function openWritableDomesticSchema(databaseName: string, schemaName: string) {

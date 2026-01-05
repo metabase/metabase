@@ -5,37 +5,41 @@ import { expandPath, toKey } from "../utils";
 
 /**
  * Returns a state object that indicates which nodes are expanded in the tree.
+ * State directly stores expanded status: true = expanded, false = collapsed.
+ * Keys not in state fall back to defaultExpanded.
  */
 export function useExpandedState(
   path: TreePath,
-  options: { defaultClosed?: boolean } = {},
+  options: { defaultExpanded?: boolean } = {},
 ) {
-  const defaultClosed = options.defaultClosed ?? true;
-  const [state, setState] = useState(expandPath({}, path));
+  const defaultExpanded = options.defaultExpanded ?? false;
+  const [state, setState] = useState<Record<string, boolean>>(() =>
+    expandPath({}, path),
+  );
 
   const { databaseId, schemaName, tableId } = path;
 
   useEffect(() => {
-    // When the path changes, this means a user has navigated through the browser back
-    // button, ensure the path is completely expanded.
     setState((state) => expandPath(state, { databaseId, schemaName, tableId }));
   }, [databaseId, schemaName, tableId]);
 
   const isExpanded = useCallback(
     (path: string | TreePath) => {
       const key = typeof path === "string" ? path : toKey(path);
-      const isToggled = Boolean(state[key]);
-      return defaultClosed ? isToggled : !isToggled;
+      return state[key] ?? defaultExpanded;
     },
-    [state, defaultClosed],
+    [state, defaultExpanded],
   );
 
-  const toggle = useCallback((key: string, value?: boolean) => {
-    setState((current) => ({
-      ...current,
-      [key]: value ?? !current[key],
-    }));
-  }, []);
+  const toggle = useCallback(
+    (key: string, value?: boolean) => {
+      setState((current) => ({
+        ...current,
+        [key]: value ?? !(current[key] ?? defaultExpanded),
+      }));
+    },
+    [defaultExpanded],
+  );
 
   return {
     isExpanded,

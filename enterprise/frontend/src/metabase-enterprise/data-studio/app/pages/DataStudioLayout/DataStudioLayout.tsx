@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
@@ -76,6 +76,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
+  const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -146,6 +147,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         )}
       </Stack>
       <Stack gap="0.75rem">
+        <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+          isNavbarOpened={isNavbarOpened}
+          onClick={() => setIsGitSettingsOpen(true)}
+        />
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Jobs`}
@@ -171,6 +176,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           showLabel={isNavbarOpened}
         />
       </Stack>
+      <PLUGIN_REMOTE_SYNC.GitSettingsModal
+        isOpen={isGitSettingsOpen}
+        onClose={() => setIsGitSettingsOpen(false)}
+      />
     </Stack>
   );
 }

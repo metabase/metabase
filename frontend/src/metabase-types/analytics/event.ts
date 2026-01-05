@@ -495,7 +495,7 @@ export type RemoteSyncPushChangesEvent = ValidateEvent<{
 
 export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
   event: "remote_sync_settings_changed";
-  triggered_from: "admin-settings";
+  triggered_from: "admin-settings" | "data-studio";
 }>;
 
 export type RemoteSyncDeactivatedEvent = ValidateEvent<{

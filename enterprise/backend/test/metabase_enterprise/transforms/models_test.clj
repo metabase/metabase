@@ -185,7 +185,7 @@
                                                 :target {:type "table"
                                                          :schema "public"
                                                          :name "test_table_with_schema"
-                                                         :database db-id}}
+                                                         :db_id db-id}}
                    :model/Transform transform2 {:name "Transform with NULL schema"
                                                 :source {:type "query"
                                                          :query {:database db-id
@@ -195,7 +195,7 @@
                                                 :target {:type "table"
                                                          :schema nil
                                                          :name "test_table_null_schema"
-                                                         :database db-id}}]
+                                                         :db_id db-id}}]
 
       (testing "Hydrates table with non-NULL schema"
         (let [hydrated (t2/hydrate transform1 :table-with-db-and-fields)]
@@ -246,7 +246,7 @@
                                                   :target     {:type   "table"
                                                                :schema "public"
                                                                :name   "test_table"
-                                                               :database  db-id}}
+                                                               :db_id  db-id}}
                      :model/User {user2-id :id} user2-data
                      :model/Transform transform2 {:name       "Second transform"
                                                   :creator_id user2-id
@@ -258,7 +258,7 @@
                                                   :target     {:type   "table"
                                                                :schema "public"
                                                                :name   "test_table2"
-                                                               :database  db-id}}]
+                                                               :db_id  db-id}}]
         (testing "Hydrates creator with user details"
           (is (=? (assoc user1-data :id user1-id)
                   (:creator (t2/hydrate transform1 :creator)))))
