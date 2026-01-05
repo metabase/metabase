@@ -1,4 +1,4 @@
-import registerCypressGrep from "@bahmutov/cy-grep/src/support"; // eslint-disable-line import/order
+import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
 registerCypressGrep();
 
 import "@cypress/skip-test/support";
