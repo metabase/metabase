@@ -103,11 +103,11 @@ export const BranchDropdown = ({
     <Combobox.Dropdown p={0}>
       <Box p="sm">
         <TextInput
+          autoFocus
+          leftSection={<Icon name="search" size={16} />}
+          onChange={(e) => setSearchValue(e.currentTarget.value)}
           placeholder={t`Find or create a branch...`}
           value={searchValue}
-          onChange={(e) => setSearchValue(e.currentTarget.value)}
-          leftSection={<Icon name="search" size={16} />}
-          data-autofocus
         />
       </Box>
 
