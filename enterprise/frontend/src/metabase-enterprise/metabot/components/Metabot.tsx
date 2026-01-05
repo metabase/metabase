@@ -31,7 +31,12 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
         <Text c="text-light" maw="12rem" ta="center">
           {t`Something went wrong.`}
         </Text>
-        <Button variant="subtle" size="compact-lg" onClick={onRetry}>
+        <Button
+          variant="subtle"
+          size="compact-lg"
+          onClick={onRetry}
+          data-testid="metabot-error-retry"
+        >
           {t`Try again`}
         </Button>
       </Flex>
@@ -58,9 +63,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   const { visible, setVisible } = useMetabotAgent(config?.agentId ?? "omnibot");
   const [errorBoundaryKey, setErrorBoundaryKey] = useState(0);
 
-  const handleRetry = () => {
-    setErrorBoundaryKey((prev) => prev + 1);
-  };
+  const handleRetry = () => setErrorBoundaryKey((prev) => prev + 1);
 
   useEffect(() => {
     return tinykeys(window, {
