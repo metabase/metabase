@@ -19,22 +19,47 @@ permissions:
   pull-requests: write
 
 jobs:
+  determine-branches:
+    name: Determine target branches
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      branches: ${{ steps.branches.outputs.branches }}
+    steps:
+      - name: Get target branches
+        id: branches
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # For workflow_dispatch, use the branch the workflow is running on
+            BRANCHES="[\"${{ github.ref_name }}\"]"
+          else
+            # For scheduled runs and push (testing), get master + all release branches >= v57
+            RELEASE_BRANCHES=$(git ls-remote --heads https://github.com/metabase/metabase.git "refs/heads/release-*.x" \
+              | awk '{gsub("refs/heads/", "", $2); print $2}' \
+              | awk -F. '$2 >= 57 {print $0}')
+
+            # Build JSON array e.g. ["master", "release-x.57.x", "release-x.58.x"]
+            BRANCHES=$(printf '%s\n' "master" $RELEASE_BRANCHES | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          fi
+
+          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
+          echo "Target branches: $BRANCHES"
+
   generate-llms-txt:
-    name: Generate llms.txt for ${{ github.ref_name }}
+    name: Generate llms.txt for ${{ matrix.branch }}
+    needs: determine-branches
     runs-on: ubuntu-22.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: ${{ fromJson(needs.determine-branches.outputs.branches) }}
     steps:
-      - name: Determine target branch
+      - name: Set target branch
         id: determine_branch
         run: |
-          if [ "${{ github.event_name }}" == "schedule" ]; then
-            TARGET_BRANCH="master"
-          else
-            # For push and workflow_dispatch, use the branch the workflow is running on
-            TARGET_BRANCH="${{ github.ref_name }}"
-          fi
-          echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
-          echo "Target branch: $TARGET_BRANCH"
+          echo "target_branch=${{ matrix.branch }}" >> $GITHUB_OUTPUT
+          echo "Target branch: ${{ matrix.branch }}"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -90,17 +115,17 @@ jobs:
           branch: ${{ env.BRANCH_NAME }}
           base: ${{ steps.determine_branch.outputs.target_branch }}
           commit-message: |
-            Update llms.txt (${{ steps.determine_branch.outputs.target_branch }})
+            Update llms.txt and llms-full.txt (${{ steps.determine_branch.outputs.target_branch }})
 
             Regenerated llms.txt to include all markdown files from the docs/ directory.
-            Also generated llms-embedding-full.txt files for the embedding section.
+            Also generated llms-full.txt files for the embedding section.
 
             🤖 Generated automatically by llms-txt-generate workflow
 
             Co-Authored-By: GitHub Actions <actions@github.com>
           committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
           author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          title: "[chore] Update llms.txt with latest documentation"
+          title: "Auto-update llms.txt for ${{ steps.determine_branch.outputs.target_branch }}"
           body: |
             ## Summary
             This PR contains automatically generated updates to `llms.txt` and `llms-embedding-full.txt` files.
@@ -110,11 +135,12 @@ jobs:
             - The `llms-embedding-full.txt` file has been generated for the embedding section (concatenated documentation for RAG).
 
             ## Generation
-
             These files were generated using:
             - Script: `.github/scripts/generate-llms-txt.js`
             - Branch: `${{ steps.determine_branch.outputs.target_branch }}`
             - Base URL: `https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ steps.determine_branch.outputs.target_branch }}`
+
+            Please review the changes and merge if they look correct.
 
             🤖 Generated automatically by the `llms-txt-generate` workflow.
 
@@ -126,17 +152,16 @@ jobs:
             llms.txt
             llms-embedding-full.txt
 
-      - name: Auto approve PR
-        if: steps.create_pr.outputs.pull-request-number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
+      # - name: Auto approve PR
+      #   if: steps.create_pr.outputs.pull-request-number != ''
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
 
-      - name: Enable Pull Request Automerge
-        if: steps.create_pr.outputs.pull-request-number != ''
-        env:
-          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-        run: |
-          gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
-
+      # - name: Enable Pull Request Automerge
+      #   if: steps.create_pr.outputs.pull-request-number != ''
+      #   env:
+      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+      #   run: |
+      #     gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
