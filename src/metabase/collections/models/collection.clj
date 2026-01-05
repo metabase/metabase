@@ -1434,6 +1434,19 @@
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
+(mu/defn perms-for-unarchiving :- [:set perms/PathSchema]
+  "Return the set of Permissions needed to unarchive a `collection`. Since unarchiving is
+  *recursive* (all descendants archived together get unarchived), we require write ('curate')
+  permissions for the collection and all descendants being unarchived."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (let [archive-operation-id (:archive_operation_id collection)
+        descendant-ids (collection->descendant-ids collection
+                                                   :archive_operation_id [:= archive-operation-id]
+                                                   :archived [:= true])]
+    (set
+     (cons (perms/collection-readwrite-path collection)
+           (map perms/collection-readwrite-path descendant-ids)))))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1478,9 +1491,6 @@
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
   (assert (:archive_operation_id collection))
-  (when (not (contains? updates :parent_id))
-    (api/check-400
-     (:can_restore (t2/hydrate collection :can_restore))))
   (let [archive-operation-id    (:archive_operation_id collection)
         current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
         new-parent-id           (if (contains? updates :parent_id)
@@ -1499,6 +1509,16 @@
                                                                   :archived [:= true]))]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
+
+    ;; Always check perms on collection and descendants being unarchived
+    (api/check-403
+     (perms/set-has-full-permissions-for-set?
+      @api/*current-user-permissions-set*
+      (perms-for-unarchiving collection)))
+
+    ;; Only check parent perms when user explicitly specifies a destination
+    (when (contains? updates :parent_id)
+      (api/write-check new-parent))
 
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
