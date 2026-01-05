@@ -61,11 +61,21 @@ jobs:
           echo "target_branch=${{ matrix.branch }}" >> $GITHUB_OUTPUT
           echo "Target branch: ${{ matrix.branch }}"
 
-      - name: Checkout code
+      - name: Checkout workflow branch for generate-llms-txt.js script
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ref: ${{ github.ref }}
+          sparse-checkout: |
+            .github/scripts
+          path: workflow-scripts
+
+      - name: Checkout target branch for docs
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           ref: ${{ steps.determine_branch.outputs.target_branch }}
+          path: docs-repo
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -75,7 +85,7 @@ jobs:
       - name: Generate llms.txt
         id: generate
         run: |
-          node .github/scripts/generate-llms-txt.js docs llms.txt ${{ steps.determine_branch.outputs.target_branch }}
+          node workflow-scripts/.github/scripts/generate-llms-txt.js docs-repo/docs llms.txt ${{ steps.determine_branch.outputs.target_branch }}
 
       - name: Sanity check generated files
         run: |
@@ -100,6 +110,7 @@ jobs:
           echo "✅ llms.txt contains $URL_COUNT documentation URLs"
 
       - name: Set up git configuration
+        working-directory: docs-repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -107,11 +118,17 @@ jobs:
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name will be: $BRANCH_NAME"
 
+      - name: Copy generated files to docs repo
+        run: |
+          cp llms.txt docs-repo/
+          cp llms-embedding-full.txt docs-repo/
+
       - name: Create Pull Request
         id: create_pr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          path: docs-repo
           branch: ${{ env.BRANCH_NAME }}
           base: ${{ steps.determine_branch.outputs.target_branch }}
           commit-message: |
