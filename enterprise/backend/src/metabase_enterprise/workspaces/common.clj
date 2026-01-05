@@ -9,7 +9,6 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
