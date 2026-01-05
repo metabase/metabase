@@ -82,6 +82,7 @@ jobs:
           echo "Branch name will be: $BRANCH_NAME"
 
       - name: Create Pull Request
+        id: create_pr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -123,4 +124,18 @@ jobs:
           add-paths: |
             llms.txt
             llms-embedding-full.txt
+
+      - name: Auto approve PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
+
+      - name: Enable Pull Request Automerge
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
 
