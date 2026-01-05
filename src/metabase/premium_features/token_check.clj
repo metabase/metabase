@@ -192,7 +192,9 @@
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (mr/validate [:re RemoteCheckedToken] token)
       (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
-            stats (metering-stats)]
+            stats (-> (metering-stats)
+                      ;; for backwards compatibility, we send values as strings
+                      (update-vals str))]
         (try
           (http/post (metering-url token token-check-url)
                      {:body (json/encode (merge stats
