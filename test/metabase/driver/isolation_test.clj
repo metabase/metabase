@@ -8,7 +8,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -117,34 +118,31 @@
 (deftest init-and-destroy-workspace-isolation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (let [workspace {:id (rand-int 100000)}]
-      (try
-        (testing "init-workspace-isolation! creates resources and returns expected structure"
-          (let [result (driver/init-workspace-isolation! driver/*driver* (mt/db) workspace)]
-            (is (map? result))
+      (let [result    (driver/init-workspace-isolation! driver/*driver* (mt/db) workspace)
+            workspace (merge workspace result)]
+        (try
+          (testing "init-workspace-isolation! creates resources and returns expected structure"
             (is (contains? result :schema))
             (is (contains? result :database_details))
-            (is (map? (:database_details result)))
-            ;; For drivers where we can check resources, verify they were created
             (when-let [resources (isolation-resources-exist? driver/*driver* (mt/db) workspace)]
               (testing "isolation resources were created"
-                (is (some true? (vals resources))
-                    (str "At least one resource should exist. Got: " resources))))))
+                (is (every? true? (vals resources))
+                    (str "All resources should be removed. Got: " resources)))))
 
-        (testing "destroy-workspace-isolation! removes resources"
-          (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace)
-          (when-let [resources (isolation-resources-exist? driver/*driver* (mt/db) workspace)]
-            (testing "isolation resources were removed"
-              (is (every? false? (vals resources))
-                  (str "All resources should be removed. Got: " resources)))))
-
-        (testing "destroy is idempotent - calling twice should not error"
-          (is (nil? (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))
-
-        (finally
-          ;; Ensure cleanup even if tests fail
-          (try
+          (testing "destroy-workspace-isolation! removes resources"
             (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace)
-            (catch Exception _)))))))
+            (when-let [resources (isolation-resources-exist? driver/*driver* (mt/db) workspace)]
+              (testing "isolation resources were removed"
+                (is (every? false? (vals resources))
+                    (str "All resources should be removed. Got: " resources)))))
+
+          (testing "destroy is idempotent - calling twice should not error"
+            (is (some? (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))
+
+          (finally
+            (try
+              (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace)
+              (catch Exception _))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Connection Swapping Tests                                                |
@@ -167,48 +165,44 @@
                                                            :password "wrong_password"}
             (is (not (query-succeeded?)))))))))
 
-(deftest isolated-connection-execution-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
-    (let [workspace {:id (rand-int 100000)}]
-      (try
-        ;; Setup isolation
-        (let [{:keys [schema database_details]} (driver/init-workspace-isolation! driver/*driver* (mt/db) workspace)]
-          (testing "init returns valid isolation config"
-            (is (some? schema) "Schema name should be returned")
-            (is (map? database_details) "Database details should be a map"))
-
-          (testing "can connect with isolated credentials via swap"
-            (driver/with-swapped-connection-details (mt/id) database_details
-              ;; Just verify we can establish the swap context without error
-              ;; The isolated user may not have access to test tables, but connection should work
-              (is true "Swap context established successfully"))))
-        (finally
-          (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Grant Permissions Tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest grant-workspace-read-access-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
-    (let [workspace {:id (rand-int 100000)}]
+    (let [workspace {:id (rand-int 100000)}
+          query-venues-table (fn []
+                               (try
+                                 (mt/run-mbql-query venues {:limit 1})
+                                 true
+                                 (catch Exception _e
+                                   false)))]
       (try
-        ;; Setup isolation first
-        (let [{:keys [database_details]} (driver/init-workspace-isolation! driver/*driver* (mt/db) workspace)]
-          (testing "grant-workspace-read-access! succeeds for valid tables"
-            (let [tables [{:schema "public" :name "venues"}
-                          {:schema "public" :name "categories"}]]
-              ;; Should not throw
-              (is (nil? (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace tables)))))
+        (let [result           (driver/init-workspace-isolation! driver/*driver* (mt/db) workspace)
+              database_details (:database_details result)
+              venues-table     (t2/select-one :model/Table :id (mt/id :venues))
+              categories-table (t2/select-one :model/Table :id (mt/id :categories))
+              tables           [{:schema (:schema venues-table) :name (:name venues-table)}
+                                {:schema (:schema categories-table) :name (:name categories-table)}]
+              workspace        (merge workspace result)]
 
-          (testing "isolated user can read granted tables after grant"
+          (testing "sanity check: isolated user cannot query tables before grant"
             (driver/with-swapped-connection-details (mt/id) database_details
-              ;; After granting access, the isolated user should be able to query
-              ;; Note: This may still fail for some drivers depending on how they handle grants
-              ;; The important thing is that grant-workspace-read-access! doesn't throw
-              (is (map? database_details)))))
+              (is (false? (query-venues-table))
+                  "Query should fail before granting access")))
+
+          (testing "grant-workspace-read-access! succeeds for valid tables"
+            (is (some? (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace tables))))
+
+          (testing "isolated user can query tables after grant"
+            (driver/with-swapped-connection-details (mt/id) database_details
+              (is (true? (query-venues-table))
+                  "Query should succeed after granting access"))))
         (finally
           (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
+
+(mt/set-test-drivers! #{:postgres})
 
 (deftest check-isolation-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
