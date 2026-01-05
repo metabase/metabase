@@ -22,11 +22,11 @@ import {
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
-import { addUndo } from "metabase/redux/undo";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -85,6 +85,7 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
   const canBookmark = canBookmarkItem(item);
@@ -146,21 +147,18 @@ function ActionMenu({
     );
     const redirect = getParentEntityLink(entity, parentCollection);
 
-    dispatch(
-      addUndo({
-        message: t`${item.name} has been restored.`,
-        actionLabel: t`View`, // could be collection or dashboard
-        action: () => dispatch(push(redirect)),
-        undo: false,
-      }),
-    );
-  }, [item, dispatch]);
+    sendToast({
+      message: t`${item.name} has been restored.`,
+      actionLabel: t`View`, // could be collection or dashboard
+      action: () => dispatch(push(redirect)),
+    });
+  }, [item, dispatch, sendToast]);
 
   const handleDeletePermanently = useCallback(() => {
     const Entity = entityForObject(item);
     dispatch(Entity.actions.delete(item));
-    dispatch(addUndo({ message: t`This item has been permanently deleted.` }));
-  }, [item, dispatch]);
+    sendToast({ message: t`This item has been permanently deleted.` });
+  }, [item, dispatch, sendToast]);
 
   return (
     <>
