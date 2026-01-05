@@ -972,7 +972,10 @@
                                                   (assoc :type :question))
                                                 (m/update-existing :dataset_query lib-be/normalize-query))
          {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata
-                                             {:query     (:dataset_query card-data)
+                                             ;; 1. This function is called when storing metadata.
+                                             ;; 2. The metadata for storage shouldn't have remaps.
+                                             ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
+                                             {:query     (assoc-in (:dataset_query card-data) [:middleware :disable-remaps?] true)
                                               :metadata  result_metadata
                                               :entity-id (:entity_id card-data)
                                               :model?    (model? card-data)})

@@ -176,7 +176,11 @@ saved later when it is ready."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols query)))))
+                 (qp.preprocess/query->expected-cols
+                  ;; 1. This function is called when storing metadata.
+                  ;; 2. The metadata for storage shouldn't have remaps.
+                  ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
+                  (assoc-in query [:middleware :disable-remaps?] true))))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.

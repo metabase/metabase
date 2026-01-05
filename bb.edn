@@ -107,6 +107,12 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task     (task! (start-maildev/start-maildev!))}
 
+  start-python-runner
+  {:doc      "Start python-runner container with internal Moto S3 server for Python transforms"
+   :examples [["./bin/mage start-python-runner" "start python-runner with internal S3"]]
+   :requires [[mage.start-python-runner :as start-python-runner]]
+   :task     (task! (start-python-runner/start-python-runner!))}
+
   start-db
   {:doc        "Start a db on a default port in docker"
    :examples   [["./bin/mage start-db postgres latest" "start the latest postgres db we support"]
@@ -274,31 +280,34 @@
   ;; - hidden from `./bin/mage` listing and `bb tasks`, these all - start with a `-`
 
   -install-merge-drivers
-  {:doc      "Installs custom git merge drivers for YAML migration files."
-   :requires [[clojure.string :as str]
-              [mage.util :as u]]
-   :task     (task!
-              (let [git-config-file (str u/project-root-directory "/.git/config")
-                    the-include     (str "\n"
-                                         "[include]\n"
-                                         "    path=../.gitconfig\n")]
-                (when-not (str/includes? (slurp git-config-file) the-include)
-                  (spit git-config-file the-include :append true))))}
+  {:doc "Installs custom git merge drivers for YAML migration files."
+   :requires [[mage.util :as u]
+              [clojure.string :as str]]
+   :task (task!
+          (let [git-dir (u/sh "git rev-parse --git-dir")
+                git-config-file (str git-dir "/config")
+                the-include (str "\n"
+                                 "[include]\n"
+                                 "    path=../.gitconfig\n")]
+            (when-not (str/includes? (slurp git-config-file) the-include)
+              (println "Merge driver not installed, installing now.")
+              (spit git-config-file the-include :append true))))}
 
   ;; opposite of -install-merge-drivers, removes the include while it's causing issues.
   -uninstall-merge-drivers
-  {:doc      "Uninstalls custom git merge drivers for YAML migration files."
+  {:doc "Uninstalls custom git merge drivers for YAML migration files."
    :requires [[clojure.string :as str]
               [mage.util :as u]]
-   :task     (task!
-              (let [git-config-file (str u/project-root-directory "/.git/config")
-                    the-include     (str "\n"
-                                         "[include]\n"
-                                         "    path=../.gitconfig\n")]
-                (when (str/includes? (slurp git-config-file) the-include)
-                  (let [includeless (-> (slurp git-config-file)
-                                            (str/replace the-include ""))]
-                    (spit git-config-file includeless)))))}
+   :task (task!
+          (let [git-dir (u/sh "git rev-parse --git-dir")
+                git-config-file (str git-dir "/config")
+                the-include (str "\n"
+                                 "[include]\n"
+                                 "    path=../.gitconfig\n")]
+            (when (str/includes? (slurp git-config-file) the-include)
+              (println "Merge driver is installed, uninstalling now.")
+              (let [includeless (-> (slurp git-config-file) (str/replace the-include ""))]
+                (spit git-config-file includeless)))))}
 
   -merge-yaml-migrations
   {:doc "Custom git merge driver for YAML migration files."

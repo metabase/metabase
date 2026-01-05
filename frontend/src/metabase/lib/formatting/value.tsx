@@ -196,7 +196,12 @@ export function formatValueRaw(
   ) {
     return formatDateTimeWithUnit(value as string | number, "minute", options);
   } else if (typeof value === "string") {
-    if (isNumber(column)) {
+    // Check if we're looking for a number isNumber(column) and
+    // check that the value string is a valid number
+    // it could be a remap
+    // TODO(eric, 2025-12-23): The second check should probably be in parseNumber(),
+    // but it caused tests to fail so I put it here.
+    if (isNumber(column) && Number.isFinite(Number(value))) {
       const number = parseNumber(value);
       if (number != null) {
         return formatNumber(number, options);

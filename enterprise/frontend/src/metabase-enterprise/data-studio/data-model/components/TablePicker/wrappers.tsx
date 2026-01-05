@@ -30,16 +30,9 @@ export function RouterTablePicker({
   const onChange = useCallback(
     (value: TreePath) => {
       setValue(value);
-
-      // Update URL only when either opening a table or no table has been opened yet.
-      // We want to keep user looking at a table when navigating databases/schemas.
-      const canUpdateUrl = value.tableId != null || propTableId == null;
-
-      if (canUpdateUrl) {
-        dispatch(replace(Urls.dataStudioData(value)));
-      }
+      dispatch(replace(Urls.dataStudioData(value)));
     },
-    [dispatch, propTableId],
+    [dispatch],
   );
 
   useEffect(() => {
