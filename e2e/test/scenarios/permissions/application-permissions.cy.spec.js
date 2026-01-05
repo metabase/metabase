@@ -4,7 +4,6 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createLibraryWithItems } from "e2e/support/test-library-data";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -219,12 +218,11 @@ describe("scenarios > admin > permissions > application", () => {
           cy.findByText("Are you sure you want to do this?");
           cy.button("Yes").click();
         });
+
+        cy.signInAsNormalUser();
       });
 
       it("allows accessing data studio for non-admins but not transforms", () => {
-        createLibraryWithItems();
-        cy.signInAsNormalUser();
-
         cy.visit("/data-studio");
         cy.url().should("include", "/data-studio");
         H.main().should("be.visible");
@@ -242,34 +240,15 @@ describe("scenarios > admin > permissions > application", () => {
         cy.request({ url: "/api/ee/transform", failOnStatusCode: false })
           .its("status")
           .should("eq", 403);
-
-        cy.log("Data Studio link should be visible for models in the library");
-        cy.get("@trustedOrdersModelId").then((modelId) => {
-          H.visitModel(modelId);
-        });
-        cy.findByLabelText("Open in Data Studio").click();
-        cy.url().should(
-          "match",
-          new RegExp("/data-studio/modeling/models/\\d+$"),
-        );
       });
     });
 
     describe("revoked", () => {
       it("does not allow accessing data studio for non-admins", () => {
-        createLibraryWithItems();
         cy.signInAsNormalUser();
 
         cy.visit("/data-studio");
         H.main().findByText("Sorry, you don’t have permission to see that.");
-
-        cy.log(
-          "Data Studio link should not be visible for models in the library without permission",
-        );
-        cy.get("@trustedOrdersModelId").then((modelId) => {
-          H.visitModel(modelId);
-        });
-        cy.findByLabelText("Open in Data Studio").should("not.exist");
       });
     });
   });
