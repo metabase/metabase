@@ -25,7 +25,7 @@ jobs:
             # For workflow_dispatch, use the branch the workflow is running on
             BRANCHES="[\"${{ github.ref_name }}\"]"
           else
-            # For scheduled runs and push (testing), get master + all release branches >= v57
+            # For scheduled runs, target all release branches >= v57 and master.
             RELEASE_BRANCHES=$(git ls-remote --heads https://github.com/metabase/metabase.git "refs/heads/release-*.x" \
               | awk '{gsub("refs/heads/", "", $2); print $2}' \
               | awk -F. '$2 >= 57 {print $0}')
@@ -161,16 +161,16 @@ jobs:
             llms.txt
             llms-embedding-full.txt
 
-      # - name: Auto approve PR
-      #   if: steps.create_pr.outputs.pull-request-number != ''
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
+      - name: Auto approve PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
 
-      # - name: Enable Pull Request Automerge
-      #   if: steps.create_pr.outputs.pull-request-number != ''
-      #   env:
-      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      #   run: |
-      #     gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
+      - name: Auto merge PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
