@@ -325,19 +325,26 @@
                                              [:databases
                                               [:sequential [:map
                                                             [:id ms/PositiveInt]
-                                                            [:name :string]]]]]
-  "Get a list of databases that support workspaces and have valid isolation permissions."
+                                                            [:name :string]
+                                                            [:supported :boolean]
+                                                            [:reason {:optional true} :string]]]]]
+  "Get a list of databases that support workspaces, with their isolation permission status."
   [_url-params
    _query-params]
-  (let [;; Get all workspace-capable databases
-        databases (->> (t2/select [:model/Database :id :name :engine :workspace_permissions]
+  (let [databases (->> (t2/select [:model/Database :id :name :engine :workspace_permissions]
                                   :is_audit false :is_sample false {:order-by [:name]})
                        (filter #(driver.u/supports? (:engine %) :workspace %)))
-        ;; Ensure all have permissions cached (sync check if missing)
-        databases-with-perms (mapv ensure-workspace-permissions-cached! databases)
-        ;; Filter to only those with ok status
-        ok-databases (filter #(= "ok" (get-in % [:workspace_permissions :status])) databases-with-perms)]
-    {:databases (mapv #(select-keys % [:id :name]) ok-databases)}))
+        ;; TODO: Ngoc 2026-01-05: this might not be a good place to warm the cache, we might want to do this in the
+        ;; background somewhere
+        databases-with-perms (mapv ensure-workspace-permissions-cached! databases)]
+    {:databases (mapv (fn [db]
+                        (let [perms (:workspace_permissions db)
+                              ok?   (= "ok" (:status perms))]
+                          (cond-> {:id        (:id db)
+                                   :name      (:name db)
+                                   :supported ok?}
+                            (not ok?) (assoc :reason (:error perms)))))
+                      databases-with-perms)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
   "Update simple workspace properties.

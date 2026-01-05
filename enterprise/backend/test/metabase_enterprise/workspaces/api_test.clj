@@ -1691,13 +1691,24 @@
                                                     :is_audit false
                                                     :is_sample false
                                                     :workspace_permissions {:status "failed" :error "denied" :checked_at "2025-01-01"}}]
-      (testing "returns only databases with ok permissions"
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-              db-ids   (set (map :id (:databases response)))]
+      (testing "returns all workspace-capable databases with support status"
+        (let [response  (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              db-ids    (set (map :id (:databases response)))
+              ok-entry  (m/find-first #(= (:id %) db-ok) (:databases response))
+              fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
+          ;; Both databases should be in the response
           (is (contains? db-ids db-ok))
-          (is (not (contains? db-ids db-failed)))))
+          (is (contains? db-ids db-failed))
+          ;; OK database should have supported: true
+          (is (true? (:supported ok-entry)))
+          (is (nil? (:reason ok-entry)))
+          ;; Failed database should have supported: false with reason
+          (is (false? (:supported fail-entry)))
+          (is (= "denied" (:reason fail-entry)))))
 
-      (testing "returns only id and name fields"
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
-              db-entry (m/find-first #(= (:id %) db-ok) (:databases response))]
-          (is (= #{:id :name} (set (keys db-entry)))))))))
+      (testing "returns id, name, supported, and optionally reason fields"
+        (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
+              ok-entry   (m/find-first #(= (:id %) db-ok) (:databases response))
+              fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
+          (is (= #{:id :name :supported} (set (keys ok-entry))))
+          (is (= #{:id :name :supported :reason} (set (keys fail-entry)))))))))
