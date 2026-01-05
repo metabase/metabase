@@ -60,13 +60,6 @@
   [model-type model-id status & [_user-id]]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
-      (or (and existing (not= "create" (:status existing)))
-          (and (= "create" (:status existing))
-               (contains? #{"removed" "delete"} status)))
-      (t2/update! :model/RemoteSyncObject (:id existing)
-                  {:status status
-                   :status_changed_at (t/offset-date-time)})
-
       (not existing)
       (let [model-details (remote-sync-model-details model-type model-id)]
         (t2/insert! :model/RemoteSyncObject
