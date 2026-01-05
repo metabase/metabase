@@ -335,3 +335,18 @@
     ;; flattening happens at each level independently
     [:and {} [:= {} 1 1] [:= {} 2 2] [:or {} [:= {} 3 3] [:= {} 4 4] [:= {} 5 5]]]
     [:and {} [:= {} 1 1] [:and {} [:= {} 2 2] [:or {} [:= {} 3 3] [:or {} [:= {} 4 4] [:= {} 5 5]]]]]))
+
+(deftest ^:parallel flatten-legacy-native-query-test
+  (testing "legacy queries with native :query string should not throw"
+    (is (= {:type     :native
+            :database 1
+            :native   {:query "SELECT * FROM orders"}}
+           (lib.normalize/normalize
+            {:type     :native
+             :database 1
+             :native   {:query "SELECT * FROM orders"}}))))
+  (testing "NativeQuery schema normalization with :query string"
+    ;; This is the structure used by metabase.test.data/native-query
+    (is (= {:query "SELECT * FROM orders"}
+           (lib.normalize/normalize :metabase.legacy-mbql.schema/NativeQuery
+                                    {:query "SELECT * FROM orders"})))))

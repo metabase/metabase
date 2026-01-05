@@ -225,31 +225,33 @@
    (normalize schema x nil))
 
   ([schema x {:keys [throw?], :or {throw? false}, :as _options}]
-   (let [schema (or schema (infer-schema x))
+   (let [schema         (or schema (infer-schema x))
          ;; Only flatten within known expression-containing keys in :stages.
          ;; For non-map inputs, only flatten if the schema indicates an MBQL clause.
          flatten-stages #(mapv flatten-stage %)
-         ;; :query is a legacy query map that has :query (MBQL) or :native inside
+         ;; :query is a legacy query map that has :query (MBQL) or :native inside.
+         ;; For native queries, :query may be a string (SQL), not a map, so check first.
          flatten-query  (fn [q]
-                          (-> q
-                              (m/update-existing :query flatten-stage)
-                              (m/update-existing "query" flatten-stage)))
-         x      (cond
-                  (map? x)
-                  (-> x
-                      (m/update-existing :stages flatten-stages)
-                      (m/update-existing "stages" flatten-stages)
-                      (m/update-existing :query flatten-query)
-                      (m/update-existing "query" flatten-query))
+                          (cond-> q
+                            (map? q)
+                            (-> (m/update-existing :query flatten-stage)
+                                (m/update-existing "query" flatten-stage))))
+         x              (cond
+                          (map? x)
+                          (-> x
+                              (m/update-existing :stages flatten-stages)
+                              (m/update-existing "stages" flatten-stages)
+                              (m/update-existing :query flatten-query)
+                              (m/update-existing "query" flatten-query))
 
-                  (and (qualified-keyword? schema)
-                       (= (namespace schema) "mbql.clause"))
-                  (flatten-expression x)
+                          (and (qualified-keyword? schema)
+                               (= (namespace schema) "mbql.clause"))
+                          (flatten-expression x)
 
-                  :else
-                  x)
-         thunk  (^:once fn* []
-                  ((coercer schema) x))]
+                          :else
+                          x)
+         thunk          (^:once fn* []
+                          ((coercer schema) x))]
      (if throw?
        (binding [*error-fn* (fn [error]
                               (throw (ex-info (i18n/tru "Normalization error")
