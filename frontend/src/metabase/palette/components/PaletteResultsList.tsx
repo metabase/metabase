@@ -168,7 +168,10 @@ export const PaletteResultList = (props: PaletteResultListProps) => {
             item.disabled !== true && {
               onPointerMove: () =>
                 activeIndex !== index && query.setActiveIndex(index),
-              onPointerDown: () => query.setActiveIndex(index),
+              onPointerDown: () => {
+                setHasUserNavigated(true);
+                query.setActiveIndex(index);
+              },
               onClick: (e: MouseEvent) => execute(item, e),
             };
           const active = index === activeIndex;
