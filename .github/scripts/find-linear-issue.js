@@ -1,4 +1,4 @@
-async function findLinearIssue({ issueUrl, linearApiKey }) {
+async function findLinearIssue({ githubIssueUrl, linearApiKey }) {
   const response = await fetch("https://api.linear.app/graphql", {
     method: "POST",
     headers: {
@@ -8,7 +8,7 @@ async function findLinearIssue({ issueUrl, linearApiKey }) {
     body: JSON.stringify({
       query: `
         query {
-          attachmentsForURL(url: "${issueUrl}") {
+          attachmentsForURL(url: "${githubIssueUrl}") {
             nodes {
               issue { identifier }
             }
@@ -21,11 +21,14 @@ async function findLinearIssue({ issueUrl, linearApiKey }) {
   const data = await response.json();
 
   if (!response.ok) {
-    return { success: false, reason: `Linear API error: ${response.status}` };
+    return { success: false, message: `Linear API error: ${response.status}` };
   }
 
   if (!data.data?.attachmentsForURL?.nodes?.length) {
-    return { success: false, reason: `No Linear issue linked to ${issueUrl}` };
+    return {
+      success: false,
+      message: `No Linear issue linked to ${githubIssueUrl}`,
+    };
   }
 
   return {

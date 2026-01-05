@@ -81,10 +81,10 @@ jobs:
           script: |
             const { findLinearIssue } = require('${{ github.workspace }}/.github/scripts/find-linear-issue.js');
 
-            const issueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
+            const githubIssueUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/issues/${process.env.ISSUE_NUMBER}`;
 
             const result = await findLinearIssue({
-              issueUrl,
+              githubIssueUrl,
               linearApiKey: process.env.LINEAR_API_KEY
             });
 
@@ -92,7 +92,7 @@ jobs:
               console.log(`Found Linear issue: ${result.issue}`);
               core.setOutput('linear_issue', result.issue);
             } else {
-              console.log(`Could not find Linear issue: ${result.reason}`);
+              console.log(`Could not find Linear issue: ${result.message}`);
             }
 
       - name: Set up git configuration
@@ -244,6 +244,7 @@ jobs:
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: ${{ env.BUG_FIX_PROMPT }}
           claude_args: |
+            --model opus
             --allowedTools "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
             --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
@@ -335,6 +336,7 @@ jobs:
             automated-fix
             ci skip
           reviewers: ${{ steps.prepare_reviewers.outputs.reviewers }}
+          assignees: ${{ github.actor }}
 
       - name: Log existing branch update
         if: steps.check_changes.outputs.has_changes == 'true' && env.BRANCH_EXISTS == 'true'
