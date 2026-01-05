@@ -231,7 +231,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
 
-      SQLFilter.getRunQueryButton().should("be.disabled").realHover();
+      SQLFilter.getRunQueryButton()
+        .should("be.disabled")
+        .click({ force: true });
       H.tooltip()
         .findByText('The variable "my_filter" needs to be mapped to a field.')
         .should("be.visible");
