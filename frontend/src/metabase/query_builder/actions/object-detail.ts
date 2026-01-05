@@ -153,12 +153,9 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
         try {
           const result = await MetabaseApi.dataset(finalCard);
-          if (
-            result &&
-            result.status === "completed" &&
-            result.data.rows.length > 0
-          ) {
-            info["value"] = result.data.rows[0][0];
+          if (result && result.status === "completed") {
+            // rows array can be empty when filtered aggregation matches zero documents (metabase#62156)
+            info["value"] = result.data.rows[0]?.[0] ?? 0;
           } else {
             info["value"] = "Unknown";
           }

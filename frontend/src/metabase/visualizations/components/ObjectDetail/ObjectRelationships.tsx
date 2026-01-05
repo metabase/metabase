@@ -77,7 +77,7 @@ interface RelationshipProps {
   fkCountInfo:
     | {
         status: number;
-        value: number;
+        value: number | string;
       }
     | undefined;
   fkCount: number;
@@ -90,12 +90,16 @@ function Relationship({
   fkCount,
   foreignKeyClicked,
 }: RelationshipProps) {
-  const fkCountValue = fkCountInfo?.value || 0;
+  const fkCountValue = fkCountInfo?.value ?? 0;
   const isLoaded = fkCountInfo?.status === 1;
-  const fkClickable = isLoaded && Boolean(fkCountInfo.value);
+  const fkClickable =
+    isLoaded && typeof fkCountInfo.value === "number" && fkCountInfo.value > 0;
   const originTableName = fk.origin?.table?.displayName() ?? "";
 
-  const relationName = inflect(originTableName, fkCountValue);
+  const relationName =
+    typeof fkCountValue === "number"
+      ? inflect(originTableName, fkCountValue)
+      : originTableName;
 
   const via =
     fkCount > 1 ? (

@@ -35,7 +35,7 @@ export interface ObjectDetailProps {
   zoomedRowID?: ObjectId;
   tableForeignKeys?: ForeignKey[];
   tableForeignKeyReferences?: {
-    [key: number]: { status: number; value: number };
+    [key: number]: { status: number; value: number | string };
   };
   settings: any;
   canZoom?: boolean;
@@ -57,5 +57,5 @@ export interface ObjectDetailProps {
 }
 
 export type ForeignKeyReferences = {
-  [key: number]: { status: number; value: number };
+  [key: number]: { status: number; value: number | string };
 };
