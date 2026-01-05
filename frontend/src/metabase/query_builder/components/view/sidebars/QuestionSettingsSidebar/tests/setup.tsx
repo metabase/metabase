@@ -14,6 +14,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Settings } from "metabase-types/api";
 import {
+  COMMON_DATABASE_FEATURES,
   createMockCard,
   createMockSettings,
   createMockTokenFeatures,
@@ -50,20 +51,14 @@ export const setup = async ({
     }),
   ]);
 
-  const database = createSampleDatabase({
-    settings: {
-      "persist-models-enabled": dbHasModelPersistence,
-    },
-  });
-
-  // If database doesn't support model persistence, remove the persist-models feature
-  if (!dbSupportsModelPersistence) {
-    database.features = database.features?.filter(
-      (f) => f !== "persist-models",
-    );
-  }
-
-  setupDatabaseEndpoints(database);
+  setupDatabaseEndpoints(
+    createSampleDatabase({
+      settings: { "persist-models-enabled": dbHasModelPersistence },
+      features: dbSupportsModelPersistence
+        ? COMMON_DATABASE_FEATURES
+        : COMMON_DATABASE_FEATURES?.filter((f) => f !== "persist-models"),
+    }),
+  );
 
   const state = createMockState({
     currentUser,
