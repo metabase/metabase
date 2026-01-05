@@ -1269,6 +1269,8 @@ databaseChangeLog:
             tableName: transform
             columnName: target_db_id
       rollback:
+        # The column should not have existed yet - do not recreate on rollback
+        - empty: {}
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
