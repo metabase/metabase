@@ -11,6 +11,7 @@ import type {
 import type { DependencyFilterOptions } from "../../types";
 import { isSameNode } from "../../utils";
 
+import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
 import { ListEmptyState } from "./ListEmptyState";
 import { ListHeader } from "./ListHeader";
@@ -58,7 +59,7 @@ export function DependencyList({
 
   return (
     <Flex h="100%">
-      <Stack flex={1} px="3.5rem" py="md" gap="md">
+      <Stack className={S.main} flex={1} px="3.5rem" py="md" gap="md">
         <ListHeader />
         <ListSearchBar
           searchValue={searchValue}
