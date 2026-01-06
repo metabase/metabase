@@ -137,7 +137,8 @@
                     (str "All resources should be removed. Got: " resources)))))
 
           (testing "destroy is idempotent - calling twice should not error"
-            (is (some? (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))
+            ;; destroy-workspace-isolation! is a void operation - just verify it doesn't throw
+            (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))
 
           (finally
             (try
@@ -193,7 +194,8 @@
                   "Query should fail before granting access")))
 
           (testing "grant-workspace-read-access! succeeds for valid tables"
-            (is (some? (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace tables))))
+            ;; grant-workspace-read-access! is a void operation - just verify it doesn't throw
+            (driver/grant-workspace-read-access! driver/*driver* (mt/db) workspace tables))
 
           (testing "isolated user can query tables after grant"
             (driver/with-swapped-connection-details (mt/id) database_details
@@ -209,9 +211,10 @@
 (deftest check-isolation-permissions-success-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (testing "returns nil when connection has all required permissions"
-      (let [database   (mt/db)
-            test-table {:schema (mt/format-name "public")
-                        :name   (mt/format-name "venues")}]
+      (let [database     (mt/db)
+            venues-table (t2/select-one :model/Table :id (mt/id :venues))
+            test-table   {:schema (:schema venues-table)
+                          :name   (:name venues-table)}]
         (is (nil? (driver/check-isolation-permissions
                    driver/*driver*
                    database
@@ -223,8 +226,9 @@
       (let [database       (mt/db)
             test-workspace {:id   0
                             :name "_mb_perm_check_"}
-            test-table     {:schema (mt/format-name "public")
-                            :name   (mt/format-name "venues")}]
+            venues-table   (t2/select-one :model/Table :id (mt/id :venues))
+            test-table     {:schema (:schema venues-table)
+                            :name   (:name venues-table)}]
         ;; Run the check
         (driver/check-isolation-permissions driver/*driver* database test-table)
         ;; Verify no artifacts remain - the test workspace should not have any resources
