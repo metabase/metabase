@@ -1,59 +1,74 @@
 name: Generate llms.txt file
 
 on:
-  schedule:
-    # Every 3 days at 03:00 UTC
-    - cron: "0 3 */3 * *"
+  workflow_call:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.57.0)'
+        type: string
+        required: true
+      branch:
+        description: 'Target branch (e.g. release-x.57.x)'
+        type: string
+        required: true
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Metabase version (e.g. v0.57.0)'
+        type: string
+        required: true
+      branch:
+        description: 'Target branch (e.g. release-x.57.x)'
+        type: string
+        required: true
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  determine-branches:
-    name: Determine target branches
+  check-version:
+    name: Check if minor or major release
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
-      branches: ${{ steps.branches.outputs.branches }}
+      should_generate: ${{ steps.check.outputs.should_generate }}
+      target_branch: ${{ steps.check.outputs.target_branch }}
+      version: ${{ steps.check.outputs.version }}
     steps:
-      - name: Get target branches
-        id: branches
+      - name: Check version
+        id: check
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # For workflow_dispatch, use the branch the workflow is running on
-            BRANCHES="[\"${{ github.ref_name }}\"]"
-          else
-            # For scheduled runs, target all release branches >= v57 and master.
-            RELEASE_BRANCHES=$(git ls-remote --heads https://github.com/metabase/metabase.git "refs/heads/release-*.x" \
-              | awk '{gsub("refs/heads/", "", $2); print $2}' \
-              | awk -F. '$2 >= 57 {print $0}')
+          VERSION="${{ inputs.version }}"
+          BRANCH="${{ inputs.branch }}"
 
-            # Build JSON array e.g. ["master", "release-x.57.x", "release-x.58.x"]
-            BRANCHES=$(printf '%s\n' "master" $RELEASE_BRANCHES | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          # Extract version number (e.g., v0.57.0 -> 0.57.0)
+          VERSION_NUM="${VERSION#v}"
+
+          # Extract patch version (last number)
+          PATCH_VERSION=$(echo "$VERSION_NUM" | cut -d. -f3)
+
+          # Only proceed if this is a minor or major release (patch version is 0)
+          if [ "$PATCH_VERSION" != "0" ]; then
+            echo "⏭️  This is a patch release ($VERSION). Skipping llms.txt generation."
+            echo "should_generate=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ This is a minor or major release ($VERSION). Proceeding with llms.txt generation for branch: $BRANCH"
+            echo "should_generate=true" >> $GITHUB_OUTPUT
           fi
 
-          echo "branches=$BRANCHES" >> $GITHUB_OUTPUT
-          echo "Target branches: $BRANCHES"
+          echo "target_branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   generate-llms-txt:
-    name: Generate llms.txt for ${{ matrix.branch }}
-    needs: determine-branches
+    name: Generate llms.txt
+    needs: check-version
+    if: needs.check-version.outputs.should_generate == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        branch: ${{ fromJson(needs.determine-branches.outputs.branches) }}
     steps:
-      - name: Set target branch
-        id: determine_branch
-        run: |
-          echo "target_branch=${{ matrix.branch }}" >> $GITHUB_OUTPUT
-          echo "Target branch: ${{ matrix.branch }}"
 
-      - name: Checkout workflow branch for generate-llms-txt.js script
+      - name: Get the generate-llms-txt.js node script via sparse checkout
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
@@ -66,7 +81,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          ref: ${{ steps.determine_branch.outputs.target_branch }}
+          ref: ${{ needs.check-version.outputs.target_branch }}
           path: metabase
 
       - name: Setup Node.js
@@ -77,7 +92,7 @@ jobs:
       - name: Generate llms.txt
         id: generate
         run: |
-          node workflow-scripts/.github/scripts/generate-llms-txt.js metabase/docs ${{ steps.determine_branch.outputs.target_branch }}
+          node workflow-scripts/.github/scripts/generate-llms-txt.js metabase/docs ${{ needs.check-version.outputs.target_branch }}
 
       - name: Sanity check generated files
         run: |
@@ -92,7 +107,7 @@ jobs:
           fi
 
           # Check that llms.txt contains URLs with the expected GitHub raw URL prefix
-          URL_COUNT=$(grep -o "https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ steps.determine_branch.outputs.target_branch }}/docs" llms.txt | wc -l)
+          URL_COUNT=$(grep -o "https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ needs.check-version.outputs.target_branch }}/docs" llms.txt | wc -l)
           if [ "$URL_COUNT" -lt 10 ]; then
             echo "❌ Error: llms.txt appears to be malformed. Found only $URL_COUNT URLs (expected at least 10)"
             exit 1
@@ -106,7 +121,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          BRANCH_NAME="llms-txt/auto-update-${{ steps.determine_branch.outputs.target_branch }}-$(date +%Y%m%d-%H%M%S)"
+          BRANCH_NAME="llms-txt/auto-update-${{ needs.check-version.outputs.target_branch }}-$(date +%Y%m%d-%H%M%S)"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name will be: $BRANCH_NAME"
 
@@ -122,9 +137,9 @@ jobs:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           path: metabase
           branch: ${{ env.BRANCH_NAME }}
-          base: ${{ steps.determine_branch.outputs.target_branch }}
+          base: ${{ needs.check-version.outputs.target_branch }}
           commit-message: |
-            Update llms.txt and llms-full.txt (${{ steps.determine_branch.outputs.target_branch }})
+            Update llms.txt and llms-full.txt (${{ needs.check-version.outputs.target_branch }})
 
             Regenerated llms.txt to include all markdown files from the docs/ directory.
             Also generated llms-full.txt files for the embedding section.
@@ -134,10 +149,10 @@ jobs:
             Co-Authored-By: GitHub Actions <actions@github.com>
           committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
           author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
-          title: "[chore] Update llms.txt for ${{ steps.determine_branch.outputs.target_branch }}"
+          title: "[chore] Update llms.txt for ${{ needs.check-version.outputs.target_branch }}"
           body: |
             ## Summary
-            This PR contains automatically generated updates to `llms.txt` and `llms-embedding-full.txt` files.
+            This PR contains automatically generated updates to `llms.txt` and `llms-embedding-full.txt` files, triggered by a minor or major release.
 
             ## Changes
             - The `llms.txt` file has been regenerated to include all markdown files from the `docs/` directory.
@@ -146,8 +161,8 @@ jobs:
             ## Generation
             These files were generated using:
             - Script: `.github/scripts/generate-llms-txt.js`
-            - Branch: `${{ steps.determine_branch.outputs.target_branch }}`
-            - Base URL: `https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ steps.determine_branch.outputs.target_branch }}`
+            - Branch: `${{ needs.check-version.outputs.target_branch }}`
+            - Base URL: `https://raw.githubusercontent.com/metabase/metabase/refs/heads/${{ needs.check-version.outputs.target_branch }}`
 
             Please review the changes and merge if they look correct.
 
