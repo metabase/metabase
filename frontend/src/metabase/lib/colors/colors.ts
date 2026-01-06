@@ -558,7 +558,7 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
   },
 
   border: {
-    light: baseColors.orion[20],
+    light: baseColors.orionAlpha[20],
     dark: baseColors.orionAlphaInverse[20],
   },
   "border-strong": {
