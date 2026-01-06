@@ -380,7 +380,7 @@ export function getPieRows(
   });
   newPieRows.push(...removedPieRows);
 
-  // Make any slices below mimium slice percentage hidden
+  // Make any slices below minimum slice percentage hidden
   const total = newPieRows.reduce((currTotal, pieRow) => {
     if (pieRow.hidden || !pieRow.enabled) {
       return currTotal;
