@@ -91,7 +91,8 @@ function _CartesianChart(props: VisualizationProps) {
     () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
     [chartModel, showAllLegendItems],
   );
-  const hasLegend = legendItems.length > 0;
+  const hasLegend =
+    legendItems.length > 0 && settings["legend.show_legend"] !== false;
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;

@@ -10,6 +10,7 @@ import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
   GRAPH_TREND_SETTINGS,
+  LEGEND_SETTINGS,
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
   getDefaultDimensionLabel,
@@ -645,6 +646,22 @@ describe("graph.tooltip_columns", () => {
       expect(props.options).toEqual([
         { label: "Metric 2", value: '["name","metric2"]' },
       ]);
+    });
+  });
+});
+
+describe("LEGEND_SETTINGS", () => {
+  describe("legend.show_legend", () => {
+    it("should default to true", () => {
+      expect(LEGEND_SETTINGS["legend.show_legend"].default).toBe(true);
+    });
+
+    it("should be in the Display section", () => {
+      expect(LEGEND_SETTINGS["legend.show_legend"].section).toBe("Display");
+    });
+
+    it("should use a toggle widget", () => {
+      expect(LEGEND_SETTINGS["legend.show_legend"].widget).toBe("toggle");
     });
   });
 });
