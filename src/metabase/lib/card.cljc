@@ -200,20 +200,20 @@
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top.
 
-  Returns `:id` only if `native?` is true. This is because we allow to override the `:id` for native models only."
-  [native? :- :boolean]
+  Returns `:id` for native models only."
+  [native-model? :- :boolean]
   (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
-    native? (conj :id)))
+    native-model? (conj :id)))
 
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.field/previous-stage-metadata]] as
 ;;; well as [[metabase.lib.metadata.result-metadata/merge-model-metadata]] -- find a way to deduplicate these
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols.
 
-  Overrides `:id` only if `native?` is true. This is because we allow to override the `:id` for native models only."
-  [result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
-   native?     :- :boolean]
+  Overrides `:id` for native models only."
+  [result-cols   :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   model-cols    :- [:maybe [:sequential ::lib.schema.metadata/column]]
+   native-model? :- :boolean]
   (cond
     (and (seq result-cols)
          (empty? model-cols))
@@ -233,7 +233,7 @@
                ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
                (when-not (= (:lib/source result-col) :source/aggregations)
                  (when-let [model-col (get name->model-col (:name result-col))]
-                   (let [model-col     (u/select-non-nil-keys model-col (model-preserved-keys native?))
+                   (let [model-col     (u/select-non-nil-keys model-col (model-preserved-keys native-model?))
                          temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
                          binning       (lib.binning/binning result-col)
                          semantic-type ((some-fn model-col result-col) :semantic-type)]

@@ -381,7 +381,7 @@
                                 (lib.card/->card-metadata-columns query))]
     (cond-> cols
       (seq model-metadata)
-      ;; TODO (Alex P 1/6/26) -- we need to pass in `native?` here.
+      ;; TODO (Alex P 1/6/26) -- we need to pass in `native-model?` here.
       (lib.card/merge-model-metadata model-metadata true))))
 
 (defn- add-source-and-desired-aliases [query cols]
