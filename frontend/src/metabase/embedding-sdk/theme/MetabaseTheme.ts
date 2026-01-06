@@ -57,7 +57,7 @@ export interface MetabaseColors {
   "text-secondary"?: string;
 
   /** Text color on light elements. Should be a darker color for readability. */
-  "text-disabled"?: string;
+  "text-tertiary"?: string;
 
   /** Default background color. */
   background?: string;
@@ -70,6 +70,9 @@ export interface MetabaseColors {
 
   /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
   "background-disabled"?: string;
+
+  /** Light background color used for some controls like a radiogroup. */
+  "background-light"?: string;
 
   /** Color used for borders */
   border?: string;
@@ -96,7 +99,7 @@ export interface MetabaseColors {
   focus?: string;
 
   /** Color used for white text */
-  "text-primary-inverse"?: string;
+  "text-white"?: string;
 
   /** Color used for error icons and borders. Defaults to red. */
   error?: string;
