@@ -2537,6 +2537,23 @@
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:archived true})))))))))
 
+(deftest archive-collection-with-archived-descendants-test
+  (testing "PUT /api/collection/:id"
+    (testing "I should be allowed to archive a collection if I have perms on it and all non-archived descendants"
+      ;; Create hierarchy A > B > C where C is already archived
+      ;; Grant perms for A and B only
+      ;; User should be able to archive A because C (which they don't have perms on) is archived
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection-a {}
+                       :model/Collection collection-b {:location (collection/children-location collection-a)}
+                       :model/Collection _collection-c {:location (collection/children-location collection-b)
+                                                        :archived true}]
+          (doseq [collection [collection-a collection-b]]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
+          ;; This should succeed because C is archived and excluded from permission checks
+          (is (some? (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection-a))
+                                           {:archived true}))))))))
+
 (deftest move-collection-test
   (testing "PUT /api/collection/:id"
     (testing "Can I *change* the `location` of a Collection? (i.e. move it into a different parent Collection)"
@@ -2605,6 +2622,24 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))
+
+(deftest move-collection-with-archived-descendants-test
+  (testing "PUT /api/collection/:id"
+    (testing "I should be allowed to move a collection if I have perms on it and all non-archived descendants"
+      ;; Create hierarchy A > B > C, plus destination D, where C is already archived
+      ;; Grant perms for A, B, and D only
+      ;; User should be able to move A into D because C (which they don't have perms on) is archived
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection collection-a {}
+                       :model/Collection collection-b {:location (collection/children-location collection-a)}
+                       :model/Collection _collection-c {:location (collection/children-location collection-b)
+                                                        :archived true}
+                       :model/Collection collection-d {}]
+          (doseq [collection [collection-a collection-b collection-d]]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection))
+          ;; This should succeed because C is archived and excluded from permission checks
+          (is (some? (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id collection-a))
+                                           {:parent_id (u/the-id collection-d)}))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            GET /api/collection/graph and PUT /api/collection/graph                             |
