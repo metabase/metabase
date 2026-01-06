@@ -130,7 +130,7 @@ To create new tenants in Metabase:
 4. Fill out the information for the tenant:
    - **Tenant name**: Display name for the tenant that will be displayed to _internal_ users. Not exposed to external users. This name can be changed later.
    - **Tenant slug**: unique identifier of the tenant. It can be used to [match JWT claims](#use-tenant-claim-to-sign-in-users) and for setting up [data permissions](#use-tenant-attributes-for-data-permissions). See [Tenant slug](#special-tenant-slug-attribute) for more information.
-   - **Tenant attributes**: you can define tenant attributes that will be inherited by every tenant user, see [Tenant attributes](LINK).
+   - **Tenant attributes**: you can define tenant attributes that will be inherited by every tenant user, see [Tenant attributes](#tenant-attributes).
 
 You can avoid manually setting up tenants in Metabase by [provisioning tenants with JWT](#provisioning-and-assigning-tenants-with-jwt).
 
