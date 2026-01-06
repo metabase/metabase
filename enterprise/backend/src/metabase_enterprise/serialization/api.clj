@@ -14,6 +14,7 @@
    [metabase.appearance.core :as appearance]
    [metabase.logger.core :as logger]
    [metabase.models.serialization :as serdes]
+   [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
@@ -39,33 +40,9 @@
     (.deleteOnExit f)
     (.getPath f)))
 
-;;; Request callbacks
-
-(defn- ba-copy [f]
-  (with-open [baos (ByteArrayOutputStream.)]
-    (io/copy f baos)
-    (.toByteArray baos)))
-
-(defn- on-response! [data callback]
-  (reify
-    ;; Real HTTP requests and mt/user-real-request go here
-    ring.protocols/StreamableResponseBody
-    (write-body-to-stream [_ response out]
-      (ring.protocols/write-body-to-stream data response out)
-      (future (callback)))
-
-    ;; mt/user-http-request goes here
-    clojure.java.io.IOFactory
-    (make-input-stream [_ _]
-      (let [res (io/input-stream (if (instance? File data)
-                                   (ba-copy data)
-                                   data))]
-        (callback)
-        res))))
-
 ;;; Logic
 
-(defn- serialize&pack ^File [{:keys [dirname full-stacktrace] :as opts}]
+(defn- serialize&pack ^File [{:keys [dirname full-stacktrace canceled-chan] :as opts}]
   (let [dirname  (or dirname
                      (format "%s-%s"
                              (u/slugify (appearance/site-name))
@@ -80,16 +57,18 @@
                    (try                 ; try/catch inside logging to log errors
                      (let [report (serdes/with-cache
                                     (-> (extract/extract opts)
-                                        (storage/store! path)))]
-                       ;; not removing dumped yamls immediately to save some time before response
-                       (u.compress/tgz path dst)
+                                        (storage/store! path {:canceled-chan canceled-chan})))]
+                       ;; Don't compress if canceled - just return the partial report
+                       (when-not (:canceled report)
+                         ;; not removing dumped yamls immediately to save some time before response
+                         (u.compress/tgz path dst))
                        report)
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
                          (log/error e "Error during serialization export")
                          (log/error (u/strip-error e "Error during serialization export"))))))]
-    {:archive       (when (.exists dst)
+    {:archive       (when (and (.exists dst) (not (:canceled report)))
                       dst)
      :log-file      (when (.exists log-file)
                       log-file)
@@ -117,7 +96,8 @@
 (defn- unpack&import [^File file & [{:keys [size
                                             continue-on-error
                                             full-stacktrace
-                                            reindex?]}]]
+                                            reindex?
+                                            canceled-chan]}]]
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
         err      (atom nil)
@@ -141,7 +121,8 @@
                        (serdes/with-cache
                          (-> (v2.ingest/ingest-yaml (.getPath path))
                              (v2.load/load-metabase! {:continue-on-error continue-on-error
-                                                      :reindex?          reindex?}))))
+                                                      :reindex?          reindex?
+                                                      :canceled-chan     canceled-chan}))))
                      (catch Exception e
                        (reset! err e)
                        (if full-stacktrace
@@ -169,7 +150,10 @@
   "Serialize and retrieve Metabase instance.
 
   Outputs `.tar.gz` file with serialization results and an `export.log` file.
-  On error outputs serialization logs directly."
+  On error outputs serialization logs directly.
+
+  The serialization process can be canceled by closing the HTTP connection.
+  When canceled, the process stops as soon as possible to avoid resource waste."
   [_route-params
    {:keys                     [collection dirname]
     include-field-values?     :field_values
@@ -201,47 +185,56 @@
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
-  (let [start              (System/nanoTime)
-        opts               {:targets                  (mapv #(vector "Collection" %)
-                                                            collection)
-                            :no-collections           (and (empty? collection)
-                                                           (not all-collections?))
-                            :no-data-model            (not data-model?)
-                            :no-settings              (not settings?)
-                            :include-field-values     include-field-values?
-                            :include-database-secrets include-database-secrets?
-                            :dirname                  dirname
-                            :continue-on-error        continue-on-error?
-                            :full-stacktrace          full-stacktrace?}
-        {:keys [archive
-                log-file
-                report
-                error-message
-                callback]} (serialize&pack opts)]
-    (analytics/track-event! :snowplow/serialization
-                            {:event           :serialization
-                             :direction       "export"
-                             :source          "api"
-                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
-                             :count           (count (:seen report))
-                             :error_count     (count (:errors report))
-                             :collection      (str/join "," (map str collection))
-                             :all_collections (and (empty? collection)
-                                                   (not (:no-collections opts)))
-                             :data_model      (not (:no-data-model opts))
-                             :settings        (not (:no-settings opts))
-                             :field_values    (:include-field-values opts)
-                             :secrets         (:include-database-secrets opts)
-                             :success         (boolean archive)
-                             :error_message   error-message})
-    (if archive
-      {:status  200
-       :headers {"Content-Type"        "application/gzip"
-                 "Content-Disposition" (format "attachment; filename=\"%s\"" (.getName ^File archive))}
-       :body    (on-response! archive callback)}
-      {:status  500
-       :headers {"Content-Type" "text/plain"}
-       :body    (on-response! log-file callback)})))
+  (let [opts {:targets                  (mapv #(vector "Collection" %)
+                                              collection)
+              :no-collections           (and (empty? collection)
+                                             (not all-collections?))
+              :no-data-model            (not data-model?)
+              :no-settings              (not settings?)
+              :include-field-values     include-field-values?
+              :include-database-secrets include-database-secrets?
+              :dirname                  dirname
+              :continue-on-error        continue-on-error?
+              :full-stacktrace          full-stacktrace?}]
+    (streaming-response/streaming-response
+     {:content-type "application/octet-stream"
+      :status       200}
+     [os canceled-chan]
+      (let [start              (System/nanoTime)
+            {:keys [archive
+                    log-file
+                    report
+                    error-message
+                    callback]} (serialize&pack (assoc opts :canceled-chan canceled-chan))]
+        (try
+          (analytics/track-event! :snowplow/serialization
+                                  {:event           :serialization
+                                   :direction       "export"
+                                   :source          "api"
+                                   :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
+                                   :count           (count (:seen report))
+                                   :error_count     (count (:errors report))
+                                   :collection      (str/join "," (map str collection))
+                                   :all_collections (and (empty? collection)
+                                                         (not (:no-collections opts)))
+                                   :data_model      (not (:no-data-model opts))
+                                   :settings        (not (:no-settings opts))
+                                   :field_values    (:include-field-values opts)
+                                   :secrets         (:include-database-secrets opts)
+                                   :success         (boolean archive)
+                                   :canceled        (boolean (:canceled report))
+                                   :error_message   error-message})
+          (cond
+            archive
+            (io/copy archive os)
+
+            (:canceled report)
+            nil
+
+            log-file
+            (io/copy log-file os))
+          (finally
+            (future (callback))))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -257,7 +250,11 @@
   Parameters:
   - `file`: archive encoded as `multipart/form-data` (required).
 
-  Returns logs of deserialization."
+  Returns logs of deserialization.
+
+  The import process can be canceled by closing the HTTP connection.
+  When canceled, the process stops as soon as possible and any partial changes
+  are rolled back (imports run in a transaction)."
   {:multipart true}
   [_route-params
    {continue-on-error? :continue_on_error
@@ -277,39 +274,42 @@
                                                          [:map
                                                           ["file" (mu/with ms/File {:description ".tgz with serialization data"})]]]]]
   (api/check-superuser)
-  (try
-    (let [start              (System/nanoTime)
-          {:keys [log-file
-                  status
-                  error-message
-                  report
-                  callback]} (unpack&import (:tempfile file)
-                                            {:size              (:size file)
-                                             :continue-on-error continue-on-error?
-                                             :full-stacktrace   full-stacktrace?
-                                             :reindex?          reindex-search?})
-          imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
-      (analytics/track-event! :snowplow/serialization
-                              {:event         :serialization
-                               :direction     "import"
-                               :source        "api"
-                               :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
-                               :models        (str/join "," imported)
-                               :count         (if (contains? imported "Setting")
-                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
-                                                (count (:seen report)))
-                               :error_count   (count (:errors report))
-                               :success       (not error-message)
-                               :error_message error-message})
-      (if error-message
-        {:status  (or status 500)
-         :headers {"Content-Type" "text/plain"}
-         :body    (on-response! log-file callback)}
-        {:status  200
-         :headers {"Content-Type" "text/plain"}
-         :body    (on-response! log-file callback)}))
-    (finally
-      (io/delete-file (:tempfile file)))))
+  (streaming-response/streaming-response
+   {:content-type "text/plain; charset=utf-8"
+    :status       200}
+   [os canceled-chan]
+    (try
+      (let [start              (System/nanoTime)
+            {:keys [log-file
+                    error-message
+                    report
+                    callback]} (unpack&import (:tempfile file)
+                                              {:size              (:size file)
+                                               :continue-on-error continue-on-error?
+                                               :full-stacktrace   full-stacktrace?
+                                               :reindex?          reindex-search?
+                                               :canceled-chan     canceled-chan})
+            imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
+        (try
+          (analytics/track-event! :snowplow/serialization
+                                  {:event         :serialization
+                                   :direction     "import"
+                                   :source        "api"
+                                   :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                                   :models        (str/join "," imported)
+                                   :count         (if (contains? imported "Setting")
+                                                    (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
+                                                    (count (:seen report)))
+                                   :error_count   (count (:errors report))
+                                   :success       (and (not error-message) (not (:canceled report)))
+                                   :canceled      (boolean (:canceled report))
+                                   :error_message error-message})
+          (when-not (:canceled report)
+            (io/copy log-file os))
+          (finally
+            (future (callback)))))
+      (finally
+        (io/delete-file (:tempfile file))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/serialization` routes."
