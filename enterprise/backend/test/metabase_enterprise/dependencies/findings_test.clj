@@ -23,7 +23,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
                      :model/Card {other-card-id :id} {:dataset_query (lib/query mp orders)}]
         (is (= 2 (deps.findings/analyze-batch! :card 2)))
-        (is (= #{models.analysis-finding/*current-analysis-version*}
+        (is (= #{models.analysis-finding/*current-analysis-finding-version*}
                (t2/select-fn-set :analysis_version
                                  :model/AnalysisFinding
                                  :analyzed_entity_id [:in [card-id other-card-id]]
@@ -46,6 +46,6 @@
   (backfill-all-entity-analyses!)
   (mt/with-premium-features #{:dependencies}
     (is (= 0 (deps.findings/analyze-batch! :card 2)))
-    (binding [models.analysis-finding/*current-analysis-version* (inc models.analysis-finding/*current-analysis-version*)]
+    (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
       ;; can't check the actual cards analyzed here because this could be any starting card in the data
       (is (= 2 (deps.findings/analyze-batch! :card 2))))))
