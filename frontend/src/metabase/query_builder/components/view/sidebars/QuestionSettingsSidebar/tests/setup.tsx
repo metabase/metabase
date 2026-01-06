@@ -56,7 +56,9 @@ export const setup = async ({
       settings: { "persist-models-enabled": dbHasModelPersistence },
       features: dbSupportsModelPersistence
         ? COMMON_DATABASE_FEATURES
-        : COMMON_DATABASE_FEATURES?.filter((f) => f !== "persist-models"),
+        : COMMON_DATABASE_FEATURES.filter(
+            (feature) => feature !== "persist-models",
+          ),
     }),
   );
 
