@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.malli :as mu])
