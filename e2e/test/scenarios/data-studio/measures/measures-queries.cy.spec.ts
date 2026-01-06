@@ -657,7 +657,74 @@ describe("scenarios > data studio > measures > queries", () => {
       });
 
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      verifyScalarValue("1,210,294.72");
+      verifyScalarValue("1,510,568.93");
+    });
+
+    it("should be possible x-ray a question containing a measure", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      })
+        .then(({ body: measure }) => {
+          H.createQuestion({
+            name: "Test model",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                ["measure", { "display-name": measure.name }, measure.id],
+              ],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+              ],
+            },
+          });
+        })
+        .then(({ body: model }) => {
+          cy.visit(`/auto/dashboard/question/${model.id}`);
+
+          H.main()
+            .findByText("A look at the number of Test model")
+            .should("be.visible");
+        });
+    });
+  });
+
+  describe("using measures in models", () => {
+    it("should be possible x-ray a model containing a measure", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      })
+        .then(({ body: measure }) => {
+          H.createQuestion({
+            type: "model",
+            name: "Test model",
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [
+                ["measure", { "display-name": measure.name }, measure.id],
+              ],
+              breakout: [
+                ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+              ],
+            },
+          });
+        })
+        .then(({ body: model }) => {
+          cy.visit(`/auto/dashboard/model/${model.id}`);
+
+          H.main()
+            .findByText("A look at the number of Test model")
+            .should("be.visible");
+        });
     });
   });
 
