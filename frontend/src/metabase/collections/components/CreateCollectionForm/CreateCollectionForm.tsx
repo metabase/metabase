@@ -17,6 +17,7 @@ import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { connect } from "metabase/lib/redux";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -109,12 +110,15 @@ function CreateCollectionForm({
       onSubmit={onSubmit}
     >
       {({ dirty, setFieldValue, values }) => {
-        // Populate the namespace for initial collection.
-        // Otherwise, use the value from the collection picker.
-        const namespace =
-          values.parent_id === initialCollectionId
-            ? initialCollection?.namespace
-            : values.namespace;
+        // Determine if the parent collection is a tenant collection.
+        // Use the initial collection when the parent_id hasn't changed.
+        const isParentTenantCollection =
+          values.parent_id === initialCollectionId && initialCollection
+            ? PLUGIN_TENANTS.isTenantCollection(initialCollection)
+            : values.namespace === "shared-tenant-collection";
+
+        const shouldShowAuthorityLevelPicker =
+          showAuthorityLevelPicker && !isParentTenantCollection;
 
         return (
           <Form>
@@ -143,10 +147,7 @@ function CreateCollectionForm({
                 savingModel="collection"
               />
             )}
-            {showAuthorityLevelPicker &&
-              namespace !== "shared-tenant-collection" && (
-                <FormAuthorityLevelField />
-              )}
+            {shouldShowAuthorityLevelPicker && <FormAuthorityLevelField />}
             <FormFooter>
               <FormErrorMessage inline />
               {!!onCancel && (

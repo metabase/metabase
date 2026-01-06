@@ -16,7 +16,7 @@ describe("CreateCollectionForm", () => {
         tenants: true,
         official_collections: true,
       }),
-      enterprisePlugins: ["collections"],
+      enterprisePlugins: ["collections", "tenants"],
       parentCollectionNamespace: "shared-tenant-collection",
     });
 
@@ -33,7 +33,7 @@ describe("CreateCollectionForm", () => {
         tenants: true,
         official_collections: true,
       }),
-      enterprisePlugins: ["collections"],
+      enterprisePlugins: ["collections", "tenants"],
       parentCollectionNamespace: null,
     });
 
