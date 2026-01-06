@@ -57,8 +57,11 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     isLoading,
     error,
   } = useListDatabasesQuery({ include_analytics: true });
+  const transformsDatabases = useMemo(() => {
+    return databases?.data.filter((d) => d.transforms_permissions === "write");
+  }, [databases]);
 
-  if (isLoading || error != null || databases == null) {
+  if (isLoading || error != null || transformsDatabases == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -69,7 +72,7 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   return (
     <NewTransformPageBody
       initialSource={initialSource}
-      databases={databases.data}
+      databases={transformsDatabases}
       route={route}
     />
   );
