@@ -31,6 +31,7 @@ import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embeddi
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
+import { QuestionAlertsButton } from "metabase/embedding/components/QuestionAlertsButton";
 import { Box, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -55,6 +56,7 @@ export type StaticQuestionProps = PropsWithChildren<
     | "initialSqlParameters"
     | "hiddenParameters"
     | "withDownloads"
+    | "withAlerts"
     | "title"
   >
 > &
@@ -100,6 +102,7 @@ const StaticQuestionInner = (
     initialSqlParameters,
     hiddenParameters,
     withDownloads,
+    withAlerts,
     title = false, // Hidden by default for backwards-compatibility.
     children,
   } = normalizedProps;
@@ -132,6 +135,7 @@ const StaticQuestionInner = (
       initialSqlParameters={initialSqlParameters}
       hiddenParameters={hiddenParameters}
       withDownloads={withDownloads}
+      withAlerts={withAlerts}
     >
       {children ?? (
         <FlexibleSizeComponent
@@ -153,7 +157,8 @@ const StaticQuestionInner = (
                 {hasResultToolbar && (
                   <ResultToolbar>
                     {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                    {withDownloads && <SdkQuestion.DownloadWidgetDropdown />}
+                    <SdkQuestion.DownloadWidgetDropdown />
+                    <QuestionAlertsButton />
                   </ResultToolbar>
                 )}
 

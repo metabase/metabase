@@ -1,4 +1,4 @@
-import { Center, Icon, Popover, type PopoverProps } from "metabase/ui";
+import { Popover, type PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
 import { ToolbarButton } from "../util/ToolbarButton";
@@ -32,15 +32,10 @@ export const DownloadWidgetDropdown = ({
     >
       <Popover.Target>
         <ToolbarButton
-          isHighlighted={false}
           variant="default"
           px="sm"
           disabled={!withDownloads}
-          label={
-            <Center>
-              <Icon c="inherit" size={16} name="download" />
-            </Center>
-          }
+          icon="download"
           data-testid="question-download-widget-button"
         />
       </Popover.Target>

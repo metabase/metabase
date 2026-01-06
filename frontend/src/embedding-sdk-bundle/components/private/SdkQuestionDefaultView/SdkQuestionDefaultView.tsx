@@ -20,6 +20,7 @@ import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import { QuestionAlertsButton } from "metabase/embedding/components/QuestionAlertsButton";
 import {
   Box,
   Button,
@@ -87,7 +88,6 @@ export const SdkQuestionDefaultView = ({
     isQuestionLoading,
     originalQuestion,
     isSaveEnabled,
-    withDownloads,
     targetCollection,
     onReset,
     onNavigateBack,
@@ -254,7 +254,8 @@ export const SdkQuestionDefaultView = ({
               )}
             </Group>
             <Group gap="sm">
-              {withDownloads && <DownloadWidgetDropdown />}
+              <DownloadWidgetDropdown />
+              <QuestionAlertsButton />
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
             </Group>
           </ResultToolbar>

@@ -23,14 +23,6 @@ export default {
   decorators: [CommonSdkStoryWrapper],
   argTypes: {
     questionId: questionIdArgType,
-    withDownloads: {
-      control: "boolean",
-      defaultValue: false,
-    },
-    withChartTypeSelector: {
-      control: "boolean",
-      defaultValue: false,
-    },
   },
 };
 
@@ -48,6 +40,7 @@ export const Default = {
   args: {
     questionId: QUESTION_ID,
     title: false,
+    withAlerts: false,
     withDownloads: false,
     withChartTypeSelector: false,
   },
@@ -59,6 +52,7 @@ export const WithCustomTitle = {
   args: {
     questionId: QUESTION_ID,
     title: "Acme Inc. Sales Report",
+    withAlerts: false,
     withDownloads: false,
     withChartTypeSelector: false,
   },
@@ -70,6 +64,7 @@ export const WithAdditionalElements = {
   args: {
     questionId: QUESTION_ID,
     title: "Acme Inc. Sales Report",
+    withAlerts: false,
     withDownloads: true,
     withChartTypeSelector: true,
   },
