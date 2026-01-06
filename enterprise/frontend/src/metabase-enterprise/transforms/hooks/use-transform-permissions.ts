@@ -8,8 +8,8 @@ import { sourceDatabaseId } from "../utils";
 export const useTransformPermissions = ({
   transform,
 }: {
-  transform: Transform | undefined;
-}) => {
+  transform?: Transform;
+} = {}) => {
   const {
     data: databases,
     isLoading: isLoadingDatabases,

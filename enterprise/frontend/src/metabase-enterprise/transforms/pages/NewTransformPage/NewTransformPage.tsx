@@ -4,11 +4,7 @@ import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useGetCardQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken, useGetCardQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -24,6 +20,7 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -53,13 +50,10 @@ type NewTransformPageProps = {
 
 function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
   const {
-    data: databases,
-    isLoading,
-    error,
-  } = useListDatabasesQuery({ include_analytics: true });
-  const transformsDatabases = useMemo(() => {
-    return databases?.data.filter((d) => d.transforms_permissions === "write");
-  }, [databases]);
+    transformsDatabases,
+    isLoadingDatabases: isLoading,
+    databasesError: error,
+  } = useTransformPermissions();
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
