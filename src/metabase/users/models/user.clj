@@ -75,7 +75,8 @@
   {:date_joined  :%now
    :last_login   nil
    :is_active    true
-   :is_superuser false})
+   :is_superuser false
+   :is_analyst   false})
 
 (defn user-local-settings
   "Returns the user's settings (defaulting to an empty map) or `nil` if the user/user-id isn't set"
@@ -346,7 +347,7 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :tenant_id])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_analyst :is_qbnewb :tenant_id])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user

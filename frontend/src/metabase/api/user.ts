@@ -31,6 +31,30 @@ export const userApi = Api.injectEndpoints({
       providesTags: (response) =>
         response ? provideUserListTags(response.data) : [],
     }),
+    listAnalysts: builder.query<{ data: User[] }, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/user/analysts",
+      }),
+      providesTags: (response) =>
+        response ? provideUserListTags(response.data) : [],
+    }),
+    addAnalyst: builder.mutation<User, UserId>({
+      query: (id) => ({
+        method: "POST",
+        url: `/api/user/analysts/${id}`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+    }),
+    removeAnalyst: builder.mutation<{ success: boolean }, UserId>({
+      query: (id) => ({
+        method: "DELETE",
+        url: `/api/user/analysts/${id}`,
+      }),
+      invalidatesTags: (_, error, id) =>
+        invalidateTags(error, [listTag("user"), idTag("user", id)]),
+    }),
     listUserRecipients: builder.query<ListUsersResponse, void>({
       query: () => ({
         method: "GET",
@@ -130,6 +154,9 @@ export const STANDARD_USER_LIST_PAGE_SIZE = 27;
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
+  useListAnalystsQuery,
+  useAddAnalystMutation,
+  useRemoveAnalystMutation,
   useGetUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,

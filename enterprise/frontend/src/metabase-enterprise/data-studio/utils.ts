@@ -5,7 +5,7 @@ import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type { LibraryCollectionType } from "metabase/plugins";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin, getUserIsAnalyst } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type {
   CollectionItem,
@@ -21,8 +21,13 @@ export function canAccessDataStudio(state: State) {
   }
   return (
     getUserIsAdmin(state) ||
+    getUserIsAnalyst(state) ||
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
   );
+}
+
+export function canAccessAnalystFeatures(state: State) {
+  return getUserIsAnalyst(state);
 }
 
 export function getLibraryCollectionType(

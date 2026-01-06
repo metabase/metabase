@@ -548,6 +548,7 @@
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
        [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
+       [:is_analyst             {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
@@ -583,7 +584,7 @@
                                                 :present (cond-> #{:first_name :last_name :locale}
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
-                                                           api/*is-superuser?* (conj :is_superuser))))]
+                                                           api/*is-superuser?* (conj :is_superuser :is_analyst))))]
           (t2/update! :model/User id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
@@ -715,4 +716,46 @@
                               {:modal modal
                                :allowable-modals #{"qbnewb" "datasetnewb"}})))]
     (api/check-500 (pos? (t2/update! :model/User id {:type :personal} {k false}))))
+  {:success true})
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    Analyst Management Endpoints                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/analysts"
+  "Get a list of all users with analyst role."
+  []
+  (api/check-superuser)
+  {:data (t2/select :model/User
+                    {:select user/admin-or-self-visible-columns
+                     :where  [:and
+                              [:= :is_analyst true]
+                              [:= :is_active true]
+                              [:= :type "personal"]]
+                     :order-by [[:%lower.first_name :asc]
+                                [:%lower.last_name :asc]]})})
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/analysts/:id"
+  "Add analyst role to a user."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (check-not-internal-user id)
+  (api/check-404 (t2/exists? :model/User :id id :is_active true))
+  (t2/update! :model/User id {:is_analyst true})
+  (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
+                                             :user-id api/*current-user-id*})
+  (fetch-user :id id))
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :delete "/analysts/:id"
+  "Remove analyst role from a user."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (check-not-internal-user id)
+  (api/check-404 (t2/exists? :model/User :id id))
+  (t2/update! :model/User id {:is_analyst false})
+  (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
+                                             :user-id api/*current-user-id*})
   {:success true})

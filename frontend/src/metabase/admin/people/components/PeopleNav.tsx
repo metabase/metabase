@@ -31,6 +31,12 @@ export function PeopleNav() {
           label={isUsingTenants ? t`Internal groups` : t`Groups`}
           icon="group"
         />
+        <PeopleNavItem
+          path="/admin/people/analysts"
+          data-testid="nav-item-analysts"
+          label={t`Analysts`}
+          icon="insight"
+        />
         {isUsingTenants && (
           <>
             <Divider my="sm" />

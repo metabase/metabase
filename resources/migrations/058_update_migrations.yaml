@@ -1235,6 +1235,25 @@ databaseChangeLog:
             path: instance_analytics_views/tables/v1/h2-tables.sql
             relativeToChangelogFile: true
 
+  - changeSet:
+      id: v58.2026-01-05T12:00:00
+      author: metasasha
+      comment: Add is_analyst column to core_user table for analyst role
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_analyst
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: core_user
+            columnName: is_analyst
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
   - changeSet:

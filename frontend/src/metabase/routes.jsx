@@ -67,6 +67,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
+  CanAccessAnalystFeatures,
   CanAccessDataModel,
   CanAccessDataStudio,
   CanAccessOnboarding,
@@ -379,6 +380,7 @@ export const getRoutes = (store) => {
             CanAccessDataStudio,
             CanAccessDataModel,
             CanAccessTransforms,
+            CanAccessAnalystFeatures,
           )}
         </Route>
       </Route>

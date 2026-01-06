@@ -122,6 +122,15 @@ const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
+const UserIsAnalyst = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserIsAnalyst",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) => Boolean(state.currentUser?.is_analyst),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -154,4 +163,8 @@ export const CanAccessDataModel = UserCanAccessDataModel(
 
 export const CanAccessTransforms = UserCanAccessTransforms(
   ({ children }) => children,
+);
+
+export const CanAccessAnalystFeatures = MetabaseIsSetup(
+  UserIsAuthenticated(UserIsAnalyst(({ children }) => children)),
 );
