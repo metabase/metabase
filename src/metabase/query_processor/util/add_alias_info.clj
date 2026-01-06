@@ -207,15 +207,24 @@
      :source/native)              ::none))
 
 (defn- add-source-to-field-ref [query path field-ref col]
-  (lib/update-options
-   field-ref #(-> %
-                  (assoc ::source-table (source-table query path col)
-                         ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col)
-                                                              (if (and (= 1 (count (:stages query)))
-                                                                       (or (:fk-field-id col) (:lib/original-fk-field-id col)))
-                                                                ((some-fn :lib/original-name :name) col)
-                                                                (:lib/source-column-alias col))))
-                  (m/assoc-some ::nfc-path (not-empty (:nfc-path col))))))
+  (let [;; For implicit joins (identified by fk-field-id or source/implicitly-joinable), use the original
+        ;; column name since that's what exists in the actual database table we're joining to (#67002).
+        ;; This only applies to single-stage queries where implicit joins are valid.
+        ;; Exclude columns that come from explicit joins (have :metabase.lib.join/join-alias) - those
+        ;; should use the truncated alias from the join's source query.
+        implicit-join? (and (= 1 (count (:stages query)))
+                            (not (:metabase.lib.join/join-alias col))
+                            (or (:fk-field-id col)
+                                (:lib/original-fk-field-id col)
+                                (= (:lib/source col) :source/implicitly-joinable)))
+        source-col-alias (if implicit-join?
+                           ((some-fn :lib/original-name :name) col)
+                           (:lib/source-column-alias col))]
+    (lib/update-options
+     field-ref #(-> %
+                    (assoc ::source-table (source-table query path col)
+                           ::source-alias (escaped-source-alias query path (:metabase.lib.join/join-alias col) source-col-alias))
+                    (m/assoc-some ::nfc-path (not-empty (:nfc-path col)))))))
 
 (defn- fix-field-ref-if-it-should-actually-be-an-expression-ref
   "I feel evil about doing this, since generally this namespace otherwise just ADDs info and does not in any other way
