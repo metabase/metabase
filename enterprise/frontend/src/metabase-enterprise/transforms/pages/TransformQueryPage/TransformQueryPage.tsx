@@ -27,7 +27,7 @@ import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource } from "../../utils";
+import { isNotDraftSource, sourceDatabaseId } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
 
@@ -104,7 +104,13 @@ function TransformQueryPageBody({
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const isEditMode = !!route.path?.includes("/edit");
+  const readOnly = useMemo(() => {
+    const dbId = sourceDatabaseId(transform.source);
+    const sourceDb = databases.find((db) => db.id === dbId);
+    return sourceDb?.transforms_permissions !== "write";
+  }, [databases, transform.source]);
+  const isEditMode = !readOnly && !!route.path?.includes("/edit");
+
   useRegisterMetabotTransformContext(transform, source);
 
   const {
@@ -175,6 +181,7 @@ function TransformQueryPageBody({
               handleCancel={handleCancel}
               transformId={transform.id}
               isEditMode={isEditMode}
+              readOnly={readOnly}
             />
           }
           hasMenu={!isEditMode && !isDirty}
@@ -208,7 +215,8 @@ function TransformQueryPageBody({
                 proposedSource?.type === "query" ? proposedSource : undefined
               }
               uiState={uiState}
-              readOnly={!isEditMode}
+              readOnly={readOnly}
+              isEditMode={isEditMode}
               databases={databases}
               onChangeSource={setSourceAndRejectProposed}
               onChangeUiState={setUiState}
