@@ -794,6 +794,14 @@
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__CATEGORY_ID"}]
                                 [:field (meta/id :categories :name)    {:join-alias "CATEGORIES__via__ID"}]
                                 [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
+                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]
+                                ;; eric (https://github.com/metabase/metabase/pull/67675):
+                                ;; I'm adding these two fields here because it doesn't hurt anything but it really doesn't belong.
+                                ;; Another bug is causing this.
+                                ;; If you're seeing this test fail because this last 2 columns are missing,
+                                ;; especially while fixing https://github.com/metabase/metabase/issues/67808
+                                ;; it's okay to remove this.
+                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
                                 [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}}
               (-> query
                   qp.preprocess/preprocess
