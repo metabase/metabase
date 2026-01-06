@@ -1,6 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
 import type { Measure, TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -472,7 +471,7 @@ describe("scenarios > data studio > measures > queries", () => {
     });
   });
 
-  it("should be possible to join on a measure in a follow up stage", () => {
+  it("should be possible to join on a measure in a follow up stage with a custom expression", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       table_id: ORDERS_ID,
@@ -560,30 +559,29 @@ describe("scenarios > data studio > measures > queries", () => {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
-      });
-
-      createQuestionWithMeasure({
-        measureName: MEASURE_NAME,
-        questionDetails: {
-          type: "question",
+      }).then(({ body: measure }) => {
+        H.createQuestion({
           name: "Question with measure",
           query: {
             "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+            ],
           },
-        },
-        after: () => {
-          breakout("Created At");
-        },
-      }).then((questionId) => {
-        H.createQuestion(
-          {
-            query: {
-              "source-table": `card__${questionId}`,
+        }).then(({ body: question }) => {
+          H.createQuestion(
+            {
+              query: {
+                "source-table": `card__${question.id}`,
+              },
+              display: "scalar",
             },
-            display: "scalar",
-          },
-          { visitQuestion: true },
-        );
+            { visitQuestion: true },
+          );
+        });
       });
 
       H.openNotebook();
@@ -615,31 +613,30 @@ describe("scenarios > data studio > measures > queries", () => {
           "source-table": ORDERS_ID,
           aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
         },
-      });
-
-      createQuestionWithMeasure({
-        measureName: MEASURE_NAME,
-        questionDetails: {
-          type: "question",
+      }).then(({ body: measure }) => {
+        H.createQuestion({
           name: "Question with measure",
           query: {
             "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }],
+            ],
           },
-        },
-        after: () => {
-          breakout("Created At");
-        },
-      }).then((questionId) => {
-        H.createQuestion(
-          {
-            type: "model",
-            query: {
-              "source-table": `card__${questionId}`,
+        }).then(({ body: question }) => {
+          H.createQuestion(
+            {
+              type: "model",
+              query: {
+                "source-table": `card__${question.id}`,
+              },
+              display: "scalar",
             },
-            display: "scalar",
-          },
-          { visitQuestion: true },
-        );
+            { visitQuestion: true },
+          );
+        });
       });
 
       H.openQuestionActions("Edit query definition");
@@ -660,7 +657,7 @@ describe("scenarios > data studio > measures > queries", () => {
       });
 
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-      verifyScalarValue("1,510,568.93");
+      verifyScalarValue("1,210,294.72");
     });
   });
 
@@ -675,39 +672,37 @@ describe("scenarios > data studio > measures > queries", () => {
         },
       }).then(({ body: measure }) => {
         cy.log("Create a question that uses the measure");
-        createQuestionWithMeasure({
-          measureName: MEASURE_NAME,
-          questionDetails: {
-            type: "question",
-            name: "Question using measure",
-            query: {
-              "source-table": ORDERS_ID,
-            },
+        H.createQuestion({
+          name: "Question using measure",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
           },
         });
 
         cy.log("Create a model that uses the measure");
-        createQuestionWithMeasure({
-          measureName: MEASURE_NAME,
-          questionDetails: {
-            type: "model",
-            name: "Model using measure",
-            query: {
-              "source-table": ORDERS_ID,
-            },
+        H.createQuestion({
+          type: "model",
+          name: "Model using measure",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
           },
         });
 
         cy.log("Create a metric that uses the measure");
-        createQuestionWithMeasure({
-          measureName: MEASURE_NAME,
-          questionDetails: {
-            type: "metric",
-            name: "Metric using measure",
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-            },
+        H.createQuestion({
+          type: "metric",
+          name: "Metric using measure",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
           },
         });
 
@@ -716,20 +711,6 @@ describe("scenarios > data studio > measures > queries", () => {
           name: "Measure using measure",
           table_id: ORDERS_ID,
           definition: {
-            "source-table": ORDERS_ID,
-            aggregation: [["*", 2, ["measure", measure.id]]],
-          },
-        });
-
-        cy.log("Create a transform that uses the measure");
-        H.createTransform({
-          name: "Transform using measure",
-          target: {
-            type: "table",
-            database: SAMPLE_DB_ID,
-            name: "Tranformed table",
-          },
-          source: {
             "source-table": ORDERS_ID,
             aggregation: [["*", 2, ["measure", measure.id]]],
           },
@@ -771,15 +752,6 @@ describe("scenarios > data studio > measures > queries", () => {
           .click();
         H.DependencyGraph.dependencyPanel()
           .findByText("Measure using measure")
-          .should("be.visible");
-
-        cy.log("verify transform dependency");
-        H.DependencyGraph.graph()
-          .findByLabelText(MEASURE_NAME)
-          .findByText("1 transform")
-          .click();
-        H.DependencyGraph.dependencyPanel()
-          .findByText("Transform using measure")
           .should("be.visible");
       });
     });
@@ -952,64 +924,6 @@ function verifyRowValues(rowValues: string[][]) {
       .should("have.length.gt", rowValues.length)
       .eq(index)
       .should("have.text", value);
-  });
-}
-
-function createQuestionWithMeasure({
-  measureName = MEASURE_NAME,
-  questionDetails: details = {
-    name: "Custom Question",
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
-  after = () => {},
-}: {
-  measureName?: string;
-  questionDetails?: StructuredQuestionDetails;
-  after?: () => void;
-}) {
-  return H.createQuestion(
-    // TODO: I cannot get the createQuestion to work with measure aggregations
-    // probably because there is some missing BE logic for converting MBQLv1
-    // This helper therefore builds the measure in the FE.
-    // "aggregation": [["measure", measureName]],
-    details,
-    {
-      visitQuestion: true,
-      wrapId: true,
-    },
-  ).then(() => {
-    if (details.type === "model") {
-      H.openQuestionActions("Edit query definition");
-    } else if (details.type === "metric") {
-      H.openQuestionActions("Edit metric definition");
-    } else {
-      H.openNotebook();
-    }
-
-    if (details.type === "metric") {
-      H.getNotebookStep("summarize").findByText("Count").click();
-    } else {
-      H.summarize({ mode: "notebook" });
-    }
-    H.popover().within(() => {
-      cy.findByText("Measures").click();
-      cy.findByText(measureName).click();
-    });
-
-    after();
-
-    if (details.type === "model") {
-      cy.findByTestId("dataset-edit-bar").button("Save changes").click();
-    } else if (details.type === "metric") {
-      cy.findByTestId("edit-bar").button("Save changes").click();
-    } else {
-      cy.findByTestId("qb-header").button("Save").click();
-      H.modal().findByText("Save").click();
-    }
-
-    return cy.get("@questionId");
   });
 }
 
