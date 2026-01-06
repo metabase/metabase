@@ -202,8 +202,6 @@
         (finally
           (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
 
-(mt/set-test-drivers! #{:postgres})
-
 (deftest check-isolation-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
     (testing "check-isolation-permissions returns success for properly configured database"
