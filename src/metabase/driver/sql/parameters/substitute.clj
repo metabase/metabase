@@ -36,28 +36,27 @@
      (not-empty (concat missing snippet-missing))]))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
-  (let [normalized (or (driver-api/match-and-normalize-tag-name k) k)]
-    (if-not (contains? param->value normalized)
-      [sql args (conj missing normalized)]
-      (let [v (get param->value normalized)]
-        (cond
-          (or (params/FieldFilter? v)
-              (params/TemporalUnit? v))
-          (substitute-field-param [sql args missing] in-optional? k v)
+  (if-not (contains? param->value k)
+    [sql args (conj missing k)]
+    (let [v (get param->value k)]
+      (cond
+        (or (params/FieldFilter? v)
+            (params/TemporalUnit? v))
+        (substitute-field-param [sql args missing] in-optional? k v)
 
-          (params/ReferencedCardQuery? v)
-          (substitute-card-query [sql args missing] v)
+        (params/ReferencedCardQuery? v)
+        (substitute-card-query [sql args missing] v)
 
-          (params/ReferencedQuerySnippet? v)
-          (substitute-native-query-snippet param->value [sql args missing] in-optional? v)
+        (params/ReferencedQuerySnippet? v)
+        (substitute-native-query-snippet param->value [sql args missing] in-optional? v)
 
-          (= params/no-value v)
-          [sql args (conj missing k)]
+        (= params/no-value v)
+        [sql args (conj missing k)]
 
-          :else
-          (let [{:keys [replacement-snippet prepared-statement-args]}
-                (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
-            [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))))))
+        :else
+        (let [{:keys [replacement-snippet prepared-statement-args]}
+              (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
+          [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
 (declare substitute*)
 
