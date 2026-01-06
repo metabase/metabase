@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import type ValidationError from "metabase-lib/v1/ValidationError";
+import type * as Lib from "metabase-lib";
 
 import S from "./NativeQueryEditorRunButton.module.css";
 
@@ -12,7 +12,7 @@ interface NativeQueryEditorRunButtonProps {
   isRunnable: boolean;
   isRunning: boolean;
   nativeEditorSelectedText?: string;
-  questionErrors?: ValidationError[] | null;
+  questionErrors?: Lib.ValidationError[] | null;
   runQuery?: () => void;
 }
 

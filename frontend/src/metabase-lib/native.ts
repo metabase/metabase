@@ -1,7 +1,7 @@
 import * as ML from "cljs/metabase.lib.js";
 import type { DatabaseId, TemplateTags } from "metabase-types/api";
 
-import type { MetadataProvider, Query } from "./types";
+import type { MetadataProvider, Query, ValidationError } from "./types";
 
 export function nativeQuery(
   databaseId: DatabaseId,
@@ -79,6 +79,6 @@ export function withNativeExtras(
 /**
  * Validates if the template tags in query are all valid and well-formed.
  */
-export function validateTemplateTags(query: Query): { message: string }[] {
+export function validateTemplateTags(query: Query): ValidationError[] {
   return ML.validate_template_tags(query);
 }
