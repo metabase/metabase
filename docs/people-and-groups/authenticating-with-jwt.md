@@ -42,7 +42,7 @@ These are additional settings you can fill in to pass user attributes to Metabas
 - **First name attribute:** the key to retrieve each JWT user's first name.
 - **Last name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 - **Group assignment attribute:** the key to retrieve each JWT user's group assignments.
-- **Tenant attribute:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Assigning tenant users to tenants](./assigning-users-to-tenants.md).
+- **Tenant attribute:** the key to retrieve each JWT user's tenant. Default is `@tenant`. See [Tenants](../embedding/tenants.md).
 
 You can send additional user attributes to Metabase by adding the attributes as key/value pairs to your JWT. These attributes will be synced on every login.
 
