@@ -712,19 +712,13 @@
   lib
   {:team "Querying"
    :api  #{metabase.lib.binning
-           metabase.lib.binning.util
-           metabase.lib.card
-           metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
            metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
-           metabase.lib.field.resolution
-           metabase.lib.filter
            metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.hierarchy
            metabase.lib.init
-           metabase.lib.join.util
            metabase.lib.metadata
            metabase.lib.metadata.cached-provider
            metabase.lib.metadata.column
@@ -751,7 +745,6 @@
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
            metabase.lib.schema.middleware-options
-           metabase.lib.schema.order-by
            metabase.lib.schema.parameter
            metabase.lib.schema.ref
            metabase.lib.schema.settings
@@ -766,7 +759,8 @@
    :uses #{config
            legacy-mbql
            types
-           util}}
+           util}
+   :friends #{query-processor}}
 
   lib-be
   {:team "Querying"
