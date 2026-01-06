@@ -2,6 +2,7 @@
   "Loading is the interesting part of deserialization: integrating the maps \"ingested\" from files into the appdb.
   See the detailed breakdown of the (de)serialization processes in [[metabase.models.serialization]]."
   (:require
+   [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
@@ -197,35 +198,48 @@
    :errors    []})
 
 (defn load-metabase!
-  "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill? continue-on-error reindex?]
+  "Loads in a database export from an ingestion source, which is any Ingestable instance.
+   Accepts an optional `:canceled-chan` - a core.async channel that signals request cancellation.
+   If cancellation is detected, processing stops early, the transaction is rolled back,
+   and the context includes `:canceled true`."
+  [ingestion & {:keys [backfill? continue-on-error reindex? canceled-chan]
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
-  (binding [*warned-version-mismatch* (atom false)]
-    (u/prog1
-      (t2/with-transaction [_tx]
-        ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
-        ;; guide the import, and make sure all containers are imported before contents, etc.
-        (when backfill?
-          (serdes.backfill/backfill-ids!))
-        (let [contents (serdes.ingest/ingest-list ingestion)
-              ctx (new-context ingestion)]
-          (log/infof "Starting deserialization, total %s documents" (count contents))
-          (reduce (fn [ctx item]
-                    (try
-                      (load-one! ctx item)
-                      (catch Exception e
-                        (when-not continue-on-error
-                          (throw e))
-                        ;; eschew big and scary stacktrace
-                        (log/warnf (u/strip-error e "Skipping deserialization error"))
-                        (update ctx :errors conj e))))
-                  ctx
-                  contents)))
-      (when reindex?
-      ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
-      ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
-      ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
-      ;;       while we're figuring that out, here's a crude stopgap.
-        (search/reindex!)))))
+  (let [canceled? (fn [] (some-> canceled-chan a/poll!))]
+    (binding [*warned-version-mismatch* (atom false)]
+      (u/prog1
+        (try
+          (t2/with-transaction [_tx]
+            ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
+            ;; guide the import, and make sure all containers are imported before contents, etc.
+            (when backfill?
+              (serdes.backfill/backfill-ids!))
+            (let [contents (serdes.ingest/ingest-list ingestion)
+                  ctx      (new-context ingestion)]
+              (log/infof "Starting deserialization, total %s documents" (count contents))
+              (reduce (fn [ctx item]
+                        (if (canceled?)
+                          (do
+                            (log/info "Serialization import canceled by client, rolling back transaction")
+                            (throw (ex-info "Import canceled by client" {:canceled true})))
+                          (try
+                            (load-one! ctx item)
+                            (catch Exception e
+                              (when-not continue-on-error
+                                (throw e))
+                              ;; eschew big and scary stacktrace
+                              (log/warnf (u/strip-error e "Skipping deserialization error"))
+                              (update ctx :errors conj e)))))
+                      ctx
+                      contents)))
+          (catch Exception e
+            (if (-> e ex-data :canceled)
+              (assoc (new-context ingestion) :canceled true)
+              (throw e))))
+        (when (and reindex? (not (:canceled <>)))
+          ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
+          ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
+          ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
+          ;;       while we're figuring that out, here's a crude stopgap.
+          (search/reindex!))))))
