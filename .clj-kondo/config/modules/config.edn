@@ -766,6 +766,13 @@
            settings
            util}}
 
+  llm
+  {:team "Metabot"
+   :api  #{metabase.llm.openai
+           metabase.llm.settings}
+   :uses #{settings
+           util}}
+
   logger
   {:team "DevEx"
    :api  #{metabase.logger.api
