@@ -31,8 +31,8 @@ import {
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
-import LeafletGridHeatMap from "../../components/LeafletGridHeatMap";
-import PinMap from "../../components/PinMap";
+import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
+import { PinMap } from "../../components/PinMap";
 
 import { CustomMapFooter } from "./CustomMapFooter";
 
