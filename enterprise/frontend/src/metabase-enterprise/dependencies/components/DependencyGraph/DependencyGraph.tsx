@@ -105,6 +105,7 @@ export function DependencyGraph({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         colorMode={colorScheme === "dark" ? "dark" : "light"}
+        className={S.reactFlow}
       >
         <Background />
         <Controls className={S.controls} />
