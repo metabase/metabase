@@ -507,7 +507,6 @@
            batch-processing
            collections
            events
-           lib
            models
            public-sharing
            queries

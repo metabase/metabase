@@ -142,8 +142,8 @@
                                  lib/update-options assoc :lib/expression-name "Sales Taxes")
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
-          (is (=? {:card {downstream-card-id  #{{:type :validate/missing-column, :name "Tax Rate"}}
-                          transformed-card-id #{{:type :validate/missing-column, :name "Tax Rate"}}}}
+          (is (=? {:card {downstream-card-id  #{(lib/missing-column-error "Tax Rate")}
+                          transformed-card-id #{(lib/missing-column-error "Tax Rate")}}}
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
@@ -167,10 +167,10 @@
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       #{{:type :validate/missing-table-alias, :name "NONEXISTENT_TABLE"}}
-                               transformed-sql-card-id  #{{:type :validate/missing-table-alias, :name "TRANSFORMED.OUTPUT_TF31"}}
-                               transformed-mbql-card-id #{{:type :validate/missing-column, :name "RATING"}}}
-                   :transform {(:id sql-transform)      #{{:type :validate/missing-table-alias, :name "NONEXISTENT_TABLE"}}}}
+          (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
+                               transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
+                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
+                   :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
                   errors))
           (is (= #{:card :transform}
                  (set (keys errors))))
