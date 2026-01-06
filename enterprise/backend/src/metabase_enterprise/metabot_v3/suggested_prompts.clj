@@ -32,7 +32,7 @@
   {:limit 20})
 
 (defn generate-sample-prompts
-  "Generate suggested propmpts for instance of Metabot."
+  "Generate suggested prompts for instance of Metabot."
   [metabot-id & {:as opts}]
   (let [opts (merge default-opts opts)]
     (lib-be/with-metadata-provider-cache
@@ -65,6 +65,6 @@
           (t2/insert! :model/MetabotPrompt model-prompts))))))
 
 (defn delete-all-metabot-prompts
-  "Drop suggested propmpts for instance of Metabot."
+  "Drop suggested prompts for instance of Metabot."
   [metabot-id]
   (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
