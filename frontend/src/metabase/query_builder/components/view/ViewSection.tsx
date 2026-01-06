@@ -44,5 +44,4 @@ export const ViewSubHeading = ({ children, ...props }: ViewSubHeadingProps) => (
   </div>
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ViewSection;
+export { ViewSection };

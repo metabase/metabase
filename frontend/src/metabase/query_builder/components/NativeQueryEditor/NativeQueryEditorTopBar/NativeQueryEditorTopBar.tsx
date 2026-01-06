@@ -16,7 +16,7 @@ import type {
 } from "metabase-types/api";
 
 import { ResponsiveParametersList } from "../../ResponsiveParametersList";
-import DataSourceSelectors from "../DataSourceSelectors/DataSourceSelectors";
+import { DataSourceSelectors } from "../DataSourceSelectors/DataSourceSelectors";
 import { NativeQueryEditorActionButtons } from "../NativeQueryEditorActionButtons/NativeQueryEditorActionButtons";
 import { VisibilityToggler } from "../VisibilityToggler/VisibilityToggler";
 import type { SidebarFeatures } from "../types";

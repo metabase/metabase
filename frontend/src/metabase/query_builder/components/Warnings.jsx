@@ -25,4 +25,4 @@ const Warnings = ({ warnings, className = "", size = 16 }) => {
   );
 };
 
-export default Warnings;
+export { Warnings };

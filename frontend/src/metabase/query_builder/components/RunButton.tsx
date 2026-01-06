@@ -81,5 +81,4 @@ const getButtonIcon = (isRunning: boolean, isDirty: boolean) => {
   return "refresh";
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default RunButton;
+export { RunButton };

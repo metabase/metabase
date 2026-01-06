@@ -249,4 +249,4 @@ const Placeholder = ({ query, editorContext }) => {
 
 Placeholder.propTypes = PlaceholderPropTypes;
 
-export default DataSourceSelectors;
+export { DataSourceSelectors };

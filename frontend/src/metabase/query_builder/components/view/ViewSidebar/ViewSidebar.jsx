@@ -35,4 +35,4 @@ ViewSidebar.propTypes = {
   children: PropTypes.node,
 };
 
-export default ViewSidebar;
+export { ViewSidebar };

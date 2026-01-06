@@ -70,5 +70,4 @@ const DataBucketListItem = ({
   </SelectList.BaseItem>
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorDataBucketPicker;
+export { DataSelectorDataBucketPicker };

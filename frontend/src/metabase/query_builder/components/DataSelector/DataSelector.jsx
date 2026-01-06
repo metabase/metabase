@@ -24,12 +24,12 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import DataBucketPicker from "./DataSelectorDataBucketPicker";
-import DatabasePicker from "./DataSelectorDatabasePicker";
-import DatabaseSchemaPicker from "./DataSelectorDatabaseSchemaPicker";
-import FieldPicker from "./DataSelectorFieldPicker";
-import SchemaPicker from "./DataSelectorSchemaPicker";
-import TablePicker from "./DataSelectorTablePicker";
+import { DataBucketPicker } from "./DataSelectorDataBucketPicker";
+import { DatabasePicker } from "./DataSelectorDatabasePicker";
+import { DatabaseSchemaPicker } from "./DataSelectorDatabaseSchemaPicker";
+import { FieldPicker } from "./DataSelectorFieldPicker";
+import { SchemaPicker } from "./DataSelectorSchemaPicker";
+import { TablePicker } from "./DataSelectorTablePicker";
 import {
   DatabaseTrigger,
   FieldTrigger,
@@ -37,7 +37,7 @@ import {
   Trigger,
 } from "./TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "./constants";
-import SavedEntityPicker from "./saved-entity-picker/SavedEntityPicker";
+import { SavedEntityPicker } from "./saved-entity-picker/SavedEntityPicker";
 import { getDataTypes } from "./utils";
 
 // chooses a data source bucket (datasets / raw data (tables) / saved questions)

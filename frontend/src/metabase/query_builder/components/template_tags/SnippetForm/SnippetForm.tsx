@@ -136,5 +136,6 @@ function SnippetForm({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(SnippetCollections.loadList())(SnippetForm);
+export const SnippetForm = _.compose(SnippetCollections.loadList())(
+  SnippetForm,
+);

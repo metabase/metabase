@@ -12,7 +12,7 @@ import { Box, DelayGroup, Icon } from "metabase/ui";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import DataSelectorLoading from "../DataSelectorLoading";
+import { DataSelectorLoading } from "../DataSelectorLoading";
 import { CONTAINER_WIDTH } from "../constants";
 
 import DataSelectorFieldPickerS from "./DataSelectorFieldPicker.module.css";
@@ -113,5 +113,4 @@ const Header = ({ onBack, selectedTable }: HeaderProps) => (
   </Box>
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DataSelectorFieldPicker;
+export { DataSelectorFieldPicker };
