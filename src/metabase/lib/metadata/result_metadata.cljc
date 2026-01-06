@@ -387,8 +387,7 @@
             native-model? (if card
                             (-> (lib.card/card->underlying-query query card)
                                 (lib.util/native-stage? -1))
-                            ;; fallback if no card found: check if current query is native
-                            (lib.util/native-stage? query -1))]
+                            false)]
         (lib.card/merge-model-metadata cols model-metadata native-model?)))))
 
 (defn- add-source-and-desired-aliases [query cols]
