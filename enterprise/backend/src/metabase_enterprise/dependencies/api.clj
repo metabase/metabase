@@ -13,6 +13,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.documents.schema :as documents.schema]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
@@ -235,7 +236,7 @@
 (mr/def ::document-entity
   [:merge ::base-entity
    [:map
-    [:id   ::lib.schema.id/document]
+    [:id   ::documents.schema/document.id]
     [:type [:= :document]]
     [:data (fields-for :document)]]])
 

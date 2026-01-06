@@ -31,16 +31,16 @@
   []
   {:type :validate/syntax-error})
 
-(mu/defn validation-error :- [:ref ::lib.schema.validate/validation-error]
-  "Create a validation-error lib validation error"
+(mu/defn validation-exception-error :- [:ref ::lib.schema.validate/validation-exception-error]
+  "Create a validation-exception-error lib validation error"
   [message :- :string]
-  {:type :validate/validation-error
+  {:type :validate/validation-exception-error
    :message message})
 
 (mu/defn find-bad-refs :- [:set [:ref ::lib.schema.validate/error]]
-  "Returns a list of bad `:field` refs on this query.
+  "Returns a set of validation errors in this query.
 
-  Returns nil if all refs on the query are sound, that is if they can be resolved to a column from some source."
+  Returns empty set if all refs on the query are sound, that is if they can be resolved to a column from some source."
   [query :- ::lib.schema/query]
   (let [bad-fields (volatile! #{})]
     (lib.walk/walk-clauses

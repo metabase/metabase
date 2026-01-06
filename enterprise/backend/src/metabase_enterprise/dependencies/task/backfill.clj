@@ -35,6 +35,10 @@
   (t/to-millis-from-epoch (t/instant)))
 
 (def ^:private entities
+  "The list of models to backfill.
+
+  This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
+  involing tables are found via analysis of the other side of the relation."
   [:model/Card
    :model/Transform
    :model/NativeQuerySnippet
@@ -198,6 +202,7 @@
 (derive ::backfill :metabase/event)
 (derive :event/serdes-load ::backfill)
 (derive :event/set-premium-embedding-token ::backfill)
+
 (methodical/defmethod events/publish-event! ::backfill
   [_ _]
   (when (premium-features/has-feature? :dependencies)

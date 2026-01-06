@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -42,23 +43,18 @@
                          :analyzed_entity_type type
                          :analyzed_entity_id instance-id)))))
 
-(defn- append-keyword [base suffix]
+(defn- append-to-keyword [base suffix]
   (keyword (str (name base) suffix)))
-
-(def ^:private table-info
-  {:card [:model/Card :report_card :report_card.* :report_card.id]
-   :transform [:model/Transform :transform :transform.* :transform.id]
-   :segment [:model/Segment :segment :segment.* :segment.id]})
 
 (defn instances-for-analysis
   "Find a batch of instances with missing or outdated AnalysisFindings"
   [type batch-size]
-  (let [[model] (table-info type)
+  (let [model (deps.dependency-types/dependency-type->model type)
         table-name (t2/table-name model)
-        id-field   (append-keyword table-name ".id")
-        wildcard   (append-keyword table-name ".*")]
+        id-field   (append-to-keyword table-name ".id")
+        table-wildcard   (append-to-keyword table-name ".*")]
     (t2/select model
-               {:select [wildcard]
+               {:select [table-wildcard]
                 :from table-name
                 :left-join [:analysis_finding [:and
                                                [:= :analysis_finding.analyzed_entity_id id-field]

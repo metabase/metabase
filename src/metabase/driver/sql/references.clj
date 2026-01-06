@@ -293,19 +293,17 @@
                             :errors #{}}]
                           with-outside)
         rec (partial find-used-fields driver with-select withs)]
-    (-> (into #{}
-              ;; a select can't refer to its own aliases, so don't include them in sources here
-              (mapcat (partial find-used-fields driver with-outside withs))
-              (:select expr))
-        (into (rec (:where expr)))
-        (into (mapcat rec)
-              (:join expr))
-        (into (mapcat rec)
-              (:group-by expr))
-        (into (mapcat rec)
-              (:order-by expr))
-        (into (mapcat #(->> % :used-fields (map wrap-col)))
-              local-sources))))
+    (into #{}
+          cat
+          [ ;; a select can't refer to its own aliases, so don't include them in sources here
+           (mapcat (partial find-used-fields driver with-outside withs)
+                   (:select expr))
+           (rec (:where expr))
+           (mapcat rec (:join expr))
+           (mapcat rec (:group-by expr))
+           (mapcat rec (:order-by expr))
+           (mapcat #(->> % :used-fields (map wrap-col))
+                   local-sources)])))
 
 (defmethod find-returned-fields [:sql :macaw.ast/select]
   [driver outside-sources withs expr]
@@ -320,6 +318,13 @@
                returned-fields))
       returned-fields)))
 
+(defn- merge-errors
+  "Goes through `entries` and grabs and merges all :errors fields from each one."
+  [& entries]
+  (into #{}
+        (comp cat (mapcat :errors))
+        entries))
+
 (defmethod field-references-impl [:sql :macaw.ast/select]
   [driver outside-sources outside-withs expr]
   (let [local-withs (reduce (fn [current-withs with-expr]
@@ -329,14 +334,14 @@
         withs (into outside-withs local-withs)
         current-used-fields (find-used-fields driver outside-sources withs expr)
         returned-fields (find-returned-fields driver outside-sources withs expr)]
-    {:used-fields (-> #{}
-                      (into (keep :col) current-used-fields)
-                      (into (mapcat :used-fields) local-withs))
+    {:used-fields (into #{}
+                        cat
+                        [(keep :col current-used-fields)
+                         (mapcat :used-fields local-withs)])
      :returned-fields (into [] (keep :col) returned-fields)
-     :errors (-> #{}
-                 (into (mapcat :errors) returned-fields)
-                 (into (mapcat :errors) current-used-fields)
-                 (into (mapcat :errors) local-withs))
+     :errors (into #{}
+                   (comp cat (mapcat :errors))
+                   [returned-fields current-used-fields local-withs])
      :names (when-let [alias (:table-alias expr)]
               {:table-alias (sql.normalize/normalize-name driver alias)})}))
 
@@ -350,9 +355,9 @@
         returned-fields (find-returned-fields driver outside-sources withs expr)]
     {:used-fields (into #{} (keep :col) used-fields)
      :returned-fields (into [] (keep :col) returned-fields)
-     :errors (-> #{}
-                 (into (mapcat :errors) used-fields)
-                 (into (mapcat :errors) returned-fields))
+     :errors (into #{}
+                   (comp cat (mapcat :errors))
+                   [used-fields returned-fields])
      :names (when-let [alias (:table-alias expr)]
               {:table-alias (sql.normalize/normalize-name driver alias)})}))
 

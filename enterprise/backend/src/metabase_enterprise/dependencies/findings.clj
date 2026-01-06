@@ -11,20 +11,20 @@
 
 (set! *warn-on-reflection* true)
 
-(defmulti ^:private get-db-id
+(defmulti ^:private instance-db-id
   "Gets the database id for a toucan instance"
   {:arglists '([toucan-instance])}
   t2/model)
 
-(defmethod get-db-id :default
+(defmethod instance-db-id :default
   [toucan-instance]
   (:database_id toucan-instance))
 
-(defmethod get-db-id :model/Transform
+(defmethod instance-db-id :model/Transform
   [toucan-instance]
   (some-> toucan-instance :source :query lib/database-id))
 
-(defmethod get-db-id :model/Segment
+(defmethod instance-db-id :model/Segment
   [toucan-instance]
   (some-> toucan-instance :definition lib/database-id))
 
@@ -36,13 +36,13 @@
   (when-not (lib-be/metadata-provider-cache)
     (throw (ex-info "FIXME: deps.findings/upsert-analysis! ran without reusing `MetadataProvider`s"
                     {:instance toucan-instance})))
-  (when-let [db-id (get-db-id toucan-instance)]
+  (when-let [db-id (instance-db-id toucan-instance)]
     (let [mp (lib-be/application-database-metadata-provider db-id)
           model (t2/model toucan-instance)
           results (try (deps.analysis/check-entity mp (deps.dependency-types/model->dependency-type model) (:id toucan-instance))
                        (catch Exception e
                          (log/error e "Error analyzing entity")
-                         [(lib/validation-error (.getMessage e))]))
+                         [(lib/validation-exception-error (.getMessage e))]))
           success (empty? results)]
       (deps.analysis-finding/upsert-analysis! (deps.dependency-types/model->dependency-type model) (:id toucan-instance) success results))))
 

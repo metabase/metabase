@@ -48,9 +48,9 @@
     (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
     (check-premium-token!))
-                                        ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
-                                        ;(when-not (load/compatible? path)
-                                        ;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
+  ;; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
+  ;;(when-not (load/compatible? path)
+  ;;  (log/warn "Dump was produced using a different version of Metabase. Things may break!"))
   (log/infof "Loading serialized Metabase files from %s" path)
   (u/prog1 (serdes/with-cache
              (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts))

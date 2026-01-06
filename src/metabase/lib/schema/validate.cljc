@@ -22,17 +22,19 @@
   [:map
    [:type [:= :validate/syntax-error]]])
 
-(mr/def ::validation-error
+(mr/def ::validation-exception-error
   [:map
-   [:type [:= :validate/validation-error]]
+   [:type [:= :validate/validation-exception-error]]
    [:message :string]])
 
 (mr/def ::error
   [:and
-   [:map [:type {:decode/normalize common/normalize-keyword} :keyword]]
+   [:map [:type {:decode/normalize common/normalize-keyword} [:and
+                                                              :keyword
+                                                              [:fn #(= (namespace %) "validate")]]]]
    [:multi {:dispatch #(-> % :type keyword)}
     [:validate/missing-column-error      [:ref ::missing-column-error]]
     [:validate/missing-table-alias-error [:ref ::missing-table-alias-error]]
     [:validate/duplicate-column-error    [:ref ::duplicate-column-error]]
     [:validate/syntax-error              [:ref ::syntax-error]]
-    [:validate/validation-error          [:ref ::validation-error]]]])
+    [:validate/validation-exception-error   [:ref ::validation-exception-error]]]])
