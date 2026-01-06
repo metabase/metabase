@@ -204,10 +204,33 @@
 
 (deftest check-isolation-permissions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
-    (testing "check-isolation-permissions returns success for properly configured database"
-      (let [result (driver/check-isolation-permissions driver/*driver* (mt/db) nil)]
-        (is (map? result))
-        (is (contains? result :valid))
-        (when-not (:valid result)
-          ;; If not valid, should have an error message
-          (is (contains? result :message)))))))
+    (testing "success case - check perms use the lower level isolation methods for checking"
+      (let [init-called?    (atom false)
+            grant-called?   (atom false)
+            destroy-called? (atom false)]
+        (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
+                                    (fn [_driver _database _workspace]
+                                      (reset! init-called? true)
+                                      {:schema "test_schema" :database_details {:user "test_user"}})
+                                    driver/grant-workspace-read-access!
+                                    (fn [_driver _database _workspace _tables]
+                                      (reset! grant-called? true)
+                                      nil)
+                                    driver/destroy-workspace-isolation!
+                                    (fn [_driver _database _workspace]
+                                      (reset! destroy-called? true)
+                                      nil)]
+          (let [test-table {:schema "public" :name "test_table"}
+                result     (driver/check-isolation-permissions driver/*driver* (mt/db) test-table)]
+            (is (nil? result) "should return nil on success")
+            (is @init-called? "init-workspace-isolation! should be called")
+            (is @grant-called? "grant-workspace-read-access! should be called when test-table provided")
+            (is @destroy-called? "destroy-workspace-isolation! should be called")))))
+
+    (testing "failure case - returns error message when init fails"
+      (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
+                                  (fn [_driver _database _workspace]
+                                    (throw (ex-info "Permission denied: CREATE SCHEMA" {:reason :no-permission})))]
+        (let [result (driver/check-isolation-permissions driver/*driver* (mt/db) nil)]
+          (is (string? result) "should return an error message string on failure")
+          (is (re-find #"CREATE SCHEMA" result) "error message should mention the failed operation"))))))
