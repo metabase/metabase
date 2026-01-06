@@ -1,5 +1,6 @@
 ---
 title: Tenants
+summary: Tenants allow you to serve multiple customers from a single instance while keeping their data isolated. Configure tenant users, groups, and shared collections, then use row-level security or impersonation to ensure each tenant only sees their own data.
 ---
 
 # Tenants
@@ -9,6 +10,8 @@ title: Tenants
 A Tenant is a named set of attributes you can assign to a user to isolate them from other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants.
 
 The big advantage of grouping users into tenants is that you can use the same content and group permissions for all tenants, so you don't have to create all new stuff for each tenant, and each tenant only ever sees their own data.
+
+![Tenants](./images/tenants.png)
 
 You can use tenants to:
 
@@ -40,7 +43,7 @@ While working with tenants in Metabase, you'll encounter different user and grou
 
 Tenant users and and internal users can be organized into Metabase [groups](../people-and-groups/managing.md#groups).
 
-[SCREENSHOT]
+![Tenant groups types](./images/tenant-groups.png)
 
 - **All tenant users** is a special group representing all individual end users across all tenants.
 
@@ -66,7 +69,7 @@ Tenant users are completely isolated from internal users: tenant users can't be 
 
 Collections are like folders that can contain charts, dashboard, and models. They also serve as an organizational unit for permission management: if a certain group of people should have access to a certain set of assets, you should put those assets into a collection.
 
-[SCREENSHOT]
+![Tenant collections](./images/tenant-collections.png)
 
 - **Shared collections** contain dashboards and charts that are shared between all tenants.
 
@@ -97,9 +100,11 @@ In the experiences that expose users to to Metabase collections (e.g. when using
 
 ### Enable multi-tenant strategy
 
+_Admin setting > People_
+
 You can create and manage you tenants exclusively through Metabase UI, or, if that's not your jam, [through SSO](#provisioning-and-assigning-tenants-with-jwt). Regardless of how you manage your tenants, you'll need to enable multi-tenant strategy in Metabase first.
 
-[SCREENSHOT]
+![Edit tenant strategy](./images/edit-tenant-strategy.png)
 
 1. Go to **Admin settings > People**.
 2. Click on the **gear** icon above the list of people.
@@ -112,6 +117,10 @@ If you have an existing permissions and collection setup that you'd like to tran
 Once you enable multi-tenant strategy, keep in mind that switching _from_ multi-tenant to single-tenant is a destructive action: all your tenant users and your tenant and shared collections will be disabled. See [Changing tenant strategy](#changing-tenant-strategy).
 
 ## Create new tenants in Metabase
+
+_Admin setting > People > Tenant_
+
+![New tenant user](./images/new-tenant.png)
 
 To create new tenants in Metabase:
 
@@ -127,6 +136,8 @@ You can avoid manually setting up tenants in Metabase by [provisioning tenants w
 
 ## Create tenant groups
 
+_Admin setting > People > Tenant groups_
+
 Tenant groups are applicable across tenants. For example, you can have tenant groups "Basic users" and "Premium users", and every tenant will be able to use those groups. Groups can be used to configure permissions so that, among the tenant's users, some get Basic permissions while others get Premium. See [Tenant concepts](#concepts) for more information.
 
 To create a tenant group:
@@ -139,6 +150,8 @@ To create a tenant group:
 To add people to tenant groups, see [Add people to groups](../people-and-groups/managing.md#adding-people-to-groups).
 
 ## Create tenant users in Metabase
+
+_Admin setting > People > Tenant users_
 
 Tenant users are the end users in tenants. In a B2B SaaS context, these are the your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
 To add tenant users in Metabase:
@@ -154,6 +167,8 @@ You can also [provision tenant users with JWT](#tenant-attributes).
 
 ## Create shared collections for tenants
 
+![Create shared collection](./images/create-shared-collection.png)
+
 Shared collections contain dashboards and charts that are shared between all tenants. If you're using shared collections, make sure that you configure [data permissions](#data-permissions-for-tenants) so that tenants can only see _their data_ in the shared collections. See [Tenant concepts](#concepts) for more information.
 
 To create a shared collection:
@@ -165,9 +180,19 @@ To create a shared collection:
 
 You can have multiple shared collections and nested shared collections. You can also [sync shared collections to GitHub](#sync-shared-collections-to-github).
 
+## Sync shared collections to GitHub
+
+_Admin setting > Remote Sync_
+
+You can set up [Remote sync](../installation-and-operation/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../installation-and-operation/remote-sync.md) for more details.
+
 ## Tenant attributes
 
+_Admin setting > People > Tenants_
+
 You can create tenant-level [user attributes](#tenant-attributes) which will be inherited by all the users of the tenant. This is useful for configuring attribute-based data permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md).
+
+![Edit tenant](./images/edit-tenant.png)
 
 To add a tenant attribute:
 
@@ -183,6 +208,8 @@ Currently, you can't assign custom tenant attributes with SSO - the only way to 
 ### Special tenant slug attribute
 
 Each tenant user will get system-defined attribute `@tenant.slug` that corresponds to the slug of the tenant. For example, if you created a tenant "Meowdern Solutions" with the slug `meowdern_solutions`, then every user from this tenant will get a special attribute `@tenant.slug : "meowdern_solutions"`.
+
+![Slug attribute](./images/slug-attribute.png)
 
 If you create Metabase tenants through Metabase UI, you can choose the slug when creating the tenant. If you're [using JWT to provision tenants](#provisioning-and-assigning-tenants-with-jwt), tenant slug is the value of the `@tenant` claim for JWT (or another tenant assignment attribute you selected). Slug cannot be changed later.
 
@@ -250,6 +277,8 @@ Some auth common error messages and what they mean:
 
 ## Data permissions for tenants
 
+_Admin setting > Permissions_
+
 Data permissions control what data people can see on charts and dashboards, and what they can do with that data. To control _which_ charts people see, you can use [collection permissions](#collection-permissions-for-tenants) instead.
 
 ### Data permission overview
@@ -309,6 +338,8 @@ For configuring permissions to _internal_ collections for internal users, see [g
 
 ### Configuring shared collections permissions
 
+_Admin setting > Permissions_
+
 To configure access to shared collections for tenant and internal groups, go to **Admin settings > Permissions > Shared collections**.
 
 You can configure access for each shared collections and their subcollections for both internal and external users. See general docs on [collection permissions](#collection-permissions-for-tenants).
@@ -317,13 +348,15 @@ Special **Root shared collection** controls who has access to _all_ shared colle
 
 When configuring permissions, remember that in Metabase, all permissions are additive, so if someone is a member of two different groups, they will be granted the _most_ permissive access. In particular, if "All tenant users" has "View" access to a shared collection, but another tenant group has "No" access to that collection specified in the permission settings, the users of the tenant group will still get "View" access because they have it via the "All tenant groups". If you're using tenant groups, we recommend revoking access for "All tenant users" and configuring access on group-by-group basis.
 
-[SCREENSHOT]
-
 ## Subscription permissions for tenants
+
+_Admin setting > Permissions_
 
 By default, all tenant users will be created with **No** [subscription permissions](../permissions/application.md#subscriptions-and-alerts). If you want your users to be able to create subscriptions (either in full-app embedding, modular embedding, or by logging in directly to Metabase), you'll need to change the Subscription and alerts permissions to "Yes".
 
 ## Deactivate a tenant
+
+_Admin setting > People > Tenants_
 
 **Deactivating a tenant will also deactivate all users who belong to this tenant**.
 
