@@ -29,6 +29,10 @@ describe("needsMeasurement", () => {
     expect(needsMeasurement(createColumn({ minWidth: 100 }))).toBe(false);
     expect(needsMeasurement(createColumn({}))).toBe(false);
   });
+
+  it("returns false when width is a number", () => {
+    expect(needsMeasurement(createColumn({ width: 100 }))).toBe(false);
+  });
 });
 
 describe("getMinConstraint", () => {

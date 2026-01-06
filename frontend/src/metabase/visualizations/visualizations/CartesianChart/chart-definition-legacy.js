@@ -4,6 +4,7 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { isEmpty } from "metabase/lib/validate";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 
 // TODO: this series transformation is used only for the visualization settings computation which is excessive.
 // Replace this with defining settings models per visualization type which will contain all necessary info
@@ -68,6 +69,10 @@ function transformSingleSeries(s, series, seriesIndex) {
       if (!seriesRows) {
         breakoutRowsByValue.set(seriesValue, (seriesRows = []));
         breakoutValues.push(seriesValue);
+
+        if (breakoutValues.length > MAX_SERIES) {
+          return [s];
+        }
       }
 
       const newRow = rowColumnIndexes.map((columnIndex) => row[columnIndex]);

@@ -21,13 +21,13 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { SectionLayout } from "../../components/SectionLayout";
@@ -116,6 +116,7 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
+        minWidth: 600,
         cell: ({ row }) => (
           <EntityNameCell
             data-testid={`${row.original.model}-name`}
@@ -227,7 +228,7 @@ export function LibrarySectionLayout() {
           </Flex>
           <Card withBorder p={0}>
             {isLoading ? (
-              <ListLoadingState />
+              <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
             ) : (
               <TreeTable
                 instance={treeTableInstance}
