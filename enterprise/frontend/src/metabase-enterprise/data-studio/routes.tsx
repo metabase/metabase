@@ -19,6 +19,7 @@ import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
 import { getDataStudioSegmentRoutes } from "./segments/routes";
+import { getDataStudioSettingsRoutes } from "./settings/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
@@ -49,7 +50,9 @@ export function getDataStudioRoutes(
             </Route>
           </Route>
         )}
-        {getDataStudioGlossaryRoutes()}
+        <Route component={CanAccessAnalystFeatures}>
+          {getDataStudioGlossaryRoutes()}
+        </Route>
         <Route path="library" component={CanAccessAnalystFeatures}>
           <IndexRoute component={LibrarySectionLayout} />
           {getDataStudioTableRoutes()}
@@ -64,6 +67,7 @@ export function getDataStudioRoutes(
             </Route>
           </Route>
         )}
+        {getDataStudioSettingsRoutes()}
       </Route>
     </Route>
   );
@@ -76,5 +80,5 @@ function getIndexPath(state: State) {
   if (PLUGIN_TRANSFORMS.canAccessTransforms(state)) {
     return Urls.transformList();
   }
-  return Urls.dataStudioLibrary();
+  return Urls.dataStudioSettings();
 }

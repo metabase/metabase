@@ -1,5 +1,5 @@
 import { STORE_TEMPORARY_PASSWORD } from "metabase/admin/people/events";
-import { userUpdated } from "metabase/redux/user";
+import { refreshCurrentUser, userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
   ListUsersRequest,
@@ -46,6 +46,10 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
+      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, (user) => {
+          dispatch(userUpdated(user));
+        }),
     }),
     removeAnalyst: builder.mutation<{ success: boolean }, UserId>({
       query: (id) => ({
@@ -54,6 +58,10 @@ export const userApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("user"), idTag("user", id)]),
+      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, () => {
+          dispatch(refreshCurrentUser());
+        }),
     }),
     listUserRecipients: builder.query<ListUsersResponse, void>({
       query: () => ({

@@ -11,7 +11,6 @@ import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
-import { AnalystsApp } from "metabase/admin/people/containers/AnalystsApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
 import { GroupsListingApp } from "metabase/admin/people/containers/GroupsListingApp";
@@ -133,8 +132,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <IndexRoute component={GroupsListingApp} />
             <Route path=":groupId" component={GroupDetailApp} />
           </Route>
-
-          <Route path="analysts" title={t`Analysts`} component={AnalystsApp} />
 
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />

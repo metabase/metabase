@@ -296,3 +296,7 @@ export function dataStudioSnippetDependencies(snippetId: NativeQuerySnippetId) {
 export function newDataStudioSnippet() {
   return `${dataStudioLibrary()}/snippets/new`;
 }
+
+export function dataStudioSettings() {
+  return `${dataStudio()}/settings`;
+}
