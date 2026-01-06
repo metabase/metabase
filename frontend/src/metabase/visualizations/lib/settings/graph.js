@@ -339,6 +339,18 @@ export const LEGEND_SETTINGS = {
     getDefault: (_series, settings) => getDefaultLegendIsReversed(settings),
     hidden: true,
   },
+  "legend.show_legend": {
+    get section() {
+      return t`Display`;
+    },
+    get title() {
+      return t`Show legend`;
+    },
+    widget: "toggle",
+    default: true,
+    inline: true,
+    marginBottom: "1rem",
+  },
 };
 
 export const TOOLTIP_SETTINGS = {

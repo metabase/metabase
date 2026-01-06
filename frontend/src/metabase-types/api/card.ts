@@ -337,6 +337,9 @@ export type VisualizationSettings = {
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
+  // Legend Settings
+  "legend.show_legend"?: boolean;
+
   // Sankey settings
   "sankey.source"?: string;
   "sankey.target"?: string;

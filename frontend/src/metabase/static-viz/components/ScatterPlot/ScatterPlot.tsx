@@ -37,7 +37,10 @@ export function ScatterPlot({
     renderingContext,
   );
 
-  const legendItems = getLegendItems(chartModel.seriesModels);
+  const legendItems =
+    settings["legend.show_legend"] !== false
+      ? getLegendItems(chartModel.seriesModels)
+      : [];
   const { height: legendHeight, items: legendLayoutItems } =
     calculateLegendRows({
       items: legendItems,
