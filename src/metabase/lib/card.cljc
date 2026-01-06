@@ -200,7 +200,7 @@
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top.
 
-  Returns `:id` only if `native?` is true. This is because we allow to override the :id for native models only."
+  Returns `:id` only if `native?` is true. This is because we allow to override the `:id` for native models only."
   [native? :- :boolean]
   (cond-> [:description :display-name :semantic-type :fk-target-field-id :settings :visibility-type :lib/source-display-name]
     native? (conj :id)))
@@ -210,7 +210,7 @@
 (mu/defn merge-model-metadata :- [:sequential ::lib.schema.metadata/column]
   "Merge metadata from source model metadata into result cols.
 
-  Overrides `:id` only if `native?` is true. This is because we allow to override the id for native models only."
+  Overrides `:id` only if `native?` is true. This is because we allow to override the `:id` for native models only."
   [result-cols :- [:maybe [:sequential ::lib.schema.metadata/column]]
    model-cols  :- [:maybe [:sequential ::lib.schema.metadata/column]]
    native?     :- :boolean]
