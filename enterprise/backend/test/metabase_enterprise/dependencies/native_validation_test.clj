@@ -66,17 +66,17 @@
     (let [mp (deps.tu/default-metadata-provider)
           driver (:engine (lib.metadata/database mp))]
       (testing "complete nonsense query"
-        (is (= #{{:type :validate/syntax-error}}
+        (is (= #{(lib/syntax-error)}
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "this is not a query")))))
       (testing "bad table wildcard"
-        (is (= #{{:type :validate/missing-table-alias, :name "products"}}
+        (is (= #{(lib/missing-table-alias-error "products")}
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select products.* from orders")))))
       (testing "bad col reference"
-        (is (= #{{:type :validate/missing-column, :name "BAD"}}
+        (is (= #{(lib/missing-column-error "BAD")}
                (deps.native-validation/validate-native-query
                 driver
                 (fake-query mp "select bad from products"))))))))
@@ -98,15 +98,15 @@
       (testing "Valid query - selecting existing columns from subquery"
         (validates? mp driver 10 empty?))
       (testing "Invalid query - selecting non-existent column from subquery"
-        (validates? mp driver 11 #{{:type :validate/missing-column, :name "CATEGORY"}})
-        (validates? mp driver 12 #{{:type :validate/missing-column, :name "CATEGORY"}}))
+        (validates? mp driver 11 #{(lib/missing-column-error "CATEGORY")})
+        (validates? mp driver 12 #{(lib/missing-column-error "CATEGORY")}))
       (testing "Nested subqueries"
         (validates? mp driver 13 empty?)
-        (validates? mp driver 14 #{{:type :validate/missing-column, :name "CATEGORY"}}))
+        (validates? mp driver 14 #{(lib/missing-column-error "CATEGORY")}))
       (testing "SELECT * from subquery expands to subquery columns"
         (validates? mp driver 15 empty?)
         (validates? mp driver 16 empty?)
-        (validates? mp driver 17 #{{:type :validate/missing-column, :name "EMAIL"}})))))
+        (validates? mp driver 17 #{(lib/missing-column-error "EMAIL")})))))
 
 (deftest ^:parallel validate-card-reference-after-expansion-test
   (testing "Validation of queries after card references have been expanded"
@@ -116,17 +116,17 @@
         (validates? mp driver 18 empty?))
       (testing "Card reference expanded to subquery - invalid column"
         (validates? mp driver 19
-                    #{{:type :validate/missing-column, :name "DESCRIPTION"}}))
+                    #{(lib/missing-column-error "DESCRIPTION")}))
       (testing "Card reference with alias - valid column"
         (validates? mp driver 20 empty?))
       (testing "Card reference with alias - invalid column"
         (validates? mp driver 21
-                    #{{:type :validate/missing-column, :name "PASSWORD"}}))
+                    #{(lib/missing-column-error "PASSWORD")}))
       (testing "Wildcard selection from card reference"
         (validates? mp driver 22 empty?))
       (testing "Invalid column from aliased card"
         (validates? mp driver 23
-                    #{{:type :validate/missing-column, :name "LATITUDE"}})))))
+                    #{(lib/missing-column-error "LATITUDE")})))))
 
 (defn- check-result-metadata [driver mp query expected]
   (is (=? expected
