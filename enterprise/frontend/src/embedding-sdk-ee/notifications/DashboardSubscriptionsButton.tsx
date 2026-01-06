@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/subscriptions";
+import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/notifications";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useHasEmailSetup } from "metabase/common/hooks";
 import { toggleSharing } from "metabase/dashboard/actions";

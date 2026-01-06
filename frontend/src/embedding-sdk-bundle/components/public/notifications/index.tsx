@@ -5,7 +5,7 @@ import type { ActionIconProps } from "metabase/ui";
 export type DashboardSubscriptionsButtonProps = ActionIconProps &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
-function getDefaultPluginDashboardSubscriptionsSdk() {
+function getDefaultPluginNotificationsSdk() {
   return {
     DashboardSubscriptionsButton: (
       _props: DashboardSubscriptionsButtonProps,
@@ -13,15 +13,11 @@ function getDefaultPluginDashboardSubscriptionsSdk() {
   };
 }
 
-export const PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK =
-  getDefaultPluginDashboardSubscriptionsSdk();
+export const PLUGIN_NOTIFICATIONS_SDK = getDefaultPluginNotificationsSdk();
 
 /**
  * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
  */
 export function reinitialize() {
-  Object.assign(
-    PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK,
-    getDefaultPluginDashboardSubscriptionsSdk(),
-  );
+  Object.assign(PLUGIN_NOTIFICATIONS_SDK, getDefaultPluginNotificationsSdk());
 }

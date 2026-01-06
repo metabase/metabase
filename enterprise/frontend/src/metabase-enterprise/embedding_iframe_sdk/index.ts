@@ -1,7 +1,7 @@
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { DashboardSubscriptionsButton } from "../../embedding-sdk-ee/subscriptions/DashboardSubscriptionsButton";
+import { DashboardSubscriptionsButton } from "../../embedding-sdk-ee/notifications/DashboardSubscriptionsButton";
 
 export function initializePlugin() {
   if (hasPremiumFeature("embedding_simple")) {

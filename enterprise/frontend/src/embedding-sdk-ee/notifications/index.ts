@@ -1,11 +1,11 @@
-import { PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK } from "embedding-sdk-bundle/components/public/subscriptions";
+import { PLUGIN_NOTIFICATIONS_SDK } from "embedding-sdk-bundle/components/public/notifications";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { DashboardSubscriptionsButton } from "./DashboardSubscriptionsButton";
 
 export function initializePlugin() {
   if (hasPremiumFeature("embedding_sdk")) {
-    PLUGIN_DASHBOARD_SUBSCRIPTIONS_SDK.DashboardSubscriptionsButton =
+    PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton =
       DashboardSubscriptionsButton;
   }
 }

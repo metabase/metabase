@@ -5,7 +5,7 @@ PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
 import "./shared";
 
-import { initializePlugin as initializeSubscriptions } from "../embedding-sdk-ee/subscriptions";
+import { initializePlugin as initializeSubscriptions } from "../embedding-sdk-ee/notifications";
 
 // CORE APP PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeContentTranslation } from "./content_translation";
