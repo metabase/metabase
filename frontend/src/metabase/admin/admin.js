@@ -8,7 +8,7 @@ import { permissions } from "metabase/admin/permissions/permissions";
 import { settings } from "metabase/admin/settings/settings";
 import { combineReducers } from "metabase/lib/redux";
 
-const admin = combineReducers({
+export const admin = combineReducers({
   app,
   databases,
   datamodel,
@@ -16,5 +16,3 @@ const admin = combineReducers({
   permissions,
   settings,
 });
-
-export { admin };
