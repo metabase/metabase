@@ -501,7 +501,7 @@
             (empty? display-name)
              {:error/message (i18n/tru "Missing widget label: {0}" tag-name)})
            (when
-            (and (= tag-type :dimension) (nil? dimension))
+            (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
              {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)})]))
 
 (mu/defn validate-template-tags :- [:sequential ::error]
