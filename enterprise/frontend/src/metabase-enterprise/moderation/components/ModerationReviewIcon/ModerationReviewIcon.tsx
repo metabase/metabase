@@ -20,7 +20,7 @@ const ModerationReviewIcon = ({
     <div>
       <div>{getModeratorDisplayText(moderator, currentUser)}</div>
       <Text
-        c="inherit"
+        c="var(--mb-color-tooltip-text-secondary)"
         component="time"
         dateTime={review.created_at}
         fz="var(--mantine-font-size-xs)"
