@@ -5,8 +5,8 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
+   [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
-   [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.malli :as mu])
@@ -26,7 +26,7 @@
   (match [value]
     [s :guard string?] s
     [{:type :metabase.lib.parse/param
-      :name name}] (params/->Param (or (lib/match-and-normalize-tag-name name) (str/trim name)))
+      :name name}] (params/->Param (or (driver-api/match-and-normalize-tag-name name) (str/trim name)))
     [{:type :metabase.lib.parse/optional
       :contents contents}] (params/->Optional (map ->param contents))))
 

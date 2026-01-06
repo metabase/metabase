@@ -280,6 +280,10 @@
 (def schema.validate.error
   ::lib.schema.validate/error)
 
+(def match-and-normalize-tag-name
+  "lib/match-and-normalize-tag-name"
+  lib/match-and-normalize-tag-name)
+
 (def mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
   ::mbql.s/DateTimeValue)
