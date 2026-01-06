@@ -224,13 +224,7 @@ export function constrainToScreen(element, direction, padding) {
 }
 
 export function getSitePath() {
-  const siteUrl = MetabaseSettings.get("site-url");
-
-  if (!siteUrl) {
-    return "/";
-  }
-
-  return new URL(siteUrl).pathname.toLowerCase();
+  return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
 }
 
 function isMetabaseUrl(url) {

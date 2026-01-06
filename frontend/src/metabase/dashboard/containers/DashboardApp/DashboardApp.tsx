@@ -162,6 +162,8 @@ export const DashboardApp = ({
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
+  // Prevent rendering the dashboard app if the route is out of sync
+  // metabase#65500
   if (!isRouteInSync(location.pathname)) {
     return null;
   }

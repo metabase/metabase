@@ -331,6 +331,8 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
+    // Prevent initializing the query builder if the route is out of sync
+    // metabase#65500
     if (!isRouteInSync(location.pathname)) {
       return;
     }
