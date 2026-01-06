@@ -1160,6 +1160,11 @@
                                  :display-name  "A + B + C"
                                  :dataset-query model-query}]})
           query       (lib/query mp (lib.metadata/card mp 1))]
+      ;; eric (https://github.com/metabase/metabase/pull/67675):
+      ;; The fix for this issue changed the names of these aliases.
+      ;; Braden and I concluded that it was safe to allow the change because
+      ;; they are due to remaps, and therefore not visible to
+      ;; other dependant cards.
       (is (=? {:stages [{:joins [{:alias "B"}
                                  {:alias "C"}]}
                         {:joins [{:alias      "D__via__B__D_ID"
