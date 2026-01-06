@@ -94,10 +94,7 @@ See [Collection permissions](#collection-permissions-for-tenants) for configurin
 ## End user experience
 
 End users who are members of tenants will not know that they are members of tenants.
-
-In the experiences that expose users to to Metabase collections (e.g. when using full-app embedding, modular embedding components with save enabled, or if tenant users are logging in directly into metabase), tenant users see all the tenant and shared collections they have access to as just collections:
-
-[SCREENSHOT]
+In the experiences that expose users to to Metabase collections (e.g. when using full-app embedding, modular embedding components with save enabled, or if tenant users are logging in directly into metabase), tenant users see all the tenant and shared collections they have access to as just collections.
 
 ### Enable multi-tenant strategy
 
@@ -401,9 +398,9 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
    {"tenant_id": null}
    ```
 
-4. Finally, disable the feature once everything is verified to work.
+   **If you don't do this step, all your users will be deactivated.**
 
-If you don't do step 3, all your users will be deactivated.
+4. Finally, disable the feature once everything is verified to work
 
 ## Limitations
 
