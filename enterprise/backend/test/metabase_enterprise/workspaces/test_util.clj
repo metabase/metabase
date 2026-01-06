@@ -65,9 +65,9 @@
     (mt/with-current-user creator-id
       (ws.common/create-workspace! creator-id props))))
 
-;; TODO this needs a transform added for it to really be ready
+;; TODO (chris 2026/01/06) this needs a transform added for it to really be ready
 (defn create-ready-ws!
-  "Create a workspace and wait for it to be ready. <-- lies"
+  "Create a workspace and wait for it to be ready."
   [name]
   (create-workspace-for-test! {:name name}))
 
