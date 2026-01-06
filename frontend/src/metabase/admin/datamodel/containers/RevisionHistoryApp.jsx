@@ -29,7 +29,10 @@ class RevisionHistoryApp extends Component {
   }
 }
 
-const RevisionHistoryAppConnected = connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
+const RevisionHistoryAppConnected = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(RevisionHistoryApp);
 
 export { RevisionHistoryAppConnected as RevisionHistoryApp };
 
