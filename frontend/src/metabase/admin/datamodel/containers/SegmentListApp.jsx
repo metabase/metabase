@@ -71,4 +71,4 @@ const SegmentListApp = _.compose(
   }),
 )(SegmentListAppInner);
 
-export default SegmentListApp;
+export { SegmentListApp };

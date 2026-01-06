@@ -103,4 +103,4 @@ const PermissionsConfirm = ({ diff }) => (
   </div>
 );
 
-export default PermissionsConfirm;
+export { PermissionsConfirm };

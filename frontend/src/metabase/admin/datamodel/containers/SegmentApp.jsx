@@ -121,4 +121,6 @@ const SegmentApp = (props) => {
   return <CreateSegmentForm {...props} />;
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(SegmentApp);
+const SegmentAppConnected = connect(mapStateToProps, mapDispatchToProps)(SegmentApp);
+
+export { SegmentAppConnected as SegmentApp };

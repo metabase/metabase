@@ -6,7 +6,7 @@ import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 
-import RevisionHistory from "../components/revisions/RevisionHistory";
+import { RevisionHistory } from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";
 import { getCurrentUser, getRevisions } from "../selectors";
 
@@ -29,7 +29,9 @@ class RevisionHistoryApp extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
+const RevisionHistoryAppConnected = connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
+
+export { RevisionHistoryAppConnected as RevisionHistoryApp };
 
 class SegmentRevisionHistoryInner extends Component {
   render() {
