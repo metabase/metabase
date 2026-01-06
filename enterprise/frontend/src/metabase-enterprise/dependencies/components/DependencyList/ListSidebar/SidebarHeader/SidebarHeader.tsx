@@ -4,7 +4,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { ActionIcon, FixedSizeIcon, Group, Title, Tooltip } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { TOOLTIP_OPEN_DELAY } from "../../../../constants";
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
 
 type SidebarHeaderProps = {
@@ -27,7 +27,7 @@ export function SidebarHeader({ node, onClose }: SidebarHeaderProps) {
       </Title>
       <Group gap="xs" wrap="nowrap">
         {link != null && (
-          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY}>
+          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
             <ActionIcon
               component={ForwardRefLink}
               to={link.url}

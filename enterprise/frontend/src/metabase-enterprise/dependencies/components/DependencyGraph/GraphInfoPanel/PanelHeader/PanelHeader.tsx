@@ -11,7 +11,7 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
-import { ACTION_ICON_PADDING } from "../../../../constants";
+import { ACTION_ICON_PADDING_PX } from "../../../../constants";
 import {
   getNodeIcon,
   getNodeLabel,
@@ -43,7 +43,7 @@ export function PanelHeader({ node, onClose }: PanelHeaderProps) {
         </Title>
         {location != null && <GraphBreadcrumbs links={location.links} />}
       </Stack>
-      <Group m={rem(-ACTION_ICON_PADDING)} gap="xs">
+      <Group m={rem(-ACTION_ICON_PADDING_PX)} gap="xs">
         {link != null && (
           <GraphExternalLink label={link.label} url={link.url} />
         )}
