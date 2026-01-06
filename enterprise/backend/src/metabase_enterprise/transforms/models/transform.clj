@@ -298,6 +298,14 @@
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
+(defn transforms-with-tags
+  "Returns all transforms associated with the given tag IDs."
+  [tag-ids]
+  (when (seq tag-ids)
+    (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
+               :tag_id [:in tag-ids]
+               {:order-by [[:position :asc]]})))
+
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 
 (search.spec/define-spec "transform"

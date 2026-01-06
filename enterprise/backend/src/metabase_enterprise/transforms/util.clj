@@ -97,7 +97,7 @@
 
 (defn current-user-has-transforms-write-permission?
   "Returns true if the current user has the ability to write transforms for the given source db."
-  [{:keys [database-id]}]
+  [database-id]
   (or api/*is-superuser?*
       (perms/user-has-permission-for-database? api/*current-user-id*
                                                :perms/transforms
