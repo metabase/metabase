@@ -42,7 +42,7 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   entityType?: EntityType;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
-  setNamespace?: (namespace: string | undefined) => void;
+  onCollectionSelect?: (collection: CollectionPickerItem) => void;
   /**
    * When set to "collection", allows saving to namespace root collections
    * (like tenant root). When null/undefined, namespace roots are disabled.
@@ -84,7 +84,6 @@ function FormCollectionPicker({
   className,
   style,
   name,
-  setNamespace,
   title,
   placeholder = t`Select a collection`,
   type = "collections",
@@ -92,6 +91,7 @@ function FormCollectionPicker({
   entityType,
   collectionPickerModalProps,
   savingModel,
+  onCollectionSelect,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -155,13 +155,13 @@ function FormCollectionPicker({
   );
 
   const handleChange = useCallback(
-    ({ id, namespace }: CollectionPickerItem) => {
-      setNamespace?.(namespace ?? undefined);
-      setCollectionNamespace(namespace ?? null);
-      setValue(canonicalCollectionId(id));
+    (collection: CollectionPickerItem) => {
+      onCollectionSelect?.(collection);
+      setCollectionNamespace(collection.namespace ?? null);
+      setValue(canonicalCollectionId(collection.id));
       setIsPickerOpen(false);
     },
-    [setValue, setNamespace, setCollectionNamespace],
+    [onCollectionSelect, setValue],
   );
 
   return (

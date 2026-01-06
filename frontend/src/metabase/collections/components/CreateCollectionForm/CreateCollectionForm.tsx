@@ -32,7 +32,6 @@ const COLLECTION_SCHEMA = Yup.object({
 
   authority_level: Yup.mixed().oneOf(["official", null]).default(null),
   parent_id: Yup.number().nullable(),
-  namespace: Yup.string().nullable().default(null),
 });
 
 export interface CreateCollectionProperties {
@@ -96,11 +95,9 @@ function CreateCollectionForm({
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
       parent_id: initialCollectionId,
-
-      // Namespace is used for hiding the authority level picker.
-      namespace: initialCollection?.namespace ?? null,
+      parentCollection: initialCollection,
     }),
-    [initialCollectionId, initialCollection?.namespace],
+    [initialCollection, initialCollectionId],
   );
 
   return (
@@ -110,15 +107,13 @@ function CreateCollectionForm({
       onSubmit={onSubmit}
     >
       {({ dirty, setFieldValue, values }) => {
-        // Determine if the parent collection is a tenant collection.
-        // Use the initial collection when the parent_id hasn't changed.
-        const isParentTenantCollection =
-          values.parent_id === initialCollectionId && initialCollection
-            ? PLUGIN_TENANTS.isTenantCollection(initialCollection)
-            : values.namespace === "shared-tenant-collection";
+        const { parentCollection } = values;
 
-        const shouldShowAuthorityLevelPicker =
-          showAuthorityLevelPicker && !isParentTenantCollection;
+        // If the parent is a tenant collection,
+        // hide the authority level picker.
+        const isParentTenantCollection = parentCollection
+          ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
+          : false;
 
         return (
           <Form>
@@ -138,16 +133,18 @@ function CreateCollectionForm({
             {showCollectionPicker && (
               <FormCollectionPicker
                 name="parent_id"
-                setNamespace={(namespace) =>
-                  setFieldValue("namespace", namespace)
-                }
                 title={t`Collection it's saved in`}
                 filterPersonalCollections={filterPersonalCollections}
                 entityType="collection"
                 savingModel="collection"
+                onCollectionSelect={(collection) =>
+                  setFieldValue("parentCollection", collection)
+                }
               />
             )}
-            {shouldShowAuthorityLevelPicker && <FormAuthorityLevelField />}
+            {showAuthorityLevelPicker && !isParentTenantCollection && (
+              <FormAuthorityLevelField />
+            )}
             <FormFooter>
               <FormErrorMessage inline />
               {!!onCancel && (
