@@ -1046,6 +1046,7 @@
            config
            content-verification
            dashboards
+           documents
            events
            lib
            lib-be

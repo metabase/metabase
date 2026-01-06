@@ -318,13 +318,6 @@
                returned-fields))
       returned-fields)))
 
-(defn- merge-errors
-  "Goes through `entries` and grabs and merges all :errors fields from each one."
-  [& entries]
-  (into #{}
-        (comp cat (mapcat :errors))
-        entries))
-
 (defmethod field-references-impl [:sql :macaw.ast/select]
   [driver outside-sources outside-withs expr]
   (let [local-withs (reduce (fn [current-withs with-expr]

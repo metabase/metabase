@@ -1,5 +1,6 @@
 (ns metabase-enterprise.dependencies.dependency-types
-  (:require [clojure.set :as set]))
+  (:require
+   [clojure.set :as set]))
 
 (def model->dependency-type
   "A map relating models to their corresponding dependency type."
