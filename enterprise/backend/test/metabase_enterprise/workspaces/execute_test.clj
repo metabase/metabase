@@ -19,7 +19,6 @@
     (transforms.tu/with-transform-cleanup! [output-table "ws_execute_test"]
       (let [workspace    (ws.tu/create-ready-ws! "Execute Test Workspace")
             db-id        (:database_id workspace)
-            ws-schema    (:schema workspace)
             body         {:name   "Test Transform"
                           :source {:type  "query"
                                    :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})}
@@ -28,6 +27,7 @@
                                    :schema   nil
                                    :name     output-table}}
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
 

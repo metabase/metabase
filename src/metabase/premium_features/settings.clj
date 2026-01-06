@@ -319,6 +319,10 @@
   "Is this a development instance that should have watermarks?"
   :tenants)
 
+(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
+  "Should we allow users to use workspaces?"
+  :workspaces)
+
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
@@ -371,7 +375,8 @@
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :whitelabel                     (enable-whitelabeling?)})
+   :whitelabel                     (enable-whitelabeling?)
+   :workspaces                     (enable-workspaces?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
