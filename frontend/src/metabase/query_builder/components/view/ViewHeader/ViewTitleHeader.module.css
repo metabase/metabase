@@ -321,3 +321,13 @@
     align-items: start;
   }
 }
+
+.FilterPanel:not([data-css-specificity-hack]) {
+  @container query-builder (max-width: 70em) {
+    padding-inline: 1.325rem;
+  }
+
+  @media screen and (max-width: 40em) {
+    padding-inline: 1.325rem;
+  }
+}
