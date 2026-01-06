@@ -22,6 +22,7 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -374,15 +375,21 @@
 ;;; TODO (Cam 6/13/25) -- duplicated/overlapping responsibility with [[metabase.lib.card/merge-model-metadata]] as
 ;;; well as [[metabase.lib.field/previous-stage-metadata]] -- find a way to deduplicate these
 (mu/defn- merge-model-metadata :- [:sequential ::kebab-cased-map]
-  "Merge in snake-cased `:metadata/model-metadata`."
+  "Merge in snake-cased `:metadata/model-metadata`, but only if the query has model metadata."
   [query :- ::lib.schema/query
    cols  :- [:sequential ::kebab-cased-map]]
   (let [model-metadata (some->> (get-in query [:info :metadata/model-metadata])
                                 (lib.card/->card-metadata-columns query))]
-    (cond-> cols
-      (seq model-metadata)
-      ;; TODO (Alex P 1/6/26) -- we need to pass in `native-model?` here.
-      (lib.card/merge-model-metadata model-metadata true))))
+    (if-not (seq model-metadata)
+      cols ; if it's not a model, no changes to metadata
+      (let [card-id (get-in query [:info :card-id])
+            card (when card-id (lib.metadata/card query card-id))
+            native-model? (if card
+                            (-> (lib.card/card->underlying-query query card)
+                                (lib.util/native-stage? -1))
+                            ;; fallback if no card found: check if current query is native
+                            (lib.util/native-stage? query -1))]
+        (lib.card/merge-model-metadata cols model-metadata native-model?)))))
 
 (defn- add-source-and-desired-aliases [query cols]
   (into []

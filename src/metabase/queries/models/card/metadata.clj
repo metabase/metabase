@@ -192,8 +192,10 @@ saved later when it is ready."
   (let [model?         (= (:type card) :model)
         model-metadata (when model? (:result_metadata card))
         ;; If this is a model, include that model metadata so QP will infer correctly overridden metadata.
+        ;; Also include :card-id for the model so downstream code can look it up
         query          (cond-> query
-                         model-metadata (update :info merge {:metadata/model-metadata model-metadata}))]
+                         model-metadata (update :info merge {:metadata/model-metadata model-metadata
+                                                             :card-id (:id card)}))]
     (infer-metadata query)))
 
 ;; TODO: Refactor this to use idents rather than names, so it's more robust.
