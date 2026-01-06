@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { useListAnalystsQuery } from "metabase/api";
+import { useListUsersQuery } from "metabase/api";
 import { Button, Flex, Icon, Stack, Text } from "metabase/ui";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
@@ -14,9 +14,11 @@ import S from "./SettingsPage.module.css";
 
 export function SettingsPage() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const { data: analystsData, isLoading } = useListAnalystsQuery();
+  const { data: usersData, isLoading } = useListUsersQuery({
+    is_data_analyst: true,
+  });
 
-  const analysts = analystsData?.data ?? [];
+  const analysts = usersData?.data ?? [];
 
   return (
     <PageContainer data-testid="data-studio-settings" gap={0}>

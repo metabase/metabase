@@ -62,3 +62,14 @@
   {:style/indent :defn}
   [limit offset & body]
   `(do-with-limit-and-offset ~limit ~offset (^:once fn* [] ~@body)))
+
+;;; ------------------------------------------------ Data Analyst ------------------------------------------------
+
+(def ^:dynamic ^Boolean *is-data-analyst?*
+  "Is the current user a data analyst? Bound per-request by session middleware."
+  false)
+
+(defn data-analyst?
+  "Whether the current user is a data analyst."
+  []
+  *is-data-analyst?*)

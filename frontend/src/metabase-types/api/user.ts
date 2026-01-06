@@ -34,7 +34,7 @@ export interface BaseUser {
   is_active: boolean;
   is_qbnewb: boolean;
   is_superuser: boolean;
-  is_analyst: boolean;
+  is_data_analyst: boolean;
 
   date_joined: string;
   last_login: string;
@@ -49,7 +49,7 @@ export interface UserPermissions {
 
   // requires advanced_permissions feature
   is_group_manager?: boolean;
-  is_analyst?: boolean;
+  is_data_analyst?: boolean;
   can_access_data_model?: boolean;
   can_access_db_details?: boolean;
   can_access_monitoring?: boolean;
@@ -141,6 +141,7 @@ export type ListUsersRequest = {
   group_id?: number;
   include_deactivated?: boolean;
   tenancy?: UserTenancy;
+  is_data_analyst?: boolean;
 } & PaginationRequest;
 
 export type ListUsersResponse = {
@@ -155,7 +156,7 @@ export type UpdateUserRequest = {
   locale?: string | null;
   is_group_manager?: boolean;
   is_superuser?: boolean;
-  is_analyst?: boolean;
+  is_data_analyst?: boolean;
   login_attributes?: UserAttributeMap | null;
   user_group_memberships?: { id: number; is_group_manager: boolean }[];
 };

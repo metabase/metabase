@@ -84,6 +84,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.request.current :as request.current]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -119,11 +120,6 @@
 ;;; TODO -- move this to [[metabase.request.current]]
 (def ^:dynamic ^Boolean *is-group-manager?*
   "Is the current user a group manager of at least one group?"
-  false)
-
-;;; TODO -- move this to [[metabase.request.current]]
-(def ^:dynamic ^Boolean *is-data-analyst?*
-  "Is the current user a data analyst?"
   false)
 
 ;;; TODO -- move this to [[metabase.request.current]]
@@ -196,7 +192,7 @@
   "Check that `*current-user*` is a data analyst (or superuser) or throw a 403.
   Superusers are automatically considered data analysts."
   []
-  (check-403 (or *is-superuser?* *is-data-analyst?*)))
+  (check-403 (or *is-superuser?* (request.current/data-analyst?))))
 
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.

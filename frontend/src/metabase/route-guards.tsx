@@ -126,7 +126,7 @@ const UserIsAnalyst = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserIsAnalyst",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
-  authenticatedSelector: (state) => Boolean(state.currentUser?.is_analyst),
+  authenticatedSelector: (state) => Boolean(state.currentUser?.is_data_analyst),
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });

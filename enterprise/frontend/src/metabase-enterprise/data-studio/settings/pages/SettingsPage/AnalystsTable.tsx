@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useRemoveAnalystMutation } from "metabase/api";
+import { useUpdateUserMutation } from "metabase/api";
 import UserAvatar from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { getFullName } from "metabase/lib/user";
@@ -26,18 +26,18 @@ type AnalystsTableProps = {
 
 export function AnalystsTable({ analysts }: AnalystsTableProps) {
   const [sendToast] = useToast();
-  const [removeAnalyst] = useRemoveAnalystMutation();
+  const [updateUser] = useUpdateUserMutation();
 
   const handleRemoveAnalyst = useCallback(
     async (userId: number) => {
       try {
-        await removeAnalyst(userId).unwrap();
+        await updateUser({ id: userId, is_data_analyst: false }).unwrap();
         sendToast({ message: t`Analyst removed` });
       } catch {
         sendToast({ message: t`Failed to remove analyst` });
       }
     },
-    [removeAnalyst, sendToast],
+    [updateUser, sendToast],
   );
 
   const columns = useMemo<TreeTableColumnDef<User>[]>(

@@ -1,5 +1,5 @@
 import { STORE_TEMPORARY_PASSWORD } from "metabase/admin/people/events";
-import { refreshCurrentUser, userUpdated } from "metabase/redux/user";
+import { userUpdated } from "metabase/redux/user";
 import type {
   CreateUserRequest,
   ListUsersRequest,
@@ -30,38 +30,6 @@ export const userApi = Api.injectEndpoints({
       }),
       providesTags: (response) =>
         response ? provideUserListTags(response.data) : [],
-    }),
-    listAnalysts: builder.query<{ data: User[] }, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/user/analysts",
-      }),
-      providesTags: (response) =>
-        response ? provideUserListTags(response.data) : [],
-    }),
-    addAnalyst: builder.mutation<User, UserId>({
-      query: (id) => ({
-        method: "POST",
-        url: `/api/user/analysts/${id}`,
-      }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, (user) => {
-          dispatch(userUpdated(user));
-        }),
-    }),
-    removeAnalyst: builder.mutation<{ success: boolean }, UserId>({
-      query: (id) => ({
-        method: "DELETE",
-        url: `/api/user/analysts/${id}`,
-      }),
-      invalidatesTags: (_, error, id) =>
-        invalidateTags(error, [listTag("user"), idTag("user", id)]),
-      onQueryStarted: (_request, { dispatch, queryFulfilled }) =>
-        handleQueryFulfilled(queryFulfilled, () => {
-          dispatch(refreshCurrentUser());
-        }),
     }),
     listUserRecipients: builder.query<ListUsersResponse, void>({
       query: () => ({
@@ -162,9 +130,6 @@ export const STANDARD_USER_LIST_PAGE_SIZE = 27;
 export const {
   useListUsersQuery,
   useListUserRecipientsQuery,
-  useListAnalystsQuery,
-  useAddAnalystMutation,
-  useRemoveAnalystMutation,
   useGetUserQuery,
   useCreateUserMutation,
   useUpdatePasswordMutation,

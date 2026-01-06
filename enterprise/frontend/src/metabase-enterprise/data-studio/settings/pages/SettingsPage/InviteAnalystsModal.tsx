@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useAddAnalystMutation, useListUsersQuery } from "metabase/api";
+import { useListUsersQuery, useUpdateUserMutation } from "metabase/api";
 import UserAvatar from "metabase/common/components/UserAvatar";
 import { useToast } from "metabase/common/hooks";
 import { getFullName } from "metabase/lib/user";
@@ -38,7 +38,7 @@ export function InviteAnalystsModal({
 }: InviteAnalystsModalProps) {
   const [sendToast] = useToast();
   const { data: usersData, isLoading: isLoadingUsers } = useListUsersQuery();
-  const [addAnalyst, { isLoading: isAddingAnalyst }] = useAddAnalystMutation();
+  const [updateUser, { isLoading: isAddingAnalyst }] = useUpdateUserMutation();
 
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -84,7 +84,9 @@ export function InviteAnalystsModal({
   const handleInvite = async () => {
     try {
       await Promise.all(
-        selectedUsers.map((user) => addAnalyst(user.id).unwrap()),
+        selectedUsers.map((user) =>
+          updateUser({ id: user.id, is_data_analyst: true }).unwrap(),
+        ),
       );
       sendToast({
         message:
