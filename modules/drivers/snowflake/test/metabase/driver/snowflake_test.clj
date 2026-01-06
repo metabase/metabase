@@ -178,7 +178,7 @@
       (is (= "Metabase_Metabase"
              (:application (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
 
-(deftest ddl-statements-test
+(deftest ^:sequential ddl-statements-test
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (with-redefs [test.data.snowflake/qualified-db-name (constantly "v4_test-data")]
       (testing "Create DB DDL statements"
