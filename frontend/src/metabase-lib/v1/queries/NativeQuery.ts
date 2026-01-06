@@ -294,7 +294,7 @@ export default class NativeQuery {
   }
 
   private _validateTemplateTags() {
-    return Lib.validateTemplateTags(this._query);
+    return Lib.validateTemplateTags(this._query());
   }
 
   private _allTemplateTagsAreValid() {
