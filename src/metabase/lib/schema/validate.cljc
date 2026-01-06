@@ -18,7 +18,7 @@
    [:type [:= :validate/duplicate-column-error]]
    [:name :string]])
 
-(mr/def ::syntax-error-error
+(mr/def ::syntax-error
   [:map
    [:type [:= :validate/syntax-error]]])
 
@@ -33,8 +33,8 @@
                                                               :keyword
                                                               [:fn #(= (namespace %) "validate")]]]]
    [:multi {:dispatch #(-> % :type keyword)}
-    [:validate/missing-column-error      [:ref ::missing-column-error]]
-    [:validate/missing-table-alias-error [:ref ::missing-table-alias-error]]
-    [:validate/duplicate-column-error    [:ref ::duplicate-column-error]]
-    [:validate/syntax-error              [:ref ::syntax-error]]
-    [:validate/validation-exception-error   [:ref ::validation-exception-error]]]])
+    [:validate/missing-column-error       [:ref ::missing-column-error]]
+    [:validate/missing-table-alias-error  [:ref ::missing-table-alias-error]]
+    [:validate/duplicate-column-error     [:ref ::duplicate-column-error]]
+    [:validate/syntax-error               [:ref ::syntax-error]]
+    [:validate/validation-exception-error [:ref ::validation-exception-error]]]])
