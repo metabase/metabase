@@ -161,14 +161,16 @@ export const GitSyncControls = () => {
               setDropdownView("options");
               combobox.toggleDropdown();
             }}
-            leftSection={<Icon name="git_branch" c="text-medium" size={14} />}
+            leftSection={
+              <Icon name="git_branch" c="text-secondary" size={14} />
+            }
             rightSection={
               isLoading ? (
                 <Loader size="xs" />
               ) : (
                 <Icon
                   name="chevrondown"
-                  c="text-medium"
+                  c="text-secondary"
                   size={8}
                   className={cx(S.chevronIcon, {
                     [S.opened]: combobox.dropdownOpened,
@@ -178,7 +180,7 @@ export const GitSyncControls = () => {
             }
             data-testid="git-sync-controls"
           >
-            <Text fw="bold" c="text-medium" size="sm" lh="md" truncate>
+            <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
               {currentBranch}
             </Text>
           </Button>
