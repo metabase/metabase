@@ -1,6 +1,7 @@
 (ns metabase-enterprise.analytics.stats-test
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase-enterprise.analytics.stats :as ee-stats]
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.analytics.stats :as stats]
@@ -36,3 +37,18 @@
                 :public             {}
                 :embedded           {}}
                (#'stats/dashboard-metrics)))))))
+
+(deftest ee-transform-metrics-test
+  (mt/with-temp-empty-app-db [_conn :h2]
+    (mdb/setup-db! :create-sample-content? false)
+    (testing "with no transforms"
+      (is (=? {:transforms 0 :transform_runs_last_24h 0}
+              (ee-stats/ee-transform-metrics))))
+    (testing "with transforms"
+      (mt/with-temp [:model/Transform _ {}
+                     :model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 1))}]
+        (is (=? {:transforms 1 :transform_runs_last_24h 1}
+                (ee-stats/ee-transform-metrics))))
+      (testing "with old transform runs"
+        (mt/with-temp [:model/TransformRun _ {:start_time (t/minus (t/offset-date-time) (t/hours 25))}]
+          (is (zero? (:transform_runs_last_24h (ee-stats/ee-transform-metrics)))))))))
