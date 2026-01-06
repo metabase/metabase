@@ -111,10 +111,16 @@
  lib/truncate-alias
  lib/->legacy-MBQL
  lib/->metadata-provider
+ lib/duplicate-column-error
+ lib/match-and-normalize-tag-name
+ lib/missing-column-error
+ lib/missing-table-alias-error
  lib/normalize
  lib/order-by-clause
  lib/query-from-legacy-inner-query
  lib/raw-native-query
+ lib/syntax-error
+ lib/validation-exception-error
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
@@ -247,42 +253,29 @@
   "::lib.schema.parameter/type"
   ::lib.schema.parameter/type)
 
-(def missing-column-error
-  lib/missing-column-error)
-
 (def schema.validate.missing-column-error
+  "::lib.schema.validate/missing-column-error"
   ::lib.schema.validate/missing-column-error)
 
-(def missing-table-alias-error
-  lib/missing-table-alias-error)
-
 (def schema.validate.missing-table-alias-error
+  "::lib.schema.validate/missing-table-alias-error"
   ::lib.schema.validate/missing-table-alias-error)
 
-(def duplicate-column-error
-  lib/duplicate-column-error)
-
 (def schema.validate.duplicate-column-error
+  "::lib.schema.validate/duplicate-column-error"
   ::lib.schema.validate/duplicate-column-error)
 
-(def syntax-error
-  lib/syntax-error)
-
 (def schema.validate.syntax-error
+  "::lib.schema.validate/syntax-error"
   ::lib.schema.validate/syntax-error)
 
-(def validation-exception-error
-  lib/validation-exception-error)
-
 (def schema.validate.validation-exception-error
+  "::lib.schema.validate/validation-exception-error"
   ::lib.schema.validate/validation-exception-error)
 
 (def schema.validate.error
+  "::lib.schema.validate/error"
   ::lib.schema.validate/error)
-
-(def match-and-normalize-tag-name
-  "lib/match-and-normalize-tag-name"
-  lib/match-and-normalize-tag-name)
 
 (def mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
