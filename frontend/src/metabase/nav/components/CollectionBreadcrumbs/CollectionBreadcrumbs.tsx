@@ -1,9 +1,11 @@
 import { Fragment } from "react";
+import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
+import { ActionIcon, Icon } from "metabase/ui";
 import type {
   Collection,
   CollectionEssentials,
@@ -13,7 +15,6 @@ import type {
 
 import {
   BreadcrumbsPathSeparator,
-  ExpandButton,
   PathContainer,
 } from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
@@ -53,13 +54,12 @@ export const CollectionBreadcrumbs = ({
           onClick={onClick ? () => onClick(collection) : undefined}
         />
         {separator}
-        <ExpandButton
-          small
-          borderless
-          icon="ellipsis"
-          onlyIcon
+        <ActionIcon
           onClick={toggle}
-        />
+          aria-label={isExpanded ? t`Collapse` : t`Expand`}
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
         {separator}
       </>
     ) : (
