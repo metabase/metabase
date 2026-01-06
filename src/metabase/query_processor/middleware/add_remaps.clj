@@ -31,7 +31,6 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -147,7 +146,9 @@
                                            (field-id->remapping-dimension query id))]
                       (let [original-ref (lib/ref col)]
                         {:original-field-clause original-ref
-                         :new-field-clause      (lib/remapped-field-ref col dimension)
+                         :new-field-clause      (lib/remapped-field-ref col
+                                                                        (u/the-id (:human-readable-field-id dimension))
+                                                                        {::new-field-dimension-id (u/the-id dimension)})
                          :dimension             (assoc dimension
                                                        :field-name                (-> dimension :field-id unique-name)
                                                        :human-readable-field-name (-> dimension :human-readable-field-id unique-name))})))))

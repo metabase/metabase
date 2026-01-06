@@ -1212,17 +1212,17 @@
            (map #(lib.metadata.calculation/display-name query stage-number %))
            (str/join " + ")))
 
-(mu/defn remapped-field-ref
-  [column dimension]
+(defn remapped-field-ref
+  [source-field fk-target-id extra-options]
   [:field
    (merge
     {:lib/uuid                (str (random-uuid))
-     :source-field            (:id column)
+     :source-field            (:id source-field)
      :source-field-name       (or
-                               (lib.field.util/inherited-column-name column)
-                               (:lib/deduplicated-name column)
-                               (:lib/source-column-alias column))
-     ::new-field-dimension-id (u/the-id dimension)}
-    (when-let [join-alias (::join-alias column)]
-      {:join-alias join-alias}))
-   (u/the-id (:human-readable-field-id dimension))])
+                               (lib.field.util/inherited-column-name source-field)
+                               (:lib/deduplicated-name source-field)
+                               (:lib/source-column-alias source-field))}
+    (when-let [join-alias (::join-alias source-field)]
+      {:join-alias join-alias})
+    extra-options)
+   fk-target-id])

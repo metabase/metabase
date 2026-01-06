@@ -319,7 +319,6 @@
   update-temporal-filter]
  [lib.join
   available-join-strategies
-  remapped-field-ref
   join
   join-clause
   join-condition-lhs-columns
@@ -334,6 +333,7 @@
   joinable-columns
   joins
   raw-join-strategy
+  remapped-field-ref
   suggested-join-conditions
   with-join-alias
   with-join-fields
