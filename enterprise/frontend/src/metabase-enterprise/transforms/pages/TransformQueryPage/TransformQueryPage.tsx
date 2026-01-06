@@ -186,6 +186,7 @@ function TransformQueryPageBody({
           }
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
+          readOnly={readOnly}
         />
         <Box
           w="100%"

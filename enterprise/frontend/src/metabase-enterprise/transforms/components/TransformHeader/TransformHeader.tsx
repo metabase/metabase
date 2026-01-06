@@ -17,6 +17,7 @@ type TransformHeaderProps = {
   actions?: ReactNode;
   hasMenu?: boolean;
   isEditMode?: boolean;
+  readOnly?: boolean;
   transform: Transform;
 } & Omit<StackProps, "title">;
 
@@ -25,6 +26,7 @@ export function TransformHeader({
   actions,
   hasMenu = true,
   isEditMode = false,
+  readOnly,
   ...restProps
 }: TransformHeaderProps) {
   const { path, isLoadingPath } = useCollectionPath({
@@ -34,9 +36,13 @@ export function TransformHeader({
 
   return (
     <PaneHeader
-      title={<TransformNameInput transform={transform} />}
+      title={<TransformNameInput transform={transform} readOnly={readOnly} />}
       icon="transform"
-      menu={hasMenu && <TransformMoreMenu transform={transform} />}
+      menu={
+        hasMenu && (
+          <TransformMoreMenu transform={transform} readOnly={readOnly} />
+        )
+      }
       tabs={!isEditMode && <TransformTabs transform={transform} />}
       actions={actions}
       data-testid="transforms-header"

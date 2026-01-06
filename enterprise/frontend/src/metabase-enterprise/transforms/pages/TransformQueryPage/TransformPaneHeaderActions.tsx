@@ -15,7 +15,7 @@ type Props = {
   isDirty: boolean;
   isEditMode: boolean;
   isSaving: boolean;
-  readOnly: boolean;
+  readOnly?: boolean;
   source: DraftTransformSource;
   transformId: TransformId;
 };
