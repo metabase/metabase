@@ -255,7 +255,8 @@
             model-cols    (when model-card
                             (card-cols* metadata-providerable model-card))
             native-model? (when model-card
-                            (-> (card->underlying-query metadata-providerable model-card) lib.util/native-stage? -1))]
+                            (-> (card->underlying-query metadata-providerable model-card)
+                                (lib.util/native-stage? -1)))]
         (not-empty
          (into []
                ;; do not truncate the desired column aliases coming back in card metadata, if the query returns a
