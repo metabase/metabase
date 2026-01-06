@@ -11,6 +11,12 @@
   [_user-or-id]
   [])
 
+(defenterprise current-user-has-transforms-read-permission?
+  "OSS version of current-user-has-transforms-read-permission? Returns false since transforms are an EE feature."
+  metabase-enterprise.transforms.util
+  []
+  false)
+
 (defn user-permissions-set
   "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
@@ -26,6 +32,12 @@
                 ;; Current User always gets readwrite perms for their Tenant Collection and for its descendants! (3 DB Calls)
                 (map permissions.path/collection-readwrite-path
                      (user->tenant-collection-and-descendant-ids user-or-id))
+
+                 ;; Current User always gets read perms for Transforms if they have access to any (1 DB Call)
+                (when (current-user-has-transforms-read-permission?)
+                  (concat ["/collection/namespace/transforms/root/"]
+                          (map permissions.path/collection-readwrite-path ((requiring-resolve 'metabase.collections.models.collection/collections-in-namespace)
+                                                                           :transforms))))
 
                 ;; include the other Perms entries for any Group this User is in (1 DB Call)
                 (map :object (app-db/query {:select [:p.object]

@@ -806,7 +806,11 @@
                                           (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
                                             {:select visible-union-columns
                                              :from [[:collection :c]]
-                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})])}
+                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})
+                                          (when (perms/current-user-has-transforms-read-permission?)
+                                            {:select visible-union-columns
+                                             :from [[:collection :c]]
+                                             :where [:= :namespace [:inline "transforms"]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
@@ -2281,3 +2285,8 @@
     (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
                                                                         library-data-collection-type
                                                                         library-metrics-collection-type]]))))
+
+(defn collections-in-namespace
+  "Return all collections in the given namespace."
+  [namespace]
+  (t2/select :model/Collection :namespace (name namespace)))

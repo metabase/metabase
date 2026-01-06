@@ -104,9 +104,10 @@
                                                :yes
                                                database-id)))
 
-(defn current-user-has-transforms-read-permission?
+(defenterprise current-user-has-transforms-read-permission?
   "If users have any 'transforms' permissions, they can read all transforms.
   This allows users to see transform dependencies etc."
+  :feature :transforms
   []
   (or api/*is-superuser?*
       (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)))
