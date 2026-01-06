@@ -494,13 +494,15 @@
       true)))
 
 (mu/defn- validate-template-tag :- [:maybe ::error]
-  "Validate a single template tag."
-  [_query template-tag]
-  (case (:type template-tag)
-    :dimension (if (= (:dimension template-tag) nil)
-                 [{:error/message (str "The variable \"" (:name template-tag) "\" needs to be mapped to a field.")}]
-                 [])
-    []))
+  "Validate a single template tag, returning a list of errors."
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension]}]
+  (filter identity
+          [(when
+            (empty? display-name)
+             {:error/message (str "Missing widget label: " tag-name)})
+           (when
+            (and (= tag-type :dimension) (nil? dimension))
+             {:error/message (str "The variable \"" tag-name "\" needs to be mapped to a field.")})]))
 
 (mu/defn validate-template-tags :- [:sequential ::error]
   "Given a query, returns a list of errors for each template tag in the query that is not valid."
