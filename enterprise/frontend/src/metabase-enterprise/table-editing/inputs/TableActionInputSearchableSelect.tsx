@@ -174,7 +174,7 @@ export const TableActionInputSearchableSelect = ({
       </Combobox.Target>
 
       <Combobox.Dropdown mah="none" miw={250}>
-        <Box p="0.5rem" pb="0" bg="white" pos="sticky" top={0}>
+        <Box p="0.5rem" pb="0" bg="background" pos="sticky" top={0}>
           <TextInput
             value={search}
             onChange={(event) => setSearch(event.currentTarget.value)}
