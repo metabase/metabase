@@ -12,4 +12,4 @@ const DisclosureTriangle = ({ open, className }) => (
   />
 );
 
-export default DisclosureTriangle;
+export { DisclosureTriangle };

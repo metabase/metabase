@@ -16,7 +16,7 @@ import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { sumArray } from "metabase/lib/arrays";

@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/no_results.svg";
-import CheckBox from "metabase/common/components/CheckBox";
-import EmptyState from "metabase/common/components/EmptyState";
+import { CheckBox } from "metabase/common/components/CheckBox";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";

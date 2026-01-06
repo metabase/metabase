@@ -35,5 +35,4 @@ const LoadingSpinner = Object.assign(BaseLoadingSpinner, {
   Root: SpinnerRoot,
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LoadingSpinner;
+export { LoadingSpinner };

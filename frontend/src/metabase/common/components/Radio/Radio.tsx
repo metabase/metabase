@@ -223,5 +223,4 @@ const Radio = Object.assign(BaseRadio, {
   ],
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Radio;
+export { Radio };

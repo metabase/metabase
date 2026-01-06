@@ -3,7 +3,7 @@ import type * as React from "react";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
 import { isObscured } from "metabase/lib/dom";
@@ -203,10 +203,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // remove selected is disabled
         (!removeSelected ||
           // or it's not in the selectedValues
-          !isSelected ||
-          // or it's the current "freeform" value, which updates as we type
-          isLastFreeform) &&
-        // and it's matching
+          !isSelected || // or it's the current "freeform" value, which updates as we type
+          isLastFreeform) && // and it's matching
         isMatching
       );
     });
@@ -701,5 +699,4 @@ const TokenField = Object.assign(_TokenField, {
   NewItemInputContainer: TokenInputItem,
 });
 
-// eslint-disable-next-line import/no-default-export
-export default TokenField;
+export { TokenField };

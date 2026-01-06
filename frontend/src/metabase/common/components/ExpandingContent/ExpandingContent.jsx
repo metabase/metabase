@@ -76,4 +76,4 @@ class ExpandingContent extends Component {
   }
 }
 
-export default ExpandingContent;
+export { ExpandingContent };

@@ -2,9 +2,9 @@ import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import type { ToggleProps } from "metabase/common/components/Toggle";
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 export interface FormToggleProps extends Omit<ToggleProps, "value" | "onBlur"> {
@@ -64,5 +64,4 @@ const FormToggle = forwardRef(function FormToggle(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormToggle;
+export { FormToggle };

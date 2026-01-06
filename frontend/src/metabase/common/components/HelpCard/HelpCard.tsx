@@ -43,7 +43,6 @@ const HelpCard = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(HelpCard, {
+export const HelpCard = Object.assign(HelpCard, {
   Section: CardMessage,
 });

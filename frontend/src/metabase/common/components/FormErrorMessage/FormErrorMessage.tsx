@@ -29,5 +29,4 @@ const FormErrorMessage = forwardRef(function FormErrorMessage(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormErrorMessage;
+export { FormErrorMessage };

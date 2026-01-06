@@ -16,4 +16,4 @@ Text.propTypes = {
   fontWeight: PropTypes.number,
 };
 
-export default Text;
+export { Text };

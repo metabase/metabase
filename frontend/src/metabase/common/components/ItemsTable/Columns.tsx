@@ -3,11 +3,11 @@ import { c, t } from "ttag";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
-import CheckBox from "metabase/common/components/CheckBox";
-import DateTime from "metabase/common/components/DateTime";
+import { CheckBox } from "metabase/common/components/CheckBox";
+import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EntityItem from "metabase/common/components/EntityItem";
-import Markdown from "metabase/common/components/Markdown";
+import { EntityItem } from "metabase/common/components/EntityItem";
+import { Markdown } from "metabase/common/components/Markdown";
 import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useTranslateContent } from "metabase/i18n/hooks";

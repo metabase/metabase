@@ -12,5 +12,4 @@ const useBeforeUnload = (
   return useBeforeUnloadHook(condition, BEFORE_UNLOAD_UNSAVED_MESSAGE);
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default useBeforeUnload;
+export { useBeforeUnload };

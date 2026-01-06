@@ -274,5 +274,4 @@ function ExplicitSize<T>({
   };
 }
 
-// eslint-disable-next-line import/no-default-export
-export default ExplicitSize;
+export { ExplicitSize };

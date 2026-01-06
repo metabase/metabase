@@ -20,5 +20,4 @@ const IconButtonWrapper = styled(
   cursor: pointer;
 `;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default IconButtonWrapper;
+export { IconButtonWrapper };

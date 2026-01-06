@@ -3,7 +3,7 @@ import { DropTarget } from "react-dnd";
 
 import { isItemPinned } from "metabase/collections/utils";
 
-import DropArea from "./DropArea";
+import { DropArea } from "./DropArea";
 
 import { PinnableDragTypes } from ".";
 
@@ -54,4 +54,4 @@ PinnedItemSortDropTarget.propTypes = {
   pinIndex: PropTypes.number,
 };
 
-export default PinnedItemSortDropTarget;
+export { PinnedItemSortDropTarget };

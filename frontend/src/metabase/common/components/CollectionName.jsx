@@ -14,4 +14,4 @@ const CollectionName = ({ id }) => {
   }
 };
 
-export default CollectionName;
+export { CollectionName };

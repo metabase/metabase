@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom";
 
-import EventSandbox from "metabase/common/components/EventSandbox";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
 
 import type { EventSandboxProps } from "../EventSandbox/EventSandbox";
 
@@ -20,5 +20,4 @@ const SandboxedPortal = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default SandboxedPortal;
+export { SandboxedPortal };

@@ -4,7 +4,7 @@ import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EmptyState from "metabase/common/components/EmptyState";
+import { EmptyState } from "metabase/common/components/EmptyState";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { displayNameForColumn, formatValue } from "metabase/lib/formatting";

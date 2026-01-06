@@ -8,8 +8,8 @@ import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import LogoIcon from "metabase/common/components/LogoIcon";
-import Modal from "metabase/common/components/Modal";
+import { LogoIcon } from "metabase/common/components/LogoIcon";
+import { Modal } from "metabase/common/components/Modal";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import {

@@ -8,4 +8,4 @@ const IconWrapper = styled.div`
   border-radius: ${({ borderRadius = 6 }) => borderRadius};
 `;
 
-export default IconWrapper;
+export { IconWrapper };

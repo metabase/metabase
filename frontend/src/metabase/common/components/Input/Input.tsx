@@ -146,5 +146,4 @@ const Input = Object.assign(BaseInput, {
   Subtitle: InputSubtitle,
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Input;
+export { Input };

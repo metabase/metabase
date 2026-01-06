@@ -21,10 +21,10 @@ import {
   isItemPinned,
   isPreviewShown,
 } from "metabase/collections/utils";
-import CheckBox from "metabase/common/components/CheckBox";
+import { CheckBox } from "metabase/common/components/CheckBox";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import EntityMenu from "metabase/common/components/EntityMenu";
-import Swapper from "metabase/common/components/Swapper";
+import { EntityMenu } from "metabase/common/components/EntityMenu";
+import { Swapper } from "metabase/common/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import type { IconName, IconProps } from "metabase/ui";
@@ -352,5 +352,4 @@ EntityItem.IconCheckBox = EntityIconCheckBox;
 EntityItem.Name = EntityItemName;
 EntityItem.Menu = EntityItemMenu;
 
-// eslint-disable-next-line import/no-default-export
-export default EntityItem;
+export { EntityItem };

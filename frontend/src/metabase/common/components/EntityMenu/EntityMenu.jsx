@@ -2,8 +2,8 @@
 import cx from "classnames";
 import { Component, createRef } from "react";
 
-import EntityMenuItem from "metabase/common/components/EntityMenuItem";
-import EntityMenuTrigger from "metabase/common/components/EntityMenuTrigger";
+import { EntityMenuItem } from "metabase/common/components/EntityMenuItem";
+import { EntityMenuTrigger } from "metabase/common/components/EntityMenuTrigger";
 import CS from "metabase/css/core/index.css";
 import { Divider, Popover } from "metabase/ui";
 
@@ -181,4 +181,4 @@ class EntityMenu extends Component {
   }
 }
 
-export default EntityMenu;
+export { EntityMenu };

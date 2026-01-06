@@ -3,14 +3,14 @@ import _ from "underscore";
 
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
+import { PinnedItemSortDropTarget } from "metabase/collections/components/PinnedItemSortDropTarget";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isPreviewShown, isRootCollection } from "metabase/collections/utils";
-import ItemDragSource from "metabase/common/components/dnd/ItemDragSource";
+import { ItemDragSource } from "metabase/common/components/dnd/ItemDragSource";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import { Box, Group, Icon, Stack } from "metabase/ui";

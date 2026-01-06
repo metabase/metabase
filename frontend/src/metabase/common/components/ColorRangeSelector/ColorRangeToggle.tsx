@@ -42,8 +42,7 @@ const ColorRangeToggle = ({
   </Flex>
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorRangeToggle;
+export { ColorRangeToggle };
 
 export function getColorRangeLabel(value: string[]) {
   return value.join("-");

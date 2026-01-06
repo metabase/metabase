@@ -5,7 +5,7 @@ import {
   isRootTrashCollection,
 } from "metabase/collections/utils";
 
-import DropArea from "./DropArea";
+import { DropArea } from "./DropArea";
 
 import { MoveableDragTypes } from ".";
 
@@ -43,4 +43,4 @@ const CollectionDropTarget = DropTarget(
   }),
 )(DropArea);
 
-export default CollectionDropTarget;
+export { CollectionDropTarget };

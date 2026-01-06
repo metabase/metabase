@@ -1,7 +1,7 @@
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
-import ColorInput from "metabase/common/components/ColorInput";
+import { ColorInput } from "metabase/common/components/ColorInput";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Group } from "metabase/ui";
 
@@ -37,5 +37,4 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorPickerTrigger;
+export { ColorPickerTrigger };

@@ -58,7 +58,7 @@ const ItemsDragLayer = DragLayer((monitor, props) => ({
   isDragging: monitor.isDragging(),
 }))(ItemsDragLayerInner);
 
-export default ItemsDragLayer;
+export { ItemsDragLayer };
 
 class DraggedItems extends Component {
   shouldComponentUpdate(nextProps) {

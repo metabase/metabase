@@ -6,5 +6,4 @@ const ExplicitSize = () => (ComposedComponent: any) => {
   return WrappedComponent;
 };
 
-// eslint-disable-next-line import/no-default-export
-export default ExplicitSize;
+export { ExplicitSize };

@@ -5,7 +5,7 @@ import _ from "underscore";
 import { ColorPill } from "metabase/common/components/ColorPill";
 import { Divider, Group, Stack, type StackProps } from "metabase/ui";
 
-import ColorRangeToggle from "./ColorRangeToggle";
+import { ColorRangeToggle } from "./ColorRangeToggle";
 
 export interface ColorRangeContentProps extends Omit<StackProps, "onChange"> {
   initialValue: string[];
@@ -162,5 +162,4 @@ const getDefaultIsInverted = (
   });
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ColorSelectorContent;
+export { ColorSelectorContent };

@@ -2,13 +2,13 @@ import { useField } from "formik";
 import type { ReactNode, Ref } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import type {
   SelectChangeEvent,
   SelectOption,
   SelectProps,
 } from "metabase/common/components/Select";
-import Select from "metabase/common/components/Select";
+import { Select } from "metabase/common/components/Select";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 export interface FormSelectProps<
@@ -75,5 +75,4 @@ const FormSelect = forwardRef(function FormSelect<
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormSelect;
+export { FormSelect };

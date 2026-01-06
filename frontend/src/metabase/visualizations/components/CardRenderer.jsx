@@ -2,7 +2,7 @@
 import PropTypes from "prop-types";
 import { Component, forwardRef } from "react";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 class CardRenderer extends Component {

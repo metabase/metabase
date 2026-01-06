@@ -6,7 +6,7 @@ import {
   AccordionList,
   type Section,
 } from "metabase/common/components/AccordionList";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import {
   HoverParent,
   TableInfoIcon,

@@ -23,4 +23,4 @@ LabelIcon.propTypes = {
   size: PropTypes.number,
 };
 
-export default LabelIcon;
+export { LabelIcon };

@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component, createRef } from "react";
 import { t } from "ttag";
 
-import IconBorder from "metabase/common/components/IconBorder";
+import { IconBorder } from "metabase/common/components/IconBorder";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";

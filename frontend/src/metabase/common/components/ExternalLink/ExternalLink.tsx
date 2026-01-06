@@ -41,5 +41,4 @@ export const ButtonLink = forwardRef(function ButtonLink(
   return <ExternalLink {...props} className={S.ButtonLink} ref={ref} />;
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExternalLink;
+export { ExternalLink };

@@ -3,7 +3,7 @@ import type * as React from "react";
 import _ from "underscore";
 
 import type { ITippyPopoverProps } from "metabase/common/components/Popover/TippyPopover";
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 
 import { TriggerButton } from "./ControlledPopoverWithTrigger.styled";
 
@@ -109,5 +109,4 @@ function ControlledPopoverWithTrigger({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ControlledPopoverWithTrigger;
+export { ControlledPopoverWithTrigger };

@@ -2,7 +2,8 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import DateTime, {
+import {
+  DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";

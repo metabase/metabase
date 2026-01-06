@@ -3,8 +3,8 @@ import type { ChangeEvent, ReactNode, Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
 import type { FileInputProps } from "metabase/common/components/FileInput";
-import FileInput from "metabase/common/components/FileInput";
-import FormField from "metabase/common/components/FormField";
+import { FileInput } from "metabase/common/components/FileInput";
+import { FormField } from "metabase/common/components/FormField";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
 export type FormFileInputEncoding = "base64";
@@ -85,5 +85,4 @@ const getFieldValue = (
   });
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default FormFileInput;
+export { FormFileInput };

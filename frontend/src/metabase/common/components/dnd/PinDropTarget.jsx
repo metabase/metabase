@@ -3,7 +3,7 @@ import { DropTarget } from "react-dnd";
 
 import { isItemPinned } from "metabase/collections/utils";
 
-import DropArea from "./DropArea";
+import { DropArea } from "./DropArea";
 
 import { PinnableDragTypes } from ".";
 
@@ -40,4 +40,4 @@ PinDropTarget.propTypes = {
   variant: PropTypes.oneOf(["pin", "unpin"]).isRequired,
 };
 
-export default PinDropTarget;
+export { PinDropTarget };

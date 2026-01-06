@@ -41,5 +41,4 @@ const Card = styled.div<CardProps>`
     `};
 `;
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Card;
+export { Card };

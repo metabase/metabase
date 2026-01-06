@@ -41,4 +41,4 @@ Code.propTypes = {
   block: PropTypes.bool,
 };
 
-export default Code;
+export { Code };

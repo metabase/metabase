@@ -4,8 +4,8 @@ import { merge } from "icepick";
 import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
-import EventSandbox from "metabase/common/components/EventSandbox";
-import useSequencedContentCloseHandler from "metabase/common/hooks/use-sequenced-content-close-handler";
+import { EventSandbox } from "metabase/common/components/EventSandbox";
+import { useSequencedContentCloseHandler } from "metabase/common/hooks/use-sequenced-content-close-handler";
 import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { isCypressActive } from "metabase/env";
@@ -151,5 +151,4 @@ function TippyPopover({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TippyPopover;
+export { TippyPopover };

@@ -2,7 +2,7 @@ import type { RefObject } from "react";
 import { useCallback, useImperativeHandle, useState } from "react";
 
 import type { ControlledPopoverWithTriggerProps } from "./ControlledPopoverWithTrigger";
-import ControlledPopoverWithTrigger from "./ControlledPopoverWithTrigger";
+import { ControlledPopoverWithTrigger } from "./ControlledPopoverWithTrigger";
 
 export type TippyPopoverWithTriggerRef = {
   open: () => void;
@@ -47,5 +47,4 @@ function UncontrolledPopoverWithTrigger({
   );
 }
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default UncontrolledPopoverWithTrigger;
+export { UncontrolledPopoverWithTrigger };

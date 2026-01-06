@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 import { useState } from "react";
 
-import AutocompleteInput from "./AutocompleteInput";
+import { AutocompleteInput } from "./AutocompleteInput";
 
 export default {
   title: "Components/Ask Before Using/AutocompleteInput",

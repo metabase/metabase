@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import ButtonGroup from "metabase/common/components/ButtonGroup";
+import { ButtonGroup } from "metabase/common/components/ButtonGroup";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

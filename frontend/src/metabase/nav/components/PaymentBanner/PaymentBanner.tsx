@@ -2,7 +2,7 @@ import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Text } from "metabase/ui";

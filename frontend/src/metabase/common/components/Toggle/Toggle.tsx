@@ -40,5 +40,4 @@ const Toggle = forwardRef(function Toggle(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Toggle;
+export { Toggle };

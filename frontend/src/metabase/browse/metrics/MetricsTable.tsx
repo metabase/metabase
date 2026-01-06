@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
-import EntityItem from "metabase/common/components/EntityItem";
+import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,

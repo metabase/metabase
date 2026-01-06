@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
+import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { HoveredObject } from "metabase/visualizations/types";
 
