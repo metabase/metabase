@@ -63,7 +63,7 @@ import {
   createTenantsRouteGuard,
 } from "./utils";
 
-const getRoutes = (store, CanAccessSettings, IsAdmin) => {
+export const getRoutes = (store, CanAccessSettings, IsAdmin) => {
   const hasSimpleEmbedding = getTokenFeature(
     store.getState(),
     "embedding_simple",
@@ -319,5 +319,3 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => {
     </Route>
   );
 };
-
-export { getRoutes };
