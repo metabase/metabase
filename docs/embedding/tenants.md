@@ -1,6 +1,6 @@
 ---
 title: Tenants
-summary: Tenants allow you to serve multiple customers from a single instance while keeping their data isolated. Configure tenant users, groups, and shared collections, then use row-level security or impersonation to ensure each tenant only sees their own data.
+summary: Tenants let you serve multiple customers from a single Metabase while keeping their data isolated. Configure tenant users, groups, and shared collections, then use row-level security or impersonation to ensure each tenant only sees their own data.
 ---
 
 # Tenants
@@ -94,6 +94,7 @@ See [Collection permissions](#collection-permissions-for-tenants) for configurin
 ## End user experience
 
 End users who are members of tenants will not know that they are members of tenants.
+
 In the experiences that expose users to to Metabase collections (e.g. when using full-app embedding, modular embedding components with save enabled, or if tenant users are logging in directly into metabase), tenant users see all the tenant and shared collections they have access to as just collections:
 
 [SCREENSHOT]
@@ -190,7 +191,7 @@ You can set up [Remote sync](../installation-and-operation/remote-sync.md) for s
 
 _Admin setting > People > Tenants_
 
-You can create tenant-level [user attributes](#tenant-attributes) which will be inherited by all the users of the tenant. This is useful for configuring attribute-based data permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md).
+You can create tenant-level [user attributes](#tenant-attributes) which all users of the tenant inherit. This is useful for configuring attribute-based data permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md).
 
 ![Edit tenant](./images/edit-tenant.png)
 
@@ -203,7 +204,7 @@ To add a tenant attribute:
 
 Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
-Currently, you can't assign custom tenant attributes with SSO - the only way to assign attributes is through to tenants through Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if the reason you need user attributes is for permission configuration, then you can use the [special slug attribute](#special-tenant-slug-attribute) which is created automatically.
+Currently, you can't assign custom tenant attributes with SSO. The only way to assign attributes is through the Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if you're using user attribute to set permissions, then you can use the [special slug attribute](#special-tenant-slug-attribute) which Metabase creates automatically.
 
 ### Special tenant slug attribute
 
@@ -213,7 +214,7 @@ Each tenant user will get system-defined attribute `@tenant.slug` that correspon
 
 If you create Metabase tenants through Metabase UI, you can choose the slug when creating the tenant. If you're [using JWT to provision tenants](#provisioning-and-assigning-tenants-with-jwt), tenant slug is the value of the `@tenant` claim for JWT (or another tenant assignment attribute you selected). Slug cannot be changed later.
 
-The special `@tenant.slug` attribute can be used just like a normal attribute to configure attribute-based permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md). Keep in mind that for this to work, your chosen tenant slug should correspond to how the tenant is actually identified in your setup.
+The special `@tenant.slug` attribute can be used just like a normal attribute to configure attribute-based permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md). Your chosen tenant slug should correspond to how the tenant is actually identified in your setup.
 
 For example, if you want to use row-level security, and tenants are identified in your tables by their IDs (instead of names), then your tenant slug should be an ID as well.
 
@@ -285,13 +286,13 @@ Data permissions control what data people can see on charts and dashboards, and 
 
 For an overview of how data permissions work in Metabase, see [Data permissions](../permissions/data.md). Here are the highlights (but please do read the full [Data permissions](../permissions/data.md) documentation):
 
-- **"View data"** controls what exact data each user group can see in the on on charts.
+- **"View data"** controls which data each user group can see in the on on charts.
 
-  For example, if your tenant data is comingled in one database, then you can use [**Row and column security**](../permissions/row-and-column-security.md) or [**Impersonation**](../permissions/impersonation.md) "View data" permissions to provide tenant users with access to only certain rows and columns.
+  For example, if your tenant data is commingled in one database, then you can use [**Row and column security**](../permissions/row-and-column-security.md) or [**Impersonation**](../permissions/impersonation.md) "View data" permissions to provide tenant users with access to only certain rows and columns.
 
   If every tenant has their data in a separate database, then instead of using permissions for data access control, you can use [**database routing**](../permissions/database-routing.md) to route queries to appropriate databases directly.
 
-- **Create queries** controls whether tenant users can create queries on the data they see. If you want to give your tenant users the ability to drill through (e.g. through `drills` parameter in [modular embedding](../embedding/modular-embedding.md)), you need to give them "Create queries" permissions, because a drill through is a new query.
+- **Create queries** controls whether tenant users can create queries on the data they see. If you want to give your tenant users the ability to drill through (e.g., through `drills` parameter in [modular embedding](../embedding/modular-embedding.md)), you need to give them "Create queries" permissions, because a drill through is a new query.
 
 - **Download results** controls, unsurprisingly, whether people can download results of queries. You need to set download permissions if you want to give your users the option to download their data as a spreadsheet (for example, through `with-downloads` parameter in [modular embedding](../embedding/modular-embedding.md))
 
@@ -309,7 +310,7 @@ Collection permissions control which entities (dashboards, questions, models etc
 
 To configure what _data_ can people see in those entities, and what they can do with that data, see [Data permissions](#data-permissions-for-tenants) instead.
 
-In Metabase, there are 3 levels of collection permissions: **No** access, **View**-only access, and **Curate** access (allows for creating and saving new entities like dashboards). For more general information about collection permissions in Metabase, see [Collection permissions](#collection-permissions-for-tenants).
+In Metabase, there are different levels of collection permissions: **No** access, **View**-only access, and **Curate** access (allows for creating and saving new entities like dashboards). For more general information about collection permissions in Metabase, see [Collection permissions](#collection-permissions-for-tenants).
 
 Permissions are granted to groups. Which permissions are available to each group depend on the type of the group (external/tenant or internal) and the type of the collection.
 
@@ -400,7 +401,7 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
    {"tenant_id": null}
    ```
 
-4. Finally, disable the feature once everything is verified to work
+4. Finally, disable the feature once everything is verified to work.
 
 If you don't do step 3, all your users will be deactivated.
 
