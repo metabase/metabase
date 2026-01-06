@@ -70,7 +70,7 @@ const mapDispatchToProps = {
   onChangeLimit: setLimit,
 };
 
-function QuestionRowCount({
+function QuestionRowCountInner({
   question,
   result,
   isResultDirty,
@@ -207,7 +207,7 @@ const ConnectedQuestionRowCount = _.compose(
     id: getDatabaseId,
     loadingAndErrorWrapper: false,
   }),
-)(QuestionRowCount);
+)(QuestionRowCountInner);
 
 export type QuestionRowCountOpts = {
   result?: Dataset;
