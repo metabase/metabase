@@ -89,11 +89,9 @@ describe("metabot > ui", () => {
       fetchMock.delete(`path:/api/session`, 200);
 
       await assertVisible();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       store.dispatch(logout(undefined) as any);
       await assertNotVisible();
     } finally {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (domModule.reload as any).mockRestore();
     }
   });
