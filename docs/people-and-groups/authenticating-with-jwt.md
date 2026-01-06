@@ -109,7 +109,7 @@ To require people to log in with SSO, disable password authentication from **Adm
 
 ## Assigning tenant users to tenants
 
-If you're running a multi-tenant application, you can use JWT to automatically assign users to tenants based on a claim in the JWT token. See [Assigning tenant users to tenants](./assigning-users-to-tenants.md) for details.
+If you're running a multi-tenant application, you can use JWT to automatically assign users to tenants based on a claim in the JWT token. See [Tenants](../embedding/tenants.md) for details.
 
 ## Note about Azure
 
