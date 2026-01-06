@@ -43,6 +43,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
+   [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -376,7 +377,6 @@
   fully-parameterized-query?
   has-template-tag-variables?
   has-write-permission
-  match-and-normalize-tag-name
   native-extras
   native-query
   raw-native-query
@@ -418,6 +418,8 @@
   parameter-target-is-dimension?
   parameter-target-template-tag-name
   update-parameter-target-dimension-options]
+ [lib.parameters.parse
+  match-and-normalize-tag-name]
  [lib.parse
   parse]
  [lib.query
