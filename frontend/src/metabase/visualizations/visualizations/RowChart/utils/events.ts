@@ -211,9 +211,7 @@ export const getStackedTooltipRows = <TDatum>(
       }
 
       return {
-        name:
-          settings?.series_settings?.[series.seriesKey]?.title ??
-          series.seriesName,
+        name: series.seriesName,
         color: seriesColors[series.seriesKey],
         value,
         formatter: (value: unknown) =>

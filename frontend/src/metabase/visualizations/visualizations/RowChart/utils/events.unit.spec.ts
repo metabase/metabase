@@ -521,35 +521,4 @@ describe("getStackedTooltipRows", () => {
       }),
     ]);
   });
-
-  it("should use custom display names from series_settings (metabase#66574)", () => {
-    const settingsWithCustomTitles: VisualizationSettings = {
-      series_settings: {
-        metric3: {
-          title: "Custom Metric 3 Title",
-        },
-      },
-    };
-
-    const result = getStackedTooltipRows(
-      bar,
-      settingsWithCustomTitles,
-      series,
-      seriesColors,
-    );
-
-    expect(result).toHaveLength(2);
-    expect(result).toEqual([
-      expect.objectContaining<Partial<TooltipRowModel>>({
-        name: "Metric 1", // Uses default name
-        value: 10,
-        color: "red",
-      }),
-      expect.objectContaining<Partial<TooltipRowModel>>({
-        name: "Custom Metric 3 Title", // Uses custom name
-        value: 30,
-        color: "green",
-      }),
-    ]);
-  });
 });
