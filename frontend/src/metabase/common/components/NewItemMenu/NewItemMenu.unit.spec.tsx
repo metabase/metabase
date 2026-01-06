@@ -23,12 +23,16 @@ console.error = jest.fn();
 type SetupOpts = {
   databases?: Database[];
   hasModels?: boolean;
+  canWrite?: boolean;
 };
 
 const SAMPLE_DATABASE = createSampleDatabase();
 const COLLECTION = createMockCollection();
 
-async function setup({ databases = [SAMPLE_DATABASE] }: SetupOpts = {}) {
+async function setup({
+  databases = [SAMPLE_DATABASE],
+  canWrite = true,
+}: SetupOpts = {}) {
   setupDatabasesEndpoints(databases);
   setupCollectionByIdEndpoint({
     collections: [COLLECTION],
@@ -46,11 +50,12 @@ async function setup({ databases = [SAMPLE_DATABASE] }: SetupOpts = {}) {
             can_create_queries: true,
             can_create_native_queries: true,
           }),
+          can_write_any_collection: canWrite,
         }),
       }),
     },
   );
-  await userEvent.click(screen.getByText("New"));
+  await userEvent.click(await screen.findByText("New"));
 }
 
 describe("NewItemMenu", () => {
@@ -98,6 +103,13 @@ describe("NewItemMenu", () => {
       await userEvent.click(await screen.findByText("Dashboard"));
       const modal = await screen.findByRole("dialog");
       expect(modal).toHaveTextContent("New dashboard");
+    });
+
+    it("should not be available if the user has no write permissions to collection", async () => {
+      await setup({ canWrite: false });
+      expect(await screen.findByText("Question")).toBeInTheDocument();
+      expect(await screen.findByText("SQL query")).toBeInTheDocument();
+      expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
     });
   });
 });

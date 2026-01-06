@@ -354,6 +354,11 @@
      (default-timestamped
       {:name (str "test-tag-" (u/generate-nano-id))}))
 
+   :model/Tenant
+   (fn [_]
+     {:slug (u/lower-case-en (u.random/random-name))
+      :name (u.random/random-name)})
+
    :model/User
    (fn [_] {:first_name (u.random/random-name)
             :last_name (u.random/random-name)
@@ -1113,7 +1118,9 @@
     (finally
       (when (and (:metabase.collections.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup :id [:not= (u/the-id (perms/admin-group))])]
+        (doseq [group-id (t2/select-pks-set :model/PermissionsGroup
+                                            :id [:not= (u/the-id (perms/admin-group))]
+                                            :is_tenant_group false)]
           (when-not (t2/exists? :model/Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 

@@ -89,3 +89,12 @@
 (deftest ^:parallel default-to-type-text-test
   (is (= {:id "x", :type :text}
          (lib/normalize ::lib.schema.parameter/parameter {:id "x"}))))
+
+(deftest ^:parallel normalize-invalid-widget-type-test
+  (testing "Decode an invalid namespaced widget type like `:category/=` to the matching unnamespaced type (`:category`)"
+    (is (= :category
+           (lib/normalize ::lib.schema.parameter/widget-type "category/="))))
+  (testing "Decode an invalid widget type with no close match to `:none`"
+    (is (= :none
+           (lib/normalize ::lib.schema.parameter/widget-type "broken/=")
+           (lib/normalize ::lib.schema.parameter/widget-type "broken")))))

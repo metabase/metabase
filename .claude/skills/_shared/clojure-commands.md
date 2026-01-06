@@ -29,6 +29,11 @@ to run 3 tests, or
 
 ## REPL Usage
 
+> **Note:** If you have `clojure-mcp` tools available (check for tools like `clojure_eval`),
+> **always prefer those over `./bin/mage -repl`**. The MCP tools provide better integration,
+> richer feedback, and avoid shell escaping issues. Only use `./bin/mage -repl` as a fallback
+> when clojure-mcp is not available.
+
 - **Evaluating Clojure Code:** `./bin/mage -repl '<code>'`
   - See "Sending Code to the REPL" section for more details
 

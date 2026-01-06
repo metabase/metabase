@@ -28,7 +28,7 @@ export function DescriptionSection({ table }: DescriptionSectionProps) {
   };
 
   return (
-    <Box mx="-5px" data-testid="table-description-section">
+    <Box data-testid="table-description-section">
       <EditableText
         initialValue={table.description ?? ""}
         placeholder={t`No description`}

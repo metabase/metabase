@@ -340,6 +340,7 @@ Whether or not the use of custom GeoJSON is enabled.
 
 - Type: boolean
 - Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage`.
 - [Configuration file name](./config-file.md): `custom-homepage`
 
 Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.
@@ -348,6 +349,7 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 - Type: integer
 - Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage-dashboard`.
 - [Configuration file name](./config-file.md): `custom-homepage-dashboard`
 
 ID of dashboard to use as a homepage.
@@ -626,7 +628,7 @@ Allow admins to embed Metabase via the SDK?
 - Default: `false`
 - [Configuration file name](./config-file.md): `enable-embedding-simple`
 
-Allow admins to embed Metabase via Embedded Analytics JS?
+Allow admins to embed Metabase via modular embedding?
 
 ### `MB_ENABLE_EMBEDDING_STATIC`
 
@@ -810,6 +812,17 @@ Change this to a higher value if you notice that regular usage consumes all or c
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
 
+### `MB_JDBC_NETWORKOUT_TIMEOUT_MS`
+
+- Type: integer
+- Default: `1800000`
+
+By default, this is 30 minutes.
+
+Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-
+
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -849,6 +862,16 @@ Key to retrieve the JWT user's groups.
 - [Configuration file name](./config-file.md): `jwt-attribute-lastname`
 
 Key to retrieve the JWT user's last name.
+
+### `MB_JWT_ATTRIBUTE_TENANT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `@tenant`
+- [Configuration file name](./config-file.md): `jwt-attribute-tenant`
+
+Key to retrieve the JWT user's tenant.
 
 ### `MB_JWT_ENABLED`
 
@@ -1371,13 +1394,13 @@ Number of hours a password reset is considered valid.
 
 The initial retry delay in milliseconds.
 
-### `MB_RETRY_MAX_RETRIES`
+### `MB_RETRY_JITTER_FACTOR`
 
-- Type: integer
-- Default: `6`
-- [Configuration file name](./config-file.md): `retry-max-retries`
+- Type: double
+- Default: `0.1`
+- [Configuration file name](./config-file.md): `retry-jitter-factor`
 
-The maximum number of retries for a failed event.
+The jitter factor of the retry delay.
 
 ### `MB_RETRY_MAX_INTERVAL_MILLIS`
 
@@ -1387,6 +1410,14 @@ The maximum number of retries for a failed event.
 
 The maximum delay between attempts.
 
+### `MB_RETRY_MAX_RETRIES`
+
+- Type: integer
+- Default: `6`
+- [Configuration file name](./config-file.md): `retry-max-retries`
+
+The maximum number of retries for an event.
+
 ### `MB_RETRY_MULTIPLIER`
 
 - Type: double
@@ -1394,14 +1425,6 @@ The maximum delay between attempts.
 - [Configuration file name](./config-file.md): `retry-multiplier`
 
 The delay multiplier between attempts.
-
-### `MB_RETRY_RANDOMIZATION_FACTOR`
-
-- Type: double
-- Default: `0.1`
-- [Configuration file name](./config-file.md): `retry-jitter-factor`
-
-The randomization factor of the retry delay.
 
 ### `MB_SAML_APPLICATION_NAME`
 
@@ -1452,6 +1475,16 @@ SAML attribute for group syncing.
 - [Configuration file name](./config-file.md): `saml-attribute-lastname`
 
 SAML attribute for the user's last name.
+
+### `MB_SAML_ATTRIBUTE_TENANT`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: string
+- Default: `null`
+- [Configuration file name](./config-file.md): `saml-attribute-tenant`
+
+SAML attribute for the user's tenant slug.
 
 ### `MB_SAML_ENABLED`
 
@@ -1638,8 +1671,8 @@ Should new email notifications be sent to admins, for all new SSO users?
 
 Value for the session cookie's `SameSite` directive.
 
-See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+See [Embedding Metabase in a different domain](../embedding/full-app-embedding.md#embedding-metabase-in-a-different-domain).
+        Read more about [Full app embedding](../embedding/full-app-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 
 ### `MB_SESSION_COOKIES`

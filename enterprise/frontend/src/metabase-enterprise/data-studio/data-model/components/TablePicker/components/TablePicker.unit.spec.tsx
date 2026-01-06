@@ -31,8 +31,7 @@ function nextId() {
 }
 
 beforeEach(() => {
-  // so the virtual list renders correctly in the tests
-  mockGetBoundingClientRect();
+  mockGetBoundingClientRect({ height: 40, width: 800 });
 });
 
 afterEach(() => {
@@ -299,52 +298,85 @@ describe("TablePicker", () => {
 
       await userEvent.click(await screen.findByRole("textbox"));
 
-      // focus the first item - need to tab twice to skip the filter button
+      // tab to the tree container (skips filter button)
       await userEvent.keyboard("{Tab}");
       await userEvent.keyboard("{Tab}");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
+      expect(screen.getByRole("treegrid")).toHaveFocus();
 
-      // arrow down moves focus down
+      // first arrow down activates the first row
       await userEvent.keyboard("{ArrowDown}");
-      expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toHaveFocus();
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+        "data-keyboard-active",
+        "true",
+      );
 
-      // arrow up moves focus up
+      // arrow down moves active indicator down
+      await userEvent.keyboard("{ArrowDown}");
+      expect(item(DATABASE_WITH_MULTIPLE_SCHEMAS)).toHaveAttribute(
+        "data-keyboard-active",
+        "true",
+      );
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).not.toHaveAttribute(
+        "data-keyboard-active",
+      );
+
+      // arrow up moves active indicator up
       await userEvent.keyboard("{ArrowUp}");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+        "data-keyboard-active",
+        "true",
+      );
 
       // right arrow opens the node (auto-expands since single schema)
       await userEvent.keyboard("{ArrowRight}");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
 
-      // arrow down moves focus down to first table (QUU)
+      // arrow down moves to first table (QUU)
       await userEvent.keyboard("{ArrowDown}");
-      expect(item(QUU)).toHaveFocus();
+      expect(item(QUU)).toHaveAttribute("data-keyboard-active", "true");
 
       // arrow down again to move to next table (QUX)
       await userEvent.keyboard("{ArrowDown}");
-      expect(item(QUX)).toHaveFocus();
+      expect(item(QUX)).toHaveAttribute("data-keyboard-active", "true");
 
       // arrow up returns to first table
       await userEvent.keyboard("{ArrowUp}");
-      expect(item(QUU)).toHaveFocus();
+      expect(item(QUU)).toHaveAttribute("data-keyboard-active", "true");
 
       // arrow up again moves to parent database
       await userEvent.keyboard("{ArrowUp}");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveFocus();
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+        "data-keyboard-active",
+        "true",
+      );
 
       // left arrow closes the node
       await userEvent.keyboard("{ArrowLeft}");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
+      await waitFor(() => {
+        expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+          "aria-expanded",
+          "false",
+        );
+      });
 
       // space toggles the node
       await userEvent.keyboard(" ");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe("true");
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
 
-      // space toggles the node
+      // space toggles the node again
       await userEvent.keyboard(" ");
-      expect(item(DATABASE_WITH_SINGLE_SCHEMA)?.dataset.open).toBe(undefined);
+      expect(item(DATABASE_WITH_SINGLE_SCHEMA)).toHaveAttribute(
+        "aria-expanded",
+        "false",
+      );
 
-      // enter selects the node
+      // enter selects the node (triggers onChange)
       await userEvent.keyboard("{Enter}");
       expect(onChange).toHaveBeenCalledWith({
         databaseId: DATABASE_WITH_SINGLE_SCHEMA.id,
@@ -494,8 +526,12 @@ function item(input: string | { display_name?: string; name: string } | null) {
 
   const name =
     typeof input === "string" ? input : (input.display_name ?? input.name);
-  return (screen.queryByText(name)?.parentNode?.parentNode?.parentNode ??
-    null) as HTMLAnchorElement | null;
+  const textElement = screen.queryByText(name);
+  if (!textElement) {
+    return null;
+  }
+  return (textElement.closest('[data-testid="tree-item"]') ??
+    null) as HTMLElement | null;
 }
 
 async function clickItem(

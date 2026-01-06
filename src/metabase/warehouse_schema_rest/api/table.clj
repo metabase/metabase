@@ -14,6 +14,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
@@ -344,12 +345,14 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)]
+    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
+          :let [origin-field (-> (t2/hydrate origin-field [:table :db])
+                                 (update :table schema.table/present-table))]
+          :when (-> origin-field :table :active)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (-> (t2/hydrate origin-field [:table :db])
-                           (update :table schema.table/present-table))
+       :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
@@ -497,8 +500,15 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id id))
-        database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
+  (let [table    (t2/select-one :model/Table :id id)
+        database (warehouses/get-database (:db_id table))]
+    (api/check-403
+     (perms/user-has-permission-for-table?
+      api/*current-user-id*
+      :perms/manage-table-metadata
+      :yes
+      (:id database)
+      id))
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try

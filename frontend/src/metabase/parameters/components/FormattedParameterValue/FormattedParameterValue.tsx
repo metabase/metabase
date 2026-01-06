@@ -86,8 +86,10 @@ function FormattedParameterValue({
     return (
       <Ellipsified
         showTooltip={!isPopoverOpen}
-        multiline
-        tooltipMaxWidth={hasLongValue ? 450 : undefined}
+        tooltipProps={{
+          multiline: true,
+          w: hasLongValue ? 450 : undefined,
+        }}
       >
         {renderContent()}
       </Ellipsified>

@@ -143,3 +143,11 @@
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
+
+(deftest ^:parallel index-version-hash-test
+  (testing "index-version-hash returns a consistent value"
+    (let [hash1 (search.spec/index-version-hash)
+          hash2 (search.spec/index-version-hash)]
+      (is (string? hash1))
+      (is (= 64 (count hash1)) "SHA-256 hex string should be 64 characters")
+      (is (= hash1 hash2) "Hash should be deterministic"))))

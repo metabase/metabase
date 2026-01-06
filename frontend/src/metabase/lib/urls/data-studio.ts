@@ -110,12 +110,65 @@ export function dataStudioTableSegments(tableId: TableId) {
   return `${dataStudioTable(tableId)}/segments`;
 }
 
-export function dataStudioSegment(segmentId: SegmentId) {
-  return `${dataStudioLibrary()}/segments/${segmentId}`;
+export function dataStudioPublishedTableSegmentNew(tableId: TableId) {
+  return `${dataStudioTableSegments(tableId)}/new`;
 }
 
-export function newDataStudioSegment(tableId: TableId) {
-  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
+export function dataStudioPublishedTableSegment(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioTableSegments(tableId)}/${segmentId}`;
+}
+
+export function dataStudioPublishedTableSegmentRevisions(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/revisions`;
+}
+
+export function dataStudioPublishedTableSegmentDependencies(
+  tableId: TableId,
+  segmentId: SegmentId,
+) {
+  return `${dataStudioPublishedTableSegment(tableId, segmentId)}/dependencies`;
+}
+
+type DataModelSegmentParams = {
+  databaseId: DatabaseId;
+  schemaName: SchemaName;
+  tableId: TableId;
+  segmentId: SegmentId;
+};
+
+export function dataStudioDataModelSegment({
+  databaseId,
+  schemaName,
+  tableId,
+  segmentId,
+}: DataModelSegmentParams) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/${segmentId}`;
+}
+
+export function dataStudioDataModelSegmentRevisions(
+  params: DataModelSegmentParams,
+) {
+  return `${dataStudioDataModelSegment(params)}/revisions`;
+}
+
+export function dataStudioDataModelSegmentDependencies(
+  params: DataModelSegmentParams,
+) {
+  return `${dataStudioDataModelSegment(params)}/dependencies`;
+}
+
+export function newDataStudioDataModelSegment({
+  databaseId,
+  schemaName,
+  tableId,
+}: Omit<DataModelSegmentParams, "segmentId">) {
+  return `${dataStudioData({ databaseId, schemaName, tableId, tab: "segments" })}/new`;
 }
 
 export type NewDataStudioQueryModelParams = {
@@ -160,10 +213,6 @@ export function dataStudioMetricDependencies(cardId: CardId) {
 
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
-}
-
-export function dataStudioCollection(collectionId: CollectionId) {
-  return `${dataStudioLibrary()}/collections/${collectionId}`;
 }
 
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {

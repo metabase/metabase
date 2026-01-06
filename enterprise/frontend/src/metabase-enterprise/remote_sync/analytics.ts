@@ -3,7 +3,7 @@ import { trackSimpleEvent } from "metabase/lib/analytics";
 export const trackBranchSwitched = ({
   triggeredFrom,
 }: {
-  triggeredFrom: "sidebar" | "admin-settings";
+  triggeredFrom: "admin-settings" | "app-bar";
 }) => {
   trackSimpleEvent({
     event: "remote_sync_branch_switched",
@@ -26,7 +26,7 @@ export const trackPullChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "sidebar" | "admin-settings";
+  triggeredFrom: "admin-settings" | "app-bar";
   force: boolean;
 }) => {
   trackSimpleEvent({
@@ -40,7 +40,7 @@ export const trackPushChanges = ({
   triggeredFrom,
   force,
 }: {
-  triggeredFrom: "sidebar" | "conflict-modal";
+  triggeredFrom: "app-bar" | "conflict-modal";
   force: boolean;
 }) => {
   trackSimpleEvent({
@@ -50,10 +50,14 @@ export const trackPushChanges = ({
   });
 };
 
-export const trackRemoteSyncSettingsChanged = () => {
+export const trackRemoteSyncSettingsChanged = ({
+  triggeredFrom,
+}: {
+  triggeredFrom: "admin-settings" | "data-studio";
+}) => {
   trackSimpleEvent({
     event: "remote_sync_settings_changed",
-    triggered_from: "admin-settings",
+    triggered_from: triggeredFrom,
   });
 };
 

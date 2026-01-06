@@ -40,12 +40,12 @@ describe("scenarios > data studio > library > tables", () => {
     it("should be able to unpublish a table", () => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
-
-      H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
+      H.DataStudio.Library.visit();
+      H.DataStudio.Library.tableItem("Orders").click();
       H.DataStudio.Tables.moreMenu().click();
       H.popover().findByText("Unpublish").click();
       H.modal().findByText("Unpublish this table").click();
-      H.DataStudio.Library.emptyPage().should("be.visible");
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
     });
   });
 
@@ -86,10 +86,12 @@ describe("scenarios > data studio > library > tables", () => {
   });
 
   describe("fields", () => {
-    it("should be able to rename fields", () => {
+    beforeEach(() => {
       H.createLibrary();
       H.publishTables({ table_ids: [ORDERS_ID] });
+    });
 
+    it("should be able to rename fields", () => {
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.tableHeaderColumn("Total").should("be.visible");
 
@@ -103,6 +105,23 @@ describe("scenarios > data studio > library > tables", () => {
 
       H.DataStudio.Tables.overviewTab().click();
       H.tableHeaderColumn("Total changed").should("be.visible");
+    });
+
+    it("should allow you to close field details and preview panels", () => {
+      H.DataStudio.Tables.visitFieldsPage(ORDERS_ID);
+      H.DataModel.TableSection.clickField("Total");
+      H.DataModel.FieldSection.getPreviewButton().click({
+        scrollBehavior: "center",
+      });
+
+      H.DataModel.FieldSection.getCloseButton().click();
+
+      H.DataModel.PreviewSection.get().should("not.exist");
+      H.DataModel.FieldSection.get().should("not.exist");
+
+      H.DataModel.TableSection.clickField("Discount");
+      H.DataModel.PreviewSection.get().should("not.exist");
+      H.DataModel.FieldSection.get().should("exist");
     });
   });
 

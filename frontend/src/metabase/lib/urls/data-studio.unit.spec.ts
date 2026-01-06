@@ -1,12 +1,14 @@
 import {
   dataStudio,
   dataStudioData,
+  dataStudioDataModelSegment,
+  dataStudioDataModelSegmentDependencies,
+  dataStudioDataModelSegmentRevisions,
   dataStudioLibrary,
-  dataStudioSegment,
   dataStudioTable,
   dataStudioTableFields,
   dataStudioTableSegments,
-  newDataStudioSegment,
+  newDataStudioDataModelSegment,
 } from "./data-studio";
 
 describe("urls > data-studio", () => {
@@ -126,16 +128,72 @@ describe("urls > data-studio", () => {
     });
   });
 
-  describe("dataStudioSegment", () => {
-    it("should return segment edit URL", () => {
-      expect(dataStudioSegment(123)).toBe("/data-studio/library/segments/123");
+  describe("dataStudioDataModelSegment", () => {
+    const params = {
+      databaseId: 1,
+      schemaName: "public",
+      tableId: 42,
+      segmentId: 123,
+    };
+
+    it("should return data model segment URL", () => {
+      expect(dataStudioDataModelSegment(params)).toBe(
+        "/data-studio/data/database/1/schema/1:public/table/42/segments/123",
+      );
+    });
+
+    it("should encode schema name with special characters", () => {
+      expect(
+        dataStudioDataModelSegment({
+          ...params,
+          schemaName: "My Schema/Test",
+        }),
+      ).toBe(
+        "/data-studio/data/database/1/schema/1:My%20Schema%2FTest/table/42/segments/123",
+      );
     });
   });
 
-  describe("newDataStudioSegment", () => {
-    it("should return new segment URL with tableId", () => {
-      expect(newDataStudioSegment(42)).toBe(
-        "/data-studio/library/segments/new?tableId=42",
+  describe("dataStudioDataModelSegmentRevisions", () => {
+    it("should return data model segment revisions URL", () => {
+      expect(
+        dataStudioDataModelSegmentRevisions({
+          databaseId: 1,
+          schemaName: "public",
+          tableId: 42,
+          segmentId: 123,
+        }),
+      ).toBe(
+        "/data-studio/data/database/1/schema/1:public/table/42/segments/123/revisions",
+      );
+    });
+  });
+
+  describe("dataStudioDataModelSegmentDependencies", () => {
+    it("should return data model segment dependencies URL", () => {
+      expect(
+        dataStudioDataModelSegmentDependencies({
+          databaseId: 1,
+          schemaName: "public",
+          tableId: 42,
+          segmentId: 123,
+        }),
+      ).toBe(
+        "/data-studio/data/database/1/schema/1:public/table/42/segments/123/dependencies",
+      );
+    });
+  });
+
+  describe("newDataStudioDataModelSegment", () => {
+    it("should return new data model segment URL", () => {
+      expect(
+        newDataStudioDataModelSegment({
+          databaseId: 1,
+          schemaName: "public",
+          tableId: 42,
+        }),
+      ).toBe(
+        "/data-studio/data/database/1/schema/1:public/table/42/segments/new",
       );
     });
   });

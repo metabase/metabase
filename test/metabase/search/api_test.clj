@@ -1007,6 +1007,36 @@
                    (filter #(and (= (:model %) "collection")
                                  (#{"Normal Collection" "Coin Collection"} (:name %))))))))))
 
+(deftest shared-tenant-collection-search-test
+  (testing "Search returns collections with namespace: shared-tenant-collection"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {shared-name :name} {:name "Shared Tenant Test Collection"
+                                                              :namespace collection/shared-tenant-ns}
+                       :model/Collection {normal-name :name} {:name "Normal Test Collection"}]
+          (let [results (->> (search-request-data :crowberto :q "Test Collection")
+                             (filter #(= (:model %) "collection"))
+                             (map :name)
+                             set)]
+            (testing "shared-tenant-collection namespace collections are returned in search"
+              (is (contains? results shared-name))
+              (is (contains? results normal-name)))))))))
+
+(deftest shared-tenant-collection-dataset-search-test
+  (testing "Search returns datasets (models) from collections in the shared-tenant-collection namespace"
+    (mt/with-premium-features #{:tenants}
+      (mt/with-temporary-setting-values [use-tenants true]
+        (mt/with-temp [:model/Collection {shared-coll-id :id} {:name "Shared Tenant Collection"
+                                                               :namespace collection/shared-tenant-ns}
+                       :model/Card {model-name :name} {:name "Shared Tenant Model"
+                                                       :type :model
+                                                       :collection_id shared-coll-id}]
+          (let [results (->> (search-request-data :crowberto :q "Shared Tenant Model")
+                             (filter #(= (:model %) "dataset"))
+                             first)]
+            (testing "datasets in shared-tenant-collection namespace are returned"
+              (is (=? {:name model-name} results)))))))))
+
 (deftest no-dashboard-subscription-pulses-test
   (testing "Pulses used for Dashboard subscriptions should not be returned by search results (#14190)"
     (letfn [(search-for-pulses [{pulse-id :id}]
@@ -1845,7 +1875,7 @@
             (is (= 1 (count (filter #{:metabase-search/response-ok} @calls))))
             (is (= 1 (count (filter #{:metabase-search/response-error} @calls))))))))))
 
-(deftest ^:synchronized multiple-limits
+(deftest ^:synchronized multiple-limits-test
   (when (search/supports-index?)
     ;; This test is failing with "no index" for some reason, forcing the reindex
     (mt/user-real-request :crowberto :post 200 "search/force-reindex"))

@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
 import { isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";

@@ -11,7 +11,7 @@ describe("TitleAndDescription component", () => {
 
     it("displays translated question title and description", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["content_translation"],
         tokenFeatures: { content_translation: true },
         staticallyEmbedded: true,
         dictionary: [

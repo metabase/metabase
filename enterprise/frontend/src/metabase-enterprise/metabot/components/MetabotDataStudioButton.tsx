@@ -10,7 +10,7 @@ import { trackMetabotChatOpened } from "../analytics";
 import { useMetabotAgent } from "../hooks";
 
 export const MetabotDataStudioButton = () => {
-  const metabot = useMetabotAgent();
+  const metabot = useMetabotAgent("omnibot");
   const location = useSelector(getLocation);
   const disabled = !location.pathname?.startsWith(Urls.transformList());
 

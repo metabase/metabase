@@ -10,7 +10,7 @@ import {
 
 const setup = async ({ isAdmin = true, initialRoute = "" } = {}) => {
   return baseSetup({
-    hasEnterprisePlugins: false,
+    enterprisePlugins: undefined,
     hasTokenFeatures: false,
     isAdmin,
     initialRoute,

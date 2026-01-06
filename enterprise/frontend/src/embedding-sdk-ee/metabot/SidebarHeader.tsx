@@ -8,10 +8,6 @@ import S from "./MetabotQuestion.module.css";
 export function SidebarHeader() {
   const metabot = useMetabotAgent();
 
-  const startNewConversation = () => {
-    metabot.resetConversation();
-  };
-
   return (
     <Flex
       px="md"
@@ -26,7 +22,7 @@ export function SidebarHeader() {
 
       <Tooltip label={t`Start new chat`}>
         <UnstyledButton
-          onClick={startNewConversation}
+          onClick={() => metabot.resetConversation()}
           data-testid="metabot-new-conversation"
         >
           <Icon

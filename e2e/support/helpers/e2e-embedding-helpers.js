@@ -294,7 +294,7 @@ export function publishChanges(apiPath, callback) {
 /**
  * Unpublish a static dashboard or question
  * @param {"card" | "dashboard"} apiPath
- * @param callback
+ * @param [callback]
  */
 export function unpublishChanges(apiPath, callback) {
   cy.intercept("PUT", `/api/${apiPath}/*`, (req) => {

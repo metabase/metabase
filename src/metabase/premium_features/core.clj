@@ -19,7 +19,8 @@
 
  [metabase.premium-features.token-check
    ;; TODO: move airgap code to a dedicated namespace?
-  airgap-check-user-count
+  assert-valid-airgap-user-count!
+  assert-airgap-allows-user-creation!
   assert-has-feature
   assert-has-any-features
   ee-feature-error
@@ -38,6 +39,7 @@
   can-disable-password-login?
   define-premium-feature
   development-mode?
+  enable-tenants?
   enable-advanced-permissions?
   enable-ai-entity-analysis?
   enable-ai-sql-fixer?

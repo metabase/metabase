@@ -182,6 +182,7 @@ export const SdkIframeEmbedSetupProvider = ({
     isError,
     isLoading,
     isFetching,
+    isRecentsLoading,
     settings,
     defaultSettings,
     replaceSettings,

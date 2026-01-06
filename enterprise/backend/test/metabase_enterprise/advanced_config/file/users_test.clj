@@ -28,7 +28,7 @@
         (is (partial= {:first_name       "Cam"
                        :last_name        "Era"
                        :email            "cam+config-file-test@metabase.com"
-                       :login_attributes {"a" 1}}
+                       :login_attributes {"a" "1"}}
                       (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                      :email "cam+config-file-test@metabase.com")))
         (is (= 1
@@ -51,7 +51,7 @@
             (is (partial= {:first_name       "Cam"
                            :last_name        "Saul"
                            :email            "cam+config-file-test@metabase.com"
-                           :login_attributes {"a" 1 "b" 2}}
+                           :login_attributes {"a" "1" "b" "2"}}
                           (t2/select-one [:model/User :first_name :last_name :email :login_attributes]
                                          :email "cam+config-file-test@metabase.com")))
             (testing "Password should be hashed, but it should be a NEW HASH"

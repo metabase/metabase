@@ -9,7 +9,7 @@ import FormErrorMessage from "metabase/common/components/FormErrorMessage";
 import FormInput from "metabase/common/components/FormInput";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
-import SnippetCollections from "metabase/entities/snippet-collections";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Flex } from "metabase/ui";

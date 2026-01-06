@@ -7,6 +7,7 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Group,
   Icon,
   Input,
@@ -23,6 +24,7 @@ import { getFiltersCount } from "../utils";
 
 import { FilterPopover } from "./FilterPopover";
 import { SearchNew } from "./SearchNew";
+import S from "./TablePicker.module.css";
 import { Tree } from "./Tree";
 
 interface TablePickerProps {
@@ -70,7 +72,7 @@ export function TablePicker({
       className={className}
       style={{ overflow: "hidden" }}
     >
-      <Group gap="sm" p="lg" pb={0}>
+      <Group gap="sm">
         <Input
           flex="1"
           leftSection={<Icon name="search" />}
@@ -92,9 +94,14 @@ export function TablePicker({
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        <Popover width={rem(340)} position="bottom-start" opened={isOpen}>
+        <Popover
+          width={rem(340)}
+          position="bottom-start"
+          opened={isOpen}
+          onChange={toggle}
+        >
           <Popover.Target>
-            <Tooltip label={t`Filter`}>
+            <Tooltip label={t`Filter`} disabled={isOpen}>
               <Button
                 aria-label={t`Filter`}
                 leftSection={
@@ -130,16 +137,23 @@ export function TablePicker({
         </Popover>
       </Group>
 
-      <Box mih={0} flex="1 1 auto">
-        {deferredQuery === "" && filtersCount === 0 ? (
-          <Tree
-            path={path}
-            onChange={onChange}
-            setOnUpdateCallback={setOnUpdateCallback}
-          />
-        ) : (
-          <SearchNew query={deferredQuery} params={params} filters={filters} />
-        )}
+      <Box mih={0} flex="0 1 auto" display="flex" className={S.treeContainer}>
+        <Card withBorder p={0} flex={1} mih={0} display="flex">
+          {deferredQuery === "" && filtersCount === 0 ? (
+            <Tree
+              path={path}
+              onChange={onChange}
+              setOnUpdateCallback={setOnUpdateCallback}
+            />
+          ) : (
+            <SearchNew
+              query={deferredQuery}
+              params={params}
+              filters={filters}
+              onChange={onChange}
+            />
+          )}
+        </Card>
       </Box>
     </Stack>
   );

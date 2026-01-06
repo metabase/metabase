@@ -18,6 +18,7 @@
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -80,11 +81,13 @@
 
 (defn- backfill-entity!
   [model-kw id target-version]
-  (t2/with-transaction [_]
-    (case model-kw
-      :model/Card (backfill-card! id target-version)
-      (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                  {:dependency_analysis_version target-version}))))
+  (log/debug "Backfilling " (name model-kw) id)
+  (u/prog1 (t2/with-transaction [_]
+             (case model-kw
+               :model/Card (backfill-card! id target-version)
+               (t2/update! model-kw id :dependency_analysis_version [:< target-version]
+                           {:dependency_analysis_version target-version})))
+    (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
   [model-kw batch-size]

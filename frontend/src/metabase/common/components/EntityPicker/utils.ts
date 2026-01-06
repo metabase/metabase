@@ -21,9 +21,15 @@ import type {
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
-  isSelected?: boolean,
+  {
+    isSelected,
+    isTenantUser,
+  }: {
+    isSelected?: boolean;
+    isTenantUser?: boolean;
+  } = {},
 ) => {
-  const icon = getIcon(item as ObjectWithModel);
+  const icon = getIcon(item as ObjectWithModel, { isTenantUser });
 
   if (["person", "group"].includes(icon.name)) {
     // should inherit color

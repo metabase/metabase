@@ -4,6 +4,7 @@
    [metabase-enterprise.transforms.api.transform-job]
    [metabase-enterprise.transforms.api.transform-tag]
    [metabase-enterprise.transforms.canceling :as transforms.canceling]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
@@ -46,6 +47,18 @@
 (mr/def ::run-trigger
   [:enum "none" "global-schedule"])
 
+(defn- python-source-table-ref->table-id
+  "Change source of python transform from name->table-ref to name->table-id.
+
+  We now supported table-ref as source but since FE is still expecting table-id we need to temporarily do this.
+  Should update FE to fully use table-ref"
+  [transform]
+  (if (transforms.util/python-transform? transform)
+    (update-in transform [:source :source-tables]
+               (fn [source-tables]
+                 (update-vals source-tables #(if (int? %) % (:table_id %)))))
+    transform))
+
 (comment
   ;; Examples
   [{:id 1
@@ -87,7 +100,8 @@
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
                 (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps)))
+                (map #(update % :last_run transforms.util/localize-run-timestamps))
+                (map python-source-table-ref->table-id))
           (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
@@ -122,7 +136,8 @@
             [:source ::transforms.schema/transform-source]
             [:target ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (check-database-feature body)
   (check-feature-enabled! body)
@@ -134,7 +149,7 @@
                     (let [tag-ids (:tag_ids body)
                           transform (t2/insert-returning-instance!
                                      :model/Transform
-                                     (assoc (select-keys body [:name :description :source :target :run_trigger])
+                                     (assoc (select-keys body [:name :description :source :target :run_trigger :collection_id])
                                             :creator_id api/*current-user-id*))]
                       ;; Add tag associations if provided
                       (when (seq tag-ids)
@@ -142,7 +157,7 @@
                       ;; Return with hydrated tag_ids
                       (t2/hydrate transform :transform_tag_ids :creator)))]
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    transform))
+    (python-source-table-ref->table-id transform)))
 
 (defn get-transform
   "Get a specific transform."
@@ -153,7 +168,8 @@
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
-        (assoc :table target-table))))
+        (assoc :table target-table)
+        python-source-table-ref->table-id)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -179,7 +195,7 @@
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids (get global-ordering id)
         dependencies (map id->transform dep-ids)]
-    (t2/hydrate dependencies :creator)))
+    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -223,7 +239,8 @@
             [:source {:optional true} ::transforms.schema/transform-source]
             [:target {:optional true} ::transforms.schema/transform-target]
             [:run_trigger {:optional true} ::run-trigger]
-            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
+            [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
+            [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-superuser)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
@@ -247,7 +264,7 @@
                       (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
-    transform))
+    (python-source-table-ref->table-id transform)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -306,8 +323,8 @@
         _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*
-     (transforms.i/execute! transform {:start-promise start-promise
-                                       :run-method :manual}))
+     (transforms.execute/execute! transform {:start-promise start-promise
+                                             :run-method :manual}))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))
     (let [result @start-promise

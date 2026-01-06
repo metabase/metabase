@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 
 const CollectionName = ({ id }) => {
   if (id === "root" || id === null) {

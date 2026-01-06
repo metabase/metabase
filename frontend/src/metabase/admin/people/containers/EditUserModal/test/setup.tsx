@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUserEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -25,10 +25,10 @@ export const defaultUser = createMockUser({
 
 export const setup = ({
   userData,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
 }: {
   userData: Partial<User>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }) => {
   setupUserEndpoints(createMockUser(userData) as unknown as UserListResult);
 
@@ -44,8 +44,8 @@ export const setup = ({
     ),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   fetchMock.get("path:/api/permissions/group", []);

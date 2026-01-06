@@ -12,10 +12,13 @@
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
+   [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
+   [metabase.tenants.core :as tenants]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
@@ -108,7 +111,7 @@
 (def ^:private AttributeStatus
   "Describes a possible value of an attribute and where it is sourced from."
   [:map
-   [:source [:enum :user :jwt :system]]
+   [:source [:enum :user :jwt :system :tenant]]
    [:frozen boolean?]
    [:value :string]])
 
@@ -122,7 +125,7 @@
 
 (def ^:private attribute-merge-order
   "What order to merge attributes in when used with combine"
-  [:jwt :user])
+  [:jwt :tenant :user])
 
 (mu/defn- combine :- CombinedAttributes
   "Combines user, tenant, and system attributes. User can override "
@@ -145,7 +148,13 @@
 
 (defn- add-structured-attributes
   [{:keys [login_attributes jwt_attributes] :as user}]
-  (assoc user :structured_attributes (combine {:jwt jwt_attributes :user login_attributes} nil)))
+  (let [tenant (tenants/user->tenant user)]
+    (assoc user :structured_attributes
+           (combine {:jwt jwt_attributes
+                     :user login_attributes
+                     :tenant (:attributes tenant)}
+                    (when-let [slug (:slug tenant)]
+                      {"@tenant.slug" slug})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -193,6 +202,7 @@
      to use `status` for better support and flexibility.
 
    If both params are passed, `status` takes precedence.
+  - if a `tenant_id` is passed, only users with that tenant_id will be returned.
 
   For users with segmented permissions, return only themselves.
 
@@ -202,21 +212,32 @@
 
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated]}
+   {:keys [status query group_id include_deactivated tenant_id tenancy] :as params}
    :- [:map
        [:status              {:optional true} [:maybe :string]]
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
+       [:tenancy             {:optional true} [:maybe
+                                               [:enum :all :internal :external]]]
+       [:tenant_id           {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
+  (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
+                 (tru "You cannot specify both `tenancy` and `tenant_id`"))
   (let [include_deactivated include_deactivated
         group-id-clause     (when group_id [group_id])
-        clauses             (user/filter-clauses status query group-id-clause include_deactivated
-                                                 {:limit  (request/limit)
-                                                  :offset (request/offset)})]
+        clauses             (let [clauses (user/filter-clauses status query group-id-clause include_deactivated
+                                                               {:limit  (request/limit)
+                                                                :offset (request/offset)})]
+                              (cond
+                                (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
+                                (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
+                                (= tenancy :all)              clauses
+                                (= tenancy :external)         (sql.helpers/where clauses [:not= :tenant_id nil])
+                                :else                         (sql.helpers/where clauses [:= :tenant_id nil])))]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
                     (sql.helpers/order-by clauses
@@ -225,13 +246,13 @@
                                           [:id :asc]))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
-             (t2/hydrate :personal_collection_id)
+             (t2/hydrate :personal_collection_id :tenant_collection_id)
 
              (or api/*is-superuser?*
                  api/*is-group-manager?*)
              (t2/hydrate :group_ids)
              ;; if there is a group_id clause, make sure the list is deduped in case the same user is in multiple gropus
-             group-id-clause
+             group_id
              distinct)
      :total  (-> (t2/query
                   (merge {:select [[[:count [:distinct :core_user.id]] :count]]
@@ -268,14 +289,17 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (-> (user/filter-clauses nil nil nil nil)
-                                    (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
+  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses nil nil nil nil)
+                                  (not api/*is-superuser?*) (sql.helpers/where
+                                                             [:= :tenant_id (:tenant_id @api/*current-user*)])
+                                  true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                     {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
                      :total  (t2/count :model/User (filter-clauses-without-paging clauses))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
                                  clauses  (cond-> (user/filter-clauses nil nil nil nil)
+                                            (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
                              {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
@@ -375,6 +399,19 @@
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
 
+(defn- add-can-write-any-collection
+  "Adds a key to the user reflecting whether they have permission to write *any* collection in the instance so that the
+  FE can appropriately hide/show elements (e.g., we shouldn't try to let them save a new question if they don't have
+  anywhere to save *to*)"
+  [user]
+  (assoc user :can_write_any_collection
+         (or (:is_superuser user)
+             (t2/exists? :model/Collection {:where (collection/visible-collection-filter-clause
+                                                    :id
+                                                    {:include-trash-collection? false
+                                                     :include-archived-items :exclude
+                                                     :permission-level :write})}))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -383,13 +420,14 @@
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      (t2/hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user :tenant_collection_id)
       add-has-question-and-dashboard
       add-first-login
       add-query-permissions
       maybe-add-advanced-permissions
       maybe-add-sso-source
-      add-custom-homepage-info))
+      add-custom-homepage-info
+      add-can-write-any-collection))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -417,12 +455,18 @@
   (api/check-superuser)
   (api/checkp (not (t2/exists? :model/User :%lower.email (u/lower-case-en email)))
               "email" (tru "Email address already in use."))
+  (api/checkp (not (and (:tenant_id body)
+                        (not (setting/get :use-tenants))))
+              "tenant_id"
+              (tru "Cannot create a Tenant User as Tenants are not enabled for this instance."))
   (t2/with-transaction [_conn]
-    (let [new-user-id (u/the-id (user/create-and-invite-user!
-                                 (u/select-keys-when body
-                                                     :non-nil [:first_name :last_name :email :password :login_attributes])
-                                 @api/*current-user*
-                                 (= source "setup")))]
+    (let [new-user-id (u/the-id
+                       (notification/with-skip-sending-notification (boolean (:tenant_id body))
+                         (user/create-and-invite-user!
+                          (u/select-keys-when body
+                                              :non-nil [:first_name :last_name :email :password :login_attributes :tenant_id])
+                          @api/*current-user*
+                          (= source "setup"))))]
       (maybe-set-user-group-memberships! new-user-id user_group_memberships)
       (when (= source "setup")
         (maybe-set-user-permissions-groups! new-user-id [(perms/all-users-group) (perms/admin-group)]))
@@ -447,7 +491,8 @@
             [:email                  ms/Email]
             [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
             [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
-            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]]]
+            [:source                 {:optional true, :default "admin"} [:maybe ms/NonBlankString]]
+            [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (invite-user body))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -475,6 +520,16 @@
    (= (get user name-key) new-name)
    (not sso_source)))
 
+(defn- reset-magic-group-membership!
+  [user-id tenant-id]
+  (perms/allow-changing-all-users-group-members
+    (perms/allow-changing-all-external-users-group-members
+     (t2/delete! :model/PermissionsGroupMembership :user_id user-id)
+     (when tenant-id
+       (perms/add-user-to-group! user-id (perms/all-external-users-group)))
+     (when (nil? tenant-id)
+       (perms/add-user-to-group! user-id (perms/all-users-group))))))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -495,7 +550,8 @@
        [:is_superuser           {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
-       [:locale                 {:optional true} [:maybe ms/ValidLocale]]]]
+       [:locale                 {:optional true} [:maybe ms/ValidLocale]]
+       [:tenant_id              {:optional true} [:maybe ms/PositiveInt]]]]
   (try
     (check-self-or-superuser id)
     (catch clojure.lang.ExceptionInfo _e
@@ -525,10 +581,14 @@
         (when-let [changes (not-empty
                             (u/select-keys-when body
                                                 :present (cond-> #{:first_name :last_name :locale}
-                                                           api/*is-superuser?* (conj :login_attributes))
+                                                           api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! :model/User id changes)
+          (when (contains? changes :tenant_id)
+            (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
+                           "Superusers cannot be tenant users")
+            (reset-magic-group-membership! id (:tenant_id changes)))
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
@@ -564,13 +624,15 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (check-not-internal-user id)
-  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source]
+  (let [user (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
                             :type :personal
                             :id id)]
     (api/check-404 user)
     ;; Can only reactivate inactive users
     (api/check (not (:is_active user))
                [400 {:message (tru "Not able to reactivate an active user")}])
+    (api/check (tenants/tenant-is-active? (:tenant_id user))
+               [400 {:message (tru "Not able to reactivate a user in a deactivated tenant")}])
     (events/publish-event! :event/user-reactivated {:object user :user-id api/*current-user-id*})
     (reactivate-user! (dissoc user [:email :first_name :last_name]))))
 
@@ -642,7 +704,8 @@
 (api.macros/defendpoint :put "/:id/modal/:modal"
   "Indicate that a user has been informed about the vast intricacies of 'the' Query Builder."
   [{:keys [id modal]} :- [:map
-                          [:id ms/PositiveInt]]]
+                          [:id ms/PositiveInt]
+                          [:modal [:enum "qbnewb" "datasetnewb"]]]]
   (check-self-or-superuser id)
   (check-not-internal-user id)
   (let [k (or (get {"qbnewb"      :is_qbnewb

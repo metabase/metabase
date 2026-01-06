@@ -55,11 +55,16 @@
   [collection-namespace]
   (m/assoc-some root-collection
                 :name (case (keyword collection-namespace)
+                        :shared-tenant-collections (tru "Shared collections")
                         :snippets (tru "SQL snippets")
+                        :transforms (tru "Transforms")
                         (tru "Our analytics"))
                 :namespace collection-namespace
                 :is_personal false
-                :id   "root"))
+                :id "root"
+                ;; Root collection itself is not remote-synced; individual top-level collections
+                ;; within the shared-tenant-collection namespace can be toggled individually.
+                :is_remote_synced false))
 
 (defn hydrated-root-collection
   "Return the root collection entity."

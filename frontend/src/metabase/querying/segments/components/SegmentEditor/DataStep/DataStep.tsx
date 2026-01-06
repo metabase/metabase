@@ -6,7 +6,7 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/Pickers/DataPicker";
 import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
-import Tables from "metabase/entities/tables";
+import { Tables } from "metabase/entities/tables";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { TableBreadcrumbs } from "metabase/metadata/components";

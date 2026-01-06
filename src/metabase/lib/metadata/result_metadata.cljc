@@ -118,7 +118,8 @@
           (log/error e)
           (mapv merge-col
                 initial-cols
-                (concat lib-cols (repeat nil))))
+                ;; `util.perf/mapv` checks the `count` of all args, so it's NSFIS - Not Safe For Infinite Seqs.
+                (take (count initial-cols) (concat lib-cols (repeat nil)))))
         (throw e)))))
 
 (mu/defn- legacy-source :- ::lib.schema.metadata/column.legacy-source

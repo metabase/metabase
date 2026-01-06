@@ -1,6 +1,6 @@
 import { createAction } from "redux-actions";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getMetadata } from "metabase/selectors/metadata";

@@ -30,12 +30,13 @@ export function DescriptionSection({ card }: DescriptionSectionProps) {
 
   if (card.can_write) {
     return (
-      <Box mx="-5px">
+      <Box>
         <EditableText
           initialValue={card.description ?? ""}
           placeholder={t`No description`}
           isMarkdown
           onChange={handleChange}
+          px={0}
         />
       </Box>
     );

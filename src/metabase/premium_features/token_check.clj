@@ -35,7 +35,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private RemoteCheckedToken
+(def RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})$")
 
@@ -48,7 +48,7 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def ^:private ^String token-check-url
+(def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
   (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
@@ -73,7 +73,11 @@
              ;; force this to use a new Connection, it seems to be getting called in situations where the Connection
              ;; is from a different thread and is invalid by the time we get to use it
              (let [result (binding [t2.conn/*current-connectable* nil]
-                            (t2/count :model/User :is_active true :type :personal))]
+
+                            ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid
+                            ;; the `after-select` method on users, which calls an EE method that needs ... a token
+                            ;; check :|
+                            (t2/count (t2/table-name :model/User) :is_active true :type "personal"))]
                (log/debug (u/colorize :green "=>") result)
                result))
       lock (Object.)]
@@ -111,7 +115,8 @@
                            t/local-date
                            str)})
 
-(defn- stats-for-token-request
+(defn metering-stats
+  "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
@@ -154,10 +159,13 @@
 (defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params     (merge (stats-for-token-request)
-                                              {:site-uuid  site-uuid
-                                               :mb-version (:tag config/mb-version-info)})
-                     :throw-exceptions false})))
+          (http/get {:query-params {:site-uuid site-uuid
+                                    :mb-version (:tag config/mb-version-info)}
+                     :throw-exceptions false
+                     ;; socket is data transfer, connection is handshake and create connection timeout
+                     :socket-timeout     5000     ;; in milliseconds
+                     :connection-timeout 2000     ;; in milliseconds
+                     })))
 
 (defn- fetch-token-and-parse-body
   [token base-url site-uuid]
@@ -165,7 +173,6 @@
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
       (http/success? resp) (some-> body json/decode+kw)
-      ;; todo: what happens if there's no response here? probably should or here
       (<= 400 status 499) (or (some-> body json/decode+kw)
                               {:valid false
                                :status "Unable to validate token"
@@ -174,6 +181,29 @@
       ;; exceptions are not cached.
       :else (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                 :body body})))))
+
+(defn- metering-url
+  [token base-url]
+  (format "%s/api/%s/v2/metering" base-url token))
+
+(defn send-metering-events!
+  "Send metering events for billing purposes"
+  []
+  (when-let [token (premium-features.settings/premium-embedding-token)]
+    (when (mr/validate [:re RemoteCheckedToken] token)
+      (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
+            stats (-> (metering-stats)
+                      ;; for backwards compatibility, we send values as strings
+                      (update-vals str))]
+        (try
+          (http/post (metering-url token token-check-url)
+                     {:body (json/encode (merge stats
+                                                {:site-uuid site-uuid
+                                                 :mb-version (:tag config/mb-version-info)}))
+                      :content-type :json
+                      :throw-exceptions false})
+          (catch Throwable e
+            (log/error e "Error sending metering events")))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -187,12 +217,31 @@
       (let [max-users (:max-users (decode-airgap-token token))]
         (when (pos? max-users) max-users)))))
 
-(defn airgap-check-user-count
-  "Checks that, when in an airgap context, the allowed user count is acceptable."
+(defn- active-user-count []
+  ;; Because we need this count *during* token checks, this uses `t2/table-name` to avoid the `after-select` method
+  ;; on users, which calls an EE method that needs ... a token check :|
+  (t2/count (t2/table-name :model/User) :is_active true, :type "personal"))
+
+(defn assert-valid-airgap-user-count!
+  "Asserts that, in an airgap context, the current user count does not exceed the allowed maximum.
+   Throws if the limit is exceeded. Called when setting the token."
   []
   (when-let [max-users (max-users-allowed)]
-    (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
-      (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
+    (let [current-users (active-user-count)]
+      (when (> current-users max-users)
+        (throw (Exception.
+                (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                     max-users)))))))
+
+(defn assert-airgap-allows-user-creation!
+  "Asserts that creating a new personal user would not exceed the airgap user limit.
+   Throws if adding another user would overflow the limit. Called in user pre-insert."
+  []
+  (when-let [max-users (max-users-allowed)]
+    (when (>= (active-user-count) max-users)
+      (throw (Exception.
+              (trs "Adding another user would exceed the maximum number of users ({0}) for your plan. Please upgrade to add more users."
+                   max-users))))))
 
 (mu/defn- decode-token* :- TokenStatus
   "Decode a token. If you get a positive response about the token, even if it is not valid, return that. Errors will
@@ -416,7 +465,7 @@
   (try
     (when (seq new-value)
       (when (mr/validate [:re AirgapToken] new-value)
-        (airgap-check-user-count))
+        (assert-valid-airgap-user-count!))
       (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
                     (mr/validate [:re AirgapToken] new-value))
         (throw (ex-info (tru "Token format is invalid.")

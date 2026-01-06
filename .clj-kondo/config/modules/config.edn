@@ -168,7 +168,8 @@
 
   api-routes
   {:team "UX West"
-   :api  #{metabase.api-routes.core}
+   :api  #{metabase.api-routes.cmd
+           metabase.api-routes.core}
    :uses :any}
 
   app-db
@@ -348,7 +349,8 @@
   {:team "UX West"
    :api  #{metabase.collections.core
            metabase.collections.models.collection
-           metabase.collections.models.collection.root}
+           metabase.collections.models.collection.root
+           metabase.collections.schema}
    :uses #{api
            api-keys
            app-db
@@ -700,6 +702,7 @@
            metabase.lib.binning.util
            metabase.lib.card
            metabase.lib.computed ; temporarily so that `qp.compile` can use it as lib memoization evolves
+           metabase.lib.convert  ; Only so [[metabase.queries.models.card]] can set dynamic vars.
            metabase.lib.core
            metabase.lib.equality
            metabase.lib.field
@@ -914,11 +917,13 @@
   {:team "UX West"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
+           app-db
            audit-app
            events
            permissions
            premium-features
            request
+           settings
            util}}
 
   pivot
@@ -946,6 +951,7 @@
            config
            internal-stats
            settings
+           task
            util}}
 
   product-feedback
@@ -1003,6 +1009,7 @@
            collections
            config
            driver
+           embedding
            events
            lib
            models
@@ -1423,6 +1430,12 @@
            task
            util}}
 
+  tenants
+  {:team "Admin Webapp"
+   :api  #{metabase.tenants.core}
+   :uses #{premium-features
+           util}}
+
   testing-api
   {:team "DevEx"
    :api  #{metabase.testing-api.api
@@ -1513,6 +1526,7 @@
            settings
            setup
            system
+           tenants
            util}}
 
   users-rest
@@ -1526,10 +1540,13 @@
            config
            events
            models
+           notification
            permissions
            premium-features
            request
+           settings
            sso
+           tenants
            users
            util
            enterprise/advanced-permissions}}
@@ -1606,6 +1623,7 @@
            lib
            models
            parameters
+           permissions
            premium-features
            query-processor
            request
@@ -1961,6 +1979,7 @@
            appearance
            audit-app
            embedding
+           permissions
            premium-features
            enterprise/sso}}
 
@@ -2112,6 +2131,7 @@
            premium-features
            query-processor
            request
+           tenants
            users
            util
            warehouse-schema
@@ -2199,7 +2219,6 @@
    :uses #{api
            appearance
            auth-identity
-           channel
            embedding
            premium-features
            request
@@ -2238,6 +2257,21 @@
            system
            util}}
 
+  enterprise/tenants
+  {:team "Admin Webapp"
+   :api  #{metabase-enterprise.tenants.api}
+   :uses #{api
+           audit-app
+           auth-identity
+           collections
+           events
+           models
+           permissions
+           premium-features
+           request
+           settings
+           util}}
+
   enterprise/transforms
   {:team "Querying"
    :api  #{metabase-enterprise.transforms.api
@@ -2249,6 +2283,7 @@
    :uses #{analytics
            api
            app-db
+           collections
            driver
            events
            lib

@@ -18,3 +18,7 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **[docs-write](.claude/skills/docs-write/SKILL.md)** - Documentation writing with Metabase style guide
 - **[docs-review](.claude/skills/docs-review/SKILL.md)** - Documentation review checklist
+
+## Tool Preferences
+
+If `clojure-mcp` tools are available, prefer them over shell-based alternatives for Clojure development.

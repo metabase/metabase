@@ -8,8 +8,8 @@ import {
   updateDashboardEmbeddingParams,
   updateDashboardEnableEmbedding,
 } from "metabase/api";
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
 import { handleActions } from "metabase/lib/redux";
 import {
   NAVIGATE_BACK_TO_DASHBOARD,

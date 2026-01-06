@@ -130,12 +130,12 @@ describe("MetabotAdminPage", () => {
     expect(screen.getByText("Embedded Metabot")).toBeInTheDocument();
   });
 
-  it("should not be able to select a collection for default metabot", async () => {
+  it("should show collection picker for default metabot with NLQ title", async () => {
     await setup();
     expect(await screen.findByText("Configure Metabot")).toBeInTheDocument();
     expect(
-      screen.queryByText("Collection Metabot can use"),
-    ).not.toBeInTheDocument();
+      screen.getByText("Collection for natural language querying"),
+    ).toBeInTheDocument();
   });
 
   it("should render a selected collection for embedded metabot", async () => {

@@ -1,7 +1,9 @@
 import type {
   CardId,
   CollectionId,
+  CollectionItem,
   CollectionItemModel,
+  CollectionNamespace,
   CollectionType,
   DashboardId,
   ListCollectionItemsRequest,
@@ -37,6 +39,14 @@ export type CollectionPickerItem = TypeWithModel<
   Pick<
     Partial<SearchResult>,
     "description" | "can_write" | "database_id" | "collection_type"
+  > &
+  Partial<
+    Pick<
+      CollectionItem,
+      | "is_shared_tenant_collection"
+      | "is_tenant_dashboard"
+      | "collection_namespace"
+    >
   > & {
     location?: string | null;
     effective_location?: string | null;
@@ -45,6 +55,7 @@ export type CollectionPickerItem = TypeWithModel<
     here?: CollectionItemModel[];
     below?: CollectionItemModel[];
     type?: CollectionType;
+    namespace?: CollectionNamespace;
   };
 
 /**
@@ -70,11 +81,23 @@ export type CollectionPickerValueItem =
     });
 
 export type CollectionPickerOptions = EntityPickerModalOptions & {
-  namespace?: "snippets";
+  namespace?: CollectionNamespace;
   allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   showLibrary?: boolean;
+  /**
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
+   */
+  savingModel?: "collection" | null;
+  /**
+   * Restricts the picker to only show collections in a specific namespace.
+   * - When set to "shared-tenant-collection", only the tenant root is shown.
+   * - When set to "default", the tenant root is hidden and regular collections are shown.
+   * - When undefined, all roots are shown (default behavior).
+   */
+  restrictToNamespace?: string;
 };
 
 export type CollectionItemListProps = ListProps<

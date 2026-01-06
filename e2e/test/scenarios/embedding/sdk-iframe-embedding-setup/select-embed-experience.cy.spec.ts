@@ -214,6 +214,50 @@ describe(suiteTitle, () => {
     cy.findByTestId("preview-loading-indicator").should("not.exist");
   });
 
+  it("should respect slow loading of recent dashboars and wait till loading complete", () => {
+    cy.intercept("GET", "/api/activity/recents*", (req) => {
+      req.on("response", (res) => {
+        res.setThrottle(0.3); // Slow down the response
+      });
+    }).as("getRecents");
+
+    visitNewEmbedPage();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+    });
+  });
+
+  it("shows no-data block when example-dashboard-id points to an archived dashboard", () => {
+    H.createDashboard({
+      name: "Archived Dashboard",
+    }).then(({ body: { id: dashboardId } }) => {
+      H.archiveDashboard(dashboardId);
+
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["example-dashboard-id"] = dashboardId;
+          res.send();
+        });
+      });
+    });
+
+    cy.intercept("GET", "/api/activity/recents*", {
+      body: [],
+    }).as("emptyRecentItems");
+
+    visitNewEmbedPage({ waitForResource: false });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    cy.wait("@emptyRecentItems");
+
+    cy.findByAltText("No results").should("be.visible");
+  });
+
   it("shows Metabot experience when selected", () => {
     visitNewEmbedPage();
 

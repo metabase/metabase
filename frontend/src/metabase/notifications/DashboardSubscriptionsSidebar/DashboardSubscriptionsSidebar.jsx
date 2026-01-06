@@ -8,7 +8,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import Pulses from "metabase/entities/pulses";
+import { Pulses } from "metabase/entities/pulses";
 import {
   NEW_PULSE_TEMPLATE,
   cleanPulse,
@@ -20,7 +20,7 @@ import {
   AddEditSlackSidebar,
 } from "metabase/notifications/AddEditSidebar/AddEditSidebar";
 import { NewPulseSidebar } from "metabase/notifications/NewPulseSidebar";
-import PulsesListSidebar from "metabase/notifications/PulsesListSidebar";
+import { PulsesListSidebar } from "metabase/notifications/PulsesListSidebar";
 import {
   cancelEditingPulse,
   fetchPulseFormInput,
@@ -67,6 +67,7 @@ const cardsToPulseCards = (cards, pulseCards) => {
       pivot_results: pulseCard.pivot_results,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
+      download_perms: pulseCard.download_perms,
     };
   });
 };
@@ -143,10 +144,10 @@ class DashboardSubscriptionsSidebarInner extends Component {
     const { isAdmin, pulses, loading: isSubscriptionListLoading } = this.props;
 
     /**
-     * (EMB-976): In SDK/EAJS context we need to avoid showing the NEW_PULSE view (the view that lets users select
+     * (EMB-976): In modular embedding/modular embedding SDK context we need to avoid showing the NEW_PULSE view (the view that lets users select
      * between Email and Slack options) because we only allow email subscriptions there.
      *
-     * And it's guaranteed that email would already be set up in SDK/EAJS context.
+     * And it's guaranteed that email would already be set up in modular embedding/SDK context.
      * Otherwise, we won't show the subscription button to open this sidebar
      * in the first place.
      */
@@ -172,7 +173,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
 
   fetchUsers = async () => {
     if (isEmbeddingSdk()) {
-      // We don't need the the list of users in SDK/EAJS context because we will hard code the recipient to the logged in user.
+      // We don't need the the list of users in modular embedding/SDK context because we will hard code the recipient to the logged in user.
       this.setState({ users: [] });
     } else {
       this.setState({ users: (await UserApi.list()).data });
@@ -481,7 +482,7 @@ class DashboardSubscriptionsSidebarInner extends Component {
       );
     }
 
-    if (shouldDisplayNewPulse(editingMode, pulses)) {
+    if (shouldDisplayNewPulse(editingMode, pulses) && !isEmbeddingSdk()) {
       const emailConfigured = formInput?.channels?.email?.configured || false;
       const slackConfigured = formInput?.channels?.slack?.configured || false;
 

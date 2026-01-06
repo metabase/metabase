@@ -11,7 +11,7 @@ import {
 import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
@@ -203,7 +203,7 @@ function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
 
 const ConnectedQuestionRowCount = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
-  Database.load({
+  Databases.load({
     id: getDatabaseId,
     loadingAndErrorWrapper: false,
   }),

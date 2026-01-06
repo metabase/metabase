@@ -1,6 +1,9 @@
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
-import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
+import {
+  getIsDashCardsRunning,
+  getIsSharing as getIsDashboardSubscriptionSidebarOpen,
+} from "metabase/dashboard/selectors";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
@@ -39,6 +42,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
 
   const canShare = !isAnalytics;
+  const isDashCardsRunning = useSelector(getIsDashCardsRunning);
 
   if (isArchived) {
     return null;
@@ -51,7 +55,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
           onClick={toggleSubscriptionSidebar}
           dashboard={dashboard}
         />
-        <ExportPdfMenuItem dashboard={dashboard} />
+        <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
         {canShare && (
           <>
             <Menu.Divider />

@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
 import {
   TAG_TYPES,
   provideCollectionTags,
@@ -53,7 +54,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "library-collection",
 ] as const;
 
-export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
+export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
 
 export function tag(
   type: EnterpriseTagType,

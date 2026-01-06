@@ -9,11 +9,14 @@ import { getErrorMessage } from "metabase/api/utils";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditableText from "metabase/common/components/EditableText";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import Link from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { Box, Flex, Stack } from "metabase/ui";
+import { Card, Flex, Stack } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import type { RegularCollectionId } from "metabase-types/api";
 
 import {
@@ -82,14 +85,7 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
 
   return (
     <>
-      <Stack
-        pos="relative"
-        w="100%"
-        h="100%"
-        bg="bg-white"
-        gap={0}
-        data-testid="new-snippet-page"
-      >
+      <PageContainer pos="relative" data-testid="new-snippet-page">
         <PaneHeader
           title={
             <PaneHeaderInput
@@ -109,9 +105,23 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
               onCancel={handleCancel}
             />
           }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link to={Urls.dataStudioLibrary()}>{t`SQL snippets`}</Link>
+              {t`New Snippet`}
+            </DataStudioBreadcrumbs>
+          }
         />
-        <Flex flex={1} w="100%">
-          <Box flex={1} className={S.editorContainer}>
+        <Flex flex={1} w="100%" gap="sm">
+          <Card
+            withBorder
+            p={0}
+            w="100%"
+            flex={1}
+            style={{
+              overflow: "hidden",
+            }}
+          >
             <CodeMirror
               value={content}
               onChange={setContent}
@@ -126,19 +136,17 @@ export function NewSnippetPage({ route }: NewSnippetPageProps) {
                 highlightActiveLine: true,
               }}
             />
-          </Box>
-          <Stack w={320} gap="lg" p="md" bg="bg-white" className={S.sidebar}>
-            <Box mx="-5px">
-              <EditableText
-                initialValue={description}
-                placeholder={t`No description`}
-                isMarkdown
-                onChange={setDescription}
-              />
-            </Box>
+          </Card>
+          <Stack p="md" flex="0 0 20rem">
+            <EditableText
+              initialValue={description}
+              placeholder={t`No description`}
+              isMarkdown
+              onChange={setDescription}
+            />
           </Stack>
         </Flex>
-      </Stack>
+      </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={!isSaving} />
       <PLUGIN_SNIPPET_FOLDERS.CollectionPickerModal
         isOpen={isCollectionPickerOpen}

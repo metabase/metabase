@@ -289,9 +289,9 @@
   (as-> (merge request (authenticate provider request)) $
     (assoc $ :user
            (or (when-let [user-id (:user-id $)]
-                 (t2/select-one [:model/User :id :is_active :last_login] :id user-id))
+                 (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
                (when-let [email (get-in $ [:user-data :email])]
-                 (t2/select-one [:model/User :id :is_active :last_login] :%lower.email (u/lower-case-en email)))))
+                 (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))))
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -316,8 +316,8 @@
                  [:last_name {:optional true} [:maybe :string]]
                  [:sso_source {:optional true} :keyword]
                  [:is_active {:optional true} :boolean]
-                 [:jwt_attributes {:optional true} [:maybe :map]]
-                 [:login_attributes {:optional true} [:maybe :map]]
+                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
                  [:provider-id {:optional true} [:maybe :string]]]
    provider :- :keyword]
   (t2/with-transaction [_]
@@ -334,13 +334,14 @@
                  [:first_name {:optional true} [:maybe :string]]
                  [:last_name {:optional true} [:maybe :string]]
                  [:sso_source {:optional true} :keyword]
-                 [:jwt_attributes {:optional true} [:maybe :map]]
-                 [:login_attributes {:optional true} [:maybe :map]]
-                 [:provider-id {:optional true} [:maybe :string]]]
+                 [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+                 [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+                 [:provider-id {:optional true} [:maybe :string]]
+                 [:tenant_id {:optional true} [:maybe ms/PositiveInt]]]
    provider :- :keyword]
   (t2/with-transaction [_]
     (u/prog1
-      (t2/insert-returning-instance! [:model/User :id :last_login :is_active]
+      (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id]
                                      (select-keys user-data (sso-user-fields)))
       (t2/insert! :model/AuthIdentity (cond-> {:user_id (:id <>) :provider (name provider)}
                                         (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))

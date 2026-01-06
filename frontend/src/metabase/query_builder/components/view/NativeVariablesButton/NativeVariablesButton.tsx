@@ -23,6 +23,7 @@ export const NativeVariablesButton = ({
     <Tooltip label={t`Variables`}>
       <Box
         component="a"
+        aria-label={t`Variables`}
         h={size}
         className={cx(className, NativeVariablesButtonS.ButtonRoot, {
           [NativeVariablesButtonS.isSelected]: isShowingTemplateTagsEditor,

@@ -20,7 +20,6 @@ export const useBuildTreeForCollection = (
   collection?: Collection,
 ): {
   isLoading: boolean;
-  hasChildren?: boolean;
   tree: TreeItem[];
   error?: unknown;
 } => {
@@ -43,11 +42,10 @@ export const useBuildTreeForCollection = (
     return {
       isLoading,
       error,
-      hasChildren: items.data.length > 0,
       tree: [
         {
           name: collection.name,
-          id: collection.id,
+          id: `collection:${collection.id}`,
           icon: getIcon({ ...collection, model: "collection" }).name,
           data: { ...collection, model: "collection" },
           model: "collection",
@@ -56,7 +54,7 @@ export const useBuildTreeForCollection = (
             updatedAt: item["last-edit-info"]?.timestamp,
             icon: getIcon({ model: item.model }).name,
             data: item,
-            id: item.id,
+            id: `${item.model}:${item.id}`,
             model: item.model,
           })),
         },
@@ -68,7 +66,6 @@ export const useBuildTreeForCollection = (
 export const useBuildSnippetTree = (): {
   isLoading: boolean;
   tree: TreeItem[];
-  hasChildren?: boolean;
   error?: unknown;
 } => {
   const {
@@ -99,7 +96,6 @@ export const useBuildSnippetTree = (): {
       isLoading: false,
       error,
       tree: buildSnippetTree(snippetCollections, snippets),
-      hasChildren: snippets.length > 0 || snippetCollections.length > 1,
     };
   }, [
     loadingSnippets,

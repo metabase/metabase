@@ -170,6 +170,7 @@
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -281,8 +282,8 @@
   (if (or (= read-or-write :read)
           (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
     (perms-objects-set-for-parent-collection instance read-or-write)
-    ;; We need to return a dummy permissions string that cannot possibly be long to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':read-only' mode
+    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
+    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
     #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
@@ -406,12 +407,18 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn audit-namespace-clause
+(defn namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val]
-  (if (and (nil? namespace-val) (premium-features/enable-audit-app?))
-    [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
-    [:= namespace-keyword namespace-val]))
+  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
+  [:or
+   [:= namespace-keyword namespace-val]
+   (when (and (nil? namespace-val)
+              (premium-features/enable-audit-app?))
+     [:= namespace-keyword "analytics"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "shared-tenant-collection"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "tenant-specific"])])
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
@@ -437,15 +444,21 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (when (perms-group/is-tenant-group? group-or-id)
+  (when (and (perms-group/is-tenant-group? group-or-id)
+             (not= perm-type :subscription))
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
+;; TODO: We really have to figure out a better solution to these circular dependencies than this
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
 
 (defn- is-trash-or-descendant? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
+
+(defn- tenant-collection?
+  [collection]
+  ((requiring-resolve 'metabase.collections.models.collection/shared-tenant-collection?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
@@ -483,16 +496,17 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
+    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
-  (when (and (perms-group/is-tenant-group? group-or-id)
-             (audit/is-collection-id-audit? (u/the-id collection-or-id)))
-    (throw (ex-info (tru "Tenant Groups cannot receive any access to the audit collection.") {})))
+  (let [collection (collection-or-id->collection collection-or-id)]
+    (when (and (not (tenant-collection? collection))
+               (perms-group/is-tenant-group? group-or-id))
+      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?

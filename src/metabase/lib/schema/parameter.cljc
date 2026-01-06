@@ -161,11 +161,28 @@
                                         :else                             param-type)))}]
         (keys types)))
 
+(def ^:private valid-widget-types (set (keys types)))
+
+(defn- normalize-widget-type [x]
+  (when-let [x (lib.schema.common/normalize-keyword x)]
+    (cond
+      (valid-widget-types x)
+      x
+
+      ;; for invalid namespaced types like `:category/=` return closest unnamespaced match e.g. `:category`
+      (and (qualified-keyword? x)
+           (valid-widget-types (keyword (namespace x))))
+      (keyword (namespace x))
+
+      ;; if no close match return `:none`
+      :else
+      :none)))
+
 (mr/def ::widget-type
   "The type of widget to display in the FE UI for the user to use to pick values for this parameter."
   (into [:enum
          {:error/message    "valid parameter widget type"
-          :decode/normalize lib.schema.common/normalize-keyword}
+          :decode/normalize normalize-widget-type}
          :none]
         (keys types)))
 

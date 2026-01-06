@@ -42,36 +42,11 @@ function isMatchingSearchQuery(
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  verified: (node) => {
-    switch (node.type) {
-      case "card":
-      case "dashboard": {
-        const lastReview = node.data.moderation_reviews?.find(
-          (review) => review.most_recent,
-        );
-        return lastReview != null && lastReview.status === "verified";
-      }
-      default:
-        return false;
-    }
-  },
   "in-dashboard": (node) => {
     switch (node.type) {
       case "card": {
         const dashboard = node.data.dashboard;
         return dashboard != null;
-      }
-      default:
-        return false;
-    }
-  },
-  "in-official-collection": (node) => {
-    switch (node.type) {
-      case "card":
-      case "dashboard":
-      case "document": {
-        const collection = node.data.collection;
-        return collection != null && collection.authority_level === "official";
       }
       default:
         return false;
@@ -97,14 +72,6 @@ export function canFilterByOption(
 ): boolean {
   const type = getDependencyType(groupType);
   switch (option) {
-    case "verified":
-      switch (type) {
-        case "card":
-        case "dashboard":
-          return true;
-        default:
-          return false;
-      }
     case "in-dashboard":
       switch (type) {
         case "card":
@@ -112,7 +79,6 @@ export function canFilterByOption(
         default:
           return false;
       }
-    case "in-official-collection":
     case "not-in-personal-collection":
       switch (type) {
         case "card":

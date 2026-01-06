@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.api.common :as api]
    [metabase.audit-app.impl :as audit]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
@@ -195,7 +196,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Card can only go in Collections in the \"default\" or :analytics namespace."
+               #"A Card can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Card (assoc (mt/with-temp-defaults :model/Card) :collection_id collection-id, :name card-name))))
           (finally
             (t2/delete! :model/Card :name card-name)))))))
@@ -206,7 +207,7 @@
       (mt/with-temp [:model/Card {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Card can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Card can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
              (t2/update! :model/Card card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel normalize-result-metadata-test
@@ -721,24 +722,13 @@
              (t2/select-one-fn :metabase_version :model/Card :id (:id card)))))))
 
 (deftest ^:parallel changed?-test
-  (letfn [(changed? [before after]
-            (#'card/changed? @#'card/card-compare-keys before after))]
-    (testing "Ignores keyword/string"
-      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-    (testing "Ignores properties not in `api.card/card-compare-keys"
-      (is (false? (changed? {:collection_id 1
-                             :collection_position 0}
-                            {:collection_id 2
-                             :collection_position 1}))))
-    (testing "Sees changes"
-      (is (true? (changed? {:dataset_query {:type :query}}
-                           {:dataset_query {:type :query
-                                            :query {}}})))
-      (testing "But only when they are different in the after, not just omitted"
-        (is (false? (changed? {:dataset_query {} :collection_id 1}
-                              {:collection_id 1})))
-        (is (true? (changed? {:dataset_query {} :collection_id 1}
-                             {:dataset_query nil :collection_id 1})))))))
+  (let [changed? (fn [a b] (#'card/changed? a b))]
+    (is (changed? {:a "a"} {:a "b"}))
+    (is (not (changed? {:a "a" :b "b"} {:b "b"})))
+    (is (not (changed? {:a "a"} {})))
+    (is (not (changed? {} {})))
+    (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:b "b"})))
+    (is (thrown? clojure.lang.ExceptionInfo (changed? {:a "a"} {:a "a" :b "b"})))))
 
 (deftest hydrate-dashboard-count-test
   (testing "cards associated with more than 1 dashboard"
@@ -1305,3 +1295,28 @@
       (t2/save! card')
       (is (= :question
              (t2/select-one-fn :type :model/Card :id (:id card)))))))
+
+(deftest create-card-no-remaps
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
+                                       :name                    "User ID"
+                                       :human_readable_field_id (mt/id :people :name)
+                                       :type                    :external}
+                   :model/Dimension _ {:field_id                (mt/id :orders :product_id)
+                                       :name                    "Product ID"
+                                       :human_readable_field_id (mt/id :products :title)
+                                       :type                    :external}]
+      (let [mp (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+            card (card/create-card! {:database_id (mt/id),
+                                     :display :table,
+                                     :visualization_settings {},
+                                     :type :model
+                                     :name "orders model"
+                                     :dataset_query query}
+                                    @api/*current-user*)]
+        (try
+          (is (= 9
+                 (count (:result_metadata card))))
+          (finally
+            (t2/delete! :model/Card (:id card))))))))

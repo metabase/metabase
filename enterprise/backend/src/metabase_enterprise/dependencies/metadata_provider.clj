@@ -90,6 +90,8 @@
     (lib.metadata.protocols/cache-value! delegate k v))
   (has-cache? [_this]
     (lib.metadata.protocols/has-cache? delegate))
+  (clear-cache! [_this]
+    (lib.metadata.protocols/clear-cache! delegate))
 
   pretty/PrettyPrintable
   (pretty [this]

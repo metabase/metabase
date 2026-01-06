@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Center, Flex } from "metabase/ui";
+import { Card, Center } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase-enterprise/data-studio/common/hooks/use-load-card-with-metadata";
 
 import { MetricHeader } from "../../components/MetricHeader";
@@ -33,7 +34,7 @@ export function MetricDependenciesPage({
   }
 
   return (
-    <Flex direction="column" h="100%">
+    <PageContainer>
       <MetricHeader card={card} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
@@ -41,8 +42,10 @@ export function MetricDependenciesPage({
           defaultEntry: { id: card.id, type: "card" },
         }}
       >
-        {children}
+        <Card withBorder p={0} flex={1}>
+          {children}
+        </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-    </Flex>
+    </PageContainer>
   );
 }

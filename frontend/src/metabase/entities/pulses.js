@@ -19,7 +19,7 @@ export const UNSUBSCRIBE = "metabase/entities/pulses/unsubscribe";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Pulses = createEntity({
+export const Pulses = createEntity({
   name: "pulses",
   nameOne: "pulse",
   path: "/api/pulse",
@@ -102,5 +102,3 @@ const Pulses = createEntity({
 const useGetQuery = ({ id }, options) => {
   return useGetSubscriptionQuery(id, options);
 };
-
-export default Pulses;

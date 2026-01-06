@@ -103,6 +103,7 @@ describe(suiteTitle, () => {
     navigateToGetCodeStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
+      preselectSso: true,
     });
 
     getEmbedSidebar().within(() => {

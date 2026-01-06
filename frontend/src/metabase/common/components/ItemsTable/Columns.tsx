@@ -189,6 +189,38 @@ export const Columns = {
       );
     },
   },
+  Description: {
+    Col: () => (
+      <TableColumn
+        hideAtContainerBreakpoint="sm"
+        containerName="ItemsTableContainer"
+      />
+    ),
+    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+      <SortableColumnHeader
+        name="description"
+        sortingOptions={sortingOptions}
+        hideAtContainerBreakpoint="sm"
+        onSortingOptionsChange={onSortingOptionsChange}
+      >
+        {t`Description`}
+      </SortableColumnHeader>
+    ),
+    Cell: ({
+      item,
+      testIdPrefix = "table",
+    }: {
+      item: CollectionItem;
+      testIdPrefix?: string;
+      onClick?: (item: CollectionItem) => void;
+    }) => {
+      return (
+        <ItemCell data-testid={`${testIdPrefix}-description`}>
+          <Ellipsified>{item.description ?? ""}</Ellipsified>
+        </ItemCell>
+      );
+    },
+  },
   LastEditedBy: {
     Col: () => (
       <TableColumn

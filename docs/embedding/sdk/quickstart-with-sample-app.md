@@ -1,12 +1,13 @@
 ---
-title: Embedded analytics SDK - quickstart with sample app
+title: Modular embedding SDK - quickstart with sample app
+summary: Set up the Modular embedding SDK with a sample React app and JWT authentication. Includes Docker quickstart and detailed walkthrough for Metabase configuration.
 ---
 
-# Embedded analytics SDK - quickstart with sample app
+# Modular embedding SDK - quickstart with sample app
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true convert_pro_link_to_embbedding=true %}
 
-This guide sets up the embedded analytics SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
+This guide sets up the modular embedding SDK with a [sample React app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample/tree/{{page.version | remove: "v0."}}-stable), but you can follow along with your own application.
 
 {% include youtube.html id='AtMn-G-Al80' %}
 
@@ -69,7 +70,7 @@ This script will:
 That's it!
 
 If you want to log in to the sample Metabase this command set up, visit [http://localhost:4300](http://localhost:4300). You can log in with email and password as Rene Descartes:
-E
+
 - email: rene@example.com
 - password: foobarbaz
 
@@ -89,7 +90,7 @@ Here's a quick overview of what you'll be doing:
 ### Start up the sample application
 
 5. [Set up the application environment](#set-up-the-application-environment).
-6.. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and serve the embedded Metabase components.
+6. [Run the app server](#set-up-the-application-server) to handle authentication with JWT and serve the embedded Metabase components.
 7. [Run the client application](#set-up-the-client-application) that will contain Metabase components built with the SDK.
 
 And then fiddle around with styling.
@@ -126,8 +127,7 @@ From any Metabase page, click on the **gear** icon in the upper right and select
 
 Turn on:
 
-- Embedded analytics SDK (it's in the **Modular** section)
-- Static embedding
+- Modular embedding SDK
 
 Otherwise, this whole thing is hopeless.
 
@@ -222,7 +222,7 @@ Install dependencies:
 npm install
 ```
 
-This command will install the [Metabase embedded analytics SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
+This command will install the [Metabase modular embedding SDK](https://www.npmjs.com/package/@metabase/embedding-sdk-react), in addition to the application's other dependencies.
 
 You can also install a [different version of the SDK](./version.md). Just make sure that the major version of the SDK matches the major version of the Metabase you're using.
 
@@ -246,4 +246,4 @@ In your app, you'll see an embedded `InteractiveQuestion` component.
 
 ## Next steps
 
-To style the components, try changing some of the `theme` options in the client app at `client/src/App.jsx`. For more on theming, check out [Appearance](./appearance.md).
+To style the components, try changing some of the `theme` options in the client app at `client/src/App.jsx`. For more on theming, check out [Appearance](../appearance.md).

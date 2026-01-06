@@ -73,3 +73,9 @@
 .disablePointer {
   cursor: default;
 }
+
+.badgeOverlay {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+}

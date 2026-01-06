@@ -159,8 +159,17 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/transform/${id}`,
         body,
       }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [listTag("transform"), idTag("transform", id)]),
+      invalidatesTags: (_, error, { id, collection_id }) => {
+        const tags = [
+          listTag("transform"),
+          idTag("transform", id),
+          listTag("revision"),
+        ];
+        if (collection_id != null) {
+          tags.push(idTag("collection", collection_id));
+        }
+        return invalidateTags(error, tags);
+      },
       onQueryStarted: async (
         { id, ...patch },
         { dispatch, queryFulfilled },

@@ -431,12 +431,7 @@ describe("DataModel", () => {
       const disabledTable = await findTablePickerTable(
         ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
       );
-      expect(disabledTable).toHaveStyle({ pointerEvents: "none" });
-
-      // This click should not cause a change, as the table should be disabled
-      await expect(userEvent.click(disabledTable)).rejects.toThrow(
-        /pointer-events: none/,
-      );
+      expect(disabledTable).toHaveAttribute("data-disabled", "true");
 
       expect(screen.queryByTestId("table-section")).not.toBeInTheDocument();
     });
@@ -1040,10 +1035,7 @@ describe("DataModel", () => {
       await userEvent.click(screen.getByRole("link", { name: /New segment/i }));
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        "/data-studio/library/segments/new",
-      );
-      expect(history?.getCurrentLocation().search).toContain(
-        `tableId=${ORDERS_TABLE.id}`,
+        `/data-studio/data/database/${ORDERS_TABLE.db_id}/schema/${ORDERS_TABLE.db_id}:${ORDERS_TABLE.schema}/table/${ORDERS_TABLE.id}/segments/new`,
       );
     });
   });

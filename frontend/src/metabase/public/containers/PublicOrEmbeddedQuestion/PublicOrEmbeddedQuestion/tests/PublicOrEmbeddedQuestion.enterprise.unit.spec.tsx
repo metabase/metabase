@@ -13,7 +13,6 @@ const QUESTION_NAME = "Public question";
 function setupEnterprise(opts?: Partial<SetupOpts>) {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
     questionName: QUESTION_NAME,
     uuid: FAKE_UUID,
   });

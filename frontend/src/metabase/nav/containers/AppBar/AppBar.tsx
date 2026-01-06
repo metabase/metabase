@@ -5,7 +5,7 @@ import {
   getCommentSidebarOpen,
   getSidebarOpen,
 } from "metabase/documents/selectors";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { connect } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
@@ -32,7 +32,7 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   collectionId: Collections.selectors.getInitialCollectionId(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
-  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state),
+  isMetabotVisible: PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
   isDocumentSidebarOpen: getSidebarOpen(state),
   isCommentSidebarOpen: getCommentSidebarOpen(state),
   isLogoVisible: getIsLogoVisible(state),

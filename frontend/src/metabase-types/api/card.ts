@@ -4,6 +4,7 @@ import type {
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type { Collection, CollectionId, LastEditInfo } from "./collection";
 import type {
@@ -23,14 +24,15 @@ import type {
   ParameterId,
   ParameterValueOrArray,
 } from "./parameters";
+import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
 import type { CollectionEssentials } from "./search";
 import type { Table, TableId } from "./table";
 import type { UserInfo } from "./user";
 import type { CardDisplayType, VisualizationDisplay } from "./visualization";
 import type { SmartScalarComparison } from "./visualization-settings";
-export type CardType = "model" | "question" | "metric";
 
+export type CardType = "model" | "question" | "metric";
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
@@ -82,6 +84,8 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   creator?: UserInfo;
   "last-edit-info"?: LastEditInfo;
   table_id?: TableId;
+
+  download_perms?: DownloadPermission;
 }
 
 export interface PublicCard {
@@ -476,7 +480,8 @@ export type GetPublicCard = Pick<Card, "id" | "name" | "public_uuid">;
 export type GetEmbeddableCard = Pick<Card, "id" | "name">;
 
 export type GetRemappedCardParameterValueRequest = {
-  card_id: CardId;
+  card_id?: CardId | EntityToken;
+  entityIdentifier?: EntityUuid | EntityToken;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

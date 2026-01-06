@@ -131,7 +131,8 @@
      :source-query       "join should not have :source-query; use :stages instead"
      :filter             "join should not have top-level :filters; these should belong to one of the join :stages"
      :filters            "join should not have top-level :filters; these should belong to one of the join :stages"
-     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"})
+     :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"
+     :ident              ":ident is deprecated and should not be included in joins"})
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

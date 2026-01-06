@@ -207,7 +207,6 @@ export function ViewTitleHeader({
       {QuestionFiltersHeader.shouldRender({
         question,
         queryBuilderMode,
-        isObjectDetail,
       }) && (
         <QuestionFiltersHeader
           expanded={areFiltersExpanded}

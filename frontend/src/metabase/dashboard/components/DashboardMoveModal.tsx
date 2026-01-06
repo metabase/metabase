@@ -6,7 +6,7 @@ import Link from "metabase/common/components/Link";
 import { MoveModal } from "metabase/common/components/MoveModal";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { connect } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Icon } from "metabase/ui";

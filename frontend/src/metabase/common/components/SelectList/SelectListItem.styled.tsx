@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 
 import type { ColorName } from "metabase/lib/colors/types";
 import { Icon, Text, type TextProps } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
+import { maybeColor } from "metabase/ui/utils/colors";
 
 export const ItemTitle = styled(Text)<TextProps>`
   margin: 0;
@@ -13,7 +13,7 @@ export const ItemTitle = styled(Text)<TextProps>`
 ` as unknown as typeof Text;
 
 export const ItemIcon = styled(Icon)<{ color?: ColorName | string | null }>`
-  color: ${(props) => color(props.color ?? "text-light")};
+  color: ${(props) => maybeColor(props.color ?? "text-light")};
   justify-self: end;
 `;
 

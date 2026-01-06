@@ -6,11 +6,12 @@ import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { ParameterValuesMap } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 interface RunQuestionQueryParams {
   question: Question;
   isGuestEmbed: boolean;
-  token: string | null | undefined;
+  token: EntityToken | null | undefined;
   originalQuestion?: Question;
   parameterValues?: ParameterValuesMap;
   cancelDeferred?: Deferred;

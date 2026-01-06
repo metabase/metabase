@@ -75,6 +75,9 @@
     (perms/set-database-permission! (perms/all-users-group) temp-object :perms/view-data :unrestricted)
     (perms/set-database-permission! (perms/all-users-group) temp-object :perms/create-queries :query-builder-and-native)
     (perms/set-database-permission! (perms/all-users-group) temp-object :perms/download-results :one-million-rows)
+    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/view-data :blocked)
+    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/create-queries :no)
+    (perms/set-database-permission! (perms/all-external-users-group) temp-object :perms/download-results :no)
     (f temp-object)))
 
 (defn- should-read-audit-db?
@@ -95,11 +98,12 @@
    (cond
      (should-read-audit-db? database-id) false
      (db-id->router-db-id database-id) (mi/can-read? :model/Database (db-id->router-db-id database-id))
-     :else (contains? #{:query-builder :query-builder-and-native}
-                      (perms/most-permissive-database-permission-for-user
-                       api/*current-user-id*
-                       :perms/create-queries
-                       database-id)))))
+     :else (or (contains? #{:query-builder :query-builder-and-native}
+                          (perms/most-permissive-database-permission-for-user
+                           api/*current-user-id*
+                           :perms/create-queries
+                           database-id))
+               (perms/user-has-published-table-permission-for-database? database-id)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -125,8 +129,8 @@
 
 (mu/defmethod mi/visible-filter-clause :model/Database
   [_model column-or-exp user-info permission-mapping]
-  [:in column-or-exp
-   (perms/visible-database-filter-select user-info permission-mapping)])
+  {:clause [:in column-or-exp
+            (perms/visible-database-filter-select user-info permission-mapping)]})
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
@@ -259,17 +263,28 @@
   (when-not (is-destination? database)
     (t2/with-transaction [_conn]
       (let [all-users-group  (perms/all-users-group)
+            all-external-users-group (perms/all-external-users-group)
             non-magic-groups (perms/non-magic-groups)
-            non-admin-groups (conj non-magic-groups all-users-group)]
+            non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
         (if (:is_audit database)
           (doseq [group non-admin-groups]
-            (perms/set-database-permission! group database :perms/view-data :unrestricted)
-            (perms/set-database-permission! group database :perms/create-queries :no)
-            (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-            (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-            (perms/set-database-permission! group database :perms/manage-database :no))
+            (if-not (:is_tenant_group group)
+              (do
+                (perms/set-database-permission! group database :perms/view-data :unrestricted)
+                (perms/set-database-permission! group database :perms/create-queries :no)
+                (perms/set-database-permission! group database :perms/download-results :one-million-rows)
+                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+                (perms/set-database-permission! group database :perms/manage-database :no))
+              (do
+                (perms/set-database-permission! group database :perms/view-data :no)
+                (perms/set-database-permission! group database :perms/create-queries :no)
+                (perms/set-database-permission! group database :perms/download-results :no)
+                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
+                (perms/set-database-permission! group database :perms/manage-database :no))))
           (doseq [group non-admin-groups]
-            (perms/set-new-database-permissions! group database)))))))
+            (if-not (:is_tenant_group group)
+              (perms/set-new-database-permissions! group database)
+              (perms/set-external-group-permissions! group database))))))))
 
 (t2/define-after-insert :model/Database
   [database]

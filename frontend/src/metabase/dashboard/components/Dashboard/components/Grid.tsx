@@ -7,7 +7,7 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
-import { Loader, Stack, Text } from "metabase/ui";
+import { Loader } from "metabase/ui";
 import type { DashboardCard } from "metabase-types/api";
 
 import {
@@ -72,12 +72,7 @@ export const Grid = ({
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
 
   if (isLoadingWithoutCards) {
-    return (
-      <Stack justify="center" align="center" gap="sm" mt="xl">
-        <Loader size="lg" />
-        <Text c="text-light" size="xl">{t`Loading…`}</Text>
-      </Stack>
-    );
+    return <Loader size="lg" label={t`Loading…`} />;
   }
 
   if (isEmpty) {

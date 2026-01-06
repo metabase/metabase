@@ -1,7 +1,7 @@
 /* istanbul ignore file */
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
@@ -85,7 +85,7 @@ type SetupOpts = {
   email?: boolean;
   slack?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   isAdmin?: boolean;
   dashcards?: DashboardCard[];
   parameters?: UiParameter[];
@@ -103,7 +103,7 @@ export function setup({
   email = true,
   slack = true,
   tokenFeatures = {},
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   isAdmin = false,
   dashcards = defaultDashcards,
   parameters = defaultParameters,
@@ -184,8 +184,10 @@ export function setup({
   const features = createMockTokenFeatures(tokenFeatures);
   const storeSettings = mockSettings({ "token-features": features });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(

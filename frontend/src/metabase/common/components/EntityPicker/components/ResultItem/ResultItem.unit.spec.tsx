@@ -1,4 +1,4 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import {
   getIcon,
@@ -41,7 +41,8 @@ function setup({
     settings: mockSettings(settingValuesWithToken),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("collections");
+  setupEnterpriseOnlyPlugin("moderation");
 
   return renderWithProviders(
     <ResultItem item={item} isSelected={isSelected} onClick={onClick} />,

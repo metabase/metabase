@@ -212,6 +212,24 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       // Get code step
       getEmbedSidebar().within(() => {
+        cy.findByTestId("publish-guest-embed-link").should("not.exist");
+      });
+
+      H.unpublishChanges("card");
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("publish-guest-embed-link").should("be.visible");
+
+        cy.findByText(/Copy code/).should("not.exist");
+      });
+
+      H.publishChanges("card");
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("publish-guest-embed-link").should("not.exist");
+      });
+
+      getEmbedSidebar().within(() => {
         cy.findAllByText(/Copy code/)
           .first()
           .click();

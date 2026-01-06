@@ -4,8 +4,9 @@ import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Center, Flex } from "metabase/ui";
+import { Card, Center } from "metabase/ui";
 import { useGetTransformQuery } from "metabase-enterprise/api";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 
 import { TransformHeader } from "../../components/TransformHeader";
 
@@ -38,20 +39,18 @@ export function TransformDependenciesPage({
   }
 
   return (
-    <Flex
-      direction="column"
-      h="100%"
-      data-testid="transforms-dependencies-content"
-    >
-      <TransformHeader transform={transform} px="3.5rem" />
+    <PageContainer data-testid="transforms-dependencies-content">
+      <TransformHeader transform={transform} />
       <PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider
         value={{
           baseUrl: Urls.transformDependencies(transform.id),
           defaultEntry: { id: transform.id, type: "transform" },
         }}
       >
-        {children}
+        <Card flex={1} p={0} withBorder>
+          {children}
+        </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-    </Flex>
+    </PageContainer>
   );
 }

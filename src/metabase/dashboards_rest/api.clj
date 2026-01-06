@@ -297,6 +297,26 @@
 ;; If *dashboard-load-id* is set, the outer layer returns a forever-memoized wrapper around get-dashboard*.
 ;; If *dashboard-load-id* is nil, it returns the unwrapped get-dashboard*.
 
+(defn- set-download-perms-on-dashcards
+  "Set each dashcard's nested :card map :download_perms based on the current user's actual permissions."
+  [dashboard]
+  (update dashboard :dashcards
+          (fn [dashcards]
+            (vec (for [dashcard dashcards]
+                   (update dashcard :card
+                           (fn [card]
+                             (when card
+                               (let [dataset-query (or (:dataset_query card)
+                                                       (t2/select-one-fn :dataset_query :model/Card :id (:id card)))
+                                     download-level (when dataset-query
+                                                      (perms/download-perms-level dataset-query api/*current-user-id*))]
+                                 (assoc card :download_perms (case download-level
+                                                               :no :none
+                                                               :ten-thousand-rows :limited
+                                                               :one-million-rows :full
+                                                               :full :full
+                                                               :none)))))))))))
+
 ;; TODO: This indirect memoization by *dashboard-load-id* could probably be turned into a macro for reuse elsewhere.
 (defn- get-dashboard*
   "Get Dashboard with ID."
@@ -310,7 +330,8 @@
         collection.root/hydrate-root-collection
         hide-unreadable-cards
         add-query-average-durations
-        (api/present-in-trash-if-archived-directly (collection/trash-collection-id)))))
+        (api/present-in-trash-if-archived-directly (collection/trash-collection-id))
+        set-download-perms-on-dashcards)))
 
 (def ^:private get-dashboard-fn
   (memoize/ttl (fn [dashboard-load-id]
@@ -1219,7 +1240,8 @@
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [{:keys [id param-key]}      :- [:map
-                                   [:id ms/PositiveInt]]
+                                   [:id ms/PositiveInt]
+                                   [:param-key ms/NonBlankString]]
    constraint-param-key->value :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
     (let [dashboard (hydrate-dashboard-details (api/read-check :model/Dashboard id))]
@@ -1242,6 +1264,7 @@
   Currently limited to first 1000 results."
   [{:keys [id param-key query]} :- [:map
                                     [:id    ms/PositiveInt]
+                                    [:param-key ms/NonBlankString]
                                     [:query ms/NonBlankString]]
    constraint-param-key->value  :- [:map-of string? any?]]
   (lib-be/with-metadata-provider-cache
@@ -1262,7 +1285,7 @@
     GET /api/dashboard/1/params/abc/remapping?value=100"
   [{:keys [id param-key]} :- [:map
                               [:id ms/PositiveInt]
-                              [:param-key :string]]
+                              [:param-key ms/NonBlankString]]
    {:keys [value]}        :- [:map [:value :string]]]
   (let [dashboard (api/read-check :model/Dashboard id)]
     (binding [qp.perms/*param-values-query* true]

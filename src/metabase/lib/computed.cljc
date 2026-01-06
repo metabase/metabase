@@ -15,6 +15,11 @@
   #?(:clj  (java.util.Collections/synchronizedMap (java.util.WeakHashMap.))
      :cljs (js/WeakMap.)))
 
+(defn weak-map-population
+  "Returns the number of queries currently in the [[weak-map]]. Logged as a Prometheus metric on the BE."
+  []
+  (count weak-map))
+
 (def ^:dynamic *computed-cache*
   "Dynamic var that holds an atom used for caching derived values for [[with-cache-sticky*]].
 
@@ -31,15 +36,16 @@
   Soon this limitation should be removed by making queries `map`-likes with a private atom and evict-on-update."
   nil)
 
+(defn- weak-value-factory [_ignored-key]
+  {:sticky (atom {})
+   :weak   (atom {})})
+
 (defn- weak-atoms [query]
   #?(:clj  (.computeIfAbsent ^java.util.WeakHashMap weak-map query
-                             (fn [_]
-                               {:sticky (atom {})
-                                :weak   (atom {})}))
+                             weak-value-factory)
      :cljs (if (.has weak-map query)
              (.get weak-map query)
-             (let [m {:sticky (atom {})
-                      :weak   (atom {})}]
+             (let [m (weak-value-factory nil)]
                (.set weak-map query m)
                m))))
 

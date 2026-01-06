@@ -32,7 +32,7 @@ export const EmbeddingUpsell = ({ campaign }: Props) => {
       fullWidth
       maxWidth="initial"
     >
-      {t`Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the Modular Embedding SDK, and more.`}
+      {t`Upgrade to get access to embeds with single sign-on, drill through, advanced theming, the modular embedding SDK, and more.`}
     </UpsellCard>
   );
 };

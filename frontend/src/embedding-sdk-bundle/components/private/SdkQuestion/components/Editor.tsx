@@ -8,9 +8,10 @@ import {
   isQuestionRunnable,
 } from "metabase/query_builder/utils/question";
 import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
 
 /**
  * @interface
@@ -40,8 +41,22 @@ export const Editor = ({
   // Loads databases and metadata so we can show notebook steps for the selected data source
   useDatabaseListQuery();
 
-  const { question, originalQuestion, updateQuestion, queryQuestion } =
-    useSdkQuestionContext();
+  const {
+    question: rawQuestion,
+    originalQuestion,
+    updateQuestion,
+    queryQuestion,
+  } = useSdkQuestionContext();
+
+  const metadata = useSelector(getMetadata);
+
+  const question = useMemo(() => {
+    if (!rawQuestion) {
+      return rawQuestion;
+    }
+
+    return new Question(rawQuestion?.card(), metadata);
+  }, [rawQuestion, metadata]);
 
   const isDirty = useMemo(() => {
     return isQuestionDirty(question, originalQuestion);

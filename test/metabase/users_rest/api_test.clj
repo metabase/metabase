@@ -69,7 +69,7 @@
           (is (= (set
                   (concat
                    user/admin-or-self-visible-columns
-                   [:common_name :group_ids :personal_collection_id]))
+                   [:common_name :group_ids :personal_collection_id :tenant_collection_id]))
                  (->> result first keys set)))
           ;; just make sure all users are there by checking the emails
           (is (= #{"crowberto@metabase.com"
@@ -888,6 +888,23 @@
         (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email)))))))
 
+(deftest create-user-must-assign-to-all-users-group
+  (testing "POST /api/user"
+    (testing "Creating a tenant user automatically assigns them to All tenant users group even when other groups are specified"
+      (mt/with-temp [:model/PermissionsGroup group-1 {:name "Custom Group 1"}
+                     :model/PermissionsGroup group-2 {:name "Custom Group 2"}]
+        (let [user-name (mt/random-name)
+              email     (mt/random-email)]
+          (mt/with-model-cleanup [:model/User]
+            (mt/with-fake-inbox
+              (let [resp (mt/user-http-request :crowberto :post 400 "user"
+                                               {:first_name             user-name
+                                                :last_name              user-name
+                                                :email                  email
+                                                :user_group_memberships (group-or-ids->user-group-memberships
+                                                                         [group-1 group-2])})]
+                (is (= "You cannot add or remove users to/from the 'All Users' group." resp))))))))))
+
 (deftest create-user-mixed-case-email
   (testing "POST /api/user/:id"
     (testing "can create a new User with a mixed case email and the email is normalized to lower case"
@@ -993,6 +1010,90 @@
                                           :login_attributes {:test "value"}})
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
+
+(deftest update-login-attributes-with-different-value-types-test
+  (testing "PUT /api/user/:id"
+    (testing "Non-string attributes are converted to strings"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                                :last_name "User"
+                                                :email "testuser-types@metabase.com"}]
+        (let [response (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                             {:login_attributes {:string-attr "hello"
+                                                                 :number-attr 42
+                                                                 :float-attr 3.14
+                                                                 :bool-true true
+                                                                 :bool-false false}})]
+          (is (= {:string-attr "hello"
+                  :number-attr "42"
+                  :float-attr "3.14"
+                  :bool-true "true"
+                  :bool-false "false"}
+                 (:login_attributes response)))
+          (testing "values are persisted correctly in the database"
+            (is (= {"string-attr" "hello"
+                    "number-attr" "42"
+                    "float-attr" "3.14"
+                    "bool-true" "true"
+                    "bool-false" "false"}
+                   (t2/select-one-fn :login_attributes :model/User :id user-id)))))))))
+
+(deftest create-user-with-different-attribute-types-test
+  (testing "POST /api/user"
+    (testing "Non-string attributes are converted to strings"
+      (with-temp-user-email! [email]
+        (let [response (mt/user-http-request :crowberto :post 200 "user"
+                                             {:first_name "Attribute"
+                                              :last_name "Types"
+                                              :email email
+                                              :login_attributes {:string-val "test-string"
+                                                                 :integer-val 123
+                                                                 :decimal-val 45.67
+                                                                 :boolean-true true
+                                                                 :boolean-false false}})]
+          (is (= {:string-val "test-string"
+                  :integer-val "123"
+                  :decimal-val "45.67"
+                  :boolean-true "true"
+                  :boolean-false "false"}
+                 (:login_attributes response)))
+          (testing "values are persisted correctly in the database"
+            (is (= {"string-val" "test-string"
+                    "integer-val" "123"
+                    "decimal-val" "45.67"
+                    "boolean-true" "true"
+                    "boolean-false" "false"}
+                   (t2/select-one-fn :login_attributes :model/User :id (:id response))))))))))
+
+(deftest login-attributes-cannot-start-with-at-symbol
+  (testing "PUT /api/user/:id"
+    (testing "We can't create login attributes starting with `@`"
+      (mt/with-temp [:model/User {user-id :id} {:first_name   "Test"
+                                                :last_name    "User"
+                                                :email        "testuser@metabase.com"
+                                                :is_superuser true}]
+        (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                :errors
+                {:login_attributes
+                 {(keyword "@foo")
+                  "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+               (mt/user-http-request :crowberto :put 400 (str "user/" user-id)
+                                     {:email            "testuser@metabase.com"
+                                      :login_attributes {"@foo" "foo"}}))))))
+  (testing "POST /api/user"
+    (let [user-name (mt/random-name)
+          email     (mt/random-email)]
+      (mt/with-model-cleanup [:model/User]
+        (mt/with-fake-inbox
+          (is (= {:specific-errors {:login_attributes {(keyword "@foo") ["login attribute keys must not start with `@`, received: \"@foo\""]}},
+                  :errors
+                  {:login_attributes
+                   {(keyword "@foo")
+                    "nullable map from <login attribute keys must be a keyword or string, and login attribute keys must not start with `@`> to <anything>"}}}
+                 (mt/user-http-request :crowberto :post 400 "user"
+                                       {:first_name       user-name
+                                        :last_name        user-name
+                                        :email            email
+                                        :login_attributes {"@foo" "bar"}}))))))))
 
 (deftest ^:parallel updated-user-name-test
   (testing "Test that `metabase.users-rest.api/updated-user-name` works as intended."

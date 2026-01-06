@@ -17,7 +17,7 @@ describe("getIcon", () => {
   });
 
   it("should return the correct icon for a schema", () => {
-    expect(getIcon({ model: "schema" })).toEqual({ name: "folder" });
+    expect(getIcon({ model: "schema" })).toEqual({ name: "folder_database" });
   });
 
   it("should return the correct icon for a table", () => {
@@ -103,7 +103,33 @@ describe("getIcon", () => {
       });
     });
 
-    it("should return the correct icon for a card with anobject detail chart", () => {
+    it("should return the correct icon for a personal collection root", () => {
+      expect(
+        getIcon({ model: "collection", is_personal: true, location: "/" }),
+      ).toEqual({
+        name: "person",
+      });
+    });
+
+    it("should return the correct icon for a nested personal collection", () => {
+      expect(
+        getIcon({
+          model: "collection",
+          is_personal: true,
+          location: "/123/456",
+        }),
+      ).toEqual({
+        name: "folder",
+      });
+    });
+
+    it("should return the correct icon for all personal collections", () => {
+      expect(getIcon({ model: "collection", id: "personal" })).toEqual({
+        name: "group",
+      });
+    });
+
+    it("should return the correct icon for a card with an object detail chart", () => {
       expect(getIcon({ model: "card", display: "object" })).toEqual({
         name: "document",
       });

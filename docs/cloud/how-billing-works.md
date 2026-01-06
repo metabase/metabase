@@ -60,9 +60,9 @@ A user account is any account which has been added to your Metabase instance (ma
 
 ## How billing works with embedding
 
-Interactive Embedding requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
+Full app embedding and modular embedding (unless using guest embeds) requires viewers to sign in to your Metabase, which means they will count as users for billing purposes.
 
-Static Embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
+Guest embedding doesn’t require viewers to sign in to your Metabase, which means they won’t count as additional users for billing purposes.
 
 ## How we count active user accounts each day
 

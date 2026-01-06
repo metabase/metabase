@@ -300,9 +300,9 @@
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                        :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
           (t2/insert! :model/RemoteSyncObject
-                      [{:model_type "Collection" :model_id coll-id :status "created" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id card-id :status "updated" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id 999 :status "deleted" :status_changed_at (t/offset-date-time)}])
+                      [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
+                       {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
+                       {:model_type "Card" :model_id 999 :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
           (is (= 3 (t2/count :model/RemoteSyncObject)))
           (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
@@ -329,9 +329,9 @@
                          :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}
                          :model/Dashboard {dash-id :id} {:name "Test Dashboard" :collection_id coll-id :entity_id "test-dashboard-1xxxxx"}]
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "updated" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Card" :model_id card-id :status "created" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Dashboard" :model_id dash-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "updated" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id card-id :model_name "Test Card" :status "created" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Dashboard" :model_id dash-id :model_name "Test Dashboard" :status "removed" :status_changed_at (t/offset-date-time)}])
             (is (= "updated" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
             (is (= "created" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
             (is (= "removed" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))
@@ -344,6 +344,120 @@
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
                 (is (= "synced" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))))))))))
+
+(deftest export!-deletes-files-for-removed-top-level-collections-test
+  (testing "export! deletes files from git source for collections with location '/' that have been removed"
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Collection {active-coll-id :id} {:name "Active Collection"
+                                                                 :is_remote_synced true
+                                                                 :entity_id "active-collection-xxx"
+                                                                 :location "/"}
+                         :model/Card _ {:name "Active Card"
+                                        :collection_id active-coll-id
+                                        :entity_id "active-card-xxxxxxxxx"}
+                         :model/Collection {removed-coll-id :id} {:name "Removed Collection"
+                                                                  :is_remote_synced false
+                                                                  :entity_id "removed-collection-xx"
+                                                                  :location "/"}]
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id active-coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id removed-coll-id :model_name "Removed Collection" :status "removed" :status_changed_at (t/offset-date-time)}])
+            (let [initial-files {"main" {"collections/active-collection-xxx_active_collection/active-collection-xxx.yaml"
+                                         (test-helpers/generate-collection-yaml "active-collection-xxx" "Active Collection")
+                                         "collections/active-collection-xxx_active_collection/cards/active-card.yaml"
+                                         (test-helpers/generate-card-yaml "active-card-xxxxxxxxx" "Active Card" "active-collection-xxx")
+                                         "collections/removed-collection-xx_removed_collection/removed-collection-xx.yaml"
+                                         (test-helpers/generate-collection-yaml "removed-collection-xx" "Removed Collection")
+                                         "collections/removed-collection-xx_removed_collection/cards/removed-card.yaml"
+                                         (test-helpers/generate-card-yaml "removed-card-xxxxxxxx" "Removed Card" "removed-collection-xx")}}
+                  mock-source (test-helpers/create-mock-source :initial-files initial-files)
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+              (is (= :success (:status result)))
+              (let [files-after-export (get @(:files-atom mock-source) "main")]
+                (is (some #(str/includes? % "active-collection-xxx") (keys files-after-export))
+                    "Active collection files should exist after export")
+                (is (not (some #(str/includes? % "removed-collection-xx") (keys files-after-export)))
+                    "Removed collection files should be deleted after export")))))))))
+
+(deftest export!-only-deletes-top-level-removed-collections-test
+  (testing "export! only deletes files for removed collections at location '/', not nested ones"
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          (mt/with-temp [:model/Collection {parent-coll-id :id}
+                         {:name "Parent Collection"
+                          :is_remote_synced true
+                          :entity_id "parent-collection-xx"
+                          :location "/"}
+                         :model/Collection {nested-coll-id :id}
+                         {:name "Nested Removed Collection"
+                          :is_remote_synced true
+                          :entity_id "nested-removed-collxx"
+                          :location (format "/%d/" parent-coll-id)}]
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id parent-coll-id :model_name "Parent Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id nested-coll-id :model_name "Nested Collection" :status "removed" :status_changed_at (t/offset-date-time)}])
+            (let [initial-files {"main" {"collections/parent-collection-xx_parent_collection/parent-collection-xx.yaml"
+                                         (test-helpers/generate-collection-yaml "parent-collection-xx" "Parent Collection")
+                                         "collections/parent-collection-xx_parent_collection/nested-removed-collxx_nested_removed_collection/nested-removed-collxx.yaml"
+                                         (test-helpers/generate-collection-yaml "nested-removed-collxx" "Nested Removed Collection"
+                                                                                :parent-id "parent-collection-xx")}}
+                  mock-source (test-helpers/create-mock-source :initial-files initial-files)
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+              (is (= :success (:status result)))
+              (let [files-after-export (get @(:files-atom mock-source) "main")]
+                (is (some #(str/includes? % "parent-collection-xx") (keys files-after-export))
+                    "Parent collection files should exist after export")
+                (is (some #(str/includes? % "nested-removed-collxx") (keys files-after-export))
+                    "Nested removed collection files should NOT be deleted (only top-level removals are processed)")))))))))
+
+(deftest export!-handles-multiple-removed-top-level-collections-test
+  (testing "export! correctly handles multiple removed top-level collections"
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temporary-setting-values [remote-sync-type :read-write]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+          ;; Note: entity_id must be exactly 21 characters
+          (mt/with-temp [:model/Collection {active-coll-id :id}
+                         {:name "Active Collection"
+                          :is_remote_synced true
+                          :entity_id "active-coll-xxxxxxxxx" ;; 21 chars
+                          :location "/"}
+                         :model/Collection {removed-coll-1-id :id}
+                         {:name "Removed Collection 1"
+                          :is_remote_synced false
+                          :entity_id "removed-coll-1xxxxxxx" ;; 21 chars
+                          :location "/"}
+                         :model/Collection {removed-coll-2-id :id}
+                         {:name "Removed Collection 2"
+                          :is_remote_synced false
+                          :entity_id "removed-coll-2xxxxxxx" ;; 21 chars
+                          :location "/"}]
+            (t2/insert! :model/RemoteSyncObject
+                        [{:model_type "Collection" :model_id active-coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id removed-coll-1-id :model_name "Removed Col 1" :status "removed" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id removed-coll-2-id :model_name "Removed Col 2" :status "removed" :status_changed_at (t/offset-date-time)}])
+            (let [initial-files {"main" {"collections/removed-coll-1xxxxxxx_removed_collection_1/removed-coll-1xxxxxxx.yaml"
+                                         (test-helpers/generate-collection-yaml "removed-coll-1xxxxxxx" "Removed Collection 1")
+                                         "collections/removed-coll-1xxxxxxx_removed_collection_1/cards/card-1.yaml"
+                                         (test-helpers/generate-card-yaml "card-1-entity-idxxxxx" "Card 1" "removed-coll-1xxxxxxx")
+                                         "collections/removed-coll-2xxxxxxx_removed_collection_2/removed-coll-2xxxxxxx.yaml"
+                                         (test-helpers/generate-collection-yaml "removed-coll-2xxxxxxx" "Removed Collection 2")
+                                         "collections/removed-coll-2xxxxxxx_removed_collection_2/dashboards/dash-1.yaml"
+                                         (test-helpers/generate-dashboard-yaml "dash-1-entity-idxxxxx" "Dashboard 1" "removed-coll-2xxxxxxx")}}
+                  mock-source (test-helpers/create-mock-source :initial-files initial-files)
+                  result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+              (is (= :success (:status result)))
+              (let [files-after-export (get @(:files-atom mock-source) "main")]
+                ;; Active collection should be written by export
+                (is (some #(str/includes? % "active-coll-xxxxxxxxx") (keys files-after-export))
+                    "Active collection files should exist after export")
+                ;; Both removed collections should be deleted
+                (is (not (some #(str/includes? % "removed-coll-1xxxxxxx") (keys files-after-export)))
+                    "First removed collection files should be deleted")
+                (is (not (some #(str/includes? % "removed-coll-2xxxxxxx") (keys files-after-export)))
+                    "Second removed collection files should be deleted")))))))))
 
 (deftest finish-remote-config!-sets-default-branch-when-blank-test
   (testing "finish-remote-config! sets default branch when branch setting is blank"
@@ -434,3 +548,46 @@
                     "Should return nil when remote sync is disabled")
                 (is @clear-called?
                     "Should call clear-remote-synced-collection!")))))))))
+
+(deftest import!-v57-type-remote-synced-migration-test
+  (testing "importing v57 export with type=remote-synced sets is_remote_synced=true and clears type"
+    (let [v57-entity-id "v57-collection-xxxx"
+          v57-files {"main" {(str "collections/" v57-entity-id "_v57_collection/" v57-entity-id "_v57_collection.yaml")
+                             (test-helpers/generate-v57-collection-yaml v57-entity-id "V57 Collection" :type "remote-synced")}}
+          mock-source (test-helpers/create-mock-source :initial-files v57-files)]
+      (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              result (impl/import! (source.p/snapshot mock-source) task-id)]
+          (is (= :success (:status result)))
+          (let [imported-collection (t2/select-one :model/Collection :entity_id v57-entity-id)]
+            (is (some? imported-collection)
+                "Collection should be imported")
+            (is (true? (:is_remote_synced imported-collection))
+                "is_remote_synced should be true after import")
+            (is (nil? (:type imported-collection))
+                "type should be nil (not 'remote-synced') after migration")))))))
+
+(deftest import!-v57-nested-remote-synced-collections-test
+  (testing "importing v57 export with nested type=remote-synced collections migrates all correctly"
+    (let [parent-entity-id "v57-parent-collxxxxxx"
+          child-entity-id  "v57-child-collxxxxxxx"
+          v57-files {"main" {(str "collections/" parent-entity-id "_v57_parent/" parent-entity-id "_v57_parent.yaml")
+                             (test-helpers/generate-v57-collection-yaml parent-entity-id "V57 Parent" :type "remote-synced")
+
+                             (str "collections/" parent-entity-id "_v57_parent/" child-entity-id "_v57_child/" child-entity-id "_v57_child.yaml")
+                             (test-helpers/generate-v57-collection-yaml child-entity-id "V57 Child" :parent-id parent-entity-id :type "remote-synced")}}
+          mock-source (test-helpers/create-mock-source :initial-files v57-files)]
+      (mt/with-model-cleanup [:model/Collection :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              result (impl/import! (source.p/snapshot mock-source) task-id)]
+          (is (= :success (:status result)))
+          (let [parent-collection (t2/select-one :model/Collection :entity_id parent-entity-id)
+                child-collection (t2/select-one :model/Collection :entity_id child-entity-id)]
+            (testing "parent collection"
+              (is (some? parent-collection) "Parent collection should be imported")
+              (is (true? (:is_remote_synced parent-collection)) "Parent is_remote_synced should be true")
+              (is (nil? (:type parent-collection)) "Parent type should be nil"))
+            (testing "child collection"
+              (is (some? child-collection) "Child collection should be imported")
+              (is (true? (:is_remote_synced child-collection)) "Child is_remote_synced should be true")
+              (is (nil? (:type child-collection)) "Child type should be nil"))))))))
