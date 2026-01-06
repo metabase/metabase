@@ -3,6 +3,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
+   [metabase.lib.native :as lib.native]
    [metabase.lib.parameters.parse.types :as lib.params.parse.types]
    [metabase.lib.parse :as lib.parse]
    [metabase.util.malli :as mu]
@@ -23,7 +24,8 @@
 
     [{:type :metabase.lib.parse/param
       :name param-name}]
-    (lib.params.parse.types/param {:k (str/trim param-name)})
+    (lib.params.parse.types/param {:k (or (lib.native/match-and-normalize-tag-name param-name)
+                                          (str/trim param-name))})
 
     [{:type :metabase.lib.parse/function-param
       :name param-name
