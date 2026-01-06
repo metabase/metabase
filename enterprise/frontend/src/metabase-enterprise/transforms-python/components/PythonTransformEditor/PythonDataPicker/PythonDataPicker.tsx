@@ -163,6 +163,7 @@ export function PythonDataPicker({
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
           databaseIsDisabled={(database: Database) =>
+            database.transforms_permissions !== "write" ||
             !doesDatabaseSupportTransforms(database) ||
             !hasFeature(database, "transforms/python")
           }

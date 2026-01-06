@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
@@ -55,18 +55,22 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
 
+  const transformsDatabases = useMemo(() => {
+    return databases?.data.filter((d) => d.transforms_permissions === "write");
+  }, [databases]);
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
 
-  if (transform == null || databases == null) {
+  if (transform == null || transformsDatabases == null) {
     return <LoadingAndErrorWrapper error={t`Transform not found.`} />;
   }
 
   return (
     <TransformQueryPageBody
       transform={transform}
-      databases={databases.data}
+      databases={transformsDatabases}
       route={route}
     />
   );
