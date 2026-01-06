@@ -208,7 +208,8 @@
                       ;; If you're seeing this test fail because this last column is missing,
                       ;; especially while fixing https://github.com/metabase/metabase/issues/67808
                       ;; it's okay to remove this.
-                      "j__PEOPLE__via__USER_ID__EMAIL_2"]
+                      ;;"j__PEOPLE__via__USER_ID__EMAIL_2"
+                      ]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id
                        1                ; <= orders.user-id
@@ -232,7 +233,8 @@
                        "labadie.lina@gmail.com"  ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
                        ;; FROM eric (https://github.com/metabase/metabase/pull/67675):
                        ;; Same as above ^^^^^^
-                       "labadie.lina@gmail.com"]
+                       ;;"labadie.lina@gmail.com"
+                       ]
                       [1
                        1
                        14
@@ -255,7 +257,8 @@
                        "arne-o-hara@gmail.com"
                        ;; FROM eric (https://github.com/metabase/metabase/pull/67675):
                        ;; Same as above ^^^^^^
-                       "arne-o-hara@gmail.com"]]
+                       ;;"arne-o-hara@gmail.com"
+                       ]]
                      (mt/rows results))))))))))
 
 (deftest ^:parallel multi-stage-with-external-remapping-test

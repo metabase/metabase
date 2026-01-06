@@ -740,7 +740,7 @@
                        ;; If you're seeing this test fail because there are 20 columns,
                        ;; especially while fixing https://github.com/metabase/metabase/issues/67808
                        ;; it's okay to change this back to 20.
-                       :fields #(= (count %) 21)}}
+                       :fields #(= (count %) 20)}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL))))))
@@ -801,8 +801,7 @@
                                 ;; If you're seeing this test fail because this last 2 columns are missing,
                                 ;; especially while fixing https://github.com/metabase/metabase/issues/67808
                                 ;; it's okay to remove this.
-                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :id)}]
-                                [:field (meta/id :categories :name)    {:join-alias "J", :source-field (meta/id :venues :category-id)}]]}}
+                                ]}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL
