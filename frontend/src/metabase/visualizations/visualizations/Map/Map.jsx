@@ -28,7 +28,8 @@ import {
   isState,
 } from "metabase-lib/v1/types/utils/isa";
 
-import ChoroplethMap, {
+import {
+  ChoroplethMap,
   getColorplethColorScale,
 } from "../../components/ChoroplethMap";
 import { LeafletGridHeatMap } from "../../components/LeafletGridHeatMap";
