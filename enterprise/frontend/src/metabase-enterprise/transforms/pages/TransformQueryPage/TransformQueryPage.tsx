@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { Route, RouteProps } from "react-router";
 import { push } from "react-router-redux";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { skipToken, useListDatabasesQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -21,13 +21,14 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { useTransformPermissions } from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { Database, Transform } from "metabase-types/api";
 
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
-import { isNotDraftSource, sourceDatabaseId } from "../../utils";
+import { isNotDraftSource } from "../../utils";
 
 import { TransformPaneHeaderActions } from "./TransformPaneHeaderActions";
 
@@ -47,17 +48,10 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
     isLoading: isLoadingTransform,
     error: transformError,
   } = useGetTransformQuery(transformId ?? skipToken);
-  const {
-    data: databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useListDatabasesQuery({ include_analytics: true });
+  const { readOnly, transformsDatabases, isLoadingDatabases, databasesError } =
+    useTransformPermissions({ transform });
   const isLoading = isLoadingTransform || isLoadingDatabases;
   const error = transformError || databasesError;
-
-  const transformsDatabases = useMemo(() => {
-    return databases?.data.filter((d) => d.transforms_permissions === "write");
-  }, [databases]);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -72,6 +66,7 @@ export function TransformQueryPage({ params, route }: TransformQueryPageProps) {
       transform={transform}
       databases={transformsDatabases}
       route={route}
+      readOnly={readOnly}
     />
   );
 }
@@ -80,12 +75,14 @@ type TransformQueryPageBodyProps = {
   transform: Transform;
   databases: Database[];
   route: RouteProps;
+  readOnly?: boolean;
 };
 
 function TransformQueryPageBody({
   transform,
   databases,
   route,
+  readOnly,
 }: TransformQueryPageBodyProps) {
   const {
     source,
@@ -104,11 +101,6 @@ function TransformQueryPageBody({
   const [updateTransform, { isLoading: isSaving }] =
     useUpdateTransformMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const readOnly = useMemo(() => {
-    const dbId = sourceDatabaseId(transform.source);
-    const sourceDb = databases.find((db) => db.id === dbId);
-    return sourceDb?.transforms_permissions !== "write";
-  }, [databases, transform.source]);
   const isEditMode = !readOnly && !!route.path?.includes("/edit");
 
   useRegisterMetabotTransformContext(transform, source);
