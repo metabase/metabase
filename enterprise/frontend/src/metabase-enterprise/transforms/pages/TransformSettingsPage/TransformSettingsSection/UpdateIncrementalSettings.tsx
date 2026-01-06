@@ -42,7 +42,6 @@ export const UpdateIncrementalSettings = ({
         />
         <IncrementalTransformSettings
           source={transform.source}
-          checkOnMount
           variant="standalone"
         />
       </Form>

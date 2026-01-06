@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -15,14 +15,20 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import * as Lib from "metabase-lib";
 import type { Database, Transform } from "metabase-types/api";
 
+import {
+  QueryComplexityWarning,
+  useQueryComplexityCheck,
+} from "../../components/QueryComplexityWarning";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
@@ -102,6 +108,18 @@ function TransformQueryPageBody({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isEditMode = !!route.path?.includes("/edit");
   useRegisterMetabotTransformContext(transform, source);
+  const metadata = useSelector(getMetadata);
+
+  const { tryCheckQueryComplexity, shouldShowWarning } =
+    useQueryComplexityCheck();
+
+  const handleEditorBlur = () => {
+    if (source.type !== "query") {
+      return null;
+    }
+    const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);
+    tryCheckQueryComplexity(Lib.rawNativeQuery(libQuery));
+  };
 
   const {
     checkData,
@@ -176,6 +194,7 @@ function TransformQueryPageBody({
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
         />
+        {shouldShowWarning && <QueryComplexityWarning />}
         <Box
           w="100%"
           bg="background-primary"
@@ -210,6 +229,7 @@ function TransformQueryPageBody({
               onChangeUiState={setUiState}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              onBlur={handleEditorBlur}
               transformId={transform.id}
             />
           )}

@@ -1,22 +1,25 @@
 import { useFormikContext } from "formik";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { FormSelect, FormSwitch } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Alert, Box, Divider, Group, Stack, Text } from "metabase/ui";
-import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
+import { Box, Divider, Group, Stack, Text } from "metabase/ui";
 import { TitleSection } from "metabase-enterprise/transforms/components/TitleSection";
 import {
   CHECKPOINT_TEMPLATE_TAG,
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase-enterprise/transforms/constants";
-import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
 import type { TransformSource } from "metabase-types/api";
+
+import {
+  QueryComplexityWarning,
+  useQueryComplexityCheck,
+} from "../QueryComplexityWarning";
 
 import {
   KeysetColumnSelect,
@@ -27,34 +30,22 @@ import type { IncrementalSettingsFormValues } from "./form";
 
 type IncrementalTransformSettingsProps = {
   source: TransformSource;
-  checkOnMount?: boolean;
   variant?: "embedded" | "standalone";
 };
 
 export const IncrementalTransformSettings = ({
   source,
-  checkOnMount,
   variant = "embedded",
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
-  // Convert DatasetQuery to Lib.Query via Question
-  const libQuery = useMemo(() => {
+
+  const libQuery = (() => {
     if (source.type !== "query") {
       return null;
     }
-
-    try {
-      const question = Question.create({
-        dataset_query: source.query,
-        metadata,
-      });
-      return question.query();
-    } catch (error) {
-      console.error("SourceStrategyFields: Error creating question", error);
-      return null;
-    }
-  }, [source, metadata]);
+    return Lib.fromJsQueryAndMetadata(metadata, source.query);
+  })();
 
   // Check if this is an MBQL query (not native SQL or Python)
   const isMbqlQuery = useMemo(() => {
@@ -77,19 +68,10 @@ export const IncrementalTransformSettings = ({
   const isMultiTablePythonTransform =
     isPythonTransform && Object.keys(source["source-tables"]).length > 1;
 
-  const [checkQueryComplexity, { data: complexity }] =
-    useLazyCheckQueryComplexityQuery();
-  const [showComplexityWarning, setShowComplexityWarning] = useState(false);
-
-  const { transformType, query } = useMemo(() => {
-    if (isMbqlQuery) {
-      return { transformType: "query" as const, query: libQuery };
-    }
-    if (isPythonTransform) {
-      return { transformType: "python" as const, query: null };
-    }
-    return { transformType: "native" as const, query: libQuery };
-  }, [isMbqlQuery, isPythonTransform, libQuery]);
+  const transformType = match({ isMbqlQuery, isPythonTransform })
+    .with({ isMbqlQuery: true }, () => "query" as const)
+    .with({ isPythonTransform: true }, () => "python" as const)
+    .otherwise(() => "native" as const);
 
   const hasCheckpointTag = useMemo(() => {
     if (!libQuery || transformType !== "native") {
@@ -99,25 +81,21 @@ export const IncrementalTransformSettings = ({
     return CHECKPOINT_TEMPLATE_TAG in tags;
   }, [libQuery, transformType]);
 
-  const tryCheckQueryComplexity = useCallback(
-    async (query: Query) => {
-      if (transformType !== "native" || hasCheckpointTag) {
-        return;
-      }
-      const complexity = await checkQueryComplexity(
-        Lib.rawNativeQuery(query),
-        true,
-      ).unwrap();
-      setShowComplexityWarning(complexity?.is_simple === false);
-    },
-    [transformType, hasCheckpointTag, checkQueryComplexity],
-  );
+  const { tryCheckQueryComplexity, shouldShowWarning } =
+    useQueryComplexityCheck();
+
+  const handleCheckQueryComplexity = useCallback(() => {
+    if (transformType !== "native" || hasCheckpointTag || !libQuery) {
+      return;
+    }
+    tryCheckQueryComplexity(Lib.rawNativeQuery(libQuery));
+  }, [transformType, hasCheckpointTag, libQuery, tryCheckQueryComplexity]);
 
   useEffect(() => {
-    if (checkOnMount && libQuery && "source-incremental-strategy" in source) {
-      tryCheckQueryComplexity(libQuery);
+    if (values.incremental) {
+      handleCheckQueryComplexity();
     }
-  }, [checkOnMount, libQuery, source, tryCheckQueryComplexity]);
+  }, [values.incremental, handleCheckQueryComplexity]);
 
   const renderIncrementalSwitch = () => (
     <FormSwitch
@@ -129,30 +107,14 @@ export const IncrementalTransformSettings = ({
           ? t`Incremental transforms are only supported for single data source transforms.`
           : t`Only process new and changed data`
       }
-      onChange={(e) => {
-        if (e.target.checked && query) {
-          tryCheckQueryComplexity(query);
-        }
-      }}
       wrapperProps={{
         "data-testid": "incremental-switch",
       }}
     />
   );
 
-  const complexityWarningAlert = showComplexityWarning && (
-    <Alert variant="info" icon="info">
-      <Stack gap="xs">
-        <span>
-          {t`This query is too complex to allow automatic checkpoint column selection. You may need to explicitly add a conditional filter in your query, for example:`}
-        </span>
-        <code>{`[[ WHERE id > {{${CHECKPOINT_TEMPLATE_TAG}}} ]]`}</code>
-        <span>
-          {t`Reason: `}
-          <strong>{complexity?.reason}</strong>
-        </span>
-      </Stack>
-    </Alert>
+  const complexityWarningAlert = shouldShowWarning && (
+    <QueryComplexityWarning />
   );
 
   const label = t`Incremental transformation`;
@@ -173,7 +135,7 @@ export const IncrementalTransformSettings = ({
             <Group p="lg">
               <SourceStrategyFields
                 source={source}
-                query={query}
+                query={libQuery}
                 type={transformType}
               />
             </Group>
@@ -198,7 +160,7 @@ export const IncrementalTransformSettings = ({
           {complexityWarningAlert}
           <SourceStrategyFields
             source={source}
-            query={query}
+            query={libQuery}
             type={transformType}
           />
           <TargetStrategyFields variant={variant} />
