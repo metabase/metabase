@@ -134,7 +134,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         id: "name",
         accessorKey: "name",
         header: t`Name`,
-        minWidth: 320,
+        minWidth: 280,
         enableSorting: true,
         cell: ({ row }) => (
           <EntityNameCell
@@ -146,10 +146,40 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         ),
       },
       {
+        id: "owner",
+        accessorFn: (node) => {
+          const owner = node.owner;
+          if (owner) {
+            return owner.first_name && owner.last_name
+              ? `${owner.first_name} ${owner.last_name}`
+              : owner.email;
+          }
+          return node.owner_email ?? "";
+        },
+        header: t`Owner`,
+        minWidth: 160,
+        enableSorting: true,
+        cell: ({ row }) => {
+          const owner = row.original.owner;
+          const ownerEmail = row.original.owner_email;
+          if (owner) {
+            const displayName =
+              owner.first_name && owner.last_name
+                ? `${owner.first_name} ${owner.last_name}`
+                : owner.email;
+            return <Ellipsified>{displayName}</Ellipsified>;
+          }
+          if (ownerEmail) {
+            return <Ellipsified>{ownerEmail}</Ellipsified>;
+          }
+          return null;
+        },
+      },
+      {
         id: "updated_at",
         accessorKey: "updated_at",
         header: t`Last Modified`,
-        maxWidth: 260,
+        maxWidth: 200,
         minWidth: "auto",
         enableSorting: true,
         sortingFn: "datetime",
@@ -163,7 +193,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         id: "output_table",
         accessorFn: (node) => node.target?.name ?? "",
         header: t`Output table`,
-        minWidth: 240,
+        minWidth: 200,
         enableSorting: true,
         cell: ({ row }) =>
           row.original.target?.name ? (
@@ -281,7 +311,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
 
         <Card withBorder p={0}>
           {isLoading ? (
-            <TreeTableSkeleton columnWidths={[0.4, 0.2, 0.25, 0.05]} />
+            <TreeTableSkeleton columnWidths={[0.35, 0.15, 0.15, 0.2, 0.05]} />
           ) : (
             <TreeTable
               instance={treeTableInstance}
