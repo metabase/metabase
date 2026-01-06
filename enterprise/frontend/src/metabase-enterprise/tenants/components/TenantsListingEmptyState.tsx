@@ -16,10 +16,10 @@ export const TenantsListingEmptyState = ({
         ).jt`Create your first tenant to start adding ${(
           <Anchor
             component={Link}
-            to="/admin/tenants/people"
+            to="/admin/people/tenants/people"
             key="external-users-link"
           >{t`external users`}</Anchor>
-        )} to it, and organize these users into ${(<Anchor component={Link} to="/admin/tenants/groups" key="tenant-groups-link">{t`groups`}</Anchor>)} to assign ${(
+        )} to it, and organize these users into ${(<Anchor component={Link} to="/admin/people/tenants/groups" key="tenant-groups-link">{t`groups`}</Anchor>)} to assign ${(
           <Anchor
             component={Link}
             to="/admin/permissions"
