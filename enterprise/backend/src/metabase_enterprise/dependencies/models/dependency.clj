@@ -65,7 +65,7 @@
   ([key-seq destination-filter-fn source-filter-fn]
    (deps-children
     {:src-type              :to_entity_type
-     :srd-id                :to_entity_id
+     :src-id                :to_entity_id
      :dst-type              :from_entity_type
      :dst-id                :from_entity_id
      :key-seq               key-seq
