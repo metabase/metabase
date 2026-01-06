@@ -472,3 +472,88 @@
         (is (= {:segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:segment segment)))))))
+
+(deftest upstream-deps-measure-test
+  (let [mp (mt/metadata-provider)
+        orders-id (mt/id :orders)
+        orders (lib.metadata/table mp orders-id)
+        quantity (lib.metadata/field mp (mt/id :orders :quantity))]
+    (testing "measure depending only on table"
+      (mt/with-temp [:model/Measure measure {:name "Total Quantity"
+                                             :table_id orders-id
+                                             :definition (-> (lib/query mp orders)
+                                                             (lib/aggregate (lib/sum quantity)))}]
+        (is (= {:measure #{} :table #{orders-id}}
+               (calculation/upstream-deps:measure measure)))))
+
+    (testing "measure depending on another measure"
+      (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
+                                                                      :table_id orders-id
+                                                                      :definition (-> (lib/query mp orders)
+                                                                                      (lib/aggregate (lib/sum quantity)))}]
+        (let [mp' (mt/metadata-provider)]
+          (mt/with-temp [:model/Measure measure-b {:name "Measure B"
+                                                   :table_id orders-id
+                                                   :definition (-> (lib/query mp' orders)
+                                                                   (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id) 100)))}]
+            (testing "base measure depends only on table"
+              (is (= {:measure #{} :table #{orders-id}}
+                     (calculation/upstream-deps:measure measure-a))))
+            (testing "dependent measure depends on both table and measure"
+              (is (= {:measure #{measure-a-id} :table #{orders-id}}
+                     (calculation/upstream-deps:measure measure-b))))))))))
+
+(deftest upstream-deps-measure-with-multiple-measures-test
+  (testing "Measure depending on multiple other measures tracks all dependencies"
+    (let [mp (mt/metadata-provider)
+          orders-id (mt/id :orders)
+          orders (lib.metadata/table mp orders-id)
+          quantity (lib.metadata/field mp (mt/id :orders :quantity))
+          total (lib.metadata/field mp (mt/id :orders :total))]
+      (mt/with-temp [:model/Measure {measure-a-id :id} {:name "Measure A"
+                                                        :table_id orders-id
+                                                        :definition (-> (lib/query mp orders)
+                                                                        (lib/aggregate (lib/sum quantity)))}
+                     :model/Measure {measure-b-id :id} {:name "Measure B"
+                                                        :table_id orders-id
+                                                        :definition (-> (lib/query mp orders)
+                                                                        (lib/aggregate (lib/sum total)))}]
+        (let [mp' (mt/metadata-provider)]
+          (mt/with-temp [:model/Measure measure-c {:name "Measure C"
+                                                   :table_id orders-id
+                                                   :definition (-> (lib/query mp' orders)
+                                                                   (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
+                                                                                         (lib.metadata/measure mp' measure-b-id))))}]
+            (is (= {:measure #{measure-a-id measure-b-id} :table #{orders-id}}
+                   (calculation/upstream-deps:measure measure-c)))))))))
+
+(deftest upstream-deps-measure-implicit-join-test
+  (testing "Measure depending on implicitly joined field adds dep on that field's table"
+    (let [mp (mt/metadata-provider)
+          checkins-id (mt/id :checkins)
+          venues-id (mt/id :venues)
+          checkins (lib.metadata/table mp checkins-id)
+          base-query (lib/query mp checkins)
+          visible-cols (lib/visible-columns base-query)
+          venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
+      (mt/with-temp [:model/Measure measure {:name "Total Venue Price"
+                                             :table_id checkins-id
+                                             :definition (lib/aggregate base-query (lib/sum venue-price))}]
+        (is (= {:measure #{} :table #{checkins-id venues-id}}
+               (calculation/upstream-deps:measure measure)))))))
+
+(deftest upstream-deps-card-with-measure-test
+  (testing "Card using a measure depends on that measure"
+    (let [mp (mt/metadata-provider)
+          orders-id (mt/id :orders)
+          orders (lib.metadata/table mp orders-id)
+          quantity (lib.metadata/field mp (mt/id :orders :quantity))]
+      (mt/with-temp [:model/Measure {measure-id :id} {:name "Total Quantity"
+                                                      :table_id orders-id
+                                                      :definition (-> (lib/query mp orders)
+                                                                      (lib/aggregate (lib/sum quantity)))}]
+        (let [mp' (mt/metadata-provider)]
+          (mt/with-temp [:model/Card card {:dataset_query (-> (lib/query mp' orders)
+                                                              (lib/aggregate (lib.metadata/measure mp' measure-id)))}]
+            (is (= {:card #{} :measure #{measure-id} :segment #{} :table #{orders-id}}
+                   (calculation/upstream-deps:card card)))))))))

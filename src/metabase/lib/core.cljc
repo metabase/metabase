@@ -504,6 +504,7 @@
   all-field-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
+  all-measure-ids
   all-segment-ids
   all-source-card-ids
   all-source-table-ids

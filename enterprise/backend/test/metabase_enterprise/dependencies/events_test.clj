@@ -461,3 +461,128 @@
                   (is (= models.dependency/current-dependency-analysis-version
                          (t2/select-one-fn :dependency_analysis_version :model/Segment :id segment-id)))
                   (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))))))))
+
+(deftest measure-update-sets-correct-dependencies
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          orders-id (mt/id :orders)
+          orders (lib.metadata/table mp orders-id)
+          quantity (lib.metadata/field mp (mt/id :orders :quantity))
+          subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Measure {measure-id :id :as measure} {:table_id orders-id
+                                                                    :definition (-> (lib/query mp orders)
+                                                                                    (lib/aggregate (lib/sum quantity)))}]
+          (testing "creating a measure creates dependency to its table"
+            (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
+            (is (= #{{:from_entity_type :measure
+                      :from_entity_id measure-id
+                      :to_entity_type :table
+                      :to_entity_id orders-id}}
+                   (into #{} (map #(dissoc % :id)
+                                  (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))
+          (testing "updating measure definition recalculates dependencies"
+            (t2/update! :model/Measure measure-id {:definition (-> (lib/query mp orders)
+                                                                   (lib/aggregate (lib/sum subtotal)))})
+            (let [updated-measure (t2/select-one :model/Measure :id measure-id)]
+              (events/publish-event! :event/measure-update {:object updated-measure :user-id api/*current-user-id*})
+              (is (= #{{:from_entity_type :measure
+                        :from_entity_id measure-id
+                        :to_entity_type :table
+                        :to_entity_id orders-id}}
+                     (into #{} (map #(dissoc % :id)
+                                    (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure)))))))
+          (testing "deleting measure removes all dependencies"
+            (t2/delete! :model/Measure measure-id)
+            (events/publish-event! :event/measure-delete {:object measure :user-id api/*current-user-id*})
+            (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure)))))))))
+
+(deftest measure-with-measure-dependencies
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          orders-id (mt/id :orders)
+          orders (lib.metadata/table mp orders-id)
+          quantity (lib.metadata/field mp (mt/id :orders :quantity))
+          subtotal (lib.metadata/field mp (mt/id :orders :subtotal))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Measure {measure1-id :id :as measure1} {:table_id orders-id
+                                                                      :definition (-> (lib/query mp orders)
+                                                                                      (lib/aggregate (lib/sum quantity)))}]
+          (let [mp' (mt/metadata-provider)]
+            (mt/with-temp [:model/Measure {measure2-id :id :as measure2} {:table_id orders-id
+                                                                          :definition (-> (lib/query mp' orders)
+                                                                                          (lib/aggregate (lib/+ (lib.metadata/measure mp' measure1-id)
+                                                                                                                (lib/sum subtotal))))}]
+              (testing "creating a measure that references another measure creates dependencies to both"
+                (events/publish-event! :event/measure-create {:object measure1 :user-id api/*current-user-id*})
+                (events/publish-event! :event/measure-create {:object measure2 :user-id api/*current-user-id*})
+                (is (= #{{:from_entity_type :measure
+                          :from_entity_id measure2-id
+                          :to_entity_type :table
+                          :to_entity_id orders-id}
+                         {:from_entity_type :measure
+                          :from_entity_id measure2-id
+                          :to_entity_type :measure
+                          :to_entity_id measure1-id}}
+                       (into #{} (map #(dissoc % :id)
+                                      (t2/select :model/Dependency :from_entity_id measure2-id :from_entity_type :measure)))))))))))))
+
+(deftest card-with-measure-dependencies
+  (mt/with-test-user :rasta
+    (let [mp (mt/metadata-provider)
+          orders-id (mt/id :orders)
+          orders (lib.metadata/table mp orders-id)
+          quantity (lib.metadata/field mp (mt/id :orders :quantity))]
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/Measure {measure-id :id :as measure} {:table_id orders-id
+                                                                    :definition (-> (lib/query mp orders)
+                                                                                    (lib/aggregate (lib/sum quantity)))}]
+          (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
+          (testing "creating a card using a measure creates dependencies to both measure and table"
+            (let [mp' (mt/metadata-provider)
+                  query (-> (lib/query mp' orders)
+                            (lib/aggregate (lib.metadata/measure mp' measure-id)))]
+              (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query query}]
+                (events/publish-event! :event/card-create {:object card :user-id api/*current-user-id*})
+                (is (= #{{:from_entity_type :card
+                          :from_entity_id card-id
+                          :to_entity_type :measure
+                          :to_entity_id measure-id}
+                         {:from_entity_type :card
+                          :from_entity_id card-id
+                          :to_entity_type :table
+                          :to_entity_id orders-id}}
+                       (into #{} (map #(dissoc % :id)
+                                      (t2/select :model/Dependency :from_entity_id card-id :from_entity_type :card)))))))))))))
+
+(deftest measure-dependency-calculation-error-handling-test
+  (testing "When measure dependency calculation throws an error, it should be logged and the version should still be updated"
+    (mt/with-test-user :rasta
+      (let [mp (mt/metadata-provider)
+            orders-id (mt/id :orders)
+            orders (lib.metadata/table mp orders-id)
+            quantity (lib.metadata/field mp (mt/id :orders :quantity))]
+        (mt/with-premium-features #{:dependencies}
+          (mt/with-temp [:model/Measure {measure-id :id :as measure} {:table_id orders-id
+                                                                      :definition (-> (lib/query mp orders)
+                                                                                      (lib/aggregate (lib/sum quantity)))}]
+            (log.capture/with-log-messages-for-level [messages ["metabase-enterprise.dependencies.events" :error]]
+              (with-redefs [deps.calculation/upstream-deps:measure (fn [_]
+                                                                     (throw (ex-info "Measure dependency calculation failed"
+                                                                                     {:measure-id measure-id})))]
+                (testing "on create event"
+                  (events/publish-event! :event/measure-create {:object measure :user-id api/*current-user-id*})
+                  (is (some #(and (= "Measure dependency calculation failed" (ex-message (:e %)))
+                                  (= :error (:level %)))
+                            (messages)))
+                  (is (= models.dependency/current-dependency-analysis-version
+                         (t2/select-one-fn :dependency_analysis_version :model/Measure :id measure-id)))
+                  (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))
+                (testing "on update event"
+                  (events/publish-event! :event/measure-update {:object measure :user-id api/*current-user-id*})
+                  (is (some #(and (= "Measure dependency calculation failed" (ex-message (:e %)))
+                                  (= :error (:level %)))
+                            (messages)))
+                  (is (= models.dependency/current-dependency-analysis-version
+                         (t2/select-one-fn :dependency_analysis_version :model/Measure :id measure-id)))
+                  (is (empty? (t2/select :model/Dependency :from_entity_id measure-id :from_entity_type :measure))))))))))))

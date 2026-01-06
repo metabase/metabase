@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.native-query-snippets.models.native-query-snippet.permissions :as snippet.perms]
@@ -802,3 +803,139 @@
                        (get-in card-node [:data :document])))
                 (is (= (:id document)
                        (get-in card-node [:data :document_id])))))))))))
+
+(deftest graph-segment-root-test
+  (testing "GET /api/ee/dependencies/graph with segment as root node"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:dependencies}
+        (let [products-id (mt/id :products)
+              price-field-id (mt/id :products :price)]
+          (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
+                                                                      :table_id products-id
+                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}]
+            (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)})
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                 :id segment-id
+                                                 :type "segment")
+                  node-types (set (map :type (:nodes response)))]
+              (testing "returns segment and table nodes"
+                (is (contains? node-types "segment"))
+                (is (contains? node-types "table")))
+              (testing "segment node has correct data"
+                (let [segment-node (first (filter #(= (:type %) "segment") (:nodes response)))]
+                  (is (= segment-id (:id segment-node))))))))))))
+
+(deftest graph-segment-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents with segment"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (let [products-id (mt/id :products)
+              price-field-id (mt/id :products :price)]
+          (mt/with-temp [:model/Segment {segment-id :id :as segment} {:name "High Value Products"
+                                                                      :table_id products-id
+                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                         :model/User user {:email "test@test.com"}]
+            (mt/with-test-user :crowberto
+              (events/publish-event! :event/segment-create {:object segment :user-id (mt/user->id :crowberto)}))
+            (let [mp (mt/metadata-provider)
+                  products (lib.metadata/table mp products-id)
+                  query-with-segment (-> (lib/query mp products)
+                                         (lib/filter (lib.metadata/segment mp segment-id)))
+                  card (card/create-card! (card-with-query "Card using segment" query-with-segment) user)
+                  response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                 :id segment-id
+                                                 :type "segment"
+                                                 :dependent_type "card"
+                                                 :dependent_card_type "question")]
+              (testing "returns card that uses the segment"
+                (is (= 1 (count response)))
+                (is (= (:id card) (:id (first response))))))))))))
+
+(deftest graph-measure-root-test
+  (testing "GET /api/ee/dependencies/graph with measure as root node"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:dependencies}
+        (let [mp (mt/metadata-provider)
+              products-id (mt/id :products)
+              products (lib.metadata/table mp products-id)
+              price (lib.metadata/field mp (mt/id :products :price))]
+          (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
+                                                                      :table_id products-id
+                                                                      :definition (-> (lib/query mp products)
+                                                                                      (lib/aggregate (lib/sum price)))}]
+            (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)})
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                 :id measure-id
+                                                 :type "measure")
+                  node-types (set (map :type (:nodes response)))]
+              (testing "returns measure and table nodes"
+                (is (contains? node-types "measure"))
+                (is (contains? node-types "table")))
+              (testing "measure node has correct data"
+                (let [measure-node (first (filter #(= (:type %) "measure") (:nodes response)))]
+                  (is (= measure-id (:id measure-node))))))))))))
+
+(deftest graph-measure-with-measure-dependency-test
+  (testing "GET /api/ee/dependencies/graph with measure depending on another measure"
+    (mt/with-test-user :crowberto
+      (mt/with-premium-features #{:dependencies}
+        (let [mp (mt/metadata-provider)
+              products-id (mt/id :products)
+              products (lib.metadata/table mp products-id)
+              price (lib.metadata/field mp (mt/id :products :price))
+              rating (lib.metadata/field mp (mt/id :products :rating))]
+          (mt/with-temp [:model/Measure {measure-a-id :id :as measure-a} {:name "Measure A"
+                                                                          :table_id products-id
+                                                                          :definition (-> (lib/query mp products)
+                                                                                          (lib/aggregate (lib/sum price)))}]
+            (events/publish-event! :event/measure-create {:object measure-a :user-id (mt/user->id :crowberto)})
+            (let [mp' (mt/metadata-provider)]
+              (mt/with-temp [:model/Measure {measure-b-id :id :as measure-b} {:name "Measure B"
+                                                                              :table_id products-id
+                                                                              :definition (-> (lib/query mp' products)
+                                                                                              (lib/aggregate (lib/+ (lib.metadata/measure mp' measure-a-id)
+                                                                                                                    (lib/sum rating))))}]
+                (events/publish-event! :event/measure-create {:object measure-b :user-id (mt/user->id :crowberto)})
+                (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                     :id measure-b-id
+                                                     :type "measure")
+                      node-ids (set (map :id (:nodes response)))
+                      node-types (set (map :type (:nodes response)))]
+                  (testing "returns both measures and table"
+                    (is (contains? node-ids measure-a-id))
+                    (is (contains? node-ids measure-b-id))
+                    (is (contains? node-types "table")))
+                  (testing "edges show measure-b depends on measure-a"
+                    (is (some #(and (= (:from_entity_type %) "measure")
+                                    (= (:from_entity_id %) measure-b-id)
+                                    (= (:to_entity_type %) "measure")
+                                    (= (:to_entity_id %) measure-a-id))
+                              (:edges response)))))))))))))
+
+(deftest graph-measure-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents with measure"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency]
+        (let [mp (mt/metadata-provider)
+              products-id (mt/id :products)
+              products (lib.metadata/table mp products-id)
+              price (lib.metadata/field mp (mt/id :products :price))]
+          (mt/with-temp [:model/Measure {measure-id :id :as measure} {:name "Total Price"
+                                                                      :table_id products-id
+                                                                      :definition (-> (lib/query mp products)
+                                                                                      (lib/aggregate (lib/sum price)))}
+                         :model/User user {:email "test@test.com"}]
+            (mt/with-test-user :crowberto
+              (events/publish-event! :event/measure-create {:object measure :user-id (mt/user->id :crowberto)}))
+            (let [mp' (mt/metadata-provider)
+                  query-with-measure (-> (lib/query mp' products)
+                                         (lib/aggregate (lib.metadata/measure mp' measure-id)))
+                  card (card/create-card! (card-with-query "Card using measure" query-with-measure) user)
+                  response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                 :id measure-id
+                                                 :type "measure"
+                                                 :dependent_type "card"
+                                                 :dependent_card_type "question")]
+              (testing "returns card that uses the measure"
+                (is (= 1 (count response)))
+                (is (= (:id card) (:id (first response))))))))))))
