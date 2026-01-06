@@ -101,6 +101,29 @@
           (testing "The same nonce is in the body of the rendered page"
             (is (str/includes? (:body response) nonce))))))))
 
+(deftest ^:parallel nonce-not-in-style-src-for-embeds-test
+  (testing "Nonce should not be included in style-src for embed/public requests"
+    (testing "For embed requests, 'unsafe-inline' works without nonce"
+      (let [headers (mw.security/security-headers :nonce "testNonce123" :allow-iframes? true)
+            csp (get headers "Content-Security-Policy")
+            style-src (->> (str/split csp #"; *")
+                           (filter #(str/starts-with? % "style-src "))
+                           first)]
+        (is (not (str/includes? style-src "nonce-testNonce123"))
+            "Nonce should not be in style-src for embed requests")
+        (is (str/includes? style-src "'unsafe-inline'")
+            "'unsafe-inline' should be present in style-src for embed requests")))
+    (testing "For regular requests, nonce is included in style-src"
+      (let [headers (mw.security/security-headers :nonce "testNonce456" :allow-iframes? false)
+            csp (get headers "Content-Security-Policy")
+            style-src (->> (str/split csp #"; *")
+                           (filter #(str/starts-with? % "style-src "))
+                           first)]
+        (is (str/includes? style-src "nonce-testNonce456")
+            "Nonce should be in style-src for regular requests")
+        (is (str/includes? style-src "'unsafe-inline'")
+            "'unsafe-inline' is present but ignored when nonce is present")))))
+
 (deftest ^:parallel test-parse-url
   (testing "Should parse valid urls"
     (are [url expected] (= expected

@@ -114,7 +114,7 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce]
+  [nonce allow-iframes?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -141,7 +141,10 @@
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
                                  ;; See [[generate-nonce]]
-                                 (when nonce
+                                 ;; Don't include nonce for embed/public contexts because when a nonce is present,
+                                 ;; 'unsafe-inline' is ignored by browsers (per CSP spec). Embeds need 'unsafe-inline'
+                                 ;; for features like exporting iframes to images/PDFs using libraries like snapdom.
+                                 (when (and nonce (not allow-iframes?))
                                    (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
@@ -149,6 +152,8 @@
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
+                                 ;; React inline styles in embeds
+                                 "'unsafe-inline'"
                                  "https://accounts.google.com"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
@@ -173,7 +178,7 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [allow-iframes? nonce]
-  (update (content-security-policy-header nonce)
+  (update (content-security-policy-header nonce allow-iframes?)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*"
                                                   (if-let [eao (and (setting/get-value-of-type :boolean :enable-embedding-interactive)
