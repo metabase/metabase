@@ -1,6 +1,6 @@
 import L from "leaflet";
 
-import LeafletMap from "./LeafletMap";
+import { LeafletMap } from "./LeafletMap";
 
 import "leaflet.heat";
 

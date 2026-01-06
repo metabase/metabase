@@ -4,7 +4,7 @@ import _ from "underscore";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 
-import LeafletMap from "./LeafletMap";
+import { LeafletMap } from "./LeafletMap";
 
 export class LeafletMarkerPinMap extends LeafletMap {
   componentDidMount() {

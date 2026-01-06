@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 
 import LegendS from "./Legend.module.css";
-import LegendItem from "./LegendItem";
+import { LegendItem } from "./LegendItem";
 
 export class LegendHorizontal extends Component {
   constructor(props) {

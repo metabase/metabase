@@ -8,7 +8,7 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import { Popover } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
-import LegendItem from "./LegendItem";
+import { LegendItem } from "./LegendItem";
 
 export class LegendVertical extends Component {
   static propTypes = {};

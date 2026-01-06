@@ -15,8 +15,8 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import type { HoveredObject } from "metabase/visualizations/types";
 
 import styles from "./ChartWithLegend.module.css";
-import LegendHorizontal from "./LegendHorizontal";
-import LegendVertical from "./LegendVertical";
+import { LegendHorizontal } from "./LegendHorizontal";
+import { LegendVertical } from "./LegendVertical";
 
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
