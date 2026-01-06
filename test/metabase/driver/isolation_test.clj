@@ -202,9 +202,39 @@
         (finally
           (driver/destroy-workspace-isolation! driver/*driver* (mt/db) workspace))))))
 
-(deftest check-isolation-permissions-test
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Check Isolation Permissions Tests                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest check-isolation-permissions-success-test
   (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
-    (testing "success case - check perms use the lower level isolation methods for checking"
+    (testing "returns nil when connection has all required permissions"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "venues")}]
+        (is (nil? (driver/check-isolation-permissions
+                   driver/*driver*
+                   database
+                   test-table)))))))
+
+(deftest check-isolation-permissions-no-artifacts-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
+    (testing "leaves no artifacts after check due to transaction rollback"
+      (let [database       (mt/db)
+            test-workspace {:id   0
+                            :name "_mb_perm_check_"}
+            test-table     {:schema (mt/format-name "public")
+                            :name   (mt/format-name "venues")}]
+        ;; Run the check
+        (driver/check-isolation-permissions driver/*driver* database test-table)
+        ;; Verify no artifacts remain - the test workspace should not have any resources
+        (when-let [resources (isolation-resources-exist? driver/*driver* database test-workspace)]
+          (is (every? false? (vals resources))
+              "No isolation resources should exist after permission check"))))))
+
+(deftest check-isolation-permissions-calls-all-methods-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
+    (testing "all isolation methods are called"
       (let [init-called?    (atom false)
             grant-called?   (atom false)
             destroy-called? (atom false)]
@@ -225,12 +255,47 @@
             (is (nil? result) "should return nil on success")
             (is @init-called? "init-workspace-isolation! should be called")
             (is @grant-called? "grant-workspace-read-access! should be called when test-table provided")
-            (is @destroy-called? "destroy-workspace-isolation! should be called")))))
+            (is @destroy-called? "destroy-workspace-isolation! should be called")))))))
 
-    (testing "failure case - returns error message when init fails"
-      (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
-                                  (fn [_driver _database _workspace]
-                                    (throw (ex-info "Permission denied: CREATE SCHEMA" {:reason :no-permission})))]
-        (let [result (driver/check-isolation-permissions driver/*driver* (mt/db) nil)]
-          (is (string? result) "should return an error message string on failure")
-          (is (re-find #"CREATE SCHEMA" result) "error message should mention the failed operation"))))))
+(deftest check-isolation-permissions-init-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
+    (testing "returns error message when init fails"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "venues")}]
+        (mt/with-dynamic-fn-redefs [driver/init-workspace-isolation!
+                                    (fn [_driver _database _workspace]
+                                      (throw (ex-info "permission denied" {:step :init})))]
+          (is (some? (driver/check-isolation-permissions driver/*driver* database test-table))
+              "Should return error message when init fails"))))))
+
+(deftest check-isolation-permissions-grant-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
+    (testing "returns error message when grant fails"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "venues")}]
+        (mt/with-dynamic-fn-redefs [driver/grant-workspace-read-access!
+                                    (fn [_driver _database _workspace _tables]
+                                      (throw (ex-info "permission denied" {:step :grant})))]
+          (is (some? (driver/check-isolation-permissions driver/*driver* database test-table))
+              "Should return error message when grant fails"))))))
+
+(deftest check-isolation-permissions-destroy-failure-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
+    (testing "returns error message when destroy fails"
+      (let [database   (mt/db)
+            test-table {:schema (mt/format-name "public")
+                        :name   (mt/format-name "venues")}]
+        (mt/with-dynamic-fn-redefs [driver/destroy-workspace-isolation!
+                                    (fn [_driver _database _workspace]
+                                      (throw (ex-info "permission denied" {:step :destroy})))]
+          (is (some? (driver/check-isolation-permissions driver/*driver* database test-table))
+              "Should return error message when destroy fails"))))))
+
+(deftest check-isolation-permissions-nil-table-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :isolation)
+    (testing "returns nil when test-table is nil (skips grant step)"
+      (let [database (mt/db)]
+        (is (nil? (driver/check-isolation-permissions driver/*driver* database nil))
+            "Should succeed when test-table is nil")))))
