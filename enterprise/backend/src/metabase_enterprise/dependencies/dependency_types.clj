@@ -15,3 +15,11 @@
 (def dependency-type->model
   "A map relating dependency types to their corresponding model."
   (set/map-invert model->dependency-type))
+
+(def dependency-types
+  "The set of all dependency types."
+  (-> model->dependency-type keys set))
+
+(def models
+  "The set of all models that are handled by dependencies."
+  (-> model->dependency-type vals set))

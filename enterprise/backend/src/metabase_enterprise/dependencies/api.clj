@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.transforms.schema :as transforms.schema]
    [metabase.analyze.core :as analyze]
@@ -272,16 +273,6 @@
            :dependents_count (usages [entity-type id])}
     errors (assoc :errors (get errors [entity-type id]))))
 
-(def ^:private entity-model
-  {:table     :model/Table
-   :card      :model/Card
-   :snippet   :model/NativeQuerySnippet
-   :transform :model/Transform
-   :dashboard :model/Dashboard
-   :document  :model/Document
-   :sandbox   :model/Sandbox
-   :segment   :model/Segment})
-
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
 ;; frontend/src/metabase-types/api/dependencies.ts
@@ -413,7 +404,7 @@
                                                         :exclude [:= archived-column false]
                                                         :only [:= archived-column true]
                                                         :all nil)]}]])))))
-         entity-model)))
+         deps.dependency-types/dependency-type->model)))
 
 (defn- readable-graph-dependencies
   ([]
@@ -463,6 +454,27 @@
             nodes-by-type)
       not-empty))
 
+(defn- hydrate-entities [entity-type entities]
+  (case entity-type
+    :card (-> entities
+              (t2/hydrate :creator :dashboard :document [:collection :is_personal])
+              (->> (map collection.root/hydrate-root-collection))
+              (revisions/with-last-edit-info :card))
+    :table (t2/hydrate entities :fields :db)
+    :transform (t2/hydrate entities :creator :table-with-db-and-fields :last_run)
+    :dashboard (-> entities
+                   (t2/hydrate :creator [:collection :is_personal])
+                   (->> (map collection.root/hydrate-root-collection))
+                   (revisions/with-last-edit-info :dashboard))
+    :document (-> entities
+                  (t2/hydrate :creator [:collection :is_personal])
+                  (->> (map collection.root/hydrate-root-collection)))
+    :sandbox (t2/hydrate entities [:table :db :fields])
+    :snippet (-> entities
+                 (t2/hydrate :creator)
+                 (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
+    :segment (t2/hydrate entities :creator [:table :db])))
+
 (defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
   (let [usages (node-usages downstream-graph nodes)
         nodes-by-type (->> (group-by first nodes)
@@ -472,23 +484,10 @@
         nodes-by-type-and-id
         (into {}
               (mapcat (fn [[entity-type entity-ids]]
-                        (let [model (entity-model entity-type)
+                        (let [model (deps.dependency-types/dependency-type->model entity-type)
                               fields (entity-select-fields entity-type)]
-                          (->> (cond-> (t2/select (into [model] fields) :id [:in entity-ids])
-                                 (= entity-type :card) (-> (t2/hydrate :creator :dashboard :document [:collection :is_personal])
-                                                           (->> (map collection.root/hydrate-root-collection))
-                                                           (revisions/with-last-edit-info :card))
-                                 (= entity-type :table) (t2/hydrate :fields :db)
-                                 (= entity-type :transform) (t2/hydrate :creator :table-with-db-and-fields :last_run)
-                                 (= entity-type :dashboard) (-> (t2/hydrate :creator [:collection :is_personal])
-                                                                (->> (map collection.root/hydrate-root-collection))
-                                                                (revisions/with-last-edit-info :dashboard))
-                                 (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
-                                                               (->> (map collection.root/hydrate-root-collection)))
-                                 (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
-                                 (= entity-type :snippet) (-> (t2/hydrate :creator)
-                                                              (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
-                                 (= entity-type :segment) (t2/hydrate :creator [:table :db]))
+                          (->> (t2/select (into [model] fields) :id [:in entity-ids])
+                               (hydrate-entities entity-type)
                                (map (fn [entity]
                                       [[entity-type (:id entity)]
                                        (entity-value entity-type entity usages errors)]))))))
@@ -499,9 +498,9 @@
   [:map
    [:nodes [:sequential ::entity]]
    [:edges [:sequential [:map
-                         [:from_entity_type (into [:enum] (keys entity-model))]
+                         [:from_entity_type (into [:enum] deps.dependency-types/dependency-types)]
                          [:from_entity_id pos-int?]
-                         [:to_entity_type (into [:enum] (keys entity-model))]
+                         [:to_entity_type (into [:enum] deps.dependency-types/dependency-types)]
                          [:to_entity_id pos-int?]]]]])
 
 (api.macros/defendpoint :get "/graph" :- ::graph-response
@@ -515,9 +514,9 @@
   [_route-params
    {:keys [id type archived]} :- [:map
                                   [:id {:optional true} ms/PositiveInt]
-                                  [:type {:optional true} (ms/enum-decode-keyword (vec (keys entity-model)))]
+                                  [:type {:optional true} (ms/enum-decode-keyword deps.dependency-types/dependency-types)]
                                   [:archived {:optional true} :boolean]]]
-  (api/read-check (entity-model type) id)
+  (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
     (let [graph-opts {:include-archived-items (if archived :all :exclude)}
           starting-nodes [[type id]]
@@ -534,8 +533,8 @@
 (def ^:private dependents-args
   [:map
    [:id                  ms/PositiveInt]
-   [:type                (ms/enum-decode-keyword (vec (keys entity-model)))]
-   [:dependent_type      (ms/enum-decode-keyword (vec (keys entity-model)))]
+   [:type                (ms/enum-decode-keyword deps.dependency-types/dependency-types)]
+   [:dependent_type      (ms/enum-decode-keyword deps.dependency-types/dependency-types)]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword lib.schema.metadata/card-types)]
    [:archived            {:optional true} :boolean]])
 
@@ -549,7 +548,7 @@
    - true: Includes entities in archived collections"
   [_route-params
    {:keys [id type dependent_type dependent_card_type archived]} :- dependents-args]
-  (api/read-check (entity-model type) id)
+  (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
     (let [graph-opts {:include-archived-items (if archived :all :exclude)}
           downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
@@ -589,8 +588,8 @@
 (def ^:private unreferenced-items-args
   [:map
    [:types {:optional true} [:or
-                             (ms/enum-decode-keyword (vec (keys entity-model)))
-                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
+                             (ms/enum-decode-keyword deps.dependency-types/dependency-types)
+                             [:sequential (ms/enum-decode-keyword deps.dependency-types/dependency-types)]]]
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
@@ -608,8 +607,8 @@
    Returns a list of unreferenced items, each with :id, :type, and :data fields."
   [_route-params
    {:keys [types card_types query]
-    :or {types (vec (keys entity-model))
-         card_types (seq lib.schema.metadata/card-types)}} :- unreferenced-items-args]
+    :or {types (vec deps.dependency-types/dependency-types)
+         card_types (vec lib.schema.metadata/card-types)}} :- unreferenced-items-args]
   (let [selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
@@ -625,8 +624,8 @@
 (def ^:private broken-items-args
   [:map
    [:types {:optional true} [:or
-                             (ms/enum-decode-keyword (vec (keys entity-model)))
-                             [:sequential (ms/enum-decode-keyword (vec (keys entity-model)))]]]
+                             (ms/enum-decode-keyword deps.dependency-types/dependency-types)
+                             [:sequential (ms/enum-decode-keyword deps.dependency-types/dependency-types)]]]
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
@@ -669,8 +668,8 @@
    Returns a list of broken items, each with :id, :type, :data, and :errors fields."
   [_route-params
    {:keys [types card_types query]
-    :or {types (vec (keys entity-model))
-         card_types (seq lib.schema.metadata/card-types)}} :- broken-items-args]
+    :or {types (vec deps.dependency-types/dependency-types)
+         card_types (vec lib.schema.metadata/card-types)}} :- broken-items-args]
   (let [selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
