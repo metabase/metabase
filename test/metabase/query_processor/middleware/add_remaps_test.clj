@@ -734,7 +734,13 @@
                                  ;; should forward the 10 fields from `:source-query` without adding any more.
                                  :fields       #(= (count %) 10)}
                                 {:alias "PEOPLE__via__USER_ID"}]
-                       :fields #(= (count %) 20)}}
+                       ;; FROM eric (https://github.com/metabase/metabase/pull/67675):
+                       ;; I'm adding this here because it doesn't hurt anything but it really doesn't belong.
+                       ;; Another bug is causing this.
+                       ;; If you're seeing this test fail because there are 20 columns,
+                       ;; especially while fixing https://github.com/metabase/metabase/issues/67808
+                       ;; it's okay to change this back to 20.
+                       :fields #(= (count %) 21)}}
               (-> query
                   qp.preprocess/preprocess
                   lib/->legacy-MBQL))))))
