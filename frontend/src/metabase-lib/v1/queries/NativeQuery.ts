@@ -293,12 +293,8 @@ export default class NativeQuery {
       .filter((cardId): cardId is number => cardId != null);
   }
 
-  private _validateTemplateTags() {
-    return Lib.validateTemplateTags(this._query());
-  }
-
   private _allTemplateTagsAreValid() {
-    const tagErrors = this._validateTemplateTags();
+    const tagErrors = Lib.validateTemplateTags(this._query());
     return tagErrors.length === 0;
   }
 

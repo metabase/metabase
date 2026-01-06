@@ -1,8 +1,3 @@
-import { t } from "ttag";
-
-import ValidationError, {
-  VALIDATION_ERROR_TYPES,
-} from "metabase-lib/v1/ValidationError";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
@@ -17,32 +12,6 @@ export class TemplateTagDimension {
     this._query = query;
     this._metadata = metadata;
     this._tagName = tagName;
-  }
-
-  validateTemplateTag(): ValidationError | null {
-    const tag = this.tag();
-    if (!tag) {
-      return new ValidationError(t`Invalid template tag "${this.tagName()}"`);
-    }
-
-    if (this.isDimensionType() && tag.dimension == null) {
-      return new ValidationError(
-        t`The variable "${this.tagName()}" needs to be mapped to a field.`,
-        VALIDATION_ERROR_TYPES.MISSING_TAG_DIMENSION,
-      );
-    }
-
-    return null;
-  }
-
-  isValidDimensionType() {
-    const maybeErrors = this.validateTemplateTag();
-    return this.isDimensionType() && maybeErrors === null;
-  }
-
-  isDimensionType() {
-    const maybeTag = this.tag();
-    return maybeTag?.type === "dimension";
   }
 
   isVariableType() {
@@ -80,12 +49,6 @@ export class TemplateTagDimension {
 
   icon() {
     return this.field()?.icon();
-  }
-
-  name() {
-    return this.isValidDimensionType()
-      ? (this.field()?.name ?? "")
-      : this.tagName();
   }
 
   tagName() {
