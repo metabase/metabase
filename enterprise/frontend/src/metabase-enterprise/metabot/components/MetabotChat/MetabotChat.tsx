@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
@@ -45,6 +45,7 @@ export const MetabotChat = ({
   config?: MetabotConfig;
 }) => {
   const metabot = useMetabotAgent(config.agentId);
+  const { setProfileOverride } = metabot;
 
   const hasMessages =
     metabot.messages.length > 0 || metabot.errorMessages.length > 0;
@@ -61,8 +62,17 @@ export const MetabotChat = ({
     return suggestedPromptsReq.currentData?.prompts ?? [];
   }, [suggestedPromptsReq.currentData?.prompts]);
 
+  useEffect(() => {
+    if (config.profileId) {
+      setProfileOverride(config.profileId);
+    }
+  }, [config.profileId, setProfileOverride]);
+
   const handleResetChat = () => {
     metabot.resetConversation();
+    if (config.profileId) {
+      setProfileOverride(config.profileId);
+    }
     suggestedPromptsReq.refetch();
   };
 

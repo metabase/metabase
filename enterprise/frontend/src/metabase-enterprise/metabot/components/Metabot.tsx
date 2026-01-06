@@ -51,6 +51,7 @@ export interface MetabotConfig {
   hideSuggestedPrompts?: boolean;
   preventClose?: boolean;
   preventRetryMessage?: boolean;
+  profileId?: string;
   suggestionModels: SuggestionModel[];
 }
 
