@@ -167,7 +167,7 @@ export const MetabotQueryBuilder = () => {
     <Box className={S.page}>
       <Box className={S.centeredContainer}>
         <Box className={S.greeting}>
-          <MetabotLogo className={S.greetingIcon} />
+          <MetabotLogo />
           <Text fz={{ base: "xl", sm: 32 }} fw={600} c="text-dark">
             {title}
           </Text>
