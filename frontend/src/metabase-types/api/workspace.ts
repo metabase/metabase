@@ -299,7 +299,8 @@ export type WorkspaceSetupStatus =
   | "pending"
   | "ready"
   | "archived"
-  | "uninitialized";
+  | "uninitialized"
+  | "broken";
 
 export type WorkspaceLogStatus = "started" | "success" | "failure";
 

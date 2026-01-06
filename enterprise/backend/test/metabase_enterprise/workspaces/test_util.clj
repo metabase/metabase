@@ -53,22 +53,18 @@
   (let [ws-id (cond-> ws-or-id
                 (map? ws-or-id) :id)]
     (or (u/poll {:thunk      #(t2/select-one :model/Workspace :id ws-id)
-                 :done?      #(not= :pending (:status %))
+                 :done?      #(contains? #{:ready :broken} (:db_status %))
                  ;; some cloud drivers are really slow
-                 :timeout-ms (if config/is-dev? 5000 60000)})
+                 :timeout-ms (if config/is-dev? 10000 60000)})
         (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
-(defn create-workspace-for-test!
-  "Create a workspace for testing using proper initialization.
-  Returns the workspace after waiting for it to be ready."
-  [props]
+(defn- create-workspace-for-test! [props]
   (let [creator-id (or (:creator_id props) (mt/user->id :crowberto))
         props      (-> props
                        (dissoc :creator_id)
-                       (assoc :provisional? true)
                        (update :database_id #(or % (mt/id))))]
-    (ws-ready (mt/with-current-user creator-id
-                (ws.common/create-workspace! creator-id props)))))
+    (mt/with-current-user creator-id
+      (ws.common/create-workspace! creator-id props))))
 
 (defn create-ready-ws!
   "Create a workspace and wait for it to be ready."

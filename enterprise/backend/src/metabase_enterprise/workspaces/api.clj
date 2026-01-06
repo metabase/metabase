@@ -34,7 +34,11 @@
 
 (mr/def ::appdb-or-ref-id [:or ::ws.t/appdb-id ::ws.t/ref-id])
 
-(mr/def ::status (into [:enum] ws.model/workspace-statuses))
+(def ^:private computed-statuses
+  "All possible values returned by computed-status (computed from base_status, etc.)"
+  #{:uninitialized :pending :ready :broken :archived})
+
+(mr/def ::status (into [:enum] computed-statuses))
 
 (def ^:private Workspace
   [:map
@@ -87,8 +91,12 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
-(defn- ws->response [ws]
-  (select-keys ws [:id :name :collection_id :database_id :status :created_at :updated_at]))
+(defn- ws->response
+  "Transform a workspace record into an API response, computing the backwards-compatible status."
+  [ws]
+  (-> ws
+      (select-keys [:id :name :collection_id :database_id :created_at :updated_at])
+      (assoc :status (ws.model/computed-status ws))))
 
 ;;; routes
 
@@ -107,10 +115,13 @@
   "Get a list of all workspaces"
   [_route-params
    _query-params]
-  {:items  (t2/select [:model/Workspace :id :name :database_id :status :updated_at]
-                      (cond-> {:order-by [[:created_at :desc]]}
-                        (request/limit) (sql.helpers/limit (request/limit))
-                        (request/offset) (sql.helpers/offset (request/offset))))
+  {:items  (->> (t2/select [:model/Workspace :id :name :database_id :base_status :db_status :updated_at]
+                           (cond-> {:order-by [[:created_at :desc]]}
+                             (request/limit) (sql.helpers/limit (request/limit))
+                             (request/offset) (sql.helpers/offset (request/offset))))
+                (mapv #(-> %
+                           (dissoc :base_status :db_status)
+                           (assoc :status (ws.model/computed-status %)))))
    :limit  (request/limit)
    :offset (request/offset)})
 
@@ -256,7 +267,7 @@
                              {:order-by [[:started_at :desc]]
                               :limit    log-limit})]
     {:workspace_id      id
-     :status            (:status workspace)
+     :status            (ws.model/computed-status workspace)
      :logs              logs
      :updated_at        (->> (map :updated_at logs) sort reverse first)
      :last_completed_at (->> (seq (keep :completed_at logs)) sort reverse first)}))
@@ -340,10 +351,10 @@
                                   [:name {:optional true} [:string {:min 1}]]
                                   [:database_id {:optional true} ::ws.t/appdb-id]]]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        _         (api/check-400 (not= :archived (:status workspace)) "Cannot update an archived workspace")
+        _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot update an archived workspace")
         data      (cond-> {}
                     database_id (-> (u/prog1
-                                      (api/check-400 (= :uninitialized (keyword (:status workspace)))
+                                      (api/check-400 (= :uninitialized (:db_status workspace))
                                                      "Can only set database_id on uninitialized workspace")
                                       (check-transforms-enabled! database_id))
                                     (assoc :database_id database_id))
@@ -361,7 +372,7 @@
    _query-params
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
-    (api/check-400 (not= :archived (:status ws)) "You cannot archive an archived workspace")
+    (api/check-400 (not= :archived (:base_status ws)) "You cannot archive an archived workspace")
     (ws.model/archive! ws)
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
@@ -372,7 +383,7 @@
    _query-params
    _body-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id id))]
-    (api/check-400 (= :archived (:status ws)) "You cannot unarchive a workspace that is not archived")
+    (api/check-400 (= :archived (:base_status ws)) "You cannot unarchive a workspace that is not archived")
     (ws.model/unarchive! ws)
     (-> (t2/select-one :model/Workspace :id id)
         ws->response)))
@@ -382,7 +393,7 @@
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
   (let [ws (api/check-404 (t2/select-one :model/Workspace :id ws-id))]
-    (api/check-400 (= :archived (:status ws)) "You cannot delete a workspace without first archiving it")
+    (api/check-400 (= :archived (:base_status ws)) "You cannot delete a workspace without first archiving it")
     (ws.model/delete! ws)
     {:ok true}))
 
@@ -441,7 +452,7 @@
    {:keys [stale_only]} :- [:map [:stale_only {:optional true} [:or [:= 1] :boolean]]]]
   (let [workspace (t2/select-one :model/Workspace :id ws-id)]
     (api/check-404 workspace)
-    (api/check-400 (not= :archived (:status workspace)) "Cannot execute archived workspace")
+    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (ws.impl/execute-workspace! workspace {:stale-only stale_only})))
 
 (mr/def ::graph-node-type [:enum :input-table :external-transform :workspace-transform])
@@ -561,11 +572,11 @@
                                         [:type :string]
                                         [:schema [:maybe :string]]
                                         [:name :string]]]]]
-  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id :status] ws-id))
+  (let [workspace (api/check-404 (t2/select-one [:model/Workspace :database_id :db_status] ws-id))
         target    (update target :database #(or % db_id))
         tx-id     (when transform-id (parse-long transform-id))
         ;; For uninitialized workspaces we skip over checks for their db id
-        ws-db-id  (when (not= :uninitialized (:status workspace)) (:database_id workspace))]
+        ws-db-id  (when (not= :uninitialized (:db_status workspace)) (:database_id workspace))]
     (cond
       (not= "table" (:type target))
       {:status 403 :body (deferred-tru "Unsupported target type")}
@@ -653,7 +664,7 @@
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")])
   (t2/with-transaction [_tx]
     (let [workspace (u/prog1 (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-                      (api/check-400 (not= :archived (:status <>)) "Cannot create transforms in an archived workspace"))
+                      (api/check-400 (not= :archived (:base_status <>)) "Cannot create transforms in an archived workspace"))
           ;; TODO why 400 here and 403 in the validation route? T_T
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
@@ -662,7 +673,7 @@
           ;; (add-to-changeset! will reinitialize the workspace with it if different from provisional)
           ;; For initialized workspaces, ensure the target database matches the workspace database
           body      (-> body (dissoc :global_id)
-                        (cond-> (not= :uninitialized (:status workspace))
+                        (cond-> (not= :uninitialized (:db_status workspace))
                           (update :target assoc :database (:database_id workspace))))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body)]
       (attach-isolated-target (select-malli-keys WorkspaceTransform workspace-transform-alias transform)))))
@@ -759,7 +770,7 @@
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
-    (api/check-400 (not= :archived (:status workspace)) "Cannot execute archived workspace")
+    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
     (ws.impl/run-transform! workspace transform)))
 
@@ -819,7 +830,7 @@
                                                                                                  [:commit-message {:optional true} [:string {:min 1}]]]]
   (let [ws               (u/prog1 (t2/select-one :model/Workspace :id ws-id)
                            (api/check-404 <>)
-                           (api/check-400 (not= :archived (:status <>)) "Cannot merge an archived workspace"))
+                           (api/check-400 (not= :archived (:base_status <>)) "Cannot merge an archived workspace"))
         {:keys [merged
                 errors]} (-> (ws.merge/merge-workspace! ws api/*current-user-id* commit-message)
                              (update :errors
