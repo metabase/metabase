@@ -713,7 +713,8 @@
     [:questions_with_params           (get-in stats [:stats :question :questions :with_params] 0)     #{"questions"}]
     [:segments                        (get-in stats [:stats :segment :segments] 0)                    #{"segments"}]
     [:tables                          (get-in stats [:stats :table :tables] 0)                        #{"tables"}]
-    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]]))
+    [:users                           (get-in stats [:stats :user :users :total] 0)                   #{"users"}]
+    [:documents                       (get-in stats [:stats :document :documents :total] 0)           #{"documents"}]]))
 
 (defn- whitelabeling-in-use?
   "Are any whitelabeling settings set to values other than their default?"
