@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { isEmpty } from "underscore";
 
 import { Popover } from "metabase/common/components/Popover";
-import useIsSmallScreen from "metabase/common/hooks/use-is-small-screen";
+import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
 import { useSelector } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
 import type {

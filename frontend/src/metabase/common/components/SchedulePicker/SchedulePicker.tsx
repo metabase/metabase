@@ -71,7 +71,7 @@ const DEFAULT_DAY = "mon";
 /**
  * @deprecated use "metabase/common/components/Schedule" instead
  */
-class SchedulePicker extends Component<SchedulePickerProps> {
+export class SchedulePicker extends Component<SchedulePickerProps> {
   handleChangeProperty(
     name: ScheduleProperty,
     value: ScheduleSettings[typeof name],
@@ -311,5 +311,3 @@ function MetabaseTimeZone() {
   const applicationName = useSelector(getApplicationName);
   return <>{t`your ${applicationName} timezone`}</>;
 }
-
-export { SchedulePicker };

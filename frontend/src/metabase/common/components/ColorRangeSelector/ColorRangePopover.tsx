@@ -17,7 +17,7 @@ export interface ColorRangeContentProps extends Omit<StackProps, "onChange"> {
   onClose?: () => void;
 }
 
-const ColorSelectorContent = forwardRef(function ColorRangeSelector(
+export const ColorRangePopover = forwardRef(function ColorRangeSelector(
   {
     initialValue,
     colors,
@@ -161,5 +161,3 @@ const getDefaultIsInverted = (
     return _.isEqual(value, [...range].reverse());
   });
 };
-
-export { ColorSelectorContent };

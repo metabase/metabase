@@ -18,7 +18,7 @@ export interface HelpCardProps {
   children: React.ReactNode;
 }
 
-const HelpCard = ({
+const HelpCardInner = ({
   title,
   helpUrl,
   isFullyClickable = true,
@@ -43,6 +43,6 @@ const HelpCard = ({
   );
 };
 
-export const HelpCard = Object.assign(HelpCard, {
+export const HelpCard = Object.assign(HelpCardInner, {
   Section: CardMessage,
 });

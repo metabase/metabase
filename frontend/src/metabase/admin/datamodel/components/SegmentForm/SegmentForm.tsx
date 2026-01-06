@@ -17,9 +17,9 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
-import { FormInput } from "../FormInput";
+import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
-import { FormTextArea } from "../FormTextArea";
+import FormTextArea from "../FormTextArea";
 
 import {
   FormBody,

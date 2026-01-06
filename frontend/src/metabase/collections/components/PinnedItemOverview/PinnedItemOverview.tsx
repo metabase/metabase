@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import { PinnedItemSortDropTarget } from "metabase/collections/components/PinnedItemSortDropTarget";
+import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import PinnedQuestionCard from "metabase/collections/components/PinnedQuestionCard";
 import type {
   CreateBookmark,

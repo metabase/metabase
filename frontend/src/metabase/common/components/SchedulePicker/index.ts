@@ -1,1 +1,1 @@
-export * from "./SchedulePickerView";
+export * from "./SchedulePicker";

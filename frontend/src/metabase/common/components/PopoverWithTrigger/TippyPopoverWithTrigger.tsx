@@ -18,7 +18,7 @@ export type TippyPopoverWithTriggerProps = {
 /**
  * @deprecated prefer Popover from "metabase/ui" instead
  */
-function UncontrolledPopoverWithTrigger({
+export function TippyPopoverWithTrigger({
   isInitiallyVisible,
   popoverRef,
   onClose,
@@ -46,5 +46,3 @@ function UncontrolledPopoverWithTrigger({
     />
   );
 }
-
-export { UncontrolledPopoverWithTrigger };

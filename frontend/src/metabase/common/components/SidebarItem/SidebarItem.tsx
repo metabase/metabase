@@ -12,7 +12,7 @@ type SidebarItemProps = {
   onClick?: () => void;
 };
 
-const SidebarItem = ({
+const SidebarItemInner = ({
   name,
   sidebar,
   icon,
@@ -32,4 +32,4 @@ const SidebarItem = ({
   </li>
 );
 
-export const SidebarItem = memo(SidebarItem);
+export const SidebarItem = memo(SidebarItemInner);

@@ -13,7 +13,7 @@ export interface ColorSelectorPopoverProps
   onClose?: () => void;
 }
 
-const ColorSelectorPopover = forwardRef(function ColorSelector(
+export const ColorSelectorPopover = forwardRef(function ColorSelector(
   { value, colors, onChange, onClose, ...props }: ColorSelectorPopoverProps,
   ref: Ref<HTMLDivElement>,
 ) {
@@ -38,5 +38,3 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
     </PopoverRoot>
   );
 });
-
-export { ColorSelectorPopover };
