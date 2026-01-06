@@ -1,8 +1,10 @@
-import { memo, useMemo } from "react";
+import type { Row } from "@tanstack/react-table";
+import { memo, useCallback, useMemo } from "react";
 
-import { Card } from "metabase/ui";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table";
+import { Card, TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
+
+import { getNodeId } from "../../../utils";
 
 import { getColumns } from "./utils";
 
@@ -24,9 +26,21 @@ export const ListBody = memo(function ListBody({
     [withErrorsColumn, withDependentsCountColumn],
   );
 
+  const handleRowActivate = useCallback(
+    (row: Row<DependencyNode>) => onSelect(row.original),
+    [onSelect],
+  );
+
+  const treeTableInstance = useTreeTableInstance<DependencyNode>({
+    data: nodes,
+    columns,
+    getNodeId: (node) => getNodeId(node.id, node.type),
+    onRowActivate: handleRowActivate,
+  });
+
   return (
     <Card flex={1} mih={0} p={0} withBorder data-testid="dependency-list">
-      <Table data={nodes} columns={columns} onSelect={onSelect} />
+      <TreeTable instance={treeTableInstance} onRowClick={handleRowActivate} />
     </Card>
   );
 });

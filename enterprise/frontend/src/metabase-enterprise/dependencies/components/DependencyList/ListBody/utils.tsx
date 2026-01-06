@@ -1,6 +1,6 @@
-import type { ColumnDef } from "@tanstack/react-table";
 import { t } from "ttag";
 
+import type { TreeTableColumnDef } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
 import {
@@ -13,7 +13,7 @@ import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
 import { NameCell } from "./NameCell";
 
-function getNodeNameColumn(): ColumnDef<DependencyNode> {
+function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "name",
     header: t`Name`,
@@ -28,7 +28,7 @@ function getNodeNameColumn(): ColumnDef<DependencyNode> {
   };
 }
 
-function getNodeLocationColumn(): ColumnDef<DependencyNode> {
+function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "location",
     header: t`Location`,
@@ -47,7 +47,7 @@ function getNodeLocationColumn(): ColumnDef<DependencyNode> {
   };
 }
 
-function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
+function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "error",
     header: t`Errors`,
@@ -66,7 +66,7 @@ function getNodeErrorsColumn(): ColumnDef<DependencyNode> {
   };
 }
 
-function getNodeDependentsCountColumn(): ColumnDef<DependencyNode> {
+function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "dependents-count",
     header: t`Dependents`,
@@ -86,7 +86,7 @@ type ColumnOptions = {
 export function getColumns({
   withErrorsColumn,
   withDependentsCountColumn,
-}: ColumnOptions): ColumnDef<DependencyNode>[] {
+}: ColumnOptions): TreeTableColumnDef<DependencyNode>[] {
   return [
     getNodeNameColumn(),
     getNodeLocationColumn(),
