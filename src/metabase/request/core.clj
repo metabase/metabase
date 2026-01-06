@@ -34,8 +34,7 @@
   offset
   paged?
   with-current-request
-  with-limit-and-offset
-  data-analyst?]
+  with-limit-and-offset]
  [metabase.request.session
   as-admin
   do-as-admin
