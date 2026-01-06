@@ -31,7 +31,7 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.lib.field.util :as lib.field.util]
+   [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -151,10 +151,7 @@
                                                  (merge
                                                   {:lib/uuid                (str (random-uuid))
                                                    :source-field            id
-                                                   :source-field-name       (or
-                                                                             (lib.field.util/inherited-column-name col)
-                                                                             (:lib/deduplicated-name col)
-                                                                             (:lib/source-column-alias col))
+                                                   :source-field-name       (lib.field/source-field-name col)
                                                    ::new-field-dimension-id (u/the-id dimension)}
                                                   (when-let [join-alias (:metabase.lib.join/join-alias col)]
                                                     {:join-alias join-alias}))
