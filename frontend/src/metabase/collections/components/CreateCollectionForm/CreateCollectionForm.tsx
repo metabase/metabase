@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
@@ -13,6 +13,7 @@ import { FormFooter } from "metabase/common/components/FormFooter";
 import FormInput from "metabase/common/components/FormInput";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
 import FormTextArea from "metabase/common/components/FormTextArea";
+import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import { Collections } from "metabase/entities/collections";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
@@ -87,18 +88,20 @@ function CreateCollectionForm({
   showCollectionPicker = true,
   showAuthorityLevelPicker = true,
 }: Props) {
-  const { data: initialCollection } = useGetCollectionQuery(
-    initialCollectionId != null ? { id: initialCollectionId } : skipToken,
-  );
-
   const initialValues = useMemo(
     () => ({
       ...COLLECTION_SCHEMA.getDefault(),
       parent_id: initialCollectionId,
-      parentCollection: initialCollection,
     }),
-    [initialCollection, initialCollectionId],
+    [initialCollectionId],
   );
+
+  const { data: initialCollection } = useGetCollectionQuery(
+    initialCollectionId != null ? { id: initialCollectionId } : skipToken,
+  );
+
+  const [selectedParentCollection, setSelectedParentCollection] =
+    useState<CollectionPickerItem | null>(null);
 
   return (
     <FormProvider
@@ -106,11 +109,10 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={onSubmit}
     >
-      {({ dirty, setFieldValue, values }) => {
-        const { parentCollection } = values;
+      {({ dirty }) => {
+        const parentCollection = selectedParentCollection ?? initialCollection;
 
-        // If the parent is a tenant collection,
-        // hide the authority level picker.
+        // Hide the authority level picker if the parent is a tenant collection.
         const isParentTenantCollection = parentCollection
           ? PLUGIN_TENANTS.isTenantCollection(parentCollection)
           : false;
@@ -137,9 +139,7 @@ function CreateCollectionForm({
                 filterPersonalCollections={filterPersonalCollections}
                 entityType="collection"
                 savingModel="collection"
-                onCollectionSelect={(collection) =>
-                  setFieldValue("parentCollection", collection)
-                }
+                onCollectionSelect={setSelectedParentCollection}
               />
             )}
             {showAuthorityLevelPicker && !isParentTenantCollection && (
