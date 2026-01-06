@@ -379,3 +379,11 @@
   :setter     :none
   :getter     -token-features
   :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
+  :doc        false)

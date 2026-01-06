@@ -30,7 +30,7 @@ To render a dashboard:
 - `with-downloads` (default is false) - show the button to download the dashboard as PDF and download question results
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
-- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md).
+- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards will not include links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
 - `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
 - `locale` - see [translations](./translations.md) (only available for guest embeds).
