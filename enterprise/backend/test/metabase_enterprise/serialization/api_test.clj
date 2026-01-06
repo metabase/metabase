@@ -15,11 +15,16 @@
    [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
-   (java.io File)
+   (java.io ByteArrayOutputStream File)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream)))
 
 (set! *warn-on-reflection* true)
+
+(defn- ba-copy [f]
+  (with-open [baos (ByteArrayOutputStream.)]
+    (io/copy f baos)
+    (.toByteArray baos)))
 
 (defn- open-tar ^TarArchiveInputStream [f]
   (-> (io/input-stream f)
@@ -203,7 +208,7 @@
                                                     :collection (:id coll) :data_model false :settings false)
                               io/input-stream)
                     ;; we're going to re-use it for import, so a copy is necessary
-                      ba  (#'api.serialization/ba-copy res)]
+                      ba  (ba-copy res)]
                   (testing "We get only our data and a log file in an archive"
                     (is (= 12
                            (with-open [tar (open-tar ba)]

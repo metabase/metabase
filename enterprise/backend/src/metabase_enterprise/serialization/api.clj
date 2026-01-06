@@ -21,10 +21,9 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.random :as u.random]
-   [ring.core.protocols :as ring.protocols])
+   [metabase.util.random :as u.random])
   (:import
-   (java.io ByteArrayOutputStream File)))
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
