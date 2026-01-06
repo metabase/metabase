@@ -42,7 +42,7 @@
 
 (defn- run-mbql-transform!
   ([transform] (run-mbql-transform! transform nil))
-  ([{:keys [id source target] :as transform} {:keys [run-method start-promise]}]
+  ([{:keys [id source target owner_user_id creator_id] :as transform} {:keys [run-method start-promise]}]
    (try
      (let [db (get-in source [:query :database])
            {driver :engine :as database} (t2/select-one :model/Database db)
@@ -55,7 +55,9 @@
                               :output-schema (:schema target)
                               :output-table (transforms.util/qualified-table-name driver target)}
            opts (transform-opts transform-details)
-           features (transforms.util/required-database-features transform)]
+           features (transforms.util/required-database-features transform)
+           ;; Use owner_user_id if set, otherwise fall back to creator_id for attribution
+           run-user-id (or owner_user_id creator_id)]
 
        (when (transforms.util/db-routing-enabled? database)
          (throw (ex-info "Transforms are not supported on databases with DB routing enabled."
@@ -64,7 +66,7 @@
          (throw (ex-info "The database does not support the requested transform target type."
                          {:driver driver, :database database, :features features})))
        ;; mark the execution as started and notify any observers
-       (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method)]
+       (let [{run-id :id} (transforms.util/try-start-unless-already-running id run-method run-user-id)]
          (when start-promise
            (deliver start-promise [:started run-id]))
          (log/info "Executing transform" id "with target" (pr-str target))

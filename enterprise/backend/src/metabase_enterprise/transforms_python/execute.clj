@@ -354,9 +354,11 @@
   (assert (transforms.util/python-transform? transform) "Transform must be a python transform")
   (try
     (let [message-log (empty-message-log)
-          {:keys [target] transform-id :id} transform
+          {:keys [target owner_user_id creator_id] transform-id :id} transform
           {driver :engine :as db} (t2/select-one :model/Database (:database target))
-          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
+          ;; Use owner_user_id if set, otherwise fall back to creator_id for attribution
+          run-user-id (or owner_user_id creator_id)
+          {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method run-user-id)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))
       (log/info "Executing Python transform" transform-id "with target" (pr-str target))
