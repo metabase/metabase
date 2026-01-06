@@ -8,8 +8,8 @@ title: Driver interface changelog
 
 - Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
 
-- Added driver feature `:isolation` for drivers that support workspace isolation. This feature enables workspaces
-  to operate in isolated database environments with their own schemas and credentials.
+- Added driver feature `:isolation` for drivers that support workspace isolation. This feature lets workspaces
+  operate in isolated database environments with their own schemas and credentials.
 
 - Added driver multimethod `metabase.driver/init-workspace-isolation!` to initialize database isolation for a workspace.
   Creates an isolated schema/database and user credentials with appropriate permissions. Returns a map with `:schema`
@@ -26,7 +26,7 @@ title: Driver interface changelog
   returns nil on success or an error message string on failure.
 
 - Added `metabase.driver/with-swapped-connection-details` macro for temporarily swapping connection details for a
-  specific database within a dynamic scope. This enables workspaces to use alternate credentials without mutating
+  specific database within a dynamic scope. This lets workspaces use alternate credentials without mutating
   the database record.
 
 ## Metabase 0.58.0
