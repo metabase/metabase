@@ -1287,7 +1287,7 @@ describe("issue 8490", () => {
         .then(resolveQuestionLoaderPromise);
 
       // X-axis labels: Jan 2023 (or some other year)
-      cy.findByText(/11월 20\d\d\b/).should("be.visible");
+      cy.findByText(/^1월 20\d\d\b/).should("be.visible");
       // Aggregation "count"
       cy.findByText("카운트").should("be.visible");
     });
