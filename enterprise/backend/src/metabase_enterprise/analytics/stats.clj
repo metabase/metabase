@@ -36,7 +36,7 @@
 
 (defenterprise ee-transform-metrics
   "Returns transform usage metrics for the Snowplow stats ping."
-  :feature :transforms
+  :feature :none
   []
   (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))]
     {:transforms               (t2/count :model/Transform)
