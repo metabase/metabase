@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { openNotebook } from "e2e/support/helpers";
 import type { Measure, TableId } from "metabase-types/api";
 
 const { H } = cy;
@@ -547,6 +548,62 @@ describe("scenarios > data studio > measures > queries", () => {
       });
 
       verifyScalarValue("1,510,621.68");
+    });
+
+    it("changing the top-level aggregation expression in a measure might break queries that reference it in follow up stages", () => {
+      H.createMeasure({
+        name: MEASURE_NAME,
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      }).then(({ body: measure }) => {
+        H.createQuestion({
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "day" }],
+            ],
+          },
+        }).then(({ body: question }) => {
+          cy.log("Add a second stage that references the measure");
+          H.visitQuestion(question.id);
+          openNotebook();
+          H.getNotebookStep("summarize").findByText("Filter").click();
+          H.popover().within(() => {
+            cy.findByText(MEASURE_NAME).click();
+            cy.findByPlaceholderText("Min").type("10");
+            cy.button("Add filter").click();
+          });
+
+          cy.findByTestId("qb-header").button("Save").click();
+          H.modal().within(() => {
+            cy.log("Ensure that 'Replace original question' is checked");
+            cy.findByLabelText(/Replace original question/i).should(
+              "be.checked",
+            );
+            cy.button("Save").click();
+          });
+
+          H.updateMeasure({
+            id: measure.id,
+            definition: {
+              "source-table": ORDERS_ID,
+              aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+            },
+          });
+
+          cy.log("Add a second stage that references the measure");
+          H.visitQuestion(question.id);
+          cy.findByTestId("query-builder-main")
+            .findByText("There was a problem with your question")
+            .should("be.visible");
+        });
+      });
     });
   });
 
