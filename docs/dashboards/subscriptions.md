@@ -1,9 +1,8 @@
 ---
 title: Dashboard subscriptions
 redirect_from:
-
 - /docs/latest/users-guide/dashboard-subscriptions
-  - /docs/latest/enterprise-guide/dashboards-subscriptions
+- /docs/latest/enterprise-guide/dashboards-subscriptions
 ---
 
 # Dashboard subscriptions
@@ -142,7 +141,7 @@ See [Remove Metabase branding from exports](../questions/exporting-results.md#re
 
 ## Subscriptions in embedded dashboards exclude links
 
-Since people viewing embedded dashbaords likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
+Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
 
 ## Further reading
 
