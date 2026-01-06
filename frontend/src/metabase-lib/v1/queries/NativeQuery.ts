@@ -1,11 +1,9 @@
 import slugg from "slugg";
-import { t } from "ttag";
 import _ from "underscore";
 
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -295,30 +293,12 @@ export default class NativeQuery {
       .filter((cardId): cardId is number => cardId != null);
   }
 
-  validateTemplateTags() {
-    return this.templateTags()
-      .map((tag) => {
-        if (!tag["display-name"]) {
-          return new ValidationError(t`Missing widget label: ${tag.name}`);
-        }
-        const dimension = new TemplateTagDimension(
-          tag.name,
-          this.metadata(),
-          this,
-        );
-        if (!dimension) {
-          return new ValidationError(t`Invalid template tag: ${tag.name}`);
-        }
-
-        return dimension.validateTemplateTag();
-      })
-      .filter(
-        (maybeError): maybeError is ValidationError => maybeError != null,
-      );
+  private _validateTemplateTags() {
+    return Lib.validateTemplateTags(this._query);
   }
 
   private _allTemplateTagsAreValid() {
-    const tagErrors = this.validateTemplateTags();
+    const tagErrors = this._validateTemplateTags();
     return tagErrors.length === 0;
   }
 
