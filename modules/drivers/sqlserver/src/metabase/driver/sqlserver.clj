@@ -1076,36 +1076,33 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- isolation-login-name
-  "Generate login name for workspace isolation."
-  [workspace]
-  (format "mb_isolation_%s_login" (:id workspace)))
+;; SQL Server has separate login (server-level) and user (database-level), but we use the same
+;; name for both to keep things simple. The login is for authentication, the user holds permissions.
 
 (defmethod driver/init-workspace-isolation! :sqlserver
   [_driver database workspace]
   (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
-        login-name       (isolation-login-name workspace)
-        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
-                          :password (driver.u/random-workspace-password)}
-        escaped-password (sql.u/escape-sql (:password read-user) :ansi)
+        username         (driver.u/workspace-isolation-user-name workspace)
+        password         (driver.u/random-workspace-password)
+        escaped-password (sql.u/escape-sql password :ansi)
         conn-spec        (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     ;; SQL Server: create login (server level), then user (database level), then schema
     (doseq [sql [(format (str "IF NOT EXISTS (SELECT name FROM master.sys.server_principals WHERE name = '%s') "
                               "CREATE LOGIN [%s] WITH PASSWORD = N'%s'")
-                         login-name login-name escaped-password)
+                         username username escaped-password)
                  (format "IF NOT EXISTS (SELECT name FROM sys.database_principals WHERE name = '%s') CREATE USER [%s] FOR LOGIN [%s]"
-                         (:user read-user) (:user read-user) login-name)
+                         username username username)
                  (format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s]')"
                          schema-name schema-name)
-                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name (:user read-user))]]
+                 (format "GRANT CONTROL ON SCHEMA::[%s] TO [%s]" schema-name username)]]
       (jdbc/execute! conn-spec [sql]))
     {:schema           schema-name
-     :database_details read-user}))
+     :database_details {:user     username
+                        :password password}}))
 
 (defmethod driver/destroy-workspace-isolation! :sqlserver
   [_driver database workspace]
   (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
-        login-name  (isolation-login-name workspace)
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     (doseq [sql [(format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
@@ -1118,7 +1115,7 @@
                  (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
                          username username)
                  (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
-                         login-name login-name)]]
+                         username username)]]
       (jdbc/execute! conn-spec [sql]))))
 
 (defmethod driver/grant-workspace-read-access! :sqlserver
@@ -1127,7 +1124,7 @@
         username  (-> workspace :database_details :user)
         schemas   (distinct (map :schema tables))]
     (when-not username
-      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+      (throw (ex-info "Workspace isolation is not properly initialized - missing user name"
                       {:workspace-id (:id workspace) :step :grant})))
     (doseq [schema schemas]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON SCHEMA::[%s] TO [%s]" schema username)]))
