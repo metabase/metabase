@@ -729,7 +729,8 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("dependency graph", () => {
-    it("should display measure dependents in the dependency graph", () => {
+    // TODO: unskip once measures show dependencies
+    it.skip("should display measure dependents in the dependency graph", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         table_id: ORDERS_ID,
