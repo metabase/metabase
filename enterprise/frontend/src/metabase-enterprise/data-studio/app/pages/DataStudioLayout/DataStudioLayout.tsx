@@ -5,8 +5,10 @@ import { t } from "ttag";
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -19,6 +21,7 @@ import {
   Center,
   FixedSizeIcon,
   Flex,
+  Group,
   type IconName,
   Loader,
   Stack,
@@ -44,6 +47,16 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     key: "isNavbarOpened",
   });
   const isNavbarOpened = _isNavbarOpened !== false;
+
+  useRegisterShortcut(
+    [
+      {
+        id: "toggle-navbar",
+        perform: () => setIsNavbarOpened(!isNavbarOpened),
+      },
+    ],
+    [isNavbarOpened],
+  );
 
   return isLoading ? (
     <Center h="100%">
@@ -93,9 +106,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
-        {isNavbarOpened && (
-          <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls fullWidth />
-        )}
         <DataStudioTab
           label={t`Library`}
           icon="repository"
@@ -233,6 +243,12 @@ function DataStudioTab({
   );
 }
 
+const getSidebarTooltipLabel = (isNavbarOpened: boolean) => {
+  const message = isNavbarOpened ? t`Close sidebar` : t`Open sidebar`;
+  const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+  return `${message} ${shortcut}`;
+};
+
 type DataStudioNavbarToggleProps = {
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
@@ -244,31 +260,52 @@ function DataStudioNavbarToggle({
 }: DataStudioNavbarToggleProps) {
   return (
     <Flex justify="space-between" mb={2}>
-      <UnstyledButton
-        className={cx(S.toggle, {
-          [S.hoverButton]: !isNavbarOpened,
-          [S.disablePointer]: isNavbarOpened,
-        })}
-        p="0.5rem"
-        bdrs="md"
-        onClick={() => !isNavbarOpened && onNavbarToggle(true)}
-      >
-        <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
-        <FixedSizeIcon
-          name="sidebar_open"
-          className={S.showOnHover}
-          c="text-secondary"
-        />
-      </UnstyledButton>
-      {isNavbarOpened && (
-        <UnstyledButton
-          className={S.toggle}
-          p="0.5rem"
-          bdrs="md"
-          onClick={() => onNavbarToggle(false)}
+      <Group gap="sm">
+        <Tooltip
+          label={getSidebarTooltipLabel(isNavbarOpened)}
+          withArrow
+          offset={-12}
+          openDelay={1000}
         >
-          <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
-        </UnstyledButton>
+          <UnstyledButton
+            className={cx(S.toggle, {
+              [S.hoverButton]: !isNavbarOpened,
+              [S.disablePointer]: isNavbarOpened,
+            })}
+            p="0.5rem"
+            bdrs="md"
+            onClick={() => !isNavbarOpened && onNavbarToggle(true)}
+          >
+            <img
+              alt="Data Studio Logo"
+              className={cx(S.hideOnHover, S.logo)}
+              src={DataStudioLogo}
+            />
+            <FixedSizeIcon
+              name="sidebar_open"
+              className={S.showOnHover}
+              c="text-secondary"
+            />
+          </UnstyledButton>
+        </Tooltip>
+        {isNavbarOpened && <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
+      </Group>
+      {isNavbarOpened && (
+        <Tooltip
+          label={getSidebarTooltipLabel(isNavbarOpened)}
+          withArrow
+          offset={-12}
+          openDelay={1000}
+        >
+          <UnstyledButton
+            className={S.toggle}
+            p="0.5rem"
+            bdrs="md"
+            onClick={() => onNavbarToggle(false)}
+          >
+            <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
+          </UnstyledButton>
+        </Tooltip>
       )}
     </Flex>
   );

@@ -34,11 +34,13 @@ export const ReduxProvider = ({
 
 export const VisualizationWrapper = ({
   theme,
+  displayTheme,
   children,
   initialStore = createMockState(),
 }: {
   children: React.ReactElement;
   theme?: MantineThemeOverride;
+  displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
   const store = getStore(mainReducers, initialStore);
@@ -49,6 +51,7 @@ export const VisualizationWrapper = ({
       withRouter={false}
       withKBar={false}
       theme={theme}
+      displayTheme={displayTheme}
       withDND
       withCssVariables
     >

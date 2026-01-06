@@ -147,8 +147,7 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{api-routes
-           config
+   :uses #{config
            events
            models
            settings
@@ -954,6 +953,7 @@
            config
            internal-stats
            settings
+           task
            util}}
 
   product-feedback
