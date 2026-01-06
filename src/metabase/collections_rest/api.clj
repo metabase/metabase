@@ -488,7 +488,11 @@
    :from   [[:transform :transform]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]]})
+            [:= :collection_id (:id collection)]
+            (when-not api/*is-superuser?*
+              [:=
+               [:inline 0]
+               [:inline 1]])]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
