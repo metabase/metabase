@@ -1354,13 +1354,16 @@
 
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
-  (let [username (-> workspace :database_details :user)
-        sqls     (cons
-                  (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" (:schema workspace) username)
-                  (for [{s :schema, t :name} tables]
-                    (if (str/blank? s)
-                      (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
-                      (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
+  (let [username      (-> workspace :database_details :user)
+        table-schemas (into #{} (keep :schema) tables)
+        schema-grants (for [s table-schemas
+                            :when (not (str/blank? s))]
+                        (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" s username))
+        table-grants  (for [{s :schema, t :name} tables]
+                        (if (str/blank? s)
+                          (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
+                          (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username)))
+        sqls          (concat schema-grants table-grants)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
