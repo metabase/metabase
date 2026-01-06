@@ -713,7 +713,9 @@
     ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
     (when config/is-dev?
       (try
-        (events/publish-event! :event/api-handler-update {})
+        (events/publish-event! :event/api-handler-update
+                               {:api.docs/request-rebuild
+                                (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
         (catch Throwable e
           (log/debug e "Failed to publish api-handler-update event"))))))
 
