@@ -492,3 +492,18 @@
     (if (and template-tags-map raw-native-query-string)
       (boolean (fully-parameterized-text? raw-native-query-string template-tags-map))
       true)))
+
+(mu/defn- validate-template-tag :- [:maybe ::error]
+  "Validate a single template tag."
+  [_query template-tag]
+  (case (:type template-tag)
+    :dimension (if (= (:dimension template-tag) nil)
+                 [{:error/message (str "The variable \"" (:name template-tag) "\" needs to be mapped to a field.")}]
+                 [])
+    []))
+
+(mu/defn validate-template-tags :- [:sequential ::error]
+  "Given a query, returns a list of errors for each template tag in the query that is not valid."
+  [query]
+  (mapcat #(validate-template-tag query %)
+          (lib.walk.util/all-template-tags query)))

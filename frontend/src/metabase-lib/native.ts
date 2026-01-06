@@ -75,3 +75,10 @@ export function withNativeExtras(
 ): Query {
   return ML.with_native_extras(query, nativeExtras);
 }
+
+/**
+ * Validates if the template tags in query are all valid and well-formed.
+ */
+export function validateTemplateTags(query: Query): { message: string }[] {
+  return ML.validate_template_tags(query);
+}
