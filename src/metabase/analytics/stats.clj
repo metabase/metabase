@@ -647,6 +647,18 @@
      :values (mapv (fn [[k v]] {:group k :value v}) eid-translations-24h)
      :tags ["embedding"]}]))
 
+(defn- ee-transform-metrics'
+  "OSS fallback for transform metrics. Returns zeros since transforms are an enterprise feature."
+  []
+  {:transforms               0
+   :transform_runs_last_24h  0})
+
+(defenterprise ee-transform-metrics
+  "Returns transform usage metrics for the Snowplow stats ping."
+  metabase-enterprise.analytics.stats
+  []
+  (ee-transform-metrics'))
+
 (defn- ->snowplow-metric-info
   "Collects Snowplow metrics data that is not in the legacy stats format. Also clears entity id translation count."
   []
