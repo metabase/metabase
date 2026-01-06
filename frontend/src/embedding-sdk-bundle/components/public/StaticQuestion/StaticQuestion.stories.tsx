@@ -47,7 +47,6 @@ export const Default = {
 
   args: {
     questionId: QUESTION_ID,
-    isSaveEnabled: true,
     title: false,
     withDownloads: false,
     withChartTypeSelector: false,
