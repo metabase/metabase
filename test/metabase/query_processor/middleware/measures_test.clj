@@ -1,12 +1,14 @@
 (ns metabase.query-processor.middleware.measures-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [mb.hawk.assert-exprs.approximately-equal :as =?]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.measures :as measures]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -422,6 +424,25 @@
            clojure.lang.ExceptionInfo
            #"[Mm]easures cannot reference metrics"
            (adjust query))))))
+
+(deftest ^:parallel maintain-aggregation-refs-test
+  (testing "the aggregation that replaces a :measure ref should keep the :measure's :lib/uuid, so :aggregation refs pointing to it are still valid"
+    (let [mp          (mt/metadata-provider)
+          definition  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))
+          mp          (lib.tu/mock-metadata-provider
+                       mp
+                       {:measures [{:id         1
+                                    :name       "Total Revenue"
+                                    :table-id   (mt/id :venues)
+                                    :definition definition}]})
+          measure     (lib.metadata/measure mp 1)
+          query       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/aggregate measure)
+                          (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))]
+      (is (=? {:stages [{:aggregation [[:sum {:lib/uuid (=?/same :uuid)} [:field {} (mt/id :venues :price)]]]
+                         :order-by    [[:asc {} [:aggregation {} (=?/same :uuid)]]]}]}
+              (qp.preprocess/preprocess query))))))
 
 (deftest ^:parallel nested-measure-with-metric-reference-error-test
   (testing "Nested measure containing metric reference fails (A → B where B uses metric)"

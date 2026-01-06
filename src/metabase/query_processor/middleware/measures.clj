@@ -96,10 +96,11 @@
       (if-let [aggregation (measure-aggregation measure)]
         (do
           (log/debugf "Expanding measure %d:\n%s\n->\n%s" id (u/pprint-to-str &match) (u/pprint-to-str aggregation))
-          ;; Preserve display-name from the measure clause options if present
+          ;; Preserve :lib/uuid and :display-name from the measure clause options if present
+          ;; This is important so that :aggregation refs pointing to the measure remain valid
           (cond-> aggregation
-            (:display-name opts)
-            (assoc-in [1 :display-name] (:display-name opts))))
+            (:lib/uuid opts)     (assoc-in [1 :lib/uuid] (:lib/uuid opts))
+            (:display-name opts) (assoc-in [1 :display-name] (:display-name opts))))
         (throw (ex-info (tru "Measure {0} has no aggregation defined." id)
                         {:type qp.error-type/invalid-query, :measure measure})))
       (throw (ex-info (tru "Measure {0} not found." id)
