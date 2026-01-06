@@ -16,7 +16,9 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -679,8 +681,11 @@
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Redshift inherits init-workspace-isolation! and grant-workspace-read-access! from Postgres.
-;; Only destroy needs to be overridden because Redshift doesn't support DROP OWNED BY.
+;; Redshift inherits grant-workspace-read-access! from Postgres.
+;; init-workspace-isolation! is overridden because Redshift doesn't support GRANT user TO user
+;; (PostgreSQL treats users as roles; Redshift requires GRANT ROLE role_name TO user).
+;; Since we don't use DROP OWNED BY in Redshift cleanup, we don't need the role grant anyway.
+;; destroy-workspace-isolation! is overridden because Redshift doesn't support DROP OWNED BY.
 
 (defn- user-exists?
   "Check if a Redshift user exists."
@@ -700,6 +705,26 @@
            WHERE identity_name = ? AND identity_type = 'user'"
                     username])
        (keep :namespace_name)))
+
+(defmethod driver/init-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-sql (if (user-exists? t-conn (:user read-user))
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) escaped-password)
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) escaped-password))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       user-sql
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
+    {:schema           schema-name
+     :database_details read-user}))
 
 (defmethod driver/destroy-workspace-isolation! :redshift
   [_driver database workspace]
