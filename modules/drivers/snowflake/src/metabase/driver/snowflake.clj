@@ -974,7 +974,10 @@
   [_driver database workspace]
   (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
         db-name          (-> database :details :db)
-        warehouse        (-> database :details :warehouse)
+        ;; Snowflake identifiers are case-insensitive when unquoted, but we use quoted identifiers
+        ;; in SQL statements. Since warehouse names are stored as uppercase in Snowflake, we need
+        ;; to uppercase here to match (the connection spec does the same in connection-details->spec).
+        warehouse        (some-> (-> database :details :warehouse) u/upper-case-en)
         role-name        (isolation-role-name workspace)
         read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
                           :password (driver.u/random-workspace-password)}
