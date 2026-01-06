@@ -84,7 +84,7 @@
    [metabase.api.open-api :as open-api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.request.current :as request.current]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -192,7 +192,7 @@
   "Check that `*current-user*` is a data analyst (or superuser) or throw a 403.
   Superusers are automatically considered data analysts."
   []
-  (check-403 (or *is-superuser?* (request.current/data-analyst?))))
+  (check-403 (or *is-superuser?* (request/data-analyst?))))
 
 ;; checkp- functions: as in "check param". These functions expect that you pass a symbol so they can throw exceptions
 ;; w/ relevant error messages.

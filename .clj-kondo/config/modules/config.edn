@@ -150,6 +150,7 @@
    :uses #{config
            events
            models
+           request
            settings
            util}}
 
@@ -1767,6 +1768,7 @@
            premium-features
            query-permissions
            query-processor
+           request
            util
            warehouses
            enterprise/impersonation}}

@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -66,9 +67,9 @@
             :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
             :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model   can-access-data-model
-            :can_access_data_studio  (or api/*is-superuser?* is-analyst can-access-data-model)
+            :can_access_data_studio  (or api/*is-superuser?* (request/data-analyst?) can-access-data-model)
             :can_access_db_details   (perms/user-has-any-perms-of-type? user-id :perms/manage-database)
-            :is_data_analyst         is-data-analyst
+            :is_data_analyst         (request/data-analyst?)
             :is_group_manager        api/*is-group-manager?*)))
 
 (defenterprise current-user-has-application-permissions?
