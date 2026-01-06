@@ -798,11 +798,3 @@
        :has-field-values (if (int? column-field-id)
                            (infer-has-field-values column)
                            :none)})))
-
-(mu/defn source-field-name :- :string
-  "The source field name of a column."
-  [column :- ::lib.schema.metadata/column]
-  (or
-   (lib.field.util/inherited-column-name column)
-   (:lib/deduplicated-name column)
-   (:lib/source-column-alias column)))
