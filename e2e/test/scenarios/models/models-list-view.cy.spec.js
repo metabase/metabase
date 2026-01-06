@@ -166,26 +166,26 @@ describe("scenarios > models list view", () => {
         cy.findByRole("img", { name: "factory icon" })
           .should("have.attr", "aria-label", "factory icon")
           .click();
-        cy.findByTestId("list-view-icon-colors").then(($list) => {
-          const $button = Cypress.$($list).find("button").eq(2);
-          cy.wrap(window.getComputedStyle($button[0]).backgroundColor).should(
-            "eq",
-            Color(colors["accent1"]).rgb().toString(),
-          );
 
-          $button.click();
-        });
+        cy.findByTestId("list-view-icon-colors")
+          .findAllByRole("button")
+          .eq(2)
+          .should(
+            "have.css",
+            "backgroundColor",
+            Color(colors["accent1"]).rgb().toString(),
+          )
+          .click();
       });
       cy.get("@listPreview").within(() => {
         cy.findAllByRole("img")
           .first()
           .should("have.attr", "aria-label", "factory icon")
-          .then(($el) => {
-            cy.wrap(window.getComputedStyle($el[0]).color).should(
-              "eq",
-              Color(colors["accent1"]).rgb().toString(),
-            );
-          });
+          .should(
+            "have.css",
+            "color",
+            Color(colors["accent1"]).rgb().toString(),
+          );
       });
 
       cy.findByTestId("dataset-edit-bar").button("Save changes").click();
