@@ -578,3 +578,78 @@ function getPieChartLegendItemPercentage(sliceName) {
   // https://github.com/metabase/metabase/blob/9053d6fe2b8a9500e67559d35d39259a8a87c4f6/frontend/src/metabase/visualizations/components/ChartWithLegend.jsx#L140
   return cy.findAllByTestId(`legend-item-${sliceName}`).eq(0).children().eq(1);
 }
+
+describe("scenarios > visualizations > legend > show/hide setting", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should hide legend when 'Show legend' toggle is disabled", () => {
+    H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
+
+    // Verify legend is visible by default
+    cy.findAllByTestId("legend-item").should("have.length.at.least", 1);
+
+    // Open viz settings and disable legend
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show legend").click();
+    });
+
+    // Verify legend is hidden
+    cy.findAllByTestId("legend-item").should("have.length", 0);
+
+    // Re-enable legend
+    H.leftSidebar().within(() => {
+      cy.findByText("Show legend").click();
+    });
+
+    // Verify legend is visible again
+    cy.findAllByTestId("legend-item").should("have.length.at.least", 1);
+  });
+
+  it("should persist legend visibility setting when saved", () => {
+    H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
+
+    // Open viz settings and disable legend
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show legend").click();
+    });
+
+    // Verify legend is hidden
+    cy.findAllByTestId("legend-item").should("have.length", 0);
+
+    // Save the question
+    cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+    H.modal().findByText("Save").click();
+
+    // Wait for save and reload
+    cy.wait(500);
+    cy.reload();
+
+    // Verify legend is still hidden after reload
+    cy.findAllByTestId("legend-item").should("have.length", 0);
+  });
+
+  it("should hide legend for different chart types", () => {
+    // Test with line chart
+    H.createQuestion(
+      { ...SINGLE_AGGREGATION_QUESTION, display: "line" },
+      { visitQuestion: true },
+    );
+
+    cy.findAllByTestId("legend-item").should("have.length.at.least", 1);
+
+    H.openVizSettingsSidebar();
+    H.leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show legend").click();
+    });
+
+    cy.findAllByTestId("legend-item").should("have.length", 0);
+  });
+});
