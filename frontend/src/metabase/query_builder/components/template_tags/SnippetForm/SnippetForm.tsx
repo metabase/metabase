@@ -49,7 +49,7 @@ interface SnippetLoaderProps {
 }
 type SnippetFormProps = SnippetFormOwnProps & SnippetLoaderProps;
 
-function SnippetForm({
+function SnippetFormInner({
   snippet,
   snippetCollections,
   isEditing,
@@ -137,5 +137,5 @@ function SnippetForm({
 }
 
 export const SnippetForm = _.compose(SnippetCollections.loadList())(
-  SnippetForm,
+  SnippetFormInner,
 );
