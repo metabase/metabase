@@ -319,7 +319,7 @@
   "Is this a development instance that should have watermarks?"
   :tenants)
 
-(define-premium-feature ^{:added "0.58.0"} enable-workspaces?
+(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
   "Should we allow users to use workspaces?"
   :workspaces)
 
