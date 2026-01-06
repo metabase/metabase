@@ -7,11 +7,9 @@ import {
   Stack,
   TextInput,
   Title,
-  rem,
 } from "metabase/ui";
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import { ACTION_ICON_PADDING_PX } from "../../../../constants";
 import type { FilterOption, SortOptions } from "../types";
 import { canFilter } from "../utils";
 
@@ -53,11 +51,7 @@ export function PanelHeader({
         <Title flex={1} order={4} lh="1rem">
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon
-          m={rem(-ACTION_ICON_PADDING_PX)}
-          aria-label={t`Close`}
-          onClick={onClose}
-        >
+        <ActionIcon m="-sm" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

@@ -1,10 +1,7 @@
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { ActionIcon, FixedSizeIcon, Tooltip, rem } from "metabase/ui";
+import { ActionIcon, FixedSizeIcon, Tooltip } from "metabase/ui";
 
-import {
-  ACTION_ICON_PADDING_PX,
-  TOOLTIP_OPEN_DELAY_MS,
-} from "../../../constants";
+import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 
 type GraphExternalLinkProps = {
   label: string;
@@ -18,7 +15,7 @@ export function GraphExternalLink({ label, url }: GraphExternalLinkProps) {
         component={ForwardRefLink}
         to={url}
         target="_blank"
-        m={rem(-ACTION_ICON_PADDING_PX)}
+        m="-sm"
         aria-label={label}
       >
         <FixedSizeIcon name="external" />
