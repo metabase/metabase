@@ -230,8 +230,10 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 3306)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 3306)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options #{:aws-iam})
@@ -1195,3 +1197,7 @@
              tiny-int-1-is-bit?)
       "BIT"
       db-type-name)))
+
+(defmethod driver/extra-info :mysql
+  [_driver]
+  nil)

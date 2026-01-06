@@ -16,6 +16,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
@@ -23,7 +24,6 @@ import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/co
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {
@@ -110,10 +110,10 @@ export const JobListPage = () => {
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>
-          {isLoading ? (
-            <ListLoadingState />
-          ) : (
-            <Card withBorder p={0}>
+          <Card withBorder p={0}>
+            {isLoading ? (
+              <TreeTableSkeleton columnWidths={[0.6, 0.3]} />
+            ) : (
               <TreeTable
                 instance={treeTableInstance}
                 emptyState={
@@ -121,8 +121,8 @@ export const JobListPage = () => {
                 }
                 onRowClick={handleRowActivate}
               />
-            </Card>
-          )}
+            )}
+          </Card>
         </Flex>
       </Stack>
     </PageContainer>
