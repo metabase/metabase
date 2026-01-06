@@ -33,6 +33,7 @@ const getPermissionGraph = (): GroupsPermissions =>
   }) as any;
 
 const isNotAdmin = false;
+const isNotExternal = false;
 
 const defaultGroup: Group = {
   id: defaultGroupId,
@@ -54,6 +55,7 @@ describe("getFeatureLevelDataPermissions", () => {
         { databaseId },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         DataPermissionValue.UNRESTRICTED,
         defaultGroup,
@@ -79,6 +81,7 @@ describe("getFeatureLevelDataPermissions", () => {
         { databaseId },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         DataPermissionValue.UNRESTRICTED,
         defaultGroup,
@@ -100,6 +103,7 @@ describe("getFeatureLevelDataPermissions", () => {
         { databaseId, schemaName: "public" },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         DataPermissionValue.UNRESTRICTED,
         defaultGroup,
@@ -120,6 +124,7 @@ describe("getFeatureLevelDataPermissions", () => {
         { databaseId, schemaName: "public", tableId: 1 },
         groupId,
         isNotAdmin,
+        isNotExternal,
         getPermissionGraph(),
         DataPermissionValue.UNRESTRICTED,
         defaultGroup,

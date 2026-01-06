@@ -1,5 +1,3 @@
-import type { UserWithFeaturePermissions } from "metabase-enterprise/feature_level_permissions/types/user";
-
 import { PLUGIN_ENTITIES, PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { useGetTransformQuery } from "metabase-enterprise/api";
@@ -14,7 +12,7 @@ const canAccessTransforms = (state: State): boolean => {
   if (getUserIsAdmin(state)) {
     return true;
   }
-  const user = getUser(state) as UserWithFeaturePermissions | null;
+  const user = getUser(state);
   return user?.permissions?.can_access_transforms ?? false;
 };
 

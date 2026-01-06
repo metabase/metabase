@@ -1,7 +1,7 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/admin/permissions/constants/messages";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -64,7 +64,7 @@ const getTransformsDisabledTooltip = (
   hasRequiredPermissions: boolean,
 ): string | null => {
   if (isAdmin) {
-    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+    return Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
   }
 
   if (!hasRequiredPermissions) {

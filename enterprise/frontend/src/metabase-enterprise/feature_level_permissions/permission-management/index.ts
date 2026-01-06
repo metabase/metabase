@@ -35,28 +35,30 @@ export const getFeatureLevelDataPermissions = (
   );
 
   const dataModelPermission =
-    (!isExternal || permissionView === "database") &&
-    buildDataModelPermission(
-      entityId,
-      groupId,
-      isAdmin,
-      isExternal,
-      permissions,
-      defaultGroup,
-      permissionSubject,
-    );
+    !isExternal || permissionView === "database"
+      ? buildDataModelPermission(
+          entityId,
+          groupId,
+          isAdmin,
+          isExternal,
+          permissions,
+          defaultGroup,
+          permissionSubject,
+        )
+      : null;
 
   const detailsPermission =
-    (!isExternal || permissionView === "database") &&
-    buildDetailsPermission(
-      entityId,
-      groupId,
-      isAdmin,
-      isExternal,
-      permissions,
-      defaultGroup,
-      permissionSubject,
-    );
+    !isExternal || permissionView === "database"
+      ? buildDetailsPermission(
+          entityId,
+          groupId,
+          isAdmin,
+          isExternal,
+          permissions,
+          defaultGroup,
+          permissionSubject,
+        )
+      : null;
 
   const transformsPermission = PLUGIN_TRANSFORMS.isEnabled
     ? buildTransformsPermission(

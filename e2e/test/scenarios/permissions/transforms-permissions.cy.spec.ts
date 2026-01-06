@@ -292,8 +292,6 @@ function grantTransformsPermissionToAllGroups() {
       },
     },
   });
-
-  grantDataStudioApplicationPermission();
 }
 
 function denyTransformsPermissionToAllGroups() {
@@ -320,33 +318,4 @@ function denyTransformsPermissionToAllGroups() {
       },
     },
   });
-
-  grantDataStudioApplicationPermission();
-}
-
-function grantDataStudioApplicationPermission() {
-  cy.request("GET", "/api/ee/advanced-permissions/application/graph").then(
-    ({ body: { groups, revision } }) => {
-      const updatedGroups = {
-        ...groups,
-        [ALL_USERS_GROUP]: {
-          ...groups[ALL_USERS_GROUP],
-          "data-studio": "yes",
-        },
-        [COLLECTION_GROUP]: {
-          ...groups[COLLECTION_GROUP],
-          "data-studio": "yes",
-        },
-        [DATA_GROUP]: {
-          ...groups[DATA_GROUP],
-          "data-studio": "yes",
-        },
-      };
-
-      cy.request("PUT", "/api/ee/advanced-permissions/application/graph", {
-        groups: updatedGroups,
-        revision,
-      });
-    },
-  );
 }
