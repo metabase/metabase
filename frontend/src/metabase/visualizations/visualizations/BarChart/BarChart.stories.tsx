@@ -20,6 +20,9 @@ import { BarChart } from "./BarChart";
 export default {
   title: "viz/BarChart",
   component: BarChart,
+  parameters: {
+    loki: { delay: 500 },
+  },
 };
 
 // @ts-expect-error: incompatible prop types with registerVisualization
