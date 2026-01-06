@@ -82,8 +82,10 @@
     ;; make sure that we don't add duplicate columns even if the column has some weird unexpected options, i.e. we
     ;; need to do 'normalized' Field comparison for preventing duplicates.
     (doseq [category-name-options (lib.tu.macros/$ids venues
-                                    [{:source-field %category-id}
-                                     {:source-field               %category-id
+                                    [{:source-field %category-id
+                                      :source-field-name "CATEGORY_ID"}
+                                     {:source-field %category-id
+                                      :source-field-name "CATEGORY_ID"
                                       ::some-other-namespaced-key true}])]
       (testing (format "\ncategories.name field options = %s" (pr-str category-name-options))
         (let [{:keys [remaps query]} (#'qp.add-remaps/add-fk-remaps
@@ -330,7 +332,8 @@
                          $discount
                          !default.created-at
                          $quantity
-                         [:field %products.title {:source-field                                         %product-id
+                         [:field %products.title {:source-field      %product-id
+                                                  :source-field-name "PRODUCT_ID"
                                                   ::qp.add-remaps/new-field-dimension-id dimension-id}]]))
                      (assoc ::qp.add-remaps/external-remaps [{:id                        dimension-id
                                                               :field-id                  (meta/id :orders :product-id)

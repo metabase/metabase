@@ -1218,7 +1218,8 @@
    (merge
     {:lib/uuid                (str (random-uuid))
      :source-field            (:id source-field)}
-    (when-let [inherited-name (lib.field.util/inherited-column-name source-field)]
+    (when-let [inherited-name (or (lib.field.util/inherited-column-name source-field)
+                                  (:lib/source-column-alias source-field))]
       {:source-field-name inherited-name})
     (when-let [join-alias (::join-alias source-field)]
       {:join-alias join-alias}))
