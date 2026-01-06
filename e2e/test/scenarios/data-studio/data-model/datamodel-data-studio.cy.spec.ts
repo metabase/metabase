@@ -89,19 +89,22 @@ describe("scenarios > data studio > datamodel", () => {
         databaseId: SAMPLE_DB_ID,
         schemaId: SAMPLE_DB_SCHEMA_ID,
         tableId: ORDERS_ID,
-        fieldId: 12345,
+        fieldId: 12345, // we're force navigating to a fake field id
         skipWaiting: true,
       });
-      cy.wait("@databases");
-      cy.wait(100); // wait with assertions for React effects to kick in
+      cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
 
       TablePicker.getDatabases().should("have.length", 1);
       TablePicker.getTables().should("have.length", 8);
-      H.DataModel.get().findByText("Not found.").should("be.visible");
       cy.location("pathname").should(
         "eq",
         `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
       );
+
+      H.DataModel.get().within(() => {
+        cy.findByText("Field details").should("be.visible");
+        cy.findByText("Not found.").should("be.visible");
+      });
     });
 
     it(
