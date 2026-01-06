@@ -203,7 +203,7 @@ To add a tenant attribute:
 
 Once you add a tenant attribute, all users of that tenant will inherit the attribute, but the value can overridden for any particular user, see [Edit user attributes](../people-and-groups/managing.md#adding-a-user-attribute).
 
-Currently, you can't assign custom tenant attributes with SSO - the only way to assign attributes is through to tenants through Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md#)). However, if the reason you need user attributes is for permission configuration, then you can use the [special slug attribute](#special-tenant-slug-attribute) which is created automatically.
+Currently, you can't assign custom tenant attributes with SSO - the only way to assign attributes is through to tenants through Metabase UI (but you can provision attributes for _individual users_ through SSO, see [JWT user attributes](../people-and-groups/authenticating-with-jwt.md)). However, if the reason you need user attributes is for permission configuration, then you can use the [special slug attribute](#special-tenant-slug-attribute) which is created automatically.
 
 ### Special tenant slug attribute
 
