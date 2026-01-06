@@ -21,11 +21,6 @@ on:
         description: 'Target branch (e.g. release-x.57.x)'
         type: string
         required: true
-  push:
-    branches:
-      - 'github-actions-to-generate-llms-txt'
-    paths:
-      - '.github/workflows/llms-txt-generate.yml'
 
 permissions:
   contents: write
@@ -44,15 +39,8 @@ jobs:
       - name: Check version
         id: check
         run: |
-          # For push events, use default test values
-          if [ "${{ github.event_name }}" == "push" ]; then
-            VERSION="v0.57.0"
-            BRANCH="release-x.57.x"
-            echo "🧪 Testing mode: Using default values (version=$VERSION, branch=$BRANCH)"
-          else
-            VERSION="${{ inputs.version }}"
-            BRANCH="${{ inputs.branch }}"
-          fi
+          VERSION="${{ inputs.version }}"
+          BRANCH="${{ inputs.branch }}"
 
           # Extract version number (e.g., v0.57.0 -> 0.57.0)
           VERSION_NUM="${VERSION#v}"
@@ -188,17 +176,16 @@ jobs:
             llms.txt
             llms-embedding-full.txt
 
-      # TODO: Uncomment these steps once testing is complete
-      # - name: Auto approve PR
-      #   if: steps.create_pr.outputs.pull-request-number != ''
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
+      - name: Auto approve PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review "${{ steps.create_pr.outputs.pull-request-number }}" --approve --body "Auto-approved by llms-txt-generate workflow"
 
-      # - name: Auto merge PR
-      #   if: steps.create_pr.outputs.pull-request-number != ''
-      #   env:
-      #     GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-      #   run: |
-      #     gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
+      - name: Auto merge PR
+        if: steps.create_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh pr merge "${{ steps.create_pr.outputs.pull-request-number }}" --auto --squash
