@@ -212,12 +212,13 @@
 
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated tenant_id tenancy] :as params}
+   {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst] :as params}
    :- [:map
        [:status              {:optional true} [:maybe :string]]
        [:query               {:optional true} [:maybe :string]]
        [:group_id            {:optional true} [:maybe ms/PositiveInt]]
        [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
+       [:is_data_analyst     {:optional true} [:maybe ms/BooleanValue]]
        [:tenancy             {:optional true} [:maybe
                                                [:enum :all :internal :external]]]
        [:tenant_id           {:optional true} [:maybe ms/PositiveInt]]]]
@@ -227,11 +228,13 @@
         (perms/check-group-manager)))
   (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
                  (tru "You cannot specify both `tenancy` and `tenant_id`"))
-  (let [include_deactivated include_deactivated
-        group-id-clause     (when group_id [group_id])
-        clauses             (let [clauses (user/filter-clauses status query group-id-clause include_deactivated
-                                                               {:limit  (request/limit)
-                                                                :offset (request/offset)})]
+  (let [clauses             (let [clauses (user/filter-clauses {:status              status
+                                                                :query               query
+                                                                :group-ids           (when group_id [group_id])
+                                                                :include-deactivated include_deactivated
+                                                                :is-data-analyst?    is_data_analyst
+                                                                :limit               (request/limit)
+                                                                :offset              (request/offset)})]
                               (cond
                                 (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
                                 (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])
@@ -289,7 +292,7 @@
    - If user-visibility is :none or the user is sandboxed, include only themselves."
   []
   ;; defining these functions so the branching logic below can be as clear as possible
-  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses nil nil nil nil)
+  (letfn [(all [] (let [clauses (cond-> (user/filter-clauses {})
                                   (not api/*is-superuser?*) (sql.helpers/where
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
@@ -298,7 +301,7 @@
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (same-groups-user-ids api/*current-user-id*)
-                                 clauses  (cond-> (user/filter-clauses nil nil nil nil)
+                                 clauses  (cond-> (user/filter-clauses {})
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
@@ -548,7 +551,7 @@
        [:last_name              {:optional true} [:maybe ms/NonBlankString]]
        [:user_group_memberships {:optional true} [:maybe [:sequential ::user-group-membership]]]
        [:is_superuser           {:optional true} [:maybe :boolean]]
-       [:is_analyst             {:optional true} [:maybe :boolean]]
+       [:is_data_analyst        {:optional true} [:maybe :boolean]]
        [:is_group_manager       {:optional true} [:maybe :boolean]]
        [:login_attributes       {:optional true} [:maybe users.schema/LoginAttributes]]
        [:locale                 {:optional true} [:maybe ms/ValidLocale]]
@@ -584,7 +587,7 @@
                                                 :present (cond-> #{:first_name :last_name :locale}
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
-                                                           api/*is-superuser?* (conj :is_superuser :is_analyst))))]
+                                                           api/*is-superuser?* (conj :is_superuser :is_data_analyst))))]
           (t2/update! :model/User id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))

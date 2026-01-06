@@ -1236,27 +1236,6 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v58.2026-01-05T12:00:00
-      author: metasasha
-      comment: Add is_analyst column to core_user table for analyst role
-      changes:
-        - addColumn:
-            tableName: core_user
-            columns:
-              - column:
-                  name: is_analyst
-                  type: ${boolean.type}
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: core_user
-            columnName: is_analyst
-
-# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
-
-  - changeSet:
       id: v58.2025-12-18T16:14:03
       author: winlost
       comment: Add disable_links column to pulse table
@@ -1275,6 +1254,22 @@ databaseChangeLog:
         - dropColumn:
             tableName: pulse
             columnName: disable_links
+
+  - changeSet:
+      id: v58.2026-01-05T12:00:00
+      author: metasasha
+      comment: Add is_data_analyst column to core_user table for analyst role
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: is_data_analyst
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates if the user has data analyst privileges for Data Studio
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

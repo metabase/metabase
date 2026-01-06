@@ -99,6 +99,58 @@
                                            {:table_ids  [(mt/id :users)]
                                             :data_layer "gold"}))))))
 
+(deftest data-analyst-can-access-endpoints-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Data analysts (non-superusers with is_data_analyst=true) can access data studio endpoints"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
+                                                   :last_name "Analyst"
+                                                   :email "data-analyst@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}
+                     :model/Collection _ {:type collection/library-data-collection-type}]
+        (testing "data analyst can edit tables"
+          (is (= {} (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/edit"
+                                          {:table_ids [table-id]
+                                           :data_layer "gold"}))))
+        (testing "data analyst can get selection info"
+          (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/selection"
+                                          {:table_ids [table-id]}))))
+        (testing "data analyst can publish tables"
+          (is (map? (mt/user-http-request analyst-id :post 200 "ee/data-studio/table/publish-tables"
+                                          {:table_ids [table-id]}))))
+        (testing "data analyst can unpublish tables"
+          (is (nil? (mt/user-http-request analyst-id :post 204 "ee/data-studio/table/unpublish-tables"
+                                          {:table_ids [table-id]}))))))))
+
+(deftest regular-user-cannot-access-data-studio-test
+  (mt/with-premium-features #{:data-studio}
+    (testing "Regular users (without is_data_analyst) cannot access data studio endpoints"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Regular"
+                                                :last_name "User"
+                                                :email "regular-user@metabase.com"
+                                                :is_data_analyst false}
+                     :model/Database {db-id :id} {}
+                     :model/Table {table-id :id} {:db_id db-id}
+                     :model/Collection _ {:type collection/library-data-collection-type}]
+        (testing "regular user cannot edit tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/edit"
+                                       {:table_ids [table-id]
+                                        :data_layer "gold"}))))
+        (testing "regular user cannot get selection info"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/selection"
+                                       {:table_ids [table-id]}))))
+        (testing "regular user cannot publish tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/publish-tables"
+                                       {:table_ids [table-id]}))))
+        (testing "regular user cannot unpublish tables"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request user-id :post 403 "ee/data-studio/table/unpublish-tables"
+                                       {:table_ids [table-id]}))))))))
+
 (deftest ^:parallel non-admins-cant-trigger-bulk-sync-test
   (mt/with-premium-features #{:data-studio}
     (testing "Non-admins should not be allowed to trigger sync"

@@ -1228,6 +1228,64 @@
           (is (= before
                  (fetch-rasta))))))))
 
+(deftest update-data-analyst-status-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that a superuser can set the :is_data_analyst flag"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst@metabase.com"}]
+        (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                              {:is_data_analyst true})
+        (is (= true
+               (:is_data_analyst (t2/select-one [:model/User :is_data_analyst] :id user-id))))))
+
+    (testing "Test that a normal user cannot change the :is_data_analyst flag for themselves"
+      (letfn [(fetch-rasta []
+                (t2/select-one [:model/User :first_name :last_name :is_data_analyst :email], :id (mt/user->id :rasta)))]
+        (let [before (fetch-rasta)]
+          (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
+                                (assoc (fetch-rasta) :is_data_analyst true))
+          (is (= before
+                 (fetch-rasta))))))
+
+    (testing "Test that a normal user cannot change the :is_data_analyst flag for another user"
+      (mt/with-temp [:model/User {user-id :id} {:first_name "Test" :last_name "User" :email "test-analyst2@metabase.com"}]
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 (str "user/" user-id)
+                                     {:is_data_analyst true})))))))
+
+(deftest filter-by-data-analyst-test
+  (testing "GET /api/user"
+    (testing "Filter users by is_data_analyst=true includes explicit data analysts and superusers"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst" :last_name "User"
+                                                   :email "analyst-filter@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst" :last_name "User"
+                                                       :email "non-analyst-filter@metabase.com"
+                                                       :is_data_analyst false}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst true))
+              result-ids (set (map :id result))]
+          (testing "explicit data analyst is included"
+            (is (contains? result-ids analyst-id)))
+          (testing "superuser (crowberto) is included since superusers are data analysts"
+            (is (contains? result-ids (mt/user->id :crowberto))))
+          (testing "non-analyst non-superuser is excluded"
+            (is (not (contains? result-ids non-analyst-id)))))))
+
+    (testing "Filter users by is_data_analyst=false excludes both explicit data analysts and superusers"
+      (mt/with-temp [:model/User {analyst-id :id} {:first_name "Analyst2" :last_name "User"
+                                                   :email "analyst-filter2@metabase.com"
+                                                   :is_data_analyst true}
+                     :model/User {non-analyst-id :id} {:first_name "NonAnalyst2" :last_name "User"
+                                                       :email "non-analyst-filter2@metabase.com"
+                                                       :is_data_analyst false}]
+        (let [result (:data (mt/user-http-request :crowberto :get 200 "user" :is_data_analyst false))
+              result-ids (set (map :id result))]
+          (testing "explicit data analyst is excluded"
+            (is (not (contains? result-ids analyst-id))))
+          (testing "superuser (crowberto) is excluded since superusers are data analysts"
+            (is (not (contains? result-ids (mt/user->id :crowberto)))))
+          (testing "non-analyst non-superuser is included"
+            (is (contains? result-ids non-analyst-id))))))))
+
 (deftest update-permissions-test
   (testing "PUT /api/user/:id"
     (testing "Check that a non-superuser CANNOT update someone else's user details"
