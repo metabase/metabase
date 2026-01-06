@@ -34,10 +34,7 @@
 ;;; need to load this so we can properly override the implementation of `describe-database` below
 (comment metabase.driver.redshift/keep-me)
 
-(def ^:private workspace-isolation-prefix (or
-                                           @(requiring-resolve 'metabase-enterprise.workspaces.util/isolated-prefix)
-                                           ;; OSS might not be able to require it
-                                           "mb__isolation"))
+(def ^:private workspace-isolation-prefix "mb__isolation")
 
 (defmethod driver/database-supports? [:redshift :test/time-type]
   [_driver _feature _database]
