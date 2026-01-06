@@ -196,8 +196,8 @@
           (log/info password-reset-url)
           (events/publish-event! :event/email.password-reset
                                  {:email              email
-                                  :sso-source         sso-source
-                                  :password-reset-url nil
+                                  :sso-source         nil
+                                  :password-reset-url password-reset-url
                                   :is-active?         is-active?})))
       (events/publish-event! :event/password-reset-initiated
                              {:object (assoc user :token (t2/select-one-fn :reset_token :model/User :id user-id))}))))
