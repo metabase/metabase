@@ -232,7 +232,7 @@
   - Table: Uses perms/visible-table-filter-select with appropriate permissions and filters by active/visibility_type.
     Follows search API conventions: active=true AND visibility_type=nil for non-archived tables.
     Note: archived_at is not checked separately as archived tables always have active=false.
-  - Transform: Only if they have transforms permission for any db"
+  - Transform: All transforms are visible if they have transforms permission for any db"
   ([entity-type-field entity-id-field]
    (visible-entities-filter-clause entity-type-field entity-id-field nil))
   ([entity-type-field entity-id-field {:keys [include-archived-items] :or {include-archived-items :exclude}}]

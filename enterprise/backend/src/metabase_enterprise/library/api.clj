@@ -6,8 +6,6 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.schema :as collections.schema]
-   [metabase.permissions.core :as perms]
-   [metabase.request.core :as request]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -23,12 +21,9 @@
   [_route
    _query
    _body]
-  (perms/check-has-application-permission :data-studio)
+  (api/check-superuser)
   (api/check-400 (not (collections/library-collection)) "Library already exists")
-  ;; Library creation requires admin-level collection permissions which the user may not have,
-  ;; but we've verified they have data-studio permission above, so we run as admin
-  (request/as-admin
-    (collections/create-library-collection!)))
+  (collections/create-library-collection!))
 
 (defn- add-here-and-below [collection]
   (let [descendent-ids (map :id (collection/descendants-flat collection))

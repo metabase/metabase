@@ -1321,6 +1321,7 @@
                                           :description "Simple Python transform"
                                           :source {:type "python"
                                                    :body "print('hello world')"
+                                                   :source-database (mt/id)
                                                    :source-tables {}}
                                           :target {:type "table"
                                                    :name "t2_table"

@@ -241,6 +241,7 @@
                      {:name "Python Transform"
                       :source {:type "python"
                                :body "print('hello')"
+                               :source-database (mt/id)
                                :source-tables {}}
                       :target {:type "table"
                                :schema "public"
