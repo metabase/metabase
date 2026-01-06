@@ -1,8 +1,18 @@
+import MetabaseSettings from "metabase/lib/settings";
+
 import { isRouteInSync } from "./is-route-in-sync";
 
 describe("isRouteInSync", () => {
+  beforeAll(() => {
+    MetabaseSettings.set("site-url", "http://localhost:3000");
+  });
+
   beforeEach(() => {
     delete (window as any).overrideIsWithinIframe;
+  });
+
+  afterAll(() => {
+    MetabaseSettings.set("site-url", undefined as any);
   });
 
   describe("in an iframe", () => {
