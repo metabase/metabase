@@ -2,6 +2,7 @@
 title: "Full app embedding quickstart"
 redirect_from:
   - /docs/latest/embedding/interactive-embedding-quickstart
+  - /docs/latest/embedding/interactive-embedding-quickstart-guide
 ---
 
 # Full app embedding quickstart
