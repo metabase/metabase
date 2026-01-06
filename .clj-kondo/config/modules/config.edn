@@ -710,6 +710,7 @@
            metabase.lib.equality
            metabase.lib.field
            metabase.lib.field.resolution
+           metabase.lib.field.util
            metabase.lib.filter
            metabase.lib.filter.desugar.jvm ; only so [[metabase.legacy-mbql.jvm-util]] can use defined regexes
            metabase.lib.hierarchy
