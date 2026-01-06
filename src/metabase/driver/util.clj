@@ -539,15 +539,10 @@
     (expand-schema-filters-prop conn-prop)
 
     :group
-    ;; Process group: flatten vectors in :fields and recursively process each field
-    (let [;; Flatten any vectors in the :fields array (e.g., ssh-tunnel-preferences)
-          flattened-fields (into [] (mapcat u/one-or-many) (:fields conn-prop))
-          ;; Recursively process each field
-          processed-fields (persistent!
-                            (reduce (fn [acc field]
-                                      (reduce conj! acc (process-connection-prop field)))
-                                    (transient [])
-                                    flattened-fields))]
+    (let [processed-fields (into []
+                                 (comp (mapcat u/one-or-many)
+                                       (mapcat process-connection-prop))
+                                 (:fields conn-prop))]
       [(assoc conn-prop :fields processed-fields)])
 
     [conn-prop]))
@@ -563,11 +558,7 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props (persistent!
-                     (reduce (fn [acc conn-prop]
-                               (reduce conj! acc (process-connection-prop conn-prop)))
-                             (transient [])
-                             conn-props))
+  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
         ;; Build complete props-by-name map including nested fields from groups
         props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
