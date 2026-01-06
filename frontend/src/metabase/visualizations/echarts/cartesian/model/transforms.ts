@@ -11,9 +11,27 @@ export function signedSquareRoot(value: number) {
   return getSign(value) * Math.sqrt(Math.abs(value));
 }
 
-export function signedLog(value: number) {
-  return getSign(value) * Math.log10(1 + Math.abs(value));
-}
+/**
+ * Symmetric log (symlog) transformation that handles:
+ * - Negative values (symmetric around zero)
+ * - Values between -1 and 1 (linear region)
+ * - Values with |x| >= 1 (logarithmic region)
+ */
+const signedLog = (value: number) => {
+  const absValue = Math.abs(value);
+  if (absValue < 1) {
+    return value;
+  }
+  return getSign(value) * (1 + Math.log10(absValue));
+};
+
+const inverseSignedLog = (value: number) => {
+  const absValue = Math.abs(value);
+  if (absValue < 1) {
+    return value;
+  }
+  return getSign(value) * Math.pow(10, absValue - 1);
+};
 
 export function getAxisTransforms(
   scale: NumericScale | undefined,
@@ -40,9 +58,7 @@ export function getAxisTransforms(
 
         return signedLog(value);
       },
-      fromEChartsAxisValue: (value) => {
-        return getSign(value) * (Math.pow(10, Math.abs(value)) - 1);
-      },
+      fromEChartsAxisValue: inverseSignedLog,
     };
   }
 
