@@ -21,6 +21,7 @@ Metabot can help you to:
 
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
+- [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
 - Answer questions from our documentation (as in, the literature you're reading right now).
@@ -92,6 +93,17 @@ If you don't specify a specific table in a natural language question, Metabot wi
 ![Metabot can try and fix SQL query errors](./images/have-metabot-fix-it.png)
 
 When you get an error in a SQL query, you can click the **Have Metabot fix it** button, and Metabot will try to correct the query. You can also ask Metabot to fix your SQL in the chat.
+
+## Inline SQL editing
+
+![Using inline SQL editing](./images/inline-sql.png)
+
+You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
+
+1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
+2. Press Cmd+; on Mac or Ctrl+; on Windows.
+3. Describe the SQL you want to generate or modify.
+4. Review the generated code and accept or reject it.
 
 ## Navigating after Metabot creates a chart
 

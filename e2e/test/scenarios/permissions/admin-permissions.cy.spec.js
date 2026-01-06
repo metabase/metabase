@@ -494,6 +494,8 @@ describe("scenarios > admin > permissions", () => {
   });
 
   it("shows permissions help", () => {
+    // pro-token because some help sections are hidden for OSS
+    H.activateToken("pro-self-hosted");
     cy.visit("/admin/permissions");
 
     // Data permissions w/o `legacy-no-self-service` in graph

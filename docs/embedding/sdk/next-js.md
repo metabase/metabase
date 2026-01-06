@@ -23,7 +23,7 @@ As of modular embedding SDK 57, the compatibility layer for server-side renderin
 
 ## Handling authentication
 
-App Router and Pages Router have different ways to define API routes. If you want to authenticate users from your server with JWT, you can follow the instructions below. But if you want to authenticate with API keys for local development, see [Authenticating locally with API keys](./authentication.md#authenticating-locally-with-api-keys).
+App Router and Pages Router have different ways to define API routes. If you want to authenticate users from your server with JWT, you can follow the instructions below. But if you want to authenticate with API keys for local development, see [Authenticating locally with API keys](../authentication.md#authenticating-locally-with-api-keys).
 
 ### Using App Router
 

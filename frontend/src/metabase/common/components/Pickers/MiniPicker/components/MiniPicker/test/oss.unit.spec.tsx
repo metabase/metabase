@@ -218,6 +218,12 @@ describe("MiniPicker", () => {
       expect(await screen.findByText("Misc Metrics")).toBeInTheDocument();
     });
 
+    it("shows the collection name for our analytics", async () => {
+      await setup({ searchQuery: "Fan" });
+      expect(await screen.findByText("Fanny")).toBeInTheDocument();
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+    });
+
     it("shows db and schema names for table items in search results", async () => {
       await setup({ searchQuery: "wick" });
       expect(await screen.findByText("wickham")).toBeInTheDocument();

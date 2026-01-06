@@ -4,7 +4,7 @@ import { colorConfig } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 type ColorShades = MantineTheme["colors"]["dark"];
 
-const allColorNames = Object.keys(colorConfig);
+export const ALL_COLOR_NAMES = Object.keys(colorConfig);
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -65,7 +65,7 @@ export function color(colorName: ColorName): string {
 }
 
 export const isColorName = (name?: string | null): name is ColorName => {
-  return !!name && allColorNames.includes(name);
+  return !!name && ALL_COLOR_NAMES.includes(name);
 };
 
 /**

@@ -8,7 +8,7 @@ import { Box, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { SearchModel, SearchResult, TableId } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { SimpleDataPickerView } from "./SimpleDataPickerView";
 
@@ -103,7 +103,7 @@ function sortEntities(
 const compareString = (a: string, b: string) => a.localeCompare(b);
 
 function translateEntityTypesToSearchModels(
-  entityTypes: EmbeddingEntityType[],
+  entityTypes: ModularEmbeddingEntityType[],
 ): SearchModel[] {
   const searchModels: SearchModel[] = [];
 

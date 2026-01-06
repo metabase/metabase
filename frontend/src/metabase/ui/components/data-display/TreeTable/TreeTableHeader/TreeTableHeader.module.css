@@ -7,10 +7,11 @@
   flex-shrink: 0;
   font-size: 12.5px;
   background-color: var(--mb-color-background);
+  border-bottom: 1px solid var(--mb-color-border);
 }
 
-.row {
-  border-bottom: 1px solid var(--mb-color-border);
+.cell {
+  overflow: hidden;
 }
 
 .cell:first-child {

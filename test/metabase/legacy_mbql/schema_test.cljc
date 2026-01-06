@@ -594,3 +594,67 @@
 (deftest ^:parallel normalize-unwrapped-field-id-test
   (is (= [:sum [:field 10 nil]]
          (lib/normalize ::mbql.s/sum [:sum 10]))))
+
+(deftest ^:parallel allow-aggregation-refs-inside-expressions-test
+  (let [expr ["concat"
+              "We saw a change of "
+              ["aggregation" 1 {"base-type" "type/Integer", "name" "Ag 1"}] "%."]
+        normalized (lib/normalize ::mbql.s/concat expr)]
+    (is (= [:concat
+            "We saw a change of "
+            [:aggregation 1 {:base-type :type/Integer, :name "Ag 1"}] "%."]
+           normalized))
+    (is (mr/validate ::mbql.s/concat normalized))))
+
+(deftest ^:parallel allow-aggregation-refs-inside-aggregations-test
+  (let [ags        [["concat"
+                     "We saw a change of "
+                     ["aggregation" 1 {"base-type" "type/Integer"}] "%."]
+                    ["round"
+                     ["*"
+                      ["avg"
+                       ["/"
+                        ["field" "rating_change" {"base-type" "type/Decimal"}]
+                        ["field" "first_rating" {"base-type" "type/Integer"}]]]
+                      100]]]
+        normalized (lib/normalize ::mbql.s/Aggregations ags)]
+    (is (= [[:concat
+             "We saw a change of "
+             [:aggregation 1 {:base-type :type/Integer}] "%."]
+            [:round
+             [:*
+              [:avg
+               [:/
+                [:field "rating_change" {:base-type :type/Decimal}]
+                [:field "first_rating" {:base-type :type/Integer}]]]
+              100]]]
+           normalized))
+    (is (mr/validate ::mbql.s/Aggregations normalized))))
+
+(deftest ^:parallel is-null-not-null-arbitrary-expressions-test
+  (testing "is-null and not-null should allow arbitrary expressions"
+    (doseq [clause [:is-null
+                    :not-null]]
+      (let [schema     (keyword "metabase.legacy-mbql.schema" (name clause))
+            expr       [(name clause)
+                        ["="
+                         ["field" 620 {"base-type" "type/Text"}]
+                         false]]
+            normalized (lib/normalize schema expr)]
+        (is (= [clause
+                [:=
+                 [:field 620 {:base-type :type/Text}]
+                 false]]
+               normalized))
+        (is (mr/validate schema normalized))))))
+
+(deftest ^:parallel allow-temporal-args-for-minus-test
+  (let [expr       ["-"
+                    ["date" ["now"]]
+                    ["expression" "Last_Date_Active" {"base-type" "type/DateTimeWithLocalTZ"}]]
+        normalized (lib/normalize ::mbql.s/- expr)]
+    (is (= [:-
+            [:date [:now]]
+            [:expression "Last_Date_Active" {:base-type :type/DateTimeWithLocalTZ}]]
+           normalized))
+    (is (mr/validate ::mbql.s/- normalized))))

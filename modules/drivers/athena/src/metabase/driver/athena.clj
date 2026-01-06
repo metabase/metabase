@@ -33,15 +33,16 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:datetime-diff                 true
-                              :nested-fields                 false
-                              :uuid-type                     true
-                              :connection/multiple-databases true
-                              :expression-literals           true
-                              :identifiers-with-spaces       false
-                              :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false
-                              :database-routing              true}]
+(doseq [[feature supported?] {:connection/multiple-databases    true
+                              :database-routing                 true
+                              :datetime-diff                    true
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/key-constraints         false
+                              :nested-fields                    false
+                              :regex/lookaheads-and-lookbehinds false
+                              :test/jvm-timezone-setting        false
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:athena :schemas]
