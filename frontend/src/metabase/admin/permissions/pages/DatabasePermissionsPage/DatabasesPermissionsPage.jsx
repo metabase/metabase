@@ -182,7 +182,7 @@ function DatabasesPermissionsPageInner({
   );
 }
 
-DatabasesPermissionsPage.propTypes = propTypes;
+DatabasesPermissionsPageInner.propTypes = propTypes;
 
 export const DatabasesPermissionsPage = _.compose(
   connect(mapStateToProps, mapDispatchToProps),

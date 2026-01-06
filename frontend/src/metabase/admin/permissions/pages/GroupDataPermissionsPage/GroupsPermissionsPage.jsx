@@ -202,7 +202,7 @@ function GroupsPermissionsPageInner({
   );
 }
 
-GroupsPermissionsPage.propTypes = propTypes;
+GroupsPermissionsPageInner.propTypes = propTypes;
 
 export const GroupsPermissionsPage = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
