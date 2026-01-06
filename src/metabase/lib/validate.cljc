@@ -11,19 +11,19 @@
 (mu/defn missing-column-error :- [:ref ::lib.schema.validate/missing-column-error]
   "Create a missing-column lib validation error"
   [col-name :- :string]
-  {:type :validate/missing-column-error
+  {:type :validate/missing-column
    :name col-name})
 
 (mu/defn missing-table-alias-error :- [:ref ::lib.schema.validate/missing-table-alias-error]
   "Create a missing-table-alias lib validation error"
   [alias-name :- :string]
-  {:type :validate/missing-table-alias-error
+  {:type :validate/missing-table-alias
    :name alias-name})
 
 (mu/defn duplicate-column-error :- [:ref ::lib.schema.validate/duplicate-column-error]
   "Create a duplicate-column lib validation error"
   [col-name :- :string]
-  {:type :validate/duplicate-column-error
+  {:type :validate/duplicate-column
    :name col-name})
 
 (mu/defn syntax-error :- [:ref ::lib.schema.validate/syntax-error]
