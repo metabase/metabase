@@ -217,28 +217,26 @@
 
 (deftest ^:parallel resolve-transitive-visible-if-test
   (testing "resolve-transitive-visible-if resolves transitive dependencies"
-    (let [props-by-name {"prop-a" {:name "prop-a"}
-                         "prop-b" {:name "prop-b" :visible-if {:prop-a "value-a"}}
-                         "prop-c" {:name "prop-c" :visible-if {:prop-b "value-b"}}}]
+    (let [a {:name "prop-a"}, b {:name "prop-b" :visible-if {:prop-a true}}, c {:name "prop-c" :visible-if {:prop-b true}}, props-by-name {"prop-a" a, "prop-b" b, "prop-c" c}]
       (testing "property with no visible-if remains unchanged"
-        (is (= {:name "prop-a"}
+        (is (= a
                (#'driver.u/resolve-transitive-visible-if
-                {:name "prop-a"}
+                a
                 props-by-name
                 :test-driver))))
 
       (testing "property with single-level visible-if is preserved"
-        (is (= {:name "prop-b" :visible-if {:prop-a "value-a"}}
+        (is (= b
                (#'driver.u/resolve-transitive-visible-if
-                {:name "prop-b" :visible-if {:prop-a "value-a"}}
+                b
                 props-by-name
                 :test-driver))))
 
       (testing "property with transitive visible-if includes all dependencies"
-        (is (= {:name "prop-c" :visible-if {:prop-b "value-b"
-                                            :prop-a "value-a"}}
+        (is (= {:name "prop-c" :visible-if {:prop-b true
+                                            :prop-a true}}
                (#'driver.u/resolve-transitive-visible-if
-                {:name "prop-c" :visible-if {:prop-b "value-b"}}
+                c
                 props-by-name
                 :test-driver))))))
 
@@ -251,41 +249,41 @@
 
   (testing "dependencies on non-existent properties are kept (not filtered)"
     (let [props-by-name {"prop-a" {:name "prop-a"}}]
-      (is (= {:name "prop-b" :visible-if {:non-existent-prop "value"}}
+      (is (= {:name "prop-b" :visible-if {:non-existent-prop true}}
              (#'driver.u/resolve-transitive-visible-if
-              {:name "prop-b" :visible-if {:non-existent-prop "value"}}
+              {:name "prop-b" :visible-if {:non-existent-prop true}}
               props-by-name
               :test-driver)))))
 
   (testing "false dependencies (from removed :checked-section) are filtered out"
     (let [props-by-name {"prop-a" {:name "prop-a"}}]
-      (is (= {:name "prop-b" :visible-if {:prop-a "value-a"}}
+      (is (= {:name "prop-b" :visible-if {:prop-a true}}
              (#'driver.u/resolve-transitive-visible-if
-              {:name "prop-b" :visible-if {:prop-a "value-a"
+              {:name "prop-b" :visible-if {:prop-a true
                                            :removed-section false}}
               props-by-name
               :test-driver)))))
 
   (testing "multi-level transitive dependencies are fully resolved"
     (let [props-by-name {"prop-a" {:name "prop-a"}
-                         "prop-b" {:name "prop-b" :visible-if {:prop-a "value-a"}}
-                         "prop-c" {:name "prop-c" :visible-if {:prop-b "value-b"}}
-                         "prop-d" {:name "prop-d" :visible-if {:prop-c "value-c"}}}]
-      (is (= {:name "prop-d" :visible-if {:prop-c "value-c"
-                                          :prop-b "value-b"
-                                          :prop-a "value-a"}}
+                         "prop-b" {:name "prop-b" :visible-if {:prop-a true}}
+                         "prop-c" {:name "prop-c" :visible-if {:prop-b true}}
+                         "prop-d" {:name "prop-d" :visible-if {:prop-c true}}}]
+      (is (= {:name "prop-d" :visible-if {:prop-c true
+                                          :prop-b true
+                                          :prop-a true}}
              (#'driver.u/resolve-transitive-visible-if
-              {:name "prop-d" :visible-if {:prop-c "value-c"}}
+              {:name "prop-d" :visible-if {:prop-c true}}
               props-by-name
               :test-driver)))))
 
   (testing "cycle detection throws exception with appropriate error data"
-    (let [props-by-name {"prop-a" {:name "prop-a" :visible-if {:prop-c "value-c"}}
-                         "prop-b" {:name "prop-b" :visible-if {:prop-a "value-a"}}
-                         "prop-c" {:name "prop-c" :visible-if {:prop-b "value-b"}}}]
+    (let [props-by-name {"prop-a" {:name "prop-a" :visible-if {:prop-c true}}
+                         "prop-b" {:name "prop-b" :visible-if {:prop-a true}}
+                         "prop-c" {:name "prop-c" :visible-if {:prop-b true}}}]
       (try
         (#'driver.u/resolve-transitive-visible-if
-         {:name "prop-a" :visible-if {:prop-c "value-c"}}
+         {:name "prop-a" :visible-if {:prop-c true}}
          props-by-name
          :test-driver)
         (is false "Should have thrown an exception")
@@ -350,13 +348,13 @@
 
     (testing "nested field with transitive dependency"
       (let [props-by-name {"field-a" {:name "field-a"}
-                           "field-b" {:name "field-b" :visible-if {:field-a "val-a"}}
-                           "nested" {:name "nested" :visible-if {:field-b "val-b"}}}
+                           "field-b" {:name "field-b" :visible-if {:field-a true}}
+                           "nested" {:name "nested" :visible-if {:field-b true}}}
             group {:type :group
-                   :fields [{:name "nested" :visible-if {:field-b "val-b"}}]}]
+                   :fields [{:name "nested" :visible-if {:field-b true}}]}]
         (is (= {:type :group
-                :fields [{:name "nested" :visible-if {:field-b "val-b"
-                                                      :field-a "val-a"}}]}
+                :fields [{:name "nested" :visible-if {:field-b true
+                                                      :field-a true}}]}
                (#'driver.u/resolve-transitive-visible-if-recursive
                 group
                 props-by-name
@@ -364,10 +362,10 @@
 
     (testing "top-level field depending on nested field"
       (let [props-by-name {"nested-a" {:name "nested-a"}
-                           "nested-b" {:name "nested-b" :visible-if {:nested-a "val"}}}
-            prop {:name "top-level" :visible-if {:nested-b "val-b"}}]
-        (is (= {:name "top-level" :visible-if {:nested-b "val-b"
-                                               :nested-a "val"}}
+                           "nested-b" {:name "nested-b" :visible-if {:nested-a true}}}
+            prop {:name "top-level" :visible-if {:nested-b true}}]
+        (is (= {:name "top-level" :visible-if {:nested-b true
+                                               :nested-a true}}
                (#'driver.u/resolve-transitive-visible-if-recursive
                 prop
                 props-by-name
@@ -378,45 +376,45 @@
     (testing "top-level field depends on nested field"
       (let [props [{:type :group
                     :fields [{:name "nested-field"}]}
-                   {:name "top-field" :visible-if {:nested-field "value"}}]
+                   {:name "top-field" :visible-if {:nested-field true}}]
             result (driver.u/connection-props-server->client :test-driver props)]
         (is (= 2 (count result)))
         (is (= :group (:type (first result))))
-        (is (= {:name "top-field" :visible-if {:nested-field "value"}}
+        (is (= {:name "top-field" :visible-if {:nested-field true}}
                (second result)))))
 
     (testing "nested field depends on top-level field with transitive chain"
       (let [props [{:name "field-a"}
-                   {:name "field-b" :visible-if {:field-a "val-a"}}
+                   {:name "field-b" :visible-if {:field-a true}}
                    {:type :group
                     :container-style ["grid" "1fr"]
-                    :fields [{:name "nested" :visible-if {:field-b "val-b"}}]}]
+                    :fields [{:name "nested" :visible-if {:field-b true}}]}]
             result (driver.u/connection-props-server->client :test-driver props)]
         (is (= 3 (count result)))
         ;; Check that the nested field has transitive dependencies resolved
         (let [group (nth result 2)
               nested-field (first (:fields group))]
-          (is (= {:field-b "val-b" :field-a "val-a"}
+          (is (= {:field-b true :field-a true}
                  (:visible-if nested-field))))))
 
     (testing "deeply nested groups with cross-boundary dependencies"
       (let [props [{:name "root-field"}
                    {:type :group
-                    :fields [{:name "level-1" :visible-if {:root-field "val"}}
+                    :fields [{:name "level-1" :visible-if {:root-field true}}
                              {:type :group
-                              :fields [{:name "level-2" :visible-if {:level-1 "val-1"}}]}]}]
+                              :fields [{:name "level-2" :visible-if {:level-1 true}}]}]}]
             result (driver.u/connection-props-server->client :test-driver props)
             outer-group (second result)
             inner-group (second (:fields outer-group))
             level-2-field (first (:fields inner-group))]
-        (is (= {:level-1 "val-1" :root-field "val"}
+        (is (= {:level-1 true :root-field true}
                (:visible-if level-2-field)))))))
 
 (deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
-    (let [fake-props [{:name "prop-a", :visible-if {:prop-c "something"}}
-                      {:name "prop-b", :visible-if {:prop-a "something else"}}
-                      {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
+    (let [fake-props [{:name "prop-a", :visible-if {:prop-c true}}
+                      {:name "prop-b", :visible-if {:prop-a true}}
+                      {:name "prop-c", :visible-if {:prop-b true}}]]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Cycle detected"
