@@ -24,6 +24,7 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -60,6 +61,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { RequestState, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryBuilder } from "./QueryBuilder";
 
@@ -305,6 +307,9 @@ export const setup = async ({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
+      }),
     },
   );
 
