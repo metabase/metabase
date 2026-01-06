@@ -15,6 +15,7 @@ type Props = {
   isDirty: boolean;
   isEditMode: boolean;
   isSaving: boolean;
+  readOnly?: boolean;
   source: DraftTransformSource;
   transformId: TransformId;
 };
@@ -27,6 +28,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
     handleCancel,
     isSaving,
     isEditMode,
+    readOnly,
     transformId,
   } = props;
   const metadata = useSelector(getMetadata);
@@ -49,7 +51,7 @@ export const TransformPaneHeaderActions = (props: Props) => {
   }, [source, metadata]);
   const isPythonTransform = source.type === "python";
 
-  if (!isPythonTransform && !isNative && !isEditMode) {
+  if (!readOnly && !isPythonTransform && !isNative && !isEditMode) {
     return <EditDefinitionButton transformId={transformId} />;
   }
 

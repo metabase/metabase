@@ -25,6 +25,7 @@ type TransformEditorProps = {
   onChangeUiState: (state: QueryEditorUiState) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  isEditMode?: boolean;
   readOnly?: boolean;
   transformId?: TransformId;
 };
@@ -38,6 +39,7 @@ export function TransformEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  isEditMode,
   readOnly,
   transformId,
 }: TransformEditorProps) {
@@ -54,8 +56,8 @@ export function TransformEditor({
     [proposedSource, metadata],
   );
   const uiOptions = useMemo(
-    () => getEditorOptions(databases, readOnly),
-    [databases, readOnly],
+    () => getEditorOptions(databases, !isEditMode),
+    [databases, isEditMode],
   );
 
   const handleQueryChange = (query: Lib.Query) => {
@@ -79,7 +81,8 @@ export function TransformEditor({
       onAcceptProposed={onAcceptProposed}
       onRejectProposed={onRejectProposed}
       topBarInnerContent={
-        readOnly &&
+        !readOnly &&
+        !isEditMode &&
         !!transformId && (
           <EditDefinitionButton
             bg="transparent"
