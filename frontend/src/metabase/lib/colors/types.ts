@@ -2,13 +2,7 @@ import type { colorConfig } from "./colors";
 
 export type ColorPalette = Partial<Record<keyof typeof colorConfig, string>>;
 
-export type ColorName =
-  | keyof typeof colorConfig
-  | "inherit"
-  | "transparent"
-  | "currentColor"
-  | "unset"
-  | "none";
+export type ColorName = keyof typeof colorConfig;
 
 export interface AccentColorOptions {
   main?: boolean;

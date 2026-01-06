@@ -17,23 +17,6 @@ import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
  */
 export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
-export type SemanticColorKey =
-  | "text-primary"
-  | "text-secondary"
-  | "text-tertiary"
-  | "text-selected"
-  | "text-brand"
-  | "text-white"
-  | "background"
-  | "background-hover"
-  | "background-selected"
-  | "background-disabled"
-  | "background-inverse"
-  | "background-light"
-  | "background-brand"
-  | "brand-light"
-  | "brand-lighter";
-
 /**
  * Mapping of SDK colors to main app colors.
  *
@@ -42,7 +25,7 @@ export type SemanticColorKey =
  */
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
-  (ColorName | SemanticColorKey)[]
+  ColorName[]
 > = {
   brand: ["brand"],
   "brand-hover": ["brand-light"],
@@ -54,7 +37,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   "text-secondary": ["text-secondary"],
   "text-tertiary": ["text-disabled"],
   background: ["background-primary"],
-  "background-secondary": ["background-secondary"],
+  "background-secondary": ["background-secondary", "background-tertiary"],
   "background-hover": ["background-secondary"],
   "background-disabled": ["background-disabled"],
   "background-light": ["background-secondary"],
@@ -82,9 +65,7 @@ export const SDK_MISSING_COLORS_FALLBACK: Partial<
  * These colors must never be changed.
  * For example, the blue Metabase brand color.
  **/
-export const SDK_UNCHANGEABLE_COLORS: (ColorName | SemanticColorKey)[] = [
-  "metabase-brand",
-];
+export const SDK_UNCHANGEABLE_COLORS: ColorName[] = ["metabase-brand"];
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof NonNullable<MetabaseComponentTheme["tooltip"]>,

@@ -168,7 +168,8 @@ describe("scenarios > models list view", () => {
           .click();
         cy.findByTestId("list-view-icon-colors").then(($list) => {
           const $button = Cypress.$($list).find("button").eq(2);
-          expect(window.getComputedStyle($button[0]).backgroundColor).to.equal(
+          cy.wrap(window.getComputedStyle($button[0]).backgroundColor).should(
+            "eq",
             Color(colors["accent1"]).rgb().toString(),
           );
 
@@ -180,7 +181,8 @@ describe("scenarios > models list view", () => {
           .first()
           .should("have.attr", "aria-label", "factory icon")
           .then(($el) => {
-            expect(window.getComputedStyle($el[0]).color).to.equal(
+            cy.wrap(window.getComputedStyle($el[0]).color).should(
+              "eq",
               Color(colors["accent1"]).rgb().toString(),
             );
           });

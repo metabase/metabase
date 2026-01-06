@@ -15,11 +15,11 @@ describe("Transform Embedding Theme Override", () => {
         colors: {
           brand: "hotpink",
           "text-primary": "yellow",
-          "text-disabled": "green",
+          "text-tertiary": "green",
           "background-disabled": "pink",
           background: "orange",
           "background-secondary": "brown",
-          "text-primary-inverse": "white",
+          "text-white": "white",
           focus: "blue",
         },
 

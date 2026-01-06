@@ -21,7 +21,7 @@ export const SidebarIcon = styled(
     },
   ),
 )<{
-  color?: ColorName;
+  color?: ColorName | string;
   isSelected: boolean;
 }>`
   ${(props) =>

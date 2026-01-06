@@ -22,7 +22,7 @@ export const EMBED_FLOW_DERIVED_COLORS_CONFIG: EmbedFlowDerivedDefaultColorConfi
       light: { source: "text-primary", lighten: 0.3 },
       dark: { source: "text-primary", darken: 0.3 },
     },
-    "text-disabled": {
+    "text-tertiary": {
       light: { source: "text-primary", lighten: 0.6 },
       dark: { source: "text-primary", darken: 0.6 },
     },
