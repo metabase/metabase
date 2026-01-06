@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type FileRejection, useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
@@ -28,14 +29,13 @@ import {
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
 import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
+import { useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { useToggle } from "metabase/common/hooks/use-toggle";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { Collections } from "metabase/entities/collections";
 import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
-import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -92,14 +92,17 @@ const CollectionContentViewInner = ({
 
   const [
     isModelUploadModalOpen,
-    { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
-  ] = useToggle(false);
+    { open: openModelUploadModal, close: closeModelUploadModal },
+  ] = useDisclosure(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const saveFile = (file: File) => {
-    setUploadedFile(file);
-    openModelUploadModal();
-  };
+  const saveFile = useCallback(
+    (file: File) => {
+      setUploadedFile(file);
+      openModelUploadModal();
+    },
+    [openModelUploadModal],
+  );
 
   const handleUploadFile = useCallback<OnFileUpload>(
     (uploadFileArgs: CollectionOrTableIdProps) => {
@@ -134,6 +137,7 @@ const CollectionContentViewInner = ({
   }, [bookmarks, collectionId]);
 
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
@@ -147,42 +151,43 @@ const CollectionContentViewInner = ({
       }
 
       if (rejected.length > 1) {
-        dispatch(
-          addUndo({
-            message: t`Please upload files individually`,
-            toastColor: "error",
-            icon: "warning",
-          }),
-        );
+        sendToast({
+          message: t`Please upload files individually`,
+          toastColor: "error",
+          icon: "warning",
+        });
         return;
       }
 
-      const [{ errors }] = rejected;
-      const [{ code }] = errors;
+      const errorCode = rejected[0].errors[0].code;
 
-      const errorMessage = match(code)
-        .with("file-invalid-type", () => t`Sorry, this file type is not supported`)
-        .with("file-too-large", () => t`Sorry, this file is too large (max ${MAX_UPLOAD_STRING} MB)`)
+      const errorMessage = match(errorCode)
+        .with(
+          "file-invalid-type",
+          () => t`Sorry, this file type is not supported`,
+        )
+        .with(
+          "file-too-large",
+          () => t`Sorry, this file is too large (max ${MAX_UPLOAD_STRING} MB)`,
+        )
         .otherwise(() => t`An error has occurred`);
 
-      dispatch(
-        addUndo({
-          message: errorMessage,
-          toastColor: "error",
-          icon: "warning",
-        }),
-      );
+      sendToast({
+        message: errorMessage,
+        toastColor: "error",
+        icon: "warning",
+      });
     },
-    [dispatch],
+    [sendToast],
   );
 
   const onDrop = useCallback(
     (acceptedFiles: File[], fileRejections: FileRejection[]) => {
-      if (acceptedFiles.length === 1) {
+      if (fileRejections.length) {
+        handleFileRejections(fileRejections);
+      } else if (acceptedFiles.length === 1) {
         saveFile(acceptedFiles[0]);
       }
-
-      handleFileRejections(fileRejections);
     },
     [handleFileRejections, saveFile],
   );
