@@ -1,16 +1,14 @@
 name: OpenAPI Check
 
 on:
-  push:
-    branches:
-      - "master"
-      - "release-**"
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
   check-openapi-specs:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
+    if: contains(github.event.pull_request.labels.*.name, 'openapi-self-healing')
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js 22
