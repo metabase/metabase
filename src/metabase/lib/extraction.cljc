@@ -29,8 +29,8 @@
        :column       column
        :display-name (lib.temporal-bucket/describe-temporal-unit unit)})))
 
-(defn- regex-available? [metadata-providerable]
-  (lib.metadata/database-supports? metadata-providerable :regex))
+(defn- regex-with-lookaheads-and-lookbehinds-available? [metadata-providerable]
+  (lib.metadata/database-supports? metadata-providerable :regex/lookaheads-and-lookbehinds))
 
 (defn- domain-extraction [column]
   {:lib/type     ::extraction
@@ -77,11 +77,12 @@
   (cond
     (lib.types.isa/temporal? column) (column-extract-temporal-units column)
 
-    ;; The URL and email extractions are powered by regular expressions, and not every database supports those.
-    ;; If the target database doesn't support :regex feature, return nil.
-    (not (regex-available? query))   nil
-    (lib.types.isa/email? column)    (email-extractions column)
-    (lib.types.isa/URL? column)      (url-extractions column)))
+    ;; The URL and email extractions are powered by regular expressions that use lookaheads and lookbehinds, and not
+    ;; every database supports those. If the target database doesn't support `:regex/lookaheads-and-lookbehinds`
+    ;; feature, return `nil`.
+    (not (regex-with-lookaheads-and-lookbehinds-available? query)) nil
+    (lib.types.isa/email? column)                                  (email-extractions column)
+    (lib.types.isa/URL? column)                                    (url-extractions column)))
 
 (defmethod lib.metadata.calculation/display-info-method ::extraction
   [_query _stage-number extraction]

@@ -126,7 +126,7 @@ export function initializePlugin() {
 
     // Register tenant collection permissions tab and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
-      name: t`Tenant Collections`,
+      name: t`Shared collections`,
       value: "tenant-collections",
     });
 

@@ -9,6 +9,7 @@ export const SearchFilterKeys = {
   LastEditedAt: "last_edited_at",
   NativeQuery: "search_native_query",
   SearchTrashedItems: "archived",
+  PersonalCollections: "filter_items_in_personal_collection",
 } as const;
 
 export const enabledSearchTypes: EnabledSearchModel[] = [

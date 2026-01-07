@@ -1667,7 +1667,7 @@
 (deftest ^:parallel case-schema-aggregation-test
   (is (= [:aggregation-options
           [:case
-           [[[:< [:aggregation 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
+           [[[:< [:aggregation 0 {:base-type :type/Float}] 0.591] "60%"]]]
           {:name "A", :display-name "B"}]
          (mbql.normalize/normalize :metabase.legacy-mbql.schema/aggregation-options
                                    ["aggregation-options"

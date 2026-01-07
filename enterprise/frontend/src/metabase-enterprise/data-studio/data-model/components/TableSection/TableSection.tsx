@@ -199,7 +199,7 @@ const TableSectionBase = ({
 
   return (
     <Stack data-testid="table-section" gap="md" pb="xl">
-      <Box className={S.header} px="lg" mt="lg">
+      <Box className={S.header}>
         <NameDescriptionInput
           description={table.description ?? ""}
           descriptionPlaceholder={t`Give this table a description`}
@@ -212,61 +212,51 @@ const TableSectionBase = ({
         />
       </Box>
 
-      <Box px="lg">
-        <Group justify="stretch" gap="sm">
+      <Group justify="stretch" gap="sm">
+        <Button
+          flex="1"
+          p="sm"
+          leftSection={
+            <Icon name={table.is_published ? "unpublish" : "publish"} />
+          }
+          onClick={handlePublishToggle}
+        >
+          {table.is_published ? t`Unpublish` : t`Publish`}
+        </Button>
+        <Button
+          flex="1"
+          leftSection={<Icon name="settings" />}
+          onClick={onSyncOptionsClick}
+        >
+          {t`Sync settings`}
+        </Button>
+        <Tooltip label={t`Dependency graph`}>
           <Button
-            flex="1"
+            component={ForwardRefLink}
+            to={dependencyGraph({
+              entry: { id: Number(table.id), type: "table" },
+            })}
             p="sm"
-            leftSection={
-              <Icon name={table.is_published ? "unpublish" : "publish"} />
-            }
-            onClick={handlePublishToggle}
-          >
-            {table.is_published ? t`Unpublish` : t`Publish`}
-          </Button>
-          <Button
-            flex="1"
-            leftSection={<Icon name="settings" />}
-            onClick={onSyncOptionsClick}
-          >
-            {t`Sync settings`}
-          </Button>
-          <Tooltip label={t`Dependency graph`}>
-            <Button
-              component={ForwardRefLink}
-              to={dependencyGraph({
-                entry: { id: Number(table.id), type: "table" },
-              })}
-              p="sm"
-              leftSection={<Icon name="network" />}
-              style={{
-                flexGrow: 0,
-                width: 40,
-              }}
-              aria-label={t`Dependency graph`}
-            />
-          </Tooltip>
-          <Box style={{ flexGrow: 0, width: 40 }}>
-            <TableLink table={table} />
-          </Box>
-        </Group>
-      </Box>
-
-      <Box px="lg">
-        <TableAttributesEditSingle table={table} />
-      </Box>
-
-      <Box px="lg">
-        <TableSectionGroup title={t`Metadata`}>
-          <TableMetadata table={table} />
-        </TableSectionGroup>
-      </Box>
-
-      {table.is_published && (
-        <Box px="lg">
-          <TableCollection table={table} />
+            leftSection={<Icon name="network" />}
+            style={{
+              flexGrow: 0,
+              width: 40,
+            }}
+            aria-label={t`Dependency graph`}
+          />
+        </Tooltip>
+        <Box style={{ flexGrow: 0, width: 40 }}>
+          <TableLink table={table} />
         </Box>
-      )}
+      </Group>
+
+      <TableAttributesEditSingle table={table} />
+
+      <TableSectionGroup title={t`Metadata`}>
+        <TableMetadata table={table} />
+      </TableSectionGroup>
+
+      {table.is_published && <TableCollection table={table} />}
 
       <Box px="lg">
         <Tabs value={activeTab} onChange={handleTabChange}>
@@ -361,6 +351,7 @@ const TableSectionBase = ({
           </Tabs.Panel>
         </Tabs>
       </Box>
+
       <CreateLibraryModal
         title={t`First, let's create your Library`}
         explanatorySentence={t`This is where published tables will go.`}

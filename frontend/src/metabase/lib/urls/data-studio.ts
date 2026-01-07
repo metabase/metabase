@@ -285,10 +285,6 @@ export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }
 
-export function dataStudioCollection(collectionId: CollectionId) {
-  return `${dataStudioLibrary()}/collections/${collectionId}`;
-}
-
 export function dataStudioSnippet(snippetId: NativeQuerySnippetId) {
   return `${dataStudioLibrary()}/snippets/${snippetId}`;
 }

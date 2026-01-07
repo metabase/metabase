@@ -136,7 +136,7 @@ function ProfileLinkInner({
         action: () => dispatch(setOpenModal("help")),
       },
       {
-        title: t`Report an issue`,
+        title: t`Download diagnostics`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");

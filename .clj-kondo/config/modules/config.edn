@@ -147,8 +147,7 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{api-routes
-           config
+   :uses #{config
            events
            models
            settings
@@ -351,7 +350,8 @@
   {:team "UX West"
    :api  #{metabase.collections.core
            metabase.collections.models.collection
-           metabase.collections.models.collection.root}
+           metabase.collections.models.collection.root
+           metabase.collections.schema}
    :uses #{api
            api-keys
            app-db
@@ -967,6 +967,7 @@
            config
            internal-stats
            settings
+           task
            util}}
 
   product-feedback
@@ -1023,6 +1024,7 @@
            collections
            config
            driver
+           embedding
            events
            lib
            models

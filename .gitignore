@@ -21,7 +21,8 @@
 /*.mv.db
 /*.trace.db
 /.babel_cache
-/.env
+/.env*
+!/.env.example
 /.envrc
 /.lein-env
 /.lein-failures
@@ -105,6 +106,7 @@ dev/serialization_deltas/
 /trace-output/
 /temp-types/
 /frontend/src/metabase-types/openapi
+/resources/openapi/openapi.json
 
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json

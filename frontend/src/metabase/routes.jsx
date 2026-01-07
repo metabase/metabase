@@ -251,6 +251,7 @@ export const getRoutes = (store) => {
               })}
             />
             <IndexRoute component={QueryBuilder} />
+            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
             <Route path="notebook" component={QueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />

@@ -15,6 +15,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -1047,6 +1048,25 @@
                    (testing (format "Filtering on enums in `%s` based query works as expected (#27680)" card-type)
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
+
+(deftest filtering-on-enum-from-source-bad-effective-type-test
+  (mt/test-driver
+    :postgres
+    (do-with-enums-db!
+     (fn [enums-db]
+       (mt/with-db enums-db
+         (testing "filtering on enum column should cast properly (#67440)"
+           (let [mp (-> (mt/metadata-provider)
+                        (lib.tu/merged-mock-metadata-provider
+                         {:fields [{:id (mt/id :birds :status)
+                                    :effective-type :type/Text}]}))
+                 query (as-> (lib/query mp (lib.metadata/table mp (mt/id :birds))) $q
+                         (lib/filter $q (lib/= (m/find-first (comp #{"status"} :name)
+                                                             (lib/filterable-columns $q))
+                                               "good bird")))
+                 sql (:query (qp.compile/compile query))]
+             (is (re-find #"CAST" sql))
+             (is (some? (mt/rows (qp/process-query query)))))))))))
 
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
@@ -2105,3 +2125,28 @@
               (is (= [[1 "1" "10101010" "1101" "111000111"]
                       [2 "0" "00001111" "10101" "1001001"]]
                      (mt/rows (qp/process-query query)))))))))))
+
+(deftest set-network-timeout-test
+  (mt/test-driver :postgres
+    (testing "network hangs are interrupted after *network-timeout-ms*"
+      (binding [driver.settings/*network-timeout-ms* 3000]
+        (is (thrown-with-msg?
+             org.postgresql.util.PSQLException
+             #"An I/O error occurred while sending to the backend"
+             (try
+               (sql-jdbc.execute/do-with-connection-with-options
+                driver/*driver* (mt/id) nil
+                (fn [^Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (.execute stmt "SELECT pg_sleep(6)"))))
+               (catch Exception e
+                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                  (u/full-exception-chain e))))
+                 (throw e)))))))
+    (testing "network hangs are not interrupted before *network-timeout-ms*"
+      (is (true?
+           (sql-jdbc.execute/do-with-connection-with-options
+            driver/*driver* (mt/id) nil
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt "SELECT pg_sleep(6)")))))))))

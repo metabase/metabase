@@ -2359,3 +2359,36 @@
           (testing "all transform jobs are extracted"
             (is (= #{hourly-job-eid custom-job-eid}
                    (ids-by-model "TransformJob" (extract/extract {}))))))))))
+
+(deftest collection-export-includes-published-tables-test
+  (testing "Exporting a collection includes published tables without requiring data_model flag"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}   {:name "My Database"}
+                         :model/Collection {coll-id :id} {:name "Export Collection"}
+                         :model/Table      _             {:name          "Published Table"
+                                                          :db_id         db-id
+                                                          :is_published  true
+                                                          :collection_id coll-id}
+                         :model/Table      _             {:name          "Unpublished Table"
+                                                          :db_id         db-id
+                                                          :is_published  false}
+                         :model/Table      _             {:name          "Other Table"
+                                                          :db_id         db-id
+                                                          :is_published  true
+                                                          :collection_id nil}]
+        (let [opts        {:targets       [["Collection" coll-id]]
+                           :no-data-model true
+                           :no-settings   true}
+              extracted   (into [] (extract/extract opts))
+              table-names (->> extracted
+                               (filter #(= "Table" (-> % :serdes/meta last :model)))
+                               (map :name)
+                               set)]
+          (testing "published table in target collection is exported"
+            (is (contains? table-names "Published Table")))
+          (testing "unpublished table is not exported"
+            (is (not (contains? table-names "Unpublished Table"))))
+          (testing "published table in other collection is not exported"
+            (is (not (contains? table-names "Other Table"))))
+          (testing "database is not exported (no-data-model: true)"
+            (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))

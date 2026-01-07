@@ -61,7 +61,7 @@ export const MetabotInlineSQLPrompt = ({
             handleSubmit();
           }
         },
-        "$mod+;": (e) => {
+        "$mod+Shift+i": (e) => {
           e.preventDefault();
           handleClose();
         },

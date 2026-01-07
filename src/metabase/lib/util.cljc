@@ -49,6 +49,14 @@
          (and (map? opts)
               (contains? opts :lib/uuid)))))
 
+(defn- denormalized-or-unconverted-clause?
+  "Whether this clause is a not a properly normalized MBQL 5 clause -- usually because it failed normalization because
+  it's invalid, e.g. using an aggregation function like `:sum` inside `:expressions`."
+  [clause]
+  (and (sequential? clause)
+       (not (map-entry? clause))
+       (string? (first clause))))
+
 ;;; TODO (Cam 9/8/25) -- some overlap with [[metabase.lib.dispatch/mbql-clause-type]]
 (defn clause-of-type?
   "Returns truthy if is a clause of `clause-type`, which can be either a keyword (like `:field`) or a set (like
@@ -78,7 +86,7 @@
   [expression typ]
   (isa?
    (or (and (clause? expression)
-            ((some-fn :metabase.lib.field/original-effective-type :base-type) (lib.options/options expression)))
+            ((some-fn :metabase.lib.field/original-effective-type :effective-type :base-type) (lib.options/options expression)))
        (lib.schema.expression/type-of expression))
    typ))
 
@@ -91,15 +99,21 @@
 (defn top-level-expression-clause
   "Top level expressions must be clauses with :lib/expression-name, so if we get a literal, wrap it in :value."
   [clause a-name]
-  (-> (if (clause? clause)
-        clause
-        [:value {:lib/uuid (str (random-uuid))
-                 :effective-type (lib.schema.expression/type-of clause)}
-         clause])
-      (lib.options/update-options (fn [opts]
-                                    (-> opts
-                                        (assoc :lib/expression-name a-name)
-                                        (dissoc :name :display-name))))))
+  (some-> (cond
+            (clause? clause)
+            clause
+
+            (denormalized-or-unconverted-clause? clause)
+            nil
+
+            :else
+            [:value {:lib/uuid (str (random-uuid))
+                     :effective-type (lib.schema.expression/type-of clause)}
+             clause])
+          (lib.options/update-options (fn [opts]
+                                        (-> opts
+                                            (assoc :lib/expression-name a-name)
+                                            (dissoc :name :display-name))))))
 
 (defmulti custom-name-method
   "Implementation for [[custom-name]]."

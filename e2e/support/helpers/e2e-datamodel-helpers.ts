@@ -40,6 +40,7 @@ export const DataModel = {
     getSortableFields: getTableSectionSortableFields,
     getVisibilityTypeInput: getTableSectionVisibilityTypeInput,
     clickField: clickTableSectionField,
+    getCloseButton: getTableSectionCloseButton,
   },
   FieldSection: {
     get: getFieldSection,
@@ -64,6 +65,7 @@ export const DataModel = {
     getMultiplyByNumberInput: getFieldMultiplyByNumberInput,
     getPrefixInput: getFieldPrefixInput,
     getSuffixInput: getFieldSuffixInput,
+    getCloseButton: getFieldSectionCloseButton,
   },
   PreviewSection: {
     get: getPreviewSection,
@@ -298,6 +300,10 @@ function getTableSection() {
   return cy.findByTestId("table-section");
 }
 
+function getTableSectionHeader() {
+  return cy.findByTestId("table-section-header");
+}
+
 function getTableNameInput() {
   return getTableSection().findByPlaceholderText("Give this table a name");
 }
@@ -359,10 +365,18 @@ function clickTableSectionField(name: string) {
   return getTableSectionField(name).findByRole("img").scrollIntoView().click();
 }
 
+function getTableSectionCloseButton() {
+  return getTableSectionHeader().findByRole("link", { name: /close/ });
+}
+
 /** field section helpers */
 
 function getFieldSection() {
   return cy.findByTestId("field-section");
+}
+
+function getFieldSectioHeader() {
+  return cy.findByTestId("field-section-header");
 }
 
 function getFieldNameInput() {
@@ -451,6 +465,10 @@ function getFieldPrefixInput() {
 
 function getFieldSuffixInput() {
   return getFieldSection().findByTestId("suffix");
+}
+
+function getFieldSectionCloseButton() {
+  return getFieldSectioHeader().findByRole("link", { name: /close/ });
 }
 
 /** preview section helpers */

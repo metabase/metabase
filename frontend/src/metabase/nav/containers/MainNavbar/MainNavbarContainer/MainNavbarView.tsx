@@ -14,6 +14,7 @@ import CollapseSection from "metabase/common/components/CollapseSection";
 import { Tree } from "metabase/common/components/tree";
 import { useSetting, useUserSetting } from "metabase/common/hooks";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
+import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import {
   getCanAccessOnboardingPage,
@@ -56,7 +57,6 @@ import { BrowseNavSection } from "./BrowseNavSection";
 import { GettingStartedSection } from "./GettingStartedSection";
 
 type Props = {
-  isAdmin: boolean;
   isOpen: boolean;
   bookmarks: Bookmark[];
   hasDataAccess: boolean;
@@ -79,7 +79,6 @@ type Props = {
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 
 export function MainNavbarView({
-  isAdmin,
   bookmarks,
   collections,
   selectedItems,
@@ -173,9 +172,7 @@ export function MainNavbarView({
   const canAccessOnboarding = useSelector(getCanAccessOnboardingPage);
   const shouldDisplayGettingStarted = isNewInstance && canAccessOnboarding;
 
-  const activeUsersCount = useSetting("active-users-count");
-  const areThereOtherUsers = (activeUsersCount ?? 0) > 1;
-  const showOtherUsersCollections = isAdmin && areThereOtherUsers;
+  const showOtherUsersCollections = useShowOtherUsersCollections();
 
   const collectionsHeading = showExternalCollectionsSection
     ? t`Internal Collections`

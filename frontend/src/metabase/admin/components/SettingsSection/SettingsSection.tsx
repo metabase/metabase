@@ -7,18 +7,21 @@ import {
   type StackProps,
   Text,
   Title,
+  type TitleProps,
 } from "metabase/ui";
 
 import S from "./SettingsSection.module.css";
 
 export function SettingsSection({
   title,
+  titleProps,
   description,
   children,
   stackProps,
   ...boxProps
 }: {
   title?: React.ReactNode;
+  titleProps?: TitleProps;
   description?: React.ReactNode;
   children?: React.ReactNode;
   stackProps?: StackProps;
@@ -29,7 +32,11 @@ export function SettingsSection({
         <Stack gap="lg" className={S.SettingsSection} {...stackProps}>
           {(title || description) && (
             <Box mb="sm">
-              {title && <Title order={2}>{title}</Title>}
+              {title && (
+                <Title order={2} {...titleProps}>
+                  {title}
+                </Title>
+              )}
               {description && <Text c="text-medium">{description}</Text>}
             </Box>
           )}

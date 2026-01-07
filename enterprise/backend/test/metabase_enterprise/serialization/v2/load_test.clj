@@ -1638,3 +1638,77 @@
               (log.capture/with-log-messages-for-level [messages :warn]
                 (serdes.load/load-metabase! (ingestion-in-memory extract))
                 (is (= 0 (count (filter #(str/includes? % "Version mismatch loading") (messages)))))))))))))
+
+(deftest import-published-table-with-existing-database-test
+  (testing "Importing a published table works when database already exists on target"
+    (let [serialized (atom nil)
+          coll-eid   (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        ;; Export from source (with no-data-model, so Database is not in export)
+        (testing "export published table without database"
+          (ts/with-db source-db
+            (let [db   (ts/create! :model/Database :name "shared-db")
+                  coll (ts/create! :model/Collection :name "My Collection")
+                  _    (ts/create! :model/Table
+                                   :name "published_table"
+                                   :db_id (:id db)
+                                   :is_published true
+                                   :collection_id (:id coll)
+                                   :description "A published table")]
+              (reset! coll-eid (:entity_id coll))
+              (reset! serialized
+                      (into [] (serdes.extract/extract
+                                {:targets       [["Collection" (:id coll)]]
+                                 :no-data-model true
+                                 :no-settings   true}))))))
+
+        (testing "serialized data contains table but not database"
+          (is (some #(= "Table" (-> % :serdes/meta last :model)) @serialized))
+          (is (not-any? #(= "Database" (-> % :serdes/meta last :model)) @serialized)))
+
+        ;; Import to destination (where database already exists)
+        (testing "import succeeds when database exists on target"
+          (ts/with-db dest-db
+            ;; Pre-create the database on target
+            (let [target-db (ts/create! :model/Database :name "shared-db")]
+              ;; Load the serialized content
+              (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+              ;; Verify the table was imported correctly
+              (let [imported-table (t2/select-one :model/Table :name "published_table")
+                    imported-coll  (t2/select-one :model/Collection :entity_id @coll-eid)]
+                (testing "table exists with correct properties"
+                  (is (some? imported-table))
+                  (is (= "A published table" (:description imported-table)))
+                  (is (true? (:is_published imported-table))))
+                (testing "table is linked to correct database"
+                  (is (= (:id target-db) (:db_id imported-table))))
+                (testing "table is linked to imported collection"
+                  (is (= (:id imported-coll) (:collection_id imported-table))))))))))))
+
+(deftest import-published-table-without-database-fails-test
+  (testing "Importing a published table fails when database doesn't exist on target"
+    (let [serialized (atom nil)]
+      (ts/with-dbs [source-db dest-db]
+        (testing "export published table"
+          (ts/with-db source-db
+            (let [db   (ts/create! :model/Database :name "source-only-db")
+                  coll (ts/create! :model/Collection :name "My Collection")
+                  _    (ts/create! :model/Table
+                                   :name "published_table"
+                                   :db_id (:id db)
+                                   :is_published true
+                                   :collection_id (:id coll))]
+              (reset! serialized
+                      (into [] (serdes.extract/extract
+                                {:targets       [["Collection" (:id coll)]]
+                                 :no-data-model true
+                                 :no-settings   true}))))))
+
+        (testing "import fails when database doesn't exist"
+          (ts/with-db dest-db
+            ;; Don't create the database - import should fail
+            (is (thrown-with-msg?
+                 Exception
+                 #"source-only-db|not found|Failed"
+                 (serdes.load/load-metabase! (ingestion-in-memory @serialized))))))))))
