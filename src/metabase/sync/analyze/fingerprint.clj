@@ -61,6 +61,7 @@
   1234)
 
 (mu/defn fingerprint-fields!
+  "Generate fingerprints for a list of fields in a table."
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
