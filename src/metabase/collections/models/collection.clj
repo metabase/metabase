@@ -807,7 +807,7 @@
                                             {:select visible-union-columns
                                              :from [[:collection :c]]
                                              :where [:in :id [:inline tenant-collection-and-descendant-ids]]})
-                                          (when (perms/current-user-has-transforms-read-permission?)
+                                          (when (perms/user-has-transforms-read-permission? current-user-id)
                                             {:select visible-union-columns
                                              :from [[:collection :c]]
                                              :where [:= :namespace [:inline "transforms"]]})])}

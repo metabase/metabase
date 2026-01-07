@@ -15,7 +15,7 @@
 (defn- check-transforms-read-permission
   "Check that the current user has transforms permission for at least one database."
   []
-  (api/check-403 (transforms.util/current-user-has-transforms-read-permission?)))
+  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

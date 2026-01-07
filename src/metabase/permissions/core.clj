@@ -106,7 +106,7 @@
  [metabase.permissions.user
   user-permissions-set
   user->tenant-collection-and-descendant-ids
-  current-user-has-transforms-read-permission?]
+  user-has-transforms-read-permission?]
  [metabase.permissions.util
   PathSchema
   check-revision-numbers

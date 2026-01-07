@@ -462,7 +462,7 @@
 
 (deftest check-transform-permissions-test
   (testing "POST /api/ee/dependencies/check_transform requires read permissions on the input transform"
-    (mt/with-premium-features #{:dependencies}
+    (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform transform {:name "test transform"}]
         (testing "Returns 403 when user is not an admin (only admins can read transforms)"
           (is (= "You don't have permissions to do that."

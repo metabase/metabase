@@ -1284,6 +1284,7 @@
                      :model/Transform t3 {:name "Python Transform"
                                           :description "Simple python transform"
                                           :source {:type "python"
+                                                   :source-database (mt/id)
                                                    :body "print('hello world')"
                                                    :source-tables {}}
                                           :target {:type "table"

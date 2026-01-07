@@ -5,6 +5,7 @@
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -28,9 +29,9 @@
 ;; Users with the transform permission can read ALL transforms, regardless of the database they are associated with.
 (defmethod mi/can-read? :model/Transform
   ([_instance]
-   (transforms.util/current-user-has-transforms-read-permission?))
+   (transforms.util/user-has-transforms-read-permission? api/*current-user-id*))
   ([_model _pk]
-   (transforms.util/current-user-has-transforms-read-permission?)))
+   (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
 
 ;; Users with the transform permission can only write transforms where they have access to the associated db.
 (defmethod mi/can-write? :model/Transform
@@ -274,9 +275,11 @@
                :tags               (serdes/nested :model/TransformTransformTag :transform_id opts)}})
 
 (defmethod serdes/dependencies "Transform"
-  [{:keys [source tags]}]
+  [{:keys [source tags source_database_id]}]
   (set
    (concat
+    (when source_database_id
+      [[{:model "Database" :id source_database_id}]])
     (for [{tag-id :tag_id} tags]
       [{:model "TransformTag" :id tag-id}])
     (serdes/mbql-deps source))))

@@ -104,13 +104,13 @@
                                                :yes
                                                database-id)))
 
-(defenterprise current-user-has-transforms-read-permission?
+(defenterprise user-has-transforms-read-permission?
   "If users have any 'transforms' permissions, they can read all transforms.
   This allows users to see transform dependencies etc."
   :feature :transforms
-  []
+  [user-id]
   (or api/*is-superuser?*
-      (perms/user-has-any-perms-of-type? api/*current-user-id* :perms/transforms)))
+      (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."

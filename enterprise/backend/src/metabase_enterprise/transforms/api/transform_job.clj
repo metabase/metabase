@@ -22,12 +22,12 @@
 (defn- check-transforms-read-permissions
   "Check that the current user can read transforms."
   []
-  (api/check-403 (transforms.util/current-user-has-transforms-read-permission?)))
+  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
 
 (defn- check-job-edit-permissions
   "Check that the current user edit a job with the given tags. If tag-ids are empty or nil, requires at least one transform permission"
   [tag-ids]
-  (api/check-403 (transforms.util/current-user-has-transforms-read-permission?))
+  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*))
   (doseq [transform (transform/transforms-with-tags tag-ids)]
     (api/check-403 (transforms.util/current-user-has-transforms-write-permission? (:source_database_id transform)))))
 

@@ -5,11 +5,13 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-test :as perms-test]
    [metabase.permissions.path :as permissions.path]
    [metabase.permissions.user :as permissions.user]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -51,3 +53,15 @@
                (->> (permissions.user/user-permissions-set (mt/user->id :lucky))
                     remove-non-collection-perms
                     (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
+
+(deftest transform-users-can-create-transform-collections-test
+  (testing "Users with transforms read permission can create transform collections, even in the root"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test transform coll" :namespace collection/transforms-ns}]
+      (testing "without permission"
+        (with-redefs [permissions.user/user-has-transforms-read-permission? (constantly false)]
+          (is (not (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) "/collection/namespace/transforms/root/")))
+          (is (not (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) (format "/collection/%s" coll-id))))))
+      (testing "with permission"
+        (with-redefs [permissions.user/user-has-transforms-read-permission? (constantly true)]
+          (is (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) "/collection/namespace/transforms/root/"))
+          (is (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) (permissions.path/collection-readwrite-path coll-id))))))))

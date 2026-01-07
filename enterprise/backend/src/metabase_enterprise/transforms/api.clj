@@ -95,7 +95,7 @@
 (defn- check-transforms-read-permission
   "Check that the current user has transforms permission for at least one database."
   []
-  (api/check-403 (transforms.util/current-user-has-transforms-read-permission?)))
+  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
 
 (defn get-transforms
   "Get a list of transforms."
