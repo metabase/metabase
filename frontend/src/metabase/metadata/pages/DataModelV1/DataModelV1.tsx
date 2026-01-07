@@ -41,7 +41,7 @@ export const DataModelV1 = ({ children, location, params }: Props) => {
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ "can-edit": true });
+    useListDatabasesQuery({ "can-write-metadata": true });
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );

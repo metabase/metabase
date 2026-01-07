@@ -2452,8 +2452,10 @@
                                           :api-test-disabled-for-multiple-reasons])))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                    can-query and can-edit filter tests                                         |
+;;; |                                         can-query filter tests                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+;; Note: can-write-metadata tests are in metabase-enterprise.advanced-permissions.common-test since they require
+;; enterprise features (:perms/manage-table-metadata permission)
 
 (deftest list-databases-can-query-filter-test
   (testing "GET /api/database with can-query=true filters to only queryable databases"
@@ -2477,102 +2479,31 @@
         (is (= 1 (count response)))
         (is (= "Queryable DB" (-> response first :name)))))))
 
-(deftest list-databases-can-edit-filter-test
-  (testing "GET /api/database with can-edit=true filters to only editable databases"
-    (mt/with-temp [:model/Database {db-1-id :id} {:name "Editable DB"}
-                   :model/Database {db-2-id :id} {:name "Not Editable DB"}
-                   :model/Table    {t1-id :id}   {:db_id db-1-id :name "table1" :active true}
-                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-1-id)
-      (t2/delete! :model/DataPermissions :db_id db-2-id)
-      ;; Grant full permissions to both databases
-      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
-      (data-perms/set-database-permission! pg db-2-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-2-id :perms/create-queries :query-builder)
-      ;; Grant manage-table-metadata to table in db-1 only (makes db-1 editable)
-      (data-perms/set-table-permission! pg t1-id :perms/manage-table-metadata :yes)
-
-      (let [response (->> (mt/user-http-request :crowberto :get 200 "database" :can-edit true)
-                          :data
-                          (filter #(#{db-1-id db-2-id} (:id %))))]
-        (is (>= (count response) 1))
-        (is (contains? (set (map :name response)) "Editable DB"))))))
-
 (deftest list-schemas-can-query-filter-test
   (testing "GET /api/database/:id/schemas with can-query=true filters to only schemas with queryable tables"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t1-id :id} {:db_id db-id :schema "queryable_schema" :name "t1" :active true}
-                   :model/Table    {t2-id :id} {:db_id db-id :schema "not_queryable_schema" :name "t2" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Block database-level access
-      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
-      ;; Grant both view-data and create-queries to t1 (queryable)
-      (data-perms/set-table-permission! pg t1-id :perms/view-data :unrestricted)
-      (data-perms/set-table-permission! pg t1-id :perms/create-queries :query-builder)
-      ;; Grant only view-data to t2 (not queryable)
-      (data-perms/set-table-permission! pg t2-id :perms/view-data :unrestricted)
+                   :model/Table    t1 {:db_id db-id :schema "queryable_schema" :name "t1" :active true}
+                   :model/Table    _ {:db_id db-id :schema "not_queryable_schema" :name "t2" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
 
-      (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-query true)]
-        (is (= ["queryable_schema"] response))))))
-
-(deftest list-schemas-can-edit-filter-test
-  (testing "GET /api/database/:id/schemas with can-edit=true filters to only schemas with editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t1-id :id} {:db_id db-id :schema "editable_schema" :name "t1" :active true}
-                   :model/Table    _ {:db_id db-id :schema "not_editable_schema" :name "t2" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Grant full access to both tables
-      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
-      ;; Grant manage-table-metadata to t1 only (editable)
-      (data-perms/set-table-permission! pg t1-id :perms/manage-table-metadata :yes)
-
-      (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" db-id) :can-edit true)]
-        (is (= ["editable_schema"] response))))))
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-query true)]
+          (is (= ["queryable_schema"] response)))))))
 
 (deftest list-schema-tables-can-query-filter-test
   (testing "GET /api/database/:id/schema/:schema with can-query=true filters to only queryable tables"
     (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t1-id :id} {:db_id db-id :schema "test_schema" :name "queryable_table" :active true}
-                   :model/Table    {t2-id :id} {:db_id db-id :schema "test_schema" :name "not_queryable_table" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Block database-level access
-      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
-      ;; Grant both view-data and create-queries to t1 (queryable)
-      (data-perms/set-table-permission! pg t1-id :perms/view-data :unrestricted)
-      (data-perms/set-table-permission! pg t1-id :perms/create-queries :query-builder)
-      ;; Grant only view-data to t2 (not queryable)
-      (data-perms/set-table-permission! pg t2-id :perms/view-data :unrestricted)
+                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "queryable_table" :active true}
+                   :model/Table    _ {:db_id db-id :schema "test_schema" :name "not_queryable_table" :active true}]
+      (mt/with-no-data-perms-for-all-users!
+        ;; Grant view-data at database level (required for accessing the endpoint)
+        (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
+        ;; Grant create-queries only to t1 (queryable)
+        (data-perms/set-table-permission! (perms-group/all-users) t1 :perms/create-queries :query-builder)
 
-      (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
-        (is (= 1 (count response)))
-        (is (= "queryable_table" (-> response first :name)))))))
-
-(deftest list-schema-tables-can-edit-filter-test
-  (testing "GET /api/database/:id/schema/:schema with can-edit=true filters to only editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    {t1-id :id} {:db_id db-id :schema "test_schema" :name "editable_table" :active true}
-                   :model/Table    _           {:db_id db-id :schema "test_schema" :name "not_editable_table" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Grant full access to both tables
-      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
-      ;; Grant manage-table-metadata to t1 only (editable)
-      (data-perms/set-table-permission! pg t1-id :perms/manage-table-metadata :yes)
-
-      (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-edit true)]
-        (is (>= (count response) 1))
-        (is (contains? (set (map :name response)) "editable_table"))))))
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
+          (is (= 1 (count response)))
+          (is (= "queryable_table" (-> response first :name))))))))

@@ -1369,7 +1369,7 @@
 
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
-;;; ---------------------------------------- can-query and can-edit filter tests ----------------------------------------
+;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
 
 (deftest list-tables-can-query-filter-returns-only-queryable-tables-test
   (testing "can-query=true filters to only queryable tables"
@@ -1393,8 +1393,8 @@
         (is (= 1 (count response)))
         (is (= "queryable_table" (-> response first :name)))))))
 
-(deftest list-tables-can-edit-filter-returns-only-editable-tables-test
-  (testing "can-edit=true filters to only editable tables"
+(deftest list-tables-can-write-filter-returns-only-editable-tables-test
+  (testing "can-write=true filters to only editable tables"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-1-id :id} {:db_id db-id :name "editable_table" :active true}
                    :model/Table _ {:db_id db-id :name "not_editable_table" :active true}
@@ -1408,7 +1408,7 @@
       (data-perms/set-table-permission! pg table-1-id :perms/manage-table-metadata :yes)
       ;; table-2 gets no manage-table-metadata (not editable)
 
-      (let [response (->> (mt/user-http-request :crowberto :get 200 "table" :can-edit true)
+      (let [response (->> (mt/user-http-request :crowberto :get 200 "table" :can-write true)
                           (filter #(= (:db_id %) db-id)))]
         ;; crowberto is an admin, so should see all tables when they have manage-table-metadata
         (is (>= (count response) 1))

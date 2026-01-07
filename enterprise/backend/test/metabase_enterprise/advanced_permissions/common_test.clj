@@ -403,6 +403,69 @@
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                        :include_editable_data_model true))))))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                can-query and can-write-metadata filter tests                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest list-databases-can-write-metadata-filter-test
+  (testing "GET /api/database with can-write-metadata=true filters to only databases with editable tables"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Editable DB"}
+                   :model/Database {db-2-id :id} {:name "Not Editable DB"}
+                   :model/Table    t1            {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-1-id {:view-data      :unrestricted
+                                                     :create-queries :query-builder
+                                                     :data-model     {:schemas {"" {(u/the-id t1) :all}}}}
+                                            db-2-id {:view-data      :unrestricted
+                                                     :create-queries :query-builder
+                                                     :data-model     {:schemas :none}}}
+        (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-write-metadata true)
+                            :data
+                            (filter #(#{db-1-id db-2-id} (:id %))))]
+          (is (= 1 (count response)))
+          (is (= "Editable DB" (-> response first :name))))))))
+
+(deftest list-databases-with-tables-can-write-metadata-filter-test
+  (testing "GET /api/database?include=tables&can-write-metadata=true filters tables within databases"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
+                   :model/Table    t1          {:db_id db-id :name "editable_table" :active true}
+                   :model/Table    t2          {:db_id db-id :name "not_editable_table" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :query-builder
+                                                   :data-model     {:schemas {"" {(u/the-id t1) :all
+                                                                                  (u/the-id t2) :none}}}}}
+        (let [response (->> (mt/user-http-request :rasta :get 200 "database" :include "tables" :can-write-metadata true)
+                            :data
+                            (filter #(= (:id %) db-id))
+                            first)]
+          (is (= 1 (count (:tables response))))
+          (is (= "editable_table" (-> response :tables first :name))))))))
+
+(deftest list-schemas-can-write-metadata-filter-test
+  (testing "GET /api/database/:id/schemas with can-write-metadata=true filters to only schemas with editable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "editable_schema" :name "t1" :active true}
+                   :model/Table    _ {:db_id db-id :schema "not_editable_schema" :name "t2" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :query-builder
+                                                   :data-model     {:schemas {"editable_schema" {(u/the-id t1) :all}
+                                                                              "not_editable_schema" :none}}}}
+        (is (= ["editable_schema"]
+               (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-write-metadata true)))))))
+
+(deftest list-schema-tables-can-write-metadata-filter-test
+  (testing "GET /api/database/:id/schema/:schema with can-write-metadata=true filters to only editable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "editable_table" :active true}
+                   :model/Table    t2 {:db_id db-id :schema "test_schema" :name "not_editable_table" :active true}]
+      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
+                                                   :create-queries :query-builder
+                                                   :data-model     {:schemas {"test_schema" {(u/the-id t1) :all
+                                                                                             (u/the-id t2) :none}}}}}
+        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-write-metadata true)]
+          (is (= 1 (count response)))
+          (is (= "editable_table" (-> response first :name))))))))
+
 (deftest get-field-hydrated-target-with-advanced-perms-test
   (testing "GET /api/field/:id"
     (mt/with-temp [:model/Database {db-id :id} {}

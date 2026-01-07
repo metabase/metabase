@@ -42,7 +42,7 @@ export function useTableLoader(path: TreePath) {
   const [tree, setTree] = useState<TreeNode>(rootNode());
 
   const getDatabases = useCallback(async () => {
-    const response = await fetchDatabases({ "can-edit": true }, true);
+    const response = await fetchDatabases({ "can-write-metadata": true }, true);
 
     if (databasesRef.current.isError) {
       // Do not refetch when this call failed previously.
@@ -74,7 +74,7 @@ export function useTableLoader(path: TreePath) {
         id: databaseId,
         schema: schemaName,
         include_hidden: true,
-        "can-edit": true,
+        "can-write-metadata": true,
       };
 
       if (
@@ -112,7 +112,7 @@ export function useTableLoader(path: TreePath) {
       const newArgs = {
         id: databaseId,
         include_hidden: true,
-        "can-edit": true,
+        "can-write-metadata": true,
       };
 
       if (

@@ -148,7 +148,7 @@ export interface ListDatabasesRequest {
   include_analytics?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
-  "can-edit"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabasesResponse {
@@ -166,7 +166,7 @@ export interface ListDatabaseSchemasRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-edit"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -175,7 +175,7 @@ export interface ListDatabaseSchemaTablesRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-edit"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListVirtualDatabaseTablesRequest {

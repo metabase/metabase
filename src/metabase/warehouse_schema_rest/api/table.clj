@@ -71,10 +71,10 @@
 
   Optional filters:
   - `can-query=true` - filter to only tables the user can execute queries against
-  - `can-edit=true` - filter to only tables the user can edit metadata for"
+  - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           can-query can-edit]}
+           can-query can-write]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -85,7 +85,7 @@
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
-       [:can-edit {:optional true} [:maybe ms/BooleanValue]]]]
+       [:can-write {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
@@ -121,7 +121,7 @@
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
                      (if can-query (filter mi/can-query?) identity)
-                     (if can-edit (filter mi/can-write?) identity)
+                     (if can-write (filter mi/can-write?) identity)
                      (map schema.table/present-table))
             tables))))
 
