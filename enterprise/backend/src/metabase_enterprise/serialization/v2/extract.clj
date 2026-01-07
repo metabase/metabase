@@ -80,8 +80,8 @@
   "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
    These collections are intentionally excluded from serialization."
   []
-  (let [analytics-roots (t2/select-pks-set :model/Collection {:where [:= :namespace "analytics"]})]
-    (into analytics-roots
+  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+    (into (set (map :id analytics-roots))
           (mapcat collection/descendant-ids)
           analytics-roots)))
 
