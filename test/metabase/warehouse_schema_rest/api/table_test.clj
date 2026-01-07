@@ -1374,5 +1374,8 @@
       (mt/with-temp [:model/Table {table-id :id} {}]
         (with-redefs [quick-task/submit-task! (fn [task] (task))]
           (is (= {:status "success"}
-                 (mt/user-http-request :crowberto :post 200 (format "table/%d/refingerprint" table-id)))))))))
+                 (mt/user-http-request :crowberto :post 200 (format "table/%d/refingerprint" table-id)))))))
 
+    (testing "It should return 404 for non-existent table"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "table/%d/refingerprint" Integer/MAX_VALUE)))))))

@@ -889,5 +889,8 @@
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (with-redefs [quick-task/submit-task! (fn [task] (task))]
           (is (= {:status "success"}
-                 (mt/user-http-request :crowberto :post 200 (format "field/%d/refingerprint" field-id)))))))))
+                 (mt/user-http-request :crowberto :post 200 (format "field/%d/refingerprint" field-id)))))))
 
+    (testing "It should return 404 for non-existent field"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "field/%d/refingerprint" Integer/MAX_VALUE)))))))
