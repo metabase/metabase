@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.references
   (:refer-clojure :exclude [every? mapv select-keys some])
   (:require
+   [clojure.string :as str]
    [macaw.ast-types :as macaw.ast-types]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
@@ -97,8 +98,7 @@
   (when (:table raw-col)
     (->> [:database :schema :table]
          (keep raw-col)
-         (interpose ".")
-         (apply str))))
+         (str/join "."))))
 
 (defn- get-column [driver sources raw-col {:keys [return-table-matches?]}]
   (if (and (nil? (:table raw-col))
@@ -229,7 +229,7 @@
   (get-column driver sources expr {:return-table-matches? true}))
 
 (defn wrap-col
-  "Wraps the argument in {:col _}"
+  "Wraps the argument in `{:col _}`"
   [col]
   {:col col})
 
