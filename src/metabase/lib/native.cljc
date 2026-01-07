@@ -368,16 +368,31 @@
   (assert-native-query (lib.util/query-stage query 0))
   (= :write (:native-permissions (lib.metadata/database query))))
 
+(mu/defn- validate-template-tag :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
+  "Validate a single template tag, returning a list of errors."
+  [_query {tag-type :type tag-name :name, :keys [display-name dimension]}]
+  (cond-> []
+    (empty? display-name)
+    (conj {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
+           :tag-name tag-name})
+
+    (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
+    (conj {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
+           :tag-name tag-name})))
+
+(mu/defn validate-template-tags :- [:sequential [:map [:error/message :string] [:tag-name :string]]]
+  "Given a query, returns a list of errors for each template tag in the query that is not valid."
+  [query]
+  (mapcat #(validate-template-tag query %)
+          (lib.walk.util/all-template-tags query)))
+
 (defmethod lib.query/can-run-method :mbql.stage/native
   [query _card-type]
   (and
    (set/subset? (required-native-extras query)
                 (set (keys (native-extras query))))
    (not (str/blank? (raw-native-query query)))
-   (every? #(if (#{:dimension :temporal-unit} (:type %))
-              (:dimension %)
-              true)
-           (vals (template-tags query)))))
+   (empty? (validate-template-tags query))))
 
 (mu/defn engine :- [:maybe :keyword]
   "Returns the database engine.
