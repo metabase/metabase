@@ -161,7 +161,7 @@ export const SdkQuestionDefaultView = ({
 
   const { canWrite: canWriteToTargetCollection } = useCollectionData(
     targetCollection,
-    { skip: !isSaveEnabled },
+    { skipCollectionFetching: !isSaveEnabled },
   );
 
   if (

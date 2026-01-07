@@ -144,7 +144,7 @@ export const CollectionBrowserInner = ({
   ) {
     return (
       <EmptyState
-        title={t`You don't have access to this collection.`}
+        title={t`You don't have access to this collection`}
         illustrationElement={<Icon name="key" size={100} />}
       />
     );

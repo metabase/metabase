@@ -54,7 +54,7 @@ export const SaveButton = ({ ...buttonProps }: SaveButtonProps = {}) => {
 
   const { canWrite: canWriteToTargetCollection } = useCollectionData(
     targetCollection,
-    { skip: !isSaveEnabled },
+    { skipCollectionFetching: !isSaveEnabled },
   );
 
   const isSaveButtonEnabled = shouldShowSaveButton({

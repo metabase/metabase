@@ -9,7 +9,7 @@ import type { CollectionId } from "metabase-types/api";
 
 export const useCollectionData = (
   collectionId: SdkCollectionId = "personal",
-  { skip = false }: { skip?: boolean } = {},
+  { skipCollectionFetching = false }: { skipCollectionFetching?: boolean } = {},
 ) => {
   const baseCollectionId = useSdkSelector((state) =>
     getCollectionIdSlugFromReference(state, collectionId),
@@ -34,7 +34,10 @@ export const useCollectionData = (
     data: collection,
     error: collectionLoadingError,
     isFetching: isFetchingCollection,
-  } = useGetCollectionQuery({ id: effectiveCollectionId }, { skip });
+  } = useGetCollectionQuery(
+    { id: effectiveCollectionId },
+    { skip: skipCollectionFetching },
+  );
 
   return {
     baseCollectionId,
