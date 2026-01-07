@@ -737,6 +737,7 @@
            metabase.lib.schema.join
            metabase.lib.schema.literal
            metabase.lib.schema.mbql-clause
+           metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
            metabase.lib.schema.middleware-options
@@ -788,6 +789,19 @@
            channel
            request
            settings
+           util}}
+
+  measures
+  {:team "Querying"
+   :api  #{metabase.measures.api}
+   :uses #{api
+           events
+           legacy-mbql
+           lib
+           lib-be
+           models
+           permissions
+           search
            util}}
 
   model-persistence
@@ -1254,7 +1268,6 @@
            metabase.segments.schema}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models

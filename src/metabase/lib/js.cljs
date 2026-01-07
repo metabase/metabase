@@ -595,6 +595,13 @@
 ;; will also remove anything that depended on it, recursively. Moving or replacing a clause will update any references
 ;; to it in other places (eg. an aggregation based on a custom expression that was just renamed).
 
+(defn- ->clj
+  "Convert JS objects to CLJS, but pass through CLJS data structures unchanged."
+  [x]
+  (if (or (map? x) (vector? x))
+    x
+    (js->clj x :keywordize-keys true)))
+
 (defn ^:export remove-clause
   "Removes the `target-clause` from the given stage of `a-query`.
 
@@ -609,7 +616,7 @@
   [a-query stage-number clause]
   (lib.core/remove-clause
    a-query stage-number
-   (lib.core/normalize (js->clj clause :keywordize-keys true))))
+   (lib.core/normalize (->clj clause))))
 
 (defn ^:export replace-clause
   "Replaces the `target-clause` with `new-clause` in the `query` stage.
@@ -620,8 +627,8 @@
   [a-query stage-number target-clause new-clause]
   (lib.core/replace-clause
    a-query stage-number
-   (lib.core/normalize (js->clj target-clause :keywordize-keys true))
-   (lib.core/normalize (js->clj new-clause :keywordize-keys true))))
+   (lib.core/normalize (->clj target-clause))
+   (lib.core/normalize (->clj new-clause))))
 
 (defn ^:export swap-clauses
   "Exchanges the positions of two clauses of the same kind. Can be used for filters, aggregations, breakouts, and
@@ -634,8 +641,8 @@
   [a-query stage-number source-clause target-clause]
   (lib.core/swap-clauses
    a-query stage-number
-   (lib.core/normalize (js->clj source-clause :keywordize-keys true))
-   (lib.core/normalize (js->clj target-clause :keywordize-keys true))))
+   (lib.core/normalize (->clj source-clause))
+   (lib.core/normalize (->clj target-clause))))
 
 (defn- -unwrap
   "Sometimes JS queries are passed in with a `Join` or `Aggregation` clause object instead of a simple Array.
@@ -860,7 +867,7 @@
 
   > **Code health:** Healthy"
   [a-query stage-number an-aggregate-clause]
-  (lib.core/aggregate a-query stage-number (js->clj an-aggregate-clause :keywordize-keys true)))
+  (lib.core/aggregate a-query stage-number (->clj an-aggregate-clause)))
 
 (defn ^:export aggregations
   "Return a JS array of aggregations on a given stage of `a-query`.
@@ -968,7 +975,7 @@
 (defn ^:export filter
   "Adds `a-filter-clause` as a filter on `a-query`."
   [a-query stage-number a-filter-clause]
-  (lib.core/filter a-query stage-number (js->clj a-filter-clause :keywordize-keys true)))
+  (lib.core/filter a-query stage-number (->clj a-filter-clause)))
 
 (defn ^:export filters
   "Returns a JS array of all the filters on stage `stage-number` of `a-query`.
@@ -1296,6 +1303,14 @@
   format expression clauses."
   [arg]
   (and (map? arg) (= :metadata/segment (:lib/type arg))))
+
+(defn ^:export measure-metadata?
+  "Returns true if arg is an MLv2 measure, ie. has `:lib/type :metadata/measure`.
+
+  > **Code health:** Healthy. This is used in the expression editor to parse and
+  format expression clauses."
+  [arg]
+  (and (map? arg) (= :metadata/measure (:lib/type arg))))
 
 ;; # Field selection
 ;; Queries can specify a subset of fields to return from their source table or previous stage. There are several
@@ -2074,6 +2089,23 @@
   when they are."
   [a-query stage-number]
   (to-array (lib.core/available-segments a-query stage-number)))
+
+(defn ^:export measure-metadata
+  "Get metadata for the Measure with `measure-id`, if it can be found.
+
+  `metadata-providerable` is anything that can provide metadata - it can be JS `Metadata` itself, but more commonly it
+  will be a query.
+
+  > **Code health:** Healthy."
+  [metadata-providerable measure-id]
+  (lib.metadata/measure metadata-providerable measure-id))
+
+(defn ^:export available-measures
+  "Returns a JS array of opaque Measures metadata objects, that could be used as aggregations for `a-query`.
+
+  > **Code health:** Healthy."
+  [a-query stage-number]
+  (to-array (lib.core/available-measures a-query stage-number)))
 
 (defn ^:export available-metrics
   "Returns a JS array of opaque metadata values for those Metrics that could be used as aggregations on

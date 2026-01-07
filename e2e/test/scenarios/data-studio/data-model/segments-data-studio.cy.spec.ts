@@ -14,7 +14,6 @@ describe("scenarios > data studio > data model > segments", () => {
 
     cy.intercept("POST", "/api/segment").as("createSegment");
     cy.intercept("PUT", "/api/segment/*").as("updateSegment");
-    cy.intercept("DELETE", "/api/segment/*").as("deleteSegment");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
   });
 
@@ -219,7 +218,7 @@ describe("scenarios > data studio > data model > segments", () => {
       SegmentEditor.getActionsButton().click();
       H.popover().findByText("Remove segment").click();
       H.modal().button("Remove").click();
-      cy.wait("@deleteSegment");
+      cy.wait("@updateSegment");
 
       cy.log("verify redirect to list and removal");
       H.undoToast().should("contain.text", "Segment removed");
@@ -573,10 +572,13 @@ describe("scenarios > data studio > data model > segments", () => {
         cy.findByText(/created this segment/i)
           .scrollIntoView()
           .should("be.visible");
-        cy.findByText(/made multiple changes/i)
+        cy.findByText(/changed the filter definition/i)
           .scrollIntoView()
           .should("be.visible");
         cy.findByText(/updated the description/i)
+          .scrollIntoView()
+          .should("be.visible");
+        cy.findByText(/renamed the segment/i)
           .scrollIntoView()
           .should("be.visible");
       });
