@@ -1,6 +1,5 @@
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type { VariableTarget } from "metabase-types/api";
 
 export class TemplateTagDimension {
@@ -12,20 +11,6 @@ export class TemplateTagDimension {
     this._query = query;
     this._metadata = metadata;
     this._tagName = tagName;
-  }
-
-  isVariableType() {
-    const maybeTag = this.tag();
-    return ["text", "number", "date"].includes(maybeTag?.type);
-  }
-
-  variable() {
-    if (this.isVariableType()) {
-      const tag = this.tag();
-      return new TemplateTagVariable([tag.name], this._metadata, this._query);
-    }
-
-    return null;
   }
 
   tag() {
