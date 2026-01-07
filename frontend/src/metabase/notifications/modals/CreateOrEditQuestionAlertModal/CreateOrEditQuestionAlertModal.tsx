@@ -40,6 +40,7 @@ import {
   Text,
   rem,
 } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,
   Notification,
@@ -91,7 +92,7 @@ const ALERT_SCHEDULE_OPTIONS: ScheduleType[] = [
   "cron",
 ];
 
-type CreateOrEditQuestionAlertModalProps = {
+type CreateOrEditQuestionAlertModalWithQuestionProps = {
   onClose: () => void;
 } & (
   | {
@@ -106,14 +107,38 @@ type CreateOrEditQuestionAlertModalProps = {
     }
 );
 
+type CreateOrEditQuestionAlertModalProps =
+  CreateOrEditQuestionAlertModalWithQuestionProps & {
+    question?: Question;
+  };
+
+export const CreateOrEditQuestionAlertModalWithQuestion = ({
+  editingNotification,
+  onAlertCreated,
+  onAlertUpdated,
+  onClose,
+}: CreateOrEditQuestionAlertModalWithQuestionProps) => {
+  const question = useSelector(getQuestion);
+
+  return (
+    <CreateOrEditQuestionAlertModal
+      question={question}
+      editingNotification={editingNotification}
+      onAlertCreated={onAlertCreated!}
+      onAlertUpdated={onAlertUpdated!}
+      onClose={onClose}
+    />
+  );
+};
+
 export const CreateOrEditQuestionAlertModal = ({
   editingNotification,
   onAlertCreated,
   onAlertUpdated,
   onClose,
+  question,
 }: CreateOrEditQuestionAlertModalProps) => {
   const dispatch = useDispatch();
-  const question = useSelector(getQuestion);
   const visualizationSettings = useSelector(getVisualizationSettings);
   const user = useSelector(getUser);
   const userCanAccessSettings = useSelector(canAccessSettings);

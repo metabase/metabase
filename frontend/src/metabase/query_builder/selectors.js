@@ -191,6 +191,7 @@ export const getQuestionWithoutComposing = createSelector(
   },
 );
 
+// XXX: see if we're getting question from here.
 export const getQuestion = createSelector(
   [getQuestionWithoutComposing, getQueryBuilderMode],
   (question, queryBuilderMode) => {

@@ -22,6 +22,7 @@ import {
   Title,
 } from "embedding-sdk-bundle/components/private/SdkQuestion/components";
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
+import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
 import {
@@ -34,6 +35,7 @@ import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import CS from "metabase/css/core/index.css";
 import { QuestionAlertsButton } from "metabase/embedding/components/QuestionAlertsButton";
+import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -182,11 +184,22 @@ const StaticQuestionInner = (
               </Box>
             </Box>
           </Stack>
+          <QuestionAlertListModalWithHook />
         </FlexibleSizeComponent>
       )}
     </SdkQuestion>
   );
 };
+
+function QuestionAlertListModalWithHook() {
+  const { question } = useSdkQuestionContext();
+  if (!question) {
+    return null;
+  }
+
+  // XXX: Deal with closing the modal
+  return <QuestionAlertListModal question={question} onClose={() => {}} />;
+}
 
 const subComponents: StaticQuestionComponents = {
   Filter: Filter,
