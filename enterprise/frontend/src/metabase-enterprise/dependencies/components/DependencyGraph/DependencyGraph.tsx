@@ -12,7 +12,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Group } from "metabase/ui";
+import { Group, useColorScheme } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
@@ -37,6 +37,10 @@ const EDGE_TYPES = {
   edge: GraphEdge,
 };
 
+const PRO_OPTIONS = {
+  hideAttribution: true,
+};
+
 type DependencyGraphProps = {
   entry?: DependencyEntry;
   getGraphUrl: (entry?: DependencyEntry) => string;
@@ -58,6 +62,7 @@ export function DependencyGraph({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
   const { sendErrorToast } = useMetadataToasts();
+  const { colorScheme } = useColorScheme();
 
   const entryNode = useMemo(() => {
     return entry != null ? findNode(nodes, entry) : null;
@@ -94,19 +99,22 @@ export function DependencyGraph({
   return (
     <GraphContext.Provider value={{ selection, setSelection }}>
       <ReactFlow
+        className={S.reactFlow}
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
-        fitView
+        proOptions={PRO_OPTIONS}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+        colorMode={colorScheme === "dark" ? "dark" : "light"}
+        fitView
         data-testid="dependency-graph"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
       >
         <Background />
-        <Controls />
+        <Controls className={S.controls} />
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>
