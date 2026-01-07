@@ -275,7 +275,6 @@
                                         exclude-uneditable-details?
                                         filter-on-router-database-id))
         user-info {:user-id api/*current-user-id* :is-superuser? (mi/superuser?)}
-        permission-mapping {:perms/create-queries :query-builder}
         base-where [:and
                     (when-not include-analytics?
                       [:= :is_audit false])
@@ -283,7 +282,9 @@
                       [:= :router_database_id router-database-id]
                       [:= :router_database_id nil])]
         where-clause (if filter-by-data-access?
-                       [:and base-where (:clause (mi/visible-filter-clause :model/Database :id user-info permission-mapping))]
+                       [:and base-where [:or (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/create-queries :query-builder}))
+                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-database :yes}))
+                                         (:clause (mi/visible-filter-clause :model/Database :id user-info {:perms/manage-table-metadata :yes}))]]
                        base-where)
         dbs (t2/select :model/Database {:order-by [:%lower.name :%lower.engine]
                                         :where where-clause})]
@@ -1313,8 +1314,8 @@
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
                                                              can-write-metadata? (filter mi/can-write?))
-                                           allowed-schemas #p (set (map :schema filtered-tables))]
-                                       #p (filter #(contains? allowed-schemas %) #p schemas))
+                                           allowed-schemas (set (map :schema filtered-tables))]
+                                       (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
     (get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
