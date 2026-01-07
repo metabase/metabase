@@ -149,12 +149,8 @@
   (or (if join-alias
         (when-let [join (m/find-first #(= (:alias %) join-alias)
                                       (:joins (get-in query stage-path)))]
-          ;; For implicit joins (to tables), skip the lookup and return nil
-          ;; to fall through to the fallback. The caller should pass the original
-          ;; column name for implicit joins (#67002).
-          (when-not (:qp/is-implicit-join join)
-            (let [join-last-stage (last (:stages join))]
-              (get-in join-last-stage [::desired-alias->escaped source-column-alias]))))
+          (let [join-last-stage (last (:stages join))]
+            (get-in join-last-stage [::desired-alias->escaped source-column-alias])))
         (when-let [previous-stage-path (lib.walk/previous-path stage-path)]
           (let [previous-stage (get-in query previous-stage-path)]
             (get-in previous-stage [::desired-alias->escaped source-column-alias]))))
@@ -213,8 +209,7 @@
 (defn- add-source-to-field-ref [query path field-ref col]
   (let [join-alias (:metabase.lib.join/join-alias col)
         ;; For implicit joins, use the original column name since that's what exists
-        ;; in the actual database table (#67002). Implicit joins are identified by
-        ;; having :qp/is-implicit-join on the join itself.
+        ;; in the actual database table (#67002).
         implicit-join? (when join-alias
                          (when-let [join (m/find-first #(= (:alias %) join-alias)
                                                        (:joins (get-in query path)))]
