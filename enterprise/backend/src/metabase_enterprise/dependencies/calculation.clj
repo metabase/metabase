@@ -141,8 +141,9 @@
             table_id (conj table_id))})
 
 (mu/defn upstream-deps:measure :- ::deps.schema/upstream-deps
-  "Given a measure, return its upstream dependencies (the table it aggregates and any measures it references)"
+  "Given a measure, return its upstream dependencies (the table it aggregates, any measures it references, and any segments it references)"
   [{:keys [table_id definition] :as _measure}]
   {:measure (or (lib/all-measure-ids definition) #{})
+   :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})
