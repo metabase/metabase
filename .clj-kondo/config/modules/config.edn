@@ -768,9 +768,11 @@
 
   llm
   {:team "Metabot"
-   :api  #{metabase.llm.openai
+   :api  #{metabase.llm.api
+           metabase.llm.openai
            metabase.llm.settings}
-   :uses #{settings
+   :uses #{api
+           settings
            util}}
 
   logger

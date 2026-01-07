@@ -1,5 +1,5 @@
 (ns metabase.llm.openai
-  "OpenAI API client for MiniBot (OSS).
+  "OpenAI API client for OSS LLM integration.
 
    Provides a simple synchronous chat completions interface for single-shot
    text-to-SQL generation. Does not support streaming or tool execution."
@@ -55,11 +55,11 @@
    - :system   - System prompt
    - :messages - Vector of {:role :content} maps for conversation history"
   [{:keys [model system messages]}]
-  (let [api-key (llm-settings/minibot-openai-api-key)]
+  (let [api-key (llm-settings/llm-openai-api-key)]
     (when-not api-key
-      (throw (ex-info "MiniBot is not configured. Please set an OpenAI API key."
-                      {:type :minibot-not-configured})))
-    (let [model   (or model (llm-settings/minibot-openai-model) "gpt-4o-mini")
+      (throw (ex-info "LLM is not configured. Please set an OpenAI API key via MB_LLM_OPENAI_API_KEY."
+                      {:type :llm-not-configured})))
+    (let [model   (or model (llm-settings/llm-openai-model) "gpt-4o-mini")
           request {:model    model
                    :system   system
                    :messages messages}]
