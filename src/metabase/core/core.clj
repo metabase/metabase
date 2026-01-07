@@ -1,6 +1,7 @@
 (ns metabase.core.core
   (:require
    [clojure.string :as str]
+   [clojure.tools.cli :as cli]
    [clojure.tools.trace :as trace]
    [environ.core :as env]
    [java-time.api :as t]
@@ -152,7 +153,8 @@
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
-  []
+  [{:keys [capabilities] :as _config}]
+  ;; capabilities is a set with server, tasks, or both
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
   (init-signal-logging!)
@@ -212,10 +214,14 @@
   (embed.settings/check-and-sync-settings-on-startup! env/env)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
-  (database/check-health!)
+  (when (capabilities :tasks)
+    (log/warn "in task mode, so checking database health")
+    (database/check-health!))
   (startup/run-startup-logic!)
   (init-status/set-progress! 0.95)
-  (task/start-scheduler!)
+  (when (capabilities :tasks)
+    (log/warn "in task mode so starting task scheduler")
+    (task/start-scheduler!))
   (queue/start-listeners!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
@@ -225,29 +231,37 @@
 (defn init!
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
-  []
-  (let [start-time (t/zoned-date-time)]
-    (init!*)
-    (system/startup-time-millis!
-     (.toMillis (t/duration start-time (t/zoned-date-time))))))
+  ([] (init! {:capabilities #{}}))
+  ([config]
+   (let [start-time (t/zoned-date-time)]
+     (init!* config)
+     (system/startup-time-millis!
+      (.toMillis (t/duration start-time (t/zoned-date-time)))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 
-(defn- start-normally []
-  (log/info "Starting Metabase in STANDALONE mode")
-  (try
-    ;; launch embedded webserver
-    (let [server-routes (server/make-routes #'api-routes/routes)
-          handler       (server/make-handler server-routes)]
-      (server/start-web-server! handler))
-    ;; run our initialization process
-    (init!)
-    ;; Ok, now block forever while Jetty does its thing
-    (when (config/config-bool :mb-jetty-join)
-      (.join (server/instance)))
-    (catch Throwable e
-      (log/error e "Metabase Initialization FAILED")
-      (System/exit 1))))
+(defn- start-normally
+  ([] (start-normally {}))
+  ([options]
+   (log/info "Starting Metabase in STANDALONE mode")
+   (let [capabilities     (case (:mode options)
+                            "server" #{:server}
+                            "task" #{:tasks}
+                            #{:server :tasks})]
+     (try
+       ;; launch embedded webserver
+       (when (capabilities :server)
+         (let [server-routes (server/make-routes #'api-routes/routes)
+               handler       (server/make-handler server-routes)]
+           (server/start-web-server! handler)))
+       ;; run our initialization process
+       (init! {:capabilities capabilities})
+       ;; Ok, now block forever while Jetty does its thing
+       (when (config/config-bool :mb-jetty-join)
+         (.join (server/instance)))
+       (catch Throwable e
+         (log/error e "Metabase Initialization FAILED")
+         (System/exit 1))))))
 
 (defn- run-cmd [cmd init-fn args]
   ((requiring-resolve 'metabase.cmd.core/run-cmd) cmd init-fn args))
@@ -269,11 +283,26 @@
 
 (defn entrypoint
   "Launch Metabase in standalone mode. (Main application entrypoint is [[metabase.core.bootstrap/-main]].)"
-  [& [cmd & args]]
+  [& [cmd & args :as cli-args]]
   (maybe-enable-tracing)
-  (if cmd
-    ;; run a command like `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks` or
-    ;; `clojure -M:run migrate release-locks`
-    (run-cmd cmd init! args)
-    ;; with no command line args just start Metabase normally
-    (start-normally)))
+  (let [{:keys [options arguments] :as parsed} (cli/parse-opts cli-args [["-m" "--mode MODE" "the mode to run metabase in"]])]
+    (if (seq arguments)
+      ;; run a command like `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate release-locks` or
+      ;; `clojure -M:run migrate release-locks`
+      (run-cmd cmd init! args)
+      ;; with no command line args just start Metabase normally
+      (start-normally options))))
+
+(comment
+  (cli/parse-opts ["--mode" "task"]
+                  #_[["-m" "--mode MODE" "the mode to run metabase in"]]
+                  [["-e" "--continue-on-error" "Do not break execution on errors."]
+                   [""   "--full-stacktrace"   "Output full stacktraces on errors."]])
+
+  (cli/parse-opts ["--mode" "task"]
+                  [["-m" "--mode MODE" "the mode to run metabase in"]])
+
+  (cli/parse-opts ["foo" "--arg" "value"]
+                  [["-m" "--mode MODE" "the mode to run metabase in"]]
+                  )
+  )
