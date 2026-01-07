@@ -41,7 +41,11 @@ import {
 import { type TreeItem, isCollection } from "./types";
 import { getWritableCollection } from "./utils";
 
-export function LibrarySectionLayout() {
+type LibrarySectionLayoutProps = {
+  location: { query: { expandedId?: string | string[] } };
+};
+
+export function LibrarySectionLayout({ location }: LibrarySectionLayoutProps) {
   usePageTitle(t`Library`);
   const dispatch = useDispatch();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
@@ -50,6 +54,22 @@ export function LibrarySectionLayout() {
   const [permissionsCollectionId, setPermissionsCollectionId] =
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const expandedIdsFromUrl = useMemo(() => {
+    const rawIds = location.query?.expandedId;
+    if (!rawIds) {
+      return null;
+    }
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    // Tree node IDs use "collection:" prefix
+    const expanded = ids.reduce<Record<string, boolean>>((acc, id) => {
+      acc[`collection:${id}`] = true;
+      return acc;
+    }, {});
+    // Also expand the snippets root collection so nested folders are visible
+    expanded["collection:root"] = true;
+    return expanded;
+  }, [location.query?.expandedId]);
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
@@ -187,7 +207,7 @@ export function LibrarySectionLayout() {
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
     isFilterable: (node) => node.model !== "collection",
-    defaultExpanded: true,
+    defaultExpanded: expandedIdsFromUrl ?? true,
     onRowActivate: handleRowActivate,
   });
 
