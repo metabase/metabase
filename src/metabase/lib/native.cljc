@@ -374,10 +374,12 @@
   (filter identity
           [(when
             (empty? display-name)
-             {:error/message (i18n/tru "Missing widget label: {0}" tag-name)})
+             {:error/message (i18n/tru "Missing widget label: {0}" tag-name)
+              :tag-name tag-name})
            (when
             (and (#{:dimension :temporal-unit} tag-type) (nil? dimension))
-             {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)})]))
+             {:error/message (i18n/tru "The variable \"{0}\" needs to be mapped to a field." tag-name)
+              :tag-name tag-name})]))
 
 (mu/defn validate-template-tags :- [:sequential ::error]
   "Given a query, returns a list of errors for each template tag in the query that is not valid."
