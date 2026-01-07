@@ -1215,6 +1215,9 @@
            (str/join " + ")))
 
 (mu/defn remapped-field-ref :- ::lib.schema.ref/field.id
+  "Create a field ref for a remapped field.
+
+   Takes a source-field and the id for the field to remap to."
   [source-field  :- ::lib.schema.metadata/column
    fk-target-id  :- ::lib.schema.id/field]
   [:field
