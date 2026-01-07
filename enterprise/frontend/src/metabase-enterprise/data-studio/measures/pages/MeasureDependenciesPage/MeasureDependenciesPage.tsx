@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Card } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import type { Measure } from "metabase-types/api";
 
@@ -24,7 +25,7 @@ export function MeasureDependenciesPage({
   children,
 }: MeasureDependenciesPageProps) {
   return (
-    <Flex direction="column" h="100%" data-testid="measure-dependencies-page">
+    <PageContainer data-testid="measure-dependencies-page">
       <MeasureHeader
         measure={measure}
         tabUrls={tabUrls}
@@ -38,8 +39,10 @@ export function MeasureDependenciesPage({
           defaultEntry: { id: measure.id, type: "measure" },
         }}
       >
-        {children}
+        <Card withBorder p={0} flex={1}>
+          {children}
+        </Card>
       </PLUGIN_DEPENDENCIES.DependencyGraphPageContext.Provider>
-    </Flex>
+    </PageContainer>
   );
 }

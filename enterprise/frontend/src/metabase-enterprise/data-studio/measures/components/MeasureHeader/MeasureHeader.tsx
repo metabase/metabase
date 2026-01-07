@@ -37,7 +37,6 @@ export function MeasureHeader({
 }: MeasureHeaderProps) {
   return (
     <Stack gap={0}>
-      {breadcrumbs}
       <PaneHeader
         data-testid="measure-pane-header"
         title={
@@ -47,6 +46,7 @@ export function MeasureHeader({
         menu={<MeasureMoreMenu previewUrl={previewUrl} onRemove={onRemove} />}
         tabs={<EntityDetailTabs urls={tabUrls} />}
         actions={actions}
+        breadcrumbs={breadcrumbs}
       />
     </Stack>
   );

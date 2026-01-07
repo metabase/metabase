@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Flex, Stack } from "metabase/ui";
+import { Stack } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import type { Measure } from "metabase-types/api";
 
@@ -24,11 +25,7 @@ export function MeasureRevisionHistoryPage({
   onRemove,
 }: MeasureRevisionHistoryPageProps) {
   return (
-    <Flex
-      direction="column"
-      h="100%"
-      data-testid="measure-revision-history-page"
-    >
+    <PageContainer data-testid="measure-revision-history-page">
       <MeasureHeader
         measure={measure}
         tabUrls={tabUrls}
@@ -39,6 +36,6 @@ export function MeasureRevisionHistoryPage({
       <Stack flex={1} className={S.scrollable}>
         <MeasureRevisionHistory measure={measure} />
       </Stack>
-    </Flex>
+    </PageContainer>
   );
 }

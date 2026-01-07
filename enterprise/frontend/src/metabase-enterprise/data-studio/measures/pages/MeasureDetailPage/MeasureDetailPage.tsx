@@ -8,13 +8,15 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Flex, Group } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
-import type { DatasetQuery, Measure } from "metabase-types/api";
+import type { Measure } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
 import { MeasureHeader } from "../../components/MeasureHeader";
+import { useMeasureQuery } from "../../hooks/use-measure-query";
 import type { MeasureTabUrls } from "../../types";
 
 type MeasureDetailPageProps = {
@@ -36,26 +38,10 @@ export function MeasureDetailPage({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [description, setDescription] = useState(measure.description ?? "");
-  const [definition, setDefinition] = useState<DatasetQuery>(
-    measure.definition,
-  );
+  const [definition, setDefinition] = useState(measure.definition);
   const [savedMeasure, setSavedMeasure] = useState(measure);
 
-  const query = useMemo(() => {
-    if (!definition?.database) {
-      return undefined;
-    }
-    const metadataProvider = Lib.metadataProvider(
-      definition.database,
-      metadata,
-    );
-    return Lib.fromJsQuery(metadataProvider, definition);
-  }, [metadata, definition]);
-
-  const aggregations = useMemo(
-    () => (query ? Lib.aggregations(query, -1) : []),
-    [query],
-  );
+  const { query, aggregations } = useMeasureQuery(definition, metadata);
 
   const isDirty = useMemo(
     () =>
@@ -109,14 +95,7 @@ export function MeasureDetailPage({
   }, [savedMeasure]);
 
   return (
-    <Flex
-      direction="column"
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="measure-detail-page"
-    >
+    <PageContainer data-testid="measure-detail-page">
       <MeasureHeader
         measure={measure}
         tabUrls={tabUrls}
@@ -139,19 +118,17 @@ export function MeasureDetailPage({
           )
         }
       />
-      {query && (
-        <MeasureEditor
-          query={query}
-          description={description}
-          onQueryChange={setQuery}
-          onDescriptionChange={setDescription}
-        />
-      )}
+      <MeasureEditor
+        query={query}
+        description={description}
+        onQueryChange={setQuery}
+        onDescriptionChange={setDescription}
+      />
       <LeaveRouteConfirmModal
         key={measure.id}
         route={route}
         isEnabled={isDirty && !isSaving}
       />
-    </Flex>
+    </PageContainer>
   );
 }

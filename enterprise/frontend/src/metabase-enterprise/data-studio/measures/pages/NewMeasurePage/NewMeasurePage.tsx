@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -9,13 +9,16 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Flex } from "metabase/ui";
+import { Button } from "metabase/ui";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { getDatasetQueryPreviewUrl } from "metabase-enterprise/data-studio/common/utils/get-dataset-query-preview-url";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Measure, Table } from "metabase-types/api";
 
 import { MeasureEditor } from "../../components/MeasureEditor";
 import { NewMeasureHeader } from "../../components/NewMeasureHeader";
+import { useMeasureQuery } from "../../hooks/use-measure-query";
+import { createInitialQueryForTable } from "../../utils/measure-query";
 
 type NewMeasurePageProps = {
   route: Route;
@@ -43,33 +46,11 @@ export function NewMeasurePage({
   useEffect(() => {
     if (table && !isInitialized.current) {
       isInitialized.current = true;
-      const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
-      const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
-      if (tableMetadata) {
-        const initialQuery = Lib.queryFromTableOrCardMetadata(
-          metadataProvider,
-          tableMetadata,
-        );
-        setDefinition(Lib.toJsQuery(initialQuery));
-      }
+      setDefinition(createInitialQueryForTable(table, metadata));
     }
   }, [table, metadata]);
 
-  const query = useMemo(() => {
-    if (!definition?.database) {
-      return undefined;
-    }
-    const metadataProvider = Lib.metadataProvider(
-      definition.database,
-      metadata,
-    );
-    return Lib.fromJsQuery(metadataProvider, definition);
-  }, [metadata, definition]);
-
-  const aggregations = useMemo(
-    () => (query ? Lib.aggregations(query, -1) : []),
-    [query],
-  );
+  const { query, aggregations } = useMeasureQuery(definition, metadata);
 
   const isDirty =
     name.trim().length > 0 || description.length > 0 || aggregations.length > 0;
@@ -116,14 +97,7 @@ export function NewMeasurePage({
   ]);
 
   return (
-    <Flex
-      direction="column"
-      pos="relative"
-      w="100%"
-      h="100%"
-      bg="bg-white"
-      data-testid="new-measure-page"
-    >
+    <PageContainer data-testid="new-measure-page" gap="xl">
       <NewMeasureHeader
         previewUrl={previewUrl}
         onNameChange={setName}
@@ -141,15 +115,13 @@ export function NewMeasurePage({
           )
         }
       />
-      {query && (
-        <MeasureEditor
-          query={query}
-          description={description}
-          onQueryChange={setQuery}
-          onDescriptionChange={setDescription}
-        />
-      )}
+      <MeasureEditor
+        query={query}
+        description={description}
+        onQueryChange={setQuery}
+        onDescriptionChange={setDescription}
+      />
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
-    </Flex>
+    </PageContainer>
   );
 }
