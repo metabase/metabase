@@ -22,6 +22,10 @@ export const DownloadWidgetDropdown = ({
   ...popoverProps
 }: InteractiveQuestionDownloadWidgetDropdownProps) => {
   const { withDownloads } = useSdkQuestionContext();
+  if (!withDownloads) {
+    return null;
+  }
+
   return (
     <Popover
       {...popoverProps}
@@ -34,7 +38,6 @@ export const DownloadWidgetDropdown = ({
         <ToolbarButton
           variant="default"
           px="sm"
-          disabled={!withDownloads}
           icon="download"
           data-testid="question-download-widget-button"
         />
