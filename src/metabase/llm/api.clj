@@ -13,6 +13,8 @@
    [metabase.llm.streaming :as llm.streaming]
    [metabase.server.streaming-response :as sr]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
@@ -90,17 +92,21 @@ Your task is to convert natural language questions into valid SQL queries.
 
 ## Instructions
 
-1. Generate ONLY the SQL query, no explanations or markdown formatting
-2. Use only the tables and columns shown above
-3. Use " dialect " syntax specifically
-4. If the request is ambiguous, make reasonable assumptions
-5. If the request is impossible with the available schema, respond with: ERROR: <brief explanation>
-
-## Output Format
-
-Return only the raw SQL query, nothing else."))
+1. Use only the tables and columns shown above
+2. Use " dialect " syntax specifically
+3. If the request is ambiguous, make reasonable assumptions
+4. If the request cannot be fulfilled, return an explanatory message as the sql value"))
 
 ;;; ------------------------------------------ Response Formatting ------------------------------------------
+
+(defn- parse-sql-response
+  "Parse the structured JSON response from OpenAI and extract the SQL.
+   Falls back to the raw string if JSON parsing fails."
+  [json-str]
+  (try
+    (:sql (json/decode+kw json-str))
+    (catch Exception _
+      json-str)))
 
 (defn- make-code-edit-part
   "Create an AI SDK v5 data part for a code edit suggestion."
@@ -160,16 +166,17 @@ Return only the raw SQL query, nothing else."))
         ;; 6. Log the system prompt
         (log-to-file! (str timestamp "_prompt.txt") system-prompt)
 
-        ;; 7. Call LLM
-        (let [sql (llm.openai/chat-completion
-                   {:system   system-prompt
-                    :messages [{:role "user" :content prompt}]})]
+        ;; 7. Call LLM (returns raw JSON content)
+        (let [json-response (llm.openai/chat-completion
+                             {:system   system-prompt
+                              :messages [{:role "user" :content prompt}]})]
 
-          ;; 8. Log the response
-          (log-to-file! (str timestamp "_response.txt") sql)
+          ;; 8. Log the full JSON response
+          (log-to-file! (str timestamp "_response.txt") json-response)
 
-          ;; 9. Return AI SDK formatted result
-          {:parts [(make-code-edit-part buffer-id sql)]})))))
+          ;; 9. Parse and return AI SDK formatted result
+          (let [sql (parse-sql-response json-response)]
+            {:parts [(make-code-edit-part buffer-id sql)]}))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -236,8 +243,9 @@ Return only the raw SQL query, nothing else."))
               nil
 
               (nil? chunk)
-              (let [final-sql (str text-acc)]
-                (log-to-file! (str timestamp "_response.txt") final-sql)
+              (let [json-str  (str text-acc)
+                    final-sql (parse-sql-response json-str)]
+                (log-to-file! (str timestamp "_response.txt") json-str)
                 (write-sse! os (llm.streaming/format-sse-line
                                 :data
                                 (llm.streaming/format-code-edit-part buffer-id final-sql)))
@@ -246,16 +254,22 @@ Return only the raw SQL query, nothing else."))
                                 (llm.streaming/format-finish-message "stop"))))
 
               (= (:type chunk) :error)
-              (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)}))
+              (do
+                (log/error "Error chunk received" {:error (:error chunk)})
+                (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)})))
 
               (= (:type chunk) :text-delta)
               (do
+                ;; Accumulate JSON silently - don't stream raw JSON to frontend.
+                ;; With structured outputs, the streamed content is JSON like {"sql": "..."}
+                ;; which isn't useful to display. We extract the SQL at the end.
                 (.append text-acc (:delta chunk))
-                (write-sse! os (llm.streaming/format-sse-line :text (:delta chunk)))
                 (recur))
 
               :else
-              (recur))))))))
+              (do
+                (log/warn "Unknown chunk type" {:chunk chunk})
+                (recur)))))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."

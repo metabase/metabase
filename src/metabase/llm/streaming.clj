@@ -9,7 +9,8 @@
    [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,6 +28,15 @@
 
 ;;; ------------------------------------------------ SSE Parsing ------------------------------------------------
 
+(defn- parse-sse-data
+  "Parse SSE data JSON. Returns parsed map on success, or error map on failure."
+  [data]
+  (try
+    {:ok (json/decode+kw data)}
+    (catch Exception e
+      (log/error e "Failed to parse SSE data" {:data data})
+      {:error {:message (str "JSON parse error: " (ex-message e))}})))
+
 (defn sse-chan
   "Turn an SSE InputStream into a channel of parsed JSON objects.
 
@@ -40,20 +50,29 @@
     (.start
      (doto (Thread/ofVirtual) (.name "sse-reader"))
      (fn []
-       (with-open [r (io/reader input)]
-         (loop []
-           (when-let [line (.readLine ^java.io.BufferedReader r)]
-             (cond
-               (= line "data: [DONE]")
-               nil
+       (try
+         (with-open [r (io/reader input)]
+           (loop []
+             (when-let [line (.readLine ^java.io.BufferedReader r)]
+               (cond
+                 (= line "data: [DONE]")
+                 nil
 
-               (str/starts-with? line "data: ")
-               (when (a/>!! out (json/decode+kw (subs line 6)))
-                 (recur))
+                 (str/starts-with? line "data: ")
+                 (let [result (parse-sse-data (subs line 6))]
+                   (if-let [parsed (:ok result)]
+                     (when (a/>!! out parsed)
+                       (recur))
+                     (do
+                       (a/>!! out result)
+                       nil)))
 
-               :else
-               (recur)))))
-       (a/close! out)))
+                 :else
+                 (recur)))))
+         (catch Exception e
+           (log/error e "SSE reader error"))
+         (finally
+           (a/close! out)))))
     out))
 
 ;;; ------------------------------------------ OpenAI Chat Completions → AI SDK v5 ------------------------------------------
