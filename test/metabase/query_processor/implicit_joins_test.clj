@@ -242,7 +242,7 @@
 
 (deftest long-col-name-repro-test
   (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
-    (mt/test-drivers (mt/normal-drivers)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
       (mt/dataset long-col-name-dataset
         (let [fk-field (mt/id :long_col_name :fk)
               id-2-field (mt/id :long_col_name_2 :id)]
