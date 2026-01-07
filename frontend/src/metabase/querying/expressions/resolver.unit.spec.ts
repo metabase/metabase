@@ -403,13 +403,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => string("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => string("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
@@ -439,13 +439,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => number("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => number("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
@@ -471,13 +471,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => datetime("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => datetime("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
@@ -508,7 +508,7 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => any("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
@@ -516,7 +516,7 @@ describe("resolver", () => {
         // We do not resolve segments here since any is only used in offset
         // and offset only works in aggregations.
         expect(() => any("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
@@ -545,13 +545,13 @@ describe("resolver", () => {
 
       it("should not resolve unknown fields", () => {
         expect(() => expression("Unknown")).toThrow(
-          "Unknown column, Aggregation or Metric: Unknown",
+          "Unknown column, Aggregation, Measure or Metric: Unknown",
         );
       });
 
       it("should not resolve segments", () => {
         expect(() => expression("Expensive Things")).toThrow(
-          "Unknown column, Aggregation or Metric: Expensive Things",
+          "Unknown column, Aggregation, Measure or Metric: Expensive Things",
         );
       });
 
