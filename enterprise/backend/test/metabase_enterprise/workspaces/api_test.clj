@@ -732,7 +732,7 @@
 
 (deftest add-transforms-to-workspace-test
   (testing "Add transforms to workspace via POST /transform"
-    (with-transform-cleanup! [orig-name "ws_tables_test"]
+    (with-transform-cleanup! [orig-name "ws_add_transforms_test"]
       (mt/with-temp [:model/Transform {x1-id :id :as x1} {:name   "Transform to Check Out"
                                                           :target {:type     "table"
                                                                    :database (mt/id)
@@ -822,7 +822,7 @@
 (deftest tables-endpoint-transform-not-run-test
   (let [mp    (mt/metadata-provider)
         query (lib/native-query mp "select * from orders limit 10;")]
-    (with-transform-cleanup! [orig-name "ws_tables_test"]
+    (with-transform-cleanup! [orig-name "ws_tables_not_run_test"]
       (mt/with-temp [:model/Transform x1 {:name        "My X1"
                                           :source      {:type  "query"
                                                         :query query}
@@ -857,7 +857,7 @@
         orig-schema (or (:schema orders-meta) (driver.sql/default-schema driver/*driver*))
         orig-name (:name orders-meta)
         target-schema (driver.sql/default-schema driver/*driver*)]
-    (with-transform-cleanup! [target-name "ws_tables_test"]
+    (with-transform-cleanup! [target-name "ws_tables_endpoint_test"]
       (mt/with-temp [:model/Transform x1 {:name   "My X1"
                                           :source {:type  "query"
                                                    :query query}
