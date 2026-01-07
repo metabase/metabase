@@ -1064,3 +1064,11 @@ export const VisualizerTimeseriesDifferentUnits = {
     renderingContext,
   },
 };
+
+export const SymlogDecimals = {
+  render: Template,
+  args: {
+    rawSeries: data.symlogDecimals,
+    renderingContext,
+  },
+};
