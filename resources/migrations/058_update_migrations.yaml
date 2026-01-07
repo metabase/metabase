@@ -1235,6 +1235,8 @@ databaseChangeLog:
             path: instance_analytics_views/tables/v1/h2-tables.sql
             relativeToChangelogFile: true
 
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
   - changeSet:
       id: v58.2025-12-18T16:14:03
       author: winlost
