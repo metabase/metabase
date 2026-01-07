@@ -1,11 +1,20 @@
+import { useMemo } from "react";
 import { c, t } from "ttag";
 
+import { skipToken } from "metabase/api";
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
 import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
-import { useRunTransformJobMutation } from "metabase-enterprise/api";
+import {
+  useListTransformJobTransformsQuery,
+  useRunTransformJobMutation,
+} from "metabase-enterprise/api";
+import {
+  canEditTransform,
+  useTransformPermissions,
+} from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type {
   ScheduleDisplayType,
   ScheduleSettings,
@@ -112,10 +121,29 @@ type RunButtonSectionProps = {
 };
 
 function RunButtonSection({ job }: RunButtonSectionProps) {
+  const { transformsDatabases, isLoadingDatabases } = useTransformPermissions();
+  const { data: transforms, isLoading: isLoadingTransforms } =
+    useListTransformJobTransformsQuery(job.id || skipToken);
+  const canRunAllTransforms = useMemo(() => {
+    if (!transformsDatabases || !transforms) {
+      return;
+    }
+    return transforms.every((t) => canEditTransform(t, transformsDatabases));
+  }, [transforms, transformsDatabases]);
+
   const [runJob] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
   const hasTags = job.tag_ids?.length !== 0;
+
+  const tooltipLabel = (() => {
+    if (!hasTags) {
+      return t`This job doesn't have tags to run.`;
+    }
+    if (!canRunAllTransforms) {
+      return t`Sorry, you don't have permission to run one or more of this job's transforms.`;
+    }
+  })();
 
   const handleRun = async () => {
     if (job.id == null) {
@@ -132,12 +160,13 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
   };
 
   return (
-    <Tooltip label={t`This job doesn't have tags to run.`} disabled={hasTags}>
+    <Tooltip label={tooltipLabel} disabled={!tooltipLabel}>
       <RunButton
         id={job.id}
         run={job.last_run}
-        isDisabled={!isSaved || !hasTags}
+        isDisabled={!isSaved || !hasTags || !canRunAllTransforms}
         onRun={handleRun}
+        loading={isLoadingDatabases || isLoadingTransforms}
       />
     </Tooltip>
   );
