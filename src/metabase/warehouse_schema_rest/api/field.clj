@@ -318,7 +318,7 @@
       (field-values/create-or-update-full-field-values! field)))
   {:status :success})
 
-;; TODO (Cam 2025-01-16) please add a response schema to this API endpoint
+;; TODO (dragonsahead 2026-01-07) add a response schema to this API endpoint
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/refingerprint"

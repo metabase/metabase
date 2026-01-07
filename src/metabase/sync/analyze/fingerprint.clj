@@ -270,6 +270,8 @@
 (mu/defn refingerprint-table
   "Refingerprint all fields in a table"
   [table :- i/TableInstance]
-  (if-let [fields (t2/select :model/Field :table_id (u/the-id table) :active true)]
-    (fingerprint-fields! table fields)
-    (empty-stats-map 0)))
+  (binding [*refingerprint?* true]
+    (if-let [fields (fields-to-fingerprint table)]
+      (fingerprint-fields! table fields)
+      (empty-stats-map 0))))
+
