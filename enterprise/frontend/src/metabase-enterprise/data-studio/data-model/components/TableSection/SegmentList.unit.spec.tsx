@@ -13,9 +13,10 @@ import { SegmentList } from "./SegmentList";
 type SetupOpts = {
   segments?: Segment[];
   table?: Partial<Table>;
+  isAdmin?: boolean;
 };
 
-function setup({ segments = [], table = {} }: SetupOpts = {}) {
+function setup({ segments = [], table = {}, isAdmin = true }: SetupOpts = {}) {
   const mockTable = createMockTable({
     id: 1,
     db_id: 1,
@@ -29,7 +30,7 @@ function setup({ segments = [], table = {} }: SetupOpts = {}) {
     {
       withRouter: true,
       storeInitialState: {
-        currentUser: createMockUser({ is_superuser: true }),
+        currentUser: createMockUser({ is_superuser: isAdmin }),
       },
     },
   );
@@ -46,6 +47,15 @@ describe("SegmentList", () => {
     expect(
       screen.getByRole("link", { name: /New segment/i }),
     ).toBeInTheDocument();
+  });
+
+  it("should not render 'New segment' button when user cannot create segments", () => {
+    setup({ segments: [], isAdmin: false });
+
+    expect(screen.getByText("No segments yet")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /New segment/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should render segment items", () => {
