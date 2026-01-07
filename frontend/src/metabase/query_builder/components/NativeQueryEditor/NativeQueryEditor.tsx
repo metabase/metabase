@@ -56,7 +56,6 @@ import {
   calcInitialEditorHeight,
   canFormatForEngine,
   formatQuery,
-  getQuestionErrors,
 } from "./utils";
 
 type OwnProps = {
@@ -412,7 +411,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                       this.props.nativeEditorSelectedText
                     }
                     runQuery={this.props.runQuery}
-                    questionErrors={getQuestionErrors(question)}
+                    questionErrors={Lib.validateTemplateTags(question.query())}
                   />
                 )}
               </Stack>
