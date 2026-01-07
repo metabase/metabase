@@ -1,11 +1,12 @@
 import { skipToken } from "@reduxjs/toolkit/query";
-import { useMemo } from "react";
+import { Link } from "react-router";
 
 import { useListDatabaseSchemasQuery } from "metabase/api";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import * as Urls from "metabase/lib/urls";
 import type { Table } from "metabase-types/api";
 
-import { type BreadcrumbItem, Breadcrumbs } from "./Breadcrumbs";
+import { DataStudioBreadcrumbs } from "../DataStudioBreadcrumbs";
 
 type DataModelBreadcrumbsProps = {
   table: Table;
@@ -20,42 +21,34 @@ export function DataModelBreadcrumbs({
   newEntityLabel,
   tableListUrl,
 }: DataModelBreadcrumbsProps) {
-  const { data: schemas } = useListDatabaseSchemasQuery(
+  const { data: schemas, isLoading } = useListDatabaseSchemasQuery(
     table.db_id ? { id: table.db_id } : skipToken,
   );
 
-  const items: BreadcrumbItem[] = useMemo(() => {
-    const result: BreadcrumbItem[] = [];
-    const showSchema = schemas && schemas.length > 1 && table.schema;
+  const showSchema = schemas && schemas.length > 1 && table.schema;
 
-    if (table.db) {
-      result.push({
-        label: table.db.name,
-        to: Urls.dataStudioData({ databaseId: table.db_id }),
-      });
-    }
+  return (
+    <DataStudioBreadcrumbs loading={isLoading}>
+      {table.db && (
+        <Link to={Urls.dataStudioData({ databaseId: table.db_id })}>
+          <Ellipsified>{table.db.name}</Ellipsified>
+        </Link>
+      )}
 
-    if (showSchema) {
-      result.push({
-        label: table.schema,
-        to: Urls.dataStudioData({
-          databaseId: table.db_id,
-          schemaName: table.schema,
-        }),
-      });
-    }
-
-    result.push({
-      label: table.display_name,
-      to: tableListUrl,
-    });
-
-    result.push({
-      label: entityName ?? newEntityLabel,
-    });
-
-    return result;
-  }, [schemas, table, tableListUrl, entityName, newEntityLabel]);
-
-  return <Breadcrumbs items={items} />;
+      {showSchema && (
+        <Link
+          to={Urls.dataStudioData({
+            databaseId: table.db_id,
+            schemaName: table.schema,
+          })}
+        >
+          <Ellipsified>{table.schema}</Ellipsified>
+        </Link>
+      )}
+      <Link to={tableListUrl}>
+        <Ellipsified>{table.display_name}</Ellipsified>
+      </Link>
+      <span>{entityName ?? newEntityLabel}</span>
+    </DataStudioBreadcrumbs>
+  );
 }

@@ -1,9 +1,10 @@
 import { Link } from "react-router";
 
 import * as Urls from "metabase/lib/urls";
-import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
-import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Table } from "metabase-types/api";
+
+import { useCollectionPath } from "../../hooks/use-collection-path/useCollectionPath";
+import { DataStudioBreadcrumbs } from "../DataStudioBreadcrumbs";
 
 type PublishedTableBreadcrumbsProps = {
   table: Table;
