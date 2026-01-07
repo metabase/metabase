@@ -19,11 +19,12 @@
    :finding_details {:in  mi/json-in
                      :out analysis-finding-details-out}})
 
-;; This generally shouldn't be rebound in real code, but making it dynamic is convenient for testing
 (def ^:dynamic *current-analysis-finding-version*
   "Current version of the query validation logic.
   This should be incremented when the analysis logic changes.
-  The background task will re-analyze anything with out-of-date analyses."
+  The background task will re-analyze anything with out-of-date analyses.
+
+  This generally shouldn't be rebound in real code, but making it dynamic is convenient for testing"
   3)
 
 (defn upsert-analysis!
@@ -43,23 +44,20 @@
                          :analyzed_entity_type type
                          :analyzed_entity_id instance-id)))))
 
-(defn- append-to-keyword [base suffix]
-  (keyword (str (name base) suffix)))
-
 (defn instances-for-analysis
   "Find a batch of instances with missing or outdated AnalysisFindings"
   [type batch-size]
   (let [model (deps.dependency-types/dependency-type->model type)
         table-name (t2/table-name model)
-        id-field   (append-to-keyword table-name ".id")
-        table-wildcard   (append-to-keyword table-name ".*")]
+        id-field   (keyword (name table-name) "id")
+        table-wildcard   (keyword (name table-name) "*")]
     (t2/select model
                {:select [table-wildcard]
                 :from table-name
                 :left-join [:analysis_finding [:and
                                                [:= :analysis_finding.analyzed_entity_id id-field]
                                                [:= :analysis_finding.analyzed_entity_type (name type)]]]
-                :where [:or
-                        [:= :analysis_finding.analysis_version nil]
-                        [:< :analysis_finding.analysis_version *current-analysis-finding-version*]]
+                :where [:<
+                        [:coalesce :analysis_finding.analysis_version 0]
+                        *current-analysis-finding-version*]
                 :limit batch-size})))

@@ -59,7 +59,7 @@
   "Entities supported by the analysis findings code"
   #{:card :transform :segment})
 
-(mu/defn analyze-batch! :- :int
+(mu/defn analyze-batch! :- nat-int?
   "Add or update analyses for a batch of entities.
 
   Takes in an entity type and batch size, and looks for a batch of entities with missing or out of date
