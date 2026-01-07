@@ -179,7 +179,8 @@
                               (seq targeted-tables) (assoc "Table" targeted-tables)
                               ;; Remove analytics cards from extraction - they have stable entity_ids across instances
                               ;; so cards that reference them can still be exported and imported correctly
-                              (contains? by-model "Card") (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
+                              (and analytics-card-ids (contains? by-model "Card"))
+                              (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
             extract-by-ids  (fn [[model ids]]
                               (serdes/extract-all model (merge opts {:collection-set coll-set
                                                                      :where          [:in :id ids]})))
