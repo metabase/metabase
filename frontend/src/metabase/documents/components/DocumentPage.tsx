@@ -236,12 +236,12 @@ export const DocumentPage = ({
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [editorInstance, isDocumentLoading, location.hash]);
+  }, [editorInstance, isDocumentLoading, location.hash, documentId]);
 
-  // Reset scroll flag when document changes
+  // Reset scroll flag when document or anchor changes
   useEffect(() => {
     hasScrolledToAnchor.current = false;
-  }, [documentId]);
+  }, [documentId, location.hash]);
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
