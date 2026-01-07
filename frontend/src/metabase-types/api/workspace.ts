@@ -34,6 +34,11 @@ export type WorkspaceListResponse = {
   offset: number | null;
 };
 
+export type CreateWorkspaceRequest = {
+  name?: string;
+  database_id?: DatabaseId;
+};
+
 export type WorkspaceTransformItem = {
   ref_id: string;
   global_id: TransformId | null;
