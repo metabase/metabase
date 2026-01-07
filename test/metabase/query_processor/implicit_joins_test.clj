@@ -255,7 +255,7 @@
                   breakoutable-cols (lib/breakoutable-columns query)
                   fk-col (m/find-first (fn [col]
                                          (and (:fk-field-id col)
-                                              (str/starts-with? (:name col) "big_column")))
+                                              (str/starts-with? (:name col) "abcdefg")))
                                        breakoutable-cols)
                   query (-> query
                             (lib/breakout fk-col))]
@@ -275,7 +275,7 @@
                   breakoutable-cols (lib/breakoutable-columns query)
                   big-col (m/find-first (fn [col]
                                           (and (:metabase.lib.join/join-alias col)
-                                               (str/starts-with? (:name col) "big_column")))
+                                               (str/starts-with? (:name col) "abcdefg")))
                                         breakoutable-cols)
                   query (-> query
                             (lib/breakout big-col))]
