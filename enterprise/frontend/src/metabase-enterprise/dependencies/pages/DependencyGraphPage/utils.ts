@@ -11,3 +11,20 @@ export function parseDependencyEntry(
   const type = parseEnum(rawType, DEPENDENCY_TYPES);
   return id != null && type != null ? { id, type } : undefined;
 }
+
+function parseDependencyType(type: unknown): DependencyType | undefined {
+  switch (type) {
+    case "card":
+    case "table":
+    case "transform":
+    case "snippet":
+    case "dashboard":
+    case "document":
+    case "sandbox":
+    case "segment":
+    case "measure":
+      return type;
+    default:
+      return undefined;
+  }
+}

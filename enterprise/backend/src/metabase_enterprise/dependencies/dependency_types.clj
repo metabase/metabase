@@ -13,7 +13,8 @@
    :model/Dashboard          :dashboard
    :model/Document           :document
    :model/Sandbox            :sandbox
-   :model/Segment            :segment})
+   :model/Segment            :segment
+   :model/Measure            :measure})
 
 (def dependency-type->model
   "A map relating dependency types to their corresponding model."

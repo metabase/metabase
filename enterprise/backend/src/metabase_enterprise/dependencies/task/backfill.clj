@@ -46,7 +46,8 @@
    :model/Dashboard
    :model/Document
    :model/Sandbox
-   :model/Segment])
+   :model/Segment
+   :model/Measure])
 
 ;; In-memory state for tracking failed entities
 ;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}

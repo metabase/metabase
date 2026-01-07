@@ -1,6 +1,155 @@
 databaseChangeLog:
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
   - changeSet:
+      id: v59.2025-12-04T12:00:00
+      author: metabase
+      comment: Create measure table for saved aggregation expressions
+      changes:
+        - createTable:
+            tableName: measure
+            remarks: Stores saved aggregation expressions tied to tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: Foreign key to metabase_table
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: Foreign key to core_user who created this measure
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Name of the measure
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: Optional description of the measure
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether the measure has been archived
+                  constraints:
+                    nullable: false
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: JSON MBQL query containing the aggregation definition
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this measure was created
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when this measure was last updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: dependency_analysis_version
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Version number for dependency analysis to track when dependencies need recalculation
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: measure
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:01
+      author: metabase
+      comment: Add index on measure.table_id
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+            columns:
+              - column:
+                  name: table_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_table_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:02
+      author: metabase
+      comment: Add foreign key from measure to metabase_table
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: table_id
+            referencedTableName: metabase_table
+            referencedColumnNames: id
+            constraintName: fk_measure_ref_table_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: measure
+            constraintName: fk_measure_ref_table_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:03
+      author: metabase
+      comment: Add index on measure.creator_id
+      changes:
+        - createIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback:
+        - dropIndex:
+            tableName: measure
+            indexName: idx_measure_creator_id
+
+  - changeSet:
+      id: v59.2025-12-04T12:00:04
+      author: metabase
+      comment: Add foreign key from measure to core_user
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: measure
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_measure_ref_creator_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: measure
+            constraintName: fk_measure_ref_creator_id
+
+  - changeSet:
       id: v59.2026-01-07T00:00:01
       author: bshepherdson
       comment: Create analysis finding table

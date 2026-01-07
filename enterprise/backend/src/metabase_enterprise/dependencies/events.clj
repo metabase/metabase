@@ -266,6 +266,31 @@
       (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
           deps.findings/analyze-instances!))))
 
+
+;; ### Measures
+(derive ::measure-deps :metabase/event)
+(derive :event/measure-create ::measure-deps)
+(derive :event/measure-update ::measure-deps)
+
+(methodical/defmethod events/publish-event! ::measure-deps
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/with-transaction [_conn]
+      (models.dependency/replace-dependencies! :measure (:id object)
+                                               (ignore-errors
+                                                (deps.calculation/upstream-deps:measure object)))
+      (when (not= (:dependency_analysis_version object) models.dependency/current-dependency-analysis-version)
+        (t2/update! :model/Measure (:id object)
+                    {:dependency_analysis_version models.dependency/current-dependency-analysis-version})))))
+
+(derive ::measure-delete :metabase/event)
+(derive :event/measure-delete ::measure-delete)
+
+(methodical/defmethod events/publish-event! ::measure-delete
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
+
 (derive ::check-card-dependents :metabase/event)
 (derive :event/card-create ::check-card-dependents)
 (derive :event/card-update ::check-card-dependents)

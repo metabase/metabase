@@ -166,7 +166,8 @@
                :created_at :creator
                :collection :collection_id]
    :sandbox   [:table :table_id]
-   :segment   [:name :description :created_at :creator :creator_id :table :table_id]})
+   :segment   [:name :description :created_at :creator :creator_id :table :table_id]
+   :measure   [:name :description :created_at :creator :creator_id :table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -295,7 +296,8 @@
                :source]
    :snippet   [:id :name :description :created_at :creator_id :collection_id]
    :sandbox   [:id :table_id]
-   :segment   [:id :name :description :created_at :creator_id :table_id]})
+   :segment   [:id :name :description :created_at :creator_id :table_id]
+   :measure   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
@@ -377,8 +379,8 @@
                                                                   [:= visibility-type-column nil]]
                                                         (:only :all) nil)]}]])
 
-                     ;; Segment with table permissions and archived filtering
-                     :model/Segment
+                     ;; Segment/Measure with table permissions and archived filtering
+                     (:model/Segment :model/Measure)
                      (let [archived-column (keyword (name table-name) "archived")
                            table-id-column (keyword (name table-name) "table_id")]
                        [:and
@@ -386,7 +388,7 @@
                         [:in entity-id-field {:select [:id]
                                               :from [table-name]
                                               :where [:and
-                                                      ;; Check that user can see the table this segment belongs to
+                                                      ;; Check that user can see the table this entity belongs to
                                                       [:in table-id-column
                                                        {:select [:metabase_table.id]
                                                         :from [:metabase_table]
@@ -474,7 +476,7 @@
     :snippet (-> entities
                  (t2/hydrate :creator)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
-    :segment (t2/hydrate entities :creator [:table :db])))
+    (:segment :measure) (t2/hydrate entities :creator [:table :db])))
 
 (defn- expanded-nodes [downstream-graph nodes {:keys [include-errors?]}]
   (let [usages (node-usages downstream-graph nodes)

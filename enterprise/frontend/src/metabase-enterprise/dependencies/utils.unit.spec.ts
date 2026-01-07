@@ -5,7 +5,9 @@ import {
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
   createMockSegmentDependencyNode,
+  createMockSegmentDependencyNodeData,
   createMockSnippetDependencyNode,
+  createMockTable,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
   createMockTransformDependencyNode,
@@ -125,10 +127,16 @@ describe("getNodeLink", () => {
     {
       node: createMockSegmentDependencyNode({
         id: 1,
+        data: createMockSegmentDependencyNodeData({
+          table: createMockTable({
+            id: 1,
+            name: "My table",
+          }),
+        }),
       }),
       expectedLink: {
         label: "View this segment",
-        url: "/data-studio/library/segments/1",
+        url: "/data-studio/data/database/1/schema/1:public/table/1/segments/1",
       },
     },
   ])("should get the $node.type node link", ({ node, expectedLink }) => {

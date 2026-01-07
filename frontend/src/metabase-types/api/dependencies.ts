@@ -6,6 +6,7 @@
 import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
+import type { Measure } from "./measure";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
@@ -22,6 +23,7 @@ export const DEPENDENCY_TYPES = [
   "document",
   "sandbox",
   "segment",
+  "measure",
 ] as const;
 export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
 
@@ -36,6 +38,7 @@ export const DEPENDENCY_GROUP_TYPES = [
   "document",
   "sandbox",
   "segment",
+  "measure",
 ] as const;
 export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
@@ -170,6 +173,18 @@ export type SegmentDependencyNode = BaseDependencyNode<
   SegmentDependencyNodeData
 >;
 
+export type MeasureDependencyNodeData = Pick<
+  Measure,
+  "name" | "description" | "table_id" | "created_at" | "creator_id" | "creator"
+> & {
+  table?: Table | null;
+};
+
+export type MeasureDependencyNode = BaseDependencyNode<
+  "measure",
+  MeasureDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
@@ -178,7 +193,8 @@ export type DependencyNode =
   | DashboardDependencyNode
   | DocumentDependencyNode
   | SandboxDependencyNode
-  | SegmentDependencyNode;
+  | SegmentDependencyNode
+  | MeasureDependencyNode;
 
 export const DEPENDENCY_ERROR_TYPES = [
   "validate/missing-column",

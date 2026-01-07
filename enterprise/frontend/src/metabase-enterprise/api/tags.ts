@@ -18,6 +18,7 @@ import {
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
+  type MeasureDependencyNode,
   type PythonLibrary,
   type SandboxDependencyNode,
   type SegmentDependencyNode,
@@ -236,6 +237,16 @@ function provideSegmentDependencyNodeTags(
   ];
 }
 
+function provideMeasureDependencyNodeTags(
+  node: MeasureDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("measure", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -256,6 +267,8 @@ export function provideDependencyNodeTags(
       return provideSandboxDependencyNodeTags(node);
     case "segment":
       return provideSegmentDependencyNodeTags(node);
+    case "measure":
+      return provideMeasureDependencyNodeTags(node);
   }
 }
 
