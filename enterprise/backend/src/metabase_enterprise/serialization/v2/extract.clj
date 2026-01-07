@@ -166,9 +166,9 @@
   (let [nodes    (resolve-targets opts user-id)
         ;; by model is a map of `{model-name [ids ...]}`
         by-model (u/group-by first second (keys nodes))
-        escaped  (escape-analysis by-model nodes)]
-    (if (seq escaped)
-      (log-escape-report! escaped)
+        {:keys [reportable-escaped analytics-card-ids]} (escape-analysis by-model nodes)]
+    (if (seq reportable-escaped)
+      (log-escape-report! reportable-escaped)
       (let [models          (model-set opts)
             coll-set        (get by-model "Collection")
             ;; When targets are specified, also include Tables found via descendants
@@ -176,7 +176,10 @@
             targeted-tables (when (seq targets) (get by-model "Table"))
             by-model        (cond-> (select-keys by-model models)
                               ;; Add Tables back if they were found in descendants
-                              (seq targeted-tables) (assoc "Table" targeted-tables))
+                              (seq targeted-tables) (assoc "Table" targeted-tables)
+                              ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                              ;; so cards that reference them can still be exported and imported correctly
+                              (contains? by-model "Card") (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
             extract-by-ids  (fn [[model ids]]
                               (serdes/extract-all model (merge opts {:collection-set coll-set
                                                                      :where          [:in :id ids]})))
