@@ -67,15 +67,6 @@
    :target      mi/transform-json
    :run_trigger mi/transform-keyword})
 
-(defn- extract-transform-db-id
-  "Return the database ID from transform source; else nil."
-  [{:keys [source]}]
-  (let [parsed-source (transform-source-out source)]
-    (case (:type parsed-source)
-      :query (get-in parsed-source [:query :database])
-      :python (parsed-source :source-database)
-      nil)))
-
 (defmethod collection/allowed-namespaces :model/Transform
   [_]
   #{:transforms})
@@ -87,7 +78,7 @@
     (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform
          :source_type (transforms.util/transform-source-type source)
-         :source_database_id (extract-transform-db-id transform)))
+         :source_database_id (transforms.i/source-db-id transform)))
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]
@@ -97,7 +88,7 @@
   (if source
     (assoc transform
            :source_type (transforms.util/transform-source-type source)
-           :source_database_id (extract-transform-db-id transform))
+           :source_database_id (transforms.i/source-db-id transform))
     transform))
 
 (t2/define-after-select :model/Transform
