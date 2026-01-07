@@ -258,8 +258,8 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     dark: baseColors.octopus[60],
   },
   "background-brand": {
-    light: baseColors.brand[20],
-    dark: baseColors.brand[70],
+    light: baseColors.brand[10],
+    dark: baseColors.brand[90],
   },
   "background-disabled": {
     light: baseColors.orionAlpha[10],
@@ -371,21 +371,17 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.blue[20],
     dark: baseColors.blue[70],
   },
-  "icon-primary-disabled": {
-    light: baseColors.orion[30],
-    dark: baseColors.orion[30],
-  },
   "icon-primary": {
     light: baseColors.brand[40],
     dark: baseColors.brand[40],
   },
-  "icon-secondary-disabled": {
-    light: baseColors.orion[10],
-    dark: baseColors.orion[10],
+  "icon-disabled": {
+    light: baseColors.orionAlpha[30],
+    dark: baseColors.orionAlphaInverse[30],
   },
   "icon-secondary": {
-    light: baseColors.orion[50],
-    dark: baseColors.orion[50],
+    light: baseColors.orionAlpha[50],
+    dark: baseColors.orionAlphaInverse[50],
   },
   "metabase-brand": {
     light: baseColors.blue[40], // not for whitelabeling
@@ -515,7 +511,7 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
 
   "background-info": {
     light: baseColors.orion[10],
-    dark: baseColors.orion[80],
+    dark: baseColors.orion[90],
   },
 
   white: {
