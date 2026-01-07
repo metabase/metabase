@@ -399,7 +399,7 @@
    :task (let [parsed (cli/parse! (current-task))
                code (or
                      (try (some-> parsed :options :file slurp)
-                          (catch Exception e (println "No file found at given path:" parsed)))
+                          (catch Exception e (println "No file found at given path:" (ex-message e))))
                      (first (:arguments parsed)))
                port (or (:port (:options parsed))
                         (slurp ".nrepl-port")

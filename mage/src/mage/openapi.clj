@@ -28,7 +28,7 @@
     (when-not (.exists (java.io.File. file))
       (println (c/red "Error:") "OpenAPI spec file not found:" file)
       (println "Run this first to generate it:")
-      (println (c/green "  ./bin/mage -repl -f mage/resources/repl-scripts/gen-openapi.clj"))
+      (println (c/green "  yarn generate-openapi"))
       (System/exit 1))
 
     ;; Build command - skip style/legacy rules unless strict mode
@@ -43,7 +43,7 @@
                         "--skip-rule" "no-ambiguous-paths"      ; pre-existing, legacy routes
                         "--skip-rule" "path-parameters-defined" ; pre-existing
                         "--skip-rule" "spec-components-invalid-map-name"]) ; pre-existing, schema names
-          cmd (concat ["npx" "--yes" "@redocly/cli" "lint" file]
+          cmd (concat ["npx" "--yes" "@redocly/cli@1.34.2" "lint" file]
                       skip-rules)
           _ (println (c/cyan "Running:") (str/join " " cmd))
           result (apply run-command cmd)]
