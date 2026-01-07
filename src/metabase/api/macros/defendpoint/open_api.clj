@@ -17,6 +17,22 @@
 
 (def ^:private ^:dynamic *definitions* nil)
 
+(defn- sanitize-schema-name
+  "Sanitize schema names to match OpenAPI's required pattern: ^[a-zA-Z0-9.\\-_]+$
+   Only replaces characters that are invalid in OpenAPI schema names."
+  [s]
+  (-> s
+      ;; ~1 is JSON Pointer encoding for / - decode first
+      (str/replace "~1" "/")
+      ;; Replace only invalid characters, keeping . and - which are valid
+      (str/replace "!" "_BANG_")
+      (str/replace "=" "_EQ_")
+      (str/replace "<" "_LT_")
+      (str/replace ">" "_GT_")
+      (str/replace "*" "_STAR_")
+      (str/replace "+" "_PLUS_")
+      (str/replace "/" "_SLASH_")))
+
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
   [schema]
   (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
@@ -42,10 +58,24 @@
     ;; Helper to recursively fix nested schemas and strip :optional (which is only
     ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
     (let [fix-nested #(dissoc (fix-json-schema %) :optional)
+          ;; Sanitize definition keys and update $ref paths
+          sanitize-definitions (fn [defs]
+                                 (into {}
+                                       (map (fn [[k v]]
+                                              [(sanitize-schema-name k) (fix-nested v)]))
+                                       defs))
+          sanitize-ref (fn [schema]
+                         (if-let [ref (:$ref schema)]
+                           (update schema :$ref (fn [r]
+                                                  (str/replace r #"#/components/schemas/(.+)"
+                                                               (fn [[_ schema-name]]
+                                                                 (str "#/components/schemas/" (sanitize-schema-name schema-name))))))
+                           schema))
           schema (-> schema
+                     sanitize-ref
                      (m/update-existing :description str)
                      (m/update-existing :type keyword)
-                     (m/update-existing :definitions #(update-vals % fix-nested))
+                     (m/update-existing :definitions sanitize-definitions)
                      (m/update-existing :oneOf #(mapv fix-nested %))
                      (m/update-existing :anyOf #(mapv fix-nested %))
                      (m/update-existing :allOf #(mapv fix-nested %))
@@ -173,7 +203,12 @@
           response-schema (:response-schema form)
           deprecated?     (get-in form [:metadata :deprecated])]
       ;; summary is the string in the sidebar of Scalar
-      (cond-> {:summary     (str (u/upper-case-en (name method)) " " full-path)
+      ;; operationId is generated from method + path, e.g. "get-api-action" or "post-api-action-id"
+      (cond-> {:operationId (str (name method)
+                                 (-> full-path
+                                     (str/replace #"[{}]" "")
+                                     (str/replace #"/" "-")))
+               :summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
                :parameters params
                :responses  default-response-schema}
@@ -197,6 +232,11 @@
                       {:full-path full-path, :form form, :definitions @*definitions*}
                       e)))))
 
+(defn- strip-trailing-slash
+  "Remove trailing slash from a string, but keep root paths like '/api' unchanged."
+  [s]
+  (str/replace s #"/$" ""))
+
 (mu/defn open-api-spec :- :metabase.api.open-api/spec
   "Create an OpenAPI spec for then `endpoints` in a namespace. Note this returns an incomplete OpenAPI object;
   use [[metabase.api.open-api/root-open-api-object]] to get something complete."
@@ -207,7 +247,8 @@
              (map (fn [endpoint]
                     (let [local-path (-> (get-in endpoint [:form :route :path])
                                          (str/replace #"/:([^/]+)" "/{$1}"))
-                          full-path  (str prefix local-path)
+                          full-path  (-> (str prefix local-path)
+                                         strip-trailing-slash)
                           method     (get-in endpoint [:form :method])]
                       {full-path {method (assoc (path-item full-path (:form endpoint))
                                                 :tags [prefix])}})))
