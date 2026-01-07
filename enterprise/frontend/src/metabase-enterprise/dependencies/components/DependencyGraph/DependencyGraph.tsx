@@ -37,6 +37,10 @@ const EDGE_TYPES = {
   edge: GraphEdge,
 };
 
+const PRO_OPTIONS = {
+  hideAttribution: true,
+};
+
 type DependencyGraphProps = {
   entry?: DependencyEntry;
   getGraphUrl: (entry?: DependencyEntry) => string;
@@ -94,18 +98,19 @@ export function DependencyGraph({
   return (
     <GraphContext.Provider value={{ selection, setSelection }}>
       <ReactFlow
+        className={S.reactFlow}
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
-        fitView
+        proOptions={PRO_OPTIONS}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+        colorMode={colorScheme === "dark" ? "dark" : "light"}
+        fitView
         data-testid="dependency-graph"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        colorMode={colorScheme === "dark" ? "dark" : "light"}
-        className={S.reactFlow}
       >
         <Background />
         <Controls className={S.controls} />
