@@ -195,7 +195,7 @@ function generateLlmsFullTxt(branch, config, files, baseUrl) {
     .join("\n");
 
   // Write llms-full.txt file at repo root
-  const content = header + preamble + docs;
+  const content = header + preamble + "\n" + docs;
   const llmsFullPath = `llms-${section}-full.txt`;
   fs.writeFileSync(llmsFullPath, content, "utf8");
 
