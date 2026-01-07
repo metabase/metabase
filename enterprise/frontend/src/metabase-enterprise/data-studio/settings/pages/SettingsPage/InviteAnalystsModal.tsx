@@ -27,13 +27,11 @@ import type { User } from "metabase-types/api";
 
 type InviteAnalystsModalProps = {
   isOpen: boolean;
-  existingAnalystIds: Set<number>;
   onClose: () => void;
 };
 
 export function InviteAnalystsModal({
   isOpen,
-  existingAnalystIds,
   onClose,
 }: InviteAnalystsModalProps) {
   const [sendToast] = useToast();
@@ -53,9 +51,9 @@ export function InviteAnalystsModal({
     }
     const selectedIds = new Set(selectedUsers.map((u) => u.id));
     return usersData.data.filter(
-      (user) => !existingAnalystIds.has(user.id) && !selectedIds.has(user.id),
+      (user) => !user.is_data_analyst && !selectedIds.has(user.id),
     );
-  }, [usersData, existingAnalystIds, selectedUsers, isLoadingUsers]);
+  }, [usersData, selectedUsers, isLoadingUsers]);
 
   const filteredUsers = useMemo(() => {
     const search = searchText.toLowerCase();

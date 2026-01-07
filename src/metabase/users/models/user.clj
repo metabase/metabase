@@ -549,14 +549,15 @@
   "Honeysql clauses for filtering on users.
 
   Options:
-    :status              - filter by status (\"active\", \"deactivated\", \"all\")
-    :query               - text search on first_name, last_name, email
-    :group-ids           - filter by permissions group membership
-    :include-deactivated - legacy alias for status=all
-    :is-data-analyst?    - filter by data analyst status (true/false)
-    :limit               - pagination limit
-    :offset              - pagination offset"
-  [{:keys [status query group-ids include-deactivated is-data-analyst? limit offset]}]
+    :status                  - filter by status (\"active\", \"deactivated\", \"all\")
+    :query                   - text search on first_name, last_name, email
+    :group-ids               - filter by permissions group membership
+    :include-deactivated     - legacy alias for status=all
+    :is-data-analyst?        - filter by data analyst status (true/false)
+    :can-access-data-studio? - filter by Data Studio access (analysts, superusers, or users with table metadata perms)
+    :limit                   - pagination limit
+    :offset                  - pagination offset"
+  [{:keys [status query group-ids include-deactivated is-data-analyst? can-access-data-studio? limit offset]}]
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include-deactivated))
@@ -566,6 +567,27 @@
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
                                                                  :core_user.is_data_analyst
                                                                  [:not :core_user.is_data_analyst]))
+    (some? can-access-data-studio?)         (sql.helpers/where (if can-access-data-studio?
+                                                                 [:or
+                                                                  :core_user.is_data_analyst
+                                                                  :core_user.is_superuser
+                                                                  [:in :core_user.id
+                                                                   {:select-distinct [:pgm.user_id]
+                                                                    :from [[:permissions_group_membership :pgm]]
+                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                    :where [:and
+                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                            [:= :p.perm_value "yes"]]}]]
+                                                                 [:and
+                                                                  [:not :core_user.is_data_analyst]
+                                                                  [:not :core_user.is_superuser]
+                                                                  [:not-in :core_user.id
+                                                                   {:select-distinct [:pgm.user_id]
+                                                                    :from [[:permissions_group_membership :pgm]]
+                                                                    :join [[:data_permissions :p] [:= :p.group_id :pgm.group_id]]
+                                                                    :where [:and
+                                                                            [:= :p.perm_type "perms/manage-table-metadata"]
+                                                                            [:= :p.perm_value "yes"]]}]]))
     (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])

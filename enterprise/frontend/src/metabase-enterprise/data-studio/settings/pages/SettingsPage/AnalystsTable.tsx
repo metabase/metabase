@@ -8,6 +8,7 @@ import { getFullName } from "metabase/lib/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   ActionIcon,
+  Badge,
   Box,
   Card,
   FixedSizeIcon,
@@ -43,8 +44,8 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
   const columns = useMemo<TreeTableColumnDef<User>[]>(
     () => [
       {
-        id: "analyst",
-        header: t`Analyst`,
+        id: "user",
+        header: t`User`,
         accessorFn: (row) => getFullName(row),
         minWidth: 320,
         maxWidth: 800,
@@ -60,6 +61,21 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
               </Text>
             </Stack>
           </Flex>
+        ),
+      },
+      {
+        id: "access",
+        header: t`Access`,
+        accessorFn: (row) => row.is_data_analyst,
+        minWidth: "auto",
+        widthPadding: 20,
+        cell: ({ row }) => (
+          <Badge
+            variant="light"
+            color={row.original.is_data_analyst ? "brand" : "text-light"}
+          >
+            {row.original.is_data_analyst ? t`Analyst` : t`Basic`}
+          </Badge>
         ),
       },
       {
@@ -81,23 +97,24 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
         id: "actions",
         header: "",
         width: 48,
-        cell: ({ row }) => (
-          <Menu position="bottom-end" shadow="md">
-            <Menu.Target>
-              <ActionIcon variant="subtle" c="text-secondary">
-                <FixedSizeIcon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                c="error"
-                onClick={() => handleRemoveAnalyst(row.original.id)}
-              >
-                {t`Remove analyst`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        ),
+        cell: ({ row }) =>
+          row.original.is_data_analyst ? (
+            <Menu position="bottom-end" shadow="md">
+              <Menu.Target>
+                <ActionIcon variant="subtle" c="text-secondary">
+                  <FixedSizeIcon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  c="error"
+                  onClick={() => handleRemoveAnalyst(row.original.id)}
+                >
+                  {t`Remove analyst`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          ) : null,
       },
     ],
     [handleRemoveAnalyst],
@@ -113,7 +130,7 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
     return (
       <Box py="xl">
         <Text ta="center" c="text-secondary">
-          {t`No analysts yet. Invite people to give them access to Data Studio.`}
+          {t`No users with Data Studio access yet. Invite people to give them access.`}
         </Text>
       </Box>
     );

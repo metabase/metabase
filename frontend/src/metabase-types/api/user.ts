@@ -142,6 +142,7 @@ export type ListUsersRequest = {
   include_deactivated?: boolean;
   tenancy?: UserTenancy;
   is_data_analyst?: boolean;
+  can_access_data_studio?: boolean;
 } & PaginationRequest;
 
 export type ListUsersResponse = {

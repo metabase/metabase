@@ -212,29 +212,31 @@
 
   Also takes `group_id`, which filters on group id."
   [_route-params
-   {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst] :as params}
+   {:keys [status query group_id include_deactivated tenant_id tenancy is_data_analyst can_access_data_studio] :as params}
    :- [:map
-       [:status              {:optional true} [:maybe :string]]
-       [:query               {:optional true} [:maybe :string]]
-       [:group_id            {:optional true} [:maybe ms/PositiveInt]]
-       [:include_deactivated {:default false} [:maybe ms/BooleanValue]]
-       [:is_data_analyst     {:optional true} [:maybe ms/BooleanValue]]
-       [:tenancy             {:optional true} [:maybe
-                                               [:enum :all :internal :external]]]
-       [:tenant_id           {:optional true} [:maybe ms/PositiveInt]]]]
+       [:status                  {:optional true} [:maybe :string]]
+       [:query                   {:optional true} [:maybe :string]]
+       [:group_id                {:optional true} [:maybe ms/PositiveInt]]
+       [:include_deactivated     {:default false} [:maybe ms/BooleanValue]]
+       [:is_data_analyst         {:optional true} [:maybe ms/BooleanValue]]
+       [:can_access_data_studio  {:optional true} [:maybe ms/BooleanValue]]
+       [:tenancy                 {:optional true} [:maybe
+                                                   [:enum :all :internal :external]]]
+       [:tenant_id               {:optional true} [:maybe ms/PositiveInt]]]]
   (or api/*is-superuser?*
       (if group_id
         (perms/check-manager-of-group group_id)
         (perms/check-group-manager)))
   (api/check-400 (not (every? #(contains? params %) [:tenant_id :tenancy]))
                  (tru "You cannot specify both `tenancy` and `tenant_id`"))
-  (let [clauses             (let [clauses (user/filter-clauses {:status              status
-                                                                :query               query
-                                                                :group-ids           (when group_id [group_id])
-                                                                :include-deactivated include_deactivated
-                                                                :is-data-analyst?    is_data_analyst
-                                                                :limit               (request/limit)
-                                                                :offset              (request/offset)})]
+  (let [clauses             (let [clauses (user/filter-clauses {:status                  status
+                                                                :query                   query
+                                                                :group-ids               (when group_id [group_id])
+                                                                :include-deactivated     include_deactivated
+                                                                :is-data-analyst?        is_data_analyst
+                                                                :can-access-data-studio? can_access_data_studio
+                                                                :limit                   (request/limit)
+                                                                :offset                  (request/offset)})]
                               (cond
                                 (not api/*is-superuser?*)     (sql.helpers/where clauses [:= :tenant_id (:tenant_id @api/*current-user*)])
                                 (contains? params :tenant_id) (sql.helpers/where clauses [:= :tenant_id tenant_id])

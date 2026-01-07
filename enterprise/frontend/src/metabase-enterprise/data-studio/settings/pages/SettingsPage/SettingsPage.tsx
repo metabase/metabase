@@ -15,7 +15,7 @@ import S from "./SettingsPage.module.css";
 export function SettingsPage() {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const { data: usersData, isLoading } = useListUsersQuery({
-    is_data_analyst: true,
+    can_access_data_studio: true,
   });
 
   const analysts = usersData?.data ?? [];
@@ -54,7 +54,6 @@ export function SettingsPage() {
 
       <InviteAnalystsModal
         isOpen={isInviteModalOpen}
-        existingAnalystIds={new Set(analysts.map((a) => a.id))}
         onClose={() => setIsInviteModalOpen(false)}
       />
     </PageContainer>
