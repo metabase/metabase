@@ -5,7 +5,7 @@ import type { Measure, TableId } from "metabase-types/api";
 
 const { H } = cy;
 const { MeasureEditor } = H.DataModel;
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 const MEASURE_NAME = "Table Measure";
 
@@ -607,6 +607,52 @@ describe("scenarios > data studio > measures > queries", () => {
             .should("be.visible");
         });
       });
+    });
+  });
+
+  it("should be possible to use a measure in a pivot table", () => {
+    H.createMeasure({
+      name: MEASURE_NAME,
+      table_id: ORDERS_ID,
+      definition: {
+        "source-table": ORDERS_ID,
+        aggregation: [["sum", ["field", ORDERS.TOTAL, null]]],
+      },
+    }).then(({ body: measure }) => {
+      H.createQuestion(
+        {
+          name: "Question with measure",
+          display: "pivot",
+          visualization_settings: {
+            "table.pivot_column": "Created At: Week",
+            "table.cell_column": "Table Measure",
+          },
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["measure", { "display-name": measure.name }, measure.id],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+        },
+        { visitQuestion: true },
+      );
+    });
+
+    cy.findByTestId("pivot-table").within(() => {
+      cy.findByText("Row totals").should("be.visible");
+      cy.findByText("Grand totals").should("be.visible");
+      cy.findAllByTestId("pivot-table-cell")
+        .should("have.length", 42)
+        .eq(12) // a random cell
+        .should("have.text", "9,031.56");
     });
   });
 
