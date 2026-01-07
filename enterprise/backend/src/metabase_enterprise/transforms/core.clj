@@ -12,6 +12,8 @@
  [metabase-enterprise.transforms.util
   native-query-transform?
   python-transform?
-  query-transform?]
+  query-transform?
+  user-has-transforms-read-permission?
+  current-user-has-transforms-write-permission?]
  [metabase-enterprise.transforms.models.transform-run
   timeout-run!])

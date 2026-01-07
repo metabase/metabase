@@ -6,6 +6,7 @@
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
+   [metabase-enterprise.transforms.core :as transforms]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -13,12 +14,18 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
+
+(defn- check-transforms-read-permission
+  "Check that the current user has transforms permission for at least one database."
+  []
+  (api/check-403 (transforms/user-has-transforms-read-permission? api/*current-user-id*)))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
   [path]
-  (api/check-superuser)
+  (check-transforms-read-permission)
   (-> (python-library/get-python-library-by-path path)
       api/check-404
       (select-keys [:source :path :created_at :updated_at])))
@@ -43,7 +50,7 @@
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
-  (api/check-superuser)
+  (check-transforms-read-permission)
   (python-library/update-python-library-source! path (:source body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -72,7 +79,9 @@
        [:source_tables                        [:map-of :string :int]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
-  (api/check-superuser)
+  (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in #p (vals source_tables)])]
+    (api/check-400 (= (count db-ids) 1) (i18n/deferred-tru "All source tables must belong to the same database."))
+    (api/check-403 (transforms/current-user-has-transforms-write-permission? (first db-ids))))
   ;; NOTE: we do not test database support, as there is no write target.
   (with-open [shared-storage-ref (s3/open-shared-storage! source_tables)]
     (let [server-url  (transforms-python.settings/python-runner-url)
