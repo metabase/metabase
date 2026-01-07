@@ -474,154 +474,214 @@
                         (t2/select-one-fn :dependency_analysis_version :model/Segment :id segment-id)))
                  (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))))))))
 
+(defn- assert-has-analyses
+  "Asserts that a given set of entities have the appropriate analysis version.
+
+  Format is `{entity-type {entity-id analysis-version}}`.
+
+  Use -1 for analysis-version if you want to check that an analysis exists without asserting a specific version."
+  [spec]
+  (doseq [[entity-type ids-and-versions] spec]
+    (let [ids (keys ids-and-versions)
+          analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version])
+                            (into {} (map (juxt :analyzed_entity_id :analysis_version))))]
+      (doseq [[id expected-version] ids-and-versions]
+        (testing (str "Checking " entity-type " " id)
+          (if (= expected-version -1)
+            (is (contains? analyses-map id))
+            (is (= expected-version (analyses-map id)))))))))
+
 (deftest ^:sequential card-update-works-with-no-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           products (lib.metadata/table mp products-id)]
-       (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
-                      :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id child-card-id
-                                           :to_entity_type :card
-                                           :to_entity_id parent-card-id}]
-         (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*})
-         (is (= #{parent-card-id child-card-id}
-                (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
-                                  :analyzed_entity_type :card
-                                  :analyzed_entity_id [:in [parent-card-id child-card-id]]))))))))
+     (testing "Card updates should publish new analyses when no existing ones exist"
+       (let [products-id (mt/id :products)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                        :model/Card {child-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id child-card-id
+                                             :to_entity_type :card
+                                             :to_entity_id parent-card-id}]
+           (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*})
+           (assert-has-analyses
+            {:card {parent-card-id -1
+                    child-card-id -1}})))))))
 
 (deftest ^:sequential card-update-updates-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           orders-id (mt/id :orders)
-           products (lib.metadata/table mp products-id)
-           orders (lib.metadata/table mp orders-id)]
-       (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
-                      :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
-                      :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id child-card-id
-                                           :to_entity_type :card
-                                           :to_entity_id parent-card-id}]
-         (deps.findings/upsert-analysis! parent-card)
-         (deps.findings/upsert-analysis! child-card)
-         (deps.findings/upsert-analysis! other-card)
-         (is (= #{{:analyzed_entity_id parent-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                  {:analyzed_entity_id child-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                  {:analyzed_entity_id other-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :card
-                                 :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]]))))
-         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-           (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
-         (is (= #{{:analyzed_entity_id parent-card-id
-                   :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
-                  {:analyzed_entity_id child-card-id
-                   :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
-                  {:analyzed_entity_id other-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :card
-                                 :analyzed_entity_id [:in [parent-card-id child-card-id other-card-id]])))))))))
+     (testing "Card updates should update existing analyses when they exist"
+       (let [products-id (mt/id :products)
+             orders-id (mt/id :orders)
+             products (lib.metadata/table mp products-id)
+             orders (lib.metadata/table mp orders-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                        :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-card-id))}
+                        :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id child-card-id
+                                             :to_entity_type :card
+                                             :to_entity_id parent-card-id}]
+           (deps.findings/upsert-analysis! parent-card)
+           (deps.findings/upsert-analysis! child-card)
+           (deps.findings/upsert-analysis! other-card)
+           (testing "Checking that the initial analyses exist"
+             (assert-has-analyses
+              {:card {parent-card-id old-version
+                      child-card-id old-version
+                      other-card-id old-version}}))
+           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+             (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
+           (testing "Checking that the analyses were updated appropriately"
+             (assert-has-analyses
+              {:card {parent-card-id new-version
+                      child-card-id new-version
+                      other-card-id old-version}}))))))))
 
 (deftest ^:sequential card-update-stops-on-transforms-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           orders-id (mt/id :orders)
-           products (lib.metadata/table mp products-id)
-           orders (lib.metadata/table mp orders-id)]
-       (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
-                      :model/Transform {transform-id :id :as transform} {:source {:type :query
-                                                                                  :query (lib/query mp products)}
-                                                                         :name "transform_sample"
-                                                                         :target {:schema "public"
-                                                                                  :name "sample"
-                                                                                  :type :table}}
-                      :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp orders)}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id child-card-id
-                                           :to_entity_type :transform
-                                           :to_entity_id transform-id}
-                      :model/Dependency _ {:from_entity_type :transform
-                                           :from_entity_id transform-id
-                                           :to_entity_type :card
-                                           :to_entity_id parent-card-id}]
-         (deps.findings/upsert-analysis! parent-card)
-         (deps.findings/upsert-analysis! transform)
-         (deps.findings/upsert-analysis! child-card)
-         (is (= #{{:analyzed_entity_id parent-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                  {:analyzed_entity_id child-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :card
-                                 :analyzed_entity_id [:in [parent-card-id child-card-id]]))))
-         (is (= #{{:analyzed_entity_id transform-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :transform
-                                 :analyzed_entity_id [:in [transform-id]]))))
-         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-           (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
-         (is (= #{{:analyzed_entity_id parent-card-id
-                   :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
-                  {:analyzed_entity_id child-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :card
-                                 :analyzed_entity_id [:in [parent-card-id child-card-id]]))))
-         (is (= #{{:analyzed_entity_id transform-id
-                   :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :transform
-                                 :analyzed_entity_id [:in [transform-id]])))))))))
+     (testing "Card updates should continue analyzing through a transform"
+       (let [products-id (mt/id :products)
+             orders-id (mt/id :orders)
+             products (lib.metadata/table mp products-id)
+             orders (lib.metadata/table mp orders-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+         (mt/with-temp [:model/Card {parent-card-id :id :as parent-card} {:dataset_query (lib/query mp products)}
+                        :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                    :query (lib/query mp products)}
+                                                                           :name "transform_sample"
+                                                                           :target {:schema "public"
+                                                                                    :name "sample"
+                                                                                    :type :table}}
+                        :model/Card {child-card-id :id :as child-card} {:dataset_query (lib/query mp orders)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id child-card-id
+                                             :to_entity_type :transform
+                                             :to_entity_id transform-id}
+                        :model/Dependency _ {:from_entity_type :transform
+                                             :from_entity_id transform-id
+                                             :to_entity_type :card
+                                             :to_entity_id parent-card-id}]
+           (deps.findings/upsert-analysis! parent-card)
+           (deps.findings/upsert-analysis! transform)
+           (deps.findings/upsert-analysis! child-card)
+           (testing "Checking that initial analyses exist"
+             (assert-has-analyses
+              {:card {parent-card-id old-version
+                      child-card-id old-version}
+               :transform {transform-id old-version}}))
+           (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+             (events/publish-event! :event/card-update {:object parent-card :user-id api/*current-user-id*}))
+           (testing "Checking that analyses were updated correctly"
+             (assert-has-analyses
+              {:card {parent-card-id new-version
+                      child-card-id old-version}
+               :transform {transform-id new-version}}))))))))
 
 (deftest ^:sequential transform-update-works-with-no-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           products (lib.metadata/table mp products-id)]
-       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                      :model/Transform {transform-id :id :as transform} {:source {:type :query
-                                                                                  :query (lib/query mp products)}
-                                                                         :name "transform_sample"
-                                                                         :target {:schema "public"
-                                                                                  :name "sample"
-                                                                                  :type :table}}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id card-id
-                                           :to_entity_type :transform
-                                           :to_entity_id transform-id}]
-         (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
-         (is (= nil
-                (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
-                                  :analyzed_entity_type :card
-                                  :analyzed_entity_id card-id)))
-         (is (= #{transform-id}
-                (t2/select-fn-set :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
-                                  :analyzed_entity_type :transform
-                                  :analyzed_entity_id transform-id))))))))
+     (testing "transform update creates new analyses"
+       (let [products-id (mt/id :products)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                    :query (lib/query mp products)}
+                                                                           :name "transform_sample"
+                                                                           :target {:schema "public"
+                                                                                    :name "sample"
+                                                                                    :type :table}}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :transform
+                                             :to_entity_id transform-id}]
+           (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
+           (assert-has-analyses
+            ;; child cards shouldn't be updated on transform update, only on run
+            {:card {card-id nil}
+             :transform {transform-id -1}})))))))
 
 (deftest ^:sequential transform-update-updates-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           orders-id (mt/id :orders)
-           products (lib.metadata/table mp products-id)
-           orders (lib.metadata/table mp orders-id)]
-       (mt/with-premium-features #{:dependencies}
+     (testing "transform update updates analyses when they exist"
+       (let [products-id (mt/id :products)
+             orders-id (mt/id :orders)
+             products (lib.metadata/table mp products-id)
+             orders (lib.metadata/table mp orders-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+         (mt/with-premium-features #{:dependencies}
+           (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                          :model/Transform {transform-id :id :as transform} {:source {:type :query
+                                                                                      :query (lib/query mp products)}
+                                                                             :name "transform_sample"
+                                                                             :target {:schema "public"
+                                                                                      :name "sample"
+                                                                                      :type :table}}
+                          :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
+                          :model/Dependency _ {:from_entity_type :card
+                                               :from_entity_id card-id
+                                               :to_entity_type :transform
+                                               :to_entity_id transform-id}]
+             (deps.findings/upsert-analysis! card)
+             (deps.findings/upsert-analysis! transform)
+             (deps.findings/upsert-analysis! other-card)
+             (testing "Checking that initial analyses exist"
+               (assert-has-analyses
+                {:card {card-id old-version
+                        other-card-id old-version}
+                 :transform {transform-id old-version}}))
+             (binding [models.analysis-finding/*current-analysis-finding-version* new-version]
+               (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*}))
+             (testing "Checking that the correct analyses were updated"
+               (assert-has-analyses
+                ;; neither unrelated cards nor dependent cards should be updated on transform update
+                {:card {card-id old-version
+                        other-card-id old-version}
+                 :transform {transform-id new-version}})))))))))
+
+(deftest ^:sequential transform-run-works-with-no-analyses-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "transform runs create analyses for dependent cards"
+       (let [products-id (mt/id :products)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Transform {transform-id :id} {:source {:type :query
+                                                                      :query (lib/query mp products)}
+                                                             :name "transform_sample"
+                                                             :target {:schema "public"
+                                                                      :name "sample"
+                                                                      :type :table}}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :transform
+                                             :to_entity_id transform-id}]
+           (events/publish-event! :event/transform-run-complete
+                                  {:object {:db-id (mt/id)
+                                            :output-schema "public"
+                                            :output-table "sample"
+                                            :transform-id transform-id}
+                                   :user-id api/*current-user-id*})
+           (assert-has-analyses
+            {:card {card-id -1}})))))))
+
+(deftest ^:sequential transform-run-updates-analyses-test
+  (run-with-dependencies-setup
+   (fn [mp]
+     (testing "transform runs update existing analyses when they exist"
+       (let [products-id (mt/id :products)
+             orders-id (mt/id :orders)
+             products (lib.metadata/table mp products-id)
+             orders (lib.metadata/table mp orders-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
          (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
                         :model/Transform {transform-id :id :as transform} {:source {:type :query
                                                                                     :query (lib/query mp products)}
@@ -637,179 +697,66 @@
            (deps.findings/upsert-analysis! card)
            (deps.findings/upsert-analysis! transform)
            (deps.findings/upsert-analysis! other-card)
-           (is (= #{{:analyzed_entity_id card-id
-                     :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                    {:analyzed_entity_id other-card-id
-                     :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                  (into #{}
-                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                   :analyzed_entity_type :card
-                                   :analyzed_entity_id [:in [card-id other-card-id]]))))
-           (is (= #{{:analyzed_entity_id transform-id
-                     :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                  (into #{}
-                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                   :analyzed_entity_type :transform
-                                   :analyzed_entity_id [:in [transform-id]]))))
+           (testing "checking that initial analyses exist"
+             (assert-has-analyses
+              {:card {card-id old-version
+                      other-card-id old-version}
+               :transform {transform-id old-version}}))
            (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-             (events/publish-event! :event/update-transform {:object transform :user-id api/*current-user-id*}))
-           (is (= #{{:analyzed_entity_id card-id
-                     :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                    {:analyzed_entity_id other-card-id
-                     :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                  (into #{}
-                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                   :analyzed_entity_type :card
-                                   :analyzed_entity_id [:in [card-id other-card-id]]))))
-           (is (= #{{:analyzed_entity_id transform-id
-                     :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}}
-                  (into #{}
-                        (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                   :analyzed_entity_type :transform
-                                   :analyzed_entity_id [:in [transform-id]]))))))))))
-
-(deftest ^:sequential transform-run-works-with-no-analyses-test
-  (run-with-dependencies-setup
-   (fn [mp]
-     (let [products-id (mt/id :products)
-           products (lib.metadata/table mp products-id)]
-       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                      :model/Transform {transform-id :id} {:source {:type :query
-                                                                    :query (lib/query mp products)}
-                                                           :name "transform_sample"
-                                                           :target {:schema "public"
-                                                                    :name "sample"
-                                                                    :type :table}}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id card-id
-                                           :to_entity_type :transform
-                                           :to_entity_id transform-id}]
-         (events/publish-event! :event/transform-run-complete
-                                {:object {:db-id (mt/id)
-                                          :output-schema "public"
-                                          :output-table "sample"
-                                          :transform-id transform-id}
-                                 :user-id api/*current-user-id*})
-         (is (= card-id
-                (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
-                                  :analyzed_entity_type :card
-                                  :analyzed_entity_id card-id))))))))
-
-(deftest ^:sequential transform-run-updates-analyses-test
-  (run-with-dependencies-setup
-   (fn [mp]
-     (let [products-id (mt/id :products)
-           orders-id (mt/id :orders)
-           products (lib.metadata/table mp products-id)
-           orders (lib.metadata/table mp orders-id)]
-       (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
-                      :model/Transform {transform-id :id :as transform} {:source {:type :query
-                                                                                  :query (lib/query mp products)}
-                                                                         :name "transform_sample"
-                                                                         :target {:schema "public"
-                                                                                  :name "sample"
-                                                                                  :type :table}}
-                      :model/Card {other-card-id :id :as other-card} {:dataset_query (lib/query mp orders)}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id card-id
-                                           :to_entity_type :transform
-                                           :to_entity_id transform-id}]
-         (deps.findings/upsert-analysis! card)
-         (deps.findings/upsert-analysis! transform)
-         (deps.findings/upsert-analysis! other-card)
-         (is (= #{{:analyzed_entity_id card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                  {:analyzed_entity_id other-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :card
-                                 :analyzed_entity_id [:in [card-id other-card-id]]))))
-         (is (= #{{:analyzed_entity_id transform-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :transform
-                                 :analyzed_entity_id [:in [transform-id]]))))
-         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-           (events/publish-event! :event/transform-run-complete
-                                  {:object {:db-id (mt/id)
-                                            :output-schema "public"
-                                            :output-table "sample"
-                                            :transform-id transform-id}
-                                   :user-id api/*current-user-id*}))
-         (is (= #{{:analyzed_entity_id card-id
-                   :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
-                  {:analyzed_entity_id other-card-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :card
-                                 :analyzed_entity_id [:in [card-id other-card-id]]))))
-         (is (= #{{:analyzed_entity_id transform-id
-                   :analysis_version models.analysis-finding/*current-analysis-finding-version*}}
-                (into #{}
-                      (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                                 :analyzed_entity_type :transform
-                                 :analyzed_entity_id [:in [transform-id]])))))))))
+             (events/publish-event! :event/transform-run-complete
+                                    {:object {:db-id (mt/id)
+                                              :output-schema "public"
+                                              :output-table "sample"
+                                              :transform-id transform-id}
+                                     :user-id api/*current-user-id*}))
+           (testing "checking that analyses were updated appropriately"
+             (assert-has-analyses
+              {:card {card-id new-version
+                      other-card-id old-version}
+               :transform {transform-id old-version}}))))))))
 
 (deftest ^:sequential segment-update-works-with-no-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           price-field-id (mt/id :products :price)
-           products (lib.metadata/table mp products-id)]
-       (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
-                                                                   :definition {:filter [:> [:field price-field-id nil] 50]}}
-                      :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id card-id
-                                           :to_entity_type :segment
-                                           :to_entity_id segment-id}]
-         (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
-         (is (= card-id
-                (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
-                                  :analyzed_entity_type :card
-                                  :analyzed_entity_id card-id)))
-         (is (= segment-id
-                (t2/select-one-fn :analyzed_entity_id [:model/AnalysisFinding :analyzed_entity_id]
-                                  :analyzed_entity_type :segment
-                                  :analyzed_entity_id segment-id))))))))
+     (testing "segment update creates analyses when necessary"
+       (let [products-id (mt/id :products)
+             price-field-id (mt/id :products :price)
+             products (lib.metadata/table mp products-id)]
+         (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                     :definition {:filter [:> [:field price-field-id nil] 50]}}
+                        :model/Card {card-id :id} {:dataset_query (lib/query mp products)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :segment
+                                             :to_entity_id segment-id}]
+           (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*})
+           (assert-has-analyses
+            {:card {card-id -1}
+             :segment {segment-id -1}})))))))
 
 (deftest ^:sequential segment-update-updates-analyses-test
   (run-with-dependencies-setup
    (fn [mp]
-     (let [products-id (mt/id :products)
-           price-field-id (mt/id :products :price)
-           products (lib.metadata/table mp products-id)]
-       (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
-                                                                   :definition {:filter [:> [:field price-field-id nil] 50]}}
-                      :model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
-                      :model/Dependency _ {:from_entity_type :card
-                                           :from_entity_id card-id
-                                           :to_entity_type :segment
-                                           :to_entity_id segment-id}]
-         (deps.findings/upsert-analysis! segment)
-         (deps.findings/upsert-analysis! card)
-         (is (= {:analyzed_entity_id card-id
-                 :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                               :analyzed_entity_type :card
-                               :analyzed_entity_id card-id)))
-         (is (= {:analyzed_entity_id segment-id
-                 :analysis_version models.analysis-finding/*current-analysis-finding-version*}
-                (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                               :analyzed_entity_type :segment
-                               :analyzed_entity_id segment-id)))
-         (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
-           (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
-         (is (= {:analyzed_entity_id card-id
-                 :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
-                (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                               :analyzed_entity_type :card
-                               :analyzed_entity_id card-id)))
-         (is (= {:analyzed_entity_id segment-id
-                 :analysis_version (inc models.analysis-finding/*current-analysis-finding-version*)}
-                (t2/select-one [:model/AnalysisFinding :analyzed_entity_id :analysis_version]
-                               :analyzed_entity_type :segment
-                               :analyzed_entity_id segment-id))))))))
+     (testing "segment update updates analyses when they exist"
+       (let [products-id (mt/id :products)
+             price-field-id (mt/id :products :price)
+             products (lib.metadata/table mp products-id)
+             old-version models.analysis-finding/*current-analysis-finding-version*
+             new-version (inc models.analysis-finding/*current-analysis-finding-version*)]
+         (mt/with-temp [:model/Segment {segment-id :id :as segment} {:table_id products-id
+                                                                     :definition {:filter [:> [:field price-field-id nil] 50]}}
+                        :model/Card {card-id :id :as card} {:dataset_query (lib/query mp products)}
+                        :model/Dependency _ {:from_entity_type :card
+                                             :from_entity_id card-id
+                                             :to_entity_type :segment
+                                             :to_entity_id segment-id}]
+           (deps.findings/upsert-analysis! segment)
+           (deps.findings/upsert-analysis! card)
+           (assert-has-analyses
+            {:card {card-id old-version}
+             :segment {segment-id old-version}})
+           (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
+             (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
+           (assert-has-analyses
+            {:card {card-id new-version}
+             :segment {segment-id new-version}})))))))
