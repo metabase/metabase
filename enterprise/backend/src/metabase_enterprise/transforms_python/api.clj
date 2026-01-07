@@ -76,7 +76,7 @@
            per_input_row_limit 100}}
    :- [:map
        [:code                                 :string]
-       [:source_tables                        [:map-of :string :int]]
+       [:source_tables                        [:map-of {:min 1} :string :int]]
        [:output_row_limit    {:optional true} [:and :int [:> 1] [:<= 100]]]
        [:per_input_row_limit {:optional true} [:and :int [:> 1] [:<= 100]]]]]
   (let [db-ids (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in (vals source_tables)])]

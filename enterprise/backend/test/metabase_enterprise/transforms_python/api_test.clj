@@ -92,7 +92,7 @@
                    "  print(\"out2\")"
                    "  print(\"err2\", file=sys.stderr)"
                    "  return pd.DataFrame({'x': [42, 43]})"]
-          body    {:source_tables {}, :code (str/join "\n" program)}
+          body    {:source_tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}, :code (str/join "\n" program)}
           {:keys [error logs output]} (mt/user-http-request :crowberto :post 200 "ee/transforms-python/test-run" body)]
       (is (nil? error))
       (is (str/includes? logs "out1\nerr1\nout2\nerr2"))
@@ -101,7 +101,7 @@
 (defn- test-run [& {:keys [program user features source-tables extra-opts]
                     :or   {program       ["import pandas as pd" "def transform():" "  return pd.DataFrame()"]
                            user          :crowberto
-                           source-tables {}
+                           source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
                            features      #{:transforms :transforms-python}}}]
   (let [body (merge {:source_tables source-tables, :code (str/join "\n" program)} extra-opts)]
     (mt/with-premium-features features
