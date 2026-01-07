@@ -233,10 +233,10 @@
 (mt/defdataset long-col-name-dataset
   [["long_col_name" [{:field-name "fk"
                       :base-type :type/Integer}
-                     {:field-name "big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_"
+                     {:field-name "big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_"
                       :base-type :type/Text}]
     [[1 "a"]]]
-   ["long_col_name_2" [{:field-name "big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_"
+   ["long_col_name_2" [{:field-name "big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_big_column_"
                         :base-type :type/Text}]
     [["b"]]]])
 
