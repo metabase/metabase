@@ -23,8 +23,10 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
@@ -1212,8 +1214,9 @@
            (map #(lib.metadata.calculation/display-name query stage-number %))
            (str/join " + ")))
 
-(defn remapped-field-ref
-  [source-field fk-target-id]
+(mu/defn remapped-field-ref :- ::lib.schema.ref/field.id
+  [source-field  :- ::lib.schema.metadata/column
+   fk-target-id  :- ::lib.schema.id/field]
   [:field
    (merge
     {:lib/uuid                (str (random-uuid))
