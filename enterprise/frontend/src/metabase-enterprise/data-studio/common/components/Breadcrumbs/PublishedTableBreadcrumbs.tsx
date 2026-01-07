@@ -1,12 +1,9 @@
-import { skipToken } from "@reduxjs/toolkit/query";
-import { useMemo } from "react";
+import { Link } from "react-router";
 
-import { useGetCollectionQuery } from "metabase/api";
 import * as Urls from "metabase/lib/urls";
-import { getCollectionList } from "metabase/nav/components/CollectionBreadcrumbs/utils";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { useCollectionPath } from "metabase-enterprise/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import type { Table } from "metabase-types/api";
-
-import { type BreadcrumbItem, Breadcrumbs } from "./Breadcrumbs";
 
 type PublishedTableBreadcrumbsProps = {
   table: Table;
@@ -21,46 +18,26 @@ export function PublishedTableBreadcrumbs({
   newEntityLabel,
   tableListUrl,
 }: PublishedTableBreadcrumbsProps) {
-  const { data: collection } = useGetCollectionQuery(
-    table.collection_id != null ? { id: table.collection_id } : skipToken,
+  const { path, isLoadingPath } = useCollectionPath({
+    collectionId: table.collection_id,
+  });
+
+  return (
+    <DataStudioBreadcrumbs loading={isLoadingPath}>
+      {path?.map((collection, i) => (
+        <Link
+          key={collection.id}
+          to={Urls.dataStudioLibrary({
+            expandedIds: path.slice(1, i + 1).map((c) => c.id),
+          })}
+        >
+          {collection.name}
+        </Link>
+      ))}
+      <Link key={`table-${table.id}`} to={tableListUrl}>
+        {table.display_name}
+      </Link>
+      <span>{entityName ?? newEntityLabel}</span>
+    </DataStudioBreadcrumbs>
   );
-
-  const items: BreadcrumbItem[] = useMemo(() => {
-    const result: BreadcrumbItem[] = [];
-
-    const ancestors = collection ? getCollectionList({ collection }) : [];
-
-    for (const ancestor of ancestors) {
-      result.push({
-        label: ancestor.name,
-        to: Urls.dataStudioCollection(ancestor.id),
-      });
-    }
-
-    if (collection) {
-      result.push({
-        label: collection.name,
-        to: Urls.dataStudioCollection(collection.id),
-      });
-    }
-
-    result.push({
-      label: table.display_name,
-      to: tableListUrl,
-    });
-
-    result.push({
-      label: entityName ?? newEntityLabel,
-    });
-
-    return result;
-  }, [
-    collection,
-    table.display_name,
-    tableListUrl,
-    entityName,
-    newEntityLabel,
-  ]);
-
-  return <Breadcrumbs items={items} />;
 }
