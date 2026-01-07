@@ -383,10 +383,13 @@
     (if-not (seq model-metadata)
       cols ; If not a model, nothing to change
       (let [last-stage (lib.util/query-stage query -1)
-            ;; Assumption: we're in a call path in which fetch-source-query has added this field
+            ;; Assumption: we're in a call path in which fetch-source-query has added this field.
+            ;; Fallback: for direct model queries (e.g. viewing a native model), fetch-source-query
+            ;; doesn't run because there's no :source-card to resolve. In that case, check if the
+            ;; query stage itself is native.
             native-model? (if (contains? last-stage :source-query/native-model?)
                             (:source-query/native-model? last-stage)
-                            false)]
+                            (lib.util/native-stage? last-stage))]
         (lib.card/merge-model-metadata cols model-metadata native-model?)))))
 
 (defn- add-source-and-desired-aliases [query cols]
