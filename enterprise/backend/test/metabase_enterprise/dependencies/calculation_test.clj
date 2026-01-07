@@ -18,10 +18,12 @@
                                                                (lib/filter (lib/= product-category
                                                                                   "Widget")))}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card prod-card)))
       (is (= {:card #{prod-card-id}
+              :measure #{}
               :segment #{}
               :table #{}}
              (calculation/upstream-deps:card widget-card))))))
@@ -36,10 +38,12 @@
                    :model/Card joined-card {:dataset_query (-> (lib/query mp (lib.metadata/card mp products-card-id))
                                                                (lib/join orders))}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card products-card)))
       (is (= {:card #{products-card-id}
+              :measure #{}
               :segment #{}
               :table #{orders-id}}
              (calculation/upstream-deps:card joined-card))))))
@@ -56,6 +60,7 @@
         user-name (lib.tu.notebook/find-col-with-spec base-query visible-cols "User" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/with-fields base-query [venue-name user-name])}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{checkins-id venues-id users-id}}
              (calculation/upstream-deps:card card))))))
@@ -70,6 +75,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query filterable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/filter base-query (lib/= venue-name "Bird's Nest"))}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -84,6 +90,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query breakoutable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/breakout base-query venue-name)}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -98,6 +105,7 @@
         venue-price (lib.tu.notebook/find-col-with-spec base-query visible-cols "Venue" "Price")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/aggregate base-query (lib/sum venue-price))}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -112,6 +120,7 @@
         venue-name (lib.tu.notebook/find-col-with-spec base-query orderable-cols "Venue" "Name")]
     (mt/with-temp [:model/Card card {:dataset_query (lib/order-by base-query venue-name)}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{checkins-id venues-id}}
              (calculation/upstream-deps:card card))))))
@@ -134,6 +143,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :measure #{}
                 :segment #{}
                 :table #{checkins-id venues-id users-id}}
                (calculation/upstream-deps:transform transform)))))))
@@ -156,6 +166,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :measure #{}
                 :segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
@@ -177,6 +188,7 @@
                                                  :target {:schema "PUBLIC"
                                                           :name "test_output"}}]
         (is (= {:card #{}
+                :measure #{}
                 :segment #{}
                 :table #{checkins-id venues-id}}
                (calculation/upstream-deps:transform transform)))))))
@@ -207,6 +219,7 @@
                                   :values_source_type "card"
                                   :values_source_config {:card_id category-values-card-id}}]}]
       (is (= {:card #{}
+              :measure #{}
               :segment #{}
               :table #{products-id}}
              (calculation/upstream-deps:card category-values-card)))
@@ -438,8 +451,9 @@
                                                                         [:segment segment-a-id]
                                                                         [:segment segment-b-id]]}}}]
         (is (= {:card #{}
-                :table #{products-id}
-                :segment #{segment-a-id segment-b-id}}
+                :measure #{}
+                :segment #{segment-a-id segment-b-id}
+                :table #{products-id}}
                (calculation/upstream-deps:card card)))))))
 
 (deftest ^:parallel upstream-deps-segment-with-multiple-segments-test
