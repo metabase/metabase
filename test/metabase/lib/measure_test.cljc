@@ -153,3 +153,63 @@
       (testing "The field ref should use 'sum' as the field name, not 'Total Revenue'"
         ;; field-ref is [:field {:...} "sum"] - the third element is the field name
         (is (= "sum" (nth field-ref 2)))))))
+
+(deftest ^:parallel type-of-test
+  (testing "type-of returns the type of the measure's aggregation"
+    (let [definition (measure-definition-with-aggregation
+                      meta/metadata-provider
+                      (lib/count))
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Count Measure"
+                                   :table-id   (meta/id :venues)
+                                   :definition definition}]})
+          query      (lib/query mp (meta/table-metadata :venues))
+          measure-metadata (lib/available-measures query)
+          measure-clause [:measure {:lib/uuid (str (random-uuid))} 1]]
+      (testing "for measure metadata"
+        (is (= :type/Integer
+               (lib/type-of query (first measure-metadata)))))
+      (testing "for measure clause"
+        (is (= :type/Integer
+               (lib/type-of query measure-clause)))))))
+
+(deftest ^:parallel type-of-sum-test
+  (testing "type-of for sum aggregation returns numeric type"
+    (let [definition (measure-definition-with-aggregation
+                      meta/metadata-provider
+                      (lib/sum (meta/field-metadata :venues :price)))
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Sum Measure"
+                                   :table-id   (meta/id :venues)
+                                   :definition definition}]})
+          query      (lib/query mp (meta/table-metadata :venues))
+          measure-metadata (first (lib/available-measures query))]
+      (is (= :type/Integer
+             (lib/type-of query measure-metadata))))))
+
+(deftest ^:parallel type-of-min-max-test
+  (testing "type-of for min/max aggregation returns the type of the aggregated field"
+    (let [definition (measure-definition-with-aggregation
+                      meta/metadata-provider
+                      (lib/min (meta/field-metadata :venues :name)))
+          mp         (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Min Name"
+                                   :table-id   (meta/id :venues)
+                                   :definition definition}]})
+          query      (lib/query mp (meta/table-metadata :venues))
+          measure-metadata (first (lib/available-measures query))]
+      (is (= :type/Text
+             (lib/type-of query measure-metadata))))))
+
+(deftest ^:parallel unknown-type-of-test
+  (testing "type-of for unknown measure returns :type/*"
+    (let [mp    (lib.tu/mock-metadata-provider meta/metadata-provider {})
+          query (lib/query mp (meta/table-metadata :venues))]
+      (is (= :type/*
+             (lib/type-of query [:measure {} 999]))))))

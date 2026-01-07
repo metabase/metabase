@@ -12,6 +12,7 @@
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
@@ -29,13 +30,24 @@
   [{:keys [id], measure-name :name}]
   (lib.options/ensure-uuid [:measure {:display-name measure-name} id]))
 
+(defn- measure-aggregation
+  "Get the aggregation clause from a measure's definition."
+  [{:keys [definition]}]
+  (when definition
+    (let [normalized (lib.normalize/normalize ::lib.schema/query definition)]
+      (first (:aggregation (lib.util/query-stage normalized -1))))))
+
 (defmethod lib.metadata.calculation/type-of-method :metadata/measure
-  [_query _stage-number _measure-metadata]
-  :type/Number)
+  [_query _stage-number measure-metadata]
+  (or (when-let [aggregation (measure-aggregation measure-metadata)]
+        (lib.schema.expression/type-of aggregation))
+      :type/*))
 
 (defmethod lib.metadata.calculation/type-of-method :measure
-  [_query _stage-number _measure-clause]
-  :type/Number)
+  [query stage-number [_tag _opts measure-id]]
+  (or (when-let [measure-metadata (resolve-measure query measure-id)]
+        (lib.metadata.calculation/type-of query stage-number measure-metadata))
+      :type/*))
 
 (defn- fallback-display-name []
   "[Unknown Measure]")

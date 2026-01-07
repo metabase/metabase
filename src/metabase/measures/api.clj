@@ -9,11 +9,9 @@
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
 (mr/def ::measure
@@ -103,14 +101,3 @@
             [:archived                {:optional true} [:maybe :boolean]]
             [:description             {:optional true} [:maybe :string]]]]
   (write-check-and-update-measure! id body))
-
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
-(api.macros/defendpoint :delete "/:id" :- :nil
-  "Archive a Measure. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)"
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]
-   {:keys [revision_message]} :- [:map
-                                  [:revision_message ms/NonBlankString]]]
-  (log/warn "DELETE /api/measure/:id is deprecated. Instead, change its `archived` value via PUT /api/measure/:id.")
-  (write-check-and-update-measure! id {:archived true, :revision_message revision_message})
-  nil)

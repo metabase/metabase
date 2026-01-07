@@ -175,43 +175,6 @@
         (is (= false
                (t2/select-one-fn :archived :model/Measure :id id)))))))
 
-;; ## DELETE /api/measure/:id
-
-(deftest delete-permissions-test
-  (testing "DELETE /api/measure/:id"
-    (testing "test security. requires superuser perms"
-      (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                  :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :delete 403 (str "measure/" id)
-                                     :revision_message "yeeeehaw!")))))))
-
-(deftest delete-input-validation-test
-  (testing "DELETE /api/measure/:id"
-    (is (=? {:errors {:revision_message "value must be a non-blank string."}}
-            (mt/user-http-request :crowberto :delete 400 "measure/1" {:name "abc"})))
-
-    (is (=? {:errors {:revision_message "value must be a non-blank string."}}
-            (mt/user-http-request :crowberto :delete 400 "measure/1" :revision_message "")))))
-
-(deftest delete-test
-  (testing "DELETE /api/measure/:id"
-    (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
-      (is (= nil
-             (mt/user-http-request :crowberto :delete 204 (format "measure/%d" id) :revision_message "carryon")))
-      (testing "should still be able to fetch the archived measure"
-        (is (=? {:name        "Mock Measure"
-                 :description nil
-                 :creator_id  (mt/user->id :rasta)
-                 :creator     {:id (mt/user->id :rasta)}
-                 :created_at  some?
-                 :updated_at  some?
-                 :entity_id   string?
-                 :archived    true
-                 :definition  map?}
-                (mt/user-http-request :crowberto :get 200 (format "measure/%d" id))))))))
-
 ;; ## GET /api/measure/:id
 
 (deftest fetch-measure-permissions-test
