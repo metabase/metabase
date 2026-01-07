@@ -1137,10 +1137,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: graph
-                  type: ${text.type}
-                  remarks: Graph configuration serialized as JSON
-              - column:
                   name: created_at
                   type: ${timestamp_type}
                   remarks: Timestamp when the workspace was created
@@ -4770,27 +4766,6 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       rollback: # will be removed along the table
-
-  # TODO: Before merging to master, cancel this out by also removing the graph column
-  # from the workspace table creation (around line 1140) since both migrations are new.
-  - changeSet:
-      id: v58.2025-12-30T10:00:04
-      author: christruter
-      comment: Drop graph column from workspace table (moved to workspace_graph)
-      changes:
-        - dropColumn:
-            tableName: workspace
-            columnName: graph
-      rollback:
-        - addColumn:
-            tableName: workspace
-            columns:
-              - column:
-                  name: graph
-                  type: ${text.type}
-                  remarks: JSON representation of the dependency graph
-                  constraints:
-                    nullable: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

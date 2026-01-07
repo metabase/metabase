@@ -60,14 +60,6 @@
             (catch Exception e
               (log/warn e "Error granting RO table permissions"))))))))
 
-(defn sync-transform-dependencies!
-  "Analyze and persist dependencies for a workspace transform, then grant
-   read access to external input tables."
-  [{workspace-id :id, isolated-schema :schema :as workspace} transform]
-  (let [analysis (ws.deps/analyze-entity :transform transform)]
-    (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
-    (sync-grant-accesses! workspace)))
-
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
   ;; Maps [db_id global_schema global_table] -> {:db-id :schema :table :id} for isolated tables.
