@@ -29,9 +29,14 @@ type TagModalType = "update" | "delete";
 type TagMultiSelectProps = {
   tagIds: TransformTagId[];
   onChange: (tagIds: TransformTagId[], undoable?: boolean) => void;
+  disabled?: boolean;
 };
 
-export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
+export function TagMultiSelect({
+  tagIds,
+  onChange,
+  disabled,
+}: TagMultiSelectProps) {
   const { data: tags = [], isLoading } = useListTransformTagsQuery();
   const [createTag, { isLoading: isCreating }] =
     useCreateTransformTagMutation();
@@ -95,6 +100,7 @@ export function TagMultiSelect({ tagIds, onChange }: TagMultiSelectProps) {
       <MultiSelect
         value={tagIds.map(getValue)}
         data={getOptions(tags, trimmedSearchValue)}
+        disabled={disabled}
         placeholder={t`Add tags`}
         searchValue={searchValue}
         searchable

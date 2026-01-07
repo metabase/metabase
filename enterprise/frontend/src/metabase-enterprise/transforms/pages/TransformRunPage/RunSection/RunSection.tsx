@@ -25,9 +25,10 @@ import { LogOutput } from "./LogOutput";
 
 type RunSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-export function RunSection({ transform }: RunSectionProps) {
+export function RunSection({ transform, readOnly }: RunSectionProps) {
   return (
     <TitleSection
       label={t`Run this transform`}
@@ -46,7 +47,7 @@ export function RunSection({ transform }: RunSectionProps) {
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
         </Stack>
-        <TagSection transform={transform} />
+        <TagSection transform={transform} readOnly={readOnly} />
       </Group>
     </TitleSection>
   );
@@ -158,9 +159,10 @@ function RunOutputSection({ transform }: RunOutputSectionProps) {
 
 type TagSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-function TagSection({ transform }: TagSectionProps) {
+function TagSection({ transform, readOnly }: TagSectionProps) {
   const [updateTransform] = useUpdateTransformMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -194,6 +196,7 @@ function TagSection({ transform }: TagSectionProps) {
       <TagMultiSelect
         tagIds={transform.tag_ids ?? []}
         onChange={handleTagListChange}
+        disabled={readOnly}
       />
     </Box>
   );

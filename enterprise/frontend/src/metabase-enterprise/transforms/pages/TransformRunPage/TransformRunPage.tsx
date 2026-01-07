@@ -57,7 +57,7 @@ export function TransformRunPage({ params }: TransformRunPageProps) {
   return (
     <PageContainer data-testid="transforms-run-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <RunSection transform={transform} />
+      <RunSection transform={transform} readOnly={readOnly} />
     </PageContainer>
   );
 }
