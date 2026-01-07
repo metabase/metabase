@@ -34,9 +34,7 @@ export function PublishedTableBreadcrumbs({
           {collection.name}
         </Link>
       ))}
-      <Link key={`table-${table.id}`} to={tableListUrl}>
-        {table.display_name}
-      </Link>
+      <Link to={tableListUrl}>{table.display_name}</Link>
       <span>{entityName ?? newEntityLabel}</span>
     </DataStudioBreadcrumbs>
   );
