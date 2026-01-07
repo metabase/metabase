@@ -62,3 +62,7 @@
   {:style/indent :defn}
   [limit offset & body]
   `(do-with-limit-and-offset ~limit ~offset (^:once fn* [] ~@body)))
+
+(def ^:dynamic *is-data-analyst?*
+  "Whether the current user is a data analyst. Bound by [[metabase.request.session/do-with-current-user]]."
+  false)
