@@ -1,9 +1,17 @@
 import { useMemo } from "react";
 
 import { useListDatabasesQuery } from "metabase/api/database";
-import type { Transform } from "metabase-types/api";
+import type { Database, Transform } from "metabase-types/api";
 
 import { sourceDatabaseId } from "../utils";
+
+export const canEditTransform = (
+  transform: Transform,
+  transformsDatabases: Database[],
+): boolean => {
+  const dbId = sourceDatabaseId(transform.source);
+  return transformsDatabases.some((db) => db.id === dbId);
+};
 
 export const useTransformPermissions = ({
   transform,
@@ -24,8 +32,7 @@ export const useTransformPermissions = ({
     if (!transformsDatabases || !transform) {
       return;
     }
-    const dbId = sourceDatabaseId(transform.source);
-    return !transformsDatabases.some((db) => db.id === dbId);
+    return !canEditTransform(transform, transformsDatabases);
   }, [transformsDatabases, transform]);
 
   return {
