@@ -206,17 +206,14 @@
       (mapv (fn [result-col]
               (merge
                result-col
-               ;; if the result col is aggregating something in the source column then don't flow display name and what
-               ;; not because the calculated one e.g. 'Sum of ____' is going to be better than '____'
-               (when-not (= (:lib/source result-col) :source/aggregations)
-                 (when-let [model-col (get name->model-col (:name result-col))]
-                   (let [model-col     (u/select-non-nil-keys model-col model-preserved-keys)
-                         temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
-                         binning       (lib.binning/binning result-col)
-                         semantic-type ((some-fn model-col result-col) :semantic-type)]
-                     (cond-> model-col
-                       temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
-                       binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type)))))))
+               (when-let [model-col (get name->model-col (:name result-col))]
+                 (let [model-col     (u/select-non-nil-keys model-col model-preserved-keys)
+                       temporal-unit (lib.temporal-bucket/raw-temporal-bucket result-col)
+                       binning       (lib.binning/binning result-col)
+                       semantic-type ((some-fn model-col result-col) :semantic-type)]
+                   (cond-> model-col
+                     temporal-unit (update :display-name lib.temporal-bucket/ensure-ends-with-temporal-unit temporal-unit)
+                     binning       (update :display-name lib.binning/ensure-ends-with-binning binning semantic-type))))))
             result-cols))))
 
 (mu/defn card-returned-columns :- [:maybe ::maybe-columns]

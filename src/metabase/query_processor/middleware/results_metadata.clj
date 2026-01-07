@@ -2,7 +2,7 @@
   "Middleware that stores metadata about results column types after running a query for a Card,
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
-  (:refer-clojure :exclude [mapv select-keys get-in])
+  (:refer-clojure :exclude [mapv select-keys get-in empty?])
   (:require
    [clojure.string :as str]
    [malli.error :as me]
@@ -19,7 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys get-in]]
+   [metabase.util.performance :refer [mapv select-keys get-in empty?]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -55,6 +55,25 @@
               :else m))]
     (mapv standardize-metadata metadata)))
 
+(def ^:private model-preserved-keys
+  "Keys from existing model metadata that should be preserved when updating.
+   These are user-customizable fields that shouldn't be overwritten by computed metadata.
+   See #26755."
+  [:description :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
+
+(defn- merge-preserved-model-metadata
+  "Merge user-customized metadata from existing-cols into new-cols for models.
+   Matches columns by :name and preserves model-preserved-keys from existing."
+  [new-cols existing-cols]
+  (if (empty? existing-cols)
+    new-cols
+    (let [name->existing (into {} (map (juxt :name identity)) existing-cols)]
+      (mapv (fn [new-col]
+              (if-let [existing-col (get name->existing (:name new-col))]
+                (merge new-col (u/select-non-nil-keys existing-col model-preserved-keys))
+                new-col))
+            new-cols))))
+
 (mu/defn- record-metadata!
   [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
    metadata                             :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
@@ -71,18 +90,32 @@
                  (not= actual-metadata :none)
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
-                 ;; don't want to update metadata when we use a Card as a source Card.
-                 (not (:qp/source-card-id query))
-                 ;; Only update changed metadata
-                 (not= (comparable-metadata actual-metadata)
-                       (comparable-metadata
-                        ;; existing usage -- don't use going forward
-                        #_{:clj-kondo/ignore [:deprecated-var]}
-                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
-        (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
-          (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
-        (t2/update! :model/Card card-id {:result_metadata actual-metadata
-                                         :updated_at      :updated_at})))
+                 ;; don't want to update metadata when we use a Card as a source Card
+                 (not (:qp/source-card-id query)))
+        (let [stored-metadata
+              ;; existing usage -- don't use going forward
+              #_{:clj-kondo/ignore [:deprecated-var]}
+              (qp.store/miscellaneous-value [::card-stored-metadata])
+              ;; If stored-metadata wasn't set via store-previous-result-metadata!, fetch from DB.
+              ;; This ensures we don't silently overwrite custom model metadata. See #26755.
+              card              (when-not stored-metadata
+                                  (t2/select-one [:model/Card :type :result_metadata] :id card-id))
+              ;; Always fetch card type if necessary to determine if we need to merge preserved metadata.
+              card-type         (or (:type card)
+                                    (t2/select-one-fn :type :model/Card :id card-id))
+              existing-metadata (or stored-metadata (:result_metadata card))
+              ;; For models, merge preserved keys from existing metadata into new metadata
+              ;; to avoid silently overwriting user customizations like display_name.
+              merged-metadata   (if (= :model card-type)
+                                  (merge-preserved-model-metadata actual-metadata existing-metadata)
+                                  actual-metadata)]
+          ;; Only update changed metadata
+          (when (not= (comparable-metadata merged-metadata)
+                      (comparable-metadata existing-metadata))
+            (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] merged-metadata))]
+              (throw (ex-info "Invalid result metadata!" {:error error, :metadata merged-metadata})))
+            (t2/update! :model/Card card-id {:result_metadata merged-metadata
+                                             :updated_at      :updated_at})))))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
