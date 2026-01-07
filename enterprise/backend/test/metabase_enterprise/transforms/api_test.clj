@@ -71,7 +71,102 @@
               (is (= crowberto-id creator-id)))
             (testing "Response hydrates creator"
               (is (map? (:creator response)))
-              (is (= crowberto-id (get-in response [:creator :id]))))))))))
+              (is (= crowberto-id (get-in response [:creator :id]))))
+            (testing "Response includes owner_user_id defaulting to creator"
+              (is (= crowberto-id (:owner_user_id response))))
+            (testing "Response hydrates owner"
+              (is (map? (:owner response)))
+              (is (= crowberto-id (get-in response [:owner :id]))))))))))
+
+(deftest create-transform-with-owner-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (testing "Creating a transform with explicit owner_user_id"
+          (with-transform-cleanup! [table-name "owner_user_id_test"]
+            (let [query (make-query "Gadget")
+                  schema (get-test-schema)
+                  rasta-id (mt/user->id :rasta)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name "Transform with explicit owner"
+                                                  :source {:type "query"
+                                                           :query query}
+                                                  :target {:type "table"
+                                                           :schema schema
+                                                           :name table-name}
+                                                  :owner_user_id rasta-id})]
+              (is (= rasta-id (:owner_user_id response))
+                  "owner_user_id should match the specified user")
+              (is (nil? (:owner_email response))
+                  "owner_email should be nil when owner_user_id is set")
+              (is (= rasta-id (get-in response [:owner :id]))
+                  "Hydrated owner should match the specified user"))))
+
+        (testing "Creating a transform with external owner_email"
+          (with-transform-cleanup! [table-name "owner_email_test"]
+            (let [query (make-query "Gadget")
+                  schema (get-test-schema)
+                  response (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                                 {:name "Transform with external owner"
+                                                  :source {:type "query"
+                                                           :query query}
+                                                  :target {:type "table"
+                                                           :schema schema
+                                                           :name table-name}
+                                                  :owner_email "external.owner@example.com"})]
+              (is (nil? (:owner_user_id response))
+                  "owner_user_id should be nil when owner_email is set")
+              (is (= "external.owner@example.com" (:owner_email response))
+                  "owner_email should match the specified email")
+              (is (= {:email "external.owner@example.com"} (:owner response))
+                  "Hydrated owner should be email-only map"))))))))
+
+(deftest update-transform-owner-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "update_owner_test"]
+          (let [query (make-query "Gadget")
+                schema (get-test-schema)
+                created (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                              {:name "Transform for owner update"
+                                               :source {:type "query"
+                                                        :query query}
+                                               :target {:type "table"
+                                                        :schema schema
+                                                        :name table-name}})
+                transform-id (:id created)
+                crowberto-id (mt/user->id :crowberto)
+                rasta-id (mt/user->id :rasta)]
+
+            (testing "Initial owner is the creator"
+              (is (= crowberto-id (:owner_user_id created))))
+
+            (testing "Update owner to a different user"
+              (let [updated (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/transform/%s" transform-id)
+                                                  {:owner_user_id rasta-id})]
+                (is (= rasta-id (:owner_user_id updated)))
+                (is (nil? (:owner_email updated)))
+                (is (= rasta-id (get-in updated [:owner :id])))))
+
+            (testing "Update owner to external email"
+              (let [updated (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/transform/%s" transform-id)
+                                                  {:owner_email "new.owner@example.com"
+                                                   :owner_user_id nil})]
+                (is (nil? (:owner_user_id updated)))
+                (is (= "new.owner@example.com" (:owner_email updated)))
+                (is (= {:email "new.owner@example.com"} (:owner updated)))))
+
+            (testing "Clear owner by setting both to nil"
+              (let [updated (mt/user-http-request :crowberto :put 200
+                                                  (format "ee/transform/%s" transform-id)
+                                                  {:owner_user_id nil
+                                                   :owner_email nil})]
+                (is (nil? (:owner_user_id updated)))
+                (is (nil? (:owner_email updated)))
+                (is (nil? (:owner updated)))))))))))
 
 (deftest transform-type-detection-test
   (testing "Transform type is automatically detected and set based on source"
