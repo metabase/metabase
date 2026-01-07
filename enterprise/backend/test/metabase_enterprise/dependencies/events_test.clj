@@ -752,11 +752,13 @@
                                              :to_entity_id segment-id}]
            (deps.findings/upsert-analysis! segment)
            (deps.findings/upsert-analysis! card)
-           (assert-has-analyses
-            {:card {card-id old-version}
-             :segment {segment-id old-version}})
+           (testing "checking that initial analyses exist"
+             (assert-has-analyses
+              {:card {card-id old-version}
+               :segment {segment-id old-version}}))
            (binding [models.analysis-finding/*current-analysis-finding-version* (inc models.analysis-finding/*current-analysis-finding-version*)]
              (events/publish-event! :event/segment-update {:object segment :user-id api/*current-user-id*}))
-           (assert-has-analyses
-            {:card {card-id new-version}
-             :segment {segment-id new-version}})))))))
+           (testing "checking that analyses were updated correctly"
+             (assert-has-analyses
+              {:card {card-id new-version}
+               :segment {segment-id new-version}}))))))))
