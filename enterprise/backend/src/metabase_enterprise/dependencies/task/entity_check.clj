@@ -1,9 +1,5 @@
 (ns metabase-enterprise.dependencies.task.entity-check
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.scheduler :as qs]
-   [clojurewerkz.quartzite.triggers :as triggers]
-   [java-time.api :as t]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.settings :as deps.settings]
    [metabase-enterprise.dependencies.task-util :as deps.task-util]
@@ -12,11 +8,6 @@
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
-
-(defn- current-millis
-  "Returns the current epoch millis. Uses java-time so that clock settings can be used in tests."
-  []
-  (t/to-millis-from-epoch (t/instant)))
 
 (defn- check-entities!
   []

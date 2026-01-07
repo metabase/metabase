@@ -9,9 +9,6 @@
   and populates the dependency table. For cards, the event is emitted by the job handler itself,
   because the update of the record doesn't trigger the event handler. "
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.scheduler :as qs]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
