@@ -38,7 +38,7 @@ Restricting Metabot to verified models and metrics (and only models and metrics)
 
 ## Collection for natural language querying
 
-Select a collection to control what content Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
+Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
 
 Metabot will search:
 
