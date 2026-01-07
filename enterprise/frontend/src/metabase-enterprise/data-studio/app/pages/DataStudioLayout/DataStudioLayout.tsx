@@ -89,8 +89,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessTransforms = useSelector(
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
-  const canAccessAnalystFeatures = useSelector(
-    PLUGIN_DATA_STUDIO.canAccessAnalystFeatures,
+  const canAccessAnalystFeaturesOrPreview = useSelector(
+    PLUGIN_DATA_STUDIO.canAccessAnalystFeaturesOrPreview,
   );
   const canAccessGlossary = useSelector(PLUGIN_DATA_STUDIO.canAccessGlossary);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
@@ -111,7 +111,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
-        {canAccessAnalystFeatures && (
+        {isNavbarOpened && (
+          <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls fullWidth />
+        )}
+        {canAccessAnalystFeaturesOrPreview && (
           <DataStudioTab
             label={t`Library`}
             icon="repository"
@@ -145,7 +148,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {PLUGIN_DEPENDENCIES.isEnabled && canAccessAnalystFeatures && (
+        {PLUGIN_DEPENDENCIES.isEnabled && canAccessAnalystFeaturesOrPreview && (
           <DataStudioTab
             label={t`Dependency graph`}
             icon="dependencies"

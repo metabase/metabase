@@ -68,6 +68,7 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import {
   CanAccessAnalystFeatures,
+  CanAccessAnalystFeaturesOrPreview,
   CanAccessDataModel,
   CanAccessDataStudio,
   CanAccessGlossary,
@@ -383,6 +384,7 @@ export const getRoutes = (store) => {
             CanAccessTransforms,
             CanAccessAnalystFeatures,
             CanAccessGlossary,
+            CanAccessAnalystFeaturesOrPreview,
           )}
         </Route>
       </Route>

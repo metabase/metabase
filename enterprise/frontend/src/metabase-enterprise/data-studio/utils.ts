@@ -34,6 +34,10 @@ export function canAccessGlossary(state: State) {
   return getUserIsAdmin(state) || getUserIsAnalyst(state);
 }
 
+export function canAccessAnalystFeaturesOrPreview(state: State) {
+  return getUserIsAnalyst(state) || getUserIsAdmin(state);
+}
+
 export function getLibraryCollectionType(
   type: CollectionType | null | undefined,
 ): LibraryCollectionType | undefined {

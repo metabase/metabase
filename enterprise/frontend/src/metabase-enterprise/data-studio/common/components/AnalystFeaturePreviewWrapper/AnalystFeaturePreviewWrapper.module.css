@@ -1,0 +1,32 @@
+.previewContainer {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.blurredContent {
+  height: 100%;
+  filter: blur(2px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.7) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modalCard {
+  max-width: 400px;
+  box-shadow: var(--mb-shadow-lg);
+}

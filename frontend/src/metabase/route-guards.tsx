@@ -140,6 +140,17 @@ const UserCanAccessGlossary = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
+const UserIsAnalystOrAdmin = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserIsAnalystOrAdmin",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    Boolean(state.currentUser?.is_data_analyst) ||
+    Boolean(state.currentUser?.is_superuser),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
 export const IsAuthenticated = MetabaseIsSetup(
   UserIsAuthenticated(({ children }) => children),
 );
@@ -180,4 +191,8 @@ export const CanAccessAnalystFeatures = MetabaseIsSetup(
 
 export const CanAccessGlossary = MetabaseIsSetup(
   UserIsAuthenticated(UserCanAccessGlossary(({ children }) => children)),
+);
+
+export const CanAccessAnalystFeaturesOrPreview = MetabaseIsSetup(
+  UserIsAuthenticated(UserIsAnalystOrAdmin(({ children }) => children)),
 );

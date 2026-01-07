@@ -20,6 +20,10 @@ import { PaneHeader } from "metabase-enterprise/data-studio/common/components/Pa
 import S from "./GlossaryPage.module.css";
 
 export function GlossaryPage() {
+  return <GlossaryPageContent />;
+}
+
+function GlossaryPageContent() {
   const { data: glossary = [] } = useListGlossaryQuery();
   const [createGlossary] = useCreateGlossaryMutation();
   const [updateGlossary] = useUpdateGlossaryMutation();

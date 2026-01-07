@@ -6,6 +6,7 @@ import { DataStudioToolbarButton } from "./query-builder/components/DataStudioTo
 import { getDataStudioRoutes } from "./routes";
 import {
   canAccessAnalystFeatures,
+  canAccessAnalystFeaturesOrPreview,
   canAccessDataStudio,
   canAccessGlossary,
   canPlaceEntityInCollection,
@@ -22,6 +23,8 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.canAccessDataStudio = canAccessDataStudio;
     PLUGIN_DATA_STUDIO.canAccessAnalystFeatures = canAccessAnalystFeatures;
     PLUGIN_DATA_STUDIO.canAccessGlossary = canAccessGlossary;
+    PLUGIN_DATA_STUDIO.canAccessAnalystFeaturesOrPreview =
+      canAccessAnalystFeaturesOrPreview;
     PLUGIN_DATA_STUDIO.getDataStudioRoutes = getDataStudioRoutes;
     PLUGIN_DATA_STUDIO.DataStudioToolbarButton = DataStudioToolbarButton;
     PLUGIN_DATA_STUDIO.NavbarLibrarySection = NavbarLibrarySection;

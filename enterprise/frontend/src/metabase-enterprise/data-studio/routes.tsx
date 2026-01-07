@@ -30,6 +30,7 @@ export function getDataStudioRoutes(
   CanAccessTransforms: ComponentType,
   CanAccessAnalystFeatures: ComponentType,
   CanAccessGlossary: ComponentType,
+  CanAccessAnalystFeaturesOrPreview: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -54,7 +55,7 @@ export function getDataStudioRoutes(
         <Route component={CanAccessGlossary}>
           {getDataStudioGlossaryRoutes()}
         </Route>
-        <Route path="library" component={CanAccessAnalystFeatures}>
+        <Route path="library" component={CanAccessAnalystFeaturesOrPreview}>
           <IndexRoute component={LibrarySectionLayout} />
           {getDataStudioTableRoutes()}
           {getDataStudioMetricRoutes()}
@@ -62,7 +63,7 @@ export function getDataStudioRoutes(
           {getDataStudioSnippetRoutes()}
         </Route>
         {PLUGIN_DEPENDENCIES.isEnabled && (
-          <Route path="dependencies" component={CanAccessAnalystFeatures}>
+          <Route path="dependencies" component={CanAccessAnalystFeaturesOrPreview}>
             <Route component={DependenciesSectionLayout}>
               {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
             </Route>

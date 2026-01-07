@@ -9,7 +9,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin, getUserIsAdminButNotAnalyst } from "metabase/selectors/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -25,6 +25,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
+import { AnalystFeaturePreviewWrapper } from "metabase-enterprise/data-studio/common/components/AnalystFeaturePreviewWrapper";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
@@ -34,6 +35,7 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
+import { LibrarySectionLayoutPreview } from "./LibrarySectionLayoutPreview";
 import {
   useBuildSnippetTree,
   useBuildTreeForCollection,
@@ -43,6 +45,20 @@ import { type TreeItem, isCollection } from "./types";
 import { getCollection, getWritableCollection } from "./utils";
 
 export function LibrarySectionLayout() {
+  const isPreviewMode = useSelector(getUserIsAdminButNotAnalyst);
+
+  if (isPreviewMode) {
+    return (
+      <AnalystFeaturePreviewWrapper feature="library">
+        <LibrarySectionLayoutPreview />
+      </AnalystFeaturePreviewWrapper>
+    );
+  }
+
+  return <LibrarySectionLayoutContent />;
+}
+
+function LibrarySectionLayoutContent() {
   usePageTitle(t`Library`);
   const dispatch = useDispatch();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(

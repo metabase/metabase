@@ -30,6 +30,7 @@ type DataStudioPlugin = {
   canAccessDataStudio: (state: State) => boolean;
   canAccessAnalystFeatures: (state: State) => boolean;
   canAccessGlossary: (state: State) => boolean;
+  canAccessAnalystFeaturesOrPreview: (state: State) => boolean;
   getDataStudioRoutes: (
     store: Store<State>,
     CanAccessDataStudio: ComponentType,
@@ -37,6 +38,7 @@ type DataStudioPlugin = {
     CanAccessTransforms: ComponentType,
     CanAccessAnalystFeatures: ComponentType,
     CanAccessGlossary: ComponentType,
+    CanAccessAnalystFeaturesOrPreview: ComponentType,
   ) => ReactNode;
   DataStudioToolbarButton: ComponentType<DataStudioToolbarButtonProps>;
   NavbarLibrarySection: ComponentType<NavbarLibrarySectionProps>;
@@ -73,6 +75,7 @@ const getDefaultPluginDataStudio = (): DataStudioPlugin => ({
   canAccessDataStudio: () => false,
   canAccessAnalystFeatures: () => false,
   canAccessGlossary: () => false,
+  canAccessAnalystFeaturesOrPreview: () => false,
   getDataStudioRoutes: () => null,
   DataStudioToolbarButton: PluginPlaceholder,
   NavbarLibrarySection: PluginPlaceholder,

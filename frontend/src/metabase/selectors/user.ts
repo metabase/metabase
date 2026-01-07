@@ -17,6 +17,11 @@ export const getUserIsAnalyst = createSelector(
   (user) => user?.is_data_analyst || false,
 );
 
+export const getUserIsAdminButNotAnalyst = createSelector(
+  [getUserIsAdmin, getUserIsAnalyst],
+  (isAdmin, isAnalyst) => isAdmin && !isAnalyst,
+);
+
 export const canManageSubscriptions = createSelector(
   [
     getUserIsAdmin,
