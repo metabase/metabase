@@ -42,8 +42,18 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                 git config user.email "github-actions[bot]@users.noreply.github.com"
                 git add "$OPENAPI_SPEC"
                 git commit -m "Update OpenAPI schema"
-                git push
-                echo "OpenAPI schema updated and pushed."
+
+                # Get the current branch name
+                BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+                if [[ "$BRANCH" == "HEAD" ]]; then
+                        echo "Error: Cannot push from detached HEAD state"
+                        echo "Please ensure the workflow checks out the branch, not a specific commit"
+                        exit 1
+                fi
+
+                git push origin "$BRANCH"
+                echo "OpenAPI schema updated and pushed to $BRANCH."
                 exit 0
         fi
 

@@ -11,6 +11,10 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'openapi-self-healing')
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
