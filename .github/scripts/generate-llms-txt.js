@@ -180,7 +180,7 @@ function generateLlmsFullTxt(branch, config, files, baseUrl) {
 
   // Build content
   const sectionCapitalized = section.charAt(0).toUpperCase() + section.slice(1);
-  const header = `# Metabase ${sectionCapitalized} - Complete Reference
+  const header = `# Metabase ${sectionCapitalized} - Complete Reference for AI agents
 
 > Table of contents: ${baseUrl}/${OUTPUT_FILE}
 
