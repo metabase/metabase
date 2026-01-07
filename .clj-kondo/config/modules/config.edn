@@ -769,9 +769,13 @@
   llm
   {:team "Metabot"
    :api  #{metabase.llm.api
+           metabase.llm.context
            metabase.llm.openai
            metabase.llm.settings}
    :uses #{api
+           lib
+           lib-be
+           models
            settings
            util}}
 
