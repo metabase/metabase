@@ -438,4 +438,62 @@ describe("NativeQuery", () => {
       expect(barTag["name"]).toEqual("#1234-bar"); // bar's name is the same
     });
   });
+
+  describe("validateTemplateTags", () => {
+    it("should return an empty array when there are no validation errors", () => {
+      const q = makeQuery()
+        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}}")
+        .setTemplateTag("category", {
+          name: "category",
+          type: "dimension",
+          dimension: ["field", PRODUCTS.CATEGORY, null],
+          "display-name": "Category",
+        });
+      const errors = q.validateTemplateTags();
+      expect(errors).toHaveLength(0);
+    });
+
+    it("should return an error when a field filter is not mapped", () => {
+      const q = makeQuery()
+        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}}")
+        .setTemplateTag("category", {
+          name: "category",
+          type: "dimension",
+          "display-name": "Category",
+        });
+      const errors = q.validateTemplateTags();
+      expect(errors).toHaveLength(1);
+      expect(errors[0].message).toMatch(/needs to be mapped to a field/);
+    });
+
+    it("should return an error when a tag is missing a display name", () => {
+      const q = makeQuery()
+        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}}")
+        .setTemplateTag("category", {
+          name: "category",
+          type: "text",
+        });
+      const errors = q.validateTemplateTags();
+      expect(errors).toHaveLength(1);
+      expect(errors[0].message).toMatch(/Missing widget label/);
+    });
+
+    it("should return multiple errors when multiple tags are invalid", () => {
+      const q = makeQuery()
+        .setQueryText("SELECT * FROM PRODUCTS WHERE {{category}} AND {{foo}}")
+        .setTemplateTag("category", {
+          name: "category",
+          type: "dimension",
+          "display-name": "Category",
+        })
+        .setTemplateTag("foo", {
+          name: "foo",
+          type: "text",
+        });
+      const errors = q.validateTemplateTags();
+      expect(errors).toHaveLength(2);
+      expect(errors[0].message).toMatch(/needs to be mapped to a field/);
+      expect(errors[1].message).toMatch(/Missing widget label/);
+    });
+  });
 });
