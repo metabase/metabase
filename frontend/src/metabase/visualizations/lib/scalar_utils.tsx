@@ -61,7 +61,7 @@ export function getColor(_value: RowValue, segments?: Segment[]) {
 }
 
 export function getTooltipContent(segments?: Segment[]) {
-  if (!segments) {
+  if (!segments || segments.length === 0) {
     return null;
   }
 

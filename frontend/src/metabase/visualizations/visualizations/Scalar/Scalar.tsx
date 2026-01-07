@@ -242,6 +242,7 @@ export class Scalar extends Component<
             position="bottom"
             px="0.375rem"
             py="xs"
+            disabled={!tooltipContent}
           >
             <Box
               onClick={handleClick}
