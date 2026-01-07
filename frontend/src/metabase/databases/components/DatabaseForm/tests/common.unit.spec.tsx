@@ -61,7 +61,10 @@ describe("DatabaseForm", () => {
         ...TEST_ENGINES.h2,
         "details-fields":
           TEST_ENGINES.h2["details-fields"]?.map((field) => {
-            if (field.name === "is-destination-database") {
+            if (
+              field.type !== "group" &&
+              field.name === "is-destination-database"
+            ) {
               return {
                 name: "is-destination-database",
                 type: "hidden",
@@ -69,7 +72,10 @@ describe("DatabaseForm", () => {
               };
             }
 
-            if (field.name === "let-user-control-scheduling") {
+            if (
+              field.type !== "group" &&
+              field.name === "let-user-control-scheduling"
+            ) {
               return {
                 name: "let-user-control-scheduling",
                 type: "boolean",

@@ -8,6 +8,7 @@ import {
   removeMeasurementContainer,
 } from "metabase/data-grid/utils/measure-utils";
 import { renderRoot } from "metabase/lib/react-compat";
+import { SortableHeaderPill } from "metabase/ui";
 
 import {
   CELL_HORIZONTAL_PADDING,
@@ -101,6 +102,7 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   const widths: Record<string, number> = {};
 
+  // Calculate fixed widths: numeric width or "auto" (measured from content)
   const fixedWidth = columns
     .filter((col) => col.width != null)
     .reduce((sum, col) => {
@@ -112,10 +114,12 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
 
   let remainingSpace = containerWidth - fixedWidth;
 
+  // Columns without width are stretching columns
   const stretchingColumnIds = new Set(
     columns.filter((col) => col.width == null).map((col) => col.id),
   );
 
+  // Set fixed widths
   columns.forEach((column) => {
     if (column.width != null) {
       if (column.width === "auto") {
@@ -258,7 +262,7 @@ function MeasureContent<TData extends TreeNodeData>({
           >
             {typeof column.header === "string" && (
               <div data-measure-header style={{ whiteSpace: "nowrap" }}>
-                {column.header}
+                <SortableHeaderPill name={column.header} />
               </div>
             )}
             {rowsToMeasure.map((row) => {

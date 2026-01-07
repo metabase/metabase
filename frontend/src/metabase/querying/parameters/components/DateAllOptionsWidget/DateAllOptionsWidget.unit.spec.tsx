@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 
 import { DateAllOptionsWidget } from "./DateAllOptionsWidget";
 
@@ -10,7 +10,9 @@ type SetupOpts = {
 
 function setup({ value }: SetupOpts = {}) {
   const onChange = jest.fn();
-  render(<DateAllOptionsWidget value={value} onChange={onChange} />);
+  renderWithProviders(
+    <DateAllOptionsWidget value={value} onChange={onChange} />,
+  );
   return { onChange };
 }
 
