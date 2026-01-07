@@ -20,4 +20,4 @@ jobs:
       - name: Generate version.properties
         run: ./bin/build.sh :steps [:version]
       - name: Check OpenAPI specs are up to date
-        run: ./bin/openapi-check.sh
+        run: ./bin/openapi-check.sh --auto-commit
