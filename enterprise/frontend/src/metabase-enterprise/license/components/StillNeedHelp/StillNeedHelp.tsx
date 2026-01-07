@@ -21,7 +21,7 @@ export const StillNeedHelp = () => {
   return (
     <Container>
       <Title>{t`Still need help?`}</Title>
-      <Text color="text-secondary">
+      <Text c="text-secondary">
         {t`You can ask for billing help at `}
         {/* eslint-disable-next-line i18next/no-literal-string */}
         <Anchor href="mailto:billing@metabase.com">billing@metabase.com</Anchor>

@@ -42,7 +42,7 @@ export function AIAnalysisContentWrapper({
               p={4}
               onClick={onClose}
               aria-label={t`Close`}
-              color="text-secondary"
+              c="text-secondary"
             >
               <Icon name="close" size={16} />
             </Button>

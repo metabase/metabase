@@ -16,7 +16,7 @@ export const CollectionAuthorityLevelDisplay = ({
       ...collection,
       model: "collection",
     } as ObjectWithModel);
-    return { ...icon, color: icon.color };
+    return icon;
   }, [collection]);
 
   if (collection.authority_level !== "official") {

@@ -190,7 +190,7 @@ export const AgentSuggestionMessage = ({
               align="center"
               gap="sm"
             >
-              <Loader size="xs" color="text-secondary" type="dots" />
+              <Loader size="xs" c="text-secondary" type="dots" />
               <Text mb="1px" c="text-secondary">{t`Loading preview`}</Text>
             </Flex>
           ))
