@@ -445,39 +445,46 @@
               (qp.preprocess/preprocess query))))))
 
 (deftest max-expansion-depth-test
-  (testing "Expansion fails when it exceeds max-expansion-depth"
-    (let [mp (lib.tu/mock-metadata-provider
-              meta/metadata-provider
-              {:measures [{:lib/type   :metadata/measure
-                           :id         4
-                           :name       "Measure 4"
-                           :table-id   (meta/id :products)
-                           :definition (basic-sum-measure-query)}
-                          {:lib/type   :metadata/measure
-                           :id         3
-                           :name       "Measure 3"
-                           :table-id   (meta/id :products)
-                           :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                                           (lib/aggregate (lib/+ (measure-ref 4) 1)))}
-                          {:lib/type   :metadata/measure
-                           :id         2
-                           :name       "Measure 2"
-                           :table-id   (meta/id :products)
-                           :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                                           (lib/aggregate (lib/+ (measure-ref 3) 1)))}
-                          {:lib/type   :metadata/measure
-                           :id         1
-                           :name       "Measure 1"
-                           :table-id   (meta/id :products)
-                           :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
-                                           (lib/aggregate (lib/+ (measure-ref 2) 1)))}]})
-          query (-> (lib/query mp (meta/table-metadata :products))
-                    (lib/aggregate (lib.metadata/measure mp 1)))]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"exceeded maximum depth"
-           (with-redefs [measures/max-expansion-depth 3]
-             (adjust query)))))))
+  (let [mp (lib.tu/mock-metadata-provider
+            meta/metadata-provider
+            {:measures [{:lib/type   :metadata/measure
+                         :id         4
+                         :name       "Measure 4"
+                         :table-id   (meta/id :products)
+                         :definition (basic-sum-measure-query)}
+                        {:lib/type   :metadata/measure
+                         :id         3
+                         :name       "Measure 3"
+                         :table-id   (meta/id :products)
+                         :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                         (lib/aggregate (lib/+ (measure-ref 4) 1)))}
+                        {:lib/type   :metadata/measure
+                         :id         2
+                         :name       "Measure 2"
+                         :table-id   (meta/id :products)
+                         :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                         (lib/aggregate (lib/+ (measure-ref 3) 1)))}
+                        {:lib/type   :metadata/measure
+                         :id         1
+                         :name       "Measure 1"
+                         :table-id   (meta/id :products)
+                         :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                         (lib/aggregate (lib/+ (measure-ref 2) 1)))}]})
+        base-query (lib/query mp (meta/table-metadata :products))]
+    (testing "Expansion fails when it exceeds max-expansion-depth"
+      (let [query (-> base-query
+                      (lib/aggregate (lib.metadata/measure mp 1)))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"exceeded maximum depth"
+             (with-redefs [measures/max-expansion-depth 3]
+               (adjust query))))))
+    (testing "Expansion succeeds when within max-expansion-depth"
+      (let [query (-> base-query
+                      (lib/aggregate (lib.metadata/measure mp 2)))]
+        (is (=? {:stages [{:aggregation [[:+ {} [:+ {} [:sum {} some?] 1] 1]]}]}
+                (with-redefs [measures/max-expansion-depth 3]
+                  (adjust query))))))))
 
 (deftest ^:parallel nested-measure-with-metric-reference-error-test
   (testing "Nested measure containing metric reference fails (A → B where B uses metric)"

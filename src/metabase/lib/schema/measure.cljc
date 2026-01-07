@@ -6,7 +6,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performace :refer [prewalk]]))
+   [metabase.util.performance :refer [prewalk]]))
 
 (defn- contains-metric-reference?
   "Walk a clause and return true if it contains any `:metric` reference."
