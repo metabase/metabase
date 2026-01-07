@@ -50,6 +50,7 @@ export function TemporalUnitSettings({
             }
             fullWidth
             px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
+            justify="space-between"
             styles={{
               root: showError
                 ? {
@@ -57,7 +58,6 @@ export function TemporalUnitSettings({
                     borderColor: "var(--mb-color-error)",
                   }
                 : undefined,
-              inner: { justifyContent: "space-between" }, // justify prop in mantine v7
             }}
           >
             {getSelectedText(selectedUnits, isAll, isNone)}
