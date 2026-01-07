@@ -740,7 +740,7 @@
       (t2/update! :model/WorkspaceTransform tx-id update-body)
       ;; Mark workspace as stale too if source/target changed
       (when source-or-target-changed?
-        (t2/update! :model/Workspace ws-id {:analysis_stale true})))
+        (ws.impl/mark-workspace-stale! ws-id)))
     (fetch-ws-transform ws-id tx-id)))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
@@ -748,12 +748,16 @@
    For provisional transforms we will skip even creating it in the first place."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at [:now]})))
+  (ws.impl/mark-workspace-stale! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/unarchive" :- :nil
   "Unmark the given transform for archival. This will recall the last definition it had within the workspace."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at nil})))
+  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
+                                   {:ref_id tx-id :workspace_id id}
+                                   {:archived_at nil, :analysis_stale true})))
+  (ws.impl/mark-workspace-stale! id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/transform/:tx-id" :- :nil

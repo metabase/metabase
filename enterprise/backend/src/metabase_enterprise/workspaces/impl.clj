@@ -361,12 +361,6 @@
     ;; Recalculate and cache
     (calculate-and-cache-graph! workspace)))
 
-(defn mark-transform-stale!
-  "Mark a workspace transform and its workspace as needing analysis recalculation."
-  [workspace-id ref-id]
-  (t2/update! :model/WorkspaceTransform ref-id {:analysis_stale true})
-  (t2/update! :model/Workspace workspace-id {:analysis_stale true}))
-
 (defn mark-workspace-stale!
   "Mark a workspace as needing graph recalculation."
   [workspace-id]
