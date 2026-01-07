@@ -49,6 +49,8 @@ jobs:
           PATCH_VERSION=$(echo "$VERSION_NUM" | cut -d. -f3)
 
           # Only proceed if this is a minor or major release (patch version is 0)
+          # Note: This is a safety check even though the workflow should only be called
+          # for minor/major releases, just in case the workflow is dispatched manually.
           if [ "$PATCH_VERSION" != "0" ]; then
             echo "⏭️  This is a patch release ($VERSION). Skipping llms.txt generation."
             echo "should_generate=false" >> $GITHUB_OUTPUT

@@ -5,7 +5,14 @@ const REPO = "metabase/metabase";
 const OUTPUT_FILE = "llms.txt";
 
 // Sections to generate llms-<name>-full.txt for.
-const LLMS_FULL_TO_GENERATE = ["embedding"];
+// Each section can define a preamble (introductory content before the main docs).
+const LLMS_FULL_TO_GENERATE = [
+  {
+    section: "embedding",
+    getPreamble: (branch) =>
+      aboveVersion(branch, 57) ? getModularEmbeddingGotchaNotes() : "",
+  },
+];
 
 /**
  * List directory recursively to get markdown files
@@ -39,7 +46,9 @@ function getMarkdownFilesList(docsPath) {
       );
     })
     .map((entry) => {
-      const fullPath = path.join(entry.parentPath, entry.name);
+      const fullPath = path
+        .join(entry.parentPath, entry.name)
+        .replace(/\\/g, "/");
 
       const relativePath = path
         .relative(docsPath, fullPath)
@@ -54,16 +63,16 @@ function getMarkdownFilesList(docsPath) {
  *
  * @param {string} branch - branch name (e.g. 'master' or 'release-x.58.x')
  * @param {Array} files - list of all markdown file objects
+ * @param {Array<Object>} sectionsConfig - list of section config objects to generate complete references for
  */
-function generateLlmsTxt(branch, files) {
+function generateLlmsTxt(branch, files, sectionsConfig) {
   const baseUrl = `https://raw.githubusercontent.com/${REPO}/refs/heads/${branch}`;
 
   const filesToExtract = files
     // Files in embedding/sdk/api/snippets does not exist in the repo.
     .filter(
       (file) => !file.relativePath.startsWith("embedding/sdk/api/snippets"),
-    )
-    .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+    );
 
   const entries = filesToExtract.map((file) => {
     const content = fs.readFileSync(file.fullPath, "utf8");
@@ -79,12 +88,15 @@ function generateLlmsTxt(branch, files) {
   );
 
   // Generate complete references entries
-  const completeReferences = LLMS_FULL_TO_GENERATE.filter((section) =>
-    files.some((file) => file.relativePath.startsWith(`${section}/`)),
-  ).map((section) => {
-    const capitalized = section.charAt(0).toUpperCase() + section.slice(1);
-    return `- [${capitalized} - Complete Reference](${baseUrl}/llms-${section}-full.txt)`;
-  });
+  const completeReferences = sectionsConfig
+    .filter((config) =>
+      files.some((file) => file.relativePath.startsWith(`${config.section}/`)),
+    )
+    .map((config) => {
+      const capitalized =
+        config.section.charAt(0).toUpperCase() + config.section.slice(1);
+      return `- [${capitalized} - Complete Reference](${baseUrl}/llms-${config.section}-full.txt)`;
+    });
 
   // Generate llms.txt content using template literal
   const content = `# Metabase Documentation
@@ -115,12 +127,13 @@ ${completeReferences.join("\n")}
  *
  * @param {string} branch - branch name (e.g., 'master', 'release-x.58.x')
  * @param {Array} files - list of all markdown file objects
+ * @param {Array<Object>} sectionsConfig - list of section config objects to generate full files for
  */
-function generateLlmsFullFiles(branch, files) {
+function generateLlmsFullFiles(branch, files, sectionsConfig) {
   const baseUrl = `https://raw.githubusercontent.com/${REPO}/refs/heads/${branch}`;
 
-  LLMS_FULL_TO_GENERATE.forEach((section) => {
-    generateLlmsFullTxt(branch, section, files, baseUrl);
+  sectionsConfig.forEach((config) => {
+    generateLlmsFullTxt(branch, config, files, baseUrl);
   });
 }
 
@@ -148,11 +161,13 @@ function getModularEmbeddingGotchaNotes() {
 /**
  * Generate llms-full.txt file for a specific section
  * @param {string} branch - The branch name
- * @param {string} section - Section name (e.g., 'embedding')
+ * @param {Object} config - Section config object with section name and optional getPreamble function
  * @param {Array} files - Array of all markdown file objects
  * @param {string} baseUrl - Base URL for raw GitHub links
  */
-function generateLlmsFullTxt(branch, section, files, baseUrl) {
+function generateLlmsFullTxt(branch, config, files, baseUrl) {
+  const { section, getPreamble } = config;
+
   // Filter docs for this section
   const sectionFiles = files.filter((file) =>
     file.relativePath.startsWith(`${section}/`),
@@ -163,9 +178,6 @@ function generateLlmsFullTxt(branch, section, files, baseUrl) {
     return;
   }
 
-  // Sort by path for consistent ordering
-  sectionFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-
   // Build content
   const sectionCapitalized = section.charAt(0).toUpperCase() + section.slice(1);
   const header = `# Metabase ${sectionCapitalized} - Complete Reference
@@ -174,11 +186,8 @@ function generateLlmsFullTxt(branch, section, files, baseUrl) {
 
 `;
 
-  // Add special note for embedding section (v57+)
-  const gotchaNotes =
-    section === "embedding" && aboveVersion(branch, 57)
-      ? getModularEmbeddingGotchaNotes()
-      : "";
+  // Add preamble if provided (e.g., version-specific notes, warnings)
+  const preamble = getPreamble ? getPreamble(branch) : "";
 
   // Concatenate all documents
   const docs = sectionFiles
@@ -186,7 +195,7 @@ function generateLlmsFullTxt(branch, section, files, baseUrl) {
     .join("\n");
 
   // Write llms-full.txt file at repo root
-  const content = header + gotchaNotes + docs;
+  const content = header + preamble + docs;
   const llmsFullPath = `llms-${section}-full.txt`;
   fs.writeFileSync(llmsFullPath, content, "utf8");
 
@@ -196,7 +205,19 @@ function generateLlmsFullTxt(branch, section, files, baseUrl) {
 }
 
 /**
- * Extract title from markdown file frontmatter or filename
+ * Extract title from markdown file frontmatter or filename.
+ *
+ * We try to extract the title in this order: 1) YAML frontmatter
+ * 2) first H1 heading, and 3) the Markdown file name.
+ *
+ * Example Markdown and frontmatter format:
+ * ```markdown
+ * ---
+ * title: "Getting Started"
+ * description: "A guide"
+ * ---
+ * # Getting Started
+ * ```
  *
  * @param {string} content - file content
  * @param {string} filePath - relative file path
@@ -204,9 +225,12 @@ function generateLlmsFullTxt(branch, section, files, baseUrl) {
  */
 function extractTitle(content, filePath) {
   // Try to extract title from YAML frontmatter
+  // First, match against the YAML frontmatter delimiter `---`
   const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
 
   if (frontmatterMatch) {
+    // Then, match against the title property
+    // Example: `title: "My Page"`
     const frontmatter = frontmatterMatch[1];
     const titleMatch = frontmatter.match(/^title:\s*(.+)$/m);
 
@@ -217,16 +241,18 @@ function extractTitle(content, filePath) {
   }
 
   // Try to extract title from first H1 heading
+  // Example: `# My Page`
   const h1Match = content.match(/^#\s+(.+)$/m);
 
   if (h1Match) {
     return h1Match[1].trim();
   }
 
-  // Fallback to filename
+  // Fallback to filename, e.g. `my-page.md`
   const filename = path.basename(filePath, ".md");
 
   // Convert kebab-case or snake_case to Title Case
+  // `my-page.md` would become "My Page"
   return filename
     .split(/[-_]/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -283,6 +309,9 @@ if (require.main === module) {
   const resolvedDocsPath = path.resolve(docsPath);
   const markdownFiles = getMarkdownFilesList(resolvedDocsPath);
 
-  generateLlmsTxt(branch, markdownFiles);
-  generateLlmsFullFiles(branch, markdownFiles);
+  // Sort all files upfront for consistent ordering across all generated files
+  markdownFiles.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+
+  generateLlmsTxt(branch, markdownFiles, LLMS_FULL_TO_GENERATE);
+  generateLlmsFullFiles(branch, markdownFiles, LLMS_FULL_TO_GENERATE);
 }
