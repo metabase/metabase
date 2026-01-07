@@ -59,6 +59,7 @@ export function createMockCardDependencyNodeData(
     description: null,
     type: "question",
     display: "table",
+    query_type: "query",
     dashboard_id: 1,
     collection_id: null,
     result_metadata: [],

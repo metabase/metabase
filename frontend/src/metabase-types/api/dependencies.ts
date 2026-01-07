@@ -66,6 +66,7 @@ export type CardDependencyNodeData = Pick<
   | "last-edit-info"
 > & {
   view_count?: number | null;
+  query_type?: "native" | "query";
 };
 
 export type SnippetDependencyNodeData = Pick<

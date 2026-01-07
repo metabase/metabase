@@ -112,6 +112,7 @@ export function getNodeIcon(node: DependencyNode): IconName {
     node.type,
     node.type === "card" ? node.data.type : undefined,
     node.type === "card" ? node.data.display : undefined,
+    node.type === "card" ? node.data.query_type : undefined,
   );
 }
 
@@ -119,11 +120,15 @@ export function getNodeIconWithType(
   type: DependencyType,
   cardType?: CardType,
   cardDisplay?: VisualizationDisplay,
+  queryType?: "native" | "query",
 ): IconName {
   switch (type) {
     case "card":
       switch (cardType) {
         case "question":
+          if (queryType === "native") {
+            return "sql";
+          }
           return cardDisplay != null
             ? (visualizations.get(cardDisplay)?.iconName ?? "table2")
             : "table2";
@@ -139,7 +144,7 @@ export function getNodeIconWithType(
     case "transform":
       return "transform";
     case "snippet":
-      return "sql";
+      return "snippet";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -345,7 +350,9 @@ export function getNodeTypeInfo(node: DependencyNode): NodeTypeInfo {
     case "card":
       switch (node.data.type) {
         case "question":
-          return { label: t`Question`, color: "text-secondary" };
+          return node.data.query_type === "native"
+            ? { label: t`SQL question`, color: "text-secondary" }
+            : { label: t`Question`, color: "text-secondary" };
         case "model":
           return { label: t`Model`, color: "brand" };
         case "metric":
