@@ -1,13 +1,11 @@
 (ns metabase.api.open-api-test
   (:require
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-routes.core :as routes]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
