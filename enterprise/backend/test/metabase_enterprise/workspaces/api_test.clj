@@ -1564,8 +1564,21 @@
             ;;      i guess stuff like "name" is useful for transforms...
             ;; TODO fix dependents count for inputs
             ;; Schema/table names vary by driver (H2 uppercase, Postgres lowercase)
-            (is (=? {:nodes [{:type "input-table", :id string?, :data {:db (mt/id), :schema string?, :table string?, :id (mt/id :venues)}, :dependents_count {:workspace-transform 1}}
-                             {:type "workspace-transform", :id (:ref_id tx), :data {:ref_id (:ref_id tx), :name "Transform in WS1"}, :dependents_count {}}],
+            (is (=? {:nodes [{:type             "input-table"
+                              :id               string?
+                              :data             {:db     (mt/id)
+                                                 :schema string?
+                                                 :table  string?
+                                                 :id     (mt/id :venues)}
+                              :dependents_count {:workspace-transform 1}}
+                             {:type             "workspace-transform"
+                              :id               (:ref_id tx)
+                              :data             {:ref_id (:ref_id tx)
+                                                 :name "Transform in WS1"
+                                                 :target {:db     (mt/id)
+                                                          :schema string?
+                                                          :table  string?}}
+                              :dependents_count {}}],
                      :edges [{:from_entity_type "input-table"
                               :from_entity_id   string?
                               :to_entity_type   "workspace-transform"
