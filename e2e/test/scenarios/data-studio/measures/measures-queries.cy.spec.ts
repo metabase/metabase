@@ -346,7 +346,7 @@ describe("scenarios > data studio > measures > queries", () => {
     });
   });
 
-  it.skip("should be possible to order by an aggregation using a measure directly", () => {
+  it("should be possible to order by an aggregation using a measure directly", () => {
     H.createMeasure({
       name: MEASURE_NAME,
       table_id: ORDERS_ID,
@@ -362,11 +362,14 @@ describe("scenarios > data studio > measures > queries", () => {
 
         H.sort();
         H.popover().findByText("Table Measure").click();
+        H.getNotebookStep("sort").findByText("Table Measure").click();
       },
     });
 
-    // TODO: fix this when sorting works
-    verifyRowValues([["April 2022"], ["May 2022", "52.76"]]);
+    verifyRowValues([
+      ["January 2026", "52,249.59"],
+      ["January 2025", "51,634.16"],
+    ]);
   });
 
   it("should be possible to order by an aggregation using a custom expression based on a measure", () => {
@@ -717,8 +720,7 @@ describe("scenarios > data studio > measures > queries", () => {
       verifyScalarValue("1,510,568.93");
     });
 
-    // TODO: unskip once the title card is fixed
-    it.skip("should be possible x-ray a question containing a measure", () => {
+    it("should be possible x-ray a question containing a measure", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         table_id: ORDERS_ID,
@@ -752,8 +754,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("using measures in models", () => {
-    // TODO: unskip once the title card is fixed
-    it.skip("should be possible x-ray a model containing a measure", () => {
+    it("should be possible x-ray a model containing a measure", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         table_id: ORDERS_ID,
@@ -788,8 +789,7 @@ describe("scenarios > data studio > measures > queries", () => {
   });
 
   describe("dependency graph", () => {
-    // TODO: unskip once measures show dependencies
-    it.skip("should display measure dependents in the dependency graph", () => {
+    it("should display measure dependents in the dependency graph", () => {
       H.createMeasure({
         name: MEASURE_NAME,
         table_id: ORDERS_ID,
