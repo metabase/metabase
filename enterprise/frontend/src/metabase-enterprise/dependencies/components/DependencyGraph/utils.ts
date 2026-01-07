@@ -178,7 +178,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "table":
       return {
         label: t`View metadata`,
-        url: Urls.dataModel({
+        url: Urls.dataStudioData({
           databaseId: node.data.db_id,
           schemaName: node.data.schema,
           tableId: node.id,
@@ -212,10 +212,18 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
       }
       return null;
     case "segment":
-      return {
-        label: t`View this segment`,
-        url: Urls.dataModelSegment(node.id),
-      };
+      if (node.data.table != null) {
+        return {
+          label: t`View this segment`,
+          url: Urls.dataStudioDataModelSegment({
+            databaseId: node.data.table.db_id,
+            schemaName: node.data.table.schema,
+            tableId: node.data.table.id,
+            segmentId: node.id,
+          }),
+        };
+      }
+      return null;
     case "measure":
       if (node.data.table != null) {
         return {
@@ -267,11 +275,11 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         return [
           {
             label: node.data.db.name,
-            url: Urls.dataModel({ databaseId: node.data.db_id }),
+            url: Urls.dataStudioData({ databaseId: node.data.db_id }),
           },
           {
             label: node.data.schema,
-            url: Urls.dataModel({
+            url: Urls.dataStudioData({
               databaseId: node.data.db_id,
               schemaName: node.data.schema,
             }),
@@ -296,10 +304,11 @@ export function getNodeLocationInfo(node: DependencyNode): NodeLink[] | null {
         return [
           {
             label: node.data.table.display_name,
-            url: Urls.dataModel({
+            url: Urls.dataStudioData({
               databaseId: node.data.table.db_id,
               schemaName: node.data.table.schema,
               tableId: node.data.table.id,
+              tab: node.type === "segment" ? "segments" : "measures",
             }),
           },
         ];
