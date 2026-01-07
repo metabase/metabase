@@ -15,7 +15,7 @@ const getColor = ({ hasValue, highlighted }: SelectButtonRootProps) => {
   if (hasValue) {
     return highlighted ? color("text-primary-inverse") : color("text-primary");
   } else {
-    return color("text-disabled");
+    return color("text-tertiary");
   }
 };
 

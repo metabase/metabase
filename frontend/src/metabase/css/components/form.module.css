@@ -1,13 +1,13 @@
 ::-webkit-input-placeholder {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 :-moz-placeholder {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 :-ms-input-placeholder {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .FormField {

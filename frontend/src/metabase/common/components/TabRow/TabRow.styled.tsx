@@ -32,7 +32,7 @@ export const ScrollButton = styled.button<ScrollButtonProps>`
   top: 0;
   width: 3rem;
   text-align: ${(props) => props.direction};
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 
   &:hover {
     color: var(--mb-color-brand);

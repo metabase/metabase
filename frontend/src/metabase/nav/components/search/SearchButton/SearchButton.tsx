@@ -34,7 +34,7 @@ export const SearchButton = (props: ButtonProps) => {
     <Button
       h="36px"
       w="240px"
-      c="text-disabled"
+      c="text-tertiary"
       leftSection={<Icon name="search" c="text-primary" />}
       onClick={handleClick}
       styles={{

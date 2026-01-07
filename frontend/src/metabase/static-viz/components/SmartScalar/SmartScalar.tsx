@@ -106,7 +106,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       marginRight: "6px",
     },
     percentChange: {
-      color: comparison.changeColor || getColor("text-disabled"),
+      color: comparison.changeColor || getColor("text-tertiary"),
       fontWeight: 900,
       marginRight: 4,
     },
@@ -115,7 +115,7 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       fontWeight: 700,
     },
     comparisonValue: {
-      color: getColor("text-disabled"),
+      color: getColor("text-tertiary"),
       fontWeight: 700,
     },
   };

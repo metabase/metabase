@@ -439,11 +439,11 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.brand[50],
     dark: baseColors.brand[40],
   },
-  "text-disabled": {
+  "text-tertiary": {
     light: baseColors.orionAlpha[40],
     dark: baseColors.orionAlphaInverse[40],
   },
-  "text-disabled-inverse": {
+  "text-tertiary-inverse": {
     light: baseColors.orionAlphaInverse[40],
     dark: baseColors.orionAlpha[40],
   },
@@ -619,5 +619,5 @@ export const mutateColors = (settings: ColorSettings) => {
 export const staticVizOverrides = {
   "text-primary": baseColors.orion[80],
   "text-secondary": baseColors.orion[60],
-  "text-disabled": baseColors.orion[40],
+  "text-tertiary": baseColors.orion[40],
 };

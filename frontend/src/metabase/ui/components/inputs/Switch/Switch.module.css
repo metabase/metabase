@@ -41,12 +41,12 @@
 
   &[data-disabled] {
     .label {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
       cursor: default;
     }
 
     .description {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
   }
 }

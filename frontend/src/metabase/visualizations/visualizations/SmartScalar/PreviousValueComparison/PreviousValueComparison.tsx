@@ -120,7 +120,7 @@ export function PreviousValueComparison({
         className={DashboardS.fullscreenNormalText}
       >
         <VariationPercent
-          color="text-disabled"
+          color="text-tertiary"
           comparison={comparison}
           iconSize={ICON_SIZE}
         >

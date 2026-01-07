@@ -68,7 +68,7 @@ body:where(:global(.mb-wrapper)) {
     var(--mb-color-text-primary-inverse) 65%,
     transparent
   );
-  --mb-color-text-disabled: color-mix(
+  --mb-color-text-tertiary: color-mix(
     in srgb,
     var(--mb-color-text-primary-inverse) 45%,
     transparent

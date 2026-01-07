@@ -220,7 +220,7 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c={canApply ? "success" : "text-disabled"}
+              c={canApply ? "success" : "text-tertiary"}
               disabled={!canApply}
               onClick={handleApply}
             >

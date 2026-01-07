@@ -34,7 +34,7 @@
 
 .readonlyCell {
   font-weight: normal;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   cursor: not-allowed;
   border-bottom-color: var(--mb-color-border);
 }

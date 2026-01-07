@@ -143,7 +143,7 @@ export const CloseSearchButton = styled.button`
   justify-content: center;
   width: 3rem;
   height: 100%;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   cursor: pointer;
 
   &:hover {

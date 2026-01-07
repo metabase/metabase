@@ -12,7 +12,7 @@ export const PathContainer = styled.div`
 export const BreadcrumbsPathSeparator = styled.div`
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   font-size: 0.8em;
   font-weight: bold;
   margin-left: 0.5rem;

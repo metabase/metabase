@@ -3,7 +3,7 @@
   height: 1.75rem;
 
   &::placeholder {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
   }
 
   &:only-child {

@@ -19,7 +19,7 @@ export const SidebarHeader = styled.div`
 
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 `;
 
 export const BackButton = styled.button`

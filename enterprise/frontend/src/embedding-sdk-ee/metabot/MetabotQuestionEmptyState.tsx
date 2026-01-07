@@ -6,7 +6,7 @@ import S from "./MetabotQuestion.module.css";
 
 export const MetabotQuestionEmptyState = () => (
   <Stack h="100%" w="100%" gap="sm" align="center" justify="center">
-    <Icon name="ai" c="text-disabled" size="3rem" opacity={0.7} />
+    <Icon name="ai" c="text-tertiary" size="3rem" opacity={0.7} />
 
     <Stack gap="xs" align="center">
       <Text lh="sm">{t`Ask questions to AI.`}</Text>
@@ -17,7 +17,7 @@ export const MetabotQuestionEmptyState = () => (
       className={S.emptyStateDisclaimerText}
       lh="sm"
       fz="sm"
-      c="text-disabled"
+      c="text-tertiary"
     >{t`AI isn't perfect. Double-check results.`}</Text>
   </Stack>
 );

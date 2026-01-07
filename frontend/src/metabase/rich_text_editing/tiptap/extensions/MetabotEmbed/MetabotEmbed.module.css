@@ -14,7 +14,7 @@
   position: absolute;
   pointer-events: none;
   padding: var(--mantine-spacing-md);
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .borderRadius {

@@ -184,7 +184,7 @@ export const ChartSettingSeriesOrder = ({
           <Flex justify="space-between" px={4}>
             <Group p={4} gap="sm">
               <ColorSelector
-                value={otherColor ?? color("text-disabled")}
+                value={otherColor ?? color("text-tertiary")}
                 colors={getAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"

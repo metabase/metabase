@@ -6,7 +6,7 @@
 .ItemIcon {
   margin: 0 0.5em;
   margin-left: 0.75em;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .ItemList {

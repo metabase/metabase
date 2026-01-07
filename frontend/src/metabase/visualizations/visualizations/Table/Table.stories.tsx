@@ -225,7 +225,7 @@ export const DashboardTableEmbeddingTheme = {
         brand: "#eccc68",
         "text-primary": "#4c5773",
         "text-secondary": "#696e7b",
-        "text-disabled": "#ffffff",
+        "text-tertiary": "#ffffff",
       },
       components: {
         dashboard: {

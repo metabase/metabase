@@ -49,7 +49,7 @@ export const EmptyModelStateContainer = styled.div`
 `;
 
 export const EditButton = styled(Button)`
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   padding: 0 0.5rem;
 `;
 

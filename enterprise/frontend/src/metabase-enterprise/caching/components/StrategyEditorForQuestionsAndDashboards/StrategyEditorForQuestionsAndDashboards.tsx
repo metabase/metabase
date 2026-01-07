@@ -315,7 +315,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
 );
 
 const NoResultsTableRow = () => (
-  <Center fw="bold" c="text-disabled">
+  <Center fw="bold" c="text-tertiary">
     {t`No dashboards or questions have their own caching policies yet.`}
   </Center>
 );

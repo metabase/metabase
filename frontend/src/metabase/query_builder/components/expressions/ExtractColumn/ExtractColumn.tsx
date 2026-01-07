@@ -202,7 +202,7 @@ function ExtractColumnButton({
         <Text color="text-primary" className={styles.content} fw="bold" p={0}>
           {title}
         </Text>
-        <Text color="text-disabled" size="sm" className={styles.example}>
+        <Text color="text-tertiary" size="sm" className={styles.example}>
           {example}
         </Text>
       </Flex>

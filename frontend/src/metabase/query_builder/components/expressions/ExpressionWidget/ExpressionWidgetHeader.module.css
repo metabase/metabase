@@ -7,7 +7,7 @@
   height: 3rem;
 
   .HeaderButton {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
 
     &:not(:disabled):hover {
       color: var(--mb-color-brand);

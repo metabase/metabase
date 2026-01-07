@@ -78,7 +78,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
     },
     rowToggle: {
       textColor: "text-primary-inverse",
-      backgroundColor: "text-disabled", // TODO: should it be "background-tertiary-inverse" ?
+      backgroundColor: "text-tertiary", // TODO: should it be "background-tertiary-inverse" ?
     },
   },
   cartesian: {

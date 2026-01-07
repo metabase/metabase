@@ -17,12 +17,12 @@
     /* merge view styles */
     .cm-collapsedLines {
       background: var(--mb-color-background-secondary) !important;
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
 
       &:before,
       &:after {
         content: "-";
-        color: var(--mb-color-text-disabled);
+        color: var(--mb-color-text-tertiary);
       }
     }
 

@@ -59,7 +59,7 @@ export const ResultItem = ({
 
       {parentInfo && (
         <Flex
-          c={isSelected ? "text-primary-inverse" : "text-disabled"}
+          c={isSelected ? "text-primary-inverse" : "text-tertiary"}
           align="center"
           gap="sm"
           w="20rem"

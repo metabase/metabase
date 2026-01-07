@@ -6,12 +6,12 @@
   border-width: 1px;
 
   &:hover {
-    border-color: var(--mb-color-text-disabled);
+    border-color: var(--mb-color-text-tertiary);
   }
 }
 
 .Selected {
-  border-color: var(--mb-color-text-disabled);
+  border-color: var(--mb-color-text-tertiary);
 
   &:hover {
     border-color: var(--mb-color-text-primary);

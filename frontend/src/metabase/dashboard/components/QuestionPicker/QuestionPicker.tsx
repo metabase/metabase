@@ -118,7 +118,7 @@ function QuestionPickerInner({
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-disabled"
+                  ? "text-tertiary"
                   : icon.color;
                 return (
                   <SelectList.Item

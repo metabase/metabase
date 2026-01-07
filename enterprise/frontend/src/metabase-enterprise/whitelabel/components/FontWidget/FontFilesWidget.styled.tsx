@@ -71,6 +71,6 @@ export const TableBodyCell = styled.div<TableBodyCellProps>`
 `;
 
 export const TableBodyCellLabel = styled.span`
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   margin-left: 0.25rem;
 `;

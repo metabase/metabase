@@ -44,7 +44,7 @@ export const LegendDescriptionIcon = styled(
     );
   }),
 )`
-  color: ${({ theme }) => lighten(theme.fn?.themeColor("text-disabled"), 0.1)};
+  color: ${({ theme }) => lighten(theme.fn?.themeColor("text-tertiary"), 0.1)};
   margin: 0 0.25rem;
 
   &:hover {

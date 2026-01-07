@@ -30,7 +30,7 @@
   white-space: pre-wrap;
   color: var(--mb-color-text-secondary);
   background-color: var(--mb-color-background-secondary);
-  border: 1px solid var(--mb-color-text-disabled);
+  border: 1px solid var(--mb-color-text-tertiary);
   border-radius: 4px;
   padding: 0.2em 0.4em;
 }

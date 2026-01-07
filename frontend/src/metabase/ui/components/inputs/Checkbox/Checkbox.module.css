@@ -1,15 +1,15 @@
 .root {
   &:has(.input:disabled) {
     .label {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
 
     .description {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
 
     .icon {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
   }
 

@@ -53,5 +53,5 @@
 }
 
 .AddButton[data-variant="inverse"] {
-  --button-color: var(--mb-color-text-disabled);
+  --button-color: var(--mb-color-text-tertiary);
 }

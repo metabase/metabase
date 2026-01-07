@@ -79,7 +79,7 @@ export function ModelCacheManagementSection({ model }: Props) {
           justify="space-between"
           align="center"
           data-testid="model-cache-section"
-          c={canManageDB ? "text-primary" : "text-disabled"}
+          c={canManageDB ? "text-primary" : "text-tertiary"}
           fz="md"
         >
           <Box>

@@ -58,11 +58,11 @@
 }
 
 .textSlateLight {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .textLight {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .textMedium,
@@ -84,7 +84,7 @@
 }
 
 .textTertiary {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .bgBrandLighter,

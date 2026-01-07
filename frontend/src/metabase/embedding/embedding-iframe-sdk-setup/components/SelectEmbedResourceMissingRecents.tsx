@@ -24,7 +24,7 @@ export const SelectEmbedResourceMissingRecents = ({
       py="xl"
       data-testid="embed-resource-missing-recents"
     >
-      <Icon name={embedIcon} size={48} c="text-disabled" />
+      <Icon name={embedIcon} size={48} c="text-tertiary" />
 
       <Stack align="center" gap="xs">
         <Text fw="bold" size="md">

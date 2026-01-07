@@ -133,7 +133,7 @@ export const FkTargetPicker = ({
 
               {field?.description && (
                 <Text
-                  c="text-disabled"
+                  c="text-tertiary"
                   className={S.description}
                   component="span"
                   lh="1rem"

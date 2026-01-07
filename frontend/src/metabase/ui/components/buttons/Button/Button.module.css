@@ -72,12 +72,12 @@
 
     &:disabled,
     &[data-disabled="true"] {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
       border-color: transparent;
       background-color: transparent;
 
       &:hover {
-        color: var(--mb-color-text-disabled);
+        color: var(--mb-color-text-tertiary);
         border-color: transparent;
         background-color: transparent;
       }
@@ -145,12 +145,12 @@
 
     &:disabled,
     &[data-disabled="true"] {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
       border-color: transparent;
       background-color: transparent;
 
       &:hover {
-        color: var(--mb-color-text-disabled);
+        color: var(--mb-color-text-tertiary);
         border-color: transparent;
         background-color: transparent;
       }
@@ -159,7 +159,7 @@
 
   &:disabled,
   &:disabled:hover {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
     border-color: var(--mb-color-border);
     background-color: var(--mb-color-background-disabled);
   }

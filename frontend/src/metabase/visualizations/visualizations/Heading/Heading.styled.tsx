@@ -46,7 +46,7 @@ export const InputContainer = styled.div<InputContainerProps>`
     isEmpty &&
     css`
       border: 1px solid var(--mb-color-brand);
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     `}
 `;
 

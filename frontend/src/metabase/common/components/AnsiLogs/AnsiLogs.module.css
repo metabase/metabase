@@ -38,7 +38,7 @@
     }
 
     .react-ansi-style-gray {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
 
     .react-ansi-style-red {

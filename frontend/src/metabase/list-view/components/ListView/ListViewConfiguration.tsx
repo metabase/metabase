@@ -270,7 +270,7 @@ export const ListViewConfiguration = ({
                         c={
                           iconConfig.entityIconEnabled
                             ? (iconConfig.selectedIconColor as ColorName)
-                            : "text-disabled"
+                            : "text-tertiary"
                         }
                       />
                     )}

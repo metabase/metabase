@@ -68,12 +68,12 @@ export const WarningIcon = styled(
   }),
 )`
   margin-right: 0.25rem;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 `;
 
 export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
   isHighlighted: boolean;
 }>`
   color: ${(props) =>
-    props.isHighlighted ? color("text-secondary") : color("text-disabled")};
+    props.isHighlighted ? color("text-secondary") : color("text-tertiary")};
 `;

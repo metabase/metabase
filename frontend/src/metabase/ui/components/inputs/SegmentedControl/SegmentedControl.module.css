@@ -13,7 +13,7 @@
   &[data-disabled] {
     &,
     &:hover {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
   }
 
@@ -35,7 +35,7 @@
   &:disabled + label {
     &,
     &:hover {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
   }
 }

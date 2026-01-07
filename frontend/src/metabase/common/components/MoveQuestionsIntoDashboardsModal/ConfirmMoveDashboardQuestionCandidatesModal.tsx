@@ -112,7 +112,7 @@ export const ConfirmMoveDashboardQuestionCandidatesModal = ({
           })
           .with({ rows: [] }, () => (
             <Flex justify="center" py="19rem">
-              <Text size="1.25rem" px="md" color="text-disabled">
+              <Text size="1.25rem" px="md" color="text-tertiary">
                 {t`There aren't any questions to move into dashboards. Looks like everything is in its place.`}
               </Text>
             </Flex>

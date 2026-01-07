@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;

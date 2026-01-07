@@ -125,7 +125,7 @@ type InputButtonProps = {
 const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
   color: ${(props) =>
-    color(props.onClick != null ? "text-primary" : "text-disabled")};
+    color(props.onClick != null ? "text-primary" : "text-tertiary")};
   padding: ${(props) => (props.size === "small" ? "0.5rem" : "0.75rem")};
   border-radius: 50%;
   bottom: ${(props) => (props.size === "large" ? "0.125rem" : 0)};
@@ -155,7 +155,7 @@ export const InputResetButton = styled(InputButton, {
 `;
 
 export const InputSubtitle = styled.div`
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   position: absolute;
   top: 1.25em;
   left: 1.25em;

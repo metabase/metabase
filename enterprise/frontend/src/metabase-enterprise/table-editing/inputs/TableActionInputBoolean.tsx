@@ -77,7 +77,7 @@ export const TableActionInputBoolean = ({
           {value ? (
             value
           ) : (
-            <Input.Placeholder c="text-disabled">
+            <Input.Placeholder c="text-tertiary">
               {NULL_LABEL}
             </Input.Placeholder>
           )}

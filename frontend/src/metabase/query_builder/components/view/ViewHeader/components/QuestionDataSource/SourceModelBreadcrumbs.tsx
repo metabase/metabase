@@ -38,7 +38,7 @@ export function SourceModelBreadcrumbs({
           key="collection"
           to={Urls.collection(collection)}
           icon={getQuestionIcon(question)}
-          inactiveColor="text-disabled"
+          inactiveColor="text-tertiary"
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
@@ -52,7 +52,7 @@ export function SourceModelBreadcrumbs({
             {/* We use span here for ref forwarding */}
             <span>
               <HeadBreadcrumbs.Badge
-                inactiveColor="text-disabled"
+                inactiveColor="text-tertiary"
                 icon={{ name: "warning", c: "danger" }}
                 to={Urls.question(question.card())}
               >
@@ -64,7 +64,7 @@ export function SourceModelBreadcrumbs({
           <HeadBreadcrumbs.Badge
             key="name"
             to={Urls.question(question.card())}
-            inactiveColor="text-disabled"
+            inactiveColor="text-tertiary"
           >
             {question.displayName()}
           </HeadBreadcrumbs.Badge>

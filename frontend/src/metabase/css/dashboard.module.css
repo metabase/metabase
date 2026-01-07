@@ -41,7 +41,7 @@
 
 .PinMapUpdateButtonDisabled {
   pointer-events: none;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 /* .react-draggable*, .react-resizable* are 3rd party library classes */

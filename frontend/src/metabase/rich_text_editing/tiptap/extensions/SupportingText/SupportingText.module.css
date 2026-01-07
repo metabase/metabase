@@ -67,7 +67,7 @@
 .placeholder {
   position: absolute;
   pointer-events: none;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .commentsButton[data-variant="default"]:not(:hover) {

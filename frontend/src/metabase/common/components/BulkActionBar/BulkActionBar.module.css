@@ -26,7 +26,7 @@
   }
 
   &:disabled {
-    color: var(--mb-color-text-disabled-inverse);
+    color: var(--mb-color-text-tertiary-inverse);
     border-color: color-mix(
       in srgb,
       var(--mb-color-background-disabled-inverse),
@@ -48,7 +48,7 @@
   }
 
   &:disabled:hover {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
     border-color: color-mix(
       in srgb,
       var(--mb-color-background-primary),

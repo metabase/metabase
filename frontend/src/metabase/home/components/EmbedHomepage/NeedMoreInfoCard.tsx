@@ -14,7 +14,7 @@ export const NeedMoreInfoCard = ({
 }: NeedMoreInfoCardProps) => (
   <Card px="xl">
     <Text c="text-primary" fw="bold">{t`Need more information?`}</Text>
-    <Text c="text-disabled" size="sm">
+    <Text c="text-tertiary" size="sm">
       {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
       {jt`Explore the ${(
         <ExternalLink key="embedding-docs" href={embeddingDocsUrl}>

@@ -35,7 +35,7 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   summarize: ["summarize"],
   "text-primary": ["text-primary"],
   "text-secondary": ["text-secondary"],
-  "text-tertiary": ["text-disabled"],
+  "text-tertiary": ["text-tertiary"],
   background: ["background-primary"],
   "background-secondary": ["background-secondary", "background-tertiary"],
   "background-hover": ["background-secondary"],

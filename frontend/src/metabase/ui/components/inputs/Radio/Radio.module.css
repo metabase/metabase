@@ -1,11 +1,11 @@
 .root {
   &:has(.radio:disabled) {
     .label {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
 
     .description {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
 
     .icon {
@@ -21,7 +21,7 @@
 
 .radio {
   cursor: pointer;
-  border-color: var(--mb-color-text-disabled);
+  border-color: var(--mb-color-text-tertiary);
 
   &:checked {
     border-color: var(--mb-color-brand);
@@ -33,7 +33,7 @@
   }
 
   &:disabled:not(:checked) {
-    border-color: var(--mb-color-text-disabled);
+    border-color: var(--mb-color-text-tertiary);
     background-color: var(--mb-color-background-tertiary);
   }
 }

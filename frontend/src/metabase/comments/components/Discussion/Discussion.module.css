@@ -50,7 +50,7 @@
 
 .commentBulletDeleted {
   background-color: var(--mb-color-background-primary);
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .reaction {

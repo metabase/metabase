@@ -200,7 +200,7 @@ function PaletteEmptyState() {
       <Text c="text-secondary" fw={700} mt="xl">
         {t`No recent items`}
       </Text>
-      <Text c="text-disabled" size="sm" mt="xs" ta="center">
+      <Text c="text-tertiary" size="sm" mt="xs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

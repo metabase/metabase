@@ -98,7 +98,7 @@ export const ChartSettingSegmentsEditor = ({
               <td>
                 {segments.length > 1 && (
                   <Button
-                    leftSection={<Icon name="trash" c="text-disabled" />}
+                    leftSection={<Icon name="trash" c="text-tertiary" />}
                     onClick={() =>
                       onChange(segments.filter((v, i) => i !== index))
                     }

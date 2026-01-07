@@ -16,7 +16,7 @@
   align-items: center;
   display: flex;
   font-size: 1em;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
 }
 
 .item .icon {

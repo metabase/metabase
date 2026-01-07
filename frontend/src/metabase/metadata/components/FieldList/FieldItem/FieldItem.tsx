@@ -106,7 +106,7 @@ export function FieldItem({
       >
         <Group
           align="center"
-          c="text-disabled"
+          c="text-tertiary"
           flex="0 0 auto"
           gap={0}
           maw="100%"

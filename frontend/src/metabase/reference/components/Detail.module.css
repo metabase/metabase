@@ -1,6 +1,6 @@
 :root {
   --title-color: var(--mb-color-text-secondary);
-  --muted-color: var(--mb-color-text-disabled);
+  --muted-color: var(--mb-color-text-tertiary);
 }
 
 .detail {

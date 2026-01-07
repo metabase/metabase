@@ -164,7 +164,7 @@ function ExecutionOutputLogs({
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
         <Text
-          c="text-disabled"
+          c="text-tertiary"
           fz="sm"
           fs="italic"
         >{t`No logs to display`}</Text>

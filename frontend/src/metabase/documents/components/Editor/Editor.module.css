@@ -192,7 +192,7 @@
 
 .editorContent :global(.is-empty:first-child:before),
 .editorContent :global(.node-paragraph.is-empty:first-child:before) {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   content: attr(data-placeholder);
   float: left;
   height: 0;

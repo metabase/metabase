@@ -103,7 +103,7 @@ export const MetabotInlineSQLPrompt = ({
           disabled={disabled}
           leftSection={
             isDoingScience ? (
-              <Loader size="xs" color="text-disabled" />
+              <Loader size="xs" color="text-tertiary" />
             ) : (
               <Icon name="insight" />
             )

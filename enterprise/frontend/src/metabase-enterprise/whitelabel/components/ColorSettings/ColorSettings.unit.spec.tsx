@@ -11,7 +11,7 @@ describe("ColorSettings", () => {
   const textMediumHex = Color(
     color("text-secondary", staticVizOverrides),
   ).hex();
-  const textLightHex = Color(color("text-disabled", staticVizOverrides)).hex();
+  const textLightHex = Color(color("text-tertiary", staticVizOverrides)).hex();
 
   const initialColors = {
     brand: color("filter"),

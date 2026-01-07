@@ -53,7 +53,7 @@
 }
 
 .subtitle {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   font-weight: normal;
   margin-left: 1rem;
 }

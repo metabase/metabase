@@ -20,7 +20,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
   border-radius: 0.5em;
   cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
   color: ${(props) =>
-    color(props.disabled ? "text-disabled" : props.color || "text-primary")};
+    color(props.disabled ? "text-tertiary" : props.color || "text-primary")};
   padding: 0.85em 1.45em;
   text-decoration: none;
 
@@ -35,7 +35,7 @@ export const MenuItemContent = styled.div<MenuItemProps>`
 
   > .Icon {
     color: ${(props) =>
-      color(props.disabled ? "text-disabled" : props.color || "text-primary")};
+      color(props.disabled ? "text-tertiary" : props.color || "text-primary")};
     margin-right: 0.65em;
   }
 

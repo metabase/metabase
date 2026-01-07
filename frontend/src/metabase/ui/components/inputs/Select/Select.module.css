@@ -42,15 +42,15 @@
 
   &[data-disabled] {
     opacity: 1;
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
   }
 
   &::placeholder {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
   }
 
   [data-position="right"] {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
   }
 
   /*
@@ -79,11 +79,11 @@
 
   [data-disabled] & {
     opacity: 1;
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
     background-color: var(--mb-color-background-tertiary);
 
     &::placeholder {
-      color: var(--mb-color-text-disabled);
+      color: var(--mb-color-text-tertiary);
     }
   }
 }
@@ -108,7 +108,7 @@
 
   &[data-combobox-disabled] {
     cursor: default;
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-tertiary);
     pointer-events: none;
     opacity: 0.75;
   }
@@ -137,7 +137,7 @@
 }
 
 .SelectItemsNothingFound {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   padding: var(--mantine-spacing-sm);
   font-size: var(--select-item-font-size);
   line-height: var(--select-item-line-height);

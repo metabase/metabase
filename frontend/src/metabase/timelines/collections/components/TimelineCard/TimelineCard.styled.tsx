@@ -8,7 +8,7 @@ import Markdown from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-tertiary);
   width: 1.375rem;
   height: 1.375rem;
 `;

@@ -20,7 +20,7 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
     props.isVisible ? props.color : "var(--mb-color-background-primary)"};
   border: 2px solid
     ${(props) =>
-      props.isVisible ? props.color : "var(--mb-color-text-disabled)"};
+      props.isVisible ? props.color : "var(--mb-color-text-tertiary)"};
   transition: all 0.2s;
 `;
 

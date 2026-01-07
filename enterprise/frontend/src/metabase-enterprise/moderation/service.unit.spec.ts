@@ -92,7 +92,7 @@ describe("moderation/service", () => {
     it("should return an icon for a removed review", () => {
       expect(getRemovedReviewStatusIcon()).toEqual({
         name: "close",
-        color: "text-disabled",
+        color: "text-tertiary",
       });
     });
   });

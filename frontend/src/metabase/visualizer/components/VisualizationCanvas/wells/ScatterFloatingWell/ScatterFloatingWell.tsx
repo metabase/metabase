@@ -59,7 +59,7 @@ export function ScatterFloatingWell() {
           </Text>
         </WellItem>
       ) : (
-        <Text c="text-disabled" ta="center">{t`Bubble size`}</Text>
+        <Text c="text-tertiary" ta="center">{t`Bubble size`}</Text>
       )}
     </Box>
   );
