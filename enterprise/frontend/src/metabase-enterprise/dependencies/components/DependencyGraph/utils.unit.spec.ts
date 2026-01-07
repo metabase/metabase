@@ -5,7 +5,9 @@ import {
   createMockCardDependencyNode,
   createMockCardDependencyNodeData,
   createMockSegmentDependencyNode,
+  createMockSegmentDependencyNodeData,
   createMockSnippetDependencyNode,
+  createMockTable,
   createMockTableDependencyNode,
   createMockTableDependencyNodeData,
   createMockTransformDependencyNode,
@@ -119,16 +121,22 @@ describe("getNodeLink", () => {
       }),
       expectedLink: {
         label: "View metadata",
-        url: "/admin/datamodel/database/2/schema/2:not%20public/table/1",
+        url: "/data-studio/data/database/2/schema/2:not%20public/table/1",
       },
     },
     {
       node: createMockSegmentDependencyNode({
         id: 1,
+        data: createMockSegmentDependencyNodeData({
+          table: createMockTable({
+            id: 1,
+            name: "My table",
+          }),
+        }),
       }),
       expectedLink: {
         label: "View this segment",
-        url: "/admin/datamodel/segment/1",
+        url: "/data-studio/data/database/1/schema/1:public/table/1/segments/1",
       },
     },
   ])("should get the node link", ({ node, expectedLink }) => {

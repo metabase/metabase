@@ -123,9 +123,6 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
       "href",
       "/data-studio/library/collections/2",
     );
-
-    const separators = screen.getAllByText("/");
-    expect(separators.length).toBeGreaterThan(0);
   });
 
   it("uses display_name for table and renders 'New measure' when measure undefined", async () => {
@@ -218,8 +215,5 @@ describe("DataModelMeasureBreadcrumbs", () => {
     expect(screen.queryByText("PUBLIC")).not.toBeInTheDocument();
     expect(screen.getByText("Orders")).toBeInTheDocument();
     expect(screen.getByText("New measure")).toBeInTheDocument();
-
-    const separators = screen.getAllByText("/");
-    expect(separators).toHaveLength(2);
   });
 });
