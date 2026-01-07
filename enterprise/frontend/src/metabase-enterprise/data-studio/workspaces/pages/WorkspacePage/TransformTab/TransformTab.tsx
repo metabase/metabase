@@ -80,7 +80,7 @@ export const TransformTab = ({
     removeOpenedTransform,
     removeEditedTransform,
     addOpenedTab,
-    updatePreviewTab,
+    updateTab,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -121,7 +121,7 @@ export const TransformTab = ({
         transformId: transform.id,
         isLoading: true,
       };
-      addOpenedTab(previewTab, false);
+      addOpenedTab(previewTab);
 
       const action = runAdhocQuery(query);
       abortRef.current = action.abort;
@@ -130,14 +130,14 @@ export const TransformTab = ({
       abortRef.current = undefined;
 
       if (dataset) {
-        updatePreviewTab(previewTabId, dataset);
+        updateTab(previewTabId, { dataset, isLoading: false });
       }
     },
     [
       transform.id,
       transform.name,
       addOpenedTab,
-      updatePreviewTab,
+      updateTab,
       runAdhocQuery,
     ],
   );
