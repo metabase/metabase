@@ -7,6 +7,7 @@ import { getDataStudioRoutes } from "./routes";
 import {
   canAccessAnalystFeatures,
   canAccessDataStudio,
+  canAccessGlossary,
   canPlaceEntityInCollection,
   canPlaceEntityInCollectionOrDescendants,
   getLibraryCollectionType,
@@ -20,6 +21,7 @@ export function initializePlugin() {
     PLUGIN_DATA_STUDIO.isEnabled = true;
     PLUGIN_DATA_STUDIO.canAccessDataStudio = canAccessDataStudio;
     PLUGIN_DATA_STUDIO.canAccessAnalystFeatures = canAccessAnalystFeatures;
+    PLUGIN_DATA_STUDIO.canAccessGlossary = canAccessGlossary;
     PLUGIN_DATA_STUDIO.getDataStudioRoutes = getDataStudioRoutes;
     PLUGIN_DATA_STUDIO.DataStudioToolbarButton = DataStudioToolbarButton;
     PLUGIN_DATA_STUDIO.NavbarLibrarySection = NavbarLibrarySection;

@@ -92,6 +92,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const canAccessAnalystFeatures = useSelector(
     PLUGIN_DATA_STUDIO.canAccessAnalystFeatures,
   );
+  const canAccessGlossary = useSelector(PLUGIN_DATA_STUDIO.canAccessGlossary);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
@@ -135,7 +136,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessAnalystFeatures && (
+        {canAccessGlossary && (
           <DataStudioTab
             label={t`Glossary`}
             icon="glossary"

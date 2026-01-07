@@ -30,6 +30,10 @@ export function canAccessAnalystFeatures(state: State) {
   return getUserIsAnalyst(state);
 }
 
+export function canAccessGlossary(state: State) {
+  return getUserIsAdmin(state) || getUserIsAnalyst(state);
+}
+
 export function getLibraryCollectionType(
   type: CollectionType | null | undefined,
 ): LibraryCollectionType | undefined {

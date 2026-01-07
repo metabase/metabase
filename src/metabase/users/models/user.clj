@@ -564,10 +564,8 @@
     (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
     (some? is-data-analyst?)                (sql.helpers/where (if is-data-analyst?
-                                                                 [:or :core_user.is_data_analyst :core_user.is_superuser]
-                                                                 [:and
-                                                                  [:not :core_user.is_data_analyst]
-                                                                  [:not :core_user.is_superuser]]))
+                                                                 :core_user.is_data_analyst
+                                                                 [:not :core_user.is_data_analyst]))
     (some? group-ids)                       (sql.helpers/right-join
                                              :permissions_group_membership
                                              [:= :core_user.id :permissions_group_membership.user_id])

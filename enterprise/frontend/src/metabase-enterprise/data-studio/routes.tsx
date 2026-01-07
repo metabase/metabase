@@ -29,6 +29,7 @@ export function getDataStudioRoutes(
   CanAccessDataModel: ComponentType,
   CanAccessTransforms: ComponentType,
   CanAccessAnalystFeatures: ComponentType,
+  CanAccessGlossary: ComponentType,
 ) {
   return (
     <Route component={CanAccessDataStudio}>
@@ -50,7 +51,7 @@ export function getDataStudioRoutes(
             </Route>
           </Route>
         )}
-        <Route component={CanAccessAnalystFeatures}>
+        <Route component={CanAccessGlossary}>
           {getDataStudioGlossaryRoutes()}
         </Route>
         <Route path="library" component={CanAccessAnalystFeatures}>

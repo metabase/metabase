@@ -70,6 +70,7 @@ import {
   CanAccessAnalystFeatures,
   CanAccessDataModel,
   CanAccessDataStudio,
+  CanAccessGlossary,
   CanAccessOnboarding,
   CanAccessSettings,
   CanAccessTransforms,
@@ -381,6 +382,7 @@ export const getRoutes = (store) => {
             CanAccessDataModel,
             CanAccessTransforms,
             CanAccessAnalystFeatures,
+            CanAccessGlossary,
           )}
         </Route>
       </Route>
