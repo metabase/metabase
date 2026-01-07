@@ -12,23 +12,25 @@ import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
 
-interface OSSGenerateSqlResponse {
-  parts: Array<{
-    type: string;
-    version: number;
-    value: MetabotCodeEdit;
-  }>;
+interface StreamingCallbacks {
+  onTextDelta: (text: string) => void;
+  onCodeEdit: (edit: MetabotCodeEdit) => void;
+  onError: (message: string) => void;
 }
 
-async function generateSqlOSS(
+async function generateSqlStreaming(
   prompt: string,
   databaseId: number,
   bufferId: string,
+  callbacks: StreamingCallbacks,
   signal?: AbortSignal,
-): Promise<MetabotCodeEdit | null> {
-  const response = await fetch("/api/llm/generate-sql", {
+): Promise<void> {
+  const response = await fetch("/api/llm/generate-sql-streaming", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    },
     body: JSON.stringify({
       prompt,
       database_id: databaseId,
@@ -42,9 +44,45 @@ async function generateSqlOSS(
     throw new Error(error.message || "Failed to generate SQL");
   }
 
-  const data: OSSGenerateSqlResponse = await response.json();
-  const codeEditPart = data.parts.find((p) => p.type === "code_edit");
-  return codeEditPart?.value ?? null;
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line) {
+        continue;
+      }
+
+      // AI SDK v5 format: prefix:json_value
+      // 0: = text delta, 2: = data part, 3: = error, d: = finish
+      if (line.startsWith("0:")) {
+        const text = JSON.parse(line.slice(2));
+        callbacks.onTextDelta(text);
+      } else if (line.startsWith("2:")) {
+        const part = JSON.parse(line.slice(2));
+        if (part.type === "code_edit") {
+          callbacks.onCodeEdit(part.value);
+        }
+      } else if (line.startsWith("3:")) {
+        const error = JSON.parse(line.slice(2));
+        callbacks.onError(error.message || "Unknown error");
+      }
+    }
+  }
 }
 
 interface MetabotInlineSQLPromptProps {
@@ -61,6 +99,7 @@ export const MetabotInlineSQLPrompt = ({
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingText, setStreamingText] = useState("");
   const dispatch = useMetabotDispatch();
 
   const disabled = !value.trim() || isLoading || !databaseId;
@@ -73,22 +112,29 @@ export const MetabotInlineSQLPrompt = ({
 
     setHasError(false);
     setIsLoading(true);
+    setStreamingText("");
 
     abortControllerRef.current = new AbortController();
 
     try {
-      const codeEdit = await generateSqlOSS(
+      await generateSqlStreaming(
         promptValue,
         databaseId,
         "qb",
+        {
+          onTextDelta: (text) => {
+            setStreamingText((prev) => prev + text);
+          },
+          onCodeEdit: (edit) => {
+            dispatch(addSuggestedCodeEdit({ ...edit, active: true }));
+          },
+          onError: (message) => {
+            console.error("Streaming error:", message);
+            setHasError(true);
+          },
+        },
         abortControllerRef.current.signal,
       );
-
-      if (codeEdit) {
-        dispatch(addSuggestedCodeEdit({ ...codeEdit, active: true }));
-      } else {
-        setHasError(true);
-      }
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
         console.error("OSS SQL generation failed:", error);
@@ -96,6 +142,7 @@ export const MetabotInlineSQLPrompt = ({
       }
     } finally {
       setIsLoading(false);
+      setStreamingText("");
       abortControllerRef.current = null;
     }
   }, [databaseId, dispatch]);
@@ -186,6 +233,24 @@ export const MetabotInlineSQLPrompt = ({
           >{t`Something went wrong. Please try again.`}</Box>
         )}
       </Flex>
+      {streamingText && (
+        <Box
+          data-testid="metabot-inline-sql-preview"
+          mt="sm"
+          p="sm"
+          bg="bg-light"
+          style={{
+            borderRadius: "var(--mantine-radius-sm)",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            whiteSpace: "pre-wrap",
+            maxHeight: "150px",
+            overflow: "auto",
+          }}
+        >
+          {streamingText}
+        </Box>
+      )}
     </Box>
   );
 };

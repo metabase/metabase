@@ -1,6 +1,7 @@
 (ns metabase.llm.api
   "API endpoints for LLM-powered SQL generation (OSS)."
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
@@ -9,9 +10,13 @@
    [metabase.llm.context :as llm.context]
    [metabase.llm.openai :as llm.openai]
    [metabase.llm.settings :as llm.settings]
+   [metabase.llm.streaming :as llm.streaming]
+   [metabase.server.streaming-response :as sr]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2])
   (:import
+   (java.io OutputStream)
+   (java.nio.charset StandardCharsets)
    (java.time LocalDateTime)
    (java.time.format DateTimeFormatter)))
 
@@ -165,6 +170,92 @@ Return only the raw SQL query, nothing else."))
 
           ;; 9. Return AI SDK formatted result
           {:parts [(make-code-edit-part buffer-id sql)]})))))
+
+;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
+
+(defn- write-sse!
+  "Write an SSE line to the output stream."
+  [^OutputStream os ^String line]
+  (.write os (.getBytes line StandardCharsets/UTF_8))
+  (.flush os))
+
+(defn- validate-and-prepare-context
+  "Validate request and prepare context for SQL generation.
+   Returns {:dialect :system-prompt :buffer-id} or throws appropriate error."
+  [{:keys [prompt database_id buffer_id]}]
+  (when-not (llm.settings/llm-enabled?)
+    (throw (ex-info (tru "LLM SQL generation is not configured. Please set an OpenAI API key in admin settings.")
+                    {:status-code 403})))
+  (let [table-ids (llm.context/parse-table-mentions prompt)]
+    (when (empty? table-ids)
+      (throw (ex-info (tru "No tables mentioned in prompt. Use @mentions to specify tables.")
+                      {:status-code 400})))
+    (let [schema-ddl (llm.context/build-schema-context database_id table-ids)]
+      (when-not schema-ddl
+        (throw (ex-info (tru "No accessible tables found. Check table permissions.")
+                        {:status-code 400})))
+      (let [dialect       (database-dialect database_id)
+            system-prompt (build-system-prompt dialect schema-ddl)]
+        {:dialect       dialect
+         :system-prompt system-prompt
+         :buffer-id     (or buffer_id "qb")}))))
+
+(api.macros/defendpoint :post "/generate-sql-streaming"
+  "Generate SQL from a natural language prompt with streaming response.
+
+   Requires:
+   - LLM to be configured (OpenAI API key set in admin settings)
+   - At least one table mention in the prompt using [Name](metabase://table/ID) format
+   - A database_id parameter
+
+   Returns SSE stream in AI SDK v5 format:
+   - 0:\"text\" - Text delta chunks as SQL is generated
+   - 2:{...}   - Final code_edit data part with complete SQL
+   - d:{...}   - Finish message"
+  [_route-params
+   _query-params
+   body :- [:map
+            [:prompt :string]
+            [:database_id pos-int?]
+            [:buffer_id {:optional true} :string]]]
+  (let [{:keys [prompt]} body
+        {:keys [system-prompt buffer-id]} (validate-and-prepare-context body)
+        timestamp (current-timestamp)]
+
+    (log-to-file! (str timestamp "_prompt.txt") system-prompt)
+
+    (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
+      (let [llm-chan (llm.openai/chat-completion-stream
+                      {:system   system-prompt
+                       :messages [{:role "user" :content prompt}]})
+            text-acc (StringBuilder.)]
+        (loop []
+          (let [[chunk port] (a/alts!! [llm-chan canceled-chan] :priority true)]
+            (cond
+              (= port canceled-chan)
+              nil
+
+              (nil? chunk)
+              (let [final-sql (str text-acc)]
+                (log-to-file! (str timestamp "_response.txt") final-sql)
+                (write-sse! os (llm.streaming/format-sse-line
+                                :data
+                                (llm.streaming/format-code-edit-part buffer-id final-sql)))
+                (write-sse! os (llm.streaming/format-sse-line
+                                :finish-message
+                                (llm.streaming/format-finish-message "stop"))))
+
+              (= (:type chunk) :error)
+              (write-sse! os (llm.streaming/format-sse-line :error {:message (:error chunk)}))
+
+              (= (:type chunk) :text-delta)
+              (do
+                (.append text-acc (:delta chunk))
+                (write-sse! os (llm.streaming/format-sse-line :text (:delta chunk)))
+                (recur))
+
+              :else
+              (recur))))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."

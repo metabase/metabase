@@ -771,11 +771,13 @@
    :api  #{metabase.llm.api
            metabase.llm.context
            metabase.llm.openai
-           metabase.llm.settings}
+           metabase.llm.settings
+           metabase.llm.streaming}
    :uses #{api
            lib
            lib-be
            models
+           server
            settings
            util}}
 
