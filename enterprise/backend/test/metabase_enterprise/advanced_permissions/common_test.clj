@@ -267,7 +267,8 @@
                                              :get
                                              200
                                              (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))]
-            (is (= {:id (mt/id) :name (:name (mt/db))} (dissoc result :tables)))
+            (is (= (mt/id) (:id result)))
+            (is (= (:name (mt/db)) (:name result)))
             (is (= [id-1] (map :id (:tables result))))))))))
 
 (deftest fetch-id-fields-test
@@ -294,10 +295,10 @@
         (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                      :create-queries :no
                                                      :data-model     {:schemas :all}}}
-          (testing "and if data permissions are revoked, it should be a 403"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "database/%d/schema/%s" db-id "schema1")))))
-          (testing "and if include_editable_data_model=true and data permissions are revoked, it should return values"
+          (testing "user can access schema due to data-model perms"
+            (is (= ["t1" "t3"]
+                   (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1"))))))
+          (testing "include_editable_data_model=true also returns values"
             (is (= ["t1" "t3"]
                    (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")
                                                     :include_editable_data_model true)))))))
@@ -330,11 +331,10 @@
       (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                    :create-queries :no
                                                    :data-model     {:schemas :all}}}
-        (testing "If data permissions are revoked, it should be a 403"
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%d/schema/" db-id)))))
-        (testing "If include_editable_data_model=true and data permissions are revoked, it should return tables with both
-                  `nil` and \"\" as its schema"
+        (testing "user can access schema due to data-model perms - returns tables with both nil and \"\" schema"
+          (is (= ["t1" "t3"]
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/" db-id))))))
+        (testing "include_editable_data_model=true also returns tables with both `nil` and \"\" as schema"
           (is (= ["t1" "t3"]
                  (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/" db-id)
                                                   :include_editable_data_model true))))))
@@ -368,10 +368,10 @@
         (mt/with-all-users-data-perms-graph! {db-id {:view-data      :blocked
                                                      :create-queries :no
                                                      :data-model     {:schemas :all}}}
-          (testing "if include_editable_data_model=nil, it should be a 403"
-            (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :get 403 (format "database/%d/schemas" db-id)))))
-          (testing "and if include_editable_data_model=true, it should return values"
+          (testing "user can access schemas due to data-model perms"
+            (is (= ["schema1" "schema2"]
+                   (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)))))
+          (testing "include_editable_data_model=true also returns values"
             (is (= ["schema1" "schema2"]
                    (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                          :include_editable_data_model true))))

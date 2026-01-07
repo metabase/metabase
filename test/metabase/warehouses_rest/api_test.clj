@@ -1742,13 +1742,14 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
-      (testing "should return a 403 if there are no perms for any schema"
+      (testing "returns empty list when user has no create-queries perms for any schema"
         (mt/with-full-data-perms-for-all-users!
           (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t1) :perms/create-queries :no)
           (data-perms/set-table-permission! (perms-group/all-users) (u/the-id t2) :perms/create-queries :no)
-          (is (= "You don't have permissions to do that."
-                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id)))))))
+          ;; User can access the endpoint but sees no schemas since they have no query perms
+          (is (= []
+                 (mt/user-http-request :rasta :get 200 (format "database/%s/schemas" db-id)))))))
 
     (testing "should exclude schemas for which the user has no perms"
       (mt/with-temp [:model/Database {database-id :id} {}
