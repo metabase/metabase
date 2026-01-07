@@ -12,6 +12,7 @@
    [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]))
 
@@ -258,9 +259,10 @@
                 table (lib.metadata/table mp (mt/id :long_col_name))
                 query (lib/query mp table)
                 breakoutable-cols (lib/breakoutable-columns query)
+                ;; Use case-insensitive matching because H2 stores column names in uppercase
                 fk-col (m/find-first (fn [col]
                                        (and (:fk-field-id col)
-                                            (str/starts-with? (:name col) "abcdefg")))
+                                            (str/starts-with? (u/lower-case-en (:name col)) "abcdefg")))
                                      breakoutable-cols)
                 query (-> query
                           (lib/breakout fk-col))]
@@ -273,7 +275,7 @@
                 query (lib/query mp table)
                 join-cols (lib/joinable-columns query -1 table-2)
                 fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
-                id-col (m/find-first #(= (:name %) "foo") join-cols)
+                id-col (m/find-first #(= (u/lower-case-en (:name %)) "foo") join-cols)
                 join-clause (-> (lib/join-clause table-2)
                                 (lib/with-join-conditions [(lib/= fk-col id-col)])
                                 (lib/with-join-fields :all))
@@ -281,7 +283,7 @@
                 breakoutable-cols (lib/breakoutable-columns query)
                 big-col (m/find-first (fn [col]
                                         (and (:metabase.lib.join/join-alias col)
-                                             (str/starts-with? (:name col) "abcdefg")))
+                                             (str/starts-with? (u/lower-case-en (:name col)) "abcdefg")))
                                       breakoutable-cols)
                 query (-> query
                           (lib/breakout big-col))]
