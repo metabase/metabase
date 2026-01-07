@@ -26,9 +26,20 @@ describe("getNodeIcon", () => {
         data: createMockCardDependencyNodeData({
           type: "question",
           display: "pie",
+          query_type: "query",
         }),
       }),
       expectedIcon: "pie",
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          display: "table",
+          query_type: "native",
+        }),
+      }),
+      expectedIcon: "sql",
     },
     {
       node: createMockCardDependencyNode({
@@ -58,7 +69,7 @@ describe("getNodeIcon", () => {
     },
     {
       node: createMockSnippetDependencyNode(),
-      expectedIcon: "sql",
+      expectedIcon: "snippet",
     },
   ])("should get the node icon", ({ node, expectedIcon }) => {
     expect(getNodeIcon(node)).toBe(expectedIcon);
