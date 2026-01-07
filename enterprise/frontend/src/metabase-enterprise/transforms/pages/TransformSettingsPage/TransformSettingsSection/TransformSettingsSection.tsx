@@ -30,10 +30,12 @@ import { UpdateTargetModal } from "./UpdateTargetModal";
 
 type TransformSettingsSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
 export const TransformSettingsSection = ({
   transform,
+  readOnly,
 }: TransformSettingsSectionProps) => (
   <Stack gap="2.5rem">
     <TitleSection
@@ -43,13 +45,17 @@ export const TransformSettingsSection = ({
       <Group p="lg">
         <TargetInfo transform={transform} />
       </Group>
-      <Divider />
-      <Group p="lg">
-        <EditTargetButton transform={transform} />
-        <EditMetadataButton transform={transform} />
-      </Group>
+      {!readOnly && (
+        <>
+          <Divider />
+          <Group p="lg">
+            <EditTargetButton transform={transform} />
+            <EditMetadataButton transform={transform} />
+          </Group>
+        </>
+      )}
     </TitleSection>
-    <UpdateIncrementalSettings transform={transform} />
+    <UpdateIncrementalSettings transform={transform} readOnly={readOnly} />
   </Stack>
 );
 

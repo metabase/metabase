@@ -12,10 +12,12 @@ import {
 
 type UpdateIncrementalSettingsProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
 export const UpdateIncrementalSettings = ({
   transform,
+  readOnly,
 }: UpdateIncrementalSettingsProps) => {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { initialValues, validationSchema, updateIncrementalSettings } =
@@ -44,6 +46,7 @@ export const UpdateIncrementalSettings = ({
           source={transform.source}
           checkOnMount
           variant="standalone"
+          readOnly={readOnly}
         />
       </Form>
     </FormProvider>

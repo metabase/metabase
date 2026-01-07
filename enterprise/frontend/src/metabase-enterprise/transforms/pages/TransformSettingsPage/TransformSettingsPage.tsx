@@ -57,7 +57,7 @@ export const TransformSettingsPage = ({ params }: TransformTargetPageProps) => {
   return (
     <PageContainer data-testid="transforms-target-content">
       <TransformHeader transform={transform} readOnly={readOnly} />
-      <TransformSettingsSection transform={transform} />
+      <TransformSettingsSection transform={transform} readOnly={readOnly} />
     </PageContainer>
   );
 };

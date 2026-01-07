@@ -28,12 +28,14 @@ type IncrementalTransformSettingsProps = {
   source: TransformSource;
   checkOnMount?: boolean;
   variant?: "embedded" | "standalone";
+  readOnly?: boolean;
 };
 
 export const IncrementalTransformSettings = ({
   source,
   checkOnMount,
   variant = "embedded",
+  readOnly,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
@@ -126,7 +128,7 @@ export const IncrementalTransformSettings = ({
 
   const renderIncrementalSwitch = () => (
     <FormSwitch
-      disabled={isMultiTablePythonTransform}
+      disabled={readOnly || isMultiTablePythonTransform}
       name="incremental"
       size="sm"
       label={
@@ -189,6 +191,7 @@ export const IncrementalTransformSettings = ({
                 source={source}
                 query={query}
                 type={transformType}
+                readOnly={readOnly}
               />
             </Group>
             <TargetStrategyFields variant={variant} />
@@ -258,12 +261,14 @@ type SourceStrategyFieldsProps = {
   source: TransformSource;
   query: Lib.Query | null;
   type: "query" | "native" | "python";
+  readOnly?: boolean;
 };
 
 function SourceStrategyFields({
   source,
   query,
   type,
+  readOnly,
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
   return (
@@ -274,6 +279,7 @@ function SourceStrategyFields({
           label={t`Source Strategy`}
           description={t`How to track which rows to process`}
           data={SOURCE_STRATEGY_OPTIONS}
+          disabled={readOnly}
         />
       )}
       {values.sourceStrategy === "checkpoint" && (
@@ -286,6 +292,7 @@ function SourceStrategyFields({
               description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ c: "text-secondary", mb: "xs" }}
               query={query}
+              disabled={readOnly}
             />
           )}
           {type === "native" && query && (
@@ -296,6 +303,7 @@ function SourceStrategyFields({
               description={t`Pick the column that we should scan to determine which records are new or changed`}
               descriptionProps={{ c: "text-secondary", mb: "xs" }}
               query={query}
+              disabled={readOnly}
             />
           )}
           {type === "python" && "source-tables" in source && (
@@ -306,6 +314,7 @@ function SourceStrategyFields({
               description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ c: "text-secondary", mb: "xs" }}
               sourceTables={source["source-tables"]}
+              disabled={readOnly}
             />
           )}
         </>
