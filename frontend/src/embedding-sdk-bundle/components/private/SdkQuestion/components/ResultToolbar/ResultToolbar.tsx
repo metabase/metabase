@@ -14,7 +14,6 @@ export const ResultToolbar = ({
 }: PropsWithChildren<Props>) => (
   <Group
     className={className}
-    justify="space-between"
     p="sm"
     style={{
       borderRadius: "0.5rem",
