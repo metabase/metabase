@@ -22,7 +22,7 @@ describe("scenarios > collections > collection picker with tenants", () => {
     H.updateSetting("use-tenants", true);
   });
 
-  it("should block official collections in shared collections and its sub-collections", () => {
+  it("should not allow marking collections as official in shared collections and its sub-collections", () => {
     createSharedCollection("Test Shared Collection").then((response) => {
       const sharedCollectionId = response.body.id;
 
