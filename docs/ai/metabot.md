@@ -24,6 +24,7 @@ Metabot can help you to:
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
+- Explore your data with [AI exploration](#ai-exploration).
 - Answer questions from our documentation (as in, the literature you're reading right now).
 
 Like with all generative AI, you'll always need to double-check results.
@@ -101,7 +102,7 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
-2. Press Cmd+; on Mac or Ctrl+; on Windows.
+2. Press Cmd+i on Mac or Ctrl+i on Windows.
 3. Describe the SQL you want to generate or modify.
 4. Review the generated code and accept or reject it.
 
@@ -110,6 +111,17 @@ You can ask Metabot to generate or edit code in the SQL editor, without using th
 If Metabot creates a query or takes you to a new item but you want to return to the previous screen, you can navigate using your browser's back button.
 
 You can also save any chart that Metabot creates to a dashboard or collection.
+
+## AI exploration
+
+![AI exploration](./images/ai-exploration.png)
+
+Use **AI exploration** to start a new conversation with Metabot when you don’t already have a chart, question, or query to work from.
+
+Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts. AI exploration is optimized for answering questions about your data, such as trends, totals, and comparisons.
+
+When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. This helps keep answers focused and more reliable, especially in larger instances with lots of data. Admins can control what content Metabot searches during AI exploration. See [Metabot AI settings](../ai/settings.md#collection-for-natural-language-querying) for details.
+
 
 ## Giving feedback on Metabot responses
 

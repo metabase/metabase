@@ -36,6 +36,19 @@ Admins on Pro and Enterprise plans can tell Metabot to only work with [models](.
 
 Restricting Metabot to verified models and metrics (and only models and metrics) helps Metabot produce more reliable answers, since you know someone has at least vetted the data Metabot can use.
 
+## Collection for natural language querying
+
+Select a collection to control what content Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration).
+
+Metabot will search:
+
+* The selected collection and its subcollections
+* **Models**, **tables**, and **metrics** in those collections
+
+This setting only affects conversations started from **+ New → AI exploration**. Other Metabot interactions aren’t affected.
+
+Metabot can still use content outside the selected collection if it’s explicitly @-mentioned or part of the person’s current context.
+
 ## When embedding Metabot, you can pick a collection for Metabot to have access to
 
 When embedding Metabot in your app, you can select a collection for Metabot:
