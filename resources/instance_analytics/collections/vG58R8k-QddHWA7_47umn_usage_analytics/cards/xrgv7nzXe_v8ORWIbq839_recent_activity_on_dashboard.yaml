@@ -156,13 +156,12 @@ visualization_settings:
     - {base-type: type/Text, join-alias: People - User}
     name: full_name
   table.pivot_column: end_timestamp
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: xrgv7nzXe_v8ORWIbq839, label: recent_activity_on_dashboard, model: Card}
 archived_directly: false
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question
