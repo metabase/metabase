@@ -74,12 +74,11 @@
                                        :non-nil #{:archived :definition :name :show_in_getting_started})
         new-body   (dissoc clean-body :revision_message)
         changes    (when-not (= new-body existing)
-                     new-body)
-        archive?   (:archived changes)]
+                     new-body)]
     (when changes
       (t2/update! :model/Segment id changes))
     (u/prog1 (hydrated-segment id)
-      (events/publish-event! (if archive? :event/segment-delete :event/segment-update)
+      (events/publish-event! :event/segment-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

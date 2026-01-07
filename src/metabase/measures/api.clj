@@ -84,12 +84,11 @@
                     (dissoc clean-body :revision_message)
                     (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
-                     new-body)
-        archive?   (:archived changes)]
+                     new-body)]
     (when changes
       (t2/update! :model/Measure id changes))
     (u/prog1 (hydrated-measure id)
-      (events/publish-event! (if archive? :event/measure-delete :event/measure-update)
+      (events/publish-event! :event/measure-update
                              {:object <> :user-id api/*current-user-id* :revision-message revision_message}))))
 
 (api.macros/defendpoint :put "/:id" :- ::measure
@@ -115,13 +114,3 @@
   (log/warn "DELETE /api/measure/:id is deprecated. Instead, change its `archived` value via PUT /api/measure/:id.")
   (write-check-and-update-measure! id {:archived true, :revision_message revision_message})
   nil)
-
-;; TODO: please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/related"
-  "Return related entities."
-  [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Measure :id id) api/read-check xrays/related))
