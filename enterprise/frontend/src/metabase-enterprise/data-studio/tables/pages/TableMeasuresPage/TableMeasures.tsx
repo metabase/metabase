@@ -17,7 +17,7 @@ export function TableMeasures({ table }: TableMeasuresProps) {
   const measures = table.measures ?? [];
 
   return (
-    <Flex direction="column" p="lg" bg="bg-light" flex={1}>
+    <Flex direction="column" flex={1}>
       <EntityList
         items={measures}
         title={t`Measures`}
