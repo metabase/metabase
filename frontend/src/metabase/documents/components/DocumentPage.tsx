@@ -40,7 +40,6 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-import { ID_ATTRIBUTE_NAME } from "metabase/rich_text_editing/tiptap/extensions/NodeIds/constants";
 import { Box } from "metabase/ui";
 import type {
   Card,
@@ -229,9 +228,7 @@ export const DocumentPage = ({
     const interval = 100;
 
     const attemptScroll = () => {
-      const element = document.querySelector(
-        `[${ID_ATTRIBUTE_NAME}="${blockId}"]`,
-      );
+      const element = document.querySelector(`[data-node-id="${blockId}"]`);
 
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });

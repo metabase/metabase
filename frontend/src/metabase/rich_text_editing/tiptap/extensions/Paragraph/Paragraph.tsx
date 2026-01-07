@@ -105,6 +105,7 @@ export const ParagraphNodeView = ({
         className={cx(S.root, {
           [S.open]: isOpen || isHovered,
         })}
+        data-node-id={_id}
         ref={(el: HTMLElement | null) => {
           commentsRefs.setReference(el);
           anchorRefs.setReference(el);
