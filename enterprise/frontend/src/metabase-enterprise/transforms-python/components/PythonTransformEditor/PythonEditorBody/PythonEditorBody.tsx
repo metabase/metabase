@@ -32,6 +32,7 @@ type PythonEditorBodyProps = {
   onCancel?: () => void;
   isRunning?: boolean;
   isDirty?: boolean;
+  readOnly?: boolean;
   tables?: Record<string, number>;
   withDebugger?: boolean;
   onAcceptProposed?: () => void;
@@ -49,6 +50,7 @@ export function PythonEditorBody({
   onCancel,
   isRunning,
   isDirty,
+  readOnly,
   withDebugger,
   onAcceptProposed,
   onRejectProposed,
@@ -62,6 +64,7 @@ export function PythonEditorBody({
           onChange={onChange}
           withPandasCompletions
           data-testid="python-editor"
+          readOnly={readOnly}
         />
 
         <Stack m="1rem" gap="md" mt="auto">
@@ -93,16 +96,20 @@ export function PythonEditorBody({
               </Tooltip>
             </>
           )}
-          <RunButtonWithTooltip
-            disabled={!isRunnable}
-            isRunning={isRunning}
-            isDirty={isDirty}
-            onRun={onRun}
-            onCancel={onCancel}
-            getTooltip={() => t`Run Python script`}
-          />
+          {!readOnly && (
+            <RunButtonWithTooltip
+              disabled={!isRunnable}
+              isRunning={isRunning}
+              isDirty={isDirty}
+              onRun={onRun}
+              onCancel={onCancel}
+              getTooltip={() => t`Run Python script`}
+            />
+          )}
         </Stack>
-        <SharedLibraryActions source={source} onChange={onChange} />
+        {!readOnly && (
+          <SharedLibraryActions source={source} onChange={onChange} />
+        )}
       </Flex>
     </MaybeResizableBox>
   );

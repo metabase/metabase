@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
@@ -37,12 +38,14 @@ type PythonDataPickerProps = {
     tables: PythonTransformTableAliases,
     tableInfo: Table[],
   ) => void;
+  readOnly?: boolean;
 };
 
 export function PythonDataPicker({
   database,
   tables,
   onChange,
+  readOnly,
 }: PythonDataPickerProps) {
   const [tableSelections, setTableSelections] = useState<TableSelection[]>(
     getInitialTableSelections(tables),
@@ -158,7 +161,8 @@ export function PythonDataPicker({
         </Text>
 
         <DatabaseDataSelector
-          className={S.databaseSelector}
+          readOnly={readOnly}
+          className={cx(S.databaseSelector, { [S.readOnly]: readOnly })}
           selectedDatabaseId={database}
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
@@ -188,13 +192,15 @@ export function PythonDataPicker({
                   handleSelectionChange(index, selection)
                 }
                 onRemove={() => handleRemoveTable(index)}
-                disabled={isLoadingTables}
+                disabled={readOnly || isLoadingTables}
               />
             ))}
-            <AddTableButton
-              onClick={handleAddTable}
-              disabled={availableTables.length === 0}
-            />
+            {!readOnly && (
+              <AddTableButton
+                onClick={handleAddTable}
+                disabled={availableTables.length === 0}
+              />
+            )}
           </Stack>
         </Box>
       )}

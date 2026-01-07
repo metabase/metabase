@@ -19,6 +19,7 @@ export function PythonTransformEditor({
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
+  readOnly,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult } =
     useTestPythonTransform(source);
@@ -67,6 +68,7 @@ export function PythonTransformEditor({
         database={source["source-database"]}
         tables={source["source-tables"]}
         onChange={handleDataChange}
+        readOnly={readOnly}
       />
       <Stack w="100%" h="100%" gap={0}>
         <PythonEditorBody
@@ -78,14 +80,17 @@ export function PythonTransformEditor({
           source={source.body}
           proposedSource={proposedSource?.body}
           onChange={handleScriptChange}
-          withDebugger
+          withDebugger={!readOnly}
           onAcceptProposed={onAcceptProposed}
           onRejectProposed={onRejectProposed}
+          readOnly={readOnly}
         />
-        <PythonEditorResults
-          isRunning={isRunning}
-          executionResult={executionResult}
-        />
+        {!readOnly && (
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+          />
+        )}
       </Stack>
     </Flex>
   );

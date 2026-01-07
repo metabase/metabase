@@ -200,6 +200,7 @@ function TransformQueryPageBody({
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
+              readOnly={readOnly}
             />
           ) : (
             <TransformEditor

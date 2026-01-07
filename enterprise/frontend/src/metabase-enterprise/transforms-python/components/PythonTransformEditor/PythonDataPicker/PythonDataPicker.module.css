@@ -8,4 +8,8 @@
   border: 1px solid var(--mb-color-border);
   border-radius: var(--mantine-radius-xs);
   cursor: pointer;
+
+  &.readOnly {
+    cursor: not-allowed;
+  }
 }
