@@ -603,7 +603,13 @@
 
                           (= [:perms/view-data :blocked] [perm-type value])
                           (into [(build-database-permission group-or-id db-or-id :perms/create-queries :no)
-                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)]))]
+                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)])
+
+                          (and (= perm-type :perms/view-data) (not= value :unrestricted))
+                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no))
+
+                          (and (= perm-type :perms/create-queries) (not= value :query-builder-and-native))
+                          (conj (build-database-permission group-or-id db-or-id :perms/transforms :no)))]
     (apply merge-with concat
            {:to-delete existing-perms
             :to-insert [new-perm]}

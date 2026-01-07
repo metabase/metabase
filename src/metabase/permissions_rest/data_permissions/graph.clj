@@ -422,7 +422,7 @@
              ;; instead of iterating the provided cb-changes object we need to go in a specific order
              ;; so backend consistency rules like setting create-queries and download to no when view-data
              ;; is blocked can happen in the correct order despite what may come in the API request
-             perm-type [:details :data-model :download :create-queries :view-data :transforms]]
+             perm-type [:details :data-model :download :transforms :create-queries :view-data]]
        (when-let [new-perms (perm-type db-changes)]
          (case perm-type
            :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
