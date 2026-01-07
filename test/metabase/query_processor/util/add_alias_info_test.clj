@@ -1120,6 +1120,7 @@
                                                 ;; TODO (Cam 9/16/25) -- says who? This is not something we support in
                                                 ;; the FE.
                                                 :fields       [[:field %products.title {:join-alias   "Orders"
+                                                                                        :source-field-name "PRODUCT_ID"
                                                                                         :source-field (meta/id :orders :product-id)}]
                                                                &Orders.*sum/Integer]}]
                                     :fields   [$title $category]
@@ -1192,6 +1193,7 @@
                                    ::add/source-table  (meta/id :products)}
                            any?]
                           [:field {:join-alias         "Orders"
+                                   :source-field-name "PRODUCT_ID"
                                    ::add/desired-alias "Orders__PRODUCTS__via_6256d0ed"
                                    ::add/source-alias  "PRODUCTS__via__PRODUC_8b0b9fea"
                                    ::add/source-table  "Orders"}
