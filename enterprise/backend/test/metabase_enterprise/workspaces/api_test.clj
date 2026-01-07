@@ -14,6 +14,7 @@
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.audit-app.core :as audit]
+   [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.lib.core :as lib]
@@ -853,9 +854,9 @@
                     (qp.compile/compile)
                     :query)
         query       (lib/native-query mp sql-str)
-        orig-schema (or (:schema orders-meta) "public")
+        orig-schema (or (:schema orders-meta) (driver.sql/default-schema driver/*driver*))
         orig-name (:name orders-meta)
-        target-schema "public"]
+        target-schema (driver.sql/default-schema driver/*driver*)]
     (with-transform-cleanup! [target-name "ws_tables_test"]
       (mt/with-temp [:model/Transform x1 {:name   "My X1"
                                           :source {:type  "query"

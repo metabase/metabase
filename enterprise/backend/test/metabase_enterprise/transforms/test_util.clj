@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -15,13 +16,16 @@
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
-   `target` can be a string or a map. If `target` is a string, type :table is assumed."
+   `target` can be a string or a map. If `target` is a string, type :table is assumed.
+   If no schema is provided, uses the driver's default schema."
   [target]
-  (let [target (if (map? target)
-                 target
-                 ;; assume this is just a plain table name
-                 {:type :table, :name target})
-        driver driver/*driver*]
+  (let [driver driver/*driver*
+        target (cond-> (if (map? target)
+                         target
+                         ;; assume this is just a plain table name
+                         {:type :table, :name target})
+                 (nil? (:schema target))
+                 (assoc :schema (driver.sql/default-schema driver)))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
