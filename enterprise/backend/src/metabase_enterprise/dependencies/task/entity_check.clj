@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util.log :as log]))
@@ -39,9 +40,9 @@
   DependencyEntityCheck [ctx]
   (log/info "Executing DependencyEntityCheck job...")
   (check-entities!)
-  (let [delay-seconds    (* (deps.settings/dependency-entity-check-delay-minutes) 60)
-        variance-seconds (* (deps.settings/dependency-entity-check-variance-minutes) 60)
-        delay-in-seconds (max 0 (+ (- delay-seconds variance-seconds) (rand-int (* 2 variance-seconds))))]
+  (let [delay-in-seconds (deps.task-util/job-delay
+                          (deps.settings/dependency-entity-check-delay-minutes)
+                          (deps.settings/dependency-entity-check-variance-minutes))]
     (schedule-next-run! delay-in-seconds (.getScheduler ctx))))
 
 (def ^:private job-key     "metabase.dependencies.task.entity-check.job")
@@ -50,20 +51,17 @@
 (defn- schedule-next-run!
   ([delay-in-seconds] (schedule-next-run! delay-in-seconds nil))
   ([delay-in-seconds scheduler]
-   (let [start-at (java.util.Date. (long (+ (current-millis) (* delay-in-seconds 1000))))
-         trigger  (triggers/build
-                   (triggers/with-identity (triggers/key (str trigger-key \. (random-uuid))))
-                   (triggers/for-job job-key)
-                   (triggers/start-at start-at))]
-     (log/info "Scheduling next run at" start-at)
-     (if scheduler
-       ;; re-scheduling from the job
-       (qs/add-trigger scheduler trigger)
-       ;; first schedule
-       (let [job (jobs/build (jobs/of-type DependencyEntityCheck) (jobs/with-identity job-key))]
-         (task/schedule-task! job trigger))))))
+   (deps.task-util/schedule-next-run!
+    {:job-type         DependencyEntityCheck
+     :job-name         "Dependency Entity Check"
+     :job-key          job-key
+     :trigger-key      trigger-key
+     :delay-in-seconds delay-in-seconds
+     :sheduler         scheduler})))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (if (pos? (deps.settings/dependency-entity-check-batch-size))
-    (schedule-next-run! (rand-int (* (deps.settings/dependency-entity-check-variance-minutes) 60)))
+    (-> (deps.settings/dependency-entity-check-variance-minutes)
+        deps.task-util/job-initial-delay
+        schedule-next-run!)
     (log/info "Not starting dependency entity check job because the batch size is not positive")))

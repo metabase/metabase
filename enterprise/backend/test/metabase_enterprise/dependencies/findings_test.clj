@@ -10,7 +10,7 @@
 
 (defn- backfill-all-entity-analyses! []
   (doseq [model [:card :transform :segment]]
-    (while (> (deps.findings/analyze-batch! model 100) 0))))
+    (while (pos? (deps.findings/analyze-batch! model 100)))))
 
 (deftest ^:sequential can-analyze-entity-batches-test
   (backfill-all-entity-analyses!)

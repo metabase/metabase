@@ -92,7 +92,7 @@
 
 (mr/def ::transform-body
   [:map
-   [:id     {:optional false} ms/PositiveInt]
+   [:id     {:optional false} ::lib.schema.id/transform]
    [:name   {:optional true} :string]
    ;; TODO (Cam 10/8/25) -- no idea what the correct schema for these is supposed to be -- it was just `map` before --
    ;; this is my attempt to guess it
@@ -132,7 +132,7 @@
    _query-params
    {:keys [id content], snippet-name :name}
    :- [:map
-       [:id      {:optional false} ms/PositiveInt]
+       [:id      {:optional false} ::lib.schema.id/snippet]
        [:name    {:optional true} native-query-snippets/NativeQuerySnippetName]
        [:content {:optional true} :string]]]
   (api/read-check :model/NativeQuerySnippet id)
@@ -499,10 +499,10 @@
   [:map
    [:nodes [:sequential ::entity]]
    [:edges [:sequential [:map
-                         [:from_entity_type (into [:enum] deps.dependency-types/dependency-types)]
-                         [:from_entity_id pos-int?]
-                         [:to_entity_type (into [:enum] deps.dependency-types/dependency-types)]
-                         [:to_entity_id pos-int?]]]]])
+                         [:from_entity_type ::deps.dependency-types/dependency-types]
+                         [:from_entity_id ::entity-id]
+                         [:to_entity_type ::deps.dependency-types/dependency-types]
+                         [:to_entity_id ::entity-id]]]]])
 
 (api.macros/defendpoint :get "/graph" :- ::graph-response
   "This endpoint takes an :id and a supported entity :type, and returns a graph of all its upstream dependencies.
@@ -515,7 +515,7 @@
   [_route-params
    {:keys [id type archived]} :- [:map
                                   [:id {:optional true} ms/PositiveInt]
-                                  [:type {:optional true} (ms/enum-decode-keyword deps.dependency-types/dependency-types)]
+                                  [:type {:optional true} ::deps.dependency-types/dependency-types]
                                   [:archived {:optional true} :boolean]]]
   (api/read-check (deps.dependency-types/dependency-type->model type) id)
   (lib-be/with-metadata-provider-cache
@@ -534,8 +534,8 @@
 (def ^:private dependents-args
   [:map
    [:id                  ms/PositiveInt]
-   [:type                (ms/enum-decode-keyword deps.dependency-types/dependency-types)]
-   [:dependent_type      (ms/enum-decode-keyword deps.dependency-types/dependency-types)]
+   [:type                ::deps.dependency-types/dependency-types]
+   [:dependent_type      ::deps.dependency-types/dependency-types]
    [:dependent_card_type {:optional true} (ms/enum-decode-keyword lib.schema.metadata/card-types)]
    [:archived            {:optional true} :boolean]])
 
@@ -589,8 +589,8 @@
 (def ^:private unreferenced-items-args
   [:map
    [:types {:optional true} [:or
-                             (ms/enum-decode-keyword deps.dependency-types/dependency-types)
-                             [:sequential (ms/enum-decode-keyword deps.dependency-types/dependency-types)]]]
+                             ::deps.dependency-types/dependency-types
+                             [:sequential ::deps.dependency-types/dependency-types]]]
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
@@ -625,8 +625,8 @@
 (def ^:private broken-items-args
   [:map
    [:types {:optional true} [:or
-                             (ms/enum-decode-keyword deps.dependency-types/dependency-types)
-                             [:sequential (ms/enum-decode-keyword deps.dependency-types/dependency-types)]]]
+                             ::deps.dependency-types/dependency-types
+                             [:sequential ::deps.dependency-types/dependency-types]]]
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
@@ -662,11 +662,11 @@
   "Returns a list of all items with broken queries.
 
    Accepts optional parameters for filtering:
-   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
-   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
-   - query: Search string to filter by name or location
+   - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)
+   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
+   - `query`: Search string to filter by name or location
 
-   Returns a list of broken items, each with :id, :type, :data, and :errors fields."
+   Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields."
   [_route-params
    {:keys [types card_types query]
     :or {types (vec deps.dependency-types/dependency-types)

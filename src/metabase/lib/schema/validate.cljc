@@ -27,11 +27,14 @@
    [:type [:= :validate/validation-exception-error]]
    [:message :string]])
 
+(mr/def ::validate-error-type
+  [:and
+   :keyword
+   [:fn {:error/message "Must be in the validate ns"} #(= (namespace %) "validate")]])
+
 (mr/def ::error
   [:and
-   [:map [:type {:decode/normalize common/normalize-keyword} [:and
-                                                              :keyword
-                                                              [:fn #(= (namespace %) "validate")]]]]
+   [:map [:type {:decode/normalize common/normalize-keyword} ::validate-error-type]]
    [:multi {:dispatch #(-> % :type keyword)}
     [:validate/missing-column             [:ref ::missing-column-error]]
     [:validate/missing-table-alias        [:ref ::missing-table-alias-error]]

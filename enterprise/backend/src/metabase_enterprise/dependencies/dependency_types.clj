@@ -1,6 +1,8 @@
 (ns metabase-enterprise.dependencies.dependency-types
   (:require
-   [clojure.set :as set]))
+   [clojure.set :as set]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (def model->dependency-type
   "A map relating models to their corresponding dependency type."
@@ -24,3 +26,6 @@
 (def models
   "The set of all models that are handled by dependencies."
   (-> model->dependency-type keys set))
+
+(mr/def ::dependency-types
+  (ms/enum-decode-keyword dependency-types))

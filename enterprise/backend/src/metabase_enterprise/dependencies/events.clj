@@ -252,7 +252,7 @@
   [_ {:keys [object]}]
   (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object)))
 
-(defn- check-dependents [type object recur-through-transforms?]
+(defn- check-dependents! [type object recur-through-transforms?]
   (let [graph (if recur-through-transforms?
                 (models.dependency/graph-dependents)
                 (models.dependency/filtered-graph-dependents
@@ -276,7 +276,7 @@
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
-      (check-dependents :card object false))))
+      (check-dependents! :card object false))))
 
 (derive ::check-transform :metabase/event)
 (derive :event/create-transform ::check-transform)
@@ -299,7 +299,7 @@
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
       (deps.findings/upsert-analysis! object)
-      (check-dependents :segment object false))))
+      (check-dependents! :segment object false))))
 
 (derive ::check-transform-dependents :metabase/event)
 (derive :event/transform-run-complete ::check-transform-dependents)
@@ -308,4 +308,4 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (lib-be/with-metadata-provider-cache
-      (check-dependents :transform {:id (:transform-id object)} true))))
+      (check-dependents! :transform {:id (:transform-id object)} true))))

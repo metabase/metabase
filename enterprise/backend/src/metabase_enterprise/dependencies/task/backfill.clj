@@ -15,6 +15,7 @@
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task-util :as deps.task-util]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
@@ -167,9 +168,9 @@
         retries? (has-pending-retries?)]
     (if (or full-batch-selected?
             retries?)
-      (let [delay-seconds    (* (deps.settings/dependency-backfill-delay-minutes) 60)
-            variance-seconds (* (deps.settings/dependency-backfill-variance-minutes) 60)
-            delay-in-seconds (max 0 (+ (- delay-seconds variance-seconds) (rand-int (* 2 variance-seconds))))]
+      (let [delay-in-seconds (deps.task-util/job-delay
+                              (deps.settings/dependency-backfill-delay-minutes)
+                              (deps.settings/dependency-backfill-variance-minutes))]
         (schedule-next-run! delay-in-seconds (.getScheduler ctx)))
       (log/info "No more entities to backfill for, stopping."))))
 
@@ -179,24 +180,20 @@
 (defn- schedule-next-run!
   ([delay-in-seconds] (schedule-next-run! delay-in-seconds nil))
   ([delay-in-seconds scheduler]
-   (let [start-at (java.util.Date. (long (+ (current-millis) (* delay-in-seconds 1000))))
-         trigger  (triggers/build
-                   (triggers/with-identity (triggers/key (str trigger-key \. (random-uuid))))
-                   (triggers/for-job job-key)
-                   (triggers/start-at start-at))]
-     (log/info "Scheduling next run at" start-at)
-     (if scheduler
-       ;; re-scheduling from the job
-       (qs/add-trigger scheduler trigger)
-       ;; first schedule
-       (let [job (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
-         (task/schedule-task! job trigger))))))
+   (deps.task-util/schedule-next-run!
+    {:job-type         BackfillDependencies
+     :job-name         "Dependency Backfill"
+     :job-key          job-key
+     :trigger-key      trigger-key
+     :delay-in-seconds delay-in-seconds
+     :sheduler         scheduler})))
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
     (schedule-next-run! (if config/is-test?
                           0
-                          (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60))))
+                          (deps.task-util/job-initial-delay
+                           (deps.settings/dependency-backfill-variance-minutes))))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
 
 (derive ::backfill :metabase/event)

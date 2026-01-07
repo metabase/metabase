@@ -5,7 +5,7 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::native-query-snippet
-  "Schema for an instance of a `:model/Table`."
+  "Schema for an instance of a `:model/NativeQuerySnippet`."
   [:map
    [:id ::lib.schema.id/snippet]
    [:name :string]
