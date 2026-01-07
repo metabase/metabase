@@ -78,10 +78,7 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
     });
 
     const collectionLink = screen.getByText("Data").closest("a");
-    expect(collectionLink).toHaveAttribute(
-      "href",
-      "/data-studio/library/collections/1",
-    );
+    expect(collectionLink).toHaveAttribute("href", "/data-studio/library");
 
     const tableLink = screen.getByText("Orders").closest("a");
     expect(tableLink).toHaveAttribute(
@@ -117,11 +114,11 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
 
     expect(screen.getByText("Root").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library/collections/3",
+      `/data-studio/library`,
     );
     expect(screen.getByText("Analytics").closest("a")).toHaveAttribute(
       "href",
-      "/data-studio/library/collections/2",
+      `/data-studio/library?expandedId=${parent.id}`,
     );
   });
 
