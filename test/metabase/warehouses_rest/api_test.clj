@@ -2508,3 +2508,34 @@
         (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-query true)]
           (is (= 1 (count response)))
           (is (= "queryable_table" (-> response first :name))))))))
+
+(deftest list-databases-includes-manage-permissions-test
+  (testing "GET /api/database includes databases where user has manage-database permission (details :yes)"
+    (mt/with-temp [:model/Database {db-1-id :id} {:name "Query DB"}
+                   :model/Database {db-2-id :id} {:name "Manage DB"}
+                   :model/Database {db-3-id :id} {:name "No Access DB"}
+                   :model/Table    _             {:db_id db-1-id :name "table1" :active true}
+                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}
+                   :model/Table    _             {:db_id db-3-id :name "table3" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-1-id)
+      (t2/delete! :model/DataPermissions :db_id db-2-id)
+      (t2/delete! :model/DataPermissions :db_id db-3-id)
+      ;; Grant query permissions to db-1 (queryable)
+      (data-perms/set-database-permission! pg db-1-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-1-id :perms/create-queries :query-builder)
+      ;; Grant only manage-database (details) permission to db-2 (no query access)
+      (data-perms/set-database-permission! pg db-2-id :perms/manage-database :yes)
+      ;; No permissions for db-3
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "database")
+                          :data
+                          (filter #(#{db-1-id db-2-id db-3-id} (:id %)))
+                          (map :name)
+                          set)]
+        (testing "Both query-accessible and manage-accessible databases should be included"
+          (is (contains? response "Query DB"))
+          (is (contains? response "Manage DB")))
+        (testing "Database with no permissions should not be included"
+          (is (not (contains? response "No Access DB"))))))))
