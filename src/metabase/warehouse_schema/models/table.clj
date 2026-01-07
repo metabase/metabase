@@ -304,7 +304,7 @@
 
 (defmethod mi/can-write? :model/Table
   ;; Check if user can modify this table's metadata.
-  ;; Requires the manage-table-metadata permission 
+  ;; Requires the manage-table-metadata permission
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
