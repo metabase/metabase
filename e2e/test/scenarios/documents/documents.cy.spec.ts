@@ -1356,8 +1356,8 @@ describe("documents", () => {
     it("should show anchor link for blockquotes on hover", () => {
       H.visitDocument("@documentId");
 
-      // Hover over the blockquote
-      H.documentContent().findByRole("blockquote").realHover();
+      // Hover over the blockquote (use find() since blockquote has no implicit ARIA role)
+      H.documentContent().find("blockquote").realHover();
 
       // Anchor link button should appear
       cy.findByRole("button", { name: /copy link/i }).should("be.visible");
