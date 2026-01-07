@@ -737,6 +737,64 @@ LIMIT
     });
   });
 
+  describe("ownership", () => {
+    it("should display the ownership section in transform settings", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      getTransformsTargetContent().within(() => {
+        cy.findByText("Ownership").should("be.visible");
+        cy.findByText("Specify who is responsible for this transform.").should(
+          "be.visible",
+        );
+        cy.findByText("Owner").should("be.visible");
+      });
+    });
+
+    it("should be able to change the owner to another user", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("open the owner picker and select a different user");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("Robert Tableton").click();
+      cy.wait("@updateTransform");
+
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+    });
+
+    it("should be able to set an external email as owner", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("type an external email address");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+        cy.findByLabelText("Owner").type("external@example.com");
+      });
+      H.popover().findByText("external@example.com").click();
+      cy.wait("@updateTransform");
+
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+    });
+
+    it("should be able to clear the owner", () => {
+      createMbqlTransform({ visitTransform: true });
+      H.DataStudio.Transforms.settingsTab().click();
+
+      cy.log("select unspecified to clear the owner");
+      getTransformsTargetContent().within(() => {
+        cy.findByLabelText("Owner").click();
+      });
+      H.popover().findByText("Unspecified").click();
+      cy.wait("@updateTransform");
+
+      H.undoToast().findByText("Transform owner updated").should("be.visible");
+    });
+  });
+
   describe("tags", () => {
     it("should be able to add and remove tags", () => {
       createMbqlTransform({ visitTransform: true });
