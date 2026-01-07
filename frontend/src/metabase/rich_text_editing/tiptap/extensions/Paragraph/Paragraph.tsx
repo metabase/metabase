@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
+import { AnchorLinkMenu } from "metabase/documents/components/Editor/AnchorLinkMenu";
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
 import {
   getChildTargetId,
@@ -21,6 +22,7 @@ import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { documentWithAnchor } from "metabase/lib/urls";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -48,8 +50,7 @@ export const ParagraphNodeView = ({
   extension,
 }: NodeViewProps) => {
   const editorContext = extension?.options?.editorContext || "document";
-  const shouldHideCommentMenu =
-    editorContext === "comments" || isWithinIframe();
+  const shouldHideMenus = editorContext === "comments" || isWithinIframe();
   const childTargetId = useSelector(getChildTargetId);
   const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
   const document = useSelector(getCurrentDocument);
@@ -66,18 +67,35 @@ export const ParagraphNodeView = ({
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
   );
-  const { refs, floatingStyles } = useFloating({
-    placement: "right-start",
-    whileElementsMounted: autoUpdate,
-    strategy: "fixed",
-    open: rendered,
-  });
+
+  // Comments menu floating (right side)
+  const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
+    useFloating({
+      placement: "right-start",
+      whileElementsMounted: autoUpdate,
+      strategy: "fixed",
+      open: rendered,
+    });
+
+  // Anchor link menu floating (left side)
+  const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
+    useFloating({
+      placement: "left-start",
+      whileElementsMounted: autoUpdate,
+      strategy: "fixed",
+      open: rendered,
+    });
 
   useEffect(() => {
     if (!rendered) {
       setRendered(true);
     }
   }, [rendered]);
+
+  const isTopLevelBlock = isTopLevel({ editor, getPos });
+  const shouldShowMenus =
+    document && rendered && !shouldHideMenus && isTopLevelBlock;
+  const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
   return (
     <>
@@ -86,26 +104,34 @@ export const ParagraphNodeView = ({
         className={cx(S.root, {
           [S.open]: isOpen || isHovered,
         })}
-        ref={refs.setReference}
+        ref={(el: HTMLElement | null) => {
+          commentsRefs.setReference(el);
+          anchorRefs.setReference(el);
+        }}
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
         <NodeViewContent<"p"> as="p" />
       </NodeViewWrapper>
 
-      {document &&
-        rendered &&
-        !shouldHideCommentMenu &&
-        isTopLevel({ editor, getPos }) && (
+      {shouldShowMenus && (
+        <>
+          <AnchorLinkMenu
+            ref={anchorRefs.setFloating}
+            show={hovered}
+            style={anchorFloatingStyles}
+            url={anchorUrl}
+          />
           <CommentsMenu
             active={isOpen}
             href={`/document/${document.id}/comments/${_id}`}
-            ref={refs.setFloating}
+            ref={commentsRefs.setFloating}
             show={isOpen || hovered}
             threads={threads}
-            style={floatingStyles}
+            style={commentsFloatingStyles}
           />
-        )}
+        </>
+      )}
     </>
   );
 };

@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
+import { AnchorLinkMenu } from "metabase/documents/components/Editor/AnchorLinkMenu";
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
 import {
   getChildTargetId,
@@ -21,6 +22,7 @@ import { getListCommentsQuery } from "metabase/documents/utils/api";
 import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
 import { isWithinIframe } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { documentWithAnchor } from "metabase/lib/urls";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -62,18 +64,35 @@ export const BlockquoteNodeView = ({ node, editor, getPos }: NodeViewProps) => {
     () => getTargetChildCommentThreads(comments, _id),
     [comments, _id],
   );
-  const { refs, floatingStyles } = useFloating({
-    placement: "right-start",
-    whileElementsMounted: autoUpdate,
-    strategy: "fixed",
-    open: rendered,
-  });
+
+  // Comments menu floating (right side)
+  const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
+    useFloating({
+      placement: "right-start",
+      whileElementsMounted: autoUpdate,
+      strategy: "fixed",
+      open: rendered,
+    });
+
+  // Anchor link menu floating (left side)
+  const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
+    useFloating({
+      placement: "left-start",
+      whileElementsMounted: autoUpdate,
+      strategy: "fixed",
+      open: rendered,
+    });
 
   useEffect(() => {
     if (!rendered) {
       setRendered(true);
     }
   }, [rendered]);
+
+  const isTopLevelBlock = isTopLevel({ editor, getPos });
+  const shouldShowMenus =
+    document && rendered && isTopLevelBlock && !isWithinIframe();
+  const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
   return (
     <>
@@ -82,26 +101,34 @@ export const BlockquoteNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         className={cx(S.root, {
           [S.open]: isOpen || isHovered,
         })}
-        ref={refs.setReference}
+        ref={(el: HTMLElement | null) => {
+          commentsRefs.setReference(el);
+          anchorRefs.setReference(el);
+        }}
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
         <NodeViewContent<"blockquote"> as="blockquote" />
       </NodeViewWrapper>
 
-      {document &&
-        rendered &&
-        isTopLevel({ editor, getPos }) &&
-        !isWithinIframe() && (
+      {shouldShowMenus && (
+        <>
+          <AnchorLinkMenu
+            ref={anchorRefs.setFloating}
+            show={hovered}
+            style={anchorFloatingStyles}
+            url={anchorUrl}
+          />
           <CommentsMenu
             active={isOpen}
             href={`/document/${document.id}/comments/${_id}`}
-            ref={refs.setFloating}
+            ref={commentsRefs.setFloating}
             show={isOpen || hovered}
-            style={floatingStyles}
+            style={commentsFloatingStyles}
             threads={threads}
           />
-        )}
+        </>
+      )}
     </>
   );
 };
