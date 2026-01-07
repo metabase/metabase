@@ -394,9 +394,13 @@
               ["mage -repl --port 59498 --namespace metabase.app-db.connection '(read-string \"::hello\")'"
                "Evaluate a keyword inside a namespace"]]
    :options [["-n" "--namespace NAMESPACE" "Namespace to use for the task"]
-             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]]
+             ["-p" "--port PORT" "Port to use for the task, defaults to value in .nrepl-port"]
+             ["-f" "--file FILE" "A file with clojure code to evaluate"]]
    :task (let [parsed (cli/parse! (current-task))
-               code (first (:arguments parsed))
+               code (or
+                     (try (some-> parsed :options :file slurp)
+                          (catch Exception e (println "No file found at given path:" parsed)))
+                     (first (:arguments parsed)))
                port (or (:port (:options parsed))
                         (slurp ".nrepl-port")
                         (throw (ex-info (c/red "No port specified, and no .nrepl-port file found.") {:babashka/exit 1})))
@@ -420,6 +424,16 @@
                "Check top level form containing line 300 for readability"]]
    :task (let [{:keys [arguments]} (cli/parse! (current-task))]
            (apply readability/check arguments))}
+
+  -lint-openapi
+  {:doc        "Validate OpenAPI specification with Redocly CLI"
+   :requires   [[mage.openapi :as openapi]]
+   :examples   [["./bin/mage -lint-openapi" "Validate resources/openapi/openapi.json"]
+                ["./bin/mage -lint-openapi --strict" "Validate with all rules (stricter)"]]
+   :options    [["-s" "--strict" "Enable all validation rules (stricter)"]
+                ["-f" "--file FILE" "Path to openapi.json file"]]
+   :task       (task! (openapi/validate-openapi {:file (get-in parsed [:options :file])
+                                                  :strict (get-in parsed [:options :strict])}))}
 
   ;; Uncomment this if you want to play with the example calculator task:
   #_#_-example-calculator

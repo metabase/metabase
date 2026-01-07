@@ -68,9 +68,10 @@
   `(let [ns# (symbol ~nns)]
      (require ns# :reload)
      (in-ns ns#)
+     ;; Wrap in (do ...) so multiple top-level forms are evaluated
      (eval (read-string
             {:read-cond :allow}
-            ~(if (str/blank? code) "::loaded" code)))))
+            ~(if (str/blank? code) "::loaded" (str "(do " code "\n)"))))))
 
 (def ^{:dynamic true
        :doc "Set this to true to suppress stdout output from nrepl-eval."}

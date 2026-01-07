@@ -39,16 +39,19 @@
   to be?"
   [schema :- :map]
   (try
-    (let [schema (-> schema
+    ;; Helper to recursively fix nested schemas and strip :optional (which is only
+    ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
+    (let [fix-nested #(dissoc (fix-json-schema %) :optional)
+          schema (-> schema
                      (m/update-existing :description str)
                      (m/update-existing :type keyword)
-                     (m/update-existing :definitions #(update-vals % fix-json-schema))
-                     (m/update-existing :oneOf #(mapv fix-json-schema %))
-                     (m/update-existing :anyOf #(mapv fix-json-schema %))
-                     (m/update-existing :allOf #(mapv fix-json-schema %))
+                     (m/update-existing :definitions #(update-vals % fix-nested))
+                     (m/update-existing :oneOf #(mapv fix-nested %))
+                     (m/update-existing :anyOf #(mapv fix-nested %))
+                     (m/update-existing :allOf #(mapv fix-nested %))
                      (m/update-existing :additionalProperties (fn [additional-properties]
                                                                 (cond-> additional-properties
-                                                                  (map? additional-properties) fix-json-schema))))]
+                                                                  (map? additional-properties) fix-nested))))]
       (cond
         ;; this happens when we use `[:and ... [:fn ...]]`, the `:fn` schema gets converted into an empty object
         (:allOf schema)
