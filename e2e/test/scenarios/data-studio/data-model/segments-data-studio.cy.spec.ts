@@ -660,9 +660,7 @@ describe(
             .should("be.disabled");
 
           cy.log("verify description is displayed as plain text");
-          SegmentEditor.get()
-            .findByText("Description")
-            .should("be.visible");
+          SegmentEditor.get().findByText("Description").should("be.visible");
           SegmentEditor.get()
             .findByText("Test description for readonly")
             .should("be.visible");
