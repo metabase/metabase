@@ -21,9 +21,17 @@ describe("needsMeasurement", () => {
     expect(needsMeasurement(createColumn({ minWidth: "auto" }))).toBe(true);
   });
 
+  it("returns true when width is auto", () => {
+    expect(needsMeasurement(createColumn({ width: "auto" }))).toBe(true);
+  });
+
   it("returns false when minWidth is a number or undefined", () => {
     expect(needsMeasurement(createColumn({ minWidth: 100 }))).toBe(false);
     expect(needsMeasurement(createColumn({}))).toBe(false);
+  });
+
+  it("returns false when width is a number", () => {
+    expect(needsMeasurement(createColumn({ width: 100 }))).toBe(false);
   });
 });
 
@@ -42,6 +50,15 @@ describe("getMinConstraint", () => {
     const column = createColumn({ id: "name", minWidth: 100 });
     // maxDepth=3, indentWidth=20 -> MIN_COLUMN_WIDTH + 60 = 110
     expect(getMinConstraint(column, 0, {}, 3, 20)).toBe(MIN_COLUMN_WIDTH + 60);
+  });
+
+  it("includes widthPadding when minWidth is auto", () => {
+    const column = createColumn({
+      id: "name",
+      minWidth: "auto",
+      widthPadding: 16,
+    });
+    expect(getMinConstraint(column, 1, { name: 200 }, 0, 20)).toBe(216);
   });
 });
 
@@ -85,6 +102,49 @@ describe("calculateColumnWidths", () => {
     expect(calculateColumnWidths(columns, 400, {}, 0, 20)).toEqual({
       col1: 300,
       col2: 50,
+    });
+  });
+
+  it("uses content width for width=auto columns without stretching", () => {
+    const columns = [
+      createColumn({ id: "auto", width: "auto" }),
+      createColumn({ id: "stretch" }),
+    ];
+    // auto column uses measured width (150), stretch gets remaining space
+    expect(calculateColumnWidths(columns, 500, { auto: 150 }, 0, 20)).toEqual({
+      auto: 150,
+      stretch: 350,
+    });
+  });
+
+  it("falls back to MIN_COLUMN_WIDTH when width=auto has no measured content", () => {
+    const columns = [
+      createColumn({ id: "auto", width: "auto" }),
+      createColumn({ id: "stretch" }),
+    ];
+    expect(calculateColumnWidths(columns, 500, {}, 0, 20)).toEqual({
+      auto: MIN_COLUMN_WIDTH,
+      stretch: 450,
+    });
+  });
+
+  it("adds widthPadding to width=auto columns", () => {
+    const columns = [
+      createColumn({ id: "auto", width: "auto", widthPadding: 20 }),
+      createColumn({ id: "stretch" }),
+    ];
+    expect(calculateColumnWidths(columns, 500, { auto: 150 }, 0, 20)).toEqual({
+      auto: 170,
+      stretch: 330,
+    });
+  });
+
+  it("adds widthPadding to minWidth=auto columns", () => {
+    const columns = [
+      createColumn({ id: "auto", minWidth: "auto", widthPadding: 20 }),
+    ];
+    expect(calculateColumnWidths(columns, 200, { auto: 150 }, 0, 20)).toEqual({
+      auto: 200,
     });
   });
 });

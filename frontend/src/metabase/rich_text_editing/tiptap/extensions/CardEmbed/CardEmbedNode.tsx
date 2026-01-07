@@ -423,6 +423,9 @@ export const CardEmbedComponent = memo(
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
           })}
+          data-type="cardEmbed"
+          data-id={id}
+          data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
           <Box
@@ -456,6 +459,8 @@ export const CardEmbedComponent = memo(
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
           })}
+          data-type="cardEmbed"
+          data-id={id}
           data-testid="document-card-embed"
           style={{ position: "relative" }}
         >
@@ -485,6 +490,8 @@ export const CardEmbedComponent = memo(
           className={cx(styles.embedWrapper, CS.root, {
             [CS.open]: isOpen || isHovered,
           })}
+          data-type="cardEmbed"
+          data-id={id}
           data-testid="document-card-embed"
           data-drag-handle
           onDragOver={handleDragOver}

@@ -50,8 +50,8 @@ export function transformRun(transformId: TransformId) {
   return `${TRANSFORMS_ROOT_URL}/${transformId}/run`;
 }
 
-export function transformTarget(transformId: TransformId) {
-  return `${TRANSFORMS_ROOT_URL}/${transformId}/target`;
+export function transformSettings(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
 }
 
 export function transformDependencies(transformId: TransformId) {

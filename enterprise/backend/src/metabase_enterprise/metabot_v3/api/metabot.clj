@@ -1,7 +1,6 @@
 (ns metabase-enterprise.metabot-v3.api.metabot
   "`/api/ee/metabot-v3/metabot` routes"
   (:require
-   [metabase-enterprise.metabot-v3.config :as metabot-v3.config]
    [metabase-enterprise.metabot-v3.suggested-prompts :as metabot-v3.suggested-prompts]
    [metabase-enterprise.metabot-v3.tools.util :as metabot-v3.tools.u]
    [metabase.api.common :as api]
@@ -50,11 +49,6 @@
   (api/check-superuser)
   (api/check-404 (t2/exists? :model/Metabot :id id))
   (let [old-metabot (t2/select-one :model/Metabot :id id)]
-    ;; Prevent updating collection_id on the primary metabot instance
-    (when (and (contains? metabot-updates :collection_id)
-               (= (:entity_id old-metabot)
-                  (get-in metabot-v3.config/metabot-config [metabot-v3.config/internal-metabot-id :entity-id])))
-      (api/check-400 false "Cannot update collection_id for the primary metabot instance."))
     ;; Prevent enabling verified content without the premium feature
     (when (:use_verified_content metabot-updates)
       (premium-features/assert-has-feature :content-verification (tru "Content verification")))
@@ -94,7 +88,7 @@
                                        [:sample {:optional true} :boolean]
                                        [:model {:optional true} [:enum "metric" "model"]]
                                        [:model_id {:optional true} pos-int?]]]
-  (let [offset (if sample nil (request/offset))
+  (let [offset (when-not sample (request/offset))
         rand-fn (case (mdb/db-type)
                   :postgres :random
                   :rand)

@@ -33,12 +33,12 @@ export interface Revision {
 }
 
 export interface ListRevisionRequest {
-  entity: "card" | "dashboard" | "segment";
+  entity: "card" | "dashboard" | "segment" | "document" | "transform";
   id: number | string;
 }
 
 export interface RevertRevisionRequest {
-  entity: "card" | "dashboard" | "segment";
+  entity: "card" | "dashboard" | "segment" | "document" | "transform";
   id: number | string;
   revision_id: number;
 }

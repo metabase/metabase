@@ -4,9 +4,8 @@ import { t } from "ttag";
 import { useGetUserQuery } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
 import { Stack, Text } from "metabase/ui";
 import { AuditApi } from "metabase-enterprise/services";
 import type { User } from "metabase-types/api";
@@ -23,7 +22,7 @@ export const UnsubscribeUserModal = ({
   const userId = parseInt(params.userId, 10);
   const { data: user, isLoading, error } = useGetUserQuery(userId);
 
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const [errorMessage, setErrorMessage] = useState<string>();
   const baseModalProps = {
@@ -37,7 +36,7 @@ export const UnsubscribeUserModal = ({
   const handleConfirmClick = async (user: User) => {
     try {
       await AuditApi.unsubscribe_user({ id: user.id });
-      dispatch(addUndo({ message: t`Unsubscribe successful` }));
+      sendToast({ message: t`Unsubscribe successful` });
       onClose();
     } catch (error) {
       const msg = getResponseErrorMessage(error);

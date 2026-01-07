@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
@@ -11,6 +12,7 @@ import type {
   DatePickerOperator,
   ExcludeDatePickerValue,
 } from "metabase/querying/filters/types";
+import { createMockState } from "metabase-types/store/mocks";
 
 import type { DatePickerSubmitButtonProps } from "../types";
 
@@ -20,15 +22,26 @@ interface SetupOpts {
   availableOperators?: DatePickerOperator[];
   availableUnits?: DatePickerExtractionUnit[];
   renderSubmitButton?: (props: DatePickerSubmitButtonProps) => ReactNode;
+  timeStyle?: string;
 }
 
 function setup({
   availableOperators = DATE_PICKER_OPERATORS,
   availableUnits = DATE_PICKER_EXTRACTION_UNITS,
   renderSubmitButton,
+  timeStyle,
 }: SetupOpts = {}) {
   const onChange = jest.fn();
   const onBack = jest.fn();
+  const storeInitialState = createMockState({
+    settings: mockSettings({
+      "custom-formatting": {
+        "type/Temporal": {
+          time_style: timeStyle ?? "h A",
+        },
+      },
+    }),
+  });
 
   renderWithProviders(
     <ExcludeDatePicker
@@ -38,6 +51,7 @@ function setup({
       onChange={onChange}
       onBack={onBack}
     />,
+    { storeInitialState },
   );
 
   return { onChange, onBack };
@@ -191,6 +205,49 @@ describe("ExcludeDatePicker", () => {
     expect(renderSubmitButton).toHaveBeenLastCalledWith({
       value: { ...defaultValue, values: [17] },
       isDisabled: false,
+    });
+  });
+
+  describe("time format settings", () => {
+    it("should display hours in 12-hour format by default", async () => {
+      setup();
+
+      await userEvent.click(screen.getByText("Hours of the day…"));
+
+      ["AM", "PM"].forEach((suffix) => {
+        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].forEach((hour) => {
+          expect(
+            screen.getByLabelText(`${hour} ${suffix}`),
+          ).toBeInTheDocument();
+        });
+      });
+    });
+
+    it("should display hours in 24-hour format when setting is HH:mm", async () => {
+      setup({ timeStyle: "HH:mm" });
+
+      await userEvent.click(screen.getByText("Hours of the day…"));
+      Array.from({ length: 24 }).forEach((_, hour) => {
+        const label = hour.toString().padStart(2, "0") + ":00";
+        expect(screen.getByLabelText(label)).toBeInTheDocument();
+      });
+    });
+
+    it("should exclude hours correctly with 24-hour format", async () => {
+      const { onChange } = setup({ timeStyle: "HH:mm" });
+
+      await userEvent.click(screen.getByText("Hours of the day…"));
+      for (const label of ["00:00", "09:00", "17:00"]) {
+        await userEvent.click(screen.getByLabelText(label));
+      }
+      await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "exclude",
+        operator: "!=",
+        unit: "hour-of-day",
+        values: [0, 9, 17],
+      });
     });
   });
 });

@@ -1,37 +1,74 @@
+import type { Row, Table } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
+import type { MouseEvent } from "react";
+import { memo, useMemo } from "react";
 
 import { Flex } from "metabase/ui";
 
 import { ExpandButton } from "../ExpandButton";
 import { SelectionCheckbox } from "../SelectionCheckbox";
-import { TREE_CELL_BASE_PADDING } from "../constants";
-import type { TreeNodeData, TreeTableRowProps } from "../types";
+import { DEFAULT_ROW_HEIGHT, TREE_CELL_BASE_PADDING } from "../constants";
+import type {
+  SelectionState,
+  TreeNodeData,
+  TreeTableRowProps,
+  TreeTableStylesProps,
+} from "../types";
 import { getColumnStyle } from "../utils";
 
 import S from "./TreeTableRow.module.css";
 
-export function TreeTableRow<TData extends TreeNodeData>({
+interface TreeTableRowContentProps<TData extends TreeNodeData>
+  extends TreeTableStylesProps {
+  row: Row<TData>;
+  rowIndex: number;
+  table: Table<TData>;
+  columnWidths: Record<string, number>;
+  showCheckboxes: boolean;
+  showExpandButtons: boolean;
+  indentWidth: number;
+  activeRowId: string | null;
+  selectedRowId: string | null;
+  isDisabled?: boolean;
+  isChildrenLoading?: boolean;
+  isExpanded: boolean;
+  canExpand: boolean;
+  getSelectionState?: (row: Row<TData>) => SelectionState;
+  onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
+  onRowClick?: (row: Row<TData>, event: MouseEvent) => void;
+  onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
+  rowProps?: Record<string, unknown>;
+}
+
+// Memoized component that does not depend on virtualItem for performance reasons
+const TreeTableRowContent = memo(function TreeTableRowContent<
+  TData extends TreeNodeData,
+>({
   row,
   rowIndex,
-  virtualItem,
   table,
   columnWidths,
   showCheckboxes,
   showExpandButtons,
   indentWidth,
   activeRowId,
-  measureElement,
-  onRowClick,
-  onRowDoubleClick,
+  selectedRowId,
   isDisabled,
   isChildrenLoading,
+  isExpanded,
+  canExpand,
   getSelectionState,
   onCheckboxClick,
+  onRowClick,
+  onRowDoubleClick,
   classNames,
   styles,
-}: TreeTableRowProps<TData>) {
-  const isActive = activeRowId === row.id;
+  rowProps,
+}: TreeTableRowContentProps<TData>) {
+  const isKeyboardFocused = activeRowId === row.id;
+  const isSelected = selectedRowId === row.id;
+  const isActive = isKeyboardFocused || isSelected;
   const indent = row.depth * indentWidth;
   const visibleCells = row.getVisibleCells();
 
@@ -45,30 +82,25 @@ export function TreeTableRow<TData extends TreeNodeData>({
 
   return (
     <Flex
+      {...rowProps}
       role="row"
-      tabIndex={isDisabled ? -1 : isActive ? 0 : -1}
-      data-index={virtualItem.index}
-      ref={measureElement}
-      className={cx(S.root, classNames?.row, {
+      tabIndex={isDisabled ? -1 : isKeyboardFocused ? 0 : -1}
+      data-keyboard-active={isKeyboardFocused ? true : undefined}
+      data-disabled={isDisabled ? true : undefined}
+      className={cx(S.content, classNames?.row, {
         [S.active]: isActive,
         [classNames?.rowActive ?? ""]: isActive && classNames?.rowActive,
         [S.disabled]: isDisabled,
         [classNames?.rowDisabled ?? ""]: isDisabled && classNames?.rowDisabled,
       })}
-      pos="absolute"
-      top={0}
-      left={0}
-      w="100%"
       align="stretch"
+      h={DEFAULT_ROW_HEIGHT}
       fz="0.875rem"
       lh="1.25rem"
       c="text-dark"
-      style={{
-        transform: `translateY(${virtualItem.start}px)`,
-        ...styles?.row,
-      }}
-      aria-expanded={row.getCanExpand() ? row.getIsExpanded() : undefined}
-      aria-selected={selectionState !== "none"}
+      style={styles?.row}
+      aria-expanded={canExpand ? isExpanded : undefined}
+      aria-selected={isSelected}
       aria-level={row.depth + 1}
       onClick={(e) => onRowClick?.(row, e)}
       onDoubleClick={(e) => onRowDoubleClick?.(row, e)}
@@ -116,8 +148,8 @@ export function TreeTableRow<TData extends TreeNodeData>({
             >
               {showExpandButtons && (
                 <ExpandButton
-                  canExpand={row.getCanExpand()}
-                  isExpanded={row.getIsExpanded()}
+                  canExpand={canExpand}
+                  isExpanded={isExpanded}
                   isLoading={isChildrenLoading}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -157,5 +189,67 @@ export function TreeTableRow<TData extends TreeNodeData>({
         );
       })}
     </Flex>
+  );
+}) as <TData extends TreeNodeData>(
+  props: TreeTableRowContentProps<TData>,
+) => JSX.Element;
+
+// Thin wrapper that handles positioning only
+export function TreeTableRow<TData extends TreeNodeData>({
+  row,
+  rowIndex,
+  virtualItem,
+  table,
+  columnWidths,
+  showCheckboxes,
+  showExpandButtons,
+  indentWidth,
+  activeRowId,
+  selectedRowId,
+  isExpanded,
+  canExpand,
+  measureElement,
+  onRowClick,
+  onRowDoubleClick,
+  isDisabled,
+  isChildrenLoading,
+  getSelectionState,
+  onCheckboxClick,
+  classNames,
+  styles,
+  getRowProps,
+}: TreeTableRowProps<TData>) {
+  const rowProps = useMemo(() => getRowProps?.(row), [getRowProps, row]);
+
+  return (
+    <div
+      ref={measureElement}
+      data-index={virtualItem.index}
+      className={S.root}
+      style={{ transform: `translateY(${virtualItem.start}px)` }}
+    >
+      <TreeTableRowContent
+        row={row}
+        rowIndex={rowIndex}
+        table={table}
+        columnWidths={columnWidths}
+        showCheckboxes={showCheckboxes}
+        showExpandButtons={showExpandButtons}
+        indentWidth={indentWidth}
+        activeRowId={activeRowId ?? null}
+        selectedRowId={selectedRowId ?? null}
+        isDisabled={isDisabled}
+        isChildrenLoading={isChildrenLoading}
+        isExpanded={isExpanded}
+        canExpand={canExpand}
+        getSelectionState={getSelectionState}
+        onCheckboxClick={onCheckboxClick}
+        onRowClick={onRowClick}
+        onRowDoubleClick={onRowDoubleClick}
+        classNames={classNames}
+        styles={styles}
+        rowProps={rowProps}
+      />
+    </div>
   );
 }

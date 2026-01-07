@@ -605,7 +605,7 @@ describe("documents", () => {
 
         assertOnlyOneOptionActive(/Orders, Count$/, "mention");
 
-        H.documentSuggestionDialog()
+        H.documentMentionDialog()
           .findByRole("option", { name: /Browse all/ })
           .realHover();
 
@@ -1284,6 +1284,87 @@ describe("documents", () => {
       H.documentSaveButton().should("be.visible");
     });
   });
+
+  describe("revision history", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/revision/revert").as("revert");
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+    });
+
+    it("should be able to view and revert document revisions", () => {
+      cy.log("Create a document with initial content");
+      H.createDocument({
+        name: "Revision Test Document",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "Initial content",
+                },
+              ],
+            },
+          ],
+        },
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.log("Make changes to create a revision");
+      cy.findByRole("textbox", { name: "Document Title" })
+        .clear()
+        .type("Updated Document Title");
+      H.documentContent().click();
+      H.addToDocument("Updated content");
+      H.documentSaveButton().click();
+
+      cy.log("Make another change");
+      H.documentContent().click();
+      H.addToDocument("More changes");
+      H.documentSaveButton().click();
+
+      cy.log("Open revision history");
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("History").click();
+
+      cy.wait("@revisionHistory");
+
+      cy.log("Verify revision history sidebar is open");
+      cy.findByTestId("document-history-list").should("be.visible");
+
+      cy.log("Verify revision entries are displayed");
+      cy.findByTestId("document-history-list")
+        .findByText(/created this/)
+        .should("be.visible");
+
+      cy.log("Revert to an earlier revision");
+      cy.intercept("GET", "/api/document/*").as("documentReload");
+      cy.findByTestId("document-history-list")
+        .findByText(/created this/)
+        .parent()
+        .within(() => {
+          cy.findByTestId("question-revert-button").click();
+        });
+      cy.wait(["@revert", "@documentReload"]);
+
+      cy.log("Verify document was reverted");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Revision Test Document",
+      );
+      H.documentContent().should("contain.text", "Initial content");
+      H.documentContent().should("not.contain.text", "Updated content");
+
+      cy.log("Verify revert entry appears in history");
+      cy.findByTestId("document-history-list")
+        .findByText(/reverted to an earlier version/)
+        .should("be.visible");
+    });
+  });
 });
 
 const assertOnlyOneOptionActive = (
@@ -1294,7 +1375,7 @@ const assertOnlyOneOptionActive = (
     dialog === "command"
       ? H.commandSuggestionDialog
       : dialog === "mention"
-        ? H.documentSuggestionDialog
+        ? H.documentMentionDialog
         : H.documentMetabotDialog;
 
   dialogContainer()

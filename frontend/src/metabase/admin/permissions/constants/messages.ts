@@ -27,6 +27,3 @@ export const Messages = {
     return t`Groups with Block data access can't download results`;
   },
 };
-
-export const getLimitedPermissionAvailabilityMessage = () =>
-  t`Only available in certain Metabase plans.`;
