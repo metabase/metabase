@@ -1,18 +1,51 @@
-import { isFulfilled, isRejected } from "@reduxjs/toolkit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
-import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-import type { DatabaseId } from "metabase-types/api";
+import { useMetabotDispatch } from "metabase-enterprise/metabot/hooks/use-metabot-store";
+import { addSuggestedCodeEdit } from "metabase-enterprise/metabot/state";
+import type { DatabaseId, MetabotCodeEdit } from "metabase-types/api";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
 
 import S from "./MetabotInlineSQLPrompt.module.css";
-import { responseHasCodeEdit } from "./utils";
+
+interface OSSGenerateSqlResponse {
+  parts: Array<{
+    type: string;
+    version: number;
+    value: MetabotCodeEdit;
+  }>;
+}
+
+async function generateSqlOSS(
+  prompt: string,
+  databaseId: number,
+  bufferId: string,
+  signal?: AbortSignal,
+): Promise<MetabotCodeEdit | null> {
+  const response = await fetch("/api/llm/generate-sql", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt,
+      database_id: databaseId,
+      buffer_id: bufferId,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || "Failed to generate SQL");
+  }
+
+  const data: OSSGenerateSqlResponse = await response.json();
+  const codeEditPart = data.parts.find((p) => p.type === "code_edit");
+  return codeEditPart?.value ?? null;
+}
 
 interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
@@ -24,32 +57,54 @@ export const MetabotInlineSQLPrompt = ({
   onClose,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [value, setValue] = useState("");
   const [hasError, setHasError] = useState(false);
-  const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
+  const [isLoading, setIsLoading] = useState(false);
+  const dispatch = useMetabotDispatch();
 
-  const disabled = !value.trim() || isDoingScience;
+  const disabled = !value.trim() || isLoading || !databaseId;
 
   const handleSubmit = useCallback(async () => {
-    const value = inputRef.current?.getValue?.().trim() ?? "";
-    setHasError(false);
-    const action = await submitInput(value, {
-      profile: METABOT_PROFILE_OVERRIDES.SQL,
-      preventOpenSidebar: true,
-    });
-    if (
-      isRejected(action) ||
-      (isFulfilled(action) && !action.payload?.success) ||
-      !responseHasCodeEdit(action)
-    ) {
-      setHasError(true);
+    const promptValue = inputRef.current?.getValue?.().trim() ?? "";
+    if (!promptValue || !databaseId) {
+      return;
     }
-  }, [submitInput]);
+
+    setHasError(false);
+    setIsLoading(true);
+
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const codeEdit = await generateSqlOSS(
+        promptValue,
+        databaseId,
+        "qb",
+        abortControllerRef.current.signal,
+      );
+
+      if (codeEdit) {
+        dispatch(addSuggestedCodeEdit({ ...codeEdit, active: true }));
+      } else {
+        setHasError(true);
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("OSS SQL generation failed:", error);
+        setHasError(true);
+      }
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [databaseId, dispatch]);
 
   const handleClose = useCallback(() => {
-    cancelRequest();
+    abortControllerRef.current?.abort();
+    setIsLoading(false);
     onClose();
-  }, [cancelRequest, onClose]);
+  }, [onClose]);
 
   useEffect(() => {
     return tinykeys(
@@ -78,7 +133,7 @@ export const MetabotInlineSQLPrompt = ({
           value={value}
           placeholder={t`Describe what SQL you want...`}
           autoFocus
-          disabled={isDoingScience}
+          disabled={isLoading}
           onChange={setValue}
           onStop={handleClose}
           suggestionConfig={{
@@ -102,14 +157,14 @@ export const MetabotInlineSQLPrompt = ({
           onClick={handleSubmit}
           disabled={disabled}
           leftSection={
-            isDoingScience ? (
+            isLoading ? (
               <Loader size="xs" color="text-light" />
             ) : (
               <Icon name="insight" />
             )
           }
         >
-          {isDoingScience ? t`Generating...` : t`Generate`}
+          {isLoading ? t`Generating...` : t`Generate`}
         </Button>
         <Button
           data-testid="metabot-inline-sql-cancel"
@@ -119,6 +174,9 @@ export const MetabotInlineSQLPrompt = ({
         >
           {t`Cancel`}
         </Button>
+        {!databaseId && (
+          <Box fz="sm" c="warning" ml="sm">{t`Select a database first`}</Box>
+        )}
         {hasError && (
           <Box
             data-testid="metabot-inline-sql-error"

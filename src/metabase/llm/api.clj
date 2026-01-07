@@ -95,26 +95,44 @@ Your task is to convert natural language questions into valid SQL queries.
 
 Return only the raw SQL query, nothing else."))
 
+;;; ------------------------------------------ Response Formatting ------------------------------------------
+
+(defn- make-code-edit-part
+  "Create an AI SDK v5 data part for a code edit suggestion."
+  [buffer-id sql]
+  {:type    "code_edit"
+   :version 1
+   :value   {:buffer_id buffer-id
+             :mode      "rewrite"
+             :value     sql}})
+
 (api.macros/defendpoint :post "/generate-sql"
   "Generate SQL from a natural language prompt.
 
    Requires:
    - LLM to be configured (OpenAI API key set in admin settings)
    - At least one table mention in the prompt using [Name](metabase://table/ID) format
-   - A database_id parameter"
+   - A database_id parameter
+
+   Returns AI SDK v5 data part format for frontend compatibility."
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
-            [:database_id pos-int?]]]
+            [:database_id pos-int?]
+            [:buffer_id {:optional true} :string]]]
   :- [:map
-      [:sql :string]]
+      [:parts [:sequential [:map
+                            [:type :string]
+                            [:version pos-int?]
+                            [:value :map]]]]]
   ;; 1. Validate LLM is configured
   (when-not (llm.settings/llm-enabled?)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an OpenAI API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id]} body
+  (let [{:keys [prompt database_id buffer_id]} body
+        buffer-id (or buffer_id "qb")
         ;; 2. Parse table mentions from prompt
         table-ids (llm.context/parse-table-mentions prompt)]
 
@@ -138,15 +156,15 @@ Return only the raw SQL query, nothing else."))
         (log-to-file! (str timestamp "_prompt.txt") system-prompt)
 
         ;; 7. Call LLM
-        (let [response (llm.openai/chat-completion
-                        {:system   system-prompt
-                         :messages [{:role "user" :content prompt}]})]
+        (let [sql (llm.openai/chat-completion
+                   {:system   system-prompt
+                    :messages [{:role "user" :content prompt}]})]
 
           ;; 8. Log the response
-          (log-to-file! (str timestamp "_response.txt") response)
+          (log-to-file! (str timestamp "_response.txt") sql)
 
-          ;; 9. Return result
-          {:sql response})))))
+          ;; 9. Return AI SDK formatted result
+          {:parts [(make-code-edit-part buffer-id sql)]})))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/llm` routes."
