@@ -235,48 +235,55 @@
                       :base-type :type/Integer}
                      {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
                       :base-type :type/Text}]
-    [[1 "a"]]]
-   ["long_col_name_2" [{:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
+    [[1 "a1"]
+     [2 "a2"]
+     [2 "a3"]]]
+   ["long_col_name_2" [{:field-name "foo"
+                        :base-type :type/Integer}
+                       {:field-name "abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_abcdefg_"
                         :base-type :type/Text}]
-    [["b"]]]])
+    [[1 "b1"]
+     [2 "b2"]
+     [3 "b3"]]]])
 
 (deftest long-col-name-repro-test
-  (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-      (mt/dataset long-col-name-dataset
-        (let [fk-field (mt/id :long_col_name :fk)
-              id-2-field (mt/id :long_col_name_2 :id)]
-          (t2/update! :model/Field fk-field {:semantic_type :type/FK
-                                             :fk_target_field_id id-2-field})
-          (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
-            (let [mp (mt/metadata-provider)
-                  table (lib.metadata/table mp (mt/id :long_col_name))
-                  query (lib/query mp table)
-                  breakoutable-cols (lib/breakoutable-columns query)
-                  fk-col (m/find-first (fn [col]
-                                         (and (:fk-field-id col)
-                                              (str/starts-with? (:name col) "abcdefg")))
-                                       breakoutable-cols)
-                  query (-> query
-                            (lib/breakout fk-col))]
-              (is (= [["b"]] (mt/rows (qp/process-query query))))))
-          (testing "Explicit join with long column name should use desired alias as source alias"
-            (let [mp (mt/metadata-provider)
-                  table (lib.metadata/table mp (mt/id :long_col_name))
-                  table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
-                  query (lib/query mp table)
-                  join-cols (lib/joinable-columns query -1 table-2)
-                  fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
-                  id-col (m/find-first #(= (:name %) "id") join-cols)
-                  join-clause (-> (lib/join-clause table-2)
-                                  (lib/with-join-conditions [(lib/= fk-col id-col)])
-                                  (lib/with-join-fields :all))
-                  query (lib/join query join-clause)
-                  breakoutable-cols (lib/breakoutable-columns query)
-                  big-col (m/find-first (fn [col]
-                                          (and (:metabase.lib.join/join-alias col)
-                                               (str/starts-with? (:name col) "abcdefg")))
-                                        breakoutable-cols)
-                  query (-> query
-                            (lib/breakout big-col))]
-              (is (= [["b"]] (mt/rows (qp/process-query query)))))))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (mt/dataset long-col-name-dataset
+      (let [fk-field (mt/id :long_col_name :fk)
+            id-2-field (mt/id :long_col_name_2 :foo)]
+        (t2/update! :model/Field fk-field {:semantic_type :type/FK
+                                           :fk_target_field_id id-2-field})
+        (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
+          (let [mp (mt/metadata-provider)
+                table (lib.metadata/table mp (mt/id :long_col_name))
+                query (lib/query mp table)
+                breakoutable-cols (lib/breakoutable-columns query)
+                fk-col (m/find-first (fn [col]
+                                       (and (:fk-field-id col)
+                                            (str/starts-with? (:name col) "abcdefg")))
+                                     breakoutable-cols)
+                query (-> query
+                          (lib/breakout fk-col))]
+            (is (= [["b1"] ["b2"]]
+                   (mt/rows (qp/process-query query))))))
+        (testing "Explicit join with long column name should use desired alias as source alias"
+          (let [mp (mt/metadata-provider)
+                table (lib.metadata/table mp (mt/id :long_col_name))
+                table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
+                query (lib/query mp table)
+                join-cols (lib/joinable-columns query -1 table-2)
+                fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
+                id-col (m/find-first #(= (:name %) "foo") join-cols)
+                join-clause (-> (lib/join-clause table-2)
+                                (lib/with-join-conditions [(lib/= fk-col id-col)])
+                                (lib/with-join-fields :all))
+                query (lib/join query join-clause)
+                breakoutable-cols (lib/breakoutable-columns query)
+                big-col (m/find-first (fn [col]
+                                        (and (:metabase.lib.join/join-alias col)
+                                             (str/starts-with? (:name col) "abcdefg")))
+                                      breakoutable-cols)
+                query (-> query
+                          (lib/breakout big-col))]
+            (is (= [["b1"] ["b2"]]
+                   (mt/rows (qp/process-query query))))))))))
