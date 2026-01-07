@@ -250,15 +250,15 @@
 (deftest long-col-name-repro-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (mt/dataset long-col-name-dataset
-      (let [fk-field (mt/id :long_col_name :fk)
+      (let [mp (mt/metadata-provider)
+            table (lib.metadata/table mp (mt/id :long_col_name))
+            query (lib/query mp table)
+            fk-field (mt/id :long_col_name :fk)
             id-2-field (mt/id :long_col_name_2 :foo)]
         (t2/update! :model/Field fk-field {:semantic_type :type/FK
                                            :fk_target_field_id id-2-field})
         (testing "Implicit join with long column name should use actual DB column name as source alias (#67002)"
-          (let [mp (mt/metadata-provider)
-                table (lib.metadata/table mp (mt/id :long_col_name))
-                query (lib/query mp table)
-                breakoutable-cols (lib/breakoutable-columns query)
+          (let [breakoutable-cols (lib/breakoutable-columns query)
                 ;; Use case-insensitive matching because H2 stores column names in uppercase
                 fk-col (m/find-first (fn [col]
                                        (and (:fk-field-id col)
@@ -269,10 +269,7 @@
             (is (= [["b1"] ["b2"]]
                    (mt/rows (qp/process-query query))))))
         (testing "Explicit join with long column name should use desired alias as source alias"
-          (let [mp (mt/metadata-provider)
-                table (lib.metadata/table mp (mt/id :long_col_name))
-                table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
-                query (lib/query mp table)
+          (let [table-2 (lib.metadata/table mp (mt/id :long_col_name_2))
                 join-cols (lib/joinable-columns query -1 table-2)
                 fk-col (lib.metadata/field mp (mt/id :long_col_name :fk))
                 id-col (m/find-first #(= (u/lower-case-en (:name %)) "foo") join-cols)
