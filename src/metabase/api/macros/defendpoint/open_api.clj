@@ -33,6 +33,24 @@
       (str/replace "+" "_PLUS_")
       (str/replace "/" "_SLASH_")))
 
+(defn- sanitize-ref
+  "Sanitize $ref paths to use sanitized schema names."
+  [schema]
+  (if-let [ref (:$ref schema)]
+    (update schema :$ref (fn [r]
+                           (str/replace r #"#/components/schemas/(.+)"
+                                        (fn [[_ schema-name]]
+                                          (str "#/components/schemas/" (sanitize-schema-name schema-name))))))
+    schema))
+
+(defn- path->operation-id
+  "Generate an operationId from method and path, e.g. :get + '/api/action/{id}' -> 'get-api-action-id'"
+  [method full-path]
+  (str (name method)
+       (-> full-path
+           (str/replace #"[{}]" "")
+           (str/replace #"/" "-"))))
+
 (mu/defn- merge-required :- :metabase.api.open-api/parameter.schema.object
   [schema]
   (let [optional? (set (keep (fn [[k v]] (when (:optional v) k))
@@ -58,19 +76,12 @@
     ;; Helper to recursively fix nested schemas and strip :optional (which is only
     ;; meaningful at the top level for parameter detection, not inside oneOf/anyOf/allOf)
     (let [fix-nested #(dissoc (fix-json-schema %) :optional)
-          ;; Sanitize definition keys and update $ref paths
+          ;; Sanitize definition keys
           sanitize-definitions (fn [defs]
                                  (into {}
                                        (map (fn [[k v]]
                                               [(sanitize-schema-name k) (fix-nested v)]))
                                        defs))
-          sanitize-ref (fn [schema]
-                         (if-let [ref (:$ref schema)]
-                           (update schema :$ref (fn [r]
-                                                  (str/replace r #"#/components/schemas/(.+)"
-                                                               (fn [[_ schema-name]]
-                                                                 (str "#/components/schemas/" (sanitize-schema-name schema-name))))))
-                           schema))
           schema (-> schema
                      sanitize-ref
                      (m/update-existing :description str)
@@ -203,11 +214,7 @@
           response-schema (:response-schema form)
           deprecated?     (get-in form [:metadata :deprecated])]
       ;; summary is the string in the sidebar of Scalar
-      ;; operationId is generated from method + path, e.g. "get-api-action" or "post-api-action-id"
-      (cond-> {:operationId (str (name method)
-                                 (-> full-path
-                                     (str/replace #"[{}]" "")
-                                     (str/replace #"/" "-")))
+      (cond-> {:operationId (path->operation-id method full-path)
                :summary     (str (u/upper-case-en (name method)) " " full-path)
                :description (some-> (:docstr form) str)
                :parameters params
