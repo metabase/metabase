@@ -737,6 +737,7 @@
            metabase.lib.schema.join
            metabase.lib.schema.literal
            metabase.lib.schema.mbql-clause
+           metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
            metabase.lib.schema.middleware-options
@@ -801,8 +802,7 @@
            models
            permissions
            search
-           util
-           xrays}}
+           util}}
 
   model-persistence
   {:team "Querying"

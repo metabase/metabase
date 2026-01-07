@@ -670,6 +670,16 @@
    [:definition [:maybe :map]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(defn- normalize-measure-definition [definition]
+  (when definition
+    (lib.schema.common/normalize-map definition)))
+
+(mr/def ::measure.definition
+  "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
+   Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
+  [:map
+   {:decode/normalize normalize-measure-definition}])
+
 (defn- mock-measure [measure]
   (cond-> measure
     (and (not (:name measure))
@@ -686,7 +696,8 @@
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Measure, contains an aggregation expression.
-   [:definition [:maybe :map]]
+   ;; Strict validation via ::lib.schema.measure/definition happens in metabase.measures.models.measure
+   [:definition [:maybe [:ref ::measure.definition]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::metric

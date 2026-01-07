@@ -1,17 +1,18 @@
-(ns metabase.measures.schema
-  "Schema definitions for Measures. A Measure is a saved MBQL aggregation expression tied to a table."
+(ns metabase.lib.schema.measure
+  "Schema definitions for Measure definitions. A Measure is a saved MBQL aggregation expression tied to a table."
   (:require
-   [clojure.walk :as walk]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as common]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performace :refer [prewalk]]))
 
 (defn- contains-metric-reference?
   "Walk a clause and return true if it contains any `:metric` reference."
   [clause]
   (let [found? (volatile! false)]
-    (walk/prewalk
+    (prewalk
      (fn [x]
        (when (lib.util/clause-of-type? x :metric)
          (vreset! found? true))
@@ -19,22 +20,21 @@
      clause)
     @found?))
 
-(mr/def ::stage.measure
+(mr/def ::stage
   "Schema for a single stage in a measure definition.
    A measure stage must have exactly one aggregation and no other query clauses."
   [:and
    ::lib.schema/stage.mbql
-   [:fn
-    {:error/message "A measure stage must have exactly one of :source-table or :source-card"}
-    #(= (count (select-keys % [:source-table :source-card])) 1)]
+   [:map [:source-table ::lib.schema.id/table]]
    [:fn
     {:error/message "A measure stage must have exactly one aggregation"}
     #(= (count (:aggregation %)) 1)]
    [:fn
     {:error/message "Measures cannot reference metrics"}
     #(not (contains-metric-reference? (:aggregation %)))]
-   (common/disallowed-keys
-    {:joins       "Measures cannot use :joins"
+   (lib.schema.common/disallowed-keys
+    {:source-card "Measures cannot use :source-card"
+     :joins       "Measures cannot use :joins"
      :expressions "Measures cannot use :expressions"
      :breakout    "Measures cannot use :breakout"
      :filters     "Measures cannot use :filters"
@@ -43,7 +43,7 @@
      :page        "Measures cannot use :page"
      :limit       "Measures cannot use :limit"})])
 
-(mr/def ::measure
+(mr/def ::definition
   "Schema for a complete measure definition.
    A measure is a single-stage MBQL query with exactly one aggregation."
   [:and
@@ -52,4 +52,4 @@
     {:error/message "A measure must have exactly one stage"}
     #(= (-> % :stages count) 1)]
    [:map
-    [:stages [:sequential [:ref ::stage.measure]]]]])
+    [:stages [:sequential [:ref ::stage]]]]])

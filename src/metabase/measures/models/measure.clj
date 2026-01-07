@@ -7,7 +7,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.measures.schema :as measures.schema]
+   [metabase.lib.schema.measure :as lib.schema.measure]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -28,7 +28,7 @@
   "Validate that an MBQL 5 measure definition has the correct structure."
   [definition]
   (when (seq definition)
-    (mu/validate-throw ::measures.schema/measure definition)
+    (mu/validate-throw ::lib.schema.measure/definition definition)
     definition))
 
 (defn- normalize-measure-definition

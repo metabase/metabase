@@ -347,7 +347,7 @@
           measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                             (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
                             (lib/aggregate (lib.metadata/measure mp 1))
-                            (lib/append-stage))
+                            lib/append-stage)
           ;; Find the sum column (from the aggregation) in the second stage
           ;; The column should have :name "sum" not "Total Price"
           measure-cols (lib/filterable-columns measure-query)
@@ -357,7 +357,7 @@
           direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                            (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
                            (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
-                           (lib/append-stage))
+                           lib/append-stage)
           direct-cols (lib/filterable-columns direct-query)
           direct-col (first (filter #(= (:name %) "sum") direct-cols))
           direct-query (lib/filter direct-query (lib/> direct-col 100))]
