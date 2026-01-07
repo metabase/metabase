@@ -1248,7 +1248,7 @@ function createSegmentBaseMeasure({
   segmentId: SegmentId;
 }) {
   return H.createMeasure({
-    name: TABLE_BASED_MEASURE_NAME,
+    name: SEGMENT_BASED_MEASURE_NAME,
     table_id: tableId,
     definition: {
       "source-table": tableId,
