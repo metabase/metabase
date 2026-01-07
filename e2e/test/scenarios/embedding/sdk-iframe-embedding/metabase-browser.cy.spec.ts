@@ -44,7 +44,7 @@ describe("scenarios > embedding > sdk iframe embedding > metabase-browser", () =
         `);
 
         H.getSimpleEmbedIframeContent().within(() => {
-          cy.findByText("You don't have access to this collection.").should(
+          cy.findByText("You don't have access to this collection").should(
             "be.visible",
           );
           cy.findByText("New exploration").should("not.exist");
