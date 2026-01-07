@@ -125,7 +125,7 @@ const StaticQuestionInner = (
     );
   };
 
-  const hasResultToolbar = withChartTypeSelector || withDownloads;
+  const hasResultToolbar = withChartTypeSelector || withDownloads || withAlerts;
   const hasTopBar = Boolean(title || hasResultToolbar || isGuestEmbed);
 
   return (
