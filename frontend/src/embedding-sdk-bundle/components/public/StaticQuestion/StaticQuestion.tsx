@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { PropsWithChildren } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
