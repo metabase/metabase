@@ -257,8 +257,12 @@
        ;; run our initialization process
        (init! {:capabilities capabilities})
        ;; Ok, now block forever while Jetty does its thing
-       (when (config/config-bool :mb-jetty-join)
-         (.join (server/instance)))
+       (when (capabilities :server)
+         (when (config/config-bool :mb-jetty-join)
+           (.join (server/instance))))
+       (when (capabilities :task)
+         (log/warn "waiting on an empty promise")
+         @(promise))
        (catch Throwable e
          (log/error e "Metabase Initialization FAILED")
          (System/exit 1))))))
