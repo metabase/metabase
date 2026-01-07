@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.app-db.core :as app-db]
    [metabase.driver.sql :as driver.sql]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -330,9 +331,7 @@
 (defn- upsert-workspace-graph!
   "Insert or update the cached graph for a workspace."
   [ws-id graph]
-  (if-let [existing (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
-    (t2/update! :model/WorkspaceGraph (:id existing) {:graph graph})
-    (t2/insert! :model/WorkspaceGraph {:workspace_id ws-id :graph graph})))
+  (app-db/update-or-insert! :model/WorkspaceGraph {:workspace_id ws-id} (fn [_] {:workspace_id ws-id, :graph graph})))
 
 (defn- calculate-and-cache-graph!
   "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
