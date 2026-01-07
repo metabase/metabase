@@ -118,7 +118,7 @@ You can also save any chart that Metabot creates to a dashboard or collection.
 
 Use **AI exploration** to start a new conversation with Metabot when you don’t already have a chart, question, or query to work from.
 
-Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts. AI exploration is optimized for answering questions about your data, such as trends, totals, and comparisons.
+Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. This helps keep answers focused and more reliable, especially in larger instances with lots of data. Admins can control what content Metabot searches during AI exploration. See [Metabot AI settings](../ai/settings.md) for more details.
 
