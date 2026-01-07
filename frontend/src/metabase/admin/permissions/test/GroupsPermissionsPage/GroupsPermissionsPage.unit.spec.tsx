@@ -29,7 +29,7 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
   createMockGroup({
     id: 1,
-    name: "All Internal Users",
+    name: "All internal users",
     magic_group_type: "all-internal-users",
   }),
 ];

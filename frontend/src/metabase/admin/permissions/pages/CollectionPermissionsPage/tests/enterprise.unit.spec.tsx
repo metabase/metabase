@@ -53,7 +53,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       await assertCollectionAccessForGroup("Administrators", "Curate");
-      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("All internal users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessForGroup("All tenant users", "No access");
       await assertCollectionAccessIsDisabled("All tenant users");
@@ -69,7 +69,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       await assertCollectionAccessForGroup("Administrators", "Curate");
-      await assertCollectionAccessForGroup("All Internal Users", "Curate");
+      await assertCollectionAccessForGroup("All internal users", "Curate");
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessForGroup("All Tenant users", "No access");
       await assertCollectionAccessIsDisabled("All Tenant users");
@@ -110,7 +110,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
-      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("All internal users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
 
       await userEvent.click(await getCollectionPermissionCell("Other Users"));
@@ -129,7 +129,7 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       });
 
       await assertCollectionAccessForGroup("Administrators", "View");
-      await assertCollectionAccessForGroup("All Internal Users", "View");
+      await assertCollectionAccessForGroup("All internal users", "View");
       await assertCollectionAccessForGroup("Other Users", "View");
       await assertCollectionAccessIsDisabled("Administrators");
 

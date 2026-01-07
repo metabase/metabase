@@ -1361,7 +1361,9 @@
   (set
    (for [collection-or-id (cons
                            collection
-                           (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")]))]
+                           (t2/select-pks-set :model/Collection
+                                              :location [:like (str (children-location collection) "%")]
+                                              :archived false))]
      (perms/collection-readwrite-path collection-or-id))))
 
 (mu/defn perms-for-archiving :- [:set perms/PathSchema]

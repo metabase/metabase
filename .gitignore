@@ -21,7 +21,8 @@
 /*.mv.db
 /*.trace.db
 /.babel_cache
-/.env
+/.env*
+!/.env.example
 /.envrc
 /.lein-env
 /.lein-failures

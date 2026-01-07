@@ -587,9 +587,9 @@
         (testing "When disabled, 'All tenant users' is not visible"
           (is (nil? (get-magic-group "all-external-users")))))
       (mt/with-temporary-setting-values [use-tenants true]
-        (testing "When enabled, 'All Users' is 'All Internal Users'"
+        (testing "When enabled, 'All Users' is 'All internal users'"
           (is (=? {:magic_group_type "all-internal-users"
-                   :name "All Internal Users"}
+                   :name "All internal users"}
                   (get-magic-group "all-internal-users"))))
         (testing "When enabled, 'All tenant users' is visible"
           (is (=? {:magic_group_type "all-external-users"

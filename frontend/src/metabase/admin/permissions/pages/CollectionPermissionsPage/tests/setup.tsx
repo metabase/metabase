@@ -72,7 +72,7 @@ export const defaultRootCollection = createMockCollection({
 export const defaultPermissionGroups: GroupInfo[] = [
   {
     id: 1,
-    name: "All Internal Users",
+    name: "All internal users",
     member_count: 40,
     magic_group_type: "all-internal-users",
   },

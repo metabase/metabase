@@ -1,11 +1,44 @@
-import { render, screen } from "__support__/ui";
+import type { CSSProperties, MouseEvent, ReactNode } from "react";
 
-import ChartWithLegend, {
+import { render, screen } from "__support__/ui";
+import type { HoveredObject } from "metabase/visualizations/types";
+
+import {
+  ChartWithLegend,
   HIDE_HORIZONTAL_LEGEND_THRESHOLD,
   HIDE_SECONDARY_INFO_THRESHOLD,
 } from "./ChartWithLegend";
 
-const defaultProps = {
+type LegendTitle = string | string[];
+
+type LegendHover = {
+  index: number;
+  element?: HTMLElement | null;
+};
+
+interface SetupProps {
+  children?: ReactNode;
+  legendTitles: LegendTitle[];
+  legendHiddenIndices?: number[];
+  legendColors: string[];
+  hovered?: HoveredObject | null;
+  onHoverChange?: (hover?: LegendHover | null) => void;
+  className?: string;
+  style?: CSSProperties;
+  gridSize?: {
+    width: number;
+    height: number;
+  };
+  aspectRatio?: number;
+  height: number;
+  width: number;
+  showLegend?: boolean;
+  isDashboard?: boolean;
+  isDocument?: boolean;
+  onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
+}
+
+const defaultProps: SetupProps = {
   legendTitles: [
     ["Series 1", "50%"],
     ["Series 2", "50%"],
@@ -18,7 +51,7 @@ const defaultProps = {
   children: <div>Chart stub</div>,
 };
 
-const setup = (props = {}) => {
+const setup = (props: Partial<SetupProps> = {}) => {
   render(<ChartWithLegend {...defaultProps} {...props} />);
 };
 

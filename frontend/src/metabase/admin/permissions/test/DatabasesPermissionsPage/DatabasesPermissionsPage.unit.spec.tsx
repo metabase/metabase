@@ -29,7 +29,7 @@ const TEST_DATABASE = createSampleDatabase();
 const TEST_GROUPS = [
   createMockGroup({
     id: 1,
-    name: "All Internal Users",
+    name: "All internal users",
     magic_group_type: "all-internal-users",
   }),
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
