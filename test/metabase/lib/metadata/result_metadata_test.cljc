@@ -994,10 +994,7 @@
     (testing "Native query: :id from model metadata should be preserved"
       ;; Native queries have no field references to analyze, so user-mapped :id values
       ;; from model metadata are the only source of field linkage and must be preserved.
-      (let [native-query         (lib/query meta/metadata-provider
-                                            {:database (meta/id)
-                                             :type     :native
-                                             :native   {:query "SELECT * FROM venues"}})
+      (let [native-query         (lib/native-query meta/metadata-provider "SELECT * FROM venues")
             ;; User-mapped model metadata with explicit :id values
             user-mapped-metadata [{:name         "ID"
                                    :display_name "Venue ID"
