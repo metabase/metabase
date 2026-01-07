@@ -32,7 +32,8 @@ const getDefaultPluginTenants = () => ({
   isExternalUsersGroup: (_group: Pick<Group, "magic_group_type">) => false,
   isTenantGroup: (_group: Pick<Group, "is_tenant_group">) => false,
   isExternalUser: (_user?: Pick<User, "tenant_id">) => false,
-  isTenantCollection: (_collection: Collection) => false,
+  isTenantCollection: (_collection: Partial<Pick<Collection, "namespace">>) =>
+    false,
   PeopleNav: null as React.ReactElement | null,
   ReactivateExternalUserButton: ({ user: _user }: { user: User }) =>
     null as React.ReactElement | null,
