@@ -1313,8 +1313,8 @@
                                            filtered-tables (cond->> tables
                                                              can-query?          (filter mi/can-query?)
                                                              can-write-metadata? (filter mi/can-write?))
-                                           allowed-schemas (set (map :schema filtered-tables))]
-                                       (filter allowed-schemas schemas))
+                                           allowed-schemas #p (set (map :schema filtered-tables))]
+                                       #p (filter #(contains? allowed-schemas %) #p schemas))
                                      schemas))]
     (get-database id {:include-editable-data-model? include-editable-data-model?})
     (->> (t2/select-fn-set :schema :model/Table
@@ -1335,12 +1335,8 @@
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
 ;;
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
-                      :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/:id/schemas"
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+(api.macros/defendpoint :get "/:id/schemas" :- [:sequential :string]
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.
 
   Optional filters:
