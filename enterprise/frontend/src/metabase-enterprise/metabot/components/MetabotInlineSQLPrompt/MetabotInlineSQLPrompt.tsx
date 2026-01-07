@@ -51,11 +51,13 @@ async function generateSqlStreaming(
 
   const decoder = new TextDecoder();
   let buffer = "";
+  let streamDone = false;
 
-  while (true) {
+  while (!streamDone) {
     const { done, value } = await reader.read();
     if (done) {
-      break;
+      streamDone = true;
+      continue;
     }
 
     buffer += decoder.decode(value, { stream: true });
