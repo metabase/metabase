@@ -105,12 +105,9 @@
 (api.macros/defendpoint :get "/dictionary" :- DictionaryResponse
   "Fetch the content translation dictionary for authenticated users (auth-based embedding flows)."
   [_route-params
-   {:keys [locale]}]
-  (when-not api/*current-user-id*
-    (throw (ex-info (str (tru "Unauthenticated")) {:status-code 401})))
-  (if locale
-    {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))}
-    (throw (ex-info (str (tru "Locale is required.")) {:status-code 400}))))
+   {:keys [locale]} :- [:map [:locale :string]]]
+  (api/check api/*current-user-id* 401 "Unauthenticated")
+  {:data (ct/get-translations (i18n/normalized-locale-string (str/trim locale)))})
 
 (defn- +require-content-translation [handler]
   (ee.api/+require-premium-feature :content-translation (deferred-tru "Content translation") handler))
