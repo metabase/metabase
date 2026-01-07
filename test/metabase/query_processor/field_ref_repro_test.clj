@@ -201,15 +201,7 @@
                       ;; I've seen both in two different branches of mine attempting to fix this bug. The order doesn't
                       ;; matter at all to the FE, so if this changes in the future it's ok. -- Cam
                       "PEOPLE__via__USER_ID__EMAIL"
-                      "j__PEOPLE__via__USER_ID__EMAIL"
-                      ;; FROM eric (https://github.com/metabase/metabase/pull/67675):
-                      ;; I'm adding this here because it doesn't hurt anything but it really doesn't belong.
-                      ;; Another bug is causing this.
-                      ;; If you're seeing this test fail because this last column is missing,
-                      ;; especially while fixing https://github.com/metabase/metabase/issues/67808
-                      ;; it's okay to remove this.
-                      ;;"j__PEOPLE__via__USER_ID__EMAIL_2"
-                      ]
+                      "j__PEOPLE__via__USER_ID__EMAIL"]
                      (map :lib/desired-column-alias (mt/cols results))))
               (is (= [[1                ; <= orders.id
                        1                ; <= orders.user-id
@@ -230,11 +222,7 @@
                        "2016-12-25T22:19:38.656Z"
                        2
                        "borer-hudson@yahoo.com"  ; orders.user-id --[remap]--> people.email (email of People row with ID = 1)
-                       "labadie.lina@gmail.com"  ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
-                       ;; FROM eric (https://github.com/metabase/metabase/pull/67675):
-                       ;; Same as above ^^^^^^
-                       ;;"labadie.lina@gmail.com"
-                       ]
+                       "labadie.lina@gmail.com"] ; (joined) orders.user-id --[remap]--> people.email (email of People row with ID = 1902)
                       [1
                        1
                        14
@@ -254,11 +242,7 @@
                        "2017-02-04T10:16:00.936Z"
                        1
                        "borer-hudson@yahoo.com"
-                       "arne-o-hara@gmail.com"
-                       ;; FROM eric (https://github.com/metabase/metabase/pull/67675):
-                       ;; Same as above ^^^^^^
-                       ;;"arne-o-hara@gmail.com"
-                       ]]
+                       "arne-o-hara@gmail.com"]]
                      (mt/rows results))))))))))
 
 (deftest ^:parallel multi-stage-with-external-remapping-test
