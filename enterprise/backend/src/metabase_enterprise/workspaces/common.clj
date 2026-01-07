@@ -120,7 +120,10 @@
                            :actual-db-id    new-db-id})))))
     (let [ws (t2/select-one :model/Workspace (:id workspace))]
       ;; TODO allow this to be fully async as part of BOT-746
-      @(quick-task/submit-task! #(run-workspace-setup! ws database))
+      (try
+        @(quick-task/submit-task! #(run-workspace-setup! ws database))
+        (catch Exception e
+          (log/error e "Failed to initialize workspace")))
       ;; Querying again to get the database_details
       (t2/select-one :model/Workspace (:id workspace)))))
 
