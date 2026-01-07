@@ -104,8 +104,8 @@
 
 @keyframes highlight {
   0% {
-    background-color: var(--mb-color-brand-light);
-    box-shadow: 0 0 0 4px var(--mb-color-brand-light);
+    background-color: var(--mb-color-brand-alpha-25);
+    box-shadow: 0 0 0 4px var(--mb-color-brand-alpha-25);
   }
 
   100% {

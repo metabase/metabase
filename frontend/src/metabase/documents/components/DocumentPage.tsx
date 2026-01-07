@@ -224,18 +224,32 @@ export const DocumentPage = ({
       return;
     }
 
-    // Wait a bit for the editor content to render
-    const timeoutId = setTimeout(() => {
+    let attempts = 0;
+    const maxAttempts = 20; // 2 seconds total
+    const interval = 100;
+
+    const attemptScroll = () => {
       const element = document.querySelector(
         `[${ID_ATTRIBUTE_NAME}="${blockId}"]`,
       );
+
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
-        hasScrolledToAnchor.current = true;
-      }
-    }, 100);
+        element.classList.add(styles.highlighted);
 
-    return () => clearTimeout(timeoutId);
+        // Remove class after animation
+        setTimeout(() => {
+          element.classList.remove(styles.highlighted);
+        }, 2000);
+
+        hasScrolledToAnchor.current = true;
+      } else if (attempts < maxAttempts) {
+        attempts++;
+        setTimeout(attemptScroll, interval);
+      }
+    };
+
+    attemptScroll();
   }, [editorInstance, isDocumentLoading, location.hash, documentId]);
 
   // Reset scroll flag when document or anchor changes

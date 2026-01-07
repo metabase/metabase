@@ -93,8 +93,9 @@ export const ParagraphNodeView = ({
   }, [rendered]);
 
   const isTopLevelBlock = isTopLevel({ editor, getPos });
+  const hasContent = node.textContent.trim().length > 0;
   const shouldShowMenus =
-    document && rendered && !shouldHideMenus && isTopLevelBlock;
+    document && rendered && !shouldHideMenus && isTopLevelBlock && hasContent;
   const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
   return (

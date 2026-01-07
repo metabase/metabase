@@ -103,8 +103,9 @@ export const HeadingNodeView = ({ node, editor, getPos }: NodeViewProps) => {
   }, [rendered]);
 
   const isTopLevelBlock = isTopLevel({ editor, getPos });
+  const hasContent = node.textContent.trim().length > 0;
   const shouldShowMenus =
-    document && rendered && isTopLevelBlock && !isWithinIframe();
+    document && rendered && isTopLevelBlock && !isWithinIframe() && hasContent;
   const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
   return (
