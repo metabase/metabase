@@ -101,7 +101,25 @@
 
 ;;; ---------------------------------------- Field permission delegation tests ----------------------------------------
 
-(deftest field-can-read?-delegates-to-parent-table-test
+(deftest field-can-read?-delegates-to-parent-table-denied-test
+  (testing "Field can-read? delegates to parent table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/Field {field-id :id} {:table_id table-id :name "test_field" :base_type :type/Integer}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      ;; Start with blocked permissions
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (mt/with-test-user :rasta
+        (is (not (mi/can-read? (t2/select-one :model/Field field-id)))))
+      ;; Grant view-data permission - field should still not be readable
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (false? (boolean (mi/can-read? (t2/select-one :model/Field field-id)))))))))
+
+(deftest field-can-read?-delegates-to-parent-table-allowed-test
   (testing "Field can-read? delegates to parent table"
     (mt/with-temp [:model/Database {db-id :id} {}
                    :model/Table {table-id :id} {:db_id db-id}
@@ -116,6 +134,7 @@
         (is (not (mi/can-read? (t2/select-one :model/Field field-id)))))
       ;; Grant view-data permission - now field should be readable
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
         (is (true? (mi/can-read? (t2/select-one :model/Field field-id))))))))
 
