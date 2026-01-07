@@ -882,3 +882,12 @@
         (is (= :Coercion/UNIXSeconds->DateTime (:coercion_strategy field)))
         (is (isa? (:effective_type field) :type/DateTime))
         (is (= "minutes" (-> field :settings :time_enabled)))))))
+
+(deftest refingerprint-field-test
+  (testing "POST /api/field/:id/refingerprint"
+    (testing "It should return success"
+      (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 (format "field/%d/refingerprint" field-id)))))))))
+

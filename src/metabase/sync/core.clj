@@ -26,6 +26,7 @@
   update-field-values-for-table!]
  [metabase.sync.sync
   refingerprint-field!
+  refingerprint-table!
   sync-database!
   sync-table!]
  [metabase.sync.sync-metadata

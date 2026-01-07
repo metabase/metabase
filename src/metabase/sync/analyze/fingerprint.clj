@@ -60,7 +60,7 @@
   issues when syncing."
   1234)
 
-(mu/defn- fingerprint-fields!
+(mu/defn fingerprint-fields!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
@@ -265,3 +265,10 @@
   [field :- i/FieldInstance]
   (let [table (field/table field)]
     (fingerprint-fields! table [field])))
+
+(mu/defn refingerprint-table
+  "Refingerprint all fields in a table"
+  [table :- i/TableInstance]
+  (if-let [fields (t2/select :model/Field :table_id (u/the-id table) :active true)]
+    (fingerprint-fields! table fields)
+    (empty-stats-map 0)))
