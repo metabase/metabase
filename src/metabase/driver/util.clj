@@ -18,6 +18,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -26,7 +27,7 @@
    [metabase.util.performance :as perf :refer [mapv empty?]])
   (:import
    (java.io ByteArrayInputStream)
-   (java.security KeyFactory KeyStore PrivateKey)
+   (java.security KeyFactory KeyStore PrivateKey SecureRandom)
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
    (javax.net SocketFactory)
@@ -678,3 +679,66 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        Workspace Isolation Utilities                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- instance-uuid-slug
+  "Create a slug from the site UUID, taking the first character of each section."
+  [site-uuid-string]
+  (->> (str/split site-uuid-string #"-")
+       (map first)
+       (apply str)))
+
+;; WARNING: Changing this prefix requires backwards compatibility handling for existing workspaces.
+;; The prefix is used to identify isolation namespaces in the database, and existing workspaces
+;; will have namespaces created with the current prefix.
+(def ^:private workspace-isolated-prefix "mb__isolation")
+
+(defn workspace-isolation-namespace-name
+  "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
+  Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
+  [workspace]
+  (assert (some? (:id workspace)) "Workspace must have an :id")
+  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
+        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+
+(defn workspace-isolation-user-name
+  "Generate username for workspace isolation."
+  [workspace]
+  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
+        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
+    (format "%s_%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
+
+(def ^:private workspace-password-char-sets
+  "Character sets for password generation. Cycles through these to ensure representation from each."
+  ["ABCDEFGHJKLMNPQRSTUVWXYZ"
+   "abcdefghjkmnpqrstuvwxyz"
+   "123456789"
+   "!#$%&*+-="])
+
+(defn- secure-rand-nth
+  "Like rand-nth but uses SecureRandom for cryptographic security."
+  [^SecureRandom rng coll]
+  (nth coll (.nextInt rng (count coll))))
+
+(defn- secure-shuffle
+  "Like shuffle but uses SecureRandom for cryptographic security."
+  [^SecureRandom rng coll]
+  (let [arr (java.util.ArrayList. ^java.util.Collection coll)]
+    (java.util.Collections/shuffle arr rng)
+    (vec arr)))
+
+(defn random-workspace-password
+  "Generate a random password suitable for most database engines.
+   Uses SecureRandom for cryptographic security. Cycles through character sets
+   (uppercase, lowercase, digits, special) to ensure good distribution."
+  []
+  (let [rng (SecureRandom.)]
+    (->> (cycle workspace-password-char-sets)
+         (take (+ 32 (.nextInt rng 32)))
+         (map #(secure-rand-nth rng %))
+         (secure-shuffle rng)
+         (apply str))))

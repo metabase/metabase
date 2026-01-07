@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -15,7 +16,9 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
@@ -28,6 +31,7 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    Statement
     Types)))
 
 (set! *warn-on-reflection* true)
@@ -51,7 +55,8 @@
                               :test/jvm-timezone-setting        false
                               :transforms/python                true
                               :transforms/table                 true
-                              :uuid-type                        false}]
+                              :uuid-type                        false
+                              :isolation                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -250,8 +255,7 @@
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
-            :intervald2s :type/*}   ; interval literal
-           ))
+            :intervald2s :type/*}))   ; interval literal
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
@@ -672,3 +676,80 @@
   ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
   ;; 42P01: undefined_table, 3F000: invalid_schema_name
   (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Redshift inherits grant-workspace-read-access! from Postgres.
+;; init-workspace-isolation! is overridden because Redshift doesn't support GRANT user TO user
+;; (PostgreSQL treats users as roles; Redshift requires GRANT ROLE role_name TO user).
+;; Since we don't use DROP OWNED BY in Redshift cleanup, we don't need the role grant anyway.
+;; destroy-workspace-isolation! is overridden because Redshift doesn't support DROP OWNED BY.
+
+(defn- user-exists?
+  "Check if a Redshift user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defn- schema-exists?
+  "Check if a schema exists in Redshift."
+  [conn schema-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
+
+(defn- schemas-with-user-grants
+  "Query Redshift to find schemas where the user has been granted privileges."
+  [conn username]
+  (->> (jdbc/query conn
+                   ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
+           WHERE identity_name = ? AND identity_type = 'user'"
+                    username])
+       (keep :namespace_name)))
+
+(defmethod driver/init-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name      (driver.u/workspace-isolation-namespace-name workspace)
+        read-user        {:user     (driver.u/workspace-isolation-user-name workspace)
+                          :password (driver.u/random-workspace-password)}
+        escaped-password (sql.u/escape-sql (:password read-user) :ansi)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-sql (if (user-exists? t-conn (:user read-user))
+                       (format "ALTER USER \"%s\" WITH PASSWORD '%s'" (:user read-user) escaped-password)
+                       (format "CREATE USER \"%s\" WITH PASSWORD '%s'" (:user read-user) escaped-password))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\"" schema-name)
+                       user-sql
+                       (format "GRANT ALL PRIVILEGES ON SCHEMA \"%s\" TO \"%s\"" schema-name (:user read-user))
+                       (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" GRANT ALL ON TABLES TO \"%s\"" schema-name (:user read-user))]]
+            (.addBatch ^Statement stmt ^String sql))
+          (.executeBatch ^Statement stmt))))
+    {:schema           schema-name
+     :database_details read-user}))
+
+(defmethod driver/destroy-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-exists    (user-exists? t-conn username)
+            schema-exists  (schema-exists? t-conn schema-name)
+            granted-schemas (when user-exists
+                              (schemas-with-user-grants t-conn username))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          (when user-exists
+            (doseq [schema granted-schemas]
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
+                                         schema username))
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
+                                         schema username)))
+            (when schema-exists
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                         schema-name username))))
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP USER IF EXISTS \"%s\"" username))
+          (.executeBatch ^Statement stmt))))))

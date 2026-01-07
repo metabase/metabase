@@ -34,11 +34,8 @@
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 
 (defmethod tx/dbdef->connection-details :h2
-  [_driver context dbdef]
-  {:db (str "mem:" (tx/escaped-database-name dbdef) (when (= context :db)
-                                                      ;; Return details with the GUEST user added so SQL queries are
-                                                      ;; allowed.
-                                                      ";USER=GUEST;PASSWORD=guest"))})
+  [_driver _context dbdef]
+  {:db (str "mem:" (tx/escaped-database-name dbdef))})
 
 (defmethod sql.tx/pk-sql-type :h2 [_] "BIGINT AUTO_INCREMENT")
 
