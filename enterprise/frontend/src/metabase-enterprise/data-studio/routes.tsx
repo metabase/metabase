@@ -8,6 +8,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type { State } from "metabase-types/store";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
@@ -56,9 +57,11 @@ export function getDataStudioRoutes(
           {getDataStudioMetricRoutes()}
           {getDataStudioSnippetRoutes()}
         </Route>
-        <Route path="workspaces" component={WorkspacesSectionLayout}>
-          {getDataStudioWorkspaceRoutes()}
-        </Route>
+        {hasPremiumFeature("workspaces") && (
+          <Route path="workspaces" component={WorkspacesSectionLayout}>
+            {getDataStudioWorkspaceRoutes()}
+          </Route>
+        )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}
