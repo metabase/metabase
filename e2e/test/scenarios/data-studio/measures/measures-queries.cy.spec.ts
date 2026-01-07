@@ -807,7 +807,7 @@ function saveMeasure(): Cypress.Chainable<Measure> {
 
   return cy.wait("@measureCreate").then(({ response }) => {
     H.undoToast().should("contain.text", "Measure created");
-    return cy.wrap(response.body as Measure);
+    return cy.wrap(response?.body as Measure);
   });
 }
 
