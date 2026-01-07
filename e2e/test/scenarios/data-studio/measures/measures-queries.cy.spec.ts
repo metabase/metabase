@@ -747,7 +747,7 @@ describe("scenarios > data studio > measures > queries", () => {
           cy.visit(`/auto/dashboard/question/${model.id}`);
 
           H.main()
-            .findByText("A look at the number of Test model")
+            .findByText("A look at the Table Measure")
             .should("be.visible");
         });
     });
@@ -782,7 +782,7 @@ describe("scenarios > data studio > measures > queries", () => {
           cy.visit(`/auto/dashboard/model/${model.id}`);
 
           H.main()
-            .findByText("A look at the number of Test model")
+            .findByText("A look at the Table Measure")
             .should("be.visible");
         });
     });
