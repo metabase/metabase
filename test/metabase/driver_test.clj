@@ -16,6 +16,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -466,3 +467,52 @@
 (deftest deps-flags-when-supported-driver-is-not-covered-test
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
                         (driver/native-query-deps ::mock-deps-driver nil nil))))
+
+(defn- create-index-test-impl! [schema]
+  (let [driver      driver/*driver*
+        suffix      (str (System/currentTimeMillis))
+        table-name  (str "test_table_" suffix)
+        qualified-table-name (keyword schema table-name)
+        index-name  #(str "test_index_" % "_" suffix)
+        database-id (mt/id)
+        cleanup     (fn []
+                      (try
+                        (driver/drop-table! driver database-id qualified-table-name)
+                        (catch Throwable t
+                          (log/fatal t "Could not clean up test table!")
+                          (throw t))))]
+    (when schema
+      (driver/create-schema-if-needed! driver (driver/connection-spec driver database-id) schema))
+    (testing "Throws a driver-specific exception if the table does not exist"
+      (is (thrown? Throwable (driver/create-index! driver database-id schema table-name (index-name "a") [:a]))))
+    (try
+      (driver/create-table! driver database-id qualified-table-name {:a [:int], :b [:int], :c [:int]})
+      (testing "Create a single column index"
+        (is (nil? (driver/create-index! driver database-id schema table-name (index-name "a") [:a])))
+        (testing "Index now exists"
+          (is (= #{{:type       :normal-column-index
+                    :index-name (index-name "a")
+                    :value      "a"}}
+                 (driver/describe-table-indexes driver database-id {:schema schema :name table-name}))))
+        (testing "Drop the index"
+          (is (nil? (driver/drop-index! driver database-id schema table-name (index-name "a"))))
+          (testing "Index no longer exists"
+            (is (empty? (driver/describe-table-indexes driver database-id {:schema schema :name table-name}))))))
+      (testing "Create a multi column index"
+        (driver/create-index! driver database-id schema table-name (index-name "b_c") [:b :c])
+        (testing "Index now exists"
+          ;; single-part only as non-leading columns currently dropped by describe-table-indexes
+          (is (= #{{:type       :normal-column-index
+                    :index-name (index-name "b_c")
+                    :value      "b"}}
+                 (driver/describe-table-indexes driver database-id {:schema schema :name table-name})))))
+      (finally
+        (cleanup)))))
+
+(deftest create-index-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl)
+    (create-index-test-impl! nil)))
+
+(deftest create-index-schema-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/index-ddl :schemas)
+    (create-index-test-impl! "flibble")))
