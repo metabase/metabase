@@ -76,19 +76,48 @@
     [model-name (serdes/eid->id model-name id)]
     target))
 
-(defn- escape-analysis [{colls "Collection" cards "Card" :as _by-model} nodes]
+(defn- analytics-collection-ids
+  "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
+   These collections are intentionally excluded from serialization."
+  []
+  (let [analytics-roots (t2/select-pks-set :model/Collection {:where [:= :namespace "analytics"]})]
+    (into analytics-roots
+          (mapcat collection/descendant-ids)
+          analytics-roots)))
+
+(defn- escape-analysis
+  "Analyzes the dependency graph to find cards that are outside the collection set (escapees).
+   Returns a map with:
+   - :reportable-escaped - escapees that should trigger warnings (non-analytics)
+   - :analytics-card-ids - card IDs in analytics collections (should be removed from extraction but not block export)
+
+   Cards that depend on analytics cards are allowed to be exported - the references will be converted
+   to entity_ids during export and resolved on import since analytics cards have stable entity_ids."
+  [{colls "Collection" cards "Card" :as _by-model} nodes]
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (-> colls set not-empty)]
-    (let [clause       {:where [:or
-                                [:in :collection_id colls]
-                                (when (contains? colls nil)
-                                  [:= :collection_id nil])]}
-          possible-pks (t2/select-pks-set :model/Card clause)]
-      (->> (set/difference (set cards) possible-pks)
-           (mapv (fn [id]
-                   (-> (get nodes ["Card" id])
-                       (assoc :escapee {:model :model/Card
-                                        :id    id}))))))))
+    (let [clause           {:where [:or
+                                    [:in :collection_id colls]
+                                    (when (contains? colls nil)
+                                      [:= :collection_id nil])]}
+          possible-pks     (t2/select-pks-set :model/Card clause)
+          escaped-card-ids (set/difference (set cards) possible-pks)]
+      (when (seq escaped-card-ids)
+        ;; Analytics cards have stable entity_ids across instances, so cards that depend on them
+        ;; can still be exported: the references will be resolved on import
+        (let [analytics-colls      (analytics-collection-ids)
+              escaped-in-analytics (if (seq analytics-colls)
+                                     (t2/select-pks-set :model/Card {:where [:and
+                                                                             [:in :id escaped-card-ids]
+                                                                             [:in :collection_id analytics-colls]]})
+                                     #{})
+              reportable-escaped   (set/difference escaped-card-ids escaped-in-analytics)]
+          {:reportable-escaped (->> reportable-escaped
+                                    (mapv (fn [id]
+                                            (-> (get nodes ["Card" id])
+                                                (assoc :escapee {:model :model/Card
+                                                                 :id    id})))))
+           :analytics-card-ids escaped-in-analytics})))))
 
 (defn- log-escape-report! [escaped]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
