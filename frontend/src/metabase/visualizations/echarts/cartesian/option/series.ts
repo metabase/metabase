@@ -693,7 +693,7 @@ const buildEChartsLineAreaSeries = (
     },
     symbol: "circle", // default is "emptyCircle", but it's filled with white, so we need to handle the fill ourselves for dark mode
     itemStyle: {
-      color: renderingContext.getColor("bg-white"),
+      color: renderingContext.getColor("background-primary"),
       borderColor: seriesModel.color,
       borderWidth: lineWidth,
       opacity: isSymbolVisible ? 1 : 0, // Make the symbol invisible to keep it for event trigger for tooltip
