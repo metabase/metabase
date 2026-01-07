@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Route } from "react-router";
@@ -39,6 +40,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
+import { ID_ATTRIBUTE_NAME } from "metabase/rich_text_editing/tiptap/extensions/NodeIds/constants";
 import { Box } from "metabase/ui";
 import type {
   Card,
@@ -113,6 +115,7 @@ export const DocumentPage = ({
     "save" | "move" | null
   >(null);
   const [sendToast] = useToast();
+  const hasScrolledToAnchor = useRef(false);
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
@@ -204,6 +207,41 @@ export const DocumentPage = ({
   useEffect(() => {
     dispatch(setChildTargetId(paramsChildTargetId));
   }, [dispatch, paramsChildTargetId]);
+
+  // Scroll to anchor block when navigating with URL hash
+  useEffect(() => {
+    if (
+      !editorInstance ||
+      isDocumentLoading ||
+      hasScrolledToAnchor.current ||
+      !location.hash
+    ) {
+      return;
+    }
+
+    const blockId = location.hash.slice(1); // Remove the # prefix
+    if (!blockId) {
+      return;
+    }
+
+    // Wait a bit for the editor content to render
+    const timeoutId = setTimeout(() => {
+      const element = document.querySelector(
+        `[${ID_ATTRIBUTE_NAME}="${blockId}"]`,
+      );
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        hasScrolledToAnchor.current = true;
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [editorInstance, isDocumentLoading, location.hash]);
+
+  // Reset scroll flag when document changes
+  useEffect(() => {
+    hasScrolledToAnchor.current = false;
+  }, [documentId]);
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();

@@ -1236,6 +1236,147 @@ describe("documents", () => {
     });
   });
 
+  describe("anchor links", () => {
+    beforeEach(() => {
+      H.createDocument({
+        name: "Anchor Test Document",
+        document: {
+          content: [
+            {
+              type: "heading",
+              attrs: { level: 1, _id: "heading-block-1" },
+              content: [{ type: "text", text: "First Heading" }],
+            },
+            {
+              type: "paragraph",
+              attrs: { _id: "paragraph-block-1" },
+              content: [{ type: "text", text: "Some content here" }],
+            },
+            {
+              type: "heading",
+              attrs: { level: 2, _id: "heading-block-2" },
+              content: [{ type: "text", text: "Second Heading" }],
+            },
+            {
+              type: "paragraph",
+              attrs: { _id: "paragraph-block-2" },
+              content: [{ type: "text", text: "More content here" }],
+            },
+            {
+              type: "blockquote",
+              attrs: { _id: "blockquote-block-1" },
+              content: [
+                {
+                  type: "paragraph",
+                  attrs: { _id: "quote-paragraph" },
+                  content: [{ type: "text", text: "A nice quote" }],
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+    });
+
+    it("should show anchor link icon on left side when hovering over a heading", () => {
+      H.visitDocument("@documentId");
+
+      // Hover over the first heading
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Anchor link button should appear
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+    });
+
+    it("should copy anchor URL to clipboard when clicking anchor link", () => {
+      H.visitDocument("@documentId");
+
+      // Grant clipboard permissions
+      cy.wrap(
+        Cypress.automation("remote:debugger:protocol", {
+          command: "Browser.grantPermissions",
+          params: {
+            permissions: ["clipboardReadWrite", "clipboardSanitizedWrite"],
+            origin: window.location.origin,
+          },
+        }),
+      );
+
+      // Hover over the first heading
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Click the anchor link button
+      cy.findByRole("button", { name: /copy link/i }).click();
+
+      // Verify "Copied!" tooltip appears
+      cy.get("body").findByText("Copied!").should("be.visible");
+
+      // Verify the URL was copied to clipboard
+      cy.window().then((win) => {
+        win.navigator.clipboard.readText().then((text) => {
+          expect(text).to.include("/document/");
+          expect(text).to.include("#heading-block-1");
+        });
+      });
+    });
+
+    it("should scroll to the correct block when navigating with anchor hash", () => {
+      cy.get("@documentId").then((documentId) => {
+        // Navigate directly to the document with an anchor
+        cy.visit(`/document/${documentId}#heading-block-2`);
+
+        // Wait for the document to load
+        H.documentContent().should("exist");
+
+        // The second heading should be scrolled into view
+        H.documentContent()
+          .findByRole("heading", { name: "Second Heading" })
+          .should("be.visible");
+      });
+    });
+
+    it("should show anchor link for paragraphs on hover", () => {
+      H.visitDocument("@documentId");
+
+      // Hover over a paragraph
+      H.documentContent().contains("Some content here").realHover();
+
+      // Anchor link button should appear
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+    });
+
+    it("should show anchor link for blockquotes on hover", () => {
+      H.visitDocument("@documentId");
+
+      // Hover over the blockquote
+      H.documentContent().findByRole("blockquote").realHover();
+
+      // Anchor link button should appear
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+    });
+
+    it("should still show comments menu on right side (regression check)", () => {
+      H.visitDocument("@documentId");
+
+      // Hover over the first heading
+      H.documentContent()
+        .findByRole("heading", { name: "First Heading" })
+        .realHover();
+
+      // Both anchor link (left) and comments menu (right) should be visible
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+      cy.findByRole("button", { name: /comments/i }).should("be.visible");
+    });
+  });
+
   describe("error handling", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup
