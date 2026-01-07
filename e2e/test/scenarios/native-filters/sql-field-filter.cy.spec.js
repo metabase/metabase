@@ -228,12 +228,35 @@ describe("scenarios > filters > sql filters > field filter", () => {
         "SELECT * FROM products WHERE {{my_filter}}",
         { allowFastSet: true },
       );
+
+      cy.log("Test field filter");
       SQLFilter.openTypePickerFromDefaultFilterType();
       SQLFilter.chooseType("Field Filter");
 
-      SQLFilter.getRunQueryButton()
-        .should("be.disabled")
-        .click({ force: true });
+      SQLFilter.getSaveQueryButton().should("have.attr", "aria-disabled");
+      SQLFilter.getSaveQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getRunQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      cy.log("Test time grouping");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Time grouping");
+
+      SQLFilter.getSaveQueryButton().should("have.attr", "aria-disabled");
+      SQLFilter.getSaveQueryButton().click({ force: true });
+      H.tooltip()
+        .findByText('The variable "my_filter" needs to be mapped to a field.')
+        .should("be.visible");
+
+      SQLFilter.getRunQueryButton().should("be.disabled");
+      SQLFilter.getRunQueryButton().click({ force: true });
       H.tooltip()
         .findByText('The variable "my_filter" needs to be mapped to a field.')
         .should("be.visible");
