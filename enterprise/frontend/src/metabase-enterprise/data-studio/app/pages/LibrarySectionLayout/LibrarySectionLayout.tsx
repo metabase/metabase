@@ -9,6 +9,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useRouter } from "metabase/router";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -41,13 +42,10 @@ import {
 import { type TreeItem, isCollection } from "./types";
 import { getWritableCollection } from "./utils";
 
-type LibrarySectionLayoutProps = {
-  location: { query: { expandedId?: string | string[] } };
-};
-
-export function LibrarySectionLayout({ location }: LibrarySectionLayoutProps) {
+export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
   const dispatch = useDispatch();
+  const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
   );
