@@ -383,6 +383,7 @@
     (if-not (seq model-metadata)
       cols ; If not a model, nothing to change
       (let [last-stage (lib.util/query-stage query -1)
+            ;; Assumption: we're in a call path in which fetch-source-query has added this field
             native-model? (if (contains? last-stage :source-query/native-model?)
                             (:source-query/native-model? last-stage)
                             false)]
