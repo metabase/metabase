@@ -269,28 +269,25 @@
 (deftest cypress-e2e-workflow-measure-in-expression-test
   ;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
   (testing "Cypress workflow: create measure via API, then use in expression with legacy MBQL4"
-    ;; Create a measure via POST /api/measure
-    (let [{measure-id :id} (mt/user-http-request
-                            :crowberto :post 200 "measure"
-                            {:name       "Venue Count"
-                             :table_id   (mt/id :venues)
-                             :definition (legacy-mbql-measure-definition
-                                          (mt/id)
-                                          (mt/id :venues)
-                                          [[:count]])})]
-      (try
-        ;; Reference the measure in an expression: [:+ [:measure id] 100]
-        (let [legacy-query {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (mt/id :venues)
-                                       :aggregation  [[:+ [:measure measure-id] 100]]}}
-              ;; Equivalent direct query: count + 100
-              direct-query {:database (mt/id)
-                            :type     :query
-                            :query    {:source-table (mt/id :venues)
-                                       :aggregation  [[:+ [:count] 100]]}}]
-          (is (= (mt/rows (qp/process-query direct-query))
-                 (mt/rows (qp/process-query legacy-query)))))
-        (finally
-          ;; Cleanup: archive the measure
-          (t2/update! :model/Measure measure-id {:archived true}))))))
+    (mt/with-model-cleanup [:model/Measure]
+      ;; Create a measure via POST /api/measure
+      (let [{measure-id :id} (mt/user-http-request
+                              :crowberto :post 200 "measure"
+                              {:name       "Venue Count"
+                               :table_id   (mt/id :venues)
+                               :definition (legacy-mbql-measure-definition
+                                            (mt/id)
+                                            (mt/id :venues)
+                                            [[:count]])})
+            ;; Reference the measure in an expression: [:+ [:measure id] 100]
+            legacy-query {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)
+                                     :aggregation  [[:+ [:measure measure-id] 100]]}}
+            ;; Equivalent direct query: count + 100
+            direct-query {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)
+                                     :aggregation  [[:+ [:count] 100]]}}]
+        (is (= (mt/rows (qp/process-query direct-query))
+               (mt/rows (qp/process-query legacy-query))))))))
