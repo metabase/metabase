@@ -492,9 +492,9 @@
 (defn- node-data [{:keys [node-type id]}]
   (case node-type
     :table id
-    :external-transform (t2/select-one [:model/Transform :id :name] id)
+    :external-transform (t2/select-one [:model/Transform :id :name :target] id)
     ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
-    :workspace-transform (t2/select-one [:model/WorkspaceTransform :ref_id :name] :ref_id id)))
+    :workspace-transform (t2/select-one [:model/WorkspaceTransform :ref_id :name :target] :ref_id id)))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
