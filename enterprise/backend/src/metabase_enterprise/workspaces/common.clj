@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.dag :as ws.dag]
-   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -172,8 +171,9 @@
                                     :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]
-        ;; Transition base_status from :empty to :active when first transform is added
-        (when (= :empty (:base_status workspace))
-          (t2/update! :model/Workspace workspace-id {:base_status :active}))
-        (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
+        ;; Transition base_status from :empty to :active when first transform is added,
+        ;; and mark workspace as stale (new transform = graph needs recalculation)
+        (t2/update! :model/Workspace workspace-id
+                    (cond-> {:analysis_stale true}
+                      (= :empty (:base_status workspace)) (assoc :base_status :active)))
         transform))))
