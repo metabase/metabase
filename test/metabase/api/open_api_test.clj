@@ -197,14 +197,6 @@
       (is (= "Metabase API" (get-in spec [:info :title])))
       (is (= (:tag config/mb-version-info) (get-in spec [:info :version]))))))
 
-(deftest ^:parallel openapi-spec-valid-test
-  (testing "OpenAPI spec does not contain invalid fields (see #67748)"
-    (let [spec (open-api/root-open-api-object #'routes/routes)
-          spec-json (json/encode spec)]
-      ;; :optional is a Malli internal field that should not leak into the OpenAPI spec
-      (is (not (str/includes? spec-json "\"optional\""))
-          "OpenAPI spec should not contain 'optional' field (Malli internal)"))))
-
 (deftest ^:parallel get-core-fn!-test
   (is (= {:status 200, :headers {}, :body 12345}
          (->

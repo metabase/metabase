@@ -425,16 +425,6 @@
    :task (let [{:keys [arguments]} (cli/parse! (current-task))]
            (apply readability/check arguments))}
 
-  -lint-openapi
-  {:doc        "Validate OpenAPI specification with Redocly CLI"
-   :requires   [[mage.openapi :as openapi]]
-   :examples   [["./bin/mage -lint-openapi" "Validate resources/openapi/openapi.json"]
-                ["./bin/mage -lint-openapi --strict" "Validate with all rules (stricter)"]]
-   :options    [["-s" "--strict" "Enable all validation rules (stricter)"]
-                ["-f" "--file FILE" "Path to openapi.json file"]]
-   :task       (task! (openapi/validate-openapi {:file (get-in parsed [:options :file])
-                                                  :strict (get-in parsed [:options :strict])}))}
-
   ;; Uncomment this if you want to play with the example calculator task:
   #_#_-example-calculator
     {;; `:doc` is a short docstring for the task, will be listed in `./bin/mage -h` and other help info.
