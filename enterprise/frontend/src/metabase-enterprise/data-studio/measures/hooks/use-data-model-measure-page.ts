@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import {
   skipToken,
-  useDeleteMeasureMutation,
   useGetMeasureQuery,
+  useUpdateMeasureMutation,
 } from "metabase/api";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -25,7 +25,7 @@ type DataModelMeasurePageParams = {
 export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-  const [deleteMeasure] = useDeleteMeasureMutation();
+  const [updateMeasure] = useUpdateMeasureMutation();
 
   const databaseId = Number(params.databaseId);
   const schemaName = getSchemaName(params.schemaId);
@@ -51,8 +51,9 @@ export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
       return;
     }
 
-    const { error } = await deleteMeasure({
+    const { error } = await updateMeasure({
       id: measure.id,
+      archived: true,
       revision_message: t`Removed from Data Studio`,
     });
 
@@ -76,7 +77,7 @@ export function useDataModelMeasurePage(params: DataModelMeasurePageParams) {
     tableId,
     schemaName,
     databaseId,
-    deleteMeasure,
+    updateMeasure,
     dispatch,
     sendSuccessToast,
     sendErrorToast,

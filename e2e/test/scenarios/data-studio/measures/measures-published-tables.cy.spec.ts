@@ -16,7 +16,7 @@ describe("scenarios > data studio > library > published tables > measures", () =
     H.publishTables({ table_ids: [ORDERS_ID] });
 
     cy.intercept("POST", "/api/measure").as("createMeasure");
-    cy.intercept("DELETE", "/api/measure/*").as("deleteMeasure");
+    cy.intercept("PUT", "/api/measure/*").as("updateMeasure");
   });
 
   describe("Measure list", () => {
@@ -122,7 +122,7 @@ describe("scenarios > data studio > library > published tables > measures", () =
       MeasureEditor.getActionsButton().click();
       H.popover().findByText("Remove measure").click();
       H.modal().button("Remove").click();
-      cy.wait("@deleteMeasure");
+      cy.wait("@updateMeasure");
 
       H.undoToast().should("contain.text", "Measure removed");
       cy.url().should(

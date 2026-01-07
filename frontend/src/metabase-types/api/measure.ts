@@ -34,8 +34,3 @@ export interface UpdateMeasureRequest {
   archived?: boolean;
   description?: string;
 }
-
-export interface DeleteMeasureRequest {
-  id: MeasureId;
-  revision_message: string;
-}

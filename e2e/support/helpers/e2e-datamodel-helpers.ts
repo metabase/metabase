@@ -622,7 +622,7 @@ function getMeasureEditorNameInput() {
 }
 
 function getMeasureEditorDescriptionInput() {
-  return getMeasureEditor().findByLabelText("Description");
+  return getMeasureEditor().findByLabelText("Give it a description");
 }
 
 function getMeasureEditorAggregationPlaceholder() {

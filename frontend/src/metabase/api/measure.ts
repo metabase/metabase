@@ -2,7 +2,6 @@ import { updateMetadata } from "metabase/lib/redux/metadata";
 import { MeasureSchema } from "metabase/schema";
 import type {
   CreateMeasureRequest,
-  DeleteMeasureRequest,
   Measure,
   MeasureId,
   UpdateMeasureRequest,
@@ -65,19 +64,6 @@ export const measureApi = Api.injectEndpoints({
           tag("table"),
         ]),
     }),
-    deleteMeasure: builder.mutation<Measure, DeleteMeasureRequest>({
-      query: ({ id, ...body }) => ({
-        method: "DELETE",
-        url: `/api/measure/${id}`,
-        body,
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [
-          listTag("measure"),
-          idTag("measure", id),
-          tag("table"),
-        ]),
-    }),
   }),
 });
 
@@ -86,5 +72,4 @@ export const {
   useGetMeasureQuery,
   useCreateMeasureMutation,
   useUpdateMeasureMutation,
-  useDeleteMeasureMutation,
 } = measureApi;

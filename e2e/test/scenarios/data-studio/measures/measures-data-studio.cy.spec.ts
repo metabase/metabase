@@ -13,7 +13,6 @@ describe("scenarios > data studio > data model > measures", () => {
 
     cy.intercept("POST", "/api/measure").as("createMeasure");
     cy.intercept("PUT", "/api/measure/*").as("updateMeasure");
-    cy.intercept("DELETE", "/api/measure/*").as("deleteMeasure");
     cy.intercept("GET", "/api/table/*/query_metadata*").as("metadata");
   });
 
@@ -212,7 +211,7 @@ describe("scenarios > data studio > data model > measures", () => {
       MeasureEditor.getActionsButton().click();
       H.popover().findByText("Remove measure").click();
       H.modal().button("Remove").click();
-      cy.wait("@deleteMeasure");
+      cy.wait("@updateMeasure");
 
       cy.log("verify redirect to list and removal");
       H.undoToast().should("contain.text", "Measure removed");

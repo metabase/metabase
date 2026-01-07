@@ -49,8 +49,6 @@ export const Measures = createEntity({
         dispatch,
         measureApi.endpoints.updateMeasure,
       ),
-    delete: ({ id }, dispatch) =>
-      entityCompatibleQuery(id, dispatch, measureApi.endpoints.deleteMeasure),
   },
 
   objectActions: {

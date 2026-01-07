@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import {
   skipToken,
-  useDeleteMeasureMutation,
   useGetMeasureQuery,
+  useUpdateMeasureMutation,
 } from "metabase/api";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch } from "metabase/lib/redux";
@@ -24,7 +24,7 @@ export function usePublishedTableMeasurePage(
 ) {
   const dispatch = useDispatch();
   const [sendToast] = useToast();
-  const [deleteMeasure] = useDeleteMeasureMutation();
+  const [updateMeasure] = useUpdateMeasureMutation();
 
   const tableId = Urls.extractEntityId(params.tableId);
   const measureId = Urls.extractEntityId(params.measureId);
@@ -48,8 +48,9 @@ export function usePublishedTableMeasurePage(
       return;
     }
 
-    const { error } = await deleteMeasure({
+    const { error } = await updateMeasure({
       id: measure.id,
+      archived: true,
       revision_message: t`Removed from Data Studio`,
     });
 
@@ -59,7 +60,7 @@ export function usePublishedTableMeasurePage(
       sendToast({ icon: "check", message: t`Measure removed` });
       dispatch(push(Urls.dataStudioTableMeasures(tableId)));
     }
-  }, [measure, tableId, deleteMeasure, dispatch, sendToast]);
+  }, [measure, tableId, updateMeasure, dispatch, sendToast]);
 
   const isLoading = isLoadingMeasure || isLoadingTable;
   const error = measureError ?? tableError;
