@@ -13,11 +13,13 @@ import DateTime from "metabase/common/components/DateTime";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
+  Avatar,
   Card,
   EntityNameCell,
   Flex,
@@ -54,6 +56,27 @@ const countTransforms = (node: TreeNode): number => {
     }
     return count + countTransforms(child);
   }, 0);
+};
+
+const AVATAR_COLOR_PALETTE = [
+  color("brand"),
+  color("accent2"),
+  color("accent4"),
+  color("accent1"),
+  color("summarize"),
+];
+
+const getOwnerAvatarColor = (id?: number, email?: string): string => {
+  if (id) {
+    return AVATAR_COLOR_PALETTE[id % AVATAR_COLOR_PALETTE.length];
+  }
+  if (email) {
+    const hash = email
+      .split("")
+      .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return AVATAR_COLOR_PALETTE[hash % AVATAR_COLOR_PALETTE.length];
+  }
+  return color("brand");
 };
 
 const NODE_ICON_COLORS: Record<TreeNode["nodeType"], string> = {
@@ -167,10 +190,31 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
               owner.first_name && owner.last_name
                 ? `${owner.first_name} ${owner.last_name}`
                 : owner.email;
-            return <Ellipsified>{displayName}</Ellipsified>;
+            const initials =
+              owner.first_name && owner.last_name
+                ? `${owner.first_name.charAt(0)}${owner.last_name.charAt(0)}`.toUpperCase()
+                : (owner.email?.slice(0, 2).toUpperCase() ?? "?");
+            const bgColor = getOwnerAvatarColor(owner.id, owner.email);
+            return (
+              <Flex align="center" gap="sm">
+                <Avatar size="sm" radius="xl" bg={bgColor} c="white">
+                  {initials}
+                </Avatar>
+                <Ellipsified>{displayName}</Ellipsified>
+              </Flex>
+            );
           }
           if (ownerEmail) {
-            return <Ellipsified>{ownerEmail}</Ellipsified>;
+            const initials = ownerEmail.split("@")[0].slice(0, 2).toUpperCase();
+            const bgColor = getOwnerAvatarColor(undefined, ownerEmail);
+            return (
+              <Flex align="center" gap="sm">
+                <Avatar size="sm" radius="xl" bg={bgColor} c="white">
+                  {initials}
+                </Avatar>
+                <Ellipsified>{ownerEmail}</Ellipsified>
+              </Flex>
+            );
           }
           return null;
         },
