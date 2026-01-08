@@ -62,7 +62,7 @@ describe("getNodeIcon", () => {
       node: createMockSnippetDependencyNode(),
       expectedIcon: "sql",
     },
-  ])("should get the node icon", ({ node, expectedIcon }) => {
+  ])("should get the $node.type node icon", ({ node, expectedIcon }) => {
     expect(getNodeIcon(node)).toBe(expectedIcon);
   });
 });
@@ -139,7 +139,7 @@ describe("getNodeLink", () => {
         url: "/data-studio/data/database/1/schema/1:public/table/1/segments/1",
       },
     },
-  ])("should get the node link", ({ node, expectedLink }) => {
+  ])("should get the $node.type node link", ({ node, expectedLink }) => {
     expect(getNodeLink(node)).toEqual(expectedLink);
   });
 });

@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -10,6 +13,9 @@
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]))
+
+(comment
+  metabase-enterprise.dependencies.events/keep-me)
 
 (defn card-with-query
   "Create a card map with the given name and dataset query."
@@ -305,7 +311,7 @@
                        :type "table"}]}
                     (-> response
                         (update :edges set)
-                        (update :nodes #(sort-by :type %)))))))))))
+                        (update :nodes #(sort-by (juxt :type :id) %)))))))))))
 
 (deftest graph-transform-hydrates-creator-test
   (testing "GET /api/ee/dependencies/graph hydrates creator for transforms"
@@ -1010,3 +1016,266 @@
               (is (contains? node-ids measure-b-id) "measure B should appear with archived=true")
               (is (contains? node-ids measure-c-id) "measure C should appear")
               (is (contains? node-ids products-id) "products table should appear"))))))))
+
+(deftest ^:sequential unreferenced-questions-test
+  (testing "GET /api/ee/dependencies/unreferenced - only unreferenced questions are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card {referenced-card-id :id} {:name "Referenced Card - unreftest"
+                                                             :type :question
+                                                             :dataset_query (lib/query mp products)}
+                       :model/Card {unreffed-card-id :id} {:name "Unreferenced Card - unreftest"
+                                                           :type :question
+                                                           :dataset_query (->> referenced-card-id
+                                                                               (lib.metadata/card mp)
+                                                                               (lib/query mp))}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=unreftest")]
+            (is (=? [{:id unreffed-card-id
+                      :type "card"
+                      :data {:name "Unreferenced Card - unreftest"}}]
+                    response))))))))
+
+(deftest ^:sequential unreferenced-tables-test
+  (testing "GET /api/ee/dependencies/unreferenced - only unreferenced tables are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Table {unreffed-table-id :id} {:name "Unreferenced Table - unreftest"}
+                       :model/Table {referenced-table-id :id} {:name "Referenced Table - unreftest"}
+                       :model/Card _card {:name "Referencing Card"
+                                          :type :question
+                                          :dataset_query (lib/query mp (lib.metadata/table mp referenced-table-id))}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")]
+            (is (=? [{:id unreffed-table-id
+                      :type "table"
+                      :data {:name "Unreferenced Table - unreftest"}}]
+                    response))))))))
+
+(deftest ^:sequential unreferenced-transforms-test
+  (testing "GET /api/ee/dependencies/unreferenced - only unreferenced transforms are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Transform {unreffed-transform-id :id} {:name "Unreferenced Transform - unreftest"
+                                                                     :source {:type :query
+                                                                              :query (lib/query mp products)}
+                                                                     :target {:schema "PUBLIC"
+                                                                              :name "unreferenced_transform_table"}}
+                       :model/Transform {referenced-transform-id :id} {:name "Referenced Transform - unreftest"
+                                                                       :source {:type :query
+                                                                                :query (lib/query mp products)}
+                                                                       :target {:schema "PUBLIC"
+                                                                                :name "referenced_transform_table"}}
+                       :model/Table _ {:name "referenced_transform_table"
+                                       :db_id (mt/id)
+                                       :schema "PUBLIC"}]
+          (events/publish-event! :event/transform-run-complete
+                                 {:object {:db-id (mt/id)
+                                           :output-schema "PUBLIC"
+                                           :output-table "referenced_transform_table"
+                                           :transform-id referenced-transform-id}})
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
+            (is (=? [{:id unreffed-transform-id
+                      :type "transform"
+                      :data {:name "Unreferenced Transform - unreftest"}}]
+                    response))))))))
+
+(deftest ^:sequential unreferenced-snippets-test
+  (testing "GET /api/ee/dependencies/unreferenced - only unreferenced snippets are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/NativeQuerySnippet {unreffed-snippet-id :id} {:name "Unreferenced Snippet - unreftest"
+                                                                            :content "WHERE ID > 10"}
+                       :model/NativeQuerySnippet {referenced-snippet-id :id snippet-name :name} {:name "Referenced Snippet - unreftest"
+                                                                                                 :content "WHERE ID > 20"}]
+          (let [tag-name (str "snippet: " snippet-name)
+                native-query (-> (lib/native-query mp (format "SELECT * FROM PRODUCTS %s" (str "{{" tag-name "}}")))
+                                 (lib/with-template-tags {tag-name {:name tag-name
+                                                                    :display-name (str "Snippet: " snippet-name)
+                                                                    :type :snippet
+                                                                    :snippet-name snippet-name
+                                                                    :snippet-id referenced-snippet-id}}))]
+            (mt/with-temp [:model/Card _card {:name "Card using snippet"
+                                              :type :question
+                                              :dataset_query native-query}]
+              (while (#'dependencies.backfill/backfill-dependencies!))
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=unreftest")]
+                (is (=? [{:id unreffed-snippet-id
+                          :type "snippet"
+                          :data {:name "Unreferenced Snippet - unreftest"}}]
+                        response))))))))))
+
+(deftest ^:sequential unreferenced-dashboards-test
+  (testing "GET /api/ee/dependencies/unreferenced - only unreferenced dashboards are returned"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - unreftest"}
+                     :model/Dashboard {referenced-dashboard-id :id} {:name "Referenced Dashboard - unreftest"}
+                     :model/Document _ {:name "Document with dashboard link"
+                                        :dependency_analysis_version 0
+                                        :document {:type "doc"
+                                                   :content [{:type "paragraph"
+                                                              :content [{:type "smartLink"
+                                                                         :attrs {:entityId referenced-dashboard-id
+                                                                                 :model "dashboard"}}]}]}
+                                        :content_type "application/json+vnd.prose-mirror"}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=unreftest")]
+          (is (=? [{:id unreffed-dashboard-id
+                    :type "dashboard"
+                    :data {:name "Unreferenced Dashboard - unreftest"}}]
+                  response)))))))
+
+(deftest ^:sequential unreferenced-documents-test
+  (testing "GET /api/ee/dependencies/unreferenced - only unreferenced documents are returned"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Document {referenced-document-id :id} {:name "Referenced Document - unreftest"}
+                     :model/Document {unreffed-document-id :id} {:name "Unreferenced Document - unreftest"
+                                                                 :document {:type "doc"
+                                                                            :content [{:type "paragraph"
+                                                                                       :content [{:type "smartLink"
+                                                                                                  :attrs {:entityId referenced-document-id
+                                                                                                          :model "document"}}]}]}
+                                                                 :content_type "application/json+vnd.prose-mirror"}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=unreftest")]
+          (is (=? [{:id unreffed-document-id
+                    :type "document"
+                    :data {:name "Unreferenced Document - unreftest"}}]
+                  response)))))))
+
+(deftest ^:sequential unreferenced-sandboxes-test
+  (testing "GET /api/ee/dependencies/unreferenced - unreferenced sandboxes are returned"
+    (mt/with-premium-features #{:dependencies :sandboxes}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {:name "Sandbox Group - unreftest"}
+                       :model/Card {sandbox-card-id :id} {:name "Sandbox Card - unreftest"
+                                                          :type :question
+                                                          :dataset_query (lib/query mp products)}
+                       :model/Sandbox {sandbox-id :id} {:group_id group-id
+                                                        :table_id (mt/id :products)
+                                                        :card_id sandbox-card-id}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=sandbox")]
+            (is (=? [{:id sandbox-id
+                      :type "sandbox"
+                      :data {:table {:name "PRODUCTS"}}}]
+                    response))))))))
+
+(deftest ^:sequential unreferenced-card-types-test
+  (testing "GET /api/ee/dependencies/unreferenced - unreferenced models and metrics are filtered by card_types and pagination"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card {unreffed-model-id :id} {:name "A - Unreferenced Model - cardtype"
+                                                            :type :model
+                                                            :dataset_query (lib/query mp products)}
+                       :model/Card {unreffed-metric-id :id} {:name "B - Unreferenced Metric - cardtype"
+                                                             :type :metric
+                                                             :dataset_query (lib/query mp products)}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "filtering by model only"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=model&query=cardtype")]
+              (is (=? [{:id unreffed-model-id
+                        :type "card"
+                        :data {:name "A - Unreferenced Model - cardtype"
+                               :type "model"}}]
+                      response))))
+          (testing "filtering by metric only"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=metric&query=cardtype")]
+              (is (=? [{:id unreffed-metric-id
+                        :type "card"
+                        :data {:name "B - Unreferenced Metric - cardtype"
+                               :type "metric"}}]
+                      response))))
+          (testing "filtering by model and metric as the default card types"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&query=cardtype")]
+              (is (=? [{:id unreffed-model-id
+                        :type "card"
+                        :data {:name "A - Unreferenced Model - cardtype"
+                               :type "model"}}
+                       {:id unreffed-metric-id
+                        :type "card"
+                        :data {:name "B - Unreferenced Metric - cardtype"
+                               :type "metric"}}]
+                      response)))))))))
+
+(deftest ^:sequential broken-questions-test
+  (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card _ {:name "Good Card - brokentest"
+                                      :type :question
+                                      :dataset_query (lib/query mp products)}
+                       :model/Card {broken-card-id :id} {:name "Broken Card - brokentest"
+                                                         :type :question
+                                                         :dataset_query (lib/native-query mp "not a query")}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
+            (is (=? [{:id broken-card-id
+                      :type "card"
+                      :data {:name "Broken Card - brokentest"}}]
+                    response))))))))
+
+(deftest ^:sequential broken-transforms-test
+  (testing "GET /api/ee/dependencies/broken - only broken transforms are returned"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Transform {broken-transform-id :id} {:name "Broken Transform - brokentest"
+                                                                   :source {:type :query
+                                                                            :query (lib/native-query mp "not a query")}
+                                                                   :target {:schema "PUBLIC"
+                                                                            :name "broken_transform_table"}}
+                       :model/Transform _ {:name "Good Transform - brokentest"
+                                           :source {:type :query
+                                                    :query (lib/query mp products)}
+                                           :target {:schema "PUBLIC"
+                                                    :name "referenced_transform_table"}}]
+          (while (> (dependencies.findings/analyze-batch! :transform 50) 0))
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=transform&query=brokentest")]
+            (is (=? [{:id broken-transform-id
+                      :type "transform"
+                      :data {:name "Broken Transform - brokentest"}}]
+                    response))))))))
+
+(deftest ^:sequential broken-card-types-test
+  (testing "GET /api/ee/dependencies/broken - broken models and metrics are filtered by card_types and pagination"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
+                                                          :type :model
+                                                          :dataset_query (lib/native-query mp "not a query")}
+                       :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
+                                                           :type :metric
+                                                           :dataset_query (lib/native-query mp "not a query")}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (testing "filtering by model only"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
+              (is (=? [{:id broken-model-id
+                        :type "card"
+                        :data {:name "A - Broken Model - cardtype"
+                               :type "model"}}]
+                      response))))
+          (testing "filtering by metric only"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=metric&query=cardtype")]
+              (is (=? [{:id broken-metric-id
+                        :type "card"
+                        :data {:name "B - Broken Metric - cardtype"
+                               :type "metric"}}]
+                      response))))
+          (testing "filtering by model and metric as the default card types"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardtype")]
+              (is (=? [{:id broken-model-id
+                        :type "card"
+                        :data {:name "A - Broken Model - cardtype"
+                               :type "model"}}
+                       {:id broken-metric-id
+                        :type "card"
+                        :data {:name "B - Broken Metric - cardtype"
+                               :type "metric"}}]
+                      response)))))))))

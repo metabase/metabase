@@ -547,7 +547,7 @@
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
-                   [:= :archived (boolean archived?)]
+                   [:= :c.archived (boolean archived?)]
                    (case card-type
                      :model
                      [:= :c.type (h2x/literal "model")]
@@ -620,7 +620,7 @@
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
-                   :archived
+                   :d.archived
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
@@ -643,7 +643,7 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   [:= :archived (boolean archived?)]]}
+                   [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
