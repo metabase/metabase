@@ -60,7 +60,7 @@ export const MetabotPromptSuggestionPane = ({
     sendToast(
       error
         ? { message: t`Error removing prompt`, icon: "warning" }
-        : { message: t`Succesfully removed prompt`, icon: "check" },
+        : { message: t`Successfully removed prompt`, icon: "check" },
     );
 
     const newMaxPage = Math.max(
