@@ -130,4 +130,22 @@ export const DataStudio = {
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
   },
+  Tasks: {
+    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
+    visitUnreferencedEntities: () =>
+      cy.visit("/data-studio/tasks/unreferenced"),
+    list: () => cy.findByTestId("dependency-list"),
+    searchInput: () => cy.findByTestId("dependency-list-search-input"),
+    filterButton: () => cy.findByTestId("dependency-list-filter-button"),
+    sidebar: () => cy.findByTestId("dependency-list-sidebar"),
+
+    Sidebar: {
+      get: () => cy.findByTestId("dependency-list-sidebar"),
+      header: () => cy.findByTestId("dependency-list-sidebar-header"),
+      locationInfo: () => cy.findByRole("region", { name: "Location" }),
+      errorInfo: (label: string) => cy.findByRole("region", { name: label }),
+      creationInfo: () =>
+        cy.findByRole("region", { name: "Creator and last editor" }),
+    },
+  },
 };

@@ -35,7 +35,7 @@ export function RevisionDiff({
   const label = getPropertyLabel(property, definitionLabel);
 
   return (
-    <Box p="md" bg="bg-light" bd="1px solid border">
+    <Box p="md" bg="background-secondary" bd="1px solid border">
       <Flex align="center" gap="sm" mb="sm">
         <DiffIcon before={before} after={after} />
         <Text size="sm" fw={400} c="text-secondary">

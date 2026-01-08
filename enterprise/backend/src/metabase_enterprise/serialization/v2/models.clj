@@ -49,7 +49,8 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["ApiKey"
+  ["AnalysisFinding"
+   "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"

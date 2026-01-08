@@ -6,7 +6,7 @@ import Link from "metabase/common/components/Link";
 import TableLabel from "../TableLabel/TableLabel";
 
 export const InteractiveTableLabel = styled(TableLabel)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;
 
 export const LabelButton = styled.button`

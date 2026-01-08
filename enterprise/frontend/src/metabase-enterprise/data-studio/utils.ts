@@ -7,6 +7,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TRANSFORMS,
 } from "metabase/plugins";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";

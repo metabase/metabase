@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-sharing.core :as public-sharing]
@@ -97,6 +98,7 @@
   (sync-document-cards-collection! id collection_id
                                    :archived archived
                                    :archived-directly archived_directly)
+  (events/publish-event! :event/document-update {:object instance})
   instance)
 
 (t2/define-after-select :model/Document

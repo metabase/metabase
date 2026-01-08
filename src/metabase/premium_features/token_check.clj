@@ -14,6 +14,7 @@
    [environ.core :refer [env]]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -458,6 +459,8 @@
   ([checker token]
    (-check-token checker token)))
 
+(derive :event/set-premium-embedding-token :metabase/event)
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
@@ -475,6 +478,7 @@
           (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
+    (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
       (log/error e "Error setting premium features token")
       ;; merge in error-details if present

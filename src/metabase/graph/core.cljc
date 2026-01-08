@@ -75,7 +75,7 @@
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
 
-(defn calc-edges-between
+(defn edges-between
   "Calculates the edges within `nodes`, based on `graph`."
   [graph nodes]
   (let [node-set (into #{} nodes)

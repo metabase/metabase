@@ -6,7 +6,7 @@
 }
 
 .aggregation {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-summarize);
   border-radius: 1rem;
   overflow-wrap: anywhere;

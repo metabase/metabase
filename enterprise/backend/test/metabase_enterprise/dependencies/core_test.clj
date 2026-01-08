@@ -121,7 +121,6 @@
      :sql-base                    (lib.metadata/card mp 7)
      :sql-transform               transform2
      :sql-transform-output        tf2-output
-     :sql-transform-cols          (m/index-by :name tf2-cols)
      :sql-transform-mbql-consumer (lib.metadata/card mp 303)
      :sql-transform-sql-consumer  (lib.metadata/card mp 304)}))
 
@@ -133,7 +132,6 @@
 (deftest ^:parallel basic-mbql-card-test
   (testing "when changing an MBQL card with dependents"
     (let [{:keys [provider graph mbql-base]
-           {tax-rate "Tax Rate"}     :mbql-transform-cols
            {downstream-card-id  :id} :mbql-dependent
            {transformed-card-id :id} :mbql-transform-consumer} (testbed)]
       (testing "a column that no longer exists will cause errors when referenced"
@@ -144,8 +142,8 @@
                                  lib/update-options assoc :lib/expression-name "Sales Taxes")
                          (dissoc :result-metadata))
               errors (dependencies/errors-from-proposed-edits provider graph {:card [card']})]
-          (is (=? {:card {downstream-card-id  [[:field {} "Tax Rate"]]
-                          transformed-card-id [[:field {} (:id tax-rate)]]}}
+          (is (=? {:card {downstream-card-id  #{(lib/missing-column-error "Tax Rate")}
+                          transformed-card-id #{(lib/missing-column-error "Tax Rate")}}}
                   errors))
           (is (= [:card] (keys errors)))
           (is (= #{downstream-card-id transformed-card-id} (set (keys (:card errors)))))))
@@ -158,7 +156,7 @@
 
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly finds downstream errors"
-    (let [{:keys [provider graph sql-transform snippet-inner sql-transform-cols]
+    (let [{:keys [provider graph sql-transform snippet-inner]
            {direct-sql-card-id       :id} :sql-base
            {transformed-sql-card-id  :id} :sql-transform-sql-consumer
            {transformed-mbql-card-id :id} :sql-transform-mbql-consumer} (testbed)]
@@ -166,20 +164,13 @@
         (let [snippet' (assoc snippet-inner
                               :content       "nonexistent_table"
                               :template-tags {})
-              rating   (get sql-transform-cols "RATING")
               errors   (dependencies/errors-from-proposed-edits provider graph {:snippet [snippet']})]
           ;; That breaks (1) the SQL card which uses the snippets, (2) the transforms, (3) both the MBQL and (4) SQL
           ;; queries that consume the transform's table.
-          (is (=? {:card      {direct-sql-card-id       [{:table {:table "NONEXISTENT_TABLE"},
-                                                          :type :all-columns,
-                                                          :metabase.driver.sql/bad-reference true}]
-                               transformed-sql-card-id  [{:table {:schema "TRANSFORMED", :table "OUTPUT_TF31"},
-                                                          :type :all-columns,
-                                                          :metabase.driver.sql/bad-reference true}]
-                               transformed-mbql-card-id [[:field {} (:id rating)]]}
-                   :transform {(:id sql-transform)      [{:table {:table "NONEXISTENT_TABLE"},
-                                                          :type :all-columns,
-                                                          :metabase.driver.sql/bad-reference true}]}}
+          (is (=? {:card      {direct-sql-card-id       #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}
+                               transformed-sql-card-id  #{(lib/missing-table-alias-error "TRANSFORMED.OUTPUT_TF31")}
+                               transformed-mbql-card-id #{(lib/missing-column-error "RATING")}}
+                   :transform {(:id sql-transform)      #{(lib/missing-table-alias-error "NONEXISTENT_TABLE")}}}
                   errors))
           (is (= #{:card :transform}
                  (set (keys errors))))

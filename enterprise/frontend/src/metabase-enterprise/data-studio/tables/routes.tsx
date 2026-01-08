@@ -1,6 +1,7 @@
 import { IndexRoute, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { IsAdmin } from "metabase/route-guards";
 import { PublishedTableMeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureDependenciesPage";
 import { PublishedTableMeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureDetailPage";
 import { PublishedTableMeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/PublishedTableMeasureRevisionHistoryPage";
@@ -23,10 +24,9 @@ export function getDataStudioTableRoutes() {
       <Route path=":tableId/fields" component={TableFieldsPage} />
       <Route path=":tableId/fields/:fieldId" component={TableFieldsPage} />
       <Route path=":tableId/segments" component={TableSegmentsPage} />
-      <Route
-        path=":tableId/segments/new"
-        component={PublishedTableNewSegmentPage}
-      />
+      <Route path=":tableId/segments/new" component={IsAdmin}>
+        <IndexRoute component={PublishedTableNewSegmentPage} />
+      </Route>
       <Route
         path=":tableId/segments/:segmentId"
         component={PublishedTableSegmentDetailPage}

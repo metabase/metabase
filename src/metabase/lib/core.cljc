@@ -44,6 +44,7 @@
    [metabase.lib.order-by :as lib.order-by]
    [metabase.lib.page]
    [metabase.lib.parameters]
+   [metabase.lib.parameters.parse :as lib.parameters.parse]
    [metabase.lib.parse :as lib.parse]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -419,6 +420,8 @@
   parameter-target-is-dimension?
   parameter-target-template-tag-name
   update-parameter-target-dimension-options]
+ [lib.parameters.parse
+  match-and-normalize-tag-name]
  [lib.parse
   parse]
  [lib.query
@@ -499,7 +502,12 @@
   unique-name-generator
   unique-name-generator-with-options]
  [lib.validate
-  find-bad-refs]
+  duplicate-column-error
+  find-bad-refs
+  missing-column-error
+  missing-table-alias-error
+  syntax-error
+  validation-exception-error]
  [metabase.lib.walk.util
   all-field-ids
   all-implicitly-joined-field-ids

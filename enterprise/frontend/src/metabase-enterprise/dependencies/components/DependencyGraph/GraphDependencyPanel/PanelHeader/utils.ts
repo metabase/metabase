@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import { getNodeLabel } from "../../utils";
+import { getNodeLabel } from "../../../../utils";
 
 export function getHeaderLabel(
   node: DependencyNode,

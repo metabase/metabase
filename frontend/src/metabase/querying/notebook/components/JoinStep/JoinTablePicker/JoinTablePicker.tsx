@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
 import { METAKEY } from "metabase/lib/browser";
+import type { ColorName } from "metabase/lib/colors/types";
 import { useSelector } from "metabase/lib/redux";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import { Box, Icon, Popover, Tooltip } from "metabase/ui";
@@ -20,7 +21,7 @@ interface JoinTablePickerProps {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.Joinable | undefined;
-  color: string;
+  color: ColorName;
   isReadOnly: boolean;
   columnPicker: ReactNode;
   onChange: (table: Lib.Joinable) => void;

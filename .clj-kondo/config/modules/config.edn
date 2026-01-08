@@ -498,7 +498,8 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror}
+           metabase.documents.prose-mirror
+           metabase.documents.schema}
    :uses #{activity-feed
            api
            app-db
@@ -748,6 +749,7 @@
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
+           metabase.lib.schema.validate
            metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
@@ -965,6 +967,7 @@
            app-db
            classloader
            config
+           events
            internal-stats
            settings
            task
@@ -1056,6 +1059,7 @@
            config
            content-verification
            dashboards
+           documents
            events
            lib
            lib-be
@@ -1961,7 +1965,9 @@
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
+           config
            documents
            driver
            events
@@ -2212,6 +2218,7 @@
            appearance
            collections
            config
+           events
            logger
            models
            plugins
@@ -2297,6 +2304,7 @@
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.interface
+           metabase-enterprise.transforms.schema
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api

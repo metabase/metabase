@@ -1,8 +1,11 @@
 (ns metabase-enterprise.dependencies.events
   (:require
    [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -126,8 +129,8 @@
 
 (methodical/defmethod events/publish-event! ::transform-delete
   [_ {:keys [id]}]
+  ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
   (when (premium-features/has-feature? :dependencies)
-    ;; TODO: (Braden 09/18/2025) Shouldn't we be deleting the downstream deps for dead edges as well as upstream?
     (t2/delete! :model/Dependency :from_entity_type :transform :from_entity_id id)))
 
 ;; On *executing* a transform, its (freshly synced) output table is made to depend on the transform.
@@ -151,6 +154,8 @@
 (derive ::dashboard-deps :metabase/event)
 (derive :event/dashboard-create ::dashboard-deps)
 (derive :event/dashboard-update ::dashboard-deps)
+;; Backfill-only event that triggers dependency calculation without creating a revision
+(derive :event/dashboard-dependency-backfill ::dashboard-deps)
 
 (methodical/defmethod events/publish-event! ::dashboard-deps
   [_ {:keys [object]}]
@@ -245,8 +250,21 @@
 
 (methodical/defmethod events/publish-event! ::segment-delete
   [_ {:keys [object]}]
-  (when (premium-features/has-feature? :dependencies)
-    (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object))))
+  (t2/delete! :model/Dependency :from_entity_type :segment :from_entity_id (:id object)))
+
+(defn- check-dependents! [type object recur-through-transforms?]
+  (let [graph (if recur-through-transforms?
+                (models.dependency/graph-dependents)
+                (models.dependency/filtered-graph-dependents
+                 nil
+                 (fn [type-field _id-field]
+                   [:not= type-field "transform"])))
+        children-map (models.dependency/transitive-dependents graph {type [object]})]
+    (doseq [[type children] children-map
+            :when (deps.findings/supported-entities type)
+            instances (partition 50 50 nil children)]
+      (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
+          deps.findings/analyze-instances!))))
 
 ;; ### Measures
 (derive ::measure-deps :metabase/event)
@@ -271,3 +289,47 @@
   [_ {:keys [object]}]
   (when (premium-features/has-feature? :dependencies)
     (t2/delete! :model/Dependency :from_entity_type :measure :from_entity_id (:id object))))
+
+(derive ::check-card-dependents :metabase/event)
+(derive :event/card-create ::check-card-dependents)
+(derive :event/card-update ::check-card-dependents)
+(derive :event/card-delete ::check-card-dependents)
+
+(methodical/defmethod events/publish-event! ::check-card-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object)
+      (check-dependents! :card object false))))
+
+(derive ::check-transform :metabase/event)
+(derive :event/create-transform ::check-transform)
+(derive :event/update-transform ::check-transform)
+(derive :event/delete-transform ::check-transform)
+
+(methodical/defmethod events/publish-event! ::check-transform
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object))))
+
+(derive ::check-segment-dependents :metabase/event)
+(derive :event/segment-create ::check-segment-dependents)
+(derive :event/segment-update ::check-segment-dependents)
+(derive :event/segment-delete ::check-segment-dependents)
+
+(methodical/defmethod events/publish-event! ::check-segment-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (deps.findings/upsert-analysis! object)
+      (check-dependents! :segment object false))))
+
+(derive ::check-transform-dependents :metabase/event)
+(derive :event/transform-run-complete ::check-transform-dependents)
+
+(methodical/defmethod events/publish-event! ::check-transform-dependents
+  [_ {:keys [object]}]
+  (when (premium-features/has-feature? :dependencies)
+    (lib-be/with-metadata-provider-cache
+      (check-dependents! :transform {:id (:transform-id object)} true))))
