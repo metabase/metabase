@@ -266,7 +266,6 @@
       (-> (t2/select (deps.dependency-types/dependency-type->model type) :id [:in instances])
           deps.findings/analyze-instances!))))
 
-
 ;; ### Measures
 (derive ::measure-deps :metabase/event)
 (derive :event/measure-create ::measure-deps)
