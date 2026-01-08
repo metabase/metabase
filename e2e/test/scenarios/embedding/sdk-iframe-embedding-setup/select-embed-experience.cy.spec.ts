@@ -73,6 +73,8 @@ describe(suiteTitle, () => {
 
       visitNewEmbedPage({ waitForResource: false });
 
+      cy.url().should("not.match", /\/admin\/embedding\/guest/);
+
       getEmbedSidebar().within(() => {
         cy.findByTestId("guest-embeds-disabled-info-icon").should("be.visible");
         cy.findByTestId("guest-embeds-disabled-info-icon").click();
@@ -81,6 +83,17 @@ describe(suiteTitle, () => {
       H.hovercard()
         .findByText(/Disabled, enable guest embeds in/)
         .should("exist");
+
+      H.hovercard()
+        .findByText(/admin settings/)
+        .click();
+
+      cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+        .first()
+        .within(() => {
+          cy.url().should("match", /\/admin\/embedding\/guest/);
+          cy.findByText("Enable guest embeds").should("be.visible");
+        });
     });
 
     it("hides the `guest embeds disabled` icon + tooltip when guest embeds enabled", () => {
