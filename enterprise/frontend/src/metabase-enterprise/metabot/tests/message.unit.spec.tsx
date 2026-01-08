@@ -17,9 +17,9 @@ describe("metabot > message", () => {
   it("should properly send chat messages", async () => {
     setup();
 
-    mockAgentEndpoint({
+    const { sendResponse } = mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
-      initialDelay: 50,
+      waitForResponse: true,
     });
 
     await enterChatMessage("Who is your favorite?", false);
@@ -27,10 +27,12 @@ describe("metabot > message", () => {
 
     await enterChatMessage("Who is your favorite?");
     expect(await responseLoader()).toBeInTheDocument();
+
+    sendResponse();
+
     expect(
       await screen.findByText("You, but don't tell anyone."),
     ).toBeInTheDocument();
-
     expect(await input()).toHaveTextContent("");
     expect(await input()).toHaveFocus();
   });
