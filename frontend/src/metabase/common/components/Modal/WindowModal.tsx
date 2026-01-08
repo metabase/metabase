@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
-import { Component } from "react";
+import { Component, createRef } from "react";
 import { CSSTransition, TransitionGroup } from "react-transition-group";
 
 import { MaybeOnClickOutsideWrapper } from "metabase/common/components/Modal/MaybeOnClickOutsideWrapper";
@@ -44,6 +44,7 @@ const MODAL_CLASSES = {
 
 export class WindowModal extends Component<WindowModalProps> {
   _modalElement: HTMLDivElement;
+  _backdropRef = createRef<HTMLDivElement>();
 
   static defaultProps = {
     className: ModalS.Modal,
@@ -160,6 +161,7 @@ export class WindowModal extends Component<WindowModalProps> {
           {isOpen && (
             <CSSTransition
               key="modal"
+              nodeRef={this._backdropRef}
               classNames={{
                 appear: ModalS.ModalAppear,
                 appearActive: ModalS.ModalAppearActive,
@@ -175,6 +177,7 @@ export class WindowModal extends Component<WindowModalProps> {
               }}
             >
               <div
+                ref={this._backdropRef}
                 className={cx(
                   ModalS.ModalBackdrop,
                   backdropClassnames,
