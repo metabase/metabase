@@ -148,7 +148,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <DataStudioTab
-            label={t`Tasks`}
+            label={t`Dependency diagnostics`}
             icon="list"
             to={Urls.dataStudioTasks()}
             isSelected={currentTab === "tasks"}

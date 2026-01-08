@@ -66,6 +66,7 @@ export function BrokenDependencyListPage() {
       error={error}
       withErrorsColumn={true}
       withDependentsCountColumn={true}
+      nameColumnHeader={t`Dependent`}
       onSelect={setSelectedEntry}
       onSearchValueChange={setSearchValue}
       onFilterOptionsChange={setFilterOptions}

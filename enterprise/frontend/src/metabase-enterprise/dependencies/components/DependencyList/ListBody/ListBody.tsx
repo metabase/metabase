@@ -12,6 +12,7 @@ type ListBodyProps = {
   nodes: DependencyNode[];
   withErrorsColumn?: boolean;
   withDependentsCountColumn?: boolean;
+  nameColumnHeader?: string;
   onSelect: (node: DependencyNode) => void;
 };
 
@@ -19,11 +20,17 @@ export const ListBody = memo(function ListBody({
   nodes,
   withErrorsColumn = false,
   withDependentsCountColumn = false,
+  nameColumnHeader,
   onSelect,
 }: ListBodyProps) {
   const columns = useMemo(
-    () => getColumns({ withErrorsColumn, withDependentsCountColumn }),
-    [withErrorsColumn, withDependentsCountColumn],
+    () =>
+      getColumns({
+        withErrorsColumn,
+        withDependentsCountColumn,
+        nameColumnHeader,
+      }),
+    [withErrorsColumn, withDependentsCountColumn, nameColumnHeader],
   );
 
   const handleRowActivate = useCallback(
