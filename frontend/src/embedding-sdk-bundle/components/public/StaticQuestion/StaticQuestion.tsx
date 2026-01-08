@@ -24,7 +24,7 @@ import {
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
-import { QuestionAlertListModalWithHook } from "embedding-sdk-bundle/components/private/notifications/QuestionAlertListModalWithHook";
+import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
 import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import {
   SdkQuestion,
@@ -187,7 +187,7 @@ const StaticQuestionInner = (
                 </Box>
               </Box>
             </Stack>
-            <QuestionAlertListModalWithHook />
+            <SdkQuestionAlertListModal />
           </FlexibleSizeComponent>
         )}
       </QuestionAlertModalProvider>

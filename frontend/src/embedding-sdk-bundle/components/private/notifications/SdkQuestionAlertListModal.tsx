@@ -3,7 +3,7 @@ import { QuestionAlertListModal } from "metabase/notifications/modals";
 
 import { useQuestionAlertModalContext } from "./context/QuestionAlertModalProvider";
 
-export function QuestionAlertListModalWithHook() {
+export function SdkQuestionAlertListModal() {
   const { question } = useSdkQuestionContext();
   const { isOpen: isModalOpen, close: closeModal } =
     useQuestionAlertModalContext();

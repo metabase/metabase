@@ -50,6 +50,8 @@ import {
 } from "../SdkQuestion/components/SaveButton";
 import { SummarizeDropdown } from "../SdkQuestion/components/Summarize/SummarizeDropdown";
 import { useSdkQuestionContext } from "../SdkQuestion/context";
+import { SdkQuestionAlertListModal } from "../notifications/SdkQuestionAlertListModal";
+import { QuestionAlertModalProvider } from "../notifications/context/QuestionAlertModalProvider";
 
 import { DefaultViewTitle } from "./DefaultViewTitle";
 import InteractiveQuestionS from "./SdkQuestionDefaultView.module.css";
@@ -188,104 +190,107 @@ export const SdkQuestionDefaultView = ({
     }) && isSaveEnabled;
 
   return (
-    <FlexibleSizeComponent
-      height={height}
-      width={width}
-      className={cx(InteractiveQuestionS.Container, className)}
-      style={style}
-    >
-      <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-        <Group
-          justify="space-between"
-          align="flex-end"
-          data-testid="interactive-question-top-toolbar"
-        >
-          <Group gap="xs">
-            <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
-              <BackButton />
-            </Box>
-            <DefaultViewTitle
-              title={title}
-              withResetButton={withResetButton && !isBreadcrumbEnabled}
-            />
-          </Group>
-          {showSaveButton && <SaveButton onClick={openSaveModal} />}
-        </Group>
-        {queryResults && (
-          <ResultToolbar data-testid="interactive-question-result-toolbar">
-            <Group gap="xs">
-              {isEditorOpen ? (
-                <PopoverBackButton
-                  onClick={toggleEditor}
-                  c="brand"
-                  fz="md"
-                  ml="sm"
-                >
-                  {t`Back to visualization`}
-                </PopoverBackButton>
-              ) : (
-                <>
-                  {withChartTypeSelector && (
-                    <>
-                      <Button.Group>
-                        <ChartTypeDropdown />
-                        <QuestionSettingsDropdown />
-                      </Button.Group>
-
-                      {!isNativeQuestion && (
-                        <Divider
-                          mx="xs"
-                          orientation="vertical"
-                          style={{
-                            color: "var(--mb-color-border) !important",
-                          }}
-                        />
-                      )}
-                    </>
-                  )}
-
-                  {!isNativeQuestion && (
-                    <>
-                      <FilterDropdown />
-                      <SummarizeDropdown />
-                      <BreakoutDropdown />
-                    </>
-                  )}
-                </>
-              )}
-            </Group>
-            <Group gap="sm" ml="auto">
-              <DownloadWidgetDropdown />
-              <QuestionAlertsButton />
-              <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
-            </Group>
-          </ResultToolbar>
-        )}
-
-        {isGuestEmbed && (
-          <Box w="100%">
-            <SdkQuestion.SqlParametersList />
-          </Box>
-        )}
-      </Stack>
-
-      <Box
-        className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
-        p="sm"
-        w="100%"
-        h="100%"
+    <QuestionAlertModalProvider>
+      <FlexibleSizeComponent
+        height={height}
+        width={width}
+        className={cx(InteractiveQuestionS.Container, className)}
+        style={style}
       >
-        <Box className={InteractiveQuestionS.Content}>
-          {isEditorOpen ? (
-            <Editor onApply={closeEditor} />
-          ) : (
-            <QuestionVisualization height="100%" />
+        <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+          <Group
+            justify="space-between"
+            align="flex-end"
+            data-testid="interactive-question-top-toolbar"
+          >
+            <Group gap="xs">
+              <Box className={InteractiveQuestionS.BackButtonWrapper} mr="sm">
+                <BackButton />
+              </Box>
+              <DefaultViewTitle
+                title={title}
+                withResetButton={withResetButton && !isBreadcrumbEnabled}
+              />
+            </Group>
+            {showSaveButton && <SaveButton onClick={openSaveModal} />}
+          </Group>
+          {queryResults && (
+            <ResultToolbar data-testid="interactive-question-result-toolbar">
+              <Group gap="xs">
+                {isEditorOpen ? (
+                  <PopoverBackButton
+                    onClick={toggleEditor}
+                    c="brand"
+                    fz="md"
+                    ml="sm"
+                  >
+                    {t`Back to visualization`}
+                  </PopoverBackButton>
+                ) : (
+                  <>
+                    {withChartTypeSelector && (
+                      <>
+                        <Button.Group>
+                          <ChartTypeDropdown />
+                          <QuestionSettingsDropdown />
+                        </Button.Group>
+
+                        {!isNativeQuestion && (
+                          <Divider
+                            mx="xs"
+                            orientation="vertical"
+                            style={{
+                              color: "var(--mb-color-border) !important",
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+
+                    {!isNativeQuestion && (
+                      <>
+                        <FilterDropdown />
+                        <SummarizeDropdown />
+                        <BreakoutDropdown />
+                      </>
+                    )}
+                  </>
+                )}
+              </Group>
+              <Group gap="sm" ml="auto">
+                <DownloadWidgetDropdown />
+                <QuestionAlertsButton />
+                <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
+              </Group>
+            </ResultToolbar>
           )}
+
+          {isGuestEmbed && (
+            <Box w="100%">
+              <SdkQuestion.SqlParametersList />
+            </Box>
+          )}
+        </Stack>
+
+        <Box
+          className={cx(InteractiveQuestionS.Main, "sdk-question-main")}
+          p="sm"
+          w="100%"
+          h="100%"
+        >
+          <Box className={InteractiveQuestionS.Content}>
+            {isEditorOpen ? (
+              <Editor onApply={closeEditor} />
+            ) : (
+              <QuestionVisualization height="100%" />
+            )}
+          </Box>
         </Box>
-      </Box>
-      {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      <DefaultViewSaveModal isOpen={isSaveModalOpen} close={closeSaveModal} />
-    </FlexibleSizeComponent>
+        {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
+        <DefaultViewSaveModal isOpen={isSaveModalOpen} close={closeSaveModal} />
+        <SdkQuestionAlertListModal />
+      </FlexibleSizeComponent>
+    </QuestionAlertModalProvider>
   );
 };
 
