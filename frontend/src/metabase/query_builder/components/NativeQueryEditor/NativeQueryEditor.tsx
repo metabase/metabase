@@ -232,7 +232,45 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
   render() {
     const {
       canChangeDatabase = true,
+      cancelQuery,
+      closeSnippetModal,
+      databaseIsDisabled,
+      editorContext,
+      extensions,
+      forwardedRef,
+      handleResize,
+      hasEditingSidebar = true,
+      hasParametersList,
+      hasRunButton = hasEditingSidebar,
+      hasTopBar = true,
+      highlightedLineNumbers,
+      insertSnippet,
+      isNativeEditorOpen,
+      isResultDirty,
+      isRunnable,
+      isRunning,
+      isShowingDataReference,
+      isShowingSnippetSidebar,
+      isShowingTemplateTagsEditor,
+      modalSnippet,
+      onAcceptProposed,
+      onOpenModal,
+      onRejectProposed,
+      onSetDatabaseId,
+      openDataReferenceAtQuestion,
+      openSnippetModalWithSelectedText,
+      placeholder,
+      proposedQuestion,
+      query,
+      question,
+      readOnly,
       resizable = true,
+      resizableBoxProps = {},
+      runQuery,
+      setDatasetQuery,
+      setIsNativeEditorOpen,
+      setNativeEditorSelectedRange,
+      setParameterValue,
       sidebarFeatures = {
         dataReference: true,
         variables: true,
@@ -240,27 +278,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         promptInput: true,
         formatQuery: true,
       },
-      hasTopBar = true,
-      hasEditingSidebar = true,
-      hasRunButton = hasEditingSidebar,
-      resizableBoxProps = {},
       snippetCollections = [],
-      question,
-      proposedQuestion,
-      onRejectProposed,
-      onAcceptProposed,
-      query,
-      readOnly,
-      isNativeEditorOpen,
-      openSnippetModalWithSelectedText,
-      openDataReferenceAtQuestion,
-      setDatasetQuery,
-      setNativeEditorSelectedRange,
-      forwardedRef,
-      runQuery,
-      highlightedLineNumbers,
-      placeholder,
-      extensions,
+      snippets,
+      toggleDataReference,
+      toggleEditor,
+      toggleSnippetSidebar,
+      topBarInnerContent,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -290,29 +313,29 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             focus={this.focus}
             canChangeDatabase={canChangeDatabase}
             sidebarFeatures={sidebarFeatures}
-            isRunnable={this.props.isRunnable}
-            isRunning={this.props.isRunning}
-            hasParametersList={this.props.hasParametersList}
-            isResultDirty={this.props.isResultDirty}
-            isShowingDataReference={this.props.isShowingDataReference}
-            onOpenModal={this.props.onOpenModal}
-            isShowingTemplateTagsEditor={this.props.isShowingTemplateTagsEditor}
-            setIsNativeEditorOpen={this.props.setIsNativeEditorOpen}
-            snippets={this.props.snippets}
-            editorContext={this.props.editorContext}
-            onSetDatabaseId={this.props.onSetDatabaseId}
-            isShowingSnippetSidebar={this.props.isShowingSnippetSidebar}
-            isNativeEditorOpen={this.props.isNativeEditorOpen}
-            toggleEditor={this.props.toggleEditor}
-            toggleDataReference={this.props.toggleDataReference}
-            toggleSnippetSidebar={this.props.toggleSnippetSidebar}
-            setParameterValue={this.props.setParameterValue}
-            setDatasetQuery={this.props.setDatasetQuery}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            hasParametersList={hasParametersList}
+            isResultDirty={isResultDirty}
+            isShowingDataReference={isShowingDataReference}
+            onOpenModal={onOpenModal}
+            isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
+            setIsNativeEditorOpen={setIsNativeEditorOpen}
+            snippets={snippets}
+            editorContext={editorContext}
+            onSetDatabaseId={onSetDatabaseId}
+            isShowingSnippetSidebar={isShowingSnippetSidebar}
+            isNativeEditorOpen={isNativeEditorOpen}
+            toggleEditor={toggleEditor}
+            toggleDataReference={toggleDataReference}
+            toggleSnippetSidebar={toggleSnippetSidebar}
+            setParameterValue={setParameterValue}
+            setDatasetQuery={setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
-            databaseIsDisabled={this.props.databaseIsDisabled}
+            databaseIsDisabled={databaseIsDisabled}
             readOnly={readOnly}
           >
-            {this.props.topBarInnerContent}
+            {topBarInnerContent}
           </NativeQueryEditorTopBar>
         )}
         <div
@@ -333,7 +356,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             resizeHandles={["s"]}
             {...resizableBoxProps}
             onResizeStop={(e, data) => {
-              this.props.handleResize?.();
+              handleResize?.();
               if (typeof resizableBoxProps?.onResizeStop === "function") {
                 resizableBoxProps.onResizeStop(e, data);
               }
@@ -342,7 +365,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
               if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
                 // Start animation to collapse
                 this.setState({ isCollapsing: true });
-                this.props.setIsNativeEditorOpen?.(false);
+                setIsNativeEditorOpen?.(false);
               }
             }}
           >
@@ -403,10 +426,10 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 )}
                 {hasRunButton && !readOnly && (
                   <NativeQueryEditorRunButton
-                    cancelQuery={this.props.cancelQuery}
-                    isResultDirty={this.props.isResultDirty}
-                    isRunnable={this.props.isRunnable}
-                    isRunning={this.props.isRunning}
+                    cancelQuery={cancelQuery}
+                    isResultDirty={isResultDirty}
+                    isRunnable={isRunnable}
+                    isRunning={isRunning}
                     nativeEditorSelectedText={
                       this.props.nativeEditorSelectedText
                     }
@@ -427,23 +450,21 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
           canSaveSnippets={canSaveSnippets}
         />
 
-        {this.props.modalSnippet &&
-          this.props.insertSnippet &&
-          this.props.closeSnippetModal && (
-            <SnippetFormModal
-              snippet={this.props.modalSnippet}
-              onCreate={this.props.insertSnippet}
-              onUpdate={(newSnippet, oldSnippet) => {
-                // get the query instance with the latest Metadata that has the updated snippet
-                const newQuery = this.props.query.updateSnippet(
-                  oldSnippet,
-                  newSnippet,
-                );
-                setDatasetQuery(newQuery);
-              }}
-              onClose={this.props.closeSnippetModal}
-            />
-          )}
+        {modalSnippet && insertSnippet && closeSnippetModal && (
+          <SnippetFormModal
+            snippet={modalSnippet}
+            onCreate={insertSnippet}
+            onUpdate={(newSnippet, oldSnippet) => {
+              // get the query instance with the latest Metadata that has the updated snippet
+              const newQuery = this.props.query.updateSnippet(
+                oldSnippet,
+                newSnippet,
+              );
+              setDatasetQuery(newQuery);
+            }}
+            onClose={closeSnippetModal}
+          />
+        )}
       </div>
     );
   }
