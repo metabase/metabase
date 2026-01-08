@@ -98,7 +98,7 @@ In the experiences that expose users to to Metabase collections (e.g. when using
 
 ## Enable multi-tenant strategy
 
-_Admin setting > People_
+_Admin settings > People_
 
 You can create and manage you tenants exclusively through Metabase UI, or, if that's not your jam, [through SSO](#provisioning-and-assigning-tenants-with-jwt). Regardless of how you manage your tenants, you'll need to enable multi-tenant strategy in Metabase first.
 
@@ -116,7 +116,7 @@ Once you enable multi-tenant strategy, keep in mind that switching _from_ multi-
 
 ## Create new tenants in Metabase
 
-_Admin setting > People > Tenant_
+_Admin settings > People > Tenant_
 
 ![New tenant user](./images/new-tenant.png)
 
@@ -134,7 +134,7 @@ You can avoid manually setting up tenants in Metabase by [provisioning tenants w
 
 ## Create tenant groups
 
-_Admin setting > People > Tenant groups_
+_Admin settings > People > Tenant groups_
 
 Tenant groups are applicable across tenants. For example, you can have tenant groups "Basic users" and "Premium users", and every tenant will be able to use those groups. Groups can be used to configure permissions so that, among the tenant's users, some get Basic permissions while others get Premium. See [Tenant concepts](#concepts) for more information.
 
@@ -149,7 +149,7 @@ To add people to tenant groups, see [Add people to groups](../people-and-groups/
 
 ## Create tenant users in Metabase
 
-_Admin setting > People > Tenant users_
+_Admin settings > People > Tenant users_
 
 Tenant users are the end users in tenants. In a B2B SaaS context, these are the your customer's users. Usually tenant users interact with Metabase through an intermediate app (for example, through an embedded dashboard).
 To add tenant users in Metabase:
@@ -180,13 +180,13 @@ You can have multiple shared collections and nested shared collections. You can 
 
 ## Sync shared collections to GitHub
 
-_Admin setting > Remote Sync_
+_Admin settings > Remote Sync_
 
 You can set up [Remote sync](../installation-and-operation/remote-sync.md) for shared collections. This means you'll be able to develop shared content in one Metabase, push it to a GitHub repo, and then have the shared content in your production Metabase always synced with that repo. See [Remote sync docs](../installation-and-operation/remote-sync.md) for more details.
 
 ## Tenant attributes
 
-_Admin setting > People > Tenants_
+_Admin settings > People > Tenants_
 
 You can create tenant-level [user attributes](#tenant-attributes) which all users of the tenant inherit. This is useful for configuring attribute-based data permissions like [row-level security](../permissions/row-and-column-security.md), [impersonation](../permissions/impersonation.md), or [database routing](../permissions/database-routing.md).
 
@@ -275,7 +275,7 @@ Some auth common error messages and what they mean:
 
 ## Data permissions for tenants
 
-_Admin setting > Permissions_
+_Admin settings > Permissions_
 
 Data permissions control what data people can see on charts and dashboards, and what they can do with that data. To control _which_ charts people see, you can use [collection permissions](#collection-permissions-for-tenants) instead.
 
@@ -336,7 +336,7 @@ For configuring permissions to _internal_ collections for internal users, see [g
 
 ### Configuring shared collections permissions
 
-_Admin setting > Permissions_
+_Admin settings > Permissions_
 
 To configure access to shared collections for tenant and internal groups, go to **Admin settings > Permissions > Shared collections**.
 
@@ -348,13 +348,13 @@ When configuring permissions, remember that in Metabase, all permissions are add
 
 ## Subscription permissions for tenants
 
-_Admin setting > Permissions_
+_Admin settings > Permissions_
 
 By default, all tenant users will be created with **No** [subscription permissions](../permissions/application.md#subscriptions-and-alerts). If you want your users to be able to create subscriptions (either in full-app embedding, modular embedding, or by logging in directly to Metabase), you'll need to change the Subscription and alerts permissions to "Yes".
 
 ## Deactivate a tenant
 
-_Admin setting > People > Tenants_
+_Admin settings > People > Tenants_
 
 **Deactivating a tenant will also deactivate all users who belong to this tenant**.
 
