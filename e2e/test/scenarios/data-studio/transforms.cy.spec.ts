@@ -683,6 +683,15 @@ LIMIT
         cy.findByText("Count").should("be.visible");
       });
     });
+
+    it("should show the metabot button", () => {
+      visitTransformListPage();
+      cy.button("Create a transform").click();
+      H.popover().findByText("Query builder").click();
+      cy.findByRole("button", { name: /Chat with Metabot/ }).should(
+        "be.visible",
+      );
+    });
   });
 
   describe("name", () => {

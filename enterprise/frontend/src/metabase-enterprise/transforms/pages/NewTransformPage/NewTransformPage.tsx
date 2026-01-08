@@ -1,6 +1,6 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo, useState } from "react";
-import type { Route } from "react-router";
+import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -17,6 +17,7 @@ import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Center, Stack } from "metabase/ui";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import {
   PaneHeader,
   PaneHeaderActions,
@@ -144,6 +145,15 @@ function NewTransformPageBody({
               onCancel={handleCancel}
             />
           }
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link key="transform-list" to={Urls.transformList()}>
+                {t`Transforms`}
+              </Link>
+              {t`New transform`}
+            </DataStudioBreadcrumbs>
+          }
+          showMetabotButton
         />
         {source.type === "python" ? (
           <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
