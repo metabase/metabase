@@ -33,7 +33,6 @@ import {
   useGetWorkspacesQuery,
   useUnarchiveWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
-import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
 import type {
   Workspace,
   WorkspaceId,
@@ -41,6 +40,8 @@ import type {
 } from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
+
+const TOOLTIP_OPEN_DELAY = 700;
 
 type WorkspacesSectionProps = {
   showLabel: boolean;
