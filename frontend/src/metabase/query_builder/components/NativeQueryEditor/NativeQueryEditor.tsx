@@ -51,6 +51,7 @@ import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEd
 import { RightClickPopover } from "./RightClickPopover";
 import {
   MIN_EDITOR_HEIGHT_AFTER_DRAGGING,
+  RESIZE_CONSTRAINT_OFFSET,
   THRESHOLD_FOR_AUTO_CLOSE,
 } from "./constants";
 import type { SelectionRange, SidebarFeatures } from "./types";
@@ -119,9 +120,6 @@ type OwnProps = {
   topBarInnerContent?: ReactNode;
   availableHeight: number;
 };
-
-// 1px for the resize border
-const RESIZE_CONSTRAINT_OFFSET = 1;
 
 interface ExplicitSizeProps {
   width: number;
