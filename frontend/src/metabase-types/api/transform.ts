@@ -28,7 +28,6 @@ export type Transform = {
 
   // creator fields
   creator_id?: UserId;
-  creator?: TransformOwner;
 
   // owner fields (can be different from creator)
   owner_user_id?: UserId | null;
@@ -39,6 +38,7 @@ export type Transform = {
   tag_ids?: TransformTagId[];
   table?: Table | null;
   last_run?: TransformRun | null;
+  creator?: UserInfo;
 };
 
 export type SuggestedTransform = Partial<Pick<Transform, "id">> &

@@ -97,10 +97,7 @@ export function Header({
             disabled={!canUndo}
             onClick={undo}
             leftSection={
-              <Icon
-                name="undo"
-                color={canUndo ? "unset" : "var(--mb-color-text-light)"}
-              />
+              <Icon name="undo" c={canUndo ? "none" : "text-tertiary"} />
             }
           />
         </Tooltip>
@@ -111,10 +108,7 @@ export function Header({
             disabled={!canRedo}
             onClick={redo}
             leftSection={
-              <Icon
-                name="redo"
-                color={canRedo ? "unset" : "var(--mb-color-text-light)"}
-              />
+              <Icon name="redo" c={canRedo ? "unset" : "text-tertiary"} />
             }
           />
         </Tooltip>

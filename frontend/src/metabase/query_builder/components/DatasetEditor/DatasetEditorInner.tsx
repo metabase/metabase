@@ -418,10 +418,10 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     (changes: { id: number } & Partial<DatasetColumn>) => {
       const mappedField = metadata?.field?.(changes.id)?.getPlainObject();
       const inheritedProperties =
-        mappedField && getWritableColumnProperties(mappedField);
+        mappedField && getWritableColumnProperties(mappedField, isNative);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
-    [metadata],
+    [metadata, isNative],
   );
 
   const onFieldMetadataChange = useCallback(

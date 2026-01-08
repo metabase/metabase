@@ -65,9 +65,15 @@ function TestWrapper({
   );
 }
 
+type SetupOpts = {
+  initialTables?: Set<TableId>;
+  isAdmin?: boolean;
+};
+
 function setup({
   initialTables = new Set([1]),
-}: { initialTables?: Set<TableId> } = {}) {
+  isAdmin = true,
+}: SetupOpts = {}) {
   setupUsersEndpoints([createMockUser()]);
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
@@ -87,10 +93,28 @@ function setup({
 
   renderWithProviders(<TestWrapper initialTables={initialTables} />, {
     withRouter: false,
+    storeInitialState: {
+      currentUser: createMockUser({ is_superuser: isAdmin }),
+    },
   });
 }
 
 describe("TableAttributesEditBulk", () => {
+  it("should not render publish buttons for non-admin users", async () => {
+    setup({ isAdmin: false });
+
+    await waitFor(() => {
+      expect(screen.getByText(/tables selected/i)).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /Publish/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Unpublish/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("should reset form state when selection changes", async () => {
     setup({ initialTables: new Set([1]) });
     const userName = "Testy Tableton";

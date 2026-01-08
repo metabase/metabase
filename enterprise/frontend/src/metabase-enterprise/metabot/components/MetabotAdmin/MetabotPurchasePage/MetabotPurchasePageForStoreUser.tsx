@@ -138,7 +138,7 @@ export const MetabotPurchasePageForStoreUser = () => {
 
                 <Stack gap="md">
                   <Card
-                    bg="var(--mb-color-bg-light)"
+                    bg="background-secondary"
                     p={12}
                     radius="md"
                     shadow="none"

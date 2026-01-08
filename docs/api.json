@@ -673,6 +673,16 @@
           "$ref" : "#/components/schemas/metabase.lib.schema.expression.orderable"
         } ]
       },
+      "mbql.clause.measure" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "measure"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.measure"
+        } ]
+      },
       "mbql.clause.median" : {
         "type" : "array",
         "prefixItems" : [ {
@@ -8069,6 +8079,11 @@
         "type" : "integer",
         "minimum" : 1
       },
+      "metabase.lib.schema.id.measure" : {
+        "description" : "Valid Measure ID",
+        "type" : "integer",
+        "minimum" : 1
+      },
       "metabase.lib.schema.id.pulse" : {
         "description" : "Valid Pulse ID",
         "type" : "integer",
@@ -8560,6 +8575,8 @@
           "$ref" : "#/components/schemas/mbql.clause.ltrim"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.max"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.measure"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.median"
         }, {
@@ -10447,6 +10464,63 @@
       "metabase.logger.api.time-unit" : {
         "type" : "string",
         "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ]
+      },
+      "metabase.measures.api.measure" : {
+        "description" : "Schema for a Measure entity as returned from the API.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "creator" : {
+            "oneOf" : [ {
+              "type" : "object",
+              "properties" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "updated_at" : { },
+          "table_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "definition" : {
+            "type" : "object",
+            "properties" : { }
+          },
+          "created_at" : { },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ]
       },
       "metabase.notification.models.FullyHydratedNotification" : {
         "description" : "Fully hydrated notification.",
@@ -21185,7 +21259,7 @@
           "required" : false,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
+            "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ]
           }
         }, {
           "in" : "query",
@@ -21228,7 +21302,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
+            "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ]
           }
         }, {
           "in" : "query",
@@ -21236,7 +21310,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ]
+            "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ]
           }
         }, {
           "in" : "query",
@@ -28833,6 +28907,206 @@
         "tags" : [ "/api/login-history" ]
       }
     },
+    "/api/measure/" : {
+      "post" : {
+        "summary" : "POST /api/measure/",
+        "description" : "Create a new `Measure`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a Measure entity as returned from the API.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "definition" : {
+                    "description" : "Value must be a map.",
+                    "type" : "object",
+                    "properties" : { }
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  },
+                  "table_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "type" : "integer",
+                    "minimum" : 1
+                  }
+                },
+                "required" : [ "name", "table_id", "definition" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      },
+      "get" : {
+        "summary" : "GET /api/measure/",
+        "description" : "Fetch *all* `Measures`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "sequence of Schema for a Measure entity as returned from the API.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}" : {
+      "get" : {
+        "summary" : "GET /api/measure/{id}",
+        "description" : "Fetch `Measure` with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a Measure entity as returned from the API.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      },
+      "put" : {
+        "summary" : "PUT /api/measure/{id}",
+        "description" : "Update a `Measure` with ID.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Schema for a Measure entity as returned from the API.",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "archived" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "definition" : {
+                    "oneOf" : [ {
+                      "type" : "object",
+                      "properties" : { }
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "type" : "string",
+                      "minLength" : 1
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "revision_message" : {
+                    "type" : "string",
+                    "minLength" : 1
+                  }
+                },
+                "required" : [ "revision_message" ]
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/measure" ]
+      }
+    },
     "/api/model-index/" : {
       "post" : {
         "summary" : "POST /api/model-index/",
@@ -33208,7 +33482,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard", "document", "segment", "transform" ]
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ]
           }
         } ],
         "responses" : {
@@ -33249,7 +33523,7 @@
                 "properties" : {
                   "entity" : {
                     "type" : "string",
-                    "enum" : [ "card", "dashboard", "document", "segment", "transform" ]
+                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ]
                   },
                   "id" : {
                     "description" : "value must be an integer greater than zero.",
@@ -33280,7 +33554,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "card", "dashboard", "document", "segment", "transform" ]
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ]
           }
         }, {
           "in" : "path",
@@ -33379,7 +33653,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
               }
             }, {
               "type" : "null"

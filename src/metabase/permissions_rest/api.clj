@@ -317,7 +317,7 @@
       (perms/check-advanced-permissions-enabled :group-manager)
       (api/check
        (t2/exists? :model/User :id user_id :is_superuser false)
-       [400 (tru "Admin cant be a group manager.")]))
+       [400 (tru "Admin cannot be a group manager.")]))
     (perms/add-user-to-group! user_id group_id is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
@@ -344,7 +344,7 @@
     (perms/check-manager-of-group (:group_id old))
     (api/check
      (t2/exists? :model/User :id (:user_id old) :is_superuser false)
-     [400 (tru "Admin cant be a group manager.")])
+     [400 (tru "Admin cannot be a group manager.")])
     (t2/update! :model/PermissionsGroupMembership (:id old)
                 {:is_group_manager is_group_manager})
     (t2/select-one :model/PermissionsGroupMembership :id (:id old))))

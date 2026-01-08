@@ -14,6 +14,7 @@ import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
@@ -79,10 +80,10 @@ const getOwnerAvatarColor = (id?: number, email?: string): string => {
   return color("brand");
 };
 
-const NODE_ICON_COLORS: Record<TreeNode["nodeType"], string> = {
-  folder: "text-medium",
+const NODE_ICON_COLORS: Record<TreeNode["nodeType"], ColorName> = {
+  folder: "text-secondary",
   transform: "brand",
-  library: "text-dark",
+  library: "text-primary",
 };
 
 const getNodeIconColor = (node: TreeNode) => NODE_ICON_COLORS[node.nodeType];
