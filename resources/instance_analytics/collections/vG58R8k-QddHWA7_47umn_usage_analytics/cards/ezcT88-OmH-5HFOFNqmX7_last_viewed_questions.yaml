@@ -195,13 +195,12 @@ visualization_settings:
     - {base-type: type/Text, join-alias: Content - Entity Qualified}
     name: description
   table.pivot_column: end_timestamp
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: ezcT88-OmH-5HFOFNqmX7, label: last_viewed_questions, model: Card}
 archived_directly: false
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question
