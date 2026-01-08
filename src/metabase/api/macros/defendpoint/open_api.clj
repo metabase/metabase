@@ -36,12 +36,12 @@
 (defn- sanitize-ref
   "Sanitize $ref paths to use sanitized schema names."
   [schema]
-  (if-let [ref (:$ref schema)]
-    (update schema :$ref (fn [r]
-                           (str/replace r #"#/components/schemas/(.+)"
-                                        (fn [[_ schema-name]]
-                                          (str "#/components/schemas/" (sanitize-schema-name schema-name))))))
-    schema))
+  (cond-> schema
+    (:$ref schema)
+    (update :$ref (fn [r]
+                    (str/replace r #"#/components/schemas/(.+)"
+                                 (fn [[_ schema-name]]
+                                   (str "#/components/schemas/" (sanitize-schema-name schema-name))))))))
 
 (defn- path->operation-id
   "Generate an operationId from method and path, e.g. :get + '/api/action/{id}' -> 'get-api-action-id'"
