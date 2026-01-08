@@ -570,7 +570,7 @@
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
 
-(defn- unreferenced-query [entity-type card-types query]
+(defn- unreferenced-query [entity-type card-types query include-archived-items]
   (let [table-name (case entity-type
                      :card :report_card
                      :table :metabase_table
@@ -583,7 +583,20 @@
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                      :entity.name)]
+                      :entity.name)
+        ;; Archived filtering based on entity type, following the pattern from visible-entities-filter-clause
+        archived-filter (when (= include-archived-items :exclude)
+                          (case entity-type
+                            ;; Collection-based entities with archived field
+                            (:card :dashboard :document :snippet :segment)
+                            [:= :entity.archived false]
+                            ;; Tables use active and visibility_type
+                            :table
+                            [:and
+                             [:= :entity.active true]
+                             [:= :entity.visibility_type nil]]
+                            ;; Transform and Sandbox don't have archived status
+                            nil))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
               [name-column :sort_key]]
@@ -594,7 +607,8 @@
      :where (cond->> [:= :dependency.id nil]
               (and (= entity-type :card)
                    (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
-              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
+              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+              archived-filter (conj [:and archived-filter]))}))
 
 (def ^:private unreferenced-items-args
   [:map
@@ -604,7 +618,8 @@
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:query {:optional true} :string]])
+   [:query {:optional true} :string]
+   [:archived {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/graph/unreferenced" :- [:sequential ::entity]
   "Returns a list of all unreferenced items in the instance.
@@ -615,21 +630,27 @@
    - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
    - query: Search string to filter by name or location
 
+   Optional :archived parameter controls whether entities in archived collections are included:
+   - false (default): Excludes entities in archived collections
+   - true: Includes entities in archived collections
+
    Returns a list of unreferenced items, each with :id, :type, and :data fields."
   [_route-params
-   {:keys [types card_types query]
+   {:keys [types card_types query archived]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)}} :- unreferenced-items-args]
-  (let [selected-types (cond->> (if (sequential? types) types [types])
+  (let [include-archived-items (if archived :all :exclude)
+        graph-opts {:include-archived-items include-archived-items}
+        selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(unreferenced-query % card-types query) selected-types)
+        union-queries (map #(unreferenced-query % card-types query include-archived-items) selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
     (expanded-nodes downstream-graph all-ids {:include-errors? false})))
 
 (def ^:private broken-items-args

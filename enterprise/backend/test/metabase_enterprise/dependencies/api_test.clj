@@ -1203,6 +1203,30 @@
                                :type "metric"}}]
                       response)))))))))
 
+(deftest ^:sequential unreferenced-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card {unreffed-card-id :id} {:name "Unreferenced Card - archivedtest"
+                                                           :type :question
+                                                           :dataset_query (lib/query mp products)}
+                       :model/Card {archived-card-id :id} {:name "Archived Unreferenced Card - archivedtest"
+                                                           :type :question
+                                                           :archived true
+                                                           :dataset_query (lib/query mp products)}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "archived=false (default) excludes archived card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids unreffed-card-id))
+              (is (not (contains? card-ids archived-card-id)))))
+          (testing "archived=true includes archived card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest&archived=true")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids unreffed-card-id))
+              (is (contains? card-ids archived-card-id)))))))))
+
 (deftest ^:sequential broken-questions-test
   (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
     (mt/with-premium-features #{:dependencies}
