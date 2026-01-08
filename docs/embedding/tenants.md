@@ -96,7 +96,7 @@ See [Collection permissions](#collection-permissions-for-tenants) for configurin
 End users who are members of tenants will not know that they are members of tenants.
 In the experiences that expose users to to Metabase collections (e.g. when using full-app embedding, modular embedding components with save enabled, or if tenant users are logging in directly into metabase), tenant users see all the tenant and shared collections they have access to as just collections.
 
-### Enable multi-tenant strategy
+## Enable multi-tenant strategy
 
 _Admin setting > People_
 
