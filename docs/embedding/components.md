@@ -30,7 +30,7 @@ To render a dashboard:
 - `with-downloads` (default is false) - show the button to download the dashboard as PDF and download question results
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
-- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards will not include links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
+- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards exclude links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
 - `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
 - `locale` - see [translations](./translations.md) (only available for guest embeds).
@@ -85,7 +85,11 @@ To render a question (chart):
 To render a collection browser so people can navigate a collection and open dashboards or questions:
 
 ```html
-<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+<metabase-browser
+  initial-collection="14"
+  read-only="false"
+  collection-entity-types="['collection', 'dashboard']">
+</metabase-browser>
 ```
 
 ### Required parameters
@@ -94,11 +98,11 @@ To render a collection browser so people can navigate a collection and open dash
 
 ### Optional parameters
 
-- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
-- `collection-visible-columns` – which columns to show on the collection browser.
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but can't save. If `false`, they can create and edit items in the collection.
+- `collection-visible-columns` – an array of columns to show in the collection browser: `type`, `name`, `description`, `lastEditedBy`, `lastEditedAt`, `archive`. For example, `collection-visible-columns="['type', 'name']"` shows only the type and name columns.
 - `collection-page-size` – how many items to show per page in the collection browser.
-- `collection-entity-types` – which entities to show on the collection browser.
-- `data-picker-entity-types` – which entities to show on the question's data picker.
+- `collection-entity-types` – an array of entity types to show in the collection browser: `collection`, `dashboard`, `question`, `model`. For example, `collection-entity-types="['collection', 'dashboard']"` shows only collections and dashboards.
+- `data-picker-entity-types` – an array of entity types to show in the question's data picker: `model`, `table`. For example, `data-picker-entity-types="['model']"` shows only models.
 - `with-new-question` (default is true) – whether to show the "New exploration" button.
 - `with-new-dashboard` (default is true) – whether to show the "New dashboard" button. Only applies when `read-only` is false.
 
