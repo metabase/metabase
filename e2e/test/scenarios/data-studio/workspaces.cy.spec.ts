@@ -937,7 +937,8 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("Run ad-hoc query");
       Workspaces.getMainlandTransforms().findByText("SQL transform").click();
 
-      H.NativeEditor.type(" LIMIT 1;").runButton().click();
+      H.NativeEditor.type(" LIMIT 1;");
+      cy.findByTestId("run-button").click();
 
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("SQL transform", [
