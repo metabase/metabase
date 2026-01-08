@@ -76,21 +76,40 @@
    :mongo      "MongoDB"})
 
 (def ^:private engine->dialect-file
-  "Map of database engine keywords to dialect instruction file names (without extension)."
-  {:postgres   "postgresql"
-   :mysql      "mysql"
-   :h2         "h2"
-   :sqlserver  "sqlserver"
-   :oracle     "oracle"
-   :bigquery   "bigquery"
-   :snowflake  "snowflake"
-   :redshift   "redshift"
-   :sqlite     "sqlite"
-   :clickhouse "clickhouse"
-   :vertica    "vertica"
-   :athena     "athena"
-   :databricks "databricks"
-   :druid      "druid"})
+  "Map of database engine keywords to dialect instruction file names (without extension).
+   Multiple engine keywords may map to the same dialect file when they share SQL syntax."
+  {;; PostgreSQL family
+   :postgres      "postgresql"
+   :postgresql    "postgresql"
+   ;; MySQL family
+   :mysql         "mysql"
+   :mariadb       "mysql"
+   ;; Cloud warehouses
+   :bigquery-cloud-sdk "bigquery"
+   :bigquery      "bigquery"
+   :snowflake     "snowflake"
+   :redshift      "redshift"
+   ;; Presto/Trino family
+   :athena        "athena"
+   :presto        "athena"
+   :presto-jdbc   "athena"
+   :trino         "athena"
+   :starburst     "athena"
+   ;; Analytics engines
+   :clickhouse    "clickhouse"
+   :druid         "druid"
+   :druid-jdbc    "druid"
+   :vertica       "vertica"
+   ;; Spark family
+   :databricks    "databricks"
+   :sparksql      "databricks"
+   :spark         "databricks"
+   ;; Enterprise databases
+   :oracle        "oracle"
+   :sqlserver     "sqlserver"
+   ;; Embedded/lightweight
+   :h2            "h2"
+   :sqlite        "sqlite"})
 
 (defn- database-engine
   "Get the engine keyword for a database."
