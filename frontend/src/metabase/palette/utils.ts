@@ -3,8 +3,8 @@ import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
 import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteActionImpl } from "./types";
@@ -85,12 +85,10 @@ export const filterRecentItems: (items: RecentItem[]) => RecentItem[] = (
 
 export const getCommandPaletteIcon = (
   item: PaletteActionImpl,
-): { name: IconName; color: string } => {
+): { name: IconName; c: ColorName } => {
   const icon = {
     name: item.icon as IconName,
-    color: item.extra?.iconColor
-      ? color(item.extra.iconColor)
-      : "var(--mb-color-brand)",
+    c: item.extra?.iconColor || "brand",
   };
 
   return icon;

@@ -31,7 +31,7 @@
 
 .HeaderButtonsContainer {
   align-items: center;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   @container dashboard-header (min-width: 40rem) {
     margin-left: auto;

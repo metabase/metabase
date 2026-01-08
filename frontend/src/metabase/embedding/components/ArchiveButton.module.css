@@ -3,6 +3,6 @@
 
   &:hover:not([data-css-specificity-hack]) {
     color: var(--mb-color-danger);
-    background-color: var(--mb-color-bg-error);
+    background-color: var(--mb-color-background-error);
   }
 }

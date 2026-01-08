@@ -40,6 +40,7 @@ import {
   createMockFieldValues,
   createMockSegment,
   createMockTable,
+  createMockUser,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import {
@@ -280,6 +281,9 @@ async function setup({
     {
       withRouter: true,
       initialRoute: initialRoute ?? Urls.dataStudioData(params),
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
     },
   );
 

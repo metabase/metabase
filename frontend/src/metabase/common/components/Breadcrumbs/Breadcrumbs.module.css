@@ -1,10 +1,10 @@
 :root {
-  --breadcrumbs-color: var(--mb-color-text-light);
-  --breadcrumb-page-color: var(--mb-color-text-dark);
+  --breadcrumbs-color: var(--mb-color-text-tertiary);
+  --breadcrumb-page-color: var(--mb-color-text-primary);
   --breadcrumb-divider-spacing: 0.75em;
 
   /* taken from Sidebar.css, should probably factor them out into variables */
-  --sidebar-breadcrumbs-color: var(--mb-color-text-medium);
+  --sidebar-breadcrumbs-color: var(--mb-color-text-secondary);
 }
 
 .breadcrumbs {

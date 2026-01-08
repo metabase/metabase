@@ -317,7 +317,7 @@
    :requires [[mage.util :as u]
               [clojure.string :as str]]
    :task (task!
-          (let [git-dir (u/sh "git rev-parse --git-dir")
+          (let [git-dir (u/sh "git rev-parse --git-common-dir")
                 git-config-file (str git-dir "/config")
                 the-include (str "\n"
                                  "[include]\n"
@@ -332,7 +332,7 @@
    :requires [[clojure.string :as str]
               [mage.util :as u]]
    :task (task!
-          (let [git-dir (u/sh "git rev-parse --git-dir")
+          (let [git-dir (u/sh "git rev-parse --git-common-dir")
                 git-config-file (str git-dir "/config")
                 the-include (str "\n"
                                  "[include]\n"

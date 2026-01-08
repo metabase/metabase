@@ -34,11 +34,11 @@ const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
-const getBackgroundArcColor = () => color("bg-medium");
-const getSegmentLabelColor = () => color("text-dark");
-const getCenterLabelColor = () => color("text-dark");
-const getArrowFillColor = () => color("text-medium-opaque");
-const getArrowStrokeColor = () => color("bg-white");
+const getBackgroundArcColor = () => color("background-tertiary");
+const getSegmentLabelColor = () => color("text-primary");
+const getCenterLabelColor = () => color("text-primary");
+const getArrowFillColor = () => color("text-secondary-opaque");
+const getArrowStrokeColor = () => color("background-primary");
 
 // in px, because scaling was not working well with PDF Exports (metabase#65322)
 const FONT_SIZE_SEGMENT_LABEL = 4;
@@ -437,7 +437,7 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: "var(--mb-color-text-medium)",
+      fill: "var(--mb-color-text-secondary)",
       fontSize: `${FONT_SIZE_SEGMENT_LABEL}px`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit
