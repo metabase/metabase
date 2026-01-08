@@ -86,7 +86,10 @@ export const TasksTable = ({
             {tasks.length === 0 && (
               <tr>
                 <td colSpan={8}>
-                  <Flex c="text-light" justify="center">{t`No results`}</Flex>
+                  <Flex
+                    c="text-tertiary"
+                    justify="center"
+                  >{t`No results`}</Flex>
                 </td>
               </tr>
             )}

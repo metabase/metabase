@@ -13,7 +13,7 @@ type MetricOverviewProps = {
 
 export function MetricOverview({ card }: MetricOverviewProps) {
   return (
-    <Flex className={S.root} p="lg" flex={1} bg="bg-light">
+    <Flex className={S.root} p="lg" flex={1} bg="background-secondary">
       <Flex direction="column" flex={1} mah={700}>
         <OverviewVisualization card={card} />
       </Flex>

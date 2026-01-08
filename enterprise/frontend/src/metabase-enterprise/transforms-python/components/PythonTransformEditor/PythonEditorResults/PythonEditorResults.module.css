@@ -20,7 +20,7 @@
 }
 
 .tableHeader {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   padding: var(--mantine-spacing-sm);
 }
 
@@ -36,9 +36,9 @@
 }
 
 .info {
-  color: var(--mb-color-text-dark);
-  border: 1px solid var(--mb-color-bg-medium);
-  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-primary);
+  border: 1px solid var(--mb-color-background-tertiary);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .success {

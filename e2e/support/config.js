@@ -88,6 +88,7 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+        launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"

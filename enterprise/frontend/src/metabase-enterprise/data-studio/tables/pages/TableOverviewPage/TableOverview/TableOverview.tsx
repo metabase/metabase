@@ -21,7 +21,7 @@ export function TableOverview({ table }: TableOverviewProps) {
   const card = useMemo(() => getCard(table, metadata), [table, metadata]);
 
   return (
-    <Flex className={S.root} p="lg" flex={1} bg="bg-light">
+    <Flex className={S.root} p="lg" flex={1} bg="background-secondary">
       <Flex direction="column" flex={1} mah={700}>
         {card && <OverviewVisualization card={card} />}
       </Flex>
