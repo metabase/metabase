@@ -98,6 +98,8 @@ export function getNodeIconWithType(
       return "permissions_limited";
     case "segment":
       return "segment";
+    case "measure":
+      return "sum";
   }
 }
 
@@ -160,10 +162,31 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
       }
       return null;
     case "segment":
-      return {
-        label: t`View this segment`,
-        url: Urls.dataStudioSegment(node.id),
-      };
+      if (node.data.table != null) {
+        return {
+          label: t`View this segment`,
+          url: Urls.dataStudioDataModelSegment({
+            databaseId: node.data.table.db_id,
+            schemaName: node.data.table.schema,
+            tableId: node.data.table.id,
+            segmentId: node.id,
+          }),
+        };
+      }
+      return null;
+    case "measure":
+      if (node.data.table != null) {
+        return {
+          label: t`View this measure`,
+          url: Urls.dataStudioDataModelMeasure({
+            databaseId: node.data.table.db_id,
+            schemaName: node.data.table.schema,
+            tableId: node.data.table.id,
+            measureId: node.id,
+          }),
+        };
+      }
+      return null;
     case "snippet":
       return {
         label: t`View this snippet`,
@@ -263,6 +286,24 @@ export function getNodeLocationInfo(
         };
       }
       return null;
+    case "measure":
+      if (node.data.table != null) {
+        return {
+          icon: "table",
+          links: [
+            {
+              label: node.data.table.display_name,
+              url: Urls.dataStudioDataModelMeasure({
+                databaseId: node.data.table.db_id,
+                schemaName: node.data.table.schema,
+                tableId: node.data.table.id,
+                measureId: node.id,
+              }),
+            },
+          ],
+        };
+      }
+      return null;
     case "snippet":
       if (node.data.collection != null) {
         return {
@@ -288,6 +329,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "dashboard":
     case "document":
     case "segment":
+    case "measure":
     case "snippet":
     case "transform":
       return node.data.created_at;
@@ -303,6 +345,7 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "dashboard":
     case "document":
     case "segment":
+    case "measure":
     case "snippet":
     case "transform":
       return node.data.creator ?? null;
@@ -318,6 +361,7 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
     case "dashboard":
       return node.data["last-edit-info"]?.timestamp ?? null;
     case "segment":
+    case "measure":
     case "table":
     case "transform":
     case "snippet":
@@ -333,6 +377,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
     case "dashboard":
       return node.data["last-edit-info"] ?? null;
     case "segment":
+    case "measure":
     case "table":
     case "transform":
     case "snippet":
@@ -354,6 +399,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "document":
       return node.data.view_count ?? null;
     case "table":
+    case "measure":
     case "transform":
     case "snippet":
     case "sandbox":
@@ -415,6 +461,8 @@ export function getDependencyGroupType(
       return "sandbox";
     case "segment":
       return "segment";
+    case "measure":
+      return "measure";
     case "snippet":
       return "snippet";
   }
@@ -444,6 +492,8 @@ export function getDependencyGroupTypeInfo(
       return { label: t`Row and column security rule`, color: "error" };
     case "segment":
       return { label: t`Segment`, color: "accent2" };
+    case "measure":
+      return { label: t`Measure`, color: "summarize" };
   }
 }
 
