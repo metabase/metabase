@@ -38,6 +38,28 @@ describe("AnchorLinkButton", () => {
     expect(mockCopy).toHaveBeenCalledWith(url);
   });
 
+  it("copies URL to clipboard on Enter key", async () => {
+    const url = "http://example.com/document/1#block-123";
+    render(<AnchorLinkButton url={url} />);
+
+    const button = screen.getByRole("button", { name: /copy link/i });
+    button.focus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(mockCopy).toHaveBeenCalledWith(url);
+  });
+
+  it("copies URL to clipboard on Space key", async () => {
+    const url = "http://example.com/document/1#block-123";
+    render(<AnchorLinkButton url={url} />);
+
+    const button = screen.getByRole("button", { name: /copy link/i });
+    button.focus();
+    await userEvent.keyboard(" ");
+
+    expect(mockCopy).toHaveBeenCalledWith(url);
+  });
+
   it("shows 'Copied!' tooltip after click", async () => {
     mockClipboard.copied = true;
     const url = "http://example.com/document/1#block-123";

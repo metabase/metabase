@@ -1,4 +1,3 @@
-import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { NodeViewProps } from "@tiptap/core";
 import { Heading } from "@tiptap/extension-heading";
 import {
@@ -7,22 +6,10 @@ import {
   ReactNodeViewRenderer,
 } from "@tiptap/react";
 import cx from "classnames";
-import { useEffect, useMemo, useState } from "react";
 
-import { useListCommentsQuery } from "metabase/api";
-import { getTargetChildCommentThreads } from "metabase/comments/utils";
 import { AnchorLinkMenu } from "metabase/documents/components/Editor/AnchorLinkMenu";
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
-import {
-  getChildTargetId,
-  getCurrentDocument,
-  getHoveredChildTargetId,
-} from "metabase/documents/selectors";
-import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { isTopLevel } from "metabase/documents/utils/editorNodeUtils";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { documentWithAnchor } from "metabase/lib/urls";
+import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -61,52 +48,24 @@ const levelNodeMap: Record<Level, ElementType> = {
 };
 
 export const HeadingNodeView = ({ node, editor, getPos }: NodeViewProps) => {
-  const childTargetId = useSelector(getChildTargetId);
-  const hoveredChildTargetId = useSelector(getHoveredChildTargetId);
-  const document = useSelector(getCurrentDocument);
-  const { data: commentsData } = useListCommentsQuery(
-    getListCommentsQuery(document),
-  );
-  const comments = commentsData?.comments;
-  const [hovered, setHovered] = useState(false);
-  const [rendered, setRendered] = useState(false); // floating ui wrongly positions things without this
-  const { _id, level } = node.attrs;
-  const isOpen = childTargetId === _id;
-  const isHovered = hoveredChildTargetId === _id;
-  const threads = useMemo(
-    () => getTargetChildCommentThreads(comments, _id),
-    [comments, _id],
-  );
+  const { level } = node.attrs;
 
-  // Comments menu floating (right side)
-  const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
-    useFloating({
-      placement: "right-start",
-      whileElementsMounted: autoUpdate,
-      strategy: "fixed",
-      open: rendered,
-    });
-
-  // Anchor link menu floating (left side)
-  const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
-    useFloating({
-      placement: "left-start",
-      whileElementsMounted: autoUpdate,
-      strategy: "fixed",
-      open: rendered,
-    });
-
-  useEffect(() => {
-    if (!rendered) {
-      setRendered(true);
-    }
-  }, [rendered]);
-
-  const isTopLevelBlock = isTopLevel({ editor, getPos });
-  const hasContent = node.textContent.trim().length > 0;
-  const shouldShowMenus =
-    document && rendered && isTopLevelBlock && !isWithinIframe() && hasContent;
-  const anchorUrl = document ? documentWithAnchor(document, _id) : "";
+  const {
+    _id,
+    isOpen,
+    isHovered,
+    hovered,
+    setHovered,
+    threads,
+    document,
+    shouldShowMenus,
+    anchorUrl,
+    setReferenceElement,
+    commentsRefs,
+    commentsFloatingStyles,
+    anchorRefs,
+    anchorFloatingStyles,
+  } = useBlockMenus({ node, editor, getPos });
 
   return (
     <>
@@ -116,10 +75,7 @@ export const HeadingNodeView = ({ node, editor, getPos }: NodeViewProps) => {
           [S.open]: isOpen || isHovered,
         })}
         data-node-id={_id}
-        ref={(el: HTMLElement | null) => {
-          commentsRefs.setReference(el);
-          anchorRefs.setReference(el);
-        }}
+        ref={setReferenceElement}
         onMouseOver={() => setHovered(true)}
         onMouseOut={() => setHovered(false)}
       >
@@ -128,7 +84,7 @@ export const HeadingNodeView = ({ node, editor, getPos }: NodeViewProps) => {
         />
       </NodeViewWrapper>
 
-      {shouldShowMenus && (
+      {shouldShowMenus && document && (
         <>
           <AnchorLinkMenu
             ref={anchorRefs.setFloating}

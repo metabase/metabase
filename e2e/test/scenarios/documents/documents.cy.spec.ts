@@ -1237,6 +1237,19 @@ describe("documents", () => {
   });
 
   describe("anchor links", () => {
+    // Helper to create filler paragraphs for scroll tests
+    const createFillerParagraphs = (count: number, startIndex: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        type: "paragraph",
+        attrs: { _id: `filler-paragraph-${startIndex + i}` },
+        content: [
+          {
+            type: "text",
+            text: `This is filler paragraph ${startIndex + i} to make the document long enough to require scrolling. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.`,
+          },
+        ],
+      }));
+
     beforeEach(() => {
       H.createDocument({
         name: "Anchor Test Document",
@@ -1252,6 +1265,8 @@ describe("documents", () => {
               attrs: { _id: "paragraph-block-1" },
               content: [{ type: "text", text: "Some content here" }],
             },
+            // Add filler content to ensure scrolling is needed
+            ...createFillerParagraphs(15, 1),
             {
               type: "heading",
               attrs: { level: 2, _id: "heading-block-2" },
@@ -1262,6 +1277,8 @@ describe("documents", () => {
               attrs: { _id: "paragraph-block-2" },
               content: [{ type: "text", text: "More content here" }],
             },
+            // More filler to push blockquote down
+            ...createFillerParagraphs(10, 16),
             {
               type: "blockquote",
               attrs: { _id: "blockquote-block-1" },
@@ -1328,18 +1345,41 @@ describe("documents", () => {
       });
     });
 
-    it("should scroll to the correct block when navigating with anchor hash", () => {
+    it("should scroll to the correct block and highlight it when navigating with anchor hash", () => {
       cy.get("@documentId").then((documentId) => {
-        // Navigate directly to the document with an anchor
+        // Navigate directly to the document with an anchor to a block that's not visible initially
         cy.visit(`/document/${documentId}#heading-block-2`);
 
         // Wait for the document to load
         H.documentContent().should("exist");
 
-        // The second heading should be scrolled into view
+        // The second heading should be scrolled into view and visible
         H.documentContent()
           .findByRole("heading", { name: "Second Heading" })
           .should("be.visible");
+
+        // Verify the highlight animation class was applied (CSS module class name is hashed)
+        cy.get('[data-node-id="heading-block-2"]')
+          .invoke("attr", "class")
+          .should("match", /highlighted/);
+      });
+    });
+
+    it("should scroll to blockquote when navigating with anchor hash", () => {
+      cy.get("@documentId").then((documentId) => {
+        // Navigate directly to the blockquote anchor
+        cy.visit(`/document/${documentId}#blockquote-block-1`);
+
+        // Wait for the document to load
+        H.documentContent().should("exist");
+
+        // The blockquote should be scrolled into view
+        H.documentContent().find("blockquote").should("be.visible");
+
+        // First heading should NOT be in view (we scrolled past it)
+        H.documentContent()
+          .findByRole("heading", { name: "First Heading" })
+          .should("not.be.visible");
       });
     });
 
@@ -1356,7 +1396,10 @@ describe("documents", () => {
     it("should show anchor link for blockquotes on hover", () => {
       H.visitDocument("@documentId");
 
-      // Hover over the blockquote (use find() since blockquote has no implicit ARIA role)
+      // Scroll down to see the blockquote first
+      H.documentContent().find("blockquote").scrollIntoView();
+
+      // Hover over the blockquote
       H.documentContent().find("blockquote").realHover();
 
       // Anchor link button should appear
@@ -1374,6 +1417,130 @@ describe("documents", () => {
       // Both anchor link (left) and comments menu (right) should be visible
       cy.findByRole("button", { name: /copy link/i }).should("be.visible");
       cy.findByRole("button", { name: /comments/i }).should("be.visible");
+    });
+
+    it("should show anchor link for bullet lists on hover", () => {
+      H.createDocument({
+        name: "List Test Document",
+        document: {
+          content: [
+            {
+              type: "bulletList",
+              attrs: { _id: "bullet-list-1" },
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "First item" }],
+                    },
+                  ],
+                },
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Second item" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "listDocument",
+        idAlias: "listDocumentId",
+      });
+
+      H.visitDocument("@listDocumentId");
+
+      // Hover over the bullet list
+      H.documentContent().find("ul").realHover();
+
+      // Anchor link button should appear
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+    });
+
+    it("should show anchor link for ordered lists on hover", () => {
+      H.createDocument({
+        name: "Ordered List Test Document",
+        document: {
+          content: [
+            {
+              type: "orderedList",
+              attrs: { _id: "ordered-list-1", start: 1 },
+              content: [
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "First item" }],
+                    },
+                  ],
+                },
+                {
+                  type: "listItem",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [{ type: "text", text: "Second item" }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "orderedListDocument",
+        idAlias: "orderedListDocumentId",
+      });
+
+      H.visitDocument("@orderedListDocumentId");
+
+      // Hover over the ordered list
+      H.documentContent().find("ol").realHover();
+
+      // Anchor link button should appear
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+    });
+
+    it("should show anchor link for code blocks on hover", () => {
+      H.createDocument({
+        name: "Code Block Test Document",
+        document: {
+          content: [
+            {
+              type: "codeBlock",
+              attrs: { _id: "code-block-1", language: "javascript" },
+              content: [
+                {
+                  type: "text",
+                  text: "const hello = 'world';",
+                },
+              ],
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "codeDocument",
+        idAlias: "codeDocumentId",
+      });
+
+      H.visitDocument("@codeDocumentId");
+
+      // Hover over the code block
+      H.documentContent().find("pre").realHover();
+
+      // Anchor link button should appear
+      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
     });
   });
 

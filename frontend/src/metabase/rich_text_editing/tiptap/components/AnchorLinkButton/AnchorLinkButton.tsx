@@ -3,6 +3,7 @@ import type { ComponentPropsWithoutRef, ElementType } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { isPlainKey } from "metabase/common/utils/keyboard";
 import { Button, type ButtonProps, Icon, Text, Tooltip } from "metabase/ui";
 
 type Props<C extends ElementType = "button"> = ButtonProps & {
@@ -18,10 +19,20 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
 }: Props<C>) => {
   const clipboard = useClipboard({ timeout: 2000 });
 
-  const handleClick = useCallback(() => {
+  const handleCopy = useCallback(() => {
     clipboard.copy(url);
     onCopy?.();
   }, [clipboard, url, onCopy]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (isPlainKey(e, "Enter") || isPlainKey(e, " ")) {
+        e.preventDefault();
+        handleCopy();
+      }
+    },
+    [handleCopy],
+  );
 
   return (
     <Tooltip
@@ -34,7 +45,8 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
         leftSection={<Icon name="link" />}
         px="sm"
         size="xs"
-        onClick={handleClick}
+        onClick={handleCopy}
+        onKeyDown={handleKeyDown}
         {...(props as ButtonProps)}
       />
     </Tooltip>

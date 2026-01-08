@@ -8,7 +8,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { Route } from "react-router";
@@ -114,7 +113,6 @@ export const DocumentPage = ({
     "save" | "move" | null
   >(null);
   const [sendToast] = useToast();
-  const hasScrolledToAnchor = useRef(false);
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
   const [isNavigationScheduled, scheduleNavigation] = useCallbackEffect();
@@ -209,12 +207,7 @@ export const DocumentPage = ({
 
   // Scroll to anchor block when navigating with URL hash
   useEffect(() => {
-    if (
-      !editorInstance ||
-      isDocumentLoading ||
-      hasScrolledToAnchor.current ||
-      !location.hash
-    ) {
+    if (!editorInstance || isDocumentLoading || !location.hash) {
       return;
     }
 
@@ -223,36 +216,56 @@ export const DocumentPage = ({
       return;
     }
 
+    // Track timeouts for cleanup
+    const timeoutIds: ReturnType<typeof setTimeout>[] = [];
+    let highlightedElement: Element | null = null;
+
+    const scheduleTimeout = (fn: () => void, delay: number) => {
+      const id = setTimeout(fn, delay);
+      timeoutIds.push(id);
+      return id;
+    };
+
     let attempts = 0;
     const maxAttempts = 20; // 2 seconds total
     const interval = 100;
+    let cancelled = false;
 
     const attemptScroll = () => {
-      const element = document.querySelector(`[data-node-id="${blockId}"]`);
+      if (cancelled) {
+        return;
+      }
+
+      const element = document.querySelector(
+        `[data-node-id="${CSS.escape(blockId)}"]`,
+      );
 
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
         element.classList.add(styles.highlighted);
+        highlightedElement = element;
 
         // Remove class after animation
-        setTimeout(() => {
+        scheduleTimeout(() => {
           element.classList.remove(styles.highlighted);
         }, 2000);
-
-        hasScrolledToAnchor.current = true;
       } else if (attempts < maxAttempts) {
         attempts++;
-        setTimeout(attemptScroll, interval);
+        scheduleTimeout(attemptScroll, interval);
       }
     };
 
     attemptScroll();
-  }, [editorInstance, isDocumentLoading, location.hash, documentId]);
 
-  // Reset scroll flag when document or anchor changes
-  useEffect(() => {
-    hasScrolledToAnchor.current = false;
-  }, [documentId, location.hash]);
+    // Cleanup: cancel pending timeouts and remove highlight from current element
+    return () => {
+      cancelled = true;
+      timeoutIds.forEach(clearTimeout);
+      if (highlightedElement) {
+        highlightedElement.classList.remove(styles.highlighted);
+      }
+    };
+  }, [editorInstance, isDocumentLoading, location.hash, documentId]);
 
   const hasUnsavedChanges = useCallback(() => {
     const currentTitle = documentTitle.trim();
