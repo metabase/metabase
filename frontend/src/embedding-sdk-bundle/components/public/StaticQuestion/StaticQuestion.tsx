@@ -25,6 +25,7 @@ import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuesti
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
 import { QuestionAlertListModalWithHook } from "embedding-sdk-bundle/components/private/notifications/QuestionAlertListModalWithHook";
+import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -140,52 +141,56 @@ const StaticQuestionInner = (
       withDownloads={withDownloads}
       withAlerts={withAlerts}
     >
-      {children ?? (
-        <FlexibleSizeComponent
-          className={className}
-          width={width}
-          height={height}
-          style={style}
-        >
-          <Stack
-            className={InteractiveQuestionS.Container}
-            w="100%"
-            h="100%"
-            gap="xs"
+      <QuestionAlertModalProvider>
+        {children ?? (
+          <FlexibleSizeComponent
+            className={className}
+            width={width}
+            height={height}
+            style={style}
           >
-            {hasTopBar && (
-              <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-                {title && <DefaultViewTitle title={title} />}
+            <Stack
+              className={InteractiveQuestionS.Container}
+              w="100%"
+              h="100%"
+              gap="xs"
+            >
+              {hasTopBar && (
+                <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+                  {title && <DefaultViewTitle title={title} />}
 
-                {hasResultToolbar && (
-                  <ResultToolbar>
-                    {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                    {/* This container is always shown on the right */}
-                    <Group className={cx(CS.mlAuto, CS.hideEmpty)}>
-                      <SdkQuestion.DownloadWidgetDropdown />
-                      <QuestionAlertsButton />
-                    </Group>
-                  </ResultToolbar>
-                )}
+                  {hasResultToolbar && (
+                    <ResultToolbar>
+                      {withChartTypeSelector && (
+                        <SdkQuestion.ChartTypeDropdown />
+                      )}
+                      {/* This container is always shown on the right */}
+                      <Group className={cx(CS.mlAuto, CS.hideEmpty)}>
+                        <SdkQuestion.DownloadWidgetDropdown />
+                        <QuestionAlertsButton />
+                      </Group>
+                    </ResultToolbar>
+                  )}
 
-                {isGuestEmbed && <SdkQuestion.SqlParametersList />}
-              </Stack>
-            )}
+                  {isGuestEmbed && <SdkQuestion.SqlParametersList />}
+                </Stack>
+              )}
 
-            <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
-              <Box className={InteractiveQuestionS.Content}>
-                <SdkQuestion.QuestionVisualization
-                  height={height}
-                  width={width}
-                  className={className}
-                  style={style}
-                />
+              <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
+                <Box className={InteractiveQuestionS.Content}>
+                  <SdkQuestion.QuestionVisualization
+                    height={height}
+                    width={width}
+                    className={className}
+                    style={style}
+                  />
+                </Box>
               </Box>
-            </Box>
-          </Stack>
-          <QuestionAlertListModalWithHook />
-        </FlexibleSizeComponent>
-      )}
+            </Stack>
+            <QuestionAlertListModalWithHook />
+          </FlexibleSizeComponent>
+        )}
+      </QuestionAlertModalProvider>
     </SdkQuestion>
   );
 };
