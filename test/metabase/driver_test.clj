@@ -16,6 +16,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
