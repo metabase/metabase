@@ -104,7 +104,6 @@ function NewTransformPageBody({
   useRegisterMetabotTransformContext(undefined, source);
 
   const validationResult = useMemo(() => {
-    return { isValid: true };
     return source.type === "query"
       ? getValidationResult(Lib.fromJsQueryAndMetadata(metadata, source.query))
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
