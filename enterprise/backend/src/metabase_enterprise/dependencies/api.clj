@@ -606,9 +606,14 @@
                               [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
      :where (cond->> [:= :dependency.id nil]
               (and (= entity-type :card)
-                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
-              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
-              archived-filter (conj [:and archived-filter]))}))
+                   (seq card-types))
+              (conj [:and [:in :entity.type (mapv name card-types)]])
+
+              (and query (not= entity-type :sandbox))
+              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+
+              archived-filter
+              (conj [:and archived-filter]))}))
 
 (def ^:private unreferenced-items-args
   [:map
@@ -629,10 +634,7 @@
    - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
    - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
    - query: Search string to filter by name or location
-
-   Optional :archived parameter controls whether entities in archived collections are included:
-   - false (default): Excludes entities in archived collections
-   - true: Includes entities in archived collections
+   - archived: Controls whether archived entities are included
 
    Returns a list of unreferenced items, each with :id, :type, and :data fields."
   [_route-params
