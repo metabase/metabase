@@ -46,20 +46,21 @@
        ~@body)))
 
 (deftest check-transform-dependencies-test
-  (testing "removing total field from transform1 breaks transform2"
-    (mt/as-admin
-      (with-dependent-transforms! [transform1-id transform2-id]
-        (let [modified-source {:type "query"
-                               :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
-              result (metabot.dependencies/check-transform-dependencies
-                      {:id transform1-id
-                       :source modified-source})]
-          (is (false? (get-in result [:structured_output :success])))
-          (is (= 1 (get-in result [:structured_output :bad_transform_count])))
-          (let [bad-transforms (get-in result [:structured_output :bad_transforms])]
-            (is (= 1 (count bad-transforms)))
-            (is (= transform2-id (get-in (first bad-transforms) [:transform :id])))
-            (is (= "Transform 2" (get-in (first bad-transforms) [:transform :name])))))))))
+  (mt/with-premium-features [:transforms]
+    (testing "removing total field from transform1 breaks transform2"
+      (mt/as-admin
+        (with-dependent-transforms! [transform1-id transform2-id]
+          (let [modified-source {:type "query"
+                                 :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                result (metabot.dependencies/check-transform-dependencies
+                        {:id transform1-id
+                         :source modified-source})]
+            (is (false? (get-in result [:structured_output :success])))
+            (is (= 1 (get-in result [:structured_output :bad_transform_count])))
+            (let [bad-transforms (get-in result [:structured_output :bad_transforms])]
+              (is (= 1 (count bad-transforms)))
+              (is (= transform2-id (get-in (first bad-transforms) [:transform :id])))
+              (is (= "Transform 2" (get-in (first bad-transforms) [:transform :name]))))))))))
 
 (deftest check-transform-dependencies-limit-test
   (testing "max-reported-broken-transforms limit"
@@ -94,31 +95,32 @@
 
 (deftest check-transform-dependencies-with-cards-test
   (testing "removing field from transform breaks dependent card"
-    (mt/as-admin
-      (with-dependent-transforms! [transform1-id _]
-        (mt/with-temp
-          [:model/Card {card-id :id}
-           {:name "Card using Transform 1"
-            :database_id (mt/id)
-            :table_id (mt/id :orders)
-            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
-           :model/Dependency {}
-           {:from_entity_type "card"
-            :from_entity_id card-id
-            :to_entity_type "transform"
-            :to_entity_id transform1-id}]
-          (let [modified-source {:type "query"
-                                 :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
-                result (metabot.dependencies/check-transform-dependencies
-                        {:id transform1-id
-                         :source modified-source})]
-            (is (false? (get-in result [:structured_output :success])))
-            (is (= 1 (get-in result [:structured_output :bad_question_count])))
-            (let [bad-questions (get-in result [:structured_output :bad_questions])]
-              (is (= 1 (count bad-questions)))
-              (is (= card-id (get-in (first bad-questions) [:question :id])))
-              (is (= "Card using Transform 1" (get-in (first bad-questions) [:question :name])))
-              (is (some? (:errors (first bad-questions)))))))))))
+    (mt/with-premium-features [:transforms]
+      (mt/as-admin
+        (with-dependent-transforms! [transform1-id _]
+          (mt/with-temp
+            [:model/Card {card-id :id}
+             {:name "Card using Transform 1"
+              :database_id (mt/id)
+              :table_id (mt/id :orders)
+              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
+             :model/Dependency {}
+             {:from_entity_type "card"
+              :from_entity_id card-id
+              :to_entity_type "transform"
+              :to_entity_id transform1-id}]
+            (let [modified-source {:type "query"
+                                   :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                  result (metabot.dependencies/check-transform-dependencies
+                          {:id transform1-id
+                           :source modified-source})]
+              (is (false? (get-in result [:structured_output :success])))
+              (is (= 1 (get-in result [:structured_output :bad_question_count])))
+              (let [bad-questions (get-in result [:structured_output :bad_questions])]
+                (is (= 1 (count bad-questions)))
+                (is (= card-id (get-in (first bad-questions) [:question :id])))
+                (is (= "Card using Transform 1" (get-in (first bad-questions) [:question :name])))
+                (is (some? (:errors (first bad-questions))))))))))))
 
 (deftest check-transform-dependencies-card-limit-test
   (testing "max-reported-broken-transforms limit applies to cards"
@@ -237,23 +239,24 @@
                   (is (not (contains? broken-question-ids restricted-card-id))))))))))))
 
 (deftest check-transform-dependencies-python-bypass-test
-  (testing "Python transforms bypass dependency checking"
-    (mt/with-test-user :crowberto
-      (mt/with-temp [:model/Transform {python-transform-id :id}
-                     {:name "Python Transform"
-                      :source {:type "python"
-                               :body "print('hello')"
-                               :source-database (mt/id)
-                               :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
-                      :target {:type "table"
-                               :schema "public"
-                               :name "python_transform_table"}}]
-        (let [modified-source {:type "python"
-                               :body "print('modified')"
-                               :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
-              result (metabot.dependencies/check-transform-dependencies
-                      {:id python-transform-id
-                       :source modified-source})]
-          (is (= {:success true
-                  :bad_transforms []}
-                 (result :structured_output))))))))
+  (mt/with-premium-features [:transforms]
+    (testing "Python transforms bypass dependency checking"
+      (mt/with-test-user :crowberto
+        (mt/with-temp [:model/Transform {python-transform-id :id}
+                       {:name "Python Transform"
+                        :source {:type "python"
+                                 :body "print('hello')"
+                                 :source-database (mt/id)
+                                 :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                        :target {:type "table"
+                                 :schema "public"
+                                 :name "python_transform_table"}}]
+          (let [modified-source {:type "python"
+                                 :body "print('modified')"
+                                 :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                result (metabot.dependencies/check-transform-dependencies
+                        {:id python-transform-id
+                         :source modified-source})]
+            (is (= {:success true
+                    :bad_transforms []}
+                   (result :structured_output)))))))))
