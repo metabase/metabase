@@ -53,15 +53,15 @@ export const Workspaces = {
     return cy.findByTestId("workspaces-section");
   },
 
-  getWorkspaceItem(name: string | RegExp) {
+  getWorkspaceItem(name: string) {
     return this.getWorkspacesSection().find(`button[name="${name}"]`);
   },
 
-  getWorkspaceItemStatus(name: string | RegExp) {
+  getWorkspaceItemStatus(name: string) {
     return this.getWorkspaceItem(name).findByTestId("workspace-status");
   },
 
-  getWorkspaceItemActions(name: string | RegExp) {
+  getWorkspaceItemActions(name: string) {
     return this.getWorkspaceItem(name).findByLabelText("More actions");
   },
 
@@ -122,9 +122,6 @@ export const Workspaces = {
   },
 
   getTransformStatusDot(name: string | RegExp) {
-    return cy
-      .findByText(name)
-      .parent()
-      .find('[class*="statusDot"]');
+    return cy.findByText(name).parent().find('[class*="statusDot"]');
   },
 };
