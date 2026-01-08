@@ -90,7 +90,7 @@ export const CollectionBreadcrumbs = ({
           {separator}
           <Badge
             icon={{ name: "dashboard" }}
-            inactiveColor="text-light"
+            inactiveColor="text-tertiary"
             isSingleLine
             to={Urls.dashboard(dashboard)}
           >

@@ -1,5 +1,6 @@
 import type { Edge, Node } from "@xyflow/react";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import type {
   DependencyGroupType,
   DependencyId,
@@ -10,6 +11,16 @@ import type {
 export type NodeId = string;
 export type EdgeId = string;
 export type NodeType = Node<DependencyNode>;
+
+export type NodeTypeInfo = {
+  label: string;
+  color: ColorName;
+};
+
+export type NodeLink = {
+  label: string;
+  url: string;
+};
 
 export type GraphData = {
   nodes: NodeType[];

@@ -97,8 +97,8 @@ const FORCE_DARK_TEXT_COLOR = {
   // The Alert component has a light background, we need to force a dark text
   // color. The sdk aliases text-dark to the primary color, which in dark themes
   // is a light color, making the text un-readable
-  "--mb-color-text-dark": color("text-dark"),
-  "--mb-color-text-medium": color("text-medium"),
+  "--mb-color-text-primary": color("text-primary"),
+  "--mb-color-text-secondary": color("text-secondary"),
 } as CSSProperties;
 
 const DefaultErrorMessage = ({ message, onClose }: SdkErrorComponentProps) => (
@@ -120,8 +120,8 @@ const ResourceNotFoundError = ({
   <SdkError
     message={jt`${resource} ${(
       <Code
-        bg="var(--mb-color-background-error-secondary)"
-        c="var(--mb-color-text-medium)"
+        bg="background-error-secondary"
+        c="text-secondary"
         key="question-id"
       >
         {id}

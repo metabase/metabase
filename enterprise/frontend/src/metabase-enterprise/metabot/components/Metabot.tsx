@@ -28,7 +28,7 @@ const MetabotErrorFallback = ({ onRetry }: { onRetry: () => void }) => {
         data-testid="metabot-error-fallback"
       >
         <Box component={MetabotFailure} w="6rem" />
-        <Text c="text-light" maw="12rem" ta="center">
+        <Text c="text-tertiary" maw="12rem" ta="center">
           {t`Something went wrong.`}
         </Text>
         <Button

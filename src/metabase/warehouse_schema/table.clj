@@ -77,8 +77,8 @@
                       (filter can-access-table-for-query-metadata?))
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                             [:segments :definition_description]
-                             [:measures :definition_description]
+                             :segments
+                             :measures
                              :metrics)]
       (for [table tables]
         (-> table

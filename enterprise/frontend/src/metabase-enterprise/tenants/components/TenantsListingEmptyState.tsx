@@ -10,7 +10,7 @@ export const TenantsListingEmptyState = ({
 }) => (
   <Flex justify="space-between" align="center" gap="lg">
     <Box flex="1">
-      <Text size="md" c="text-dark">
+      <Text size="md" c="text-primary">
         {c(
           "{0} links to external users, {1} links to groups, {2} links to permissions",
         ).jt`Create your first tenant to start adding ${(

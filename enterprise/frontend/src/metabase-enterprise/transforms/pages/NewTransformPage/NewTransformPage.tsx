@@ -150,7 +150,7 @@ function NewTransformPageBody({
         />
         <Box
           w="100%"
-          bg="bg-white"
+          bg="background-primary"
           bdrs="md"
           bd="1px solid var(--mb-color-border)"
           flex={1}

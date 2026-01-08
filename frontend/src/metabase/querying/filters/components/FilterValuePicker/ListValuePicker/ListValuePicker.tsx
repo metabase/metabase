@@ -63,7 +63,7 @@ function CheckboxListPicker({
         value={searchValue}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        leftSection={<Icon name="search" c="text-light" />}
+        leftSection={<Icon name="search" c="text-tertiary" />}
         onChange={handleInputChange}
       />
       {filteredOptions.length > 0 ? (
@@ -92,9 +92,9 @@ function CheckboxListPicker({
           </Checkbox.Group>
         </Stack>
       ) : (
-        <Stack c="text-light" justify="center" align="center">
+        <Stack c="text-tertiary" justify="center" align="center">
           <Icon name="search" size={40} />
-          <Text c="text-medium" fw="bold">{t`Didn't find anything`}</Text>
+          <Text c="text-secondary" fw="bold">{t`Didn't find anything`}</Text>
         </Stack>
       )}
     </Stack>

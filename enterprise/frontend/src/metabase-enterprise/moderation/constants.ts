@@ -22,5 +22,5 @@ MODERATION_STATUS_ICONS.set("verified_filled", {
 
 MODERATION_STATUS_ICONS.set(null, {
   name: "close",
-  color: "text-light",
+  color: "text-tertiary",
 });
