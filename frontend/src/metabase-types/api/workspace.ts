@@ -193,13 +193,20 @@ export type WorkspaceTablesResponse = {
 export type WorkspaceGraphNode = {
   id: string;
   dependents_count: Record<string, number>;
-} & ({
-  type: "input-table";
-  data: { db: number; id: number; schema: string; table: string; }
-} | {
-  type: "workspace-transform";
-  data: { ref_id: string; name: string; }
-} );
+} & (
+  | {
+      type: "input-table";
+      data: { db: number; id: number; schema: string; table: string };
+    }
+  | {
+      type: "workspace-transform";
+      data: {
+        ref_id: string;
+        name: string;
+        target: { db: number; schema: string; table: string; id?: number };
+      };
+    }
+);
 
 export type WorkspaceGraphEdge = {
   from_entity_type: string;
