@@ -19,7 +19,7 @@ describe("metabot > message", () => {
 
     mockAgentEndpoint({
       textChunks: whoIsYourFavoriteResponse,
-      initialDelay: 50,
+      initialDelay: 200,
     });
 
     await enterChatMessage("Who is your favorite?", false);
