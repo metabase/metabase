@@ -65,13 +65,7 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
-<<<<<<< HEAD
-  (assoc transform
-         :source_type (transforms.util/transform-source-type source)
-         :target_db_id (transforms.i/target-db-id transform)))
-=======
   (assoc transform :source_type (transforms.util/transform-source-type source)))
->>>>>>> workspaces-master
 
 (t2/define-before-update :model/Transform
   [{:keys [source] :as transform}]

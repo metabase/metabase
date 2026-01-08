@@ -377,13 +377,9 @@
             result            (transforms.instrumentation/with-stage-timing [run-id [:computation :python-execution]]
                                 (transforms.util/run-cancelable-transform! run-id driver transform-details run-fn :ex-message-fn ex-message-fn))]
         (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
-<<<<<<< HEAD
           (transforms.util/sync-target! target db)
           (events/publish-event! :event/transform-run-complete {:object transform-details}))
-=======
-          (transforms.util/sync-target! target db))
         (transforms.util/execute-secondary-index-ddl-if-required! transform run-id db target)
->>>>>>> workspaces-master
         {:run_id run-id
          :result result}))
     (catch Throwable t

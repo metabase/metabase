@@ -340,13 +340,8 @@
       :source {:type  "query"
                :query (lib/native-query (data/metadata-provider) "SELECT 1 as num")}
       :target {:type "table"
-<<<<<<< HEAD
                :name (str "test_table_" (str/replace (u/generate-nano-id) "-" "_"))
-               :database (data/id)}
-      :target_db_id (data/id)})
-=======
-               :name (str "test_table_" (u/generate-nano-id))}})
->>>>>>> workspaces-master
+               :database (data/id)}})
 
    :model/TransformJob
    (fn [_]

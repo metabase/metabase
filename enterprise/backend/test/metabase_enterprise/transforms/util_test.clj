@@ -109,7 +109,6 @@
                   ;; Ignore cleanup errors
                   nil)))))))))
 
-<<<<<<< HEAD
 ;;; ------------------------------------------------------------
 ;;; Filter xf tests
 ;;; ------------------------------------------------------------
@@ -150,7 +149,7 @@
         (are [job] (nil? (matching-timestamp? job field-path range-jan-feb))
           {}
           {:other "value"})))))
-=======
+
 ;;; ------------------------------------------------- Source Table Resolution Tests ----------------------------------
 
 (deftest batch-lookup-table-ids-test
@@ -254,4 +253,3 @@
                              "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
           (is (= {"t1" (:id t1) "t2" (:id t2)}
                  (transforms.util/resolve-source-tables source-tables))))))))
->>>>>>> workspaces-master

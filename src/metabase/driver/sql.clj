@@ -204,19 +204,8 @@
    query  :- :metabase.lib.schema/native-only-query]
   (let [db-tables     (driver-api/tables query)
         db-transforms (driver-api/transforms query)]
-<<<<<<< HEAD
     (into #{} (keep #(find-table-or-transform driver db-tables db-transforms %)
                     (parsed-table-refs driver query)))))
-=======
-    (-> query
-        driver-api/raw-native-query
-        macaw/parsed-query
-        (macaw/query->components {:strip-contexts? true})
-        :tables
-        (->> (map :component))
-        (->> (into #{} (keep #(->> (normalize-table-spec driver %)
-                                   (find-table-or-transform driver db-tables db-transforms))))))))
->>>>>>> workspaces-master
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Dependencies                                                      |

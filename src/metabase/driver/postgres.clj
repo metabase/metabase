@@ -90,13 +90,9 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
-<<<<<<< HEAD
+                              :transforms/index-ddl     true
                               :metadata/table-existence-check true
                               :workspace                true}]
-=======
-                              :transforms/index-ddl     true
-                              :metadata/table-existence-check true}]
->>>>>>> workspaces-master
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

@@ -16,14 +16,7 @@
 
 (defmethod transforms.i/target-db-id :query
   [transform]
-<<<<<<< HEAD
-  (or (get-in transform [:target :database])
-      ;; Fallback to source. https://github.com/metabase/metabase/pull/67084#discussion_r2630147855
-      (-> transform :source :query :database)
-      (:target_db_id transform)))
-=======
   (-> transform :source :query :database))
->>>>>>> workspaces-master
 
 (mr/def ::transform-details
   [:map

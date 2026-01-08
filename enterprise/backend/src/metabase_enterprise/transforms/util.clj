@@ -551,15 +551,9 @@
 (defn ->tag-filter-xf
   "Returns an xform for a transform tag filter."
   [field-path tag-ids]
-<<<<<<< HEAD
   (if-let [tag-ids (-> tag-ids set not-empty)]
     (filter #(some tag-ids (get-in % field-path)))
     identity))
-=======
-  (let [tag-ids (-> tag-ids set not-empty)]
-    (if tag-ids
-      (filter #(some tag-ids (get-in % field-path)))
-      identity)))
 
 (def ^:private metabase-index-prefix "mb_transform_idx_")
 
@@ -641,4 +635,3 @@
         (transforms.instrumentation/with-stage-timing [run-id [:import :create-incremental-filter-index]]
           (log/infof "Creating secondary index %s(%s) for target %s" index-name value (pr-str target))
           (driver/create-index! driver (:id database) (:schema target) (:name target) index-name [value]))))))
->>>>>>> workspaces-master
