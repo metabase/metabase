@@ -1,9 +1,12 @@
 import type {
+  CardId,
   CollectionId,
   DatabaseId,
   IndexedEntity,
+  TableId,
 } from "metabase-types/api";
 
+import { action } from "./actions";
 import { browseDatabase } from "./browse";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
@@ -23,6 +26,8 @@ export type UrlableModel = {
   };
   database_id?: DatabaseId;
   collection_id?: CollectionId | null;
+  model_id?: CardId | null;
+  table_id?: TableId;
 };
 
 const NOT_FOUND_URL = "/404";
@@ -65,6 +70,16 @@ export function modelToUrl(item: UrlableModel): string {
       return transform(item.id);
     case "indexed-entity":
       return indexedEntity(item as IndexedEntity);
+    case "action":
+      if (item.model_id != null) {
+        return action({ id: item.model_id }, item.id);
+      }
+      return NOT_FOUND_URL;
+    case "segment":
+      if (databaseId != null && item.table_id != null) {
+        return tableRowsQuery(databaseId, item.table_id, undefined, item.id);
+      }
+      return NOT_FOUND_URL;
     default:
       return NOT_FOUND_URL;
   }
