@@ -169,7 +169,7 @@ export function initializePlugin() {
             <IndexRedirect to="/admin/people/tenants/people" />
             <ModalRoute
               path="edit"
-              // @ts-expect-error - params prop can't be infered
+              // @ts-expect-error - params prop can't be inferred
               modal={(props) => <EditUserModal {...props} external />}
               noWrap
             />

@@ -617,7 +617,7 @@
   [index embedding search-context scorers]
   ;; The purpose of this query is just to project the coalesced hybrid columns with standard names so the scorers know
   ;; what to call them (e.g. :model rather than [:coalesced :v.model :t.model]). Likewise, the :search_index alias
-  ;; allows us to re-use scoring expressions between the appdb and semantic backends without adjusting column names.
+  ;; allows us to reuse scoring expressions between the appdb and semantic backends without adjusting column names.
   ;;
   ;; We flatten the nested CTEs because PostgreSQL doesn't support nested WITH clauses.
   ;; The hybrid-query contains nested :with clauses from semantic-search-query and keyword-search-query,
