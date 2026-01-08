@@ -81,7 +81,7 @@ describe(suiteTitle, () => {
       });
 
       H.hovercard()
-        .findByText(/Disabled, enable guest embeds in/)
+        .findByText(/You can enable guest embeds in/)
         .should("exist");
 
       H.hovercard()

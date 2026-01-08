@@ -108,14 +108,14 @@ const WithGuestEmbedsDisabledWarning = ({
         <HoverCard.Dropdown p="sm">
           <Text>{c(
             "{0} is a link to guest embeds settings page with text 'admin settings'",
-          ).jt`Disabled, enable guest embeds in ${(
+          ).jt`You can enable guest embeds in ${(
             <Link
               key="admin-settings-link"
               to="/admin/embedding/guest"
               onClick={() => dispatch(closeModal())}
             >
               <Text display="inline" c="text-brand" fw="bold">{c(
-                "is a link in a sentence 'Disabled, enable guest embeds in admin settings'",
+                "is a link in a sentence 'You can enable guest embeds in admin settings'",
               ).t`admin settings`}</Text>
             </Link>
           )}`}</Text>
