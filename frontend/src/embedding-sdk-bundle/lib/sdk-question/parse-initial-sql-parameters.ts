@@ -19,9 +19,9 @@ export function parseInitialSqlParameters(opts: Opts): {
 
   return Object.fromEntries(
     Object.entries(initialSqlParameters).map(([key, value]) => {
-      const parameterDefinition = parameters.find((p) => p.slug === key);
+      const parameter = parameters.find((p) => p.slug === key);
 
-      if (parameterDefinition && parameterDefinition.isMultiSelect) {
+      if (parameter && parameter.isMultiSelect) {
         if (Array.isArray(value)) {
           return [key, value.map(String)];
         }
