@@ -1,9 +1,11 @@
+import type { InputType } from "storybook/internal/types";
+
 const QUESTION_ENTITY_ID = "_GiVL6zYmsnBb1oqLCp4u";
 const DASHBOARD_ENTITY_ID = "xBLdW9FsgRuB2HGhWiBa_";
 const COLLECTION_ENTITY_ID = "HyB3nRtqb7pBPhFG26evI";
 
 export const questionIds = generateIds(QUESTION_ENTITY_ID);
-export const questionIdArgType = {
+export const questionIdArgType: InputType = {
   options: [
     questionIds.entityId,
     questionIds.oneToManyEntityId,
