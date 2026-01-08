@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { ResizableBoxProps } from "react-resizable";
 
@@ -106,6 +107,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
   } = props;
 
+  const { ref: mainRef, height: mainHeight } = useElementSize();
+  const { ref: footerRef, height: footerHeight } = useElementSize();
+
   if (queryBuilderMode === "notebook") {
     // we need to render main only in view mode
     return;
@@ -122,9 +126,13 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         [ViewMainContainerS.isSidebarOpen]: isSidebarOpen,
       })}
       data-testid="query-builder-main"
+      ref={mainRef}
     >
       {isNative ? (
-        <ViewNativeQueryEditor {...props} />
+        <ViewNativeQueryEditor
+          {...props}
+          availableHeight={mainHeight - footerHeight}
+        />
       ) : (
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
@@ -148,8 +156,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           onUpdateQuestion={updateQuestion}
         />
       </DebouncedFrame>
-      <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
-      <ViewFooter className={CS.flexNoShrink} />
+      <Box ref={footerRef}>
+        <TimeseriesChrome question={question} updateQuestion={updateQuestion} />
+        <ViewFooter className={CS.flexNoShrink} />
+      </Box>
     </Box>
   );
 };

@@ -77,6 +77,7 @@ interface ViewNativeQueryEditorProps {
   cancelQuery?: () => void;
   closeSnippetModal: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
+  availableHeight: number;
 }
 
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {

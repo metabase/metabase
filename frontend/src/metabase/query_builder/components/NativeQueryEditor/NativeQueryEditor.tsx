@@ -117,7 +117,7 @@ type OwnProps = {
   onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
   topBarInnerContent?: ReactNode;
-  availableHeight?: number;
+  availableHeight: number;
 };
 
 // 1px for the resize border
