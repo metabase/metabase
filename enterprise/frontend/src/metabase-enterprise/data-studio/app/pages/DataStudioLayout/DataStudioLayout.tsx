@@ -150,8 +150,8 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           <DataStudioTab
             label={t`Dependency diagnostics`}
             icon="list"
-            to={Urls.dataStudioTasks()}
-            isSelected={currentTab === "tasks"}
+            to={Urls.dataStudioDependencyDiagnostics()}
+            isSelected={currentTab === "dependency-diagnostics"}
             showLabel={isNavbarOpened}
           />
         )}

@@ -11,7 +11,7 @@ import {
 export const ListHeader = memo(function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Broken dependencies`,
+      label: t`Broken entities`,
       to: Urls.dataStudioBrokenEntities(),
       icon: "list",
     },

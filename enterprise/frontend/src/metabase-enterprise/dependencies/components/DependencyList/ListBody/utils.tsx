@@ -13,12 +13,10 @@ import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
 import { NameCell } from "./NameCell";
 
-function getNodeNameColumn(
-  headerLabel?: string,
-): TreeTableColumnDef<DependencyNode> {
+function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
   return {
     id: "name",
-    header: headerLabel ?? t`Name`,
+    header: t`Name`,
     meta: {
       width: "auto",
     },
@@ -83,16 +81,14 @@ function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
 type ColumnOptions = {
   withErrorsColumn: boolean;
   withDependentsCountColumn: boolean;
-  nameColumnHeader?: string;
 };
 
 export function getColumns({
   withErrorsColumn,
   withDependentsCountColumn,
-  nameColumnHeader,
 }: ColumnOptions): TreeTableColumnDef<DependencyNode>[] {
   return [
-    getNodeNameColumn(nameColumnHeader),
+    getNodeNameColumn(),
     getNodeLocationColumn(),
     ...(withErrorsColumn ? [getNodeErrorsColumn()] : []),
     ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),

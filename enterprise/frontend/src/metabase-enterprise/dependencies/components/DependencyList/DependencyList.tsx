@@ -30,7 +30,6 @@ type DependencyListProps = {
   error: unknown;
   withErrorsColumn?: boolean;
   withDependentsCountColumn?: boolean;
-  nameColumnHeader?: string;
   onSelect: (entry: DependencyEntry | null) => void;
   onSearchValueChange: (searchValue: string) => void;
   onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
@@ -48,7 +47,6 @@ export function DependencyList({
   selectedEntry,
   withErrorsColumn = false,
   withDependentsCountColumn = false,
-  nameColumnHeader,
   onSelect,
   onSearchValueChange,
   onFilterOptionsChange,
@@ -84,7 +82,6 @@ export function DependencyList({
             nodes={nodes}
             withErrorsColumn={withErrorsColumn}
             withDependentsCountColumn={withDependentsCountColumn}
-            nameColumnHeader={nameColumnHeader}
             onSelect={onSelect}
           />
         )}
