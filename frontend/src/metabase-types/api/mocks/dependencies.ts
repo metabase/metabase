@@ -47,6 +47,7 @@ export function createMockTransformDependencyNodeData(
   return {
     name: "Transform",
     description: null,
+    created_at: "2020-01-01T00:00:00Z",
     ...opts,
   };
 }
@@ -145,6 +146,9 @@ export function createMockSnippetDependencyNodeData(
   return {
     name: "Snippet",
     description: null,
+    created_at: "2020-01-01T00:00:00Z",
+    creator_id: 1,
+    collection_id: null,
     ...opts,
   };
 }

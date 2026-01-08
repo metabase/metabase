@@ -22,12 +22,14 @@ type SetupOpts = {
   params?: RouteParams;
   activeTab?: DataStudioTableMetadataTab;
   segments?: Segment[];
+  isAdmin?: boolean;
 };
 
 function setup({
   table = createMockTable(),
   activeTab = "field",
   segments,
+  isAdmin = true,
 }: SetupOpts = {}) {
   const onSyncOptionsClick = jest.fn();
 
@@ -52,7 +54,12 @@ function setup({
         />
       )}
     />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
+      },
+    },
   );
 
   return { onSyncOptionsClick };
@@ -69,6 +76,17 @@ describe("TableSection", () => {
       "href",
       `/question#?db=${table.db_id}&table=${table.id}`,
     );
+  });
+
+  it("should not render publish button for non-admin users", () => {
+    setup({ isAdmin: false });
+
+    expect(
+      screen.queryByRole("button", { name: /Publish/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Unpublish/i }),
+    ).not.toBeInTheDocument();
   });
 
   describe("tabs", () => {

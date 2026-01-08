@@ -25,6 +25,7 @@ import type {
   Group,
   GroupListQuery,
   LoggerPreset,
+  Measure,
   ModelCacheRefreshStatus,
   ModelIndex,
   NativeQuerySnippet,
@@ -544,6 +545,21 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideMeasureListTags(
+  measures: Measure[],
+): TagDescription<TagType>[] {
+  return [listTag("measure"), ...measures.flatMap(provideMeasureTags)];
+}
+
+export function provideMeasureTags(
+  measure: Measure,
+): TagDescription<TagType>[] {
+  return [
+    idTag("measure", measure.id),
+    ...(measure.table ? provideTableTags(measure.table) : []),
+  ];
+}
+
 export function provideSnippetListTags(
   snippets: NativeQuerySnippet[],
 ): TagDescription<TagType>[] {
@@ -588,6 +604,7 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
+    ...(table.measures ? provideMeasureListTags(table.measures) : []),
     ...(table.metrics ? provideCardListTags(table.metrics) : []),
   ];
 }

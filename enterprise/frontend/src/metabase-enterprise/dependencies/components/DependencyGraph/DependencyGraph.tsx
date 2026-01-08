@@ -57,6 +57,7 @@ export function DependencyGraph({
     isFetching,
     error,
   } = useGetDependencyGraphQuery(entry ?? skipToken);
+
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
@@ -87,7 +88,7 @@ export function DependencyGraph({
 
   useEffect(() => {
     if (error != null) {
-      sendErrorToast(t`Failed to load dependencies`);
+      sendErrorToast(t`Failed to load the dependency graph`);
     }
   }, [error, sendErrorToast]);
 
@@ -113,7 +114,7 @@ export function DependencyGraph({
         onEdgesChange={onEdgesChange}
       >
         <Background />
-        <Controls className={S.controls} />
+        <Controls className={S.controls} showInteractive={false} />
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>
