@@ -68,6 +68,7 @@ type QueryEditorBodyProps = {
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
   topBarInnerContent?: ReactNode;
+  availableHeight?: number;
 };
 
 export function QueryEditorBody({
@@ -97,6 +98,7 @@ export function QueryEditorBody({
   onAcceptProposed,
   onRejectProposed,
   topBarInnerContent,
+  availableHeight,
 }: QueryEditorBodyProps) {
   const [isResizing, setIsResizing] = useState(false);
   const reportTimezone = useSetting("report-timezone-long");
@@ -130,6 +132,7 @@ export function QueryEditorBody({
 
   return isNative ? (
     <NativeQueryEditor
+      availableHeight={availableHeight}
       question={question}
       proposedQuestion={proposedQuestion}
       query={question.legacyNativeQuery()}
