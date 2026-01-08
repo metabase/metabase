@@ -217,7 +217,7 @@ export const TransformTab = ({
       dispatch(
         workspaceApi.util.invalidateTags([
           idTag("workspace-transforms", workspaceId),
-          listTag("external-transforms"),
+          listTag("external-transform"),
         ]),
       );
 

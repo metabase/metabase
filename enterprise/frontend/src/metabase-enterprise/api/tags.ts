@@ -18,6 +18,7 @@ import {
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
+  type ExternalTransform,
   type MeasureDependencyNode,
   type PythonLibrary,
   type SandboxDependencyNode,
@@ -32,6 +33,7 @@ import {
   type TransformTag,
   type Workspace,
   type WorkspaceItem,
+  type WorkspaceTransformItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -49,7 +51,7 @@ export const ENTERPRISE_TAG_TYPES = [
   "workspace-transforms",
   "workspace-transform",
   "workspace-tables",
-  "external-transforms",
+  "external-transform",
   "git-tree",
   "git-file-content",
   "collection-dirty-entities",
@@ -103,10 +105,10 @@ export function provideWorkspaceTags(
   return [idTag("workspace", workspace.id)];
 }
 
-export function provideWorkspaceContentItemsTags(
-  items: WorkspaceContentItem[],
+export function provideWorkspaceTransformItemsTags(
+  items: WorkspaceTransformItem[],
 ): TagDescription<EnterpriseTagType>[] {
-  return items.flatMap((transform) => idTag("transform", transform.id));
+  return items.flatMap((transform) => idTag("transform", transform.ref_id));
 }
 
 export function provideTransformTags(
@@ -149,6 +151,21 @@ export function provideTransformTagListTags(
   tags: TransformTag[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-tag"), ...tags.flatMap(provideTransformTagTags)];
+}
+
+export function provideExternalTransformTags(
+  transform: ExternalTransform,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("external-transform", transform.id)];
+}
+
+export function provideExternalTransformListTags(
+  transforms: ExternalTransform[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("external-transform"),
+    ...transforms.flatMap(provideExternalTransformTags),
+  ];
 }
 
 export function provideTransformJobTags(

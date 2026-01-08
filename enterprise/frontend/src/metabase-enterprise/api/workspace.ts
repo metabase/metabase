@@ -35,8 +35,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  provideWorkspaceContentItemsTags,
   provideWorkspaceTags,
+  provideWorkspaceTransformItemsTags,
   provideWorkspacesTags,
   tag,
 } from "./tags";
@@ -92,7 +92,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("workspace", id),
           idTag("workspace-transforms", id),
-          idTag("external-transforms", id),
+          idTag("external-transform", id),
           idTag("workspace-tables", id),
           listTag("transform"),
           ...(global_id != null ? [idTag("transform", global_id)] : []),
@@ -109,7 +109,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       providesTags: (mapping) =>
         mapping?.transform
-          ? provideWorkspaceContentItemsTags([mapping.transform])
+          ? provideWorkspaceTransformItemsTags([mapping.transform])
           : [],
     }),
     getTransformDownstreamMapping: builder.query<
@@ -121,7 +121,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace/mapping/transform/${id}/downstream`,
       }),
       providesTags: (mapping) =>
-        mapping ? provideWorkspaceContentItemsTags(mapping.transforms) : [],
+        mapping ? provideWorkspaceTransformItemsTags(mapping.transforms) : [],
     }),
     getWorkspaceCheckout: builder.query<WorkspaceCheckoutResponse, TransformId>(
       {
@@ -233,8 +233,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         params: { database_id: databaseId },
       }),
       providesTags: (_, __, { workspaceId: id }) => [
-        listTag("external-transforms"),
-        idTag("external-transforms", id),
+        listTag("external-transform"),
+        idTag("external-transform", id),
       ],
       transformResponse: (response: ExternalTransformsResponse) =>
         response.transforms,
@@ -349,7 +349,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [
           idTag("workspace", workspaceId),
           idTag("workspace-transforms", workspaceId),
-          idTag("external-transforms", workspaceId),
+          idTag("external-transform", workspaceId),
           idTag("workspace-transform", transformId),
           idTag("workspace-tables", workspaceId),
           tag("transform"),
