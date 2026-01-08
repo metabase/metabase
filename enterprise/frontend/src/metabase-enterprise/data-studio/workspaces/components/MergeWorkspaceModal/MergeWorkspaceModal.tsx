@@ -563,7 +563,6 @@ export const ReviewChangesModal = ({
                       fz="xs"
                       fw={700}
                       tt="uppercase"
-                      lts="0.5px"
                       c="text-medium"
                     >
                       {t`New transforms`}
@@ -587,7 +586,6 @@ export const ReviewChangesModal = ({
                       fz="xs"
                       fw={700}
                       tt="uppercase"
-                      lts="0.5px"
                       c="text-medium"
                     >
                       {t`Modified transforms`}
