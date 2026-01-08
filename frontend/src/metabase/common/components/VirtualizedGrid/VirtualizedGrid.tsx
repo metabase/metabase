@@ -1,6 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Key, ReactNode } from "react";
 import { useMemo, useRef } from "react";
+import _ from "underscore";
 
 import { Box, type BoxProps, Flex } from "metabase/ui";
 
@@ -26,13 +27,10 @@ export const VirtualizedGrid = ({
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Group items into rows
-  const rows = useMemo(() => {
-    const result: VirtualizedGridItem[][] = [];
-    for (let i = 0; i < items.length; i += columnsPerRow) {
-      result.push(items.slice(i, i + columnsPerRow));
-    }
-    return result;
-  }, [items, columnsPerRow]);
+  const rows = useMemo(
+    () => _.chunk(items, columnsPerRow),
+    [items, columnsPerRow],
+  );
 
   const virtualizer = useVirtualizer({
     count: rows.length,
