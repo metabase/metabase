@@ -14,8 +14,21 @@ export const useQueryComplexityCheck = () => {
     [checkQueryComplexity],
   );
 
+  /**
+   * Check query complexity and return whether warning should be shown.
+   * Use this for pre-save validation where you need the result immediately.
+   */
+  const checkIsQueryComplex = useCallback(
+    async (queryText: string): Promise<boolean> => {
+      const result = await checkQueryComplexity(queryText, true).unwrap();
+      return result?.is_simple === false;
+    },
+    [checkQueryComplexity],
+  );
+
   return {
     tryCheckQueryComplexity,
     shouldShowWarning,
+    checkIsQueryComplex,
   };
 };

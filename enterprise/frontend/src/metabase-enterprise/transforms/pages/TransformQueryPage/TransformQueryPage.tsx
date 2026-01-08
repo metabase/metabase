@@ -7,6 +7,7 @@ import { t } from "ttag";
 import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -110,15 +111,29 @@ function TransformQueryPageBody({
   useRegisterMetabotTransformContext(transform, source);
   const metadata = useSelector(getMetadata);
 
-  const { tryCheckQueryComplexity, shouldShowWarning } =
-    useQueryComplexityCheck();
+  const { checkIsQueryComplex } = useQueryComplexityCheck();
+  const { modalContent: confirmationModal, show: showConfirmation } =
+    useConfirmation();
 
-  const handleEditorBlur = () => {
+  const confirmIfQueryComplex = async () => {
     if (source.type !== "query") {
-      return null;
+      return true;
     }
     const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);
-    tryCheckQueryComplexity(Lib.rawNativeQuery(libQuery));
+    const isComplex = await checkIsQueryComplex(Lib.rawNativeQuery(libQuery));
+    if (!isComplex) {
+      return true;
+    }
+    return new Promise<boolean>((resolve) => {
+      showConfirmation({
+        title: t`Query complexity warning`,
+        message: <QueryComplexityWarning />,
+        onConfirm: () => resolve(true),
+        onCancel: () => resolve(false),
+        confirmButtonText: t`Save anyway`,
+        confirmButtonProps: { color: "brand", variant: "filled" },
+      });
+    });
   };
 
   const {
@@ -155,15 +170,20 @@ function TransformQueryPageBody({
   }, [source.type, isEditMode, setSourceAndRejectProposed, transform.source]);
 
   const handleSave = async () => {
-    if (isNotDraftSource(source)) {
-      await handleInitialSave({
-        id: transform.id,
-        source,
-      });
+    if (!isNotDraftSource(source)) {
+      return;
+    }
+    const confirmed = await confirmIfQueryComplex();
+    if (!confirmed) {
+      return;
+    }
+    await handleInitialSave({
+      id: transform.id,
+      source,
+    });
 
-      if (isEditMode) {
-        dispatch(push(Urls.transform(transform.id)));
-      }
+    if (isEditMode) {
+      dispatch(push(Urls.transform(transform.id)));
     }
   };
 
@@ -194,7 +214,6 @@ function TransformQueryPageBody({
           hasMenu={!isEditMode && !isDirty}
           isEditMode={isEditMode}
         />
-        {shouldShowWarning && <QueryComplexityWarning />}
         <Box
           w="100%"
           bg="background-primary"
@@ -229,7 +248,6 @@ function TransformQueryPageBody({
               onChangeUiState={setUiState}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
-              onBlur={handleEditorBlur}
               transformId={transform.id}
             />
           )}
@@ -248,6 +266,7 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
+      {confirmationModal}
     </>
   );
 }
