@@ -110,3 +110,6 @@ Unless otherwise noted, all files © 2026 Metabase, Inc.
 ## Metabase Experts
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/?utm_source=readme&utm_medium=metabase-expetrs&utm_campaign=readme).
+
+
+## Open API test
