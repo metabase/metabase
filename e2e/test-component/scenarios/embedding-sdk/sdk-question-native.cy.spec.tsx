@@ -330,10 +330,10 @@ describe("scenarios > embedding-sdk > interactive-question > native", () => {
 
       cy.wait("@cardQuery");
 
-      H.ensureParameterColumnValue({
-        columnName: "CATEGORY",
-        columnValue: /Gizmo|Widget/,
-      });
+      H.getUniqueTableColumnValues("CATEGORY").should("deep.equal", [
+        "Gizmo",
+        "Widget",
+      ]);
 
       cy.findByLabelText("Category").should(
         "have.text",
