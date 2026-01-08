@@ -48,7 +48,7 @@
      :job-key          job-key
      :trigger-key      trigger-key
      :delay-in-seconds delay-in-seconds
-     :sheduler         scheduler})))
+     :scheduler        scheduler})))
 
 (defmethod task/init! ::DependencyEntityCheck [_]
   (if (pos? (deps.settings/dependency-entity-check-batch-size))
