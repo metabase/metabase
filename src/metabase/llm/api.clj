@@ -27,6 +27,12 @@
 
 ;;; ------------------------------------------------ Logging ------------------------------------------------
 
+(defn- debug-logging-enabled?
+  "Check if debug file logging is enabled via MB_OSS_SQLBOT_DEBUG_LOGGING env var.
+   Disabled by default."
+  []
+  (= "true" (System/getenv "MB_OSS_SQLBOT_DEBUG_LOGGING")))
+
 (def ^:private log-dir "logs/oss-sqlgen")
 
 (def ^:private timestamp-formatter
@@ -200,16 +206,18 @@
                                                       :dialect-instructions dialect-instructions})
             timestamp           (current-timestamp)]
 
-        ;; 6. Log the system prompt
-        (log-to-file! (str timestamp "_prompt.txt") system-prompt)
+        ;; 6. Log the system prompt (if debug logging enabled)
+        (when (debug-logging-enabled?)
+          (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
         ;; 7. Call LLM (returns raw JSON content)
         (let [json-response (llm.openai/chat-completion
                              {:system   system-prompt
                               :messages [{:role "user" :content prompt}]})]
 
-          ;; 8. Log the full JSON response
-          (log-to-file! (str timestamp "_response.txt") json-response)
+          ;; 8. Log the full JSON response (if debug logging enabled)
+          (when (debug-logging-enabled?)
+            (log-to-file! (str timestamp "_response.txt") json-response))
 
           ;; 9. Parse and return AI SDK formatted result
           (let [sql (parse-sql-response json-response)]
@@ -270,7 +278,8 @@
         {:keys [system-prompt buffer-id]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]
 
-    (log-to-file! (str timestamp "_prompt.txt") system-prompt)
+    (when (debug-logging-enabled?)
+      (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
     (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
       (let [llm-chan (llm.openai/chat-completion-stream
@@ -286,7 +295,8 @@
               (nil? chunk)
               (let [json-str  (str text-acc)
                     final-sql (parse-sql-response json-str)]
-                (log-to-file! (str timestamp "_response.txt") json-str)
+                (when (debug-logging-enabled?)
+                  (log-to-file! (str timestamp "_response.txt") json-str))
                 (write-sse! os (llm.streaming/format-sse-line
                                 :data
                                 (llm.streaming/format-code-edit-part buffer-id final-sql)))
