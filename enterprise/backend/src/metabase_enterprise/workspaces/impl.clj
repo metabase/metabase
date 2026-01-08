@@ -174,6 +174,16 @@
          (backfill-external-isolated-table-id! external-id)))
      result)))
 
+(defn dry-run-transform
+  "Execute the given workspace transform without persisting to the target table.
+   Returns the first 2000 rows of transform output for preview purposes."
+  ([workspace transform]
+   (dry-run-transform workspace transform (build-remapping workspace)))
+  ([workspace transform remapping]
+   (ws.isolation/with-workspace-isolation
+     workspace
+     (ws.execute/run-transform-preview transform remapping))))
+
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
 
 (defn- extract-external-transform-ids
