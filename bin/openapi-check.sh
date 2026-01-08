@@ -10,11 +10,6 @@ AUTO_COMMIT=false
 # Usage: ./bin/openapi-check.sh [--auto-commit]
 #   --auto-commit: Automatically commit and push changes if schema is out of date
 
-set -euo pipefail
-
-OPENAPI_SPEC="resources/openapi/openapi.json"
-
-AUTO_COMMIT=false
 if [[ "${1:-}" == "--auto-commit" ]]; then
         AUTO_COMMIT=true
 fi
@@ -38,20 +33,28 @@ fi
 if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
         if [[ "$AUTO_COMMIT" == "true" ]]; then
                 echo "OpenAPI schema has changed, committing updates..."
+
+                # Get the branch name from environment variable or current branch
+                BRANCH="${PR_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
+
+                if [[ "$BRANCH" == "HEAD" ]]; then
+                        echo "Error: Cannot push from detached HEAD state"
+                        echo "Please ensure PR_BRANCH environment variable is set or workflow checks out the branch"
+                        exit 1
+                fi
+
+                # Checkout the actual PR branch (in case we're on a merge commit)
+                echo "Checking out branch: $BRANCH"
+                git checkout "$BRANCH"
+
+                # Regenerate the OpenAPI spec on the actual branch
+                echo "Regenerating OpenAPI spec on branch $BRANCH..."
+                yarn generate-openapi
+
                 git config user.name "github-actions[bot]"
                 git config user.email "github-actions[bot]@users.noreply.github.com"
                 git add "$OPENAPI_SPEC"
                 git commit -m "Update OpenAPI schema"
-
-                # Get the current branch name
-                BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-                if [[ "$BRANCH" == "HEAD" ]]; then
-                        echo "Error: Cannot push from detached HEAD state"
-                        echo "Please ensure the workflow checks out the branch, not a specific commit"
-                        exit 1
-                fi
-
                 git push origin "$BRANCH"
                 echo "OpenAPI schema updated and pushed to $BRANCH."
                 exit 0

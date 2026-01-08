@@ -12,9 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -24,4 +24,6 @@ jobs:
       - name: Generate version.properties
         run: ./bin/build.sh :steps [:version]
       - name: Check OpenAPI specs are up to date
+        env:
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
         run: ./bin/openapi-check.sh --auto-commit
