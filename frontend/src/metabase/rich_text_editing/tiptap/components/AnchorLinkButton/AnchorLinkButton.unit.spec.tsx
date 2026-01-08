@@ -39,23 +39,23 @@ describe("AnchorLinkButton", () => {
   });
 
   it("copies URL to clipboard on Enter key", async () => {
+    const user = userEvent.setup();
     const url = "http://example.com/document/1#block-123";
     render(<AnchorLinkButton url={url} />);
 
-    const button = screen.getByRole("button", { name: /copy link/i });
-    button.focus();
-    await userEvent.keyboard("{Enter}");
+    await user.tab();
+    await user.keyboard("{Enter}");
 
     expect(mockCopy).toHaveBeenCalledWith(url);
   });
 
   it("copies URL to clipboard on Space key", async () => {
+    const user = userEvent.setup();
     const url = "http://example.com/document/1#block-123";
     render(<AnchorLinkButton url={url} />);
 
-    const button = screen.getByRole("button", { name: /copy link/i });
-    button.focus();
-    await userEvent.keyboard(" ");
+    await user.tab();
+    await user.keyboard(" ");
 
     expect(mockCopy).toHaveBeenCalledWith(url);
   });

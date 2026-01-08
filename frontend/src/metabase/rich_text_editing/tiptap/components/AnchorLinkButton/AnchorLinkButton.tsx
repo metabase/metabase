@@ -40,6 +40,7 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
       opened={clipboard.copied}
     >
       <Button
+        {...(props as ButtonProps)}
         aria-label={t`Copy link`}
         bd={0}
         leftSection={<Icon name="link" />}
@@ -47,7 +48,6 @@ export const AnchorLinkButton = <C extends ElementType = "button">({
         size="xs"
         onClick={handleCopy}
         onKeyDown={handleKeyDown}
-        {...(props as ButtonProps)}
       />
     </Tooltip>
   );

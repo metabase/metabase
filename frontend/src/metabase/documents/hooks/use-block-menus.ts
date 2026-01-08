@@ -1,6 +1,6 @@
 import { autoUpdate, useFloating } from "@floating-ui/react";
 import type { Editor, NodeViewProps } from "@tiptap/core";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useListCommentsQuery } from "metabase/api";
 import { getTargetChildCommentThreads } from "metabase/comments/utils";
@@ -27,7 +27,7 @@ interface UseBlockMenusOptions {
 
 /**
  * Shared hook for block-level floating menus (anchor links on left, comments on right).
- * Used by Heading, Paragraph, and Blockquote node views.
+ * Used by Heading, Paragraph, Blockquote, BulletList, OrderedList, and CodeBlock node views.
  */
 export function useBlockMenus({
   node,
@@ -87,10 +87,17 @@ export function useBlockMenus({
     hasContent;
   const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
-  const setReferenceElement = (el: HTMLElement | null) => {
-    commentsRefs.setReference(el);
-    anchorRefs.setReference(el);
-  };
+  // Note: refs.setReference is stable (memoized internally by floating-ui),
+  // but the refs object itself is recreated each render. Depend on the
+  // stable setReference functions directly to avoid unnecessary re-renders.
+  const setReferenceElement = useCallback(
+    (el: HTMLElement | null) => {
+      commentsRefs.setReference(el);
+      anchorRefs.setReference(el);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [commentsRefs.setReference, anchorRefs.setReference],
+  );
 
   return {
     _id,
