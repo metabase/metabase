@@ -290,6 +290,7 @@
                                         :where where-clause})]
     (cond-> (add-native-perms-info dbs)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
+      can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
@@ -365,7 +366,6 @@
                                                                :can-query?                      can-query
                                                                :can-write-metadata?             can-write-metadata)
                                                      [])
-                                          can-query          (filter mi/can-query?)
                                           can-write-metadata (filter has-table-metadata-perms?))]
     {:data  db-list-res
      :total (count db-list-res)}))
