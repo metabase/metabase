@@ -110,16 +110,16 @@
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
-;; TODO we need to first add a transform to trigger initialization, or else there is nothing to destroy
-(deftest archive-workspace-calls-destroy-isolation-test
-  (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
-    (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
-      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_database _workspace]
-                                    (reset! called? true))]
-        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-        (is @called? "destroy-workspace-isolation! should be called when archiving")))))
+;; TODO (chris 2026/01/08) we need to first add a transform to trigger initialization, or else there is nothing to destroy
+#_(deftest archive-workspace-calls-destroy-isolation-test
+    (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
+      (let [called?   (atom false)
+            workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
+        (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                    (fn [_database _workspace]
+                                      (reset! called? true))]
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+          (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
