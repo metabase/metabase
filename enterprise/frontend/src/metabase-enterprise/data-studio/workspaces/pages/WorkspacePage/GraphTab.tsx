@@ -149,26 +149,26 @@ function useDependencyGraph(
 
     // Transform edges to match DependencyEdge format
     const dependencyEdges: DependencyEdge[] = [...graphData.edges].reverse().map((edge) => ({
-      from_entity_id: edge.from_entity_id, // Use original ID directly
+      from_entity_id: edge.to_entity_id, // Switch: use to_entity_id as from
       from_entity_type:
-        edge.from_entity_type === "input-table"
-          ? "table"
-          : (edge.from_entity_type as "transform" | "workspace-transform"),
-      to_entity_id: edge.to_entity_id, // Use original ID directly
-      to_entity_type:
         edge.to_entity_type === "workspace-transform"
           ? "workspace-transform"
           : (edge.to_entity_type as "table" | "transform"),
+      to_entity_id: edge.from_entity_id, // Switch: use from_entity_id as to
+      to_entity_type:
+        edge.from_entity_type === "input-table"
+          ? "table"
+          : (edge.from_entity_type as "transform" | "workspace-transform"),
     }));
 
     // Add edges from workspace-transforms to their target tables
     graphData.nodes.forEach((node) => {
       if (node.type === "workspace-transform" && node.data?.target) {
         const targetEdge: DependencyEdge = {
-          from_entity_id: node.id,
-          from_entity_type: "workspace-transform",
-          to_entity_id: `target-${node.id}`, // Use the same ID as the target table node
-          to_entity_type: "table",
+          to_entity_id: node.id,
+          to_entity_type: "workspace-transform",
+          from_entity_id: `target-${node.id}`, // Use the same ID as the target table node
+          from_entity_type: "table",
         };
         dependencyEdges.push(targetEdge);
       }
