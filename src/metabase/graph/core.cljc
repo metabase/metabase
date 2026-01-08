@@ -9,6 +9,7 @@
   Each graph defines an arbitrary **key**. This can be any hash map key, such as a number, a `[type id]` pair, etc."
   (:require
    #?@(:cljs ([flatland.ordered.set :as oset]))
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [potemkin :as p])
   #?@(:clj ((:import java.util.LinkedHashSet))))
@@ -118,3 +119,32 @@
 ;; TODO: (Braden, 09/19/2025) We may find use for some extra helpers. For example, a wrapper that implements the
 ;; multi-key [[children-of]] on top of a single-key `(children graph key) => #{keys...}` function.
 ;; But YAGNI, so since I don't have a use-case in mind right now, I'm just leaving a note.
+
+(defn find-cycle
+  "Given a graph and starting keys, returns a cycle path if one is reachable, or nil if no cycle exists.
+
+  The returned cycle path is a vector of keys representing the cycle, starting and ending with the same key.
+  For example, `[1 2 3 1]` means 1 -> 2 -> 3 -> 1.
+
+  The cycle path excludes any prefix that leads to the cycle but is not part of it."
+  [graph key-seq]
+  (let [visited (volatile! #{})
+        dfs     (fn dfs [node path path-set]
+                  (cond
+                    (contains? path-set node)
+                    ;; Found a cycle - trim the path to start from the cycle node
+                    (let [cycle-start-idx (u/index-of #{node} path)]
+                      (conj (subvec path cycle-start-idx) node))
+
+                    (contains? @visited node)
+                    nil
+
+                    :else
+                    (let [children   (get (children-of graph [node]) node #{})
+                          path'      (conj path node)
+                          path-set'  (conj path-set node)
+                          result     (some #(dfs % path' path-set') children)]
+                      (when-not result
+                        (vswap! visited conj node))
+                      result)))]
+    (some #(dfs % [] #{}) key-seq)))

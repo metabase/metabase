@@ -83,6 +83,17 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror missing-measure
+  "The query references a measure that does not exist or belongs to a different database."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror invalid-measure
+  "The query references a measure that has an invalid definition (e.g., no aggregation, contains metric references,
+  has cycles, etc.)."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 ;;;; ### Server-Side Errors
 
 (deferror server
