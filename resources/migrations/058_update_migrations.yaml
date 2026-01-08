@@ -4002,6 +4002,26 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
+      id: v58.2025-12-18T16:14:03
+      author: winlost
+      comment: Add disable_links column to pulse table
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable email subscription links"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: pulse
+            columnName: disable_links
+
+  - changeSet:
       id: v58.2025-12-19T10:00:00
       author: christruter
       comment: Create workspace_output_external table for tracking outputs of enclosed external transforms
@@ -4663,26 +4683,6 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       rollback: # will be removed along the table
-
-  - changeSet:
-      id: v58.2025-12-18T16:14:03
-      author: winlost
-      comment: Add disable_links column to pulse table
-      changes:
-        - addColumn:
-            tableName: pulse
-            columns:
-              - column:
-                  name: disable_links
-                  type: ${boolean.type}
-                  remarks: "Whether to disable email subscription links"
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: pulse
-            columnName: disable_links
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
