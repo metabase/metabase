@@ -1,6 +1,7 @@
 .ModalContainer {
   position: absolute;
   z-index: var(--mb-overlay-z-index);
+  pointer-events: auto;
 }
 
 .Modal {
@@ -51,6 +52,7 @@
 
 .ModalBackdrop {
   background-color: var(--mb-color-overlay);
+  pointer-events: auto;
 }
 
 /* TRANSITIONS */

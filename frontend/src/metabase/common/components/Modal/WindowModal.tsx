@@ -1,7 +1,6 @@
 import cx from "classnames";
 import type { CSSProperties } from "react";
-import { Component, createRef } from "react";
-import { CSSTransition, TransitionGroup } from "react-transition-group";
+import { Component } from "react";
 
 import { MaybeOnClickOutsideWrapper } from "metabase/common/components/Modal/MaybeOnClickOutsideWrapper";
 import type {
@@ -44,7 +43,7 @@ const MODAL_CLASSES = {
 
 export class WindowModal extends Component<WindowModalProps> {
   _modalElement: HTMLDivElement;
-  _backdropRef = createRef<HTMLDivElement>();
+  _transitionState: "entering" | "entered" | "exiting" | "exited" = "exited";
 
   static defaultProps = {
     className: ModalS.Modal,
@@ -64,12 +63,36 @@ export class WindowModal extends Component<WindowModalProps> {
 
     if (props.isOpen) {
       getPortalRootElement().appendChild(this._modalElement);
+      this._transitionState = "entering";
     }
   }
 
   componentDidUpdate(prevProps: WindowModalProps) {
     if (!prevProps.isOpen && this.props.isOpen) {
       getPortalRootElement().appendChild(this._modalElement);
+      this._transitionState = "entering";
+      this.forceUpdate(); // Force re-render with entering state
+      // Trigger transition to entered after a frame
+      if (this.props.enableTransition) {
+        requestAnimationFrame(() => {
+          this._transitionState = "entered";
+          this.forceUpdate();
+        });
+      } else {
+        this._transitionState = "entered";
+      }
+    } else if (prevProps.isOpen && !this.props.isOpen) {
+      this._transitionState = "exiting";
+      this.forceUpdate(); // Force re-render with exiting state
+      if (this.props.enableTransition) {
+        // Wait for exit animation before updating state
+        setTimeout(() => {
+          this._transitionState = "exited";
+          this.forceUpdate();
+        }, 250);
+      } else {
+        this._transitionState = "exited";
+      }
     }
   }
 
@@ -131,7 +154,6 @@ export class WindowModal extends Component<WindowModalProps> {
       enableMouseEvents,
       isOpen,
       style,
-      enableTransition,
       "data-testid": dataTestId,
     } = this.props;
     const backdropClassnames = cx(
@@ -145,6 +167,8 @@ export class WindowModal extends Component<WindowModalProps> {
       CS.right,
     );
 
+    const shouldRender = isOpen || this._transitionState === "exiting";
+
     return (
       <SandboxedPortal
         container={this._modalElement}
@@ -153,44 +177,27 @@ export class WindowModal extends Component<WindowModalProps> {
         // disable keydown to allow FocusTrap to work
         unsandboxedEvents={["onKeyDown"]}
       >
-        <TransitionGroup
-          appear={enableTransition}
-          enter={enableTransition}
-          exit={enableTransition}
-        >
-          {isOpen && (
-            <CSSTransition
-              key="modal"
-              nodeRef={this._backdropRef}
-              classNames={{
-                appear: ModalS.ModalAppear,
-                appearActive: ModalS.ModalAppearActive,
-                enter: ModalS.ModalEnter,
-                enterActive: ModalS.ModalEnterActive,
-                exit: ModalS.ModalExit,
-                exitActive: ModalS.ModalExitActive,
-              }}
-              timeout={{
-                appear: 250,
-                enter: 250,
-                exit: 250,
-              }}
-            >
-              <div
-                ref={this._backdropRef}
-                className={cx(
-                  ModalS.ModalBackdrop,
-                  backdropClassnames,
-                  ZIndex.Overlay,
-                )}
-                style={style}
-                data-testid={dataTestId}
-              >
-                {this._modalComponent()}
-              </div>
-            </CSSTransition>
-          )}
-        </TransitionGroup>
+        {shouldRender && (
+          <div
+            className={cx(
+              ModalS.ModalBackdrop,
+              backdropClassnames,
+              ZIndex.Overlay,
+              {
+                [ModalS.ModalAppear]: this._transitionState === "entering",
+                [ModalS.ModalAppearActive]: this._transitionState === "entered",
+                [ModalS.ModalEnter]: this._transitionState === "entering",
+                [ModalS.ModalEnterActive]: this._transitionState === "entered",
+                [ModalS.ModalExit]: this._transitionState === "exiting",
+                [ModalS.ModalExitActive]: this._transitionState === "exiting",
+              },
+            )}
+            style={style}
+            data-testid={dataTestId}
+          >
+            {this._modalComponent()}
+          </div>
+        )}
       </SandboxedPortal>
     );
   }

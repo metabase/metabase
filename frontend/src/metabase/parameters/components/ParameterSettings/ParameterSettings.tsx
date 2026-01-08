@@ -209,7 +209,7 @@ export const ParameterSettings = ({
       )}
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
-          <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
+          <SettingLabel>{t`How should on this column? s2`}</SettingLabel>
           <ValuesSourceSettings
             parameter={parameter}
             onChangeQueryType={onChangeQueryType}

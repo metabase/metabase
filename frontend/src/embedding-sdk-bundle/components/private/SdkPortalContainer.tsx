@@ -19,6 +19,8 @@ export const PortalContainer = () => (
       left={0}
       top={0}
       w={"100%"}
+      h={"100%"}
+      style={{ pointerEvents: "none" }}
     ></Box>
   </PublicComponentStylesWrapper>
 );
