@@ -659,9 +659,10 @@
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:query {:optional true} :string]])
+   [:query {:optional true} :string]
+   [:archived {:optional true} :boolean]])
 
-(defn- broken-query [entity-type card-types query]
+(defn- broken-query [entity-type card-types query include-archived-items]
   (let [table-name (case entity-type
                      :card :report_card
                      :table :metabase_table
@@ -674,7 +675,16 @@
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                      :entity.name)]
+                      :entity.name)
+        archived-filter (when (= include-archived-items :exclude)
+                          (case entity-type
+                            (:card :dashboard :document :snippet :segment)
+                            [:= :entity.archived false]
+                            :table
+                            [:and
+                             [:= :entity.active true]
+                             [:= :entity.visibility_type nil]]
+                            nil))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
               [name-column :sort_key]]
@@ -684,8 +694,14 @@
                                     [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
      :where (cond->> [:= :analysis_finding.result false]
               (and (= entity-type :card)
-                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
-              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
+                   (seq card-types))
+              (conj [:and [:in :entity.type (mapv name card-types)]])
+
+              (and query (not= entity-type :sandbox))
+              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+
+              archived-filter
+              (conj [:and archived-filter]))}))
 
 (api.macros/defendpoint :get "/graph/broken" :- [:sequential ::entity]
   "Returns a list of all items with broken queries.
@@ -694,22 +710,25 @@
    - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)
    - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
    - `query`: Search string to filter by name or location
+   - `archived`: Controls whether archived entities are included
 
    Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields."
   [_route-params
-   {:keys [types card_types query]
+   {:keys [types card_types query archived]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)}} :- broken-items-args]
-  (let [selected-types (cond->> (if (sequential? types) types [types])
+  (let [include-archived-items (if archived :all :exclude)
+        graph-opts {:include-archived-items include-archived-items}
+        selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(broken-query % card-types query) selected-types)
+        union-queries (map #(broken-query % card-types query include-archived-items) selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
     (expanded-nodes downstream-graph all-ids {:include-errors? true})))
 
 (def ^{:arglists '([request respond raise])} routes

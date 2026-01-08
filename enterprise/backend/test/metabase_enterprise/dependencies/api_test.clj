@@ -1412,3 +1412,49 @@
                         :data {:name "B - Broken Metric - cardtype"
                                :type "metric"}}]
                       response)))))))))
+
+(deftest ^:sequential broken-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/broken with archived parameter"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {broken-card-id :id} {:name "Broken Card - archivedbrokentestcard"
+                                                         :type :question
+                                                         :dataset_query (lib/native-query mp "not a query")}
+                       :model/Card {archived-broken-card-id :id} {:name "Archived Broken Card - archivedbrokentestcard"
+                                                                  :type :question
+                                                                  :archived true
+                                                                  :dataset_query (lib/native-query mp "not a query")}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (testing "archived=false (default) excludes archived broken card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids broken-card-id))
+              (is (not (contains? card-ids archived-broken-card-id)))))
+          (testing "archived=true includes archived broken card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard&archived=true")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids broken-card-id))
+              (is (contains? card-ids archived-broken-card-id)))))))))
+
+(deftest ^:sequential broken-archived-segment-test
+  (testing "GET /api/ee/dependencies/graph/broken with archived parameter for segments"
+    (mt/with-premium-features #{:dependencies}
+      ;; Use a filter referencing a non-existent field ID (999999) to create a "broken" segment
+      (mt/with-temp [:model/Segment {broken-segment-id :id} {:name "Broken Segment - archivedbrokentest"
+                                                             :table_id (mt/id :products)
+                                                             :definition {:filter [:> [:field 999999 nil] 50]}}
+                     :model/Segment {archived-broken-segment-id :id} {:name "Archived Broken Segment - archivedbrokentest"
+                                                                      :table_id (mt/id :products)
+                                                                      :definition {:filter [:> [:field 999999 nil] 50]}
+                                                                      :archived true}]
+        (while (> (dependencies.findings/analyze-batch! :segment 50) 0))
+        (testing "archived=false (default) excludes archived broken segment"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest")
+                segment-ids (set (map :id response))]
+            (is (contains? segment-ids broken-segment-id))
+            (is (not (contains? segment-ids archived-broken-segment-id)))))
+        (testing "archived=true includes archived broken segment"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest&archived=true")
+                segment-ids (set (map :id response))]
+            (is (contains? segment-ids broken-segment-id))
+            (is (contains? segment-ids archived-broken-segment-id))))))))
