@@ -318,13 +318,6 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))
   :setter (fn [send-emails] (setting/set-value-of-type! :boolean :send-new-sso-user-admin-email? send-emails)))
 
-(defsetting other-sso-enabled?
-  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
-  authorization rather than the normal login form or Google Auth button."
-  :visibility :public
-  :setter     :none
-  :getter     (fn [] (or (saml-enabled) (jwt-enabled))))
-
 (defsetting ldap-sync-user-attributes
   (deferred-tru "Should we sync user attributes when someone logs in via LDAP?")
   :type    :boolean
@@ -344,3 +337,109 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :encryption :no
   :default    "(member={dn})"
   :audit      :getter)
+
+;;; ------------------------------------------------ Slack Connect ------------------------------------------------
+
+(defsetting slack-connect-client-id
+  (deferred-tru "Client ID for your Slack app. Get this from https://api.slack.com/apps")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :feature    :sso-slack
+  :audit      :getter)
+
+(defsetting slack-connect-client-secret
+  (deferred-tru "Client Secret for your Slack app")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :sensitive? true
+  :feature    :sso-slack
+  :audit      :no-value)
+
+(defsetting slack-connect-authentication-mode
+  (deferred-tru "Controls whether Slack can be used for SSO login or just account linking. Valid values: \"sso\" (default) or \"link-only\"")
+  :type       :string
+  :export?    false
+  :default    "sso"
+  :feature    :sso-slack
+  :audit      :getter
+  :encryption :no
+  :setter     (fn [new-value]
+                (when (and new-value
+                           (not (contains? #{"sso" "link-only"} new-value)))
+                  (throw (ex-info (tru "Invalid authentication mode. Must be \"sso\" or \"link-only\"")
+                                  {:status-code 400})))
+                (setting/set-value-of-type! :string :slack-connect-authentication-mode new-value)))
+
+(defsetting slack-connect-user-provisioning-enabled
+  (deferred-tru "When a user logs in via Slack Connect, create a Metabase account for them automatically if they don''t have one.")
+  :type    :boolean
+  :export? false
+  :default true
+  :feature :sso-slack
+  :getter  (fn []
+             (if (or (scim/scim-enabled)
+                     (= (slack-connect-authentication-mode) "link"))
+               ;; Disable Slack provisioning automatically when SCIM is enabled
+               false
+               (setting/get-value-of-type :boolean :slack-connect-user-provisioning-enabled)))
+  :audit   :getter)
+
+(defsetting slack-connect-attribute-team-id
+  (deferred-tru "Slack OIDC claim for the team/workspace ID")
+  :default    "https://slack.com/team_id"
+  :export?    false
+  :feature    :sso-slack
+  :encryption :when-encryption-key-set
+  :audit      :getter)
+
+(defsetting slack-connect-group-sync
+  (deferred-tru "Enable group membership synchronization with Slack.")
+  :type    :boolean
+  :export? false
+  :default false
+  :feature :sso-slack
+  :audit   :getter)
+
+(defsetting slack-connect-group-mappings
+  ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are Slack groups and values are lists of MB groups IDs
+  (deferred-tru "JSON containing Slack to {0} group mappings."
+                (setting/application-name-for-setting-descriptions appearance/application-name))
+  :encryption :when-encryption-key-set
+  :export?    false
+  :type       :json
+  :cache?     false
+  :default    {}
+  :feature    :sso-slack
+  :audit      :getter
+  :setter     (comp (partial setting/set-value-of-type! :json :slack-connect-group-mappings)
+                    (partial mu/validate-throw validate-group-mappings)))
+
+(defsetting slack-connect-configured
+  (deferred-tru "Are the mandatory Slack Connect settings configured?")
+  :type    :boolean
+  :export? false
+  :default false
+  :feature :sso-slack
+  :setter  :none
+  :getter  (fn [] (boolean
+                   (and (slack-connect-client-id)
+                        (slack-connect-client-secret)))))
+
+(defsetting slack-connect-enabled
+  (deferred-tru "Is Slack Connect authentication configured and enabled?")
+  :type    :boolean
+  :export? false
+  :default false
+  :feature :sso-slack
+  :audit   :getter
+  :getter  (fn []
+             (if (slack-connect-configured)
+               (setting/get-value-of-type :boolean :slack-connect-enabled)
+               false)))
+
+(defsetting other-sso-enabled?
+  "Are we using an SSO integration other than LDAP or Google Auth? These integrations use the `/auth/sso` endpoint for
+  authorization rather than the normal login form or Google Auth button."
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (or (saml-enabled) (jwt-enabled) (slack-connect-enabled))))
