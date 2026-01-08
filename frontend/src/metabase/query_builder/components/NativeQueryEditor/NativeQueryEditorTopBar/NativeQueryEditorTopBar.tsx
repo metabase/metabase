@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, forwardRef } from "react";
 
 import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions/core";
@@ -55,7 +55,10 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   databaseIsDisabled?: (database: Database) => boolean;
 }
 
-const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
+const NativeQueryEditorTopBar = forwardRef<
+  HTMLDivElement,
+  NativeQueryEditorTopBarProps
+>(function NativeQueryEditorTopBarInner(props, ref) {
   const {
     children,
     query,
@@ -122,7 +125,7 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
   const parameters = question.parameters();
 
   return (
-    <Flex align="flex-start" data-testid="native-query-top-bar">
+    <Flex align="flex-start" data-testid="native-query-top-bar" ref={ref}>
       {canChangeDatabase && (
         <DataSourceSelectors
           isNativeEditorOpen={isNativeEditorOpen}
@@ -178,6 +181,6 @@ const NativeQueryEditorTopBar = (props: NativeQueryEditorTopBarProps) => {
       </Flex>
     </Flex>
   );
-};
+});
 
 export { NativeQueryEditorTopBar };
