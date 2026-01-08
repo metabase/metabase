@@ -105,6 +105,7 @@ export const ClauseStep = <T,>({
         {items.map((item, index) => (
           <ClausePopover
             key={index}
+            disabled={readOnly}
             renderItem={(onOpen, hasPopover) =>
               renderItem({ item, index, onOpen, hasPopover })
             }

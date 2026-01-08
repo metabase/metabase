@@ -10,14 +10,30 @@ import S from "./SegmentItem.module.css";
 
 interface Props {
   segment: Segment;
-  onRetire: () => void;
+  onRetire?: () => void;
 }
 
 export const SegmentItem = ({ segment, onRetire }: Props) => {
+  const canEdit = !!onRetire;
+
   return (
     <tr>
       <Box component="td" className={S.cell} p="sm">
-        <Link to={Urls.dataModelSegment(segment.id)}>
+        {canEdit ? (
+          <Link to={Urls.dataModelSegment(segment.id)}>
+            <Group display="inline-flex" gap="sm" wrap="nowrap">
+              <Box
+                color="text-medium"
+                component={Icon}
+                flex="0 0 auto"
+                name="segment"
+              />
+              <Box c="text-dark" fw="bold">
+                {segment.name}
+              </Box>
+            </Group>
+          </Link>
+        ) : (
           <Group display="inline-flex" gap="sm" wrap="nowrap">
             <Box
               color="text-medium"
@@ -29,7 +45,7 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
               {segment.name}
             </Box>
           </Group>
-        </Link>
+        )}
       </Box>
 
       <Box component="td" className={S.cell} maw={500} p="sm">
@@ -40,11 +56,13 @@ export const SegmentItem = ({ segment, onRetire }: Props) => {
         {segment.definition_description}
       </Box>
 
-      <Box component="td" className={S.cell} p="sm">
-        <Flex justify="center">
-          <SegmentActionSelect object={segment} onRetire={onRetire} />
-        </Flex>
-      </Box>
+      {onRetire && (
+        <Box component="td" className={S.cell} p="sm">
+          <Flex justify="center">
+            <SegmentActionSelect object={segment} onRetire={onRetire} />
+          </Flex>
+        </Box>
+      )}
     </tr>
   );
 };

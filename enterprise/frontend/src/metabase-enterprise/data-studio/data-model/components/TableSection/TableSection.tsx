@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import { dependencyGraph } from "metabase/lib/urls/dependencies";
@@ -21,6 +21,7 @@ import { TableFieldList } from "metabase/metadata/components/TableFieldList";
 import { TableSortableFieldList } from "metabase/metadata/components/TableSortableFieldList";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Box,
   Button,
@@ -61,6 +62,7 @@ const TableSectionBase = ({
   hasLibrary,
   onSyncOptionsClick,
 }: Props) => {
+  const isAdmin = useSelector(getUserIsAdmin);
   const [updateTable] = useUpdateTableMutation();
   const [updateTableSorting, { isLoading: isUpdatingSorting }] =
     useUpdateTableMutation();
@@ -213,16 +215,18 @@ const TableSectionBase = ({
       </Box>
 
       <Group justify="stretch" gap="sm">
-        <Button
-          flex="1"
-          p="sm"
-          leftSection={
-            <Icon name={table.is_published ? "unpublish" : "publish"} />
-          }
-          onClick={handlePublishToggle}
-        >
-          {table.is_published ? t`Unpublish` : t`Publish`}
-        </Button>
+        {isAdmin && (
+          <Button
+            flex="1"
+            p="sm"
+            leftSection={
+              <Icon name={table.is_published ? "unpublish" : "publish"} />
+            }
+            onClick={handlePublishToggle}
+          >
+            {table.is_published ? t`Unpublish` : t`Publish`}
+          </Button>
+        )}
         <Button
           flex="1"
           leftSection={<Icon name="settings" />}

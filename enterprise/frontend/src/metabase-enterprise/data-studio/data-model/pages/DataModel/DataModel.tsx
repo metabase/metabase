@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isCypressActive } from "metabase/env";
 import * as Urls from "metabase/lib/urls";
 import {
   FieldSection,
@@ -149,7 +150,10 @@ function DataModelContent({ params }: Props) {
   );
 
   const scrollToPanel = useCallback((el: HTMLDivElement | null) => {
-    el?.scrollIntoView({ behavior: "smooth", inline: "end" });
+    el?.scrollIntoView({
+      behavior: isCypressActive ? "instant" : "smooth",
+      inline: "end",
+    });
   }, []);
 
   if (databasesData?.data?.length === 0) {

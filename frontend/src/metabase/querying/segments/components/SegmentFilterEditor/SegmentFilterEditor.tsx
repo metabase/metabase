@@ -68,17 +68,18 @@ export function SegmentFilterEditor({
         color={color("filter")}
         isLastOpened={false}
         renderName={renderFilterName}
-        renderPopover={({ item: filter, index, onClose }) => (
-          <FilterPicker
-            query={query}
-            stageIndex={STAGE_INDEX}
-            filter={filter}
-            filterIndex={index}
-            onSelect={(newFilter) => handleSelectFilter(filter, newFilter)}
-            onClose={onClose}
-            readOnly={readOnly}
-          />
-        )}
+        renderPopover={({ item: filter, index, onClose }) =>
+          readOnly ? null : (
+            <FilterPicker
+              query={query}
+              stageIndex={STAGE_INDEX}
+              filter={filter}
+              filterIndex={index}
+              onSelect={(newFilter) => handleSelectFilter(filter, newFilter)}
+              onClose={onClose}
+            />
+          )
+        }
         onReorder={handleReorderFilter}
         onRemove={handleRemoveFilter}
       />
