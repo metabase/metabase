@@ -274,4 +274,3 @@
     (if-let [fields (fields-to-fingerprint table)]
       (fingerprint-fields! table fields)
       (empty-stats-map 0))))
-
