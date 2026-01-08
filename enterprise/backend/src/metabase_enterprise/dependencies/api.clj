@@ -180,7 +180,7 @@
 
 (mr/def ::usages
   [:map-of
-   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric]
+   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
    ::entity-id])
 
 (mr/def ::base-entity
@@ -255,6 +255,13 @@
     [:type [:= :segment]]
     [:data (fields-for :card)]]])
 
+(mr/def ::measure-entity
+  [:merge ::base-entity
+   [:map
+    [:id   ::lib.schema.id/measure]
+    [:type [:= :measure]]
+    [:data (fields-for :measure)]]])
+
 (mr/def ::entity
   [:multi {:dispatch :type}
    [:table     [:ref ::table-entity]]
@@ -264,7 +271,8 @@
    [:dashboard [:ref ::dashboard-entity]]
    [:document  [:ref ::document-entity]]
    [:sandbox   [:ref ::sandbox-entity]]
-   [:segment   [:ref ::segment-entity]]])
+   [:segment   [:ref ::segment-entity]]
+   [:measure   [:ref ::measure-entity]]])
 
 (mu/defn- entity-value :- ::entity
   [entity-type {:keys [id] :as entity} usages errors]
