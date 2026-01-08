@@ -55,7 +55,7 @@ export function Default() {
         return (
           <Card
             // @ts-expect-error story file
-            bg={colorName}
+            bg={`var(${colorName})`}
             key={colorName}
             withBorder
             style={{

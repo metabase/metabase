@@ -86,10 +86,6 @@ export function ListViewItem({
             column={titleColumn}
             settings={settings}
             rawValue={row[cols.indexOf(titleColumn as DatasetColumn)]}
-            // style={{
-            //   fontWeight: "bold",
-            //   color: "var(--mb-color-text-primary)",
-            // }}
           />
         )}
       </Flex>

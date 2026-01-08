@@ -4,6 +4,7 @@ import {
   Responsive as ReactGridLayout,
 } from "react-grid-layout";
 
+import { colors } from "metabase/lib/colors";
 import { useMantineTheme } from "metabase/ui";
 
 import "react-grid-layout/css/styles.css";
@@ -186,8 +187,7 @@ export function GridLayout<T extends { id: number | null }>(
         // We cannot use CSS variables here, as the svg data in background-image
         // lives a separate style tree from the rest of the app.
         cellStrokeColor:
-          theme.other?.dashboard?.gridBorderColor ??
-          theme.fn.themeColor("border"),
+          theme.other?.dashboard?.gridBorderColor ?? colors["border"],
       }),
     [cellSize, gridWidth, margin, cols, theme],
   );

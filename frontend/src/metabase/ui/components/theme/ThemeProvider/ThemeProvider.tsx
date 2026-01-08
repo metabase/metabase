@@ -75,37 +75,12 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
         },
       },
       fn: {
-        themeColor: (
-          color: ColorName,
-          shade?: number,
-          primaryFallback: boolean = true,
-          useSplittedShade: boolean = true,
-        ) => {
-          if (typeof color === "string" && color.includes(".")) {
-            const [splitterColor, _splittedShade] = color.split(".");
-            const splittedShade = parseInt(_splittedShade, 10);
-
-            if (
-              splitterColor in theme.colors &&
-              splittedShade >= 0 &&
-              splittedShade < 10
-            ) {
-              return theme.colors[splitterColor as ColorName][
-                typeof shade === "number" && !useSplittedShade
-                  ? shade
-                  : splittedShade
-              ];
-            }
-          }
-
-          const _shade =
-            typeof shade === "number" ? shade : (theme.primaryShade as number);
+        themeColor: (color: ColorName): string => {
+          const { primaryShade, primaryColor } = theme;
 
           return color in theme.colors
-            ? theme.colors[color][_shade]
-            : primaryFallback
-              ? theme.colors[theme.primaryColor as ColorName][_shade]
-              : color;
+            ? theme.colors[color][primaryShade as number]
+            : theme.colors[primaryColor as ColorName][primaryShade as number];
         },
       },
     } as MantineTheme;

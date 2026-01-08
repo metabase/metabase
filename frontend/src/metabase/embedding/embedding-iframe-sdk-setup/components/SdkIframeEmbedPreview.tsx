@@ -147,7 +147,7 @@ const SdkIframeEmbedPreviewInner = () => {
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
-      bg={theme?.colors?.background}
+      bg="background-primary"
       h="100%"
       ref={containerRef}
       pos="relative"

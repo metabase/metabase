@@ -99,7 +99,7 @@ export const SdkIframeEmbedRoute = () => {
     >
       <Stack
         mih="100vh"
-        bg={adjustedTheme?.colors?.background}
+        bg="background-primary"
         style={{
           display: "grid",
           width: "100%",
