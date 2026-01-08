@@ -537,7 +537,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           }
       } catch (error) {
         sendErrorToast(t`Failed to run transform`);
-        console.error("Failed to run transform", error);
       } finally {
         setRunningTransforms((prev) => {
           const next = new Set(prev);

@@ -170,7 +170,6 @@ export function useWorkspaceTransformRun({
       setIsRunTriggered(false);
       setLastRunResult(null);
       sendErrorToast(t`Failed to run transform`);
-      console.error("Failed to run transform", error);
     }
   };
 
