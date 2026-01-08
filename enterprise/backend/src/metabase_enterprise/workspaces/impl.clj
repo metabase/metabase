@@ -144,13 +144,16 @@
          result (ws.isolation/with-workspace-isolation workspace (ws.execute/run-transform-with-remapping transform remapping))]
      (when ref-id
        (t2/update! :model/WorkspaceTransform ref-id {:last_run_at      (:end_time result)
-                                                     :last_run_message (:message result)}))
+                                                     :last_run_message (:message result)
+                                                     :execution_stale  false}))
      (when (= :succeeded (:status result))
        (if ref-id
          ;; Workspace transform
          (backfill-isolated-table-id! ref-id)
-         ;; External transform (enclosed in workspace)
-         (backfill-external-isolated-table-id! external-id)))
+         ;; External transform (enclosed in workspace) - also mark as not stale
+         (do
+           (backfill-external-isolated-table-id! external-id)
+           (t2/update! :model/Transform external-id {:execution_stale false}))))
      result)))
 
 ;;;; ---------------------------------------- External Transform Sync ----------------------------------------
@@ -333,8 +336,71 @@
   [ws-id graph]
   (app-db/update-or-insert! :model/WorkspaceGraph {:workspace_id ws-id} (fn [_] {:workspace_id ws-id, :graph graph})))
 
+(defn- collect-stale-entities
+  "Collect all stale entities (workspace and global transforms) in a workspace.
+   Returns a set of {:node-type node-type :id id} maps."
+  [ws-id entities]
+  (let [ws-transform-ids        (into [] (comp (filter #(= :workspace-transform (:node-type %)))
+                                               (map :id))
+                                      entities)
+        external-transform-ids  (into [] (comp (filter #(= :external-transform (:node-type %)))
+                                               (map :id))
+                                      entities)
+        stale-ws-transforms     (when (seq ws-transform-ids)
+                                  (t2/select-fn-set :ref_id :model/WorkspaceTransform
+                                                    :workspace_id ws-id
+                                                    :ref_id [:in ws-transform-ids]
+                                                    :execution_stale true))
+        stale-global-transforms (when (seq external-transform-ids)
+                                  (t2/select-fn-set :id :model/Transform
+                                                    :id [:in external-transform-ids]
+                                                    :execution_stale true))]
+    (into #{}
+          (concat (map (fn [id] {:node-type :workspace-transform :id id}) stale-ws-transforms)
+                  (map (fn [id] {:node-type :external-transform :id id}) stale-global-transforms)))))
+
+(defn- mark-execution-stale
+  "Mark workspace-transform entities as execution_stale if they depend on stale inputs.
+   A workspace-transform is stale if any of its parents (workspace or global transforms) are stale.
+   Stale status propagates transitively through workspace-transforms.
+
+   stale-entities: Set of {:node-type node-type :id id} maps representing all stale entities"
+  [graph stale-entities]
+  (let [entities (:entities graph)
+        dependencies (:dependencies graph)
+        ;; Extract only stale workspace-transforms to use as initial marked set
+        stale-ws-tx (filter #(= :workspace-transform (:node-type %)) stale-entities)
+        marked-stale-ws-transforms (loop [marked (set stale-ws-tx)]
+                                     (let [;; Combine currently marked workspace-transforms with all stale entities
+                                           all-currently-stale (into marked stale-entities)
+                                          ;; Find workspace-transforms that:
+                                          ;; 1. Are workspace-transform nodes (not tables or external-transforms)
+                                          ;; 2. Haven't been marked yet
+                                          ;; 3. Have at least one parent that is currently stale
+                                           newly-marked (into #{}
+                                                              (comp (filter (fn [[child _parents]]
+                                                                              (= :workspace-transform (:node-type child))))
+                                                                    (filter (fn [[child _]]
+                                                                              (not (contains? marked (select-keys child [:node-type :id])))))
+                                                                    (filter (fn [[_ parents]]
+                                                                              (some #(contains? all-currently-stale (select-keys % [:node-type :id])) parents)))
+                                                                    (map (fn [[child _]] (select-keys child [:node-type :id]))))
+                                                              dependencies)]
+                                       (if (empty? newly-marked)
+                                         marked
+                                         (recur (into marked newly-marked)))))
+
+        ;; Update all entities: mark the workspace-transforms we identified as stale
+        updated-entities (mapv (fn [entity]
+                                 (if (and (= :workspace-transform (:node-type entity))
+                                          (contains? marked-stale-ws-transforms (select-keys entity [:node-type :id])))
+                                   (assoc entity :execution_stale true)
+                                   entity))
+                               entities)]
+    (assoc graph :entities updated-entities)))
+
 (defn- calculate-and-cache-graph!
-  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
+  "Calculate the graph, cache it, sync external inputs/outputs, compute staleness, and mark workspace as not stale."
   [{ws-id :id, isolated-schema :schema :as workspace}]
   (t2/with-transaction [_conn]
     ;; First, re-analyze any stale transforms
@@ -343,10 +409,11 @@
       ;; Persist our work
       (sync-external-outputs! ws-id isolated-schema (:entities graph))
       (sync-external-inputs! ws-id (:entities graph))
-      (upsert-workspace-graph! ws-id graph)
-      ;; Mark workspace as not stale
-      (t2/update! :model/Workspace ws-id {:analysis_stale false})
-      graph)))
+      (let [stale-entities       (collect-stale-entities ws-id (:entities graph))
+            graph-with-staleness (mark-execution-stale graph stale-entities)]
+        (upsert-workspace-graph! ws-id graph-with-staleness)
+        (t2/update! :model/Workspace ws-id {:analysis_stale false})
+        graph-with-staleness))))
 
 (defn get-or-calculate-graph
   "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
@@ -368,26 +435,25 @@
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
   [{ws-id :id :as workspace} & {:keys [stale-only?]}]
-  ;; 1. Depending on what we end up storing in this field, we might not be considering stale ancestors.
-  ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
-  ;; Why is there all this weird code then? To avoid unused references.
-  (let [stale-clause (if stale-only? {:where [:= :stale true]} {})
-        entities     (:entities (get-or-calculate-graph workspace))
-        type->ids    (u/group-by :node-type :id entities)
+  (let [entities     (:entities (get-or-calculate-graph workspace))
+        ;; Filter entities to only stale if stale-only? is true
+        ;; An entity is "stale for execution" if it's locally stale or has stale ancestors
+        stale-entities (if stale-only?
+                         (filter :execution_stale entities)
+                         entities)
+        type->ids    (u/group-by :node-type :id stale-entities)
         id->tx       (merge
                       {}
                       (when-let [ids (seq (type->ids :external-transform))]
                         (t2/select-fn->fn :id identity
                                           [:model/Transform :id :name :source :target]
-                                          :id [:in ids]
-                                          stale-clause))
+                                          :id [:in ids]))
                       (when-let [ref-ids (seq (type->ids :workspace-transform))]
                         (t2/select-fn->fn :ref_id identity
                                           [:model/WorkspaceTransform :ref_id :name :source :target]
                                           :workspace_id ws-id
-                                          :ref_id [:in ref-ids]
-                                          stale-clause)))]
-    (keep (comp id->tx :id) entities)))
+                                          :ref_id [:in ref-ids])))]
+    (keep (comp id->tx :id) stale-entities)))
 
 (defn- id->str [ref-id-or-id]
   (if (string? ref-id-or-id)

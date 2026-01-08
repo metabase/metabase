@@ -72,9 +72,10 @@
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-  (if source
-    (assoc transform :source_type (transforms.util/transform-source-type source))
-    transform))
+  (let [changes (t2/changes transform)]
+    (cond-> transform
+      source             (assoc :source_type (transforms.util/transform-source-type source))
+      (or (:source changes) (:target changes)) (assoc :execution_stale true))))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]

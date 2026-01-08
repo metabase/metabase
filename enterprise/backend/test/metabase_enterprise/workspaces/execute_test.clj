@@ -194,3 +194,27 @@
                 :body          "import pandas as pd"
                 :source-tables {"orders" 456}}
                (remap-python-source table-mapping source)))))))
+
+(deftest run-transform-marks-not-stale-on-success
+  (testing "Successful transform run marks stale=false"
+    (transforms.tu/with-transform-cleanup! [output-table "ws_stale_test"]
+      (let [workspace    (ws.tu/create-ready-ws! "Stale Test Workspace")
+            db-id        (:database_id workspace)
+            body         {:name   "Test Transform"
+                          :source {:type  "query"
+                                   :query (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})}
+                          :target {:type     "table"
+                                   :database db-id
+                                   :schema   nil
+                                   :name     output-table}}
+            ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)]
+        ;; Mark as stale
+        (t2/update! :model/WorkspaceTransform (:ref_id ws-transform) {:stale true})
+        (is (true? (:stale (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform)))))
+
+        ;; Run the transform
+        (mt/with-current-user (mt/user->id :crowberto)
+          (ws.impl/run-transform! workspace ws-transform))
+
+        ;; Check that it's marked as not stale
+        (is (false? (:stale (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform)))))))))

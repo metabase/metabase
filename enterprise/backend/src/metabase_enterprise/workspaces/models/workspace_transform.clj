@@ -47,3 +47,10 @@
     (throw (ex-info "ref_id required for WorkspaceTransform insertion."
                     {:instance instance})))
   instance)
+
+(t2/define-before-update :model/WorkspaceTransform
+  [transform]
+  (let [changes (t2/changes transform)]
+    (cond-> transform
+      ;; Mark as execution_stale if source or target changes
+      (or (:source changes) (:target changes)) (assoc :execution_stale true))))
