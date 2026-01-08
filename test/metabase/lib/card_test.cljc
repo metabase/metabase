@@ -460,12 +460,12 @@
                                      (lib/expression query "ID" 1)
                                      (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))
 
-(deftest ^:parallel source-model-cols-test
-  (testing "source-model-cols should not fail in FE usage where Card metadata may not have a query"
+(deftest ^:parallel source-model-card-test
+  (testing "source-model-card should not fail in FE usage where Card metadata may not have a query"
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+      (is (nil? (#'lib.card/source-model-card mp (lib.metadata/card mp 1)))))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
