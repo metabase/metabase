@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import {
   type ForwardedRef,
@@ -116,7 +117,11 @@ type OwnProps = {
   onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
   topBarInnerContent?: ReactNode;
+  availableHeight?: number;
 };
+
+// 1px for the resize border
+const RESIZE_CONSTRAINT_OFFSET = 1;
 
 interface ExplicitSizeProps {
   width: number;
@@ -138,6 +143,7 @@ type Props = OwnProps &
 const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
   function NativeQueryEditorInner(props) {
     const {
+      availableHeight = 0,
       canChangeDatabase = true,
       cancelQuery,
       closeSnippetModal,
@@ -196,6 +202,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
 
     const editorRef = useRef<CodeMirrorEditorRef>(null);
     const resizeBoxRef = useRef<HTMLDivElement & ResizableBox>(null);
+    const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
     const [initialHeight, setInitialHeight] = useState(
       calcInitialEditorHeight({ query, viewHeight }),
@@ -312,6 +319,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       >
         {hasTopBar && (
           <NativeQueryEditorTopBar
+            ref={topBarRef}
             hasEditingSidebar={hasEditingSidebar}
             question={question}
             query={query}
@@ -353,6 +361,10 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
               isCollapsing && S.collapsing,
             )}
             minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
+            maxConstraints={[
+              Infinity,
+              availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET,
+            ]}
             axis="y"
             handle={dragHandle}
             resizeHandles={["s"]}
