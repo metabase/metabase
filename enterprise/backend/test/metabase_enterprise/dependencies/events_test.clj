@@ -474,7 +474,6 @@
                         (t2/select-one-fn :dependency_analysis_version :model/Segment :id segment-id)))
                  (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))))))))
 
-
 (deftest measure-update-sets-correct-dependencies
   (run-with-dependencies-setup
    (fn [mp]
@@ -605,8 +604,7 @@
   Use -1 for analysis-version if you want to check that an analysis exists without asserting a specific version."
   [spec]
   (doseq [[entity-type ids-and-versions] spec]
-    (let [ids (keys ids-and-versions)
-          analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version])
+    (let [analyses-map (->> (t2/select [:model/AnalysisFinding :analyzed_entity_id :analysis_version])
                             (into {} (map (juxt :analyzed_entity_id :analysis_version))))]
       (doseq [[id expected-version] ids-and-versions]
         (testing (str "Checking " entity-type " " id)
