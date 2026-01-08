@@ -74,7 +74,7 @@
 .field {
   .icon {
     opacity: 1;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 }
 
@@ -129,7 +129,7 @@
 }
 
 .column {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: 0.875rem;
   white-space: nowrap;
   text-overflow: ellipsis;

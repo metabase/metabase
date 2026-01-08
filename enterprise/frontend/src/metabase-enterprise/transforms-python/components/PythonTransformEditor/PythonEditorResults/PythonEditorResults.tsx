@@ -148,7 +148,13 @@ function ExecutionLogs({
 
   return (
     <Section title={label}>
-      <Box p="sm" bg="bg-light" mah="150px" bdrs="xs" className={S.logs}>
+      <Box
+        p="sm"
+        bg="background-secondary"
+        mah="150px"
+        bdrs="xs"
+        className={S.logs}
+      >
         {content}
       </Box>
     </Section>

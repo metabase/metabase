@@ -82,7 +82,7 @@ export const JobListPage = () => {
         showMetabotButton
       />
       <Stack
-        bg="background-light"
+        bg="background-secondary"
         data-testid="transforms-job-list"
         h="100%"
         pb="2rem"

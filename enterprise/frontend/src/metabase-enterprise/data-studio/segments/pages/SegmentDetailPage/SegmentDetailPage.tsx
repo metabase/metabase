@@ -100,7 +100,7 @@ export function SegmentDetailPage({
       pos="relative"
       w="100%"
       h="100%"
-      bg="bg-white"
+      bg="background-primary"
       data-testid="segment-detail-page"
     >
       <SegmentHeader

@@ -23,7 +23,7 @@ export function GlossaryPage() {
   const [deleteGlossary] = useDeleteGlossaryMutation();
 
   return (
-    <Stack w="100%" h="100%" p="xl" bg="background-light">
+    <Stack w="100%" h="100%" p="xl" bg="background-secondary">
       <Group align="center" wrap="nowrap" justify="space-between">
         <Text fw="bold" fz="1.5rem" component="h1">{t`Glossary`}</Text>
       </Group>
