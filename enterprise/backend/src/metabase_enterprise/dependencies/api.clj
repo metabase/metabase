@@ -584,18 +584,14 @@
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                       :entity.name)
-        ;; Archived filtering based on entity type, following the pattern from visible-entities-filter-clause
         archived-filter (when (= include-archived-items :exclude)
                           (case entity-type
-                            ;; Collection-based entities with archived field
                             (:card :dashboard :document :snippet :segment)
                             [:= :entity.archived false]
-                            ;; Tables use active and visibility_type
                             :table
                             [:and
                              [:= :entity.active true]
                              [:= :entity.visibility_type nil]]
-                            ;; Transform and Sandbox don't have archived status
                             nil))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
