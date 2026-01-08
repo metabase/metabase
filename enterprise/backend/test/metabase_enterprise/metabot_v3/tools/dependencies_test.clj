@@ -64,35 +64,36 @@
 
 (deftest check-transform-dependencies-limit-test
   (testing "max-reported-broken-transforms limit"
-    (mt/as-admin
-      (with-dependent-transforms! [transform1-id _]
-        (mt/with-temp
-          [:model/Transform {transform3-id :id}
-           {:name "Transform 3"
-            :source_database_id (mt/id)
-            :source {:type "query"
-                     :query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
-            :target {:type "table"
-                     :schema "public"
-                     :name "orders_transform_3"}}
-           :model/Dependency {}
-           {:from_entity_type "transform"
-            :from_entity_id   transform3-id
-            :to_entity_type   "transform"
-            :to_entity_id     transform1-id}]
-          (testing "when limit is 1, only one broken transform is reported"
-            (binding [metabot.dependencies/*max-reported-broken-transforms* 1]
-              (let [modified-source {:type "query"
-                                     :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
-                    result (metabot.dependencies/check-transform-dependencies
-                            {:id transform1-id
-                             :source modified-source})
-                    bad-transforms (get-in result [:structured_output :bad_transforms])]
-                ;; Two downstream transforms should be broken (transform2 + transform3)...
-                (is (false? (get-in result [:structured_output :success])))
-                (is (= 2 (get-in result [:structured_output :bad_transform_count])))
-                ;; ...but only one should be reported due to the limit.
-                (is (= 1 (count bad-transforms)))))))))))
+    (mt/with-premium-features #{:transforms}
+      (mt/as-admin
+        (with-dependent-transforms! [transform1-id _]
+          (mt/with-temp
+            [:model/Transform {transform3-id :id}
+             {:name "Transform 3"
+              :source_database_id (mt/id)
+              :source {:type "query"
+                       :query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
+              :target {:type "table"
+                       :schema "public"
+                       :name "orders_transform_3"}}
+             :model/Dependency {}
+             {:from_entity_type "transform"
+              :from_entity_id   transform3-id
+              :to_entity_type   "transform"
+              :to_entity_id     transform1-id}]
+            (testing "when limit is 1, only one broken transform is reported"
+              (binding [metabot.dependencies/*max-reported-broken-transforms* 1]
+                (let [modified-source {:type "query"
+                                       :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                      result (metabot.dependencies/check-transform-dependencies
+                              {:id transform1-id
+                               :source modified-source})
+                      bad-transforms (get-in result [:structured_output :bad_transforms])]
+                  ;; Two downstream transforms should be broken (transform2 + transform3)...
+                  (is (false? (get-in result [:structured_output :success])))
+                  (is (= 2 (get-in result [:structured_output :bad_transform_count])))
+                  ;; ...but only one should be reported due to the limit.
+                  (is (= 1 (count bad-transforms))))))))))))
 
 (deftest check-transform-dependencies-with-cards-test
   (testing "removing field from transform breaks dependent card"

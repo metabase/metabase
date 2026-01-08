@@ -937,7 +937,7 @@
   (testing "Transform endpoints require transforms permission"
     (mt/with-premium-features #{:transforms}
       (mt/with-temp [:model/Transform transform {}]
-        (testing "Regular users without data-studio permission get 403"
+        (testing "Regular users without transform permission get 403"
           (mt/user-http-request :rasta :get 403 "ee/transform")
           (mt/user-http-request :rasta :get 403 (str "ee/transform/" (:id transform)))
           (mt/user-http-request :rasta :post 403 "ee/transform"
@@ -951,11 +951,12 @@
                                 {:name "Updated"})
           (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))
 
-        (testing "Users with data-studio permission can access endpoints"
-          (mt/with-user-in-groups [group {:name "Data Studio Group"}
+        (testing "Users with transform permission can access endpoints"
+          (mt/with-user-in-groups [group {:name "Transform Group"}
                                    user  [group]]
-            (mt/user-http-request user :get 200 "ee/transform")
-            (mt/user-http-request user :get 200 (str "ee/transform/" (:id transform)))))))))
+            (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
+              (mt/user-http-request user :get 200 "ee/transform")
+              (mt/user-http-request user :get 200 (str "ee/transform/" (:id transform))))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
   [_driver _feature _database]
