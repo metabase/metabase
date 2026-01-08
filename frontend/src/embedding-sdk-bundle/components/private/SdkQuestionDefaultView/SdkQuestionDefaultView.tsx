@@ -10,6 +10,7 @@ import {
   SdkLoader,
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { QuestionVisualization } from "embedding-sdk-bundle/components/private/SdkQuestion/components/Visualization";
+import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useQuestionEditorSync } from "embedding-sdk-bundle/hooks/private/use-question-editor-sync";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
@@ -84,6 +85,7 @@ export const SdkQuestionDefaultView = ({
     originalQuestion,
     isSaveEnabled,
     withDownloads,
+    targetCollection,
     onReset,
     onNavigateBack,
     queryQuestion,
@@ -118,17 +120,29 @@ export const SdkQuestionDefaultView = ({
     question && shouldRunCardQuery(question) && !queryResults;
 
   useEffect(() => {
-    if (
+    const isNewQuestion = originalId === "new";
+    const isExistingQuestion =
+      question &&
       !isQuestionLoading &&
       question?.isSaved() &&
       originalId !== "new" &&
-      queryResults
-    ) {
+      queryResults;
+
+    const onNavigate = onNavigateBack ?? onReset ?? undefined;
+
+    if (isNewQuestion) {
+      reportLocation({
+        type: "question",
+        id: "new",
+        name: "New exploration",
+        onNavigate,
+      });
+    } else if (isExistingQuestion) {
       reportLocation({
         type: "question",
         id: question.id(),
         name: question.displayName() || "Question",
-        onNavigate: onNavigateBack ?? onReset ?? undefined,
+        onNavigate,
       });
     }
   }, [
@@ -140,6 +154,11 @@ export const SdkQuestionDefaultView = ({
     onNavigateBack,
     onReset,
   ]);
+
+  const { canWrite: canWriteToTargetCollection } = useCollectionData(
+    targetCollection,
+    { skipCollectionFetching: !isSaveEnabled },
+  );
 
   if (
     !isEditorOpen &&
@@ -157,7 +176,11 @@ export const SdkQuestionDefaultView = ({
   }
 
   const showSaveButton =
-    shouldShowSaveButton({ question, originalQuestion }) && isSaveEnabled;
+    shouldShowSaveButton({
+      question,
+      originalQuestion,
+      canWriteToTargetCollection,
+    }) && isSaveEnabled;
 
   return (
     <FlexibleSizeComponent
