@@ -528,11 +528,10 @@
                        :data             (node-data e)
                        :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
-              ;; Yeah, this graph points to dependents, not dependencies
-              {:from_entity_type (name (node-type parent))
-               :from_entity_id   (node-id parent)
-               :to_entity_type   (name (node-type child))
-               :to_entity_id     (node-id child)})}))
+              {:to_entity_type   (name (node-type parent))
+               :to_entity_id     (node-id parent)
+               :from_entity_type (name (node-type child))
+               :from_entity_id   (node-id child)})}))
 
 ;;; ---------------------------------------- Problems/Validation ----------------------------------------
 

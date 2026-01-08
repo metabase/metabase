@@ -1600,10 +1600,10 @@
                                                           :schema string?
                                                           :table  string?}}
                               :dependents_count {}}],
-                     :edges [{:from_entity_type "input-table"
-                              :from_entity_id   string?
-                              :to_entity_type   "workspace-transform"
-                              :to_entity_id     (:ref_id tx)}]}
+                     :edges [{:to_entity_type "input-table"
+                              :to_entity_id   string?
+                              :from_entity_type   "workspace-transform"
+                              :from_entity_id     (:ref_id tx)}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))))))))))
 
 ;; TODO having trouble with test setup, but manually verified this stuff is working in dev environment :-(
@@ -1681,15 +1681,15 @@
                              ;; We won't have this input table when we fix finding the enclosed global transform.
                              {:type "input-table", :id tx-3-input, :data {:db (mt/id), :schema default-schema, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t3-ref, :data {:ref_id t3-ref, :name "Another Tx in WS1", :target {:db (mt/id), :schema nil, :table tx-3-output}}, :dependents_count {}}},
-                    :edges #{{:from_entity_type "input-table"
-                              :from_entity_id   tx-1-input
-                              :to_entity_type   "workspace-transform"
-                              :to_entity_id     t1-ref}
+                    :edges #{{:to_entity_type "input-table"
+                              :to_entity_id   tx-1-input
+                              :from_entity_type   "workspace-transform"
+                              :from_entity_id     t1-ref}
                              ;; This input table will be replaced by a transform chain.
-                             {:from_entity_type "input-table"
-                              :from_entity_id   tx-3-input
-                              :to_entity_type   "workspace-transform"
-                              :to_entity_id     t3-ref}
+                             {:to_entity_type "input-table"
+                              :to_entity_id   tx-3-input
+                              :from_entity_type   "workspace-transform"
+                              :from_entity_id     t3-ref}
                              #_{:from_entity_type "workspace-transform"
                                 :from_entity_id   (:ref_id tx-1)
                                 :to_entity_type   "external-transform"
