@@ -14,6 +14,7 @@
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
   {:card (or (lib/all-source-card-ids query) #{})
+   :measure (or (lib/all-measure-ids query) #{})
    :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
@@ -136,5 +137,13 @@
   "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
   [{:keys [table_id definition] :as _segment}]
   {:segment (or (lib/all-segment-ids definition) #{})
+   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
+            table_id (conj table_id))})
+
+(mu/defn upstream-deps:measure :- ::deps.schema/upstream-deps
+  "Given a measure, return its upstream dependencies (the table it aggregates, any measures it references, and any segments it references)"
+  [{:keys [table_id definition] :as _measure}]
+  {:measure (or (lib/all-measure-ids definition) #{})
+   :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})

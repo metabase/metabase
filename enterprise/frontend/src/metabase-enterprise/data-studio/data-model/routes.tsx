@@ -1,6 +1,10 @@
 import { IndexRoute, Redirect, Route } from "react-router";
 
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { DataModelMeasureDependenciesPage } from "metabase-enterprise/data-studio/measures/pages/DataModelMeasureDependenciesPage";
+import { DataModelMeasureDetailPage } from "metabase-enterprise/data-studio/measures/pages/DataModelMeasureDetailPage";
+import { DataModelMeasureRevisionHistoryPage } from "metabase-enterprise/data-studio/measures/pages/DataModelMeasureRevisionHistoryPage";
+import { DataModelNewMeasurePage } from "metabase-enterprise/data-studio/measures/pages/DataModelNewMeasurePage";
 import { DataModelNewSegmentPage } from "metabase-enterprise/data-studio/segments/pages/DataModelNewSegmentPage";
 import { DataModelSegmentDependenciesPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentDependenciesPage";
 import { DataModelSegmentDetailPage } from "metabase-enterprise/data-studio/segments/pages/DataModelSegmentDetailPage";
@@ -38,6 +42,26 @@ export function getDataStudioMetadataRoutes() {
         <Route
           path="database/:databaseId/schema/:schemaId/table/:tableId/segments/:segmentId/dependencies"
           component={DataModelSegmentDependenciesPage}
+        >
+          <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
+        </Route>
+      )}
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/measures/new"
+        component={DataModelNewMeasurePage}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId"
+        component={DataModelMeasureDetailPage}
+      />
+      <Route
+        path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/revisions"
+        component={DataModelMeasureRevisionHistoryPage}
+      />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route
+          path="database/:databaseId/schema/:schemaId/table/:tableId/measures/:measureId/dependencies"
+          component={DataModelMeasureDependenciesPage}
         >
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>

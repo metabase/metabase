@@ -164,7 +164,8 @@
                :created_at :creator
                :collection :collection_id]
    :sandbox   [:table :table_id]
-   :segment   [:name :description :created_at :creator :creator_id :table :table_id]})
+   :segment   [:name :description :created_at :creator :creator_id :table :table_id]
+   :measure   [:name :description :created_at :creator :creator_id :table :table_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
@@ -188,7 +189,8 @@
    :dashboard :model/Dashboard
    :document  :model/Document
    :sandbox   :model/Sandbox
-   :segment   :model/Segment})
+   :segment   :model/Segment
+   :measure   :model/Measure})
 
 ;; IMPORTANT: This map defines which fields to select when fetching entities for the dependency graph.
 ;; These field lists MUST be kept in sync with the frontend type definitions in:
@@ -211,7 +213,8 @@
                :source]
    :snippet   [:id :name :description]
    :sandbox   [:id :table_id]
-   :segment   [:id :name :description :created_at :creator_id :table_id]})
+   :segment   [:id :name :description :created_at :creator_id :table_id]
+   :measure   [:id :name :description :created_at :creator_id :table_id]})
 
 (defn- visible-entities-filter-clause
   "Returns a HoneySQL WHERE clause for filtering dependency graph entities by user visibility.
@@ -301,8 +304,8 @@
                                                                       [:= visibility-type-column nil]]
                                                         (:only :all) nil)]}]])
 
-                     ;; Segment with table permissions and archived filtering
-                     :model/Segment
+                     ;; Segment/Measure with table permissions and archived filtering
+                     (:model/Segment :model/Measure)
                      (let [archived-column (keyword (name table-name) "archived")
                            table-id-column (keyword (name table-name) "table_id")]
                        [:and
@@ -310,7 +313,7 @@
                         [:in entity-id-field {:select [:id]
                                               :from [table-name]
                                               :where [:and
-                                                      ;; Check that user can see the table this segment belongs to
+                                                      ;; Check that user can see the table this entity belongs to
                                                       [:in table-id-column
                                                        {:select [:metabase_table.id]
                                                         :from [:metabase_table]
@@ -387,7 +390,8 @@
                        (= entity-type :document) (-> (t2/hydrate :creator [:collection :is_personal])
                                                      (->> (map collection.root/hydrate-root-collection)))
                        (= entity-type :sandbox) (t2/hydrate [:table :db :fields])
-                       (= entity-type :segment) (t2/hydrate :creator [:table :db]))
+                       (= entity-type :segment) (t2/hydrate :creator [:table :db])
+                       (= entity-type :measure) (t2/hydrate :creator [:table :db]))
                      (mapv #(entity-value entity-type % usages)))))
             nodes-by-type)))
 
