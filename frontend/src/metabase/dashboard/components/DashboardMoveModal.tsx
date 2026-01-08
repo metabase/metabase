@@ -73,7 +73,7 @@ const DashboardMoveToast = ({
       <Icon
         name="collection"
         style={{ marginInlineEnd: "0.25rem" }}
-        c="text-white"
+        c="text-primary-inverse"
       />
       {c("{0} is a location where the dashboard was moved to")
         .jt`Dashboard moved to ${

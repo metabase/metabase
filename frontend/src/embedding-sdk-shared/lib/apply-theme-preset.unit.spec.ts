@@ -5,7 +5,6 @@ const PRESET_COLOR_KEYS = [
   "background-hover",
   "background-disabled",
   "background-secondary",
-  "background-light",
   "text-primary",
   "text-secondary",
   "text-tertiary",

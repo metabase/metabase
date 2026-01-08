@@ -67,7 +67,7 @@ export type CollectionInstanceAnaltyicsConfig = {
   type: CollectionType;
   name?: string;
   icon: IconName;
-  color?: string;
+  color?: ColorName;
   tooltips?: Record<string, string>;
 };
 

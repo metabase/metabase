@@ -15,7 +15,7 @@ const SearchEmptyState = ({
       <Box maw="6rem">
         <img src={EmptyFolder} alt={t`Empty folder illustration`} />
       </Box>
-      <Text fz="md" maw="25rem" c="text-medium">
+      <Text fz="md" maw="25rem" c="text-secondary">
         {isTimeline ? t`No timelines found` : t`No events found`}
       </Text>
     </Stack>

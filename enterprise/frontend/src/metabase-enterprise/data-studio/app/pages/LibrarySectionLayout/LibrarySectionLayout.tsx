@@ -185,7 +185,7 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          bg="background-light"
+          bg="background-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
@@ -257,7 +257,7 @@ const RootSnippetsCollectionMenu = ({
         <Button
           w={24}
           h={24}
-          c="text-medium"
+          c="text-secondary"
           size="compact-xs"
           variant="subtle"
           leftSection={<FixedSizeIcon name="ellipsis" size={16} />}

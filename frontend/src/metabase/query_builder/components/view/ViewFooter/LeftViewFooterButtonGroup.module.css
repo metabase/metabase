@@ -7,7 +7,7 @@
     align-items: stretch;
 
     .Button {
-      border: 1px solid var(--mb-color-bg-white);
+      border: 1px solid var(--mb-color-background-primary);
     }
   }
 }
