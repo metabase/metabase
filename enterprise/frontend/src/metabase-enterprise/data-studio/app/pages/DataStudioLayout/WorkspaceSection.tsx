@@ -34,7 +34,11 @@ import {
   useUnarchiveWorkspaceMutation,
 } from "metabase-enterprise/api/workspace";
 import { TOOLTIP_OPEN_DELAY } from "metabase-enterprise/dependencies/components/DependencyGraph/constants";
-import type { Workspace, WorkspaceId } from "metabase-types/api/workspace";
+import type {
+  Workspace,
+  WorkspaceId,
+  WorkspaceItem as WorkspaceItemType,
+} from "metabase-types/api";
 
 import S from "./DataStudioLayout.module.css";
 
@@ -52,19 +56,7 @@ function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
     useCreateWorkspaceMutation();
 
   const workspaces = useMemo(() => {
-    const isArchived = (ws: (typeof workspacesData)["items"][0]) =>
-      ws.status === "archived";
-    return [...(workspacesData?.items ?? [])].sort((a, b) => {
-      // Archived workspaces should be placed at the end
-      if (isArchived(a) !== isArchived(b)) {
-        return isArchived(a) ? 1 : -1;
-      }
-
-      // Within each group (archived/unarchived), sort by updated_at descending
-      const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-      const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-      return bDate - aDate;
-    });
+    return sortWorkspaceItems(workspacesData?.items ?? []);
   }, [workspacesData]);
 
   const handleOpenWorkspace = useCallback(
@@ -237,6 +229,24 @@ interface WorkspaceItemProps {
   onArchive: (workspaceId: WorkspaceId) => Promise<void>;
   onUnarchive: (workspaceId: WorkspaceId) => Promise<void>;
   onDelete: (workspaceId: WorkspaceId) => Promise<void>;
+}
+
+function sortWorkspaceItems(
+  items: WorkspaceItemType[] | undefined,
+): WorkspaceItemType[] {
+  const isArchived = (item: WorkspaceItemType) => item.status === "archived";
+
+  return [...(items ?? [])].sort((a, b) => {
+    // Archived workspaces should be placed at the end
+    if (isArchived(a) !== isArchived(b)) {
+      return isArchived(a) ? 1 : -1;
+    }
+
+    // Within each group (archived/unarchived), sort by updated_at descending
+    const aDate = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+    const bDate = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+    return bDate - aDate;
+  });
 }
 
 function WorkspaceItem({
