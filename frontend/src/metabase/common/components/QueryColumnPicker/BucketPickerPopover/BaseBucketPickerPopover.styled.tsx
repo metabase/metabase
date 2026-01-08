@@ -7,7 +7,7 @@ import { Button, type ButtonProps, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 export const TriggerIcon = styled(Icon)`
-  color: var(--mb-color-text-white) !important;
+  color: var(--mb-color-text-primary-inverse) !important;
   flex: 0 0 auto;
 `;
 

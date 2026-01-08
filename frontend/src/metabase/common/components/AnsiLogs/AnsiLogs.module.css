@@ -13,8 +13,8 @@
     }
 
     .react-ansi-style-inverse {
-      color: var(--mb-color-text-dark);
-      background-color: var(--mb-color-bg-white);
+      color: var(--mb-color-text-primary);
+      background-color: var(--mb-color-background-primary);
     }
 
     .react-ansi-style-hidden {
@@ -30,15 +30,15 @@
     }
 
     .react-ansi-style-black {
-      color: var(--mb-color-text-dark);
+      color: var(--mb-color-text-primary);
     }
 
     .react-ansi-style-white {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
 
     .react-ansi-style-gray {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
 
     .react-ansi-style-red {

@@ -30,7 +30,7 @@ export const Loader = ({ size = "md", label, ...props }: LoaderProps) => {
   return label ? (
     <Stack justify="center" align="center" gap="sm" mt="xl">
       <MantineLoader {...props} size={getSize(SIZES[size])} />
-      <Text c="text-light" size="xl">
+      <Text c="text-tertiary" size="xl">
         {label}
       </Text>
     </Stack>

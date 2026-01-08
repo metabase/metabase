@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import {
   getError,
@@ -14,7 +15,6 @@ import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import {
   type OnCreateOptions,
   useCreateQuestion,
@@ -75,11 +75,7 @@ export const SdkQuestionProvider = ({
     token: rawToken ?? undefined,
   });
 
-  useEffect(() => {
-    if (isGuestEmbed && token) {
-      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-    }
-  }, [isGuestEmbed, token]);
+  useSetupContentTranslations({ token });
 
   const isNewQuestion = questionId === "new";
 

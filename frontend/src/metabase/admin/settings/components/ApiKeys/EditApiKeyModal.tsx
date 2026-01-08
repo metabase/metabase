@@ -54,7 +54,7 @@ const RegenerateKeyModal = ({
               <Text
                 component="label"
                 fw="bold"
-                color="text-light"
+                color="text-tertiary"
                 size="sm"
               >{t`Key name`}</Text>
               <Text fw="bold" size="sm">
@@ -65,7 +65,7 @@ const RegenerateKeyModal = ({
               <Text
                 component="label"
                 fw="bold"
-                color="text-light"
+                color="text-tertiary"
                 size="sm"
               >{t`Group`}</Text>
               <Text fw="bold" size="sm">

@@ -6,10 +6,11 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useRouter } from "metabase/router";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -227,7 +228,7 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          bg="background-light"
+          bg="background-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
@@ -293,13 +294,19 @@ const RootSnippetsCollectionMenu = ({
 }: {
   setPermissionsCollectionId: (id: CollectionId) => void;
 }) => {
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <Menu position="bottom-end">
       <Menu.Target>
         <Button
           w={24}
           h={24}
-          c="text-medium"
+          c="text-secondary"
           size="compact-xs"
           variant="subtle"
           leftSection={<FixedSizeIcon name="ellipsis" size={16} />}

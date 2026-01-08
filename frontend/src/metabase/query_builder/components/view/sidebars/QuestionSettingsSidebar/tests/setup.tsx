@@ -14,6 +14,7 @@ import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Card, Settings } from "metabase-types/api";
 import {
+  COMMON_DATABASE_FEATURES,
   createMockCard,
   createMockSettings,
   createMockTokenFeatures,
@@ -30,6 +31,7 @@ export interface SetupOpts {
   settings?: Settings;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   dbHasModelPersistence?: boolean;
+  dbSupportsModelPersistence?: boolean;
 }
 
 export const setup = async ({
@@ -37,6 +39,7 @@ export const setup = async ({
   settings = createMockSettings(),
   enterprisePlugins,
   dbHasModelPersistence = true,
+  dbSupportsModelPersistence = true,
 }: SetupOpts) => {
   const currentUser = createMockUser();
   setupCardEndpoints(card);
@@ -50,9 +53,12 @@ export const setup = async ({
 
   setupDatabaseEndpoints(
     createSampleDatabase({
-      settings: {
-        "persist-models-enabled": dbHasModelPersistence,
-      },
+      settings: { "persist-models-enabled": dbHasModelPersistence },
+      features: dbSupportsModelPersistence
+        ? COMMON_DATABASE_FEATURES
+        : COMMON_DATABASE_FEATURES.filter(
+            (feature) => feature !== "persist-models",
+          ),
     }),
   );
 

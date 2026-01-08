@@ -828,6 +828,19 @@
              Exception
              (collection/perms-for-archiving input)))))))
 
+(deftest perms-for-archiving-excludes-archived-descendants-test
+  (testing "Archived descendants should be excluded from permission requirements"
+    (with-collection-hierarchy! [{:keys [a], :as collections}]
+      ;; Archive C and all its descendants (D, E, F, G)
+      (t2/update! :model/Collection {:id [:in (map u/the-id [(:c collections) (:d collections) (:e collections)
+                                                             (:f collections) (:g collections)])]}
+                  {:archived true})
+      ;; Now archiving A should only require perms for A and B (not C, D, E, F, G which are archived)
+      (is (= #{"/collection/A/"
+               "/collection/B/"}
+             (->> (collection/perms-for-archiving a)
+                  (perms-path-ids->names collections)))))))
+
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
 ;; `*` marks the things that require permissions in charts below!
@@ -928,6 +941,22 @@
         (is (thrown?
              Exception
              (collection/perms-for-moving collection new-parent)))))))
+
+(deftest perms-for-moving-excludes-archived-descendants-test
+  (testing "Archived descendants should be excluded from permission requirements"
+    (with-collection-hierarchy! [{:keys [a b], :as collections}]
+      ;; Archive C and all its descendants (D, E, F, G)
+      (t2/update! :model/Collection {:id [:in (map u/the-id [(:c collections) (:d collections) (:e collections)
+                                                             (:f collections) (:g collections)])]}
+                  {:archived true})
+      ;; Create a destination collection outside the hierarchy
+      (mt/with-temp [:model/Collection destination {:name "Destination"}]
+        ;; Now moving A to destination should only require perms for A, B (non-archived descendant), and destination
+        ;; Not C, D, E, F, G which are archived
+        (is (= #{(perms/collection-readwrite-path a)
+                 (perms/collection-readwrite-path b)
+                 (perms/collection-readwrite-path destination)}
+               (collection/perms-for-moving a destination)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
