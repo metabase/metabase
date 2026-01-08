@@ -14,6 +14,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
@@ -141,13 +142,14 @@ export const SETTINGS_DEFINITIONS = {
   },
 };
 
-export const SANKEY_CHART_DEFINITION = {
+export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),
+  disableVisualizer: true,
   defaultSize: getDefaultSize("sankey"),
   isSensible: (data: DatasetData) => {
     const { cols, rows } = data;
