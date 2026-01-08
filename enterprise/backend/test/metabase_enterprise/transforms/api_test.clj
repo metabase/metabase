@@ -954,7 +954,6 @@
         (testing "Users with data-studio permission can access endpoints"
           (mt/with-user-in-groups [group {:name "Data Studio Group"}
                                    user  [group]]
-            (perms/grant-application-permissions! group :data-studio)
             (mt/user-http-request user :get 200 "ee/transform")
             (mt/user-http-request user :get 200 (str "ee/transform/" (:id transform)))))))))
 

@@ -69,6 +69,7 @@
         (mt/with-temp
           [:model/Transform {transform3-id :id}
            {:name "Transform 3"
+            :source_database_id (mt/id)
             :source {:type "query"
                      :query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
             :target {:type "table"
@@ -123,43 +124,44 @@
                 (is (some? (:errors (first bad-questions))))))))))))
 
 (deftest check-transform-dependencies-card-limit-test
-  (testing "max-reported-broken-transforms limit applies to cards"
-    (mt/as-admin
-      (with-dependent-transforms! [transform1-id _]
-        (mt/with-temp
-          [:model/Card {card1-id :id}
-           {:name "Card 1 using Transform 1"
-            :database_id (mt/id)
-            :table_id (mt/id :orders)
-            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
-           :model/Dependency {}
-           {:from_entity_type "card"
-            :from_entity_id card1-id
-            :to_entity_type "transform"
-            :to_entity_id transform1-id}
-           :model/Card {card2-id :id}
-           {:name "Card 2 using Transform 1"
-            :database_id (mt/id)
-            :table_id (mt/id :orders)
-            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
-           :model/Dependency {}
-           {:from_entity_type "card"
-            :from_entity_id card2-id
-            :to_entity_type "transform"
-            :to_entity_id transform1-id}]
-          (testing "when limit is 1, only one broken card is reported"
-            (binding [metabot.dependencies/*max-reported-broken-transforms* 1]
-              (let [modified-source {:type "query"
-                                     :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
-                    result (metabot.dependencies/check-transform-dependencies
-                            {:id transform1-id
-                             :source modified-source})
-                    bad-cards (get-in result [:structured_output :bad_questions])]
-               ;; Two cards should be broken...
-                (is (false? (get-in result [:structured_output :success])))
-                (is (= 2 (get-in result [:structured_output :bad_question_count])))
-               ;; ...but only one should be reported due to the limit.
-                (is (= 1 (count bad-cards)))))))))))
+  (mt/with-premium-features #{:transforms}
+    (testing "max-reported-broken-transforms limit applies to cards"
+      (mt/as-admin
+        (with-dependent-transforms! [transform1-id _]
+          (mt/with-temp
+            [:model/Card {card1-id :id}
+             {:name "Card 1 using Transform 1"
+              :database_id (mt/id)
+              :table_id (mt/id :orders)
+              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
+             :model/Dependency {}
+             {:from_entity_type "card"
+              :from_entity_id card1-id
+              :to_entity_type "transform"
+              :to_entity_id transform1-id}
+             :model/Card {card2-id :id}
+             {:name "Card 2 using Transform 1"
+              :database_id (mt/id)
+              :table_id (mt/id :orders)
+              :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
+             :model/Dependency {}
+             {:from_entity_type "card"
+              :from_entity_id card2-id
+              :to_entity_type "transform"
+              :to_entity_id transform1-id}]
+            (testing "when limit is 1, only one broken card is reported"
+              (binding [metabot.dependencies/*max-reported-broken-transforms* 1]
+                (let [modified-source {:type "query"
+                                       :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                      result (metabot.dependencies/check-transform-dependencies
+                              {:id transform1-id
+                               :source modified-source})
+                      bad-cards (get-in result [:structured_output :bad_questions])]
+                 ;; Two cards should be broken...
+                  (is (false? (get-in result [:structured_output :success])))
+                  (is (= 2 (get-in result [:structured_output :bad_question_count])))
+                 ;; ...but only one should be reported due to the limit.
+                  (is (= 1 (count bad-cards))))))))))))
 
 (deftest check-transform-dependencies-permission-check-test
   (testing "Permission check on transform being edited"
@@ -177,66 +179,67 @@
 
 (deftest check-transform-dependencies-permission-filtering-test
   (testing "Broken cards in inaccessible collections are filtered from results"
-    (with-dependent-transforms! [transform1-id _]
-      (mt/with-temp
-        [:model/Collection {restricted-collection-id :id} {:name "Restricted Collection"}
-         :model/Collection {public-collection-id :id} {:name "Public Collection"}
-         :model/Card {public-card-id :id}
-         {:name "Public Card"
-          :collection_id public-collection-id
-          :database_id (mt/id)
-          :table_id (mt/id :orders)
-          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
-         :model/Dependency {}
-         {:from_entity_type "card"
-          :from_entity_id public-card-id
-          :to_entity_type "transform"
-          :to_entity_id transform1-id}
-         :model/Card {restricted-card-id :id}
-         {:name "Restricted Card"
-          :collection_id restricted-collection-id
-          :database_id (mt/id)
-          :table_id (mt/id :orders)
-          :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
-         :model/Dependency {}
-         {:from_entity_type "card"
-          :from_entity_id restricted-card-id
-          :to_entity_type "transform"
-          :to_entity_id transform1-id}]
-        (testing "Superuser sees all broken cards regardless of collection permissions"
-          (mt/with-test-user :crowberto
-            (let [modified-source {:type "query"
-                                   :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
-                  result (metabot.dependencies/check-transform-dependencies
-                          {:id transform1-id
-                           :source modified-source})
-                  broken-question-ids (set (map #(get-in % [:question :id])
-                                                (get-in result [:structured_output :bad_questions])))]
-              ;; Both cards should appear in results for superuser
-              (is (contains? broken-question-ids public-card-id))
-              (is (contains? broken-question-ids restricted-card-id)))))
-        (testing "User with restricted collection access only sees cards they can read"
-          (perms/revoke-collection-permissions! (perms-group/all-users) (u/the-id restricted-collection-id))
-          (perms/grant-collection-read-permissions! (perms-group/all-users) (u/the-id public-collection-id))
-          (mt/with-test-user :rasta
-            (let [original-can-read? mi/can-read?]
-              ;; Temporarily allow rasta to read transforms (but preserve normal card permission checking)
-              ;; Non-superusers can't currently read transforms, but this will change, and until then
-              ;; we can test that broken cards are filtered correctly by read access.
-              (with-redefs [mi/can-read? (fn [instance]
-                                           (if (t2/instance-of? :model/Transform instance)
-                                             true
-                                             (original-can-read? instance)))]
-                (let [modified-source {:type "query"
-                                       :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
-                      result (metabot.dependencies/check-transform-dependencies
-                              {:id transform1-id
-                               :source modified-source})
-                      broken-question-ids (set (map #(get-in % [:question :id])
-                                                    (get-in result [:structured_output :bad_questions])))]
-                  ;; Rasta should only see the public card, not the restricted one
-                  (is (contains? broken-question-ids public-card-id))
-                  (is (not (contains? broken-question-ids restricted-card-id))))))))))))
+    (mt/with-premium-features #{:transforms}
+      (with-dependent-transforms! [transform1-id _]
+        (mt/with-temp
+          [:model/Collection {restricted-collection-id :id} {:name "Restricted Collection"}
+           :model/Collection {public-collection-id :id} {:name "Public Collection"}
+           :model/Card {public-card-id :id}
+           {:name "Public Card"
+            :collection_id public-collection-id
+            :database_id (mt/id)
+            :table_id (mt/id :orders)
+            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
+           :model/Dependency {}
+           {:from_entity_type "card"
+            :from_entity_id public-card-id
+            :to_entity_type "transform"
+            :to_entity_id transform1-id}
+           :model/Card {restricted-card-id :id}
+           {:name "Restricted Card"
+            :collection_id restricted-collection-id
+            :database_id (mt/id)
+            :table_id (mt/id :orders)
+            :dataset_query (lib/native-query (mt/metadata-provider) "SELECT total FROM orders_transform_1")}
+           :model/Dependency {}
+           {:from_entity_type "card"
+            :from_entity_id restricted-card-id
+            :to_entity_type "transform"
+            :to_entity_id transform1-id}]
+          (testing "Superuser sees all broken cards regardless of collection permissions"
+            (mt/with-test-user :crowberto
+              (let [modified-source {:type "query"
+                                     :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                    result (metabot.dependencies/check-transform-dependencies
+                            {:id transform1-id
+                             :source modified-source})
+                    broken-question-ids (set (map #(get-in % [:question :id])
+                                                  (get-in result [:structured_output :bad_questions])))]
+                ;; Both cards should appear in results for superuser
+                (is (contains? broken-question-ids public-card-id))
+                (is (contains? broken-question-ids restricted-card-id)))))
+          (testing "User with restricted collection access only sees cards they can read"
+            (perms/revoke-collection-permissions! (perms-group/all-users) (u/the-id restricted-collection-id))
+            (perms/grant-collection-read-permissions! (perms-group/all-users) (u/the-id public-collection-id))
+            (mt/with-test-user :rasta
+              (let [original-can-read? mi/can-read?]
+                ;; Temporarily allow rasta to read transforms (but preserve normal card permission checking)
+                ;; Non-superusers can't currently read transforms, but this will change, and until then
+                ;; we can test that broken cards are filtered correctly by read access.
+                (with-redefs [mi/can-read? (fn [instance]
+                                             (if (t2/instance-of? :model/Transform instance)
+                                               true
+                                               (original-can-read? instance)))]
+                  (let [modified-source {:type "query"
+                                         :query (lib/native-query (mt/metadata-provider) "SELECT id FROM orders")}
+                        result (metabot.dependencies/check-transform-dependencies
+                                {:id transform1-id
+                                 :source modified-source})
+                        broken-question-ids (set (map #(get-in % [:question :id])
+                                                      (get-in result [:structured_output :bad_questions])))]
+                    ;; Rasta should only see the public card, not the restricted one
+                    (is (contains? broken-question-ids public-card-id))
+                    (is (not (contains? broken-question-ids restricted-card-id)))))))))))))
 
 (deftest check-transform-dependencies-python-bypass-test
   (mt/with-premium-features [:transforms]
