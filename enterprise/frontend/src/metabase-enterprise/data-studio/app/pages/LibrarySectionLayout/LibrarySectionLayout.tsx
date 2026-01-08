@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
@@ -29,6 +30,7 @@ import {
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -59,14 +61,12 @@ export function LibrarySectionLayout() {
     if (!rawIds) {
       return null;
     }
+
     const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
-    // Tree node IDs use "collection:" prefix
-    const expanded = ids.reduce<Record<string, boolean>>((acc, id) => {
-      acc[`collection:${id}`] = true;
-      return acc;
-    }, {});
-    // Also expand the snippets root collection so nested folders are visible
-    expanded["collection:root"] = true;
+    const expanded = _.object(
+      ids.map((id) => [`collection:${id}`, true]),
+    ) as ExpandedState;
+
     return expanded;
   }, [location.query?.expandedId]);
 
