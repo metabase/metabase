@@ -24,8 +24,6 @@ import {
 import { ResultToolbar } from "embedding-sdk-bundle/components/private/SdkQuestion/components/ResultToolbar/ResultToolbar";
 import { DefaultViewTitle } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/DefaultViewTitle";
 import InteractiveQuestionS from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView/SdkQuestionDefaultView.module.css";
-import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
-import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import {
   SdkQuestion,
   type SdkQuestionProps,
@@ -141,56 +139,51 @@ const StaticQuestionInner = (
       withDownloads={withDownloads}
       withAlerts={withAlerts}
     >
-      <QuestionAlertModalProvider>
-        {children ?? (
-          <FlexibleSizeComponent
-            className={className}
-            width={width}
-            height={height}
-            style={style}
+      {children ?? (
+        <FlexibleSizeComponent
+          className={className}
+          width={width}
+          height={height}
+          style={style}
+        >
+          <Stack
+            className={InteractiveQuestionS.Container}
+            w="100%"
+            h="100%"
+            gap="xs"
           >
-            <Stack
-              className={InteractiveQuestionS.Container}
-              w="100%"
-              h="100%"
-              gap="xs"
-            >
-              {hasTopBar && (
-                <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-                  {title && <DefaultViewTitle title={title} />}
+            {hasTopBar && (
+              <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
+                {title && <DefaultViewTitle title={title} />}
 
-                  {hasResultToolbar && (
-                    <ResultToolbar>
-                      {withChartTypeSelector && (
-                        <SdkQuestion.ChartTypeDropdown />
-                      )}
-                      {/* This container is always shown on the right */}
-                      <Group className={cx(CS.mlAuto, CS.hideEmpty)}>
-                        <SdkQuestion.DownloadWidgetDropdown />
-                        <QuestionAlertsButton />
-                      </Group>
-                    </ResultToolbar>
-                  )}
+                {hasResultToolbar && (
+                  <ResultToolbar>
+                    {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                    {/* This container is always shown on the right */}
+                    <Group className={cx(CS.mlAuto, CS.hideEmpty)}>
+                      <SdkQuestion.DownloadWidgetDropdown />
+                      <QuestionAlertsButton />
+                    </Group>
+                  </ResultToolbar>
+                )}
 
-                  {isGuestEmbed && <SdkQuestion.SqlParametersList />}
-                </Stack>
-              )}
+                {isGuestEmbed && <SdkQuestion.SqlParametersList />}
+              </Stack>
+            )}
 
-              <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
-                <Box className={InteractiveQuestionS.Content}>
-                  <SdkQuestion.QuestionVisualization
-                    height={height}
-                    width={width}
-                    className={className}
-                    style={style}
-                  />
-                </Box>
+            <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
+              <Box className={InteractiveQuestionS.Content}>
+                <SdkQuestion.QuestionVisualization
+                  height={height}
+                  width={width}
+                  className={className}
+                  style={style}
+                />
               </Box>
-            </Stack>
-            <SdkQuestionAlertListModal />
-          </FlexibleSizeComponent>
-        )}
-      </QuestionAlertModalProvider>
+            </Box>
+          </Stack>
+        </FlexibleSizeComponent>
+      )}
     </SdkQuestion>
   );
 };
