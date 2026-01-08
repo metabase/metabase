@@ -81,15 +81,14 @@ export const IncrementalTransformSettings = ({
     return CHECKPOINT_TEMPLATE_TAG in tags;
   }, [libQuery, transformType]);
 
-  const { tryCheckQueryComplexity, shouldShowWarning } =
-    useQueryComplexityCheck();
+  const { checkIsQueryComplex, complexity } = useQueryComplexityCheck();
 
-  const handleCheckQueryComplexity = useCallback(() => {
+  const handleCheckQueryComplexity = useCallback(async () => {
     if (transformType !== "native" || hasCheckpointTag || !libQuery) {
       return;
     }
-    tryCheckQueryComplexity(Lib.rawNativeQuery(libQuery));
-  }, [transformType, hasCheckpointTag, libQuery, tryCheckQueryComplexity]);
+    checkIsQueryComplex(Lib.rawNativeQuery(libQuery));
+  }, [transformType, hasCheckpointTag, libQuery, checkIsQueryComplex]);
 
   useEffect(() => {
     if (values.incremental) {
@@ -113,8 +112,8 @@ export const IncrementalTransformSettings = ({
     />
   );
 
-  const complexityWarningAlert = shouldShowWarning && (
-    <QueryComplexityWarning />
+  const complexityWarningAlert = complexity && !complexity.isSimple && (
+    <QueryComplexityWarning complexity={complexity} />
   );
 
   const label = t`Incremental transformation`;

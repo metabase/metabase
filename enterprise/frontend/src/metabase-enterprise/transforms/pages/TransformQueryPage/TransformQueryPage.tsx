@@ -120,14 +120,14 @@ function TransformQueryPageBody({
       return true;
     }
     const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);
-    const isComplex = await checkIsQueryComplex(Lib.rawNativeQuery(libQuery));
-    if (!isComplex) {
+    const complexity = await checkIsQueryComplex(Lib.rawNativeQuery(libQuery));
+    if (complexity.isSimple) {
       return true;
     }
     return new Promise<boolean>((resolve) => {
       showConfirmation({
         title: t`Query complexity warning`,
-        message: <QueryComplexityWarning />,
+        message: <QueryComplexityWarning complexity={complexity} />,
         onConfirm: () => resolve(true),
         onCancel: () => resolve(false),
         confirmButtonText: t`Save anyway`,

@@ -1,34 +1,20 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { useLazyCheckQueryComplexityQuery } from "metabase-enterprise/api";
+import type { CheckQueryComplexityResponse } from "metabase-types/api";
 
 export const useQueryComplexityCheck = () => {
-  const [checkQueryComplexity] = useLazyCheckQueryComplexityQuery();
-  const [shouldShowWarning, setShouldShowWarning] = useState(false);
+  const [checkQueryComplexity, { data: complexity }] =
+    useLazyCheckQueryComplexityQuery();
 
-  const tryCheckQueryComplexity = useCallback(
-    async (queryText: string) => {
-      const result = await checkQueryComplexity(queryText, true).unwrap();
-      setShouldShowWarning(result?.is_simple === false);
-    },
-    [checkQueryComplexity],
-  );
-
-  /**
-   * Check query complexity and return whether warning should be shown.
-   * Use this for pre-save validation where you need the result immediately.
-   */
   const checkIsQueryComplex = useCallback(
-    async (queryText: string): Promise<boolean> => {
-      const result = await checkQueryComplexity(queryText, true).unwrap();
-      return result?.is_simple === false;
-    },
+    async (queryText: string): Promise<CheckQueryComplexityResponse> =>
+      await checkQueryComplexity(queryText, true).unwrap(),
     [checkQueryComplexity],
   );
 
   return {
-    tryCheckQueryComplexity,
-    shouldShowWarning,
     checkIsQueryComplex,
+    complexity,
   };
 };

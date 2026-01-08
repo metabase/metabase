@@ -1,5 +1,6 @@
 import { isResourceNotFoundError } from "metabase/lib/errors";
 import type {
+  CheckQueryComplexityRawResponse,
   CheckQueryComplexityRequest,
   CheckQueryComplexityResponse,
   CreateTransformRequest,
@@ -220,6 +221,10 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/ee/transform/is-simple-query",
         body: { query: queryString },
+      }),
+      transformResponse: (response: CheckQueryComplexityRawResponse) => ({
+        reason: response.reason,
+        isSimple: Boolean(response.is_simple),
       }),
     }),
   }),
