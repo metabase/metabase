@@ -116,7 +116,7 @@ function TransformQueryPageBody({
     useConfirmation();
 
   const confirmIfQueryComplex = async () => {
-    if (source.type !== "query") {
+    if (source.type !== "query" || !("source-incremental-strategy" in source)) {
       return true;
     }
     const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);

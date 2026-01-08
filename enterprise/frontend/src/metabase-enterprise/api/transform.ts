@@ -222,9 +222,12 @@ export const transformApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/transform/is-simple-query",
         body: { query: queryString },
       }),
-      transformResponse: (response: CheckQueryComplexityRawResponse) => ({
-        reason: response.reason,
-        isSimple: Boolean(response.is_simple),
+      transformResponse: ({
+        is_simple,
+        ...rest
+      }: CheckQueryComplexityRawResponse) => ({
+        ...rest,
+        isSimple: Boolean(is_simple),
       }),
     }),
   }),

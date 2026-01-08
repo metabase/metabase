@@ -426,6 +426,12 @@ LIMIT
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save").click();
 
+      cy.log("dismiss the complexity warning modal");
+      H.modal().within(() => {
+        cy.findByText("Query complexity warning").should("be.visible");
+        cy.button("Save anyway").click();
+      });
+
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
       runTransformAndWaitForSuccess();
@@ -1534,6 +1540,65 @@ LIMIT
       getTableLink().click();
       H.queryBuilderHeader().findByText(DB_NAME).should("be.visible");
       H.assertQueryBuilderRowCount(1);
+    });
+
+    it("should show complexity warning modal when saving a complex SQL query and allow saving anyway", () => {
+      cy.log("create a simple SQL transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      cy.log("visit edit mode and change to a complex query with LIMIT");
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+
+      H.NativeEditor.type(" LIMIT 10");
+      getQueryEditor().button("Save").click();
+
+      cy.log("verify complexity warning modal appears");
+      H.modal().within(() => {
+        cy.findByText("Query complexity warning").should("be.visible");
+        cy.findByText(/too complex to allow automatic checkpoint/).should(
+          "be.visible",
+        );
+        cy.findByText(/WHERE id > \{\{checkpoint}}/).should("be.visible");
+        cy.findByText("Contains a LIMIT").should("be.visible");
+        cy.button("Save anyway").click();
+      });
+
+      cy.wait("@updateTransform");
+      cy.url().should("not.include", "/edit");
+    });
+
+    it("should allow canceling the complexity warning modal without saving", () => {
+      cy.log("create a simple SQL transform");
+      createSqlTransform({
+        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+        visitTransform: true,
+      });
+
+      cy.log("visit edit mode and change to a complex query with LIMIT");
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+
+      H.NativeEditor.type(" LIMIT 10");
+      getQueryEditor().button("Save").click();
+
+      cy.log("verify complexity warning modal appears and cancel it");
+      H.modal().within(() => {
+        cy.findByText("Query complexity warning").should("be.visible");
+        cy.button("Cancel").click();
+      });
+
+      cy.log("verify modal is closed and still in edit mode");
+      H.modal().should("not.exist");
+      cy.url().should("include", "/edit");
+
+      cy.log(
+        "verify query was not saved by checking updateTransform was not called",
+      );
+      cy.get("@updateTransform.all").should("have.length", 0);
     });
   });
 
