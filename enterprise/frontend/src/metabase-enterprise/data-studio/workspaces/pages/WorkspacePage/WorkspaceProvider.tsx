@@ -10,7 +10,7 @@ import {
 import { checkNotNull } from "metabase/lib/types";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import type {
-  Dataset,
+  DatasetQuery,
   DraftTransformSource,
   TableId,
   Transform,
@@ -20,10 +20,11 @@ import type {
 } from "metabase-types/api";
 
 export interface OpenTable {
-  tableId: TableId;
+  tableId: TableId | null;
   name: string;
   schema?: string | null;
   transformId?: string;
+  query?: DatasetQuery;
 }
 
 export interface EditedTransform {
@@ -51,14 +52,7 @@ export interface TableTab extends Tab {
   table: OpenTable;
 }
 
-export interface PreviewTab extends Tab {
-  type: "preview";
-  dataset: Dataset | null;
-  transformId: number | string;
-  isLoading?: boolean;
-}
-
-export type WorkspaceTab = TransformTab | TableTab | PreviewTab;
+export type WorkspaceTab = TransformTab | TableTab;
 
 export interface WorkspaceContextValue {
   workspaceId: number;
@@ -192,15 +186,15 @@ export const WorkspaceProvider = ({
   );
 
   const addOpenedTab = useCallback(
-    (tab: WorkspaceTab, activate = true) => {
+    (tab: WorkspaceTab) => {
       updateWorkspaceState((state) => {
         const exists = state.openedTabs.some((item) => item.id === tab.id);
         if (exists) {
-          if (!activate) {
-            return state;
-          }
           return {
             ...state,
+            openedTabs: state.openedTabs.map((item) =>
+              item.id === tab.id ? tab : item,
+            ),
             activeTab: tab,
             activeTransform:
               tab.type === "transform" ? tab.transform : state.activeTransform,
@@ -209,12 +203,6 @@ export const WorkspaceProvider = ({
         }
 
         const newOpenedTabs = [...state.openedTabs, tab];
-        if (!activate) {
-          return {
-            ...state,
-            openedTabs: newOpenedTabs,
-          };
-        }
         return {
           ...state,
           openedTabs: newOpenedTabs,

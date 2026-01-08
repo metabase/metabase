@@ -15,7 +15,7 @@ import { push, replace } from "react-router-redux";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
-import { useLazyGetAdhocQueryQuery, useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -68,14 +68,12 @@ import { AddTransformMenu } from "./AddTransformMenu";
 import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
 import { MetabotTab } from "./MetabotTab";
-import { PreviewTab as PreviewTabComponent } from "./PreviewTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
   type EditedTransform,
   type OpenTable,
-  type PreviewTab,
   WorkspaceProvider,
   type WorkspaceTab,
   useWorkspace,
@@ -125,14 +123,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     hasUnsavedChanges,
     unsavedTransforms,
   } = useWorkspace();
-
-  // Compute active preview from activeTab
-  const activePreview = useMemo(() => {
-    if (activeTab?.type === "preview") {
-      return activeTab;
-    }
-    return undefined;
-  }, [activeTab]);
 
   // RTK
   const id = Number(params.workspaceId);
@@ -245,7 +235,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     useMergeWorkspaceMutation();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const [runTransform] = useRunWorkspaceTransformMutation();
-  const [runAdhocQuery] = useLazyGetAdhocQueryQuery();
   const [runningTransforms, setRunningTransforms] = useState<Set<string>>(
     new Set(),
   );
@@ -515,6 +504,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       setTab(tableTab.id);
     },
     [addOpenedTab],
+
   );
 
   const handleRunTransformAndShowPreview = useCallback(
@@ -788,6 +778,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     databaseId={workspace?.database_id ?? null}
                     tableId={activeTable.tableId}
                     transformId={activeTable.transformId}
+                    query={activeTable.query}
                   />
                 )}
               </Tabs.Panel>
@@ -825,15 +816,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   />
                 )}
               </Tabs.Panel>
-
-              {activePreview && (
-                <Tabs.Panel value={activePreview.id} h="100%">
-                  <PreviewTabComponent
-                    dataset={activePreview.dataset}
-                    isLoading={activePreview.isLoading}
-                  />
-                </Tabs.Panel>
-              )}
             </Box>
           </Tabs>
         </Box>
