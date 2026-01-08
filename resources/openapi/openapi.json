@@ -668,6 +668,16 @@
         } ],
         "type" : "array"
       },
+      "mbql.clause.measure" : {
+        "prefixItems" : [ {
+          "const" : "measure"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.common.options"
+        }, {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.measure"
+        } ],
+        "type" : "array"
+      },
       "mbql.clause.median" : {
         "prefixItems" : [ {
           "const" : "median"
@@ -1244,9 +1254,82 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.dependencies.api.base-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.broken-cards-response" : {
+        "properties" : {
+          "bad_cards" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.queries.schema.card"
+            },
+            "type" : "array"
+          },
+          "bad_transforms" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform"
+            },
+            "type" : "array"
+          },
+          "success" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "success" ],
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.card-body" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashboard_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "dataset_query" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.queries.schema.query"
@@ -1254,9 +1337,30 @@
               "type" : "null"
             } ]
           },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "document_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -1292,12 +1396,398 @@
         },
         "type" : "object"
       },
+      "metabase-enterprise.dependencies.api.card-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "dashboard" : { },
+              "dashboard_id" : { },
+              "database_id" : { },
+              "description" : { },
+              "display" : { },
+              "document" : { },
+              "document_id" : { },
+              "last-edit-info" : { },
+              "name" : { },
+              "result_metadata" : { },
+              "type" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "card"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.dashboard-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "last-edit-info" : { },
+              "moderation_reviews" : { },
+              "name" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "dashboard"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.document-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "description" : { },
+              "name" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "document"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.entity" : {
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.table-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.card-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.snippet-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.transform-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.dashboard-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.document-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.sandbox-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.segment-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.measure-entity"
+        } ]
+      },
+      "metabase-enterprise.dependencies.api.entity-id" : {
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase-enterprise.dependencies.api.graph-response" : {
+        "properties" : {
+          "edges" : {
+            "items" : {
+              "properties" : {
+                "from_entity_id" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity-id"
+                },
+                "from_entity_type" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+                },
+                "to_entity_id" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity-id"
+                },
+                "to_entity_type" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+                }
+              },
+              "required" : [ "from_entity_type", "from_entity_id", "to_entity_type", "to_entity_id" ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "nodes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "nodes", "edges" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.measure-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "name" : { },
+              "table" : { },
+              "table_id" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "measure"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.sandbox-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "table" : { },
+              "table_id" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "sandbox"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.segment-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "dashboard" : { },
+              "dashboard_id" : { },
+              "database_id" : { },
+              "description" : { },
+              "display" : { },
+              "document" : { },
+              "document_id" : { },
+              "last-edit-info" : { },
+              "name" : { },
+              "result_metadata" : { },
+              "type" : { },
+              "view_count" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "segment"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.snippet-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "collection" : { },
+              "collection_id" : { },
+              "created_at" : { },
+              "creator" : { },
+              "creator_id" : { },
+              "description" : { },
+              "name" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "snippet"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.table-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "db" : { },
+              "db_id" : { },
+              "description" : { },
+              "display_name" : { },
+              "fields" : { },
+              "name" : { },
+              "schema" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "table"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
       "metabase-enterprise.dependencies.api.transform-body" : {
         "properties" : {
           "id" : {
-            "description" : "value must be an integer greater than zero.",
-            "minimum" : 1,
-            "type" : "integer"
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
           },
           "name" : {
             "type" : "string"
@@ -1329,6 +1819,53 @@
         },
         "required" : [ "id" ],
         "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.transform-entity" : {
+        "properties" : {
+          "data" : {
+            "properties" : {
+              "creator" : { },
+              "description" : { },
+              "last_run" : { },
+              "name" : { },
+              "table" : { }
+            },
+            "type" : "object"
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "errors" : {
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.error"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "id" : {
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "type" : {
+            "const" : "transform"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ],
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.api.usages" : {
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity-id"
+        },
+        "type" : "object"
+      },
+      "metabase-enterprise.dependencies.dependency-types.dependency-types" : {
+        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment" ],
+        "type" : "string"
       },
       "metabase-enterprise.metabot-v3.client.schema.message" : {
         "properties" : {
@@ -4029,6 +4566,28 @@
           "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.append-config"
         } ]
       },
+      "metabase-enterprise.transforms.schema.transform" : {
+        "properties" : {
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "source" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-source"
+          },
+          "target" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transforms.schema.transform-target"
+          }
+        },
+        "required" : [ "name", "source", "target" ],
+        "type" : "object"
+      },
       "metabase-enterprise.transforms.schema.transform-source" : {
         "oneOf" : [ {
           "properties" : {
@@ -5124,6 +5683,11 @@
         },
         "required" : [ "id", "email", "first_name", "last_name", "timestamp" ],
         "type" : "object"
+      },
+      "metabase.documents.schema..document.id" : {
+        "description" : "Valid Document ID",
+        "minimum" : 1,
+        "type" : "integer"
       },
       "metabase.legacy-mbql.schema.!=" : {
         "allOf" : [ ],
@@ -8039,6 +8603,11 @@
         "minimum" : 1,
         "type" : "integer"
       },
+      "metabase.lib.schema.id.collection" : {
+        "description" : "Valid Collection ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.lib.schema.id.dashboard" : {
         "description" : "Valid Dashboard ID",
         "minimum" : 1,
@@ -8064,8 +8633,18 @@
         "minimum" : 1,
         "type" : "integer"
       },
+      "metabase.lib.schema.id.measure" : {
+        "description" : "Valid Measure ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
       "metabase.lib.schema.id.pulse" : {
         "description" : "Valid Pulse ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.lib.schema.id.sandbox" : {
+        "description" : "Valid Sandbox ID",
         "minimum" : 1,
         "type" : "integer"
       },
@@ -8085,6 +8664,11 @@
       },
       "metabase.lib.schema.id.table" : {
         "description" : "Valid Table ID",
+        "minimum" : 1,
+        "type" : "integer"
+      },
+      "metabase.lib.schema.id.transform" : {
+        "description" : "Valid Transform ID",
         "minimum" : 1,
         "type" : "integer"
       },
@@ -8555,6 +9139,8 @@
           "$ref" : "#/components/schemas/mbql.clause.ltrim"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.max"
+        }, {
+          "$ref" : "#/components/schemas/mbql.clause.measure"
         }, {
           "$ref" : "#/components/schemas/mbql.clause.median"
         }, {
@@ -10435,6 +11021,89 @@
       },
       "metabase.lib.schema.util.distinct-mbql-clauses" : { },
       "metabase.lib.schema.util.unique-uuids" : { },
+      "metabase.lib.schema.validate.duplicate-column-error" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/duplicate-column"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.error" : {
+        "allOf" : [ {
+          "properties" : {
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.lib.schema.validate.validate-error-type"
+            }
+          },
+          "required" : [ "type" ],
+          "type" : "object"
+        }, {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.missing-column-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.missing-table-alias-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.duplicate-column-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.syntax-error"
+          }, {
+            "$ref" : "#/components/schemas/metabase.lib.schema.validate.validation-exception-error"
+          } ]
+        } ]
+      },
+      "metabase.lib.schema.validate.missing-column-error" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/missing-column"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.missing-table-alias-error" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/missing-table-alias"
+          }
+        },
+        "required" : [ "type", "name" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.syntax-error" : {
+        "properties" : {
+          "type" : {
+            "const" : "validate/syntax-error"
+          }
+        },
+        "required" : [ "type" ],
+        "type" : "object"
+      },
+      "metabase.lib.schema.validate.validate-error-type" : {
+        "type" : "string"
+      },
+      "metabase.lib.schema.validate.validation-exception-error" : {
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          },
+          "type" : {
+            "const" : "validate/validation-exception-error"
+          }
+        },
+        "required" : [ "type", "message" ],
+        "type" : "object"
+      },
       "metabase.logger.api.log-level" : {
         "enum" : [ "off", "fatal", "error", "warn", "info", "debug", "trace" ],
         "type" : "string"
@@ -10442,6 +11111,63 @@
       "metabase.logger.api.time-unit" : {
         "enum" : [ "days", "hours", "minutes", "seconds", "milliseconds", "microseconds", "nanoseconds" ],
         "type" : "string"
+      },
+      "metabase.measures.api.measure" : {
+        "description" : "Schema for a Measure entity as returned from the API.",
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "created_at" : { },
+          "creator" : {
+            "oneOf" : [ {
+              "properties" : { },
+              "type" : "object"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "creator_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "definition" : {
+            "properties" : { },
+            "type" : "object"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "entity_id" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "name" : {
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "table_id" : {
+            "description" : "value must be an integer greater than zero.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "updated_at" : { }
+        },
+        "required" : [ "id", "name", "table_id", "definition", "archived", "creator_id", "created_at", "updated_at" ],
+        "type" : "object"
       },
       "metabase.notification.models.FullyHydratedNotification" : {
         "description" : "Fully hydrated notification.",
@@ -11369,6 +12095,27 @@
       "metabase.queries.schema.card" : {
         "description" : "Schema for an instance of a `:model/Card` (everything is optional to support updates).",
         "properties" : {
+          "collection_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dashboard_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.dashboard"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "dataset_query" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.queries.schema.query"
@@ -11376,9 +12123,30 @@
               "type" : "null"
             } ]
           },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "document_id" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.documents.schema..document.id"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "id" : {
             "oneOf" : [ {
               "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "oneOf" : [ {
+              "type" : "string"
             }, {
               "type" : "null"
             } ]
@@ -11713,7 +12481,7 @@
                 }
               }
             },
-            "description" : "sequence of An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -11746,7 +12514,7 @@
                 }
               }
             },
-            "description" : "An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -11775,7 +12543,7 @@
                 }
               }
             },
-            "description" : "sequence of An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -11836,7 +12604,7 @@
                 }
               }
             },
-            "description" : "An Action as it should appear when we `SELECT` it from the app DB."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -12468,7 +13236,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :unmasked_key -> <Unhashed string of the form 'mb_<base-64-bytes>'.>, :masked_key -> <Masked string like 'mb_1234**********'.>, :prefix -> <Prefix string of an API Key, suitable for passing around unmasked. This must be unique.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -15240,7 +16008,7 @@
                 }
               }
             },
-            "description" : "map where {:data -> <sequence of map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>, :sole_dashboard_info -> <map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>}>}>, :total -> <integer>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -15440,7 +16208,7 @@
                 }
               }
             },
-            "description" : "map where {:moved -> <sequence of value must be an integer greater than zero.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -15747,7 +16515,7 @@
                 }
               }
             },
-            "description" : "map where {:data -> <sequence of map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>, :sole_dashboard_info -> <map where {:id -> <integer greater than 0>, :name -> <string>, :description -> <nullable string>}>}>, :total -> <integer>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -15939,7 +16707,7 @@
                 }
               }
             },
-            "description" : "map where {:moved -> <sequence of value must be an integer greater than zero.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -18571,7 +19339,7 @@
                 }
               }
             },
-            "description" : "map where {:settings -> <map from <keyword> to <map where {:enabled -> <boolean>, :reasons (optional) -> <sequence of map where {:key -> <keyword>, :type -> <enum of :error, :warning>, :message -> <string, or function>}>}>>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -19308,7 +20076,7 @@
                 }
               }
             },
-            "description" : "sequence of map where {:name -> <string>, :id -> <value must be an integer greater than zero.>, :public_uuid -> <value must be a valid UUID.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -19672,7 +20440,7 @@
                 }
               }
             },
-            "description" : "map where {:uuid -> <value must be a valid UUID.>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20117,7 +20885,7 @@
                 }
               }
             },
-            "description" : "map where {:body -> <anything>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20447,6 +21215,62 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/content-translation/dictionary" : {
+      "get" : {
+        "description" : "Fetch the content translation dictionary for authenticated users (auth-based embedding flows).",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "locale",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "data" : {
+                      "items" : {
+                        "properties" : {
+                          "locale" : {
+                            "minLength" : 1,
+                            "type" : "string"
+                          },
+                          "msgid" : {
+                            "minLength" : 1,
+                            "type" : "string"
+                          },
+                          "msgstr" : {
+                            "type" : "string"
+                          }
+                        },
+                        "required" : [ "locale", "msgid", "msgstr" ],
+                        "type" : "object"
+                      },
+                      "type" : "array"
+                    }
+                  },
+                  "required" : [ "data" ],
+                  "type" : "object"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/content-translation/dictionary",
+        "tags" : [ "/api/ee/content-translation" ]
+      }
+    },
     "/api/ee/content-translation/dictionary/{token}" : {
       "get" : {
         "description" : "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.",
@@ -20537,7 +21361,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20641,7 +21465,7 @@
                 }
               }
             },
-            "description" : "map with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20676,7 +21500,7 @@
                 }
               }
             },
-            "description" : "Schema for /publish-tables endpoint response. Matches frontend PublishTablesResponse type."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20711,7 +21535,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20746,7 +21570,7 @@
                 }
               }
             },
-            "description" : "Schema for /selection endpoint response. Matches frontend BulkTableSelectionInfo type."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20781,7 +21605,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -20816,7 +21640,7 @@
                 }
               }
             },
-            "description" : "null"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21082,6 +21906,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -21108,9 +21939,7 @@
                     "type" : "string"
                   },
                   "id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
+                    "$ref" : "#/components/schemas/metabase.lib.schema.id.snippet"
                   },
                   "name" : {
                     "description" : "snippet names cannot include '}' or start with spaces"
@@ -21124,6 +21953,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -21152,6 +21988,13 @@
         },
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.broken-cards-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -21182,8 +22025,7 @@
           "name" : "type",
           "required" : false,
           "schema" : {
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
           }
         }, {
           "in" : "query",
@@ -21195,6 +22037,13 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.graph-response"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -21205,6 +22054,72 @@
           }
         },
         "summary" : "GET /api/ee/dependencies/graph",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/broken" : {
+      "get" : {
+        "description" : "Returns a list of all items with broken queries.\n\n   Accepts optional parameters for filtering:\n   - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)\n   - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)\n   - `query`: Search string to filter by name or location\n\n   Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+            }, {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "question", "metric", "model" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "question", "metric", "model" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/broken",
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
@@ -21225,23 +22140,21 @@
           "name" : "type",
           "required" : true,
           "schema" : {
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
           }
         }, {
           "in" : "query",
           "name" : "dependent_type",
           "required" : true,
           "schema" : {
-            "enum" : [ "table", "card", "snippet", "transform", "dashboard", "document", "sandbox", "segment" ],
-            "type" : "string"
+            "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
           }
         }, {
           "in" : "query",
           "name" : "dependent_card_type",
           "required" : false,
           "schema" : {
-            "enum" : [ "question", "model", "metric" ],
+            "enum" : [ "question", "metric", "model" ],
             "type" : "string"
           }
         }, {
@@ -21254,6 +22167,16 @@
         } ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
@@ -21264,6 +22187,72 @@
           }
         },
         "summary" : "GET /api/ee/dependencies/graph/dependents",
+        "tags" : [ "/api/ee/dependencies" ]
+      }
+    },
+    "/api/ee/dependencies/graph/unreferenced" : {
+      "get" : {
+        "description" : "Returns a list of all unreferenced items in the instance.\n   An unreferenced item is one that is not a dependency of any other item.\n\n   Accepts optional parameters for filtering:\n   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])\n   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])\n   - query: Search string to filter by name or location\n\n   Returns a list of unreferenced items, each with :id, :type, and :data fields.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+            }, {
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.dependencies.dependency-types.dependency-types"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "card_types",
+          "required" : false,
+          "schema" : {
+            "anyOf" : [ {
+              "enum" : [ "question", "metric", "model" ],
+              "type" : "string"
+            }, {
+              "items" : {
+                "enum" : [ "question", "metric", "model" ],
+                "type" : "string"
+              },
+              "type" : "array"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.entity"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/ee/dependencies/graph/unreferenced",
         "tags" : [ "/api/ee/dependencies" ]
       }
     },
@@ -21398,7 +22387,7 @@
                 }
               }
             },
-            "description" : "map where {:error -> <true>, :message -> <value must be a non-blank string.>}, or one of <not-connected = map | syncing = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :sync_started_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | active = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :last_sync_at -> <integer greater than 0>, :next_sync_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | error = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :error_message -> <value must be a non-blank string.>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>}> dispatched by :status"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21438,7 +22427,7 @@
                 }
               }
             },
-            "description" : "map where {:error -> <true>, :message -> <value must be a non-blank string.>}, or one of <not-connected = map | syncing = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :sync_started_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | active = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :last_sync_at -> <integer greater than 0>, :next_sync_at -> <integer greater than 0>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>} | error = map where {:url -> <value must be a non-blank string.>, :created_at -> <integer greater than 0>, :error_message -> <value must be a non-blank string.>, :created_by_id -> <integer greater than 0>, :db_id -> <integer greater than 0>}> dispatched by :status"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21493,7 +22482,7 @@
                 }
               }
             },
-            "description" : "map where {:email -> <nullable string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -21529,7 +22518,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :entity_id (optional) -> <string>, :model (optional) -> <enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :name -> <string>, :description -> <nullable string>, :archived -> <boolean>, :copy (optional) -> <boolean>, :collection_position (optional) -> <nullable value must be an integer greater than zero.>, :collection_preview (optional) -> <nullable boolean>, :fully_parameterized (optional) -> <nullable boolean>, :based_on_upload (optional) -> <nullable value must be an integer greater than zero., or string>, :collection (optional) -> <nullable map where {:id -> <string, or value must be an integer greater than zero.>, :name -> <string>, :slug (optional) -> <string>, :entity_id (optional) -> <string>, :description -> <nullable string>, :can_write -> <boolean>, :can_restore -> <boolean>, :can_delete -> <boolean>, :archived -> <boolean>, :children (optional) -> <sequence of map where {:id -> <string, or value must be an integer greater than zero.>, :name -> <string>, :slug (optional) -> <string>, :entity_id (optional) -> <string>, :description -> <nullable string>, :can_write -> <boolean>, :can_restore -> <boolean>, :can_delete -> <boolean>, :archived -> <boolean>, :children (optional) -> <sequence of recursive :metabase.collections.schema/Collection>, :authority_level (optional) -> <nullable string>, :type (optional) -> <enum of instance-analytics, trash, remote-synced, library, library-models, library-metrics>, :is_remote_synced (optional) -> <boolean>, :parent_id (optional) -> <nullable string, or value must be an integer greater than zero.>, :personal_owner_id (optional) -> <value must be an integer greater than zero.>, :is_personal (optional) -> <boolean>, :is_sample (optional) -> <boolean>, :location -> <nullable string>, :effective_location (optional) -> <string>, :effective_ancestors (optional) -> <map>, :here (optional) -> <set of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :below (optional) -> <sequence of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :git_sync_enabled (optional) -> <boolean>}>, :authority_level (optional) -> <nullable string>, :type (optional) -> <enum of instance-analytics, trash, remote-synced, library, library-models, library-metrics>, :is_remote_synced (optional) -> <boolean>, :parent_id (optional) -> <nullable string, or value must be an integer greater than zero.>, :personal_owner_id (optional) -> <value must be an integer greater than zero.>, :is_personal (optional) -> <boolean>, :is_sample (optional) -> <boolean>, :location -> <nullable string>, :effective_location (optional) -> <string>, :effective_ancestors (optional) -> <map>, :here (optional) -> <set of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :below (optional) -> <sequence of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :git_sync_enabled (optional) -> <boolean>}>, :collection_id (optional) -> <nullable value must be an integer greater than zero., or string>, :display (optional) -> <string>, :personal_owner_id (optional) -> <nullable value must be an integer greater than zero.>, :database_id (optional) -> <nullable value must be an integer greater than zero.>, :moderated_status (optional) -> <string>, :type (optional) -> <enum of instance-analytics, trash, remote-synced, library, library-models, library-metrics, or enum of model, question, metric>, :here (optional) -> <set of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :below (optional) -> <sequence of enum of card, dataset, metric, dashboard, snippet, collection, indexed-entity, indexed-entity, document, table>, :can_write (optional) -> <boolean>, :can_restore (optional) -> <boolean>, :can_delete (optional) -> <boolean>, :last-edit-info (optional) -> <map where {:id -> <nullable value must be an integer greater than zero.>, :email -> <nullable string>, :first_name -> <nullable string>, :last_name -> <nullable string>, :timestamp -> <nullable string>}>, :location (optional) -> <string>, :effective_location (optional) -> <string>, :authority_level (optional) -> <nullable string>, :dashboard_count (optional) -> <nullable value must be an integer greater than zero.>}, or map where {:data -> <null>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23716,7 +24705,7 @@
                 }
               }
             },
-            "description" : "map where {:model-type -> <enum of card, invalid>, :model-id -> <string>, :decision -> <enum of allow, denied, limited>, :segment -> <set of enum of sandboxed, impersonated, routed>, :message -> <sequence of string>, :data -> <map>, :suggestions -> <map from <integer> to <string>>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23751,7 +24740,7 @@
                 }
               }
             },
-            "description" : "map where {:items -> <sequence of string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23802,7 +24791,7 @@
                 }
               }
             },
-            "description" : "map where {:status -> <string>, :message -> <string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23896,7 +24885,7 @@
                 }
               }
             },
-            "description" : "nullable map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -23986,7 +24975,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <integer greater than 0>, :sync_task_type -> <enum of import, export>, :initiated_by (optional) -> <nullable integer greater than 0>, :progress -> <nullable float between 0.0 and 1.0 inclusive>, :started_at -> <anything>, :ended_at (optional) -> <nullable anything>, :last_progress_report_at (optional) -> <nullable anything>, :version (optional) -> <nullable string>, :cancelled (optional) -> <nullable boolean>, :error_message (optional) -> <nullable string>, :status -> <enum of :running, :successful, :errored, :cancelled, :timed-out>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24083,7 +25072,7 @@
                 }
               }
             },
-            "description" : "map where {:dirty -> <sequence of map where {:id -> <integer greater than 0>, :name -> <nullable string>, :model -> <string>, :sync_status -> <string>, :created_at (optional) -> <anything>, :updated_at (optional) -> <nullable anything>, :collection_id (optional) -> <nullable integer greater than 0>, :authority_level (optional) -> <nullable string>, :display (optional) -> <nullable string>, :query_type (optional) -> <nullable string>, :description (optional) -> <nullable string>}>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24119,7 +25108,7 @@
                 }
               }
             },
-            "description" : "map where {:message -> <string>, :task_id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24184,7 +25173,7 @@
                 }
               }
             },
-            "description" : "map where {:status -> <must equal :success>, :task_id -> <nullable integer greater than 0>, :message (optional) -> <nullable string>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24216,7 +25205,7 @@
                 }
               }
             },
-            "description" : "map where {:is_dirty -> <boolean>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24302,7 +25291,7 @@
                 }
               }
             },
-            "description" : "map where {:success -> <boolean>, :task_id (optional) -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -24361,7 +25350,7 @@
                 }
               }
             },
-            "description" : "map where {:status -> <string>, :message -> <string>, :task_id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25337,7 +26326,7 @@
                 }
               }
             },
-            "description" : "Schema for GET /api/ee/support-access-grants response (paginated list)."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25370,7 +26359,7 @@
                 }
               }
             },
-            "description" : "Schema for a support access grant object in API responses."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25396,7 +26385,7 @@
                 }
               }
             },
-            "description" : "Schema for GET /api/ee/support-access-grants/current response."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25431,7 +26420,7 @@
                 }
               }
             },
-            "description" : "Schema for a support access grant object in API responses."
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25516,7 +26505,7 @@
                 }
               }
             },
-            "description" : "map where {:data -> <sequence of map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25610,7 +26599,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25685,7 +26674,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -25793,7 +26782,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <value must be an integer greater than zero.>, :name -> <value must be a non-blank string.>, :slug -> <invalid slug>, :is_active -> <value must be a valid boolean string ('true' or 'false').>, :member_count -> <value must be an integer.>, :attributes -> <nullable map from <string> to <string>>, :tenant_collection_id -> <value must be an integer greater than zero.>} with no other keys"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -26951,7 +27940,7 @@
                 }
               }
             },
-            "description" : "map where {:logs -> <string>, :error (optional) -> <map where {:message -> <function, or function>}>, :output (optional) -> <map where {:cols -> <sequence of map where {:name -> <string>}>, :rows -> <sequence of anything>}>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -28800,7 +29789,7 @@
                 }
               }
             },
-            "description" : "sequence of map where {:id -> <keyword>, :display_name -> <string>, :loggers -> <sequence of map where {:name -> <string>, :level -> <enum of :off, :fatal, :error, :warn, :info, :debug, :trace>}>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -28830,6 +29819,206 @@
         },
         "summary" : "GET /api/login-history/current",
         "tags" : [ "/api/login-history" ]
+      }
+    },
+    "/api/measure/" : {
+      "get" : {
+        "description" : "Fetch *all* `Measures`.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/",
+        "tags" : [ "/api/measure" ]
+      },
+      "post" : {
+        "description" : "Create a new `Measure`.",
+        "parameters" : [ ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "definition" : {
+                    "description" : "Value must be a map.",
+                    "properties" : { },
+                    "type" : "object"
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  },
+                  "table_id" : {
+                    "description" : "value must be an integer greater than zero.",
+                    "minimum" : 1,
+                    "type" : "integer"
+                  }
+                },
+                "required" : [ "name", "table_id", "definition" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "POST /api/measure/",
+        "tags" : [ "/api/measure" ]
+      }
+    },
+    "/api/measure/{id}" : {
+      "get" : {
+        "description" : "Fetch `Measure` with ID.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "GET /api/measure/{id}",
+        "tags" : [ "/api/measure" ]
+      },
+      "put" : {
+        "description" : "Update a `Measure` with ID.",
+        "parameters" : [ {
+          "description" : "value must be an integer greater than zero.",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "archived" : {
+                    "oneOf" : [ {
+                      "type" : "boolean"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "definition" : {
+                    "oneOf" : [ {
+                      "properties" : { },
+                      "type" : "object"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "description" : {
+                    "oneOf" : [ {
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "name" : {
+                    "oneOf" : [ {
+                      "minLength" : 1,
+                      "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "revision_message" : {
+                    "minLength" : 1,
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "revision_message" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.measures.api.measure"
+                }
+              }
+            },
+            "description" : "Successful response"
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "summary" : "PUT /api/measure/{id}",
+        "tags" : [ "/api/measure" ]
       }
     },
     "/api/model-index/" : {
@@ -30895,7 +32084,7 @@
                 }
               }
             },
-            "description" : "map where {:has_more_values -> <boolean>, :values -> <sequence of vector with exactly 2 items of type: anything, string, or vector with exactly 1 items of type: anything>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -33205,7 +34394,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "segment", "transform" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ],
             "type" : "string"
           }
         } ],
@@ -33234,7 +34423,7 @@
               "schema" : {
                 "properties" : {
                   "entity" : {
-                    "enum" : [ "card", "dashboard", "document", "segment", "transform" ],
+                    "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ],
                     "type" : "string"
                   },
                   "id" : {
@@ -33277,7 +34466,7 @@
           "name" : "entity",
           "required" : true,
           "schema" : {
-            "enum" : [ "card", "dashboard", "document", "segment", "transform" ],
+            "enum" : [ "card", "dashboard", "document", "measure", "segment", "transform" ],
             "type" : "string"
           }
         }, {
@@ -33375,7 +34564,7 @@
           "schema" : {
             "oneOf" : [ {
               "items" : {
-                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ],
+                "enum" : [ "dashboard", "table", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ],
                 "type" : "string"
               },
               "type" : "array"
@@ -35042,7 +36231,7 @@
                 }
               }
             },
-            "description" : "map where {:success -> <must equal true>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36134,7 +37323,7 @@
                 }
               }
             },
-            "description" : "sequence of map where {:id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36212,7 +37401,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -36397,7 +37586,7 @@
                 }
               }
             },
-            "description" : "map where {:id -> <integer greater than 0>}"
+            "description" : "Successful response"
           },
           "4XX" : {
             "description" : "Client error response"
@@ -37182,6 +38371,19 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "properties" : {
+                    "token" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "token" ],
+                  "type" : "object"
+                }
+              }
+            },
             "description" : "Successful response"
           },
           "4XX" : {
