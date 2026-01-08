@@ -13,8 +13,8 @@ import {
   createMockTransformDependencyNode,
 } from "metabase-types/api/mocks";
 
-import type { NodeLink } from "./types";
-import { getNodeIcon, getNodeLink } from "./utils";
+import type { DependencyGroupTypeInfo, NodeLink } from "./types";
+import { getNodeIcon, getNodeLink, getNodeTypeInfo } from "./utils";
 
 registerVisualizations();
 
@@ -153,4 +153,59 @@ describe("getNodeLink", () => {
   ])("should get the $node.type node link", ({ node, expectedLink }) => {
     expect(getNodeLink(node)).toEqual(expectedLink);
   });
+});
+
+describe("getNodeTypeInfo", () => {
+  it.each<{
+    node: DependencyNode;
+    expectedTypeInfo: DependencyGroupTypeInfo;
+  }>([
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          query_type: "native",
+        }),
+      }),
+      expectedTypeInfo: { label: "SQL question", color: "text-secondary" },
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          query_type: "query",
+        }),
+      }),
+      expectedTypeInfo: { label: "Question", color: "text-secondary" },
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "model",
+        }),
+      }),
+      expectedTypeInfo: { label: "Model", color: "brand" },
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "metric",
+        }),
+      }),
+      expectedTypeInfo: { label: "Metric", color: "summarize" },
+    },
+    {
+      node: createMockTableDependencyNode(),
+      expectedTypeInfo: { label: "Table", color: "brand" },
+    },
+    {
+      node: createMockSnippetDependencyNode(),
+      expectedTypeInfo: { label: "Snippet", color: "text-secondary" },
+    },
+  ])(
+    "should get the $node.type node type info",
+    ({ node, expectedTypeInfo }) => {
+      expect(getNodeTypeInfo(node)).toEqual(expectedTypeInfo);
+    },
+  );
 });
