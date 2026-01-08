@@ -21215,62 +21215,6 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
-    "/api/ee/content-translation/dictionary" : {
-      "get" : {
-        "description" : "Fetch the content translation dictionary for authenticated users (auth-based embedding flows).",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "locale",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "properties" : {
-                    "data" : {
-                      "items" : {
-                        "properties" : {
-                          "locale" : {
-                            "minLength" : 1,
-                            "type" : "string"
-                          },
-                          "msgid" : {
-                            "minLength" : 1,
-                            "type" : "string"
-                          },
-                          "msgstr" : {
-                            "type" : "string"
-                          }
-                        },
-                        "required" : [ "locale", "msgid", "msgstr" ],
-                        "type" : "object"
-                      },
-                      "type" : "array"
-                    }
-                  },
-                  "required" : [ "data" ],
-                  "type" : "object"
-                }
-              }
-            },
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "GET /api/ee/content-translation/dictionary",
-        "tags" : [ "/api/ee/content-translation" ]
-      }
-    },
     "/api/ee/content-translation/dictionary/{token}" : {
       "get" : {
         "description" : "Fetch the content translation dictionary via a JSON Web Token signed with the `embedding-secret-key`.",
@@ -38374,6 +38318,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
+                  "description" : "A map with a single key, `:token`, which is a string.",
                   "properties" : {
                     "token" : {
                       "type" : "string"
@@ -38384,7 +38329,7 @@
                 }
               }
             },
-            "description" : "Successful response"
+            "description" : "A map with a single key, `:token`, which is a string."
           },
           "4XX" : {
             "description" : "Client error response"
