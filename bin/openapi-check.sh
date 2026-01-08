@@ -31,8 +31,12 @@ fi
 
 # Check if there are any differences between generated and committed versions
 if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
+        echo "OpenAPI schema changes detected:"
+        git diff "$OPENAPI_SPEC"
+
         if [[ "$AUTO_COMMIT" == "true" ]]; then
-                echo "OpenAPI schema has changed, committing updates..."
+                echo ""
+                echo "Auto-committing changes..."
 
                 # Get the branch name from environment variable or current branch
                 BRANCH="${PR_BRANCH:-$(git rev-parse --abbrev-ref HEAD)}"
