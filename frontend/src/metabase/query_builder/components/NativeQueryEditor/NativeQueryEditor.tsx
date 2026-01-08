@@ -140,7 +140,7 @@ type Props = OwnProps &
 const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
   function NativeQueryEditorInner(props) {
     const {
-      availableHeight = 0,
+      availableHeight,
       canChangeDatabase = true,
       cancelQuery,
       closeSnippetModal,
@@ -362,7 +362,9 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
             minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
             maxConstraints={[
               Infinity,
-              availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET,
+              availableHeight
+                ? availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
+                : Infinity,
             ]}
             axis="y"
             handle={dragHandle}
