@@ -1307,8 +1307,12 @@ describe("documents", () => {
         .findByRole("heading", { name: "First Heading" })
         .realHover();
 
-      // Anchor link button should appear
-      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+      // Anchor link button should appear (filter to visible one since all blocks have hidden buttons)
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
     });
 
     it("should copy anchor URL to clipboard when clicking anchor link", () => {
@@ -1330,8 +1334,12 @@ describe("documents", () => {
         .findByRole("heading", { name: "First Heading" })
         .realHover();
 
-      // Click the anchor link button
-      cy.findByRole("button", { name: /copy link/i }).click();
+      // Click the anchor link button (filter to visible one since all blocks have hidden buttons)
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .click();
 
       // Verify "Copied!" tooltip appears
       cy.get("body").findByText("Copied!").should("be.visible");
@@ -1389,8 +1397,12 @@ describe("documents", () => {
       // Hover over a paragraph
       H.documentContent().contains("Some content here").realHover();
 
-      // Anchor link button should appear
-      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+      // Anchor link button should appear (filter to visible one since all blocks have hidden buttons)
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
     });
 
     it("should show anchor link for blockquotes on hover", () => {
@@ -1402,8 +1414,12 @@ describe("documents", () => {
       // Hover over the blockquote
       H.documentContent().find("blockquote").realHover();
 
-      // Anchor link button should appear
-      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
+      // Anchor link button should appear (filter to visible one since all blocks have hidden buttons)
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
     });
 
     it("should still show comments menu on right side (regression check)", () => {
@@ -1415,8 +1431,18 @@ describe("documents", () => {
         .realHover();
 
       // Both anchor link (left) and comments menu (right) should be visible
-      cy.findByRole("button", { name: /copy link/i }).should("be.visible");
-      cy.findByRole("button", { name: /comments/i }).should("be.visible");
+      // Filter to visible one since all blocks have hidden menus
+      cy.get('[data-testid="anchor-link-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("button", { name: /copy link/i })
+        .should("be.visible");
+      // Comments button is rendered as a link (uses ForwardRefLink component)
+      cy.get('[data-testid="comments-menu"]')
+        .filter(":visible")
+        .first()
+        .findByRole("link", { name: /comments/i })
+        .should("be.visible");
     });
 
     it("should show anchor link for bullet lists on hover", () => {
