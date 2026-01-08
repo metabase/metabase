@@ -12,7 +12,7 @@ import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Group } from "metabase/ui";
+import { Group, useColorScheme } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
@@ -57,6 +57,7 @@ export function DependencyGraph({
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
   const { sendErrorToast } = useMetadataToasts();
+  const { colorScheme } = useColorScheme();
 
   const entryNode = useMemo(() => {
     return entry != null ? findNode(nodes, entry) : null;
@@ -103,9 +104,11 @@ export function DependencyGraph({
         data-testid="dependency-graph"
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        colorMode={colorScheme === "dark" ? "dark" : "light"}
+        className={S.reactFlow}
       >
         <Background />
-        <Controls />
+        <Controls className={S.controls} />
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>

@@ -524,7 +524,7 @@ describe("Tenants - management", () => {
     });
   });
 
-  it("should show 'All Internal Users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
+  it("should show 'All internal users' in permission warning modal for internal groups on tenant collections (EMB-1143)", () => {
     cy.request("PUT", "/api/setting", { "use-tenants": true });
 
     cy.request("POST", "/api/permissions/group", {
@@ -536,7 +536,7 @@ describe("Tenants - management", () => {
 
     cy.log("all internal users should have 'View' access");
     cy.findAllByRole("row")
-      .contains("tr", "All Internal Users")
+      .contains("tr", "All internal users")
       .findByText("View")
       .should("be.visible");
 
@@ -559,13 +559,13 @@ describe("Tenants - management", () => {
 
     H.modal().within(() => {
       cy.log("title should mention internal users group");
-      cy.findByText(/Revoke access even though "All Internal Users"/).should(
+      cy.findByText(/Revoke access even though "All internal users"/).should(
         "be.visible",
       );
 
       cy.log("description should mention internal users group");
       cy.findByText(
-        /The "All Internal Users" group has a higher level of access/,
+        /The "All internal users" group has a higher level of access/,
       ).should("be.visible");
 
       cy.log("should not mention tenant users");

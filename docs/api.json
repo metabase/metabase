@@ -3329,13 +3329,16 @@
         } ]
       },
       "metabase-enterprise.metabot-v3.tools.deftool.tool-request" : {
-        "description" : "Base schema for all tool requests. Contains the conversation ID.",
+        "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
         "type" : "object",
         "properties" : {
           "conversation_id" : {
             "description" : "value must be a valid UUID.",
             "type" : "string",
             "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+          },
+          "profile_id" : {
+            "type" : "string"
           }
         },
         "required" : [ "conversation_id" ]
@@ -4318,8 +4321,7 @@
             "type" : "string"
           },
           "options" : {
-            "type" : "object",
-            "additionalProperties" : { },
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options",
             "description" : "optional map to be appended to filter clause"
           },
           "dimension" : {
@@ -4333,6 +4335,10 @@
           }
         },
         "required" : [ "type", "name", "display-name", "dimension", "widget-type" ]
+      },
+      "metabase.legacy-mbql.schema..TemplateTag.FieldFilter.Options" : {
+        "type" : "object",
+        "additionalProperties" : { }
       },
       "metabase.legacy-mbql.schema..TemplateTag.RawValue" : {
         "description" : "Things required by all template tag types.",
@@ -4685,10 +4691,14 @@
       },
       "metabase.legacy-mbql.schema.Aggregation" : {
         "description" : "Schema for anything that is a valid `:aggregation` clause.",
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+        "allOf" : [ {
+          "oneOf" : [ {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation-options"
+          }, {
+            "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+          } ]
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.UnnamedAggregation"
+          "description" : "Normalization should automatically unwrap :aggregation-options with an empty options map"
         } ]
       },
       "metabase.legacy-mbql.schema.AggregationOptionsOptions" : {
@@ -4697,6 +4707,23 @@
         "properties" : {
           "display-name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          }
+        }
+      },
+      "metabase.legacy-mbql.schema.AggregationRefOptions" : {
+        "type" : "object",
+        "properties" : {
+          "base-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
+          },
+          "display-name" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
+          },
+          "effective-type" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.common.base-type"
           },
           "name" : {
             "$ref" : "#/components/schemas/metabase.lib.schema.common.non-blank-string"
@@ -4872,6 +4899,12 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.datetime"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.today"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.coalesce"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
         } ]
       },
       "metabase.legacy-mbql.schema.DatetimeOptions" : {
@@ -4930,6 +4963,8 @@
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.Aggregation"
+        }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.aggregation"
         }, {
           "type" : "string"
         }, {
@@ -4992,12 +5027,18 @@
         "oneOf" : [ {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.NumericExpression"
         }, {
+          "type" : "number"
+        }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.StringExpression"
+        }, {
+          "type" : "string"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.BooleanExpression"
         }, {
-          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+          "type" : "boolean"
         }, {
+          "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.DatetimeExpression"
+        }, { }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.case"
         }, {
           "$ref" : "#/components/schemas/metabase.legacy-mbql.schema.if"
@@ -5631,7 +5672,7 @@
         }
       },
       "metabase.legacy-mbql.schema.WidgetType" : {
-        "description" : "Schema for valid values of `:widget-type` for a [[::TemplateTag.FieldFilter]].",
+        "description" : "Schema for valid values of `:widget-type` for a `::TemplateTag.FieldFilter`.",
         "$ref" : "#/components/schemas/metabase.lib.schema.parameter.widget-type"
       },
       "metabase.legacy-mbql.schema.abs" : {
@@ -12974,7 +13015,7 @@
     "/api/collection/tree" : {
       "get" : {
         "summary" : "GET /api/collection/tree",
-        "description" : "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.\n\n  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a\n  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look\n  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.",
+        "description" : "Similar to `GET /`, but returns Collections in a tree structure, e.g.\n\n  ```\n  [{:name     \"A\"\n  :below    #{:card :dataset}\n  :children [{:name \"B\"}\n             {:name     \"C\"\n              :here     #{:dataset :card}\n              :below    #{:dataset :card}\n              :children [{:name     \"D\"\n                          :here     #{:dataset}\n                          :children [{:name \"E\"}]}\n                         {:name     \"F\"\n                          :here     #{:card}\n                          :children [{:name \"G\"}]}]}]}\n  {:name \"H\"}]\n  ```\n\n  The here and below keys indicate the types of items at this particular level of the tree (here) and in its\n  subtree (below).\n\n  TODO: for historical reasons this returns Saved Questions AS 'card' AND Models as 'dataset'; we should fix this at\n  some point in the future.\n\n  By default, looks at the `analytics` (if enabled) and regular (`nil`) namespaces. You can optionally pass a\n  `namespace` argument, or one or many `namespaces`, to specify the particular collection namespaces you wish to look\n  at. For example, `namespaces=analytics&namespaces=` would match the default behavior.\n\n  When `shallow` is true, takes an optional `collection-id` and returns only the requested collection (or\n  the root, if `collection-id` is `nil`).",
         "parameters" : [ {
           "in" : "query",
           "name" : "exclude-archived",
@@ -14635,7 +14676,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         }, {
           "in" : "query",
@@ -14674,6 +14716,14 @@
           "description" : "value must be an integer greater than zero."
         }, {
           "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
           "name" : "query",
           "required" : true,
           "schema" : {
@@ -14708,6 +14758,14 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
         } ],
         "responses" : {
           "2XX" : {
@@ -15526,6 +15584,14 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "schema",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
         }, {
           "in" : "query",
           "name" : "include_hidden",
@@ -17342,7 +17408,8 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -18449,17 +18516,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18478,7 +18548,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18488,6 +18558,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "conversation_id" ]
@@ -18505,17 +18578,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18534,7 +18610,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18544,6 +18620,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18561,11 +18640,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18574,6 +18653,9 @@
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
                     "output" : {
+                      "type" : "string"
+                    },
+                    "profile_id" : {
                       "type" : "string"
                     }
                   },
@@ -18593,7 +18675,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18603,6 +18685,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18620,17 +18705,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18649,7 +18737,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18659,6 +18747,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18676,17 +18767,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18705,7 +18799,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18715,6 +18809,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18732,17 +18829,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18761,7 +18861,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18771,6 +18871,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18788,11 +18891,11 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
@@ -18801,6 +18904,9 @@
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
                     },
                     "output" : {
+                      "type" : "string"
+                    },
+                    "profile_id" : {
                       "type" : "string"
                     },
                     "reactions" : {
@@ -18826,7 +18932,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18836,6 +18942,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18853,17 +18962,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18897,17 +19009,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18926,7 +19041,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18936,6 +19051,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -18953,17 +19071,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -18982,7 +19103,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -18992,6 +19113,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19009,17 +19133,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19038,7 +19165,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19048,6 +19175,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19065,17 +19195,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19094,7 +19227,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19104,6 +19237,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19121,17 +19257,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19150,7 +19289,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19160,6 +19299,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19177,17 +19319,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     },
                     "structured_output" : {
                       "$ref" : "#/components/schemas/metabase-enterprise.metabot-v3.tools.api.full-snippet"
@@ -19209,7 +19354,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19219,6 +19364,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19236,17 +19384,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     },
                     "structured_output" : {
                       "type" : "array",
@@ -19286,17 +19437,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19315,7 +19469,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19325,6 +19479,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19342,17 +19499,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19371,7 +19531,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19381,6 +19541,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19398,17 +19561,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19427,7 +19593,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19437,6 +19603,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19454,17 +19623,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19483,7 +19655,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19493,6 +19665,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19510,17 +19685,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19554,17 +19732,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19583,7 +19764,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19593,6 +19774,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19610,17 +19794,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19639,7 +19826,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19649,6 +19836,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19666,17 +19856,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19695,7 +19888,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19705,6 +19898,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "arguments", "conversation_id" ]
@@ -19722,17 +19918,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19751,7 +19950,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19761,6 +19960,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "conversation_id" ]
@@ -19778,17 +19980,20 @@
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
-            "description" : "Base schema for all tool requests. Contains the conversation ID.",
+            "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                  "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                   "type" : "object",
                   "properties" : {
                     "conversation_id" : {
                       "description" : "value must be a valid UUID.",
                       "type" : "string",
                       "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                    },
+                    "profile_id" : {
+                      "type" : "string"
                     }
                   },
                   "required" : [ "conversation_id" ]
@@ -19807,7 +20012,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "description" : "Base schema for all tool requests. Contains the conversation ID.",
+                "description" : "Base schema for all tool requests. Contains the conversation ID and optional profile ID.",
                 "type" : "object",
                 "properties" : {
                   "arguments" : {
@@ -19817,6 +20022,9 @@
                     "description" : "value must be a valid UUID.",
                     "type" : "string",
                     "pattern" : "[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}"
+                  },
+                  "profile_id" : {
+                    "type" : "string"
                   }
                 },
                 "required" : [ "conversation_id" ]
@@ -19873,9 +20081,6 @@
                   "state" : {
                     "type" : "object",
                     "properties" : { }
-                  },
-                  "use_case" : {
-                    "type" : "string"
                   }
                 },
                 "required" : [ "message", "context", "conversation_id", "state" ]
@@ -20032,24 +20237,6 @@
                   "collection_id" : {
                     "type" : "integer",
                     "minimum" : 1
-                  },
-                  "use_cases" : {
-                    "type" : "array",
-                    "items" : {
-                      "type" : "object",
-                      "properties" : {
-                        "enabled" : {
-                          "type" : "boolean"
-                        },
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }
-                      },
-                      "required" : [ "id" ],
-                      "additionalProperties" : false
-                    }
                   },
                   "use_verified_content" : {
                     "type" : "boolean"
@@ -23030,7 +23217,8 @@
           "name" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23054,7 +23242,8 @@
           "name" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23426,7 +23615,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         }, {
           "in" : "query",
@@ -23454,7 +23644,30 @@
       "get" : {
         "summary" : "GET /api/embed/card/{token}/params/{param-key}/search/{prefix}",
         "description" : "Embedded version of chain filter search endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23485,7 +23698,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -23653,6 +23867,13 @@
         "description" : "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the\n  `embedding-secret-key` return the data in one of the export formats",
         "parameters" : [ {
           "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
           "name" : "dashcard-id",
           "required" : true,
           "schema" : {
@@ -23711,7 +23932,22 @@
       "get" : {
         "summary" : "GET /api/embed/dashboard/{token}/params/{param-key}/remapping",
         "description" : "Embedded version of the remapped dashboard param value endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23730,7 +23966,30 @@
       "get" : {
         "summary" : "GET /api/embed/dashboard/{token}/params/{param-key}/search/{prefix}",
         "description" : "Embedded version of chain filter search endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -23761,7 +24020,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         } ],
         "responses" : {
@@ -26752,8 +27012,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -26786,7 +27045,8 @@
           "name" : "param-key",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "type" : "string",
+            "minLength" : 1
           }
         }, {
           "in" : "query",
@@ -26810,6 +27070,66 @@
         "tags" : [ "/api/preview_embed" ]
       }
     },
+    "/api/preview_embed/card/{token}/params/{param-key}/values" : {
+      "get" : {
+        "summary" : "GET /api/preview_embed/card/{token}/params/{param-key}/values",
+        "description" : "Embedded version of api.card filter values endpoint.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "map where {:has_more_values -> <boolean>, :values -> <sequence of vector with exactly 2 items of type: anything, string, or vector with exactly 1 items of type: anything>}",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "has_more_values" : {
+                      "type" : "boolean"
+                    },
+                    "values" : {
+                      "type" : "array",
+                      "items" : {
+                        "anyOf" : [ {
+                          "type" : "array",
+                          "prefixItems" : [ { }, {
+                            "type" : "string"
+                          } ]
+                        }, {
+                          "type" : "array",
+                          "prefixItems" : [ { } ]
+                        } ]
+                      }
+                    }
+                  },
+                  "required" : [ "has_more_values", "values" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/preview_embed" ]
+      }
+    },
     "/api/preview_embed/card/{token}/query" : {
       "get" : {
         "summary" : "GET /api/preview_embed/card/{token}/query",
@@ -26819,8 +27139,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -26846,8 +27165,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -26873,8 +27191,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -26913,7 +27230,22 @@
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/remapping",
         "description" : "Embedded version of the remapped dashboard param value endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26932,7 +27264,30 @@
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/search/{prefix}",
         "description" : "Embedded version of chain filter search endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "prefix",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26951,7 +27306,22 @@
       "get" : {
         "summary" : "GET /api/preview_embed/dashboard/{token}/params/{param-key}/values",
         "description" : "Embedded version of chain filter values endpoint.",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "token",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "param-key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -26975,8 +27345,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -27002,8 +27371,7 @@
           "name" : "token",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "minLength" : 1
+            "type" : "string"
           }
         }, {
           "in" : "path",
@@ -28679,6 +29047,10 @@
                     "description" : "value must be an integer greater than zero.",
                     "type" : "integer",
                     "minimum" : 1
+                  },
+                  "disable_links" : {
+                    "type" : "boolean",
+                    "default" : false
                   },
                   "name" : {
                     "type" : "string",
@@ -31736,7 +32108,23 @@
       "delete" : {
         "summary" : "DELETE /api/user-key-value/namespace/{namespace}/key/{key}",
         "description" : "Deletes a KV-pair for the user",
-        "parameters" : [ ],
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "key",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "namespace",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response"
@@ -32059,6 +32447,14 @@
             "minimum" : 1
           },
           "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "path",
+          "name" : "modal",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "qbnewb", "datasetnewb" ]
+          }
         } ],
         "responses" : {
           "2XX" : {
