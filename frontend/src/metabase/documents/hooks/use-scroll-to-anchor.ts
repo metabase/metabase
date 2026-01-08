@@ -20,14 +20,12 @@ export function useScrollToAnchor({
   editorContainerRef,
   isLoading,
 }: UseScrollToAnchorOptions): void {
-  // Track the currently highlighted element for cleanup
   const highlightedElementRef = useRef<Element | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
 
   useEffect(() => {
-    // Early exit if no target or still loading
     if (!blockId || isLoading || !editorContainerRef.current) {
       return;
     }
@@ -39,14 +37,12 @@ export function useScrollToAnchor({
       element.classList.add(styles.highlighted);
       highlightedElementRef.current = element;
 
-      // Remove highlight class after animation completes
       highlightTimeoutRef.current = setTimeout(() => {
         element.classList.remove(styles.highlighted);
         highlightedElementRef.current = null;
       }, 2000);
     };
 
-    // Try to find element immediately (it might already exist)
     const selector = `[data-node-id="${CSS.escape(blockId)}"]`;
     let observer: MutationObserver | null = null;
 
@@ -54,7 +50,6 @@ export function useScrollToAnchor({
     if (existingElement) {
       scrollToElement(existingElement);
     } else {
-      // Element not found yet – watch for DOM mutations
       observer = new MutationObserver(() => {
         const element = container.querySelector(selector);
         if (element) {
@@ -70,7 +65,6 @@ export function useScrollToAnchor({
       });
     }
 
-    // Cleanup
     return () => {
       observer?.disconnect();
       if (highlightTimeoutRef.current) {

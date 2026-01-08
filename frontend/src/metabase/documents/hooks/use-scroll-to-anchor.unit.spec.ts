@@ -19,11 +19,9 @@ describe("useScrollToAnchor", () => {
     jest.useFakeTimers();
     jest.clearAllMocks();
 
-    // Create a container element
     container = document.createElement("div");
     document.body.appendChild(container);
 
-    // Create a ref pointing to the container
     editorContainerRef = createRef<HTMLDivElement>();
     (editorContainerRef as { current: HTMLDivElement }).current = container;
   });
@@ -49,7 +47,6 @@ describe("useScrollToAnchor", () => {
   });
 
   it("does nothing when isLoading is true", () => {
-    // Add target element
     const targetElement = document.createElement("div");
     targetElement.setAttribute("data-node-id", "test-block-123");
     container.appendChild(targetElement);
@@ -80,7 +77,6 @@ describe("useScrollToAnchor", () => {
   });
 
   it("scrolls immediately if element already exists in DOM", () => {
-    // Add target element before hook runs
     const targetElement = document.createElement("div");
     targetElement.setAttribute("data-node-id", "existing-block");
     container.appendChild(targetElement);
@@ -109,15 +105,12 @@ describe("useScrollToAnchor", () => {
       }),
     );
 
-    // Element doesn't exist yet, so no scroll
     expect(mockScrollIntoView).not.toHaveBeenCalled();
 
-    // Now add the element (simulating async render)
     const targetElement = document.createElement("div");
     targetElement.setAttribute("data-node-id", "delayed-block");
     container.appendChild(targetElement);
 
-    // Wait for MutationObserver callback to fire
     await waitFor(() => {
       expect(mockScrollIntoView).toHaveBeenCalledWith({
         behavior: "smooth",
@@ -140,20 +133,16 @@ describe("useScrollToAnchor", () => {
       }),
     );
 
-    // Highlight should be added immediately
     expect(targetElement).toHaveClass("highlighted");
 
-    // Fast-forward 2 seconds
     act(() => {
       jest.advanceTimersByTime(2000);
     });
 
-    // Highlight should be removed
     expect(targetElement).not.toHaveClass("highlighted");
   });
 
   it("cleanup disconnects observer on unmount when element not found", () => {
-    // Don't add the target element - observer will be watching
     const { unmount } = renderHook(() =>
       useScrollToAnchor({
         blockId: "not-found-block",
@@ -162,14 +151,8 @@ describe("useScrollToAnchor", () => {
       }),
     );
 
-    // No element found, no scroll
     expect(mockScrollIntoView).not.toHaveBeenCalled();
-
-    // Unmount should disconnect observer without errors
-    unmount();
-
-    // No crash means success
-    expect(true).toBe(true);
+    expect(() => unmount()).not.toThrow();
   });
 
   it("cleanup clears timeout and removes highlight on unmount", () => {
@@ -185,13 +168,10 @@ describe("useScrollToAnchor", () => {
       }),
     );
 
-    // Highlight should be added
     expect(targetElement).toHaveClass("highlighted");
 
-    // Unmount before timeout completes
     unmount();
 
-    // Highlight should be removed on cleanup
     expect(targetElement).not.toHaveClass("highlighted");
   });
 

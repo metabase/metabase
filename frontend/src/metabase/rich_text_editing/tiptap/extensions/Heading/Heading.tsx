@@ -97,8 +97,8 @@ export const HeadingNodeView = ({ node, editor, getPos }: NodeViewProps) => {
             href={`/document/${document.id}/comments/${_id}`}
             ref={commentsRefs.setFloating}
             show={isOpen || hovered}
-            threads={threads}
             style={commentsFloatingStyles}
+            threads={threads}
           />
         </>
       )}

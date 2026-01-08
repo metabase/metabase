@@ -54,7 +54,6 @@ export function useBlockMenus({
     [comments, _id],
   );
 
-  // Comments menu floating (right side)
   const { refs: commentsRefs, floatingStyles: commentsFloatingStyles } =
     useFloating({
       placement: "right-start",
@@ -63,7 +62,6 @@ export function useBlockMenus({
       open: rendered,
     });
 
-  // Anchor link menu floating (left side)
   const { refs: anchorRefs, floatingStyles: anchorFloatingStyles } =
     useFloating({
       placement: "left-start",
@@ -89,14 +87,12 @@ export function useBlockMenus({
     hasContent;
   const anchorUrl = document ? documentWithAnchor(document, _id) : "";
 
-  // Ref callback to set both floating references
   const setReferenceElement = (el: HTMLElement | null) => {
     commentsRefs.setReference(el);
     anchorRefs.setReference(el);
   };
 
   return {
-    // State
     _id,
     isOpen,
     isHovered,
@@ -104,12 +100,8 @@ export function useBlockMenus({
     setHovered,
     threads,
     document,
-
-    // Menu visibility
     shouldShowMenus,
     anchorUrl,
-
-    // Floating refs and styles
     setReferenceElement,
     commentsRefs,
     commentsFloatingStyles,

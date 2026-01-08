@@ -10,7 +10,6 @@ import cx from "classnames";
 import { AnchorLinkMenu } from "metabase/documents/components/Editor/AnchorLinkMenu";
 import { CommentsMenu } from "metabase/documents/components/Editor/CommentsMenu";
 import { useBlockMenus } from "metabase/documents/hooks/use-block-menus";
-import { isWithinIframe } from "metabase/lib/dom";
 
 import { createIdAttribute, createProseMirrorPlugin } from "../NodeIds";
 import S from "../extensions.module.css";
@@ -38,7 +37,7 @@ export const ParagraphNodeView = ({
   extension,
 }: NodeViewProps) => {
   const editorContext = extension?.options?.editorContext || "document";
-  const hideMenusInContext = editorContext === "comments" || isWithinIframe();
+  const hideMenusInContext = editorContext === "comments";
 
   const {
     _id,
@@ -90,8 +89,8 @@ export const ParagraphNodeView = ({
             href={`/document/${document.id}/comments/${_id}`}
             ref={commentsRefs.setFloating}
             show={isOpen || hovered}
-            threads={threads}
             style={commentsFloatingStyles}
+            threads={threads}
           />
         </>
       )}
