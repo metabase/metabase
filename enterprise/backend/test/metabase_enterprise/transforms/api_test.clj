@@ -314,7 +314,6 @@
                                                                               :type     "native"
                                                                               :native   {:query         "SELECT 1"
                                                                                          :template-tags {}}}}
-                                                             :target_db_id (mt/id)
                                                              :target {:type "table"
                                                                       :name (str "test_main_" (u/generate-nano-id))}}
                        :model/Transform {transform2-id :id} {:name   "Transform for other DB"
@@ -323,7 +322,6 @@
                                                                               :type     "native"
                                                                               :native   {:query         "SELECT 2"
                                                                                          :template-tags {}}}}
-                                                             :target_db_id other-db-id
                                                              :target {:type "table"
                                                                       :name (str "test_other_" (u/generate-nano-id))}}]
           (testing "filter by main database id"
@@ -348,7 +346,6 @@
                                                             :source {:type          "python"
                                                                      :body          "print('hello')"
                                                                      :source-tables {}}
-                                                            :target_db_id target-db-id
                                                             :target {:type     "table"
                                                                      :name     (str "test_target_" (u/generate-nano-id))
                                                                      :database target-db-id}}]

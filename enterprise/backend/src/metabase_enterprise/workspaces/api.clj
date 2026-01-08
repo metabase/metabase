@@ -413,26 +413,27 @@
   (api/check-superuser)
   (let [db-id      (or database-id
                        (:database_id (api/check-404 (t2/select-one [:model/Workspace :database_id] ws-id))))
-        transforms (t2/select [:model/Transform :id :name :source_type :source]
+        ;; TODO (chris 2025/12/11) use target_db_id once it's there, and skip :target
+        transforms (t2/select [:model/Transform :id :name :source_type :source :target]
                               {:left-join [[:workspace_transform :wt]
                                            [:and
                                             [:= :transform.id :wt.global_id]
                                             [:= :wt.workspace_id ws-id]]]
                                ;; NULL workspace_id means transform is not checked out into this workspace
                                :where     [:and
-                                           [:= nil :wt.workspace_id]
-                                           [:= :target_db_id db-id]]
+                                           [:= nil :wt.workspace_id]]
                                :order-by  [[:id :asc]]})]
     {:transforms
      (into []
-           (map #(-> %
-                     (dissoc :source)
-                     (assoc :checkout_disabled (case (:source_type %)
-                                                 :mbql   "mbql"
-                                                 :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
-                                                           "card-reference")
-                                                 :python nil
-                                                 "unknown-type"))))
+           (comp (filter #(= db-id (:database (:target %))))
+                 (map #(-> %
+                           (dissoc :source)
+                           (assoc :checkout_disabled (case (:source_type %)
+                                                       :mbql   "mbql"
+                                                       :native (when (seq (lib/template-tags-referenced-cards (:query (:source %))))
+                                                                 "card-reference")
+                                                       :python nil
+                                                       "unknown-type")))))
            ;; (Sanya 2025-12-24) - do we need this line?
            #_(map #(update % :last_run transforms.util/localize-run-timestamps))
            transforms

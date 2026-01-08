@@ -555,6 +555,14 @@
     (filter #(some tag-ids (get-in % field-path)))
     identity))
 
+(defn ->database-id-filter-xf
+  "Returns an xform for a transform database ID filter.
+   Matches transforms where the source database OR target database matches the given database-id."
+  [database-id]
+  (if database-id
+    (filter #(= database-id (transforms.i/target-db-id %)))
+    identity))
+
 (def ^:private metabase-index-prefix "mb_transform_idx_")
 
 (defn- incremental-filter-index-name [schema table-name filter-column-name]
