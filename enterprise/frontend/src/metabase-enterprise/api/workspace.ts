@@ -248,7 +248,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
       }),
       providesTags: (_, __, { transformId }) => [
-        // idTag("workspace-transforms", workspaceId),
         idTag("workspace-transform", transformId),
       ],
       transformResponse: (response: WorkspaceTransform) => ({
