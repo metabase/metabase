@@ -5,7 +5,6 @@ import { getScrollIntoViewMock } from "__support__/ui";
 
 import { useScrollToAnchor } from "./use-scroll-to-anchor";
 
-// Mock the CSS module
 jest.mock("../components/DocumentPage.module.css", () => ({
   highlighted: "highlighted",
 }));
@@ -120,7 +119,7 @@ describe("useScrollToAnchor", () => {
     expect(targetElement).toHaveClass("highlighted");
   });
 
-  it("adds and removes highlight class with correct timing", () => {
+  it("removes highlight class after timeout", () => {
     const targetElement = document.createElement("div");
     targetElement.setAttribute("data-node-id", "highlight-test");
     container.appendChild(targetElement);

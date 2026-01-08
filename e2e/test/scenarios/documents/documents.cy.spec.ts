@@ -1302,12 +1302,11 @@ describe("documents", () => {
     it("should show anchor link icon on left side when hovering over a heading", () => {
       H.visitDocument("@documentId");
 
-      // Hover over the first heading
       H.documentContent()
         .findByRole("heading", { name: "First Heading" })
         .realHover();
 
-      // Anchor link button should appear (filter to visible one since all blocks have hidden buttons)
+      // Filter to visible one since all blocks have hidden buttons
       cy.get('[data-testid="anchor-link-menu"]')
         .filter(":visible")
         .first()
@@ -1318,7 +1317,6 @@ describe("documents", () => {
     it("should copy anchor URL to clipboard when clicking anchor link", () => {
       H.visitDocument("@documentId");
 
-      // Grant clipboard permissions
       cy.wrap(
         Cypress.automation("remote:debugger:protocol", {
           command: "Browser.grantPermissions",
@@ -1329,22 +1327,19 @@ describe("documents", () => {
         }),
       );
 
-      // Hover over the first heading
       H.documentContent()
         .findByRole("heading", { name: "First Heading" })
         .realHover();
 
-      // Click the anchor link button (filter to visible one since all blocks have hidden buttons)
+      // Filter to visible one since all blocks have hidden buttons
       cy.get('[data-testid="anchor-link-menu"]')
         .filter(":visible")
         .first()
         .findByRole("button", { name: /copy link/i })
         .click();
 
-      // Verify "Copied!" tooltip appears
       cy.get("body").findByText("Copied!").should("be.visible");
 
-      // Verify the URL was copied to clipboard
       cy.window().then((win) => {
         win.navigator.clipboard.readText().then((text) => {
           expect(text).to.include("/document/");
@@ -1353,38 +1348,26 @@ describe("documents", () => {
       });
     });
 
-    it("should scroll to the correct block and highlight it when navigating with anchor hash", () => {
+    it("should scroll to the correct block when navigating with anchor hash", () => {
       cy.get("@documentId").then((documentId) => {
-        // Navigate directly to the document with an anchor to a block that's not visible initially
         cy.visit(`/document/${documentId}#heading-block-2`);
 
-        // Wait for the document to load
-        H.documentContent().should("exist");
-
-        // The second heading should be scrolled into view and visible
         H.documentContent()
           .findByRole("heading", { name: "Second Heading" })
           .should("be.visible");
 
-        // Verify the highlight animation class was applied (CSS module class name is hashed)
-        cy.get('[data-node-id="heading-block-2"]')
-          .invoke("attr", "class")
-          .should("match", /highlighted/);
+        H.documentContent()
+          .findByRole("heading", { name: "First Heading" })
+          .should("not.be.visible");
       });
     });
 
     it("should scroll to blockquote when navigating with anchor hash", () => {
       cy.get("@documentId").then((documentId) => {
-        // Navigate directly to the blockquote anchor
         cy.visit(`/document/${documentId}#blockquote-block-1`);
 
-        // Wait for the document to load
         H.documentContent().should("exist");
-
-        // The blockquote should be scrolled into view
         H.documentContent().find("blockquote").should("be.visible");
-
-        // First heading should NOT be in view (we scrolled past it)
         H.documentContent()
           .findByRole("heading", { name: "First Heading" })
           .should("not.be.visible");
@@ -1394,10 +1377,9 @@ describe("documents", () => {
     it("should show anchor link for paragraphs on hover", () => {
       H.visitDocument("@documentId");
 
-      // Hover over a paragraph
       H.documentContent().contains("Some content here").realHover();
 
-      // Anchor link button should appear (filter to visible one since all blocks have hidden buttons)
+      // Filter to visible one since all blocks have hidden buttons
       cy.get('[data-testid="anchor-link-menu"]')
         .filter(":visible")
         .first()
@@ -1408,13 +1390,10 @@ describe("documents", () => {
     it("should show anchor link for blockquotes on hover", () => {
       H.visitDocument("@documentId");
 
-      // Scroll down to see the blockquote first
       H.documentContent().find("blockquote").scrollIntoView();
-
-      // Hover over the blockquote
       H.documentContent().find("blockquote").realHover();
 
-      // Anchor link button should appear (filter to visible one since all blocks have hidden buttons)
+      // Filter to visible one since all blocks have hidden buttons
       cy.get('[data-testid="anchor-link-menu"]')
         .filter(":visible")
         .first()
@@ -1425,19 +1404,18 @@ describe("documents", () => {
     it("should still show comments menu on right side (regression check)", () => {
       H.visitDocument("@documentId");
 
-      // Hover over the first heading
       H.documentContent()
         .findByRole("heading", { name: "First Heading" })
         .realHover();
 
-      // Both anchor link (left) and comments menu (right) should be visible
       // Filter to visible one since all blocks have hidden menus
       cy.get('[data-testid="anchor-link-menu"]')
         .filter(":visible")
         .first()
         .findByRole("button", { name: /copy link/i })
         .should("be.visible");
-      // Comments button is rendered as a link (uses ForwardRefLink component)
+
+      // Comments button uses ForwardRefLink, so it's a link role not button
       cy.get('[data-testid="comments-menu"]')
         .filter(":visible")
         .first()
