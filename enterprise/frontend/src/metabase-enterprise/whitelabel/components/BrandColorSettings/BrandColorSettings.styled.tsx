@@ -15,7 +15,7 @@ export const TableHeader = styled.div`
   border: 1px solid var(--mb-color-border);
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 `;
 
 export const TableHeaderRow = styled.div`
@@ -25,7 +25,7 @@ export const TableHeaderRow = styled.div`
 
 export const TableHeaderCell = styled.div`
   ${cellStyles};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-size: 0.6rem;
   letter-spacing: 1px;
   line-height: 0.625rem;
@@ -52,7 +52,7 @@ export const TableBodyRow = styled.div`
 
 export const TableBodyCell = styled.div`
   ${cellStyles};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-top: 1rem;
   padding-bottom: 1rem;
 `;

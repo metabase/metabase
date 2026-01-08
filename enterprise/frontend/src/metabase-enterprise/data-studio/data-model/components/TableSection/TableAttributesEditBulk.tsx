@@ -134,7 +134,7 @@ export function TableAttributesEditBulk({
       <Stack gap="md">
         <Group
           align="center"
-          c="text-light"
+          c="text-tertiary"
           gap={10}
           flex="1"
           fs="lg"
@@ -146,7 +146,7 @@ export function TableAttributesEditBulk({
         >
           <Title
             order={4}
-            c="text-dark"
+            c="text-primary"
             style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
             <Icon name="collection2" size={20} />

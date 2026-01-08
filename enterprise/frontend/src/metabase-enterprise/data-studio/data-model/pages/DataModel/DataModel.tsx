@@ -175,7 +175,7 @@ function DataModelContent({ params }: Props) {
 
   return (
     <Flex
-      bg="bg-light"
+      bg="background-secondary"
       data-testid="data-model"
       h="100%"
       style={{ overflow: "auto" }}
@@ -248,7 +248,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="table-section-header"
               py="lg"
-              bg="bg-light"
+              bg="background-secondary"
               className={S.header}
               px="lg"
             >
@@ -259,7 +259,7 @@ function DataModelContent({ params }: Props) {
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" c="text-medium" />}
+                leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
                 p="sm"
                 size="compact-sm"
@@ -308,7 +308,7 @@ function DataModelContent({ params }: Props) {
               w="100%"
               data-testid="field-section-header"
               p="lg"
-              bg="bg-light"
+              bg="background-secondary"
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
@@ -319,7 +319,7 @@ function DataModelContent({ params }: Props) {
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" c="text-medium" />}
+                leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
                 size="compact-sm"
                 onClick={closePreview}

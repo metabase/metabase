@@ -24,7 +24,7 @@ describe.skip("ThemeProvider", () => {
     const textCss = window.getComputedStyle(screen.getByText("Text"));
     expect(textCss.getPropertyValue("font-size")).toBe(OVERRIDES.fontSizes!.xl);
 
-    const defaultColor = OVERRIDES.colors?.["text-dark"]?.[0];
+    const defaultColor = OVERRIDES.colors?.["text-primary"]?.[0];
     expect(textCss.getPropertyValue("color")).toBe(
       Color(defaultColor).rgb().string(),
     );
@@ -34,7 +34,7 @@ describe.skip("ThemeProvider", () => {
     // Simulate a user-provided theme override.
     // This is primarily used by the React embedding SDK.
     const theme: MantineThemeOverride = {
-      colors: { "text-dark": getColorShades("rgb(12, 34, 56)") },
+      colors: { "text-primary": getColorShades("rgb(12, 34, 56)") },
     };
 
     render(

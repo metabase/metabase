@@ -291,7 +291,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
           <Form disabled={!dirty}>
             <Stack gap="xl" maw="52rem">
               {!isModalVariant && !isRemoteSyncEnabled && (
-                <Text c="text-medium" size="sm">
+                <Text c="text-secondary" size="sm">
                   {jt`Need help setting this up? Check out our ${(
                     <ExternalLink key="link" href={docsUrl}>
                       {t`setup guide`}
@@ -316,7 +316,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                   name={TOKEN_KEY}
                   label={t`Access Token`}
                   description={
-                    <Text c="text-light" size="sm" lh="md" component="span">
+                    <Text c="text-tertiary" size="sm" lh="md" component="span">
                       {t`Personal access token with write permissions`}
                     </Text>
                   }
@@ -340,7 +340,11 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                       <Box>
                         <Radio
                           description={
-                            <Text c="text-medium" lh="1.25rem" component="span">
+                            <Text
+                              c="text-secondary"
+                              lh="1.25rem"
+                              component="span"
+                            >
                               {t`Usually you should use this for your production ${applicationName} instance. All synced collections are read-only, and will automatically sync with the specified branch (we'd recommend syncing with main).`}
                             </Text>
                           }
@@ -362,7 +366,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
                         </Text>
                       }
                       description={
-                        <Text c="text-medium" lh="1.25rem" component="span">
+                        <Text c="text-secondary" lh="1.25rem" component="span">
                           {t`This mode is generally for development or local instances of ${applicationName}. Changes you make to content in synced collections can be pushed and pulled from any git branch.`}
                         </Text>
                       }
@@ -429,7 +433,7 @@ export const RemoteSyncSettingsForm = (props: RemoteSyncSettingsFormProps) => {
 
               {/* Read-write mode info */}
               {isModalVariant && values?.[TYPE_KEY] === "read-write" && (
-                <Text c="text-medium" size="sm">
+                <Text c="text-secondary" size="sm">
                   {t`In read-write mode, the Library collection will be enabled for syncing.`}
                 </Text>
               )}
