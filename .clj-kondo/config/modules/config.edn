@@ -2111,11 +2111,8 @@
            warehouse-schema
            warehouses-rest
            enterprise/dependencies
-<<<<<<< HEAD
-=======
            enterprise/documents
            enterprise/llm
->>>>>>> c9e8a87193e (Experiment with communicating with LLMs in Clojure)
            enterprise/transforms
            enterprise/transforms-python}}
 
