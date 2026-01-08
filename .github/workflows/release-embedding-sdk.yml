@@ -30,7 +30,6 @@ jobs:
           **Inputs:**
 
           - \`branch\`: ${{ inputs.branch }}
-          - \`tag-as-latest\`: ${{ inputs.tag-as-latest }}
 
           triggered by: @${{ github.event.sender.login }}
           EOF
