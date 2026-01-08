@@ -14,7 +14,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :get "/random_token" :- [:map [:token :string]]
+(api.macros/defendpoint :get "/random_token" :- [:map {:description "A map with a single key, `:token`, which is a string."} [:token :string]]
   "Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`."
   []
