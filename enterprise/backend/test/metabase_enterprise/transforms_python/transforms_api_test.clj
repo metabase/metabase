@@ -78,49 +78,51 @@
                            :source :body)))))))))))
 
 (deftest update-python-transform-feature-flag-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (testing "Updating a python transform requires both :transforms and :transforms-python features"
-      (mt/with-temp [:model/Transform {id :id
-                                       :as transform} {:name   "Original Python Transform"
-                                                       :source {:type          "python"
-                                                                :body          "print('original')"
-                                                                :source-tables {}}
-                                                       :target {:type     "table"
-                                                                :schema   "scheam"
-                                                                :name     "table"
-                                                                :database (mt/id)}}]
-        (mt/with-premium-features #{}
-          (let [response (mt/user-http-request :crowberto :put
-                                               (format "ee/transform/%d" id)
-                                               (assoc-in transform [:source :body] "print('no features')"))]
-            (is (= "error-premium-feature-not-available" (:status response))
-                "Should return 403 without any features")))))))
+  (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "Updating a python transform requires both :transforms and :transforms-python features"
+        (mt/with-temp [:model/Transform {id :id
+                                         :as transform} {:name   "Original Python Transform"
+                                                         :source {:type          "python"
+                                                                  :body          "print('original')"
+                                                                  :source-tables {}}
+                                                         :target {:type     "table"
+                                                                  :schema   "scheam"
+                                                                  :name     "table"
+                                                                  :database (mt/id)}}]
+          (mt/with-premium-features #{}
+            (let [response (mt/user-http-request :crowberto :put
+                                                 (format "ee/transform/%d" id)
+                                                 (assoc-in transform [:source :body] "print('no features')"))]
+              (is (= "error-premium-feature-not-available" (:status response))
+                  "Should return 403 without any features"))))))))
 
 (deftest run-python-transform-feature-flag-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (testing "Running a python transform requires both :transforms and :transforms-python features"
-      (mt/with-premium-features #{:transforms :transforms-python}
-        (mt/dataset transforms-dataset/transforms-test
-          (with-transform-cleanup! [table-name "test_run_python"]
-            (let [schema (get-test-schema)
-                  transform-payload {:name   "Test Run Python Transform"
-                                     :source {:type          "python"
-                                              :body          "def transform():\n    pass"
-                                              :source-tables {}}
-                                     :target {:type     "table"
-                                              :schema   schema
-                                              :name     table-name
-                                              :database (mt/id)}}
-                  created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
-              (mt/with-premium-features #{}
-                (let [response (mt/user-http-request :crowberto :post 402
-                                                     (format "ee/transform/%d/run" (:id created)))]
-                  (is (= "error-premium-feature-not-available" (:status response)))))
-              (mt/with-premium-features #{:transforms}
-                (let [response (mt/user-http-request :crowberto :post
-                                                     (format "ee/transform/%d/run" (:id created)))]
-                  (is (= "Premium features required for this transform type are not enabled." response)
-                      "Should return 403 without :transforms-python feature"))))))))))
+  (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "Running a python transform requires both :transforms and :transforms-python features"
+        (mt/with-premium-features #{:transforms :transforms-python}
+          (mt/dataset transforms-dataset/transforms-test
+            (with-transform-cleanup! [table-name "test_run_python"]
+              (let [schema (get-test-schema)
+                    transform-payload {:name   "Test Run Python Transform"
+                                       :source {:type          "python"
+                                                :body          "def transform():\n    pass"
+                                                :source-tables {}}
+                                       :target {:type     "table"
+                                                :schema   schema
+                                                :name     table-name
+                                                :database (mt/id)}}
+                    created (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
+                (mt/with-premium-features #{}
+                  (let [response (mt/user-http-request :crowberto :post 402
+                                                       (format "ee/transform/%d/run" (:id created)))]
+                    (is (= "error-premium-feature-not-available" (:status response)))))
+                (mt/with-premium-features #{:transforms}
+                  (let [response (mt/user-http-request :crowberto :post
+                                                       (format "ee/transform/%d/run" (:id created)))]
+                    (is (= "Premium features required for this transform type are not enabled." response)
+                        "Should return 403 without :transforms-python feature")))))))))))
 
 (deftest execute-python-transform-test
   (testing "transform execution with :transforms/table target"
@@ -190,112 +192,113 @@
         (assert (not= :timeout (try (deref fut 1000 :timeout) (catch Throwable _))) "Observation thread did not exit!")))))
 
 (deftest python-transform-logging-test
-  (letfn [(program->source [program]
-            (->> (concat ["import pandas as pd"
-                          "def transform():"]
-                         (for [s program] (str "  " s))
-                         ["  return pd.DataFrame({'x': [42]})"])
-                 (str/join "\n")))
+  (mt/with-premium-features #{:transforms}
+    (letfn [(program->source [program]
+              (->> (concat ["import pandas as pd"
+                            "def transform():"]
+                           (for [s program] (str "  " s))
+                           ["  return pd.DataFrame({'x': [42]})"])
+                   (str/join "\n")))
 
-          (create-transform [{:keys [program]} target]
-            {:post [(integer? %)]}
-            (:id (mt/user-http-request :crowberto :post 200 "ee/transform"
-                                       {:name   "Python logging test"
-                                        :source {:type            "python"
-                                                 :body            (program->source program)
-                                                 :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
-                                        :target (assoc target :database (mt/id))})))
+            (create-transform [{:keys [program]} target]
+              {:post [(integer? %)]}
+              (:id (mt/user-http-request :crowberto :post 200 "ee/transform"
+                                         {:name   "Python logging test"
+                                          :source {:type            "python"
+                                                   :body            (program->source program)
+                                                   :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
+                                          :target (assoc target :database (mt/id))})))
 
-          (block-on-run [{:keys [expect-status]} target transform-id]
-            (try
-              (transforms.tu/test-run transform-id)
-              (catch Throwable e
-                ;; test-run throws for non success, but we want to test failures too
-                (when-not (= expect-status (:status (ex-data e)))
-                  (throw e))))
-            (when (= :succeeded expect-status)
-              (transforms.tu/wait-for-table (:name target) 5000)))
+            (block-on-run [{:keys [expect-status]} target transform-id]
+              (try
+                (transforms.tu/test-run transform-id)
+                (catch Throwable e
+                  ;; test-run throws for non success, but we want to test failures too
+                  (when-not (= expect-status (:status (ex-data e)))
+                    (throw e))))
+              (when (= :succeeded expect-status)
+                (transforms.tu/wait-for-table (:name target) 5000)))
 
-          (run-scenario [scenario schema]
-            (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO
-                          transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
-                                                                                         (fn [& _] (throw e))
-                                                                                         @#'transforms-python.execute/transfer-file-to-db)]
-              (with-transform-cleanup! [target {:type   "table"
-                                                :schema schema
-                                                :name   "result"}]
-                (let [transform-id      (create-transform scenario target)
-                      observed-messages (with-open [observer (open-message-value-observer transform-id)]
-                                          (block-on-run scenario target transform-id)
-                                          @observer)
-                      last-run          (get-last-run transform-id)]
-                  {:observed-messages observed-messages
-                   :last-run          last-run}))))]
-    (let [scenarios [{:desc          "stdin"
-                      :program       ["print(\"hello, world\")"]
-                      :expect-status :succeeded
-                      :expected      ["hello, world"]}
-                     {:desc          "stderr"
-                      :program       ["import sys" "print(\"hello, world\", file=sys.stderr)"]
-                      :expect-status :succeeded
-                      :expected      ["hello, world"]}
-                     {:desc          "interleaved streams"
-                      :program       ["import sys"
-                                      "print(\"1\", file=sys.stderr)"
-                                      "print(\"2\", file=sys.stderr)"
-                                      "print(\"3\", file=sys.stdout)"
-                                      "print(\"4\", file=sys.stderr)"]
-                      :expect-status :succeeded
-                      :expected      ["1" "2" "3" "4"]}
-                     {:desc          "syntax error"
-                      :program       ["print(40 + 2)"
-                                      "this is not valid code"]
-                      :expect-status :failed
-                      :expected      ["SyntaxError: invalid syntax"]}
-                     {:desc                  "takes time, early feedback possible"
-                      :program               ["import time"
-                                              "print(\"a\")"
-                                              "time.sleep(0.1)"
-                                              "print(\"b\")"
-                                              "time.sleep(0.1)"
-                                              "print(\"c\")"]
-                      :expect-early-feedback true
-                      :expect-status         :succeeded
-                      :expected              ["a" "b" "c"]}
-                     {:desc "crash during writeback"
-                      :program ["print(42)" "print(\"is the answer\")"]
-                      :expect-status :failed
-                      :expected ["42" "is the answer" "Failed to create the resulting table"]
-                      :writeback-ex (Exception. "Boom!")}]]
-      (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/table)
-                           ;; certain drivers are slow/unpredictable enough that the generous timings in this test are not enough
-                           (disj :snowflake :redshift :bigquery-cloud-sdk))
-        (mt/with-premium-features #{:transforms :transforms-python}
-          (mt/dataset transforms-dataset/transforms-test
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
-              (doseq [{:keys [expected
-                              expect-early-feedback
-                              expect-status
-                              desc] :as scenario}
-                      scenarios]
-                (testing desc
-                  (let [{:keys [last-run observed-messages]} (run-scenario scenario schema)
-                        {:keys [status message]} last-run]
-                    (testing "sanity: status is what we expect"
-                      (is (= expect-status (some-> status keyword))))
-                    (testing "sanity: message has a value"
-                      (is message))
-                    (when message
-                      (is (str/starts-with? message "Executing Python transform"))
-                      (testing "all observed values of message reflect a prefix of the final message (ordering consistent)"
-                        (doseq [observed-message observed-messages]
-                          ;; hmmm, sometimes the order seems flipped
-                          (is (str/starts-with? message observed-message))))
-                      (when expect-early-feedback
-                        (testing "scenario takes time, we should see partial messages for immediate feedback"
-                          (is (< 1 (count observed-messages)))))
-                      (testing "message includes the expected lines"
-                        (is (subsequence? (str/split-lines message) expected))))))))))))))
+            (run-scenario [scenario schema]
+              (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO
+                            transforms-python.execute/transfer-file-to-db                (if-some [e (:writeback-ex scenario)]
+                                                                                           (fn [& _] (throw e))
+                                                                                           @#'transforms-python.execute/transfer-file-to-db)]
+                (with-transform-cleanup! [target {:type   "table"
+                                                  :schema schema
+                                                  :name   "result"}]
+                  (let [transform-id      (create-transform scenario target)
+                        observed-messages (with-open [observer (open-message-value-observer transform-id)]
+                                            (block-on-run scenario target transform-id)
+                                            @observer)
+                        last-run          (get-last-run transform-id)]
+                    {:observed-messages observed-messages
+                     :last-run          last-run}))))]
+      (let [scenarios [{:desc          "stdin"
+                        :program       ["print(\"hello, world\")"]
+                        :expect-status :succeeded
+                        :expected      ["hello, world"]}
+                       {:desc          "stderr"
+                        :program       ["import sys" "print(\"hello, world\", file=sys.stderr)"]
+                        :expect-status :succeeded
+                        :expected      ["hello, world"]}
+                       {:desc          "interleaved streams"
+                        :program       ["import sys"
+                                        "print(\"1\", file=sys.stderr)"
+                                        "print(\"2\", file=sys.stderr)"
+                                        "print(\"3\", file=sys.stdout)"
+                                        "print(\"4\", file=sys.stderr)"]
+                        :expect-status :succeeded
+                        :expected      ["1" "2" "3" "4"]}
+                       {:desc          "syntax error"
+                        :program       ["print(40 + 2)"
+                                        "this is not valid code"]
+                        :expect-status :failed
+                        :expected      ["SyntaxError: invalid syntax"]}
+                       {:desc                  "takes time, early feedback possible"
+                        :program               ["import time"
+                                                "print(\"a\")"
+                                                "time.sleep(0.1)"
+                                                "print(\"b\")"
+                                                "time.sleep(0.1)"
+                                                "print(\"c\")"]
+                        :expect-early-feedback true
+                        :expect-status         :succeeded
+                        :expected              ["a" "b" "c"]}
+                       {:desc "crash during writeback"
+                        :program ["print(42)" "print(\"is the answer\")"]
+                        :expect-status :failed
+                        :expected ["42" "is the answer" "Failed to create the resulting table"]
+                        :writeback-ex (Exception. "Boom!")}]]
+        (mt/test-drivers (-> (mt/normal-drivers-with-feature :transforms/table)
+                             ;; certain drivers are slow/unpredictable enough that the generous timings in this test are not enough
+                             (disj :snowflake :redshift :bigquery-cloud-sdk))
+          (mt/with-premium-features #{:transforms :transforms-python}
+            (mt/dataset transforms-dataset/transforms-test
+              (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+                (doseq [{:keys [expected
+                                expect-early-feedback
+                                expect-status
+                                desc] :as scenario}
+                        scenarios]
+                  (testing desc
+                    (let [{:keys [last-run observed-messages]} (run-scenario scenario schema)
+                          {:keys [status message]} last-run]
+                      (testing "sanity: status is what we expect"
+                        (is (= expect-status (some-> status keyword))))
+                      (testing "sanity: message has a value"
+                        (is message))
+                      (when message
+                        (is (str/starts-with? message "Executing Python transform"))
+                        (testing "all observed values of message reflect a prefix of the final message (ordering consistent)"
+                          (doseq [observed-message observed-messages]
+                            ;; hmmm, sometimes the order seems flipped
+                            (is (str/starts-with? message observed-message))))
+                        (when expect-early-feedback
+                          (testing "scenario takes time, we should see partial messages for immediate feedback"
+                            (is (< 1 (count observed-messages)))))
+                        (testing "message includes the expected lines"
+                          (is (subsequence? (str/split-lines message) expected)))))))))))))))
 
 (deftest get-python-transform-with-different-target-database-test
   (testing "GET /api/ee/transform/:id correctly fetches target table from different database"
