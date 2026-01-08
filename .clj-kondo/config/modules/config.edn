@@ -147,8 +147,7 @@
            metabase.api.settings
            metabase.api.util
            metabase.api.util.handlers}
-   :uses #{api-routes
-           config
+   :uses #{config
            events
            models
            settings
@@ -499,7 +498,8 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror}
+           metabase.documents.prose-mirror
+           metabase.documents.schema}
    :uses #{activity-feed
            api
            app-db
@@ -743,6 +743,7 @@
            metabase.lib.schema.join
            metabase.lib.schema.literal
            metabase.lib.schema.mbql-clause
+           metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
            metabase.lib.schema.middleware-options
@@ -753,6 +754,7 @@
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
+           metabase.lib.schema.validate
            metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
@@ -794,6 +796,19 @@
            channel
            request
            settings
+           util}}
+
+  measures
+  {:team "Querying"
+   :api  #{metabase.measures.api}
+   :uses #{api
+           events
+           legacy-mbql
+           lib
+           lib-be
+           models
+           permissions
+           search
            util}}
 
   model-persistence
@@ -957,8 +972,10 @@
            app-db
            classloader
            config
+           events
            internal-stats
            settings
+           task
            util}}
 
   product-feedback
@@ -1015,6 +1032,7 @@
            collections
            config
            driver
+           embedding
            events
            lib
            models
@@ -1046,6 +1064,7 @@
            config
            content-verification
            dashboards
+           documents
            events
            lib
            lib-be
@@ -1258,7 +1277,6 @@
            metabase.segments.schema}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1952,7 +1970,9 @@
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
+           config
            documents
            driver
            events
@@ -1968,7 +1988,8 @@
            revisions
            settings
            task
-           util}}
+           util
+           enterprise/transforms}}
 
   enterprise/email
   {:team "UX West"
@@ -2202,6 +2223,7 @@
            appearance
            collections
            config
+           events
            logger
            models
            plugins
@@ -2288,6 +2310,7 @@
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.interface
+           metabase-enterprise.transforms.schema
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api

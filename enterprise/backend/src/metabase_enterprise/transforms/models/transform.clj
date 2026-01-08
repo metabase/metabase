@@ -30,16 +30,23 @@
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
+(defn- keywordize-source-table-refs
+  "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
+  [source-tables]
+  (update-vals source-tables #(if (map? %) (update-keys % keyword) %)))
+
 (defn- transform-source-out [m]
   (-> m
       mi/json-out-without-keywordization
       (update-keys keyword)
+      (m/update-existing :source-tables keywordize-source-table-refs)
       (m/update-existing :query lib-be/normalize-query)
       (m/update-existing :type keyword)
       (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
 
 (defn- transform-source-in [m]
   (-> m
+      (m/update-existing :source-tables transforms.util/normalize-source-tables)
       (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
       mi/json-in))
 
@@ -58,18 +65,22 @@
   (collection/check-collection-namespace :model/Transform collection_id)
   (when collection_id
     (collection/check-allowed-content :model/Transform collection_id))
+<<<<<<< HEAD
   (assoc transform
          :source_type (transforms.util/transform-source-type source)
          :target_db_id (transforms.i/target-db-id transform)))
+=======
+  (assoc transform :source_type (transforms.util/transform-source-type source)))
+>>>>>>> workspaces-master
 
 (t2/define-before-update :model/Transform
-  [{:keys [source target] :as transform}]
+  [{:keys [source] :as transform}]
   (when-let [new-collection (:collection_id (t2/changes transform))]
     (collection/check-collection-namespace :model/Transform new-collection)
     (collection/check-allowed-content :model/Transform new-collection))
-  (cond-> transform
-    source             (assoc :source_type (transforms.util/transform-source-type source))
-    (:database target) (assoc :target_db_id (:database target))))
+  (if source
+    (assoc transform :source_type (transforms.util/transform-source-type source))
+    transform))
 
 (t2/define-after-select :model/Transform
   [{:keys [source] :as transform}]
@@ -234,8 +245,8 @@
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy [:name :description :entity_id]
-   :skip [:dependency_analysis_version :source_type :target_db_id]
+  {:copy      [:name :description :entity_id]
+   :skip      [:dependency_analysis_version :source_type]
    :transform {:created_at    (serdes/date)
                :creator_id    (serdes/fk :model/User)
                :collection_id (serdes/fk :model/Collection)
@@ -269,6 +280,15 @@
     (when query-text
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
+(defn- extract-transform-db-id
+  "Return the database ID from transform source; else nil."
+  [{:keys [source]}]
+  (let [parsed-source (transform-source-out source)]
+    (case (:type parsed-source)
+      :query (get-in parsed-source [:query :database])
+      :python (parsed-source :source-database)
+      nil)))
+
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 
 (search.spec/define-spec "transform"
@@ -282,7 +302,8 @@
                   :view-count    false
                   :native-query  {:fn maybe-extract-transform-query-text
                                   :fields [:source :source_type]}
-                  :database-id   :target_db_id}
+                  :database-id   {:fn extract-transform-db-id
+                                  :fields [:source]}}
    :search-terms [:name :description]
    :render-terms {:transform-name :name
                   :transform-id   :id}})

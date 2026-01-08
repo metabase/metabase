@@ -226,7 +226,7 @@
 (defn- encode-mbql-stage-for-hashing [stage]
   (-> stage
       common/encode-map-for-hashing
-      lib.schema.util/indexed-order-bys-for-stage
+      lib.schema.util/indexed-aggregation-refs-for-stage
       ;; preserve these keys because we want to hash two identical queries from different source cards
       ;; differently (see [[metabase.query-processor.middleware.cache-test/multiple-models-e2e-test]]) and this is a
       ;; reliable way to differentiate them since it gets populated by the QP.

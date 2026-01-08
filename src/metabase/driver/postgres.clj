@@ -90,8 +90,13 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
+<<<<<<< HEAD
                               :metadata/table-existence-check true
                               :workspace                true}]
+=======
+                              :transforms/index-ddl     true
+                              :metadata/table-existence-check true}]
+>>>>>>> workspaces-master
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -160,8 +165,10 @@
 (defmethod driver/connection-properties :postgres
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 5432)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 5432)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options)
@@ -1289,7 +1296,9 @@
                {:name "Render" :pattern "\\.render\\.com$"}
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
-               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]
+   :field-groups [{:id "host-and-port"
+                   :container-style "host-and-port-section"}]})
 
 ;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
 

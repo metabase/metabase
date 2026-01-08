@@ -235,7 +235,7 @@ describe("scenarios > admin > transforms", () => {
         });
 
         cy.findByTestId("python-data-picker")
-          .findByText("Select a database")
+          .findByText("Writable Postgres12")
           .click();
 
         cy.log("Unsupported databases should be disabled");
@@ -606,7 +606,13 @@ LIMIT
     it("should not be possible to create a sql transform from a table from an unsupported database", () => {
       visitTransformListPage();
       cy.button("Create a transform").click();
+
       H.popover().findByText("SQL query").click();
+
+      cy.findByTestId("gui-builder-data")
+        .findByText("Writable Postgres12")
+        .click();
+
       H.popover()
         .findByRole("option", { name: "Sample Database" })
         .should("have.attr", "aria-disabled", "true")

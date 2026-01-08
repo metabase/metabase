@@ -207,7 +207,7 @@ export function GlossaryTable({
                       <ActionIcon
                         aria-label={t`Delete`}
                         variant="subtle"
-                        c="text-light"
+                        c="text-tertiary"
                         className={cx(S.action)}
                         onClick={() => setDeletingItem(item)}
                       >

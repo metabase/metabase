@@ -21,7 +21,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
         <Text size="lg" fw="bold">
           {t`Couldn't upload the file, storage is full`}
         </Text>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {isAdmin
             ? // eslint-disable-next-line no-literal-metabase-strings -- admin only
               t`Add more storage to your Metabase or connect a database to store the uploaded files.`

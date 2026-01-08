@@ -1,4 +1,4 @@
-export const DEFAULT_ROW_HEIGHT = 40;
+export const DEFAULT_ROW_HEIGHT = 44;
 export const DEFAULT_INDENT_WIDTH = 20;
 export const DEFAULT_OVERSCAN = 5;
 export const CHECKBOX_COLUMN_WIDTH = 32;

@@ -1,6 +1,6 @@
 import type {
   EmbeddingDataPicker,
-  EmbeddingEntityType,
+  FullAppEmbeddingEntityType,
 } from "./embedding-data-picker";
 
 export interface InteractiveEmbeddingOptions {
@@ -19,7 +19,7 @@ export interface InteractiveEmbeddingOptions {
    * There might be a cleaner way to say this is in a search parameter
    * but it's not in the embed reducer, than making this optional.
    */
-  entity_types?: EmbeddingEntityType[];
+  entity_types?: FullAppEmbeddingEntityType[];
 }
 
 type EmptyObject = Record<string, never>;

@@ -659,7 +659,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             placeholder={t`Workspace name`}
             maxLength={NAME_MAX_LENGTH}
             onChange={handleWorkspaceNameChange}
-            disabled={isArchived}
+            readOnly={isArchived}
           />
         </Flex>
         <Flex gap="sm">
@@ -851,8 +851,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 style={{ overflow: "auto" }}
               >
                 {openedTabs.length === 0 ||
-                !activeTransform ||
-                !activeEditedTransform ? (
+                  !activeTransform ||
+                  !activeEditedTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>

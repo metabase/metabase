@@ -69,10 +69,10 @@ export function PythonDataPicker({
   } = useListTablesQuery(
     database
       ? {
-          dbId: database,
-          include_hidden: false,
-          include_editable_data_model: true,
-        }
+        dbId: database,
+        include_hidden: false,
+        include_editable_data_model: true,
+      }
       : skipToken,
   );
 
@@ -158,7 +158,7 @@ export function PythonDataPicker({
       {canChangeDatabase && (
         <Box>
           <Text fw="bold">{t`Source database`}</Text>
-          <Text size="sm" c="text-light" mb="sm">
+          <Text size="sm" c="text-tertiary" mb="sm">
             {t`Select the database that contains your source data.`}
           </Text>
 
@@ -178,7 +178,7 @@ export function PythonDataPicker({
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-light" mb="sm">
+          <Text size="sm" c="text-tertiary" mb="sm">
             {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
           <Stack gap="md">
@@ -255,7 +255,7 @@ function SelectionInput({
       selection.alias !== "" &&
       (!oldTable ||
         selection.alias !==
-          slugify(oldTable.name, usedAliases, selection.alias));
+        slugify(oldTable.name, usedAliases, selection.alias));
 
     const newAlias = wasOldAliasManuallySet
       ? selection.alias
