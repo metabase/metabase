@@ -15,6 +15,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [stencil.core :as stencil]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)
@@ -68,34 +69,66 @@
    :vertica    "Vertica"
    :mongo      "MongoDB"})
 
+(def ^:private engine->dialect-file
+  "Map of database engine keywords to dialect instruction file names (without extension)."
+  {:postgres   "postgresql"
+   :mysql      "mysql"
+   :h2         "h2"
+   :sqlserver  "sqlserver"
+   :oracle     "oracle"
+   :bigquery   "bigquery"
+   :snowflake  "snowflake"
+   :redshift   "redshift"
+   :sqlite     "sqlite"
+   :clickhouse "clickhouse"
+   :vertica    "vertica"
+   :athena     "athena"
+   :databricks "databricks"
+   :druid      "druid"})
+
+(defn- database-engine
+  "Get the engine keyword for a database."
+  [database-id]
+  (when database-id
+    (t2/select-one-fn :engine :model/Database :id database-id)))
+
 (defn- database-dialect
   "Get the SQL dialect name for a database."
   [database-id]
-  (when database-id
-    (let [engine (t2/select-one-fn :engine :model/Database :id database-id)]
-      (or (get engine->dialect engine)
-          (some-> engine name str/capitalize)
-          "SQL"))))
+  (let [engine (database-engine database-id)]
+    (or (get engine->dialect engine)
+        (some-> engine name str/capitalize)
+        "SQL")))
+
+(defn- load-dialect-instructions
+  "Load dialect-specific instructions from resources, if available.
+   Returns nil if no instructions file exists for the given engine."
+  [engine]
+  (when-let [dialect-file (get engine->dialect-file engine)]
+    (let [resource-path (str "llm/prompts/dialects/" dialect-file ".md")]
+      (when-let [resource (io/resource resource-path)]
+        (slurp resource)))))
 
 ;;; -------------------------------------------- System Prompt --------------------------------------------
 
+(def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
+
+(def ^:private datetime-formatter
+  (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss"))
+
+(defn- current-datetime-str
+  "Get current date/time as a formatted string for prompt context."
+  []
+  (.format (LocalDateTime/now) datetime-formatter))
+
 (defn- build-system-prompt
-  "Build the system prompt for SQL generation with dialect and schema context."
-  [dialect schema-ddl]
-  (str "You are a SQL query generator for a " dialect " database.
-
-Your task is to convert natural language questions into valid SQL queries.
-
-## Available Tables
-
-" schema-ddl "
-
-## Instructions
-
-1. Use only the tables and columns shown above
-2. Use " dialect " syntax specifically
-3. If the request is ambiguous, make reasonable assumptions
-4. If the request cannot be fulfilled, return an explanatory message as the sql value"))
+  "Build the system prompt for SQL generation with dialect, schema, and optional dialect instructions."
+  [{:keys [dialect schema-ddl dialect-instructions]}]
+  (stencil/render-file sql-generation-prompt-template
+                       {:dialect              dialect
+                        :schema               schema-ddl
+                        :current_time         (current-datetime-str)
+                        :dialect_instructions dialect-instructions}))
 
 ;;; ------------------------------------------ Response Formatting ------------------------------------------
 
@@ -158,10 +191,14 @@ Your task is to convert natural language questions into valid SQL queries.
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
 
-      ;; 5. Get database dialect and build system prompt
-      (let [dialect       (database-dialect database_id)
-            system-prompt (build-system-prompt dialect schema-ddl)
-            timestamp     (current-timestamp)]
+      ;; 5. Get database dialect, instructions, and build system prompt
+      (let [engine              (database-engine database_id)
+            dialect             (database-dialect database_id)
+            dialect-instructions (load-dialect-instructions engine)
+            system-prompt       (build-system-prompt {:dialect              dialect
+                                                      :schema-ddl           schema-ddl
+                                                      :dialect-instructions dialect-instructions})
+            timestamp           (current-timestamp)]
 
         ;; 6. Log the system prompt
         (log-to-file! (str timestamp "_prompt.txt") system-prompt)
@@ -201,8 +238,12 @@ Your task is to convert natural language questions into valid SQL queries.
       (when-not schema-ddl
         (throw (ex-info (tru "No accessible tables found. Check table permissions.")
                         {:status-code 400})))
-      (let [dialect       (database-dialect database_id)
-            system-prompt (build-system-prompt dialect schema-ddl)]
+      (let [engine               (database-engine database_id)
+            dialect              (database-dialect database_id)
+            dialect-instructions (load-dialect-instructions engine)
+            system-prompt        (build-system-prompt {:dialect              dialect
+                                                       :schema-ddl           schema-ddl
+                                                       :dialect-instructions dialect-instructions})]
         {:dialect       dialect
          :system-prompt system-prompt
          :buffer-id     (or buffer_id "qb")}))))
