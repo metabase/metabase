@@ -129,3 +129,195 @@
           (is (str/includes? result "orders"))
           (is (str/includes? result "email"))
           (is (str/includes? result "user_id")))))))
+
+;;; ----------------------------------------- Fingerprint Formatting Tests -----------------------------------------
+
+(deftest format-numeric-stats-test
+  (testing "formats integer range"
+    (is (= "range: 1-100, avg: 50"
+           (#'context/format-numeric-stats {:min 1 :max 100 :avg 50}))))
+
+  (testing "formats decimal range"
+    (is (= "range: 0.00-999.99, avg: 127.50"
+           (#'context/format-numeric-stats {:min 0.0 :max 999.99 :avg 127.5}))))
+
+  (testing "handles missing avg"
+    (is (= "range: 0-100"
+           (#'context/format-numeric-stats {:min 0 :max 100}))))
+
+  (testing "returns nil when min/max missing"
+    (is (nil? (#'context/format-numeric-stats {:avg 50})))
+    (is (nil? (#'context/format-numeric-stats {})))))
+
+(deftest format-temporal-stats-test
+  (testing "formats date range"
+    (is (= "2020-01-01 to 2024-12-31"
+           (#'context/format-temporal-stats {:earliest "2020-01-01T00:00:00Z"
+                                             :latest   "2024-12-31T23:59:59Z"}))))
+
+  (testing "handles short date strings"
+    (is (= "2020-01-01 to 2024-12-31"
+           (#'context/format-temporal-stats {:earliest "2020-01-01"
+                                             :latest   "2024-12-31"}))))
+
+  (testing "returns nil when dates missing"
+    (is (nil? (#'context/format-temporal-stats {:earliest "2020-01-01"})))
+    (is (nil? (#'context/format-temporal-stats {})))))
+
+;;; ----------------------------------------- Column Comment Building Tests -----------------------------------------
+
+(deftest build-column-comment-test
+  (testing "description takes priority"
+    (is (= "Customer email address"
+           (#'context/build-column-comment
+            {:description "Customer email address"
+             :semantic_type :type/Email}
+            nil nil))))
+
+  (testing "sample values for category"
+    (is (= "active, inactive, pending"
+           (#'context/build-column-comment
+            {:semantic_type :type/Category}
+            ["active" "inactive" "pending"]
+            nil))))
+
+  (testing "FK reference"
+    (is (= "FK->users.id"
+           (#'context/build-column-comment
+            {:fk_target_field_id 123}
+            nil
+            {:table "users" :field "id"}))))
+
+  (testing "semantic type hints"
+    (is (= "PK"
+           (#'context/build-column-comment {:semantic_type :type/PK} nil nil)))
+    (is (= "email"
+           (#'context/build-column-comment {:semantic_type :type/Email} nil nil))))
+
+  (testing "numeric fingerprint stats"
+    (is (= "range: 0-1000, avg: 127.50"
+           (#'context/build-column-comment
+            {:fingerprint {:type {:type/Number {:min 0 :max 1000 :avg 127.5}}}}
+            nil nil))))
+
+  (testing "temporal fingerprint stats"
+    (is (= "2020-01-01 to 2024-12-31"
+           (#'context/build-column-comment
+            {:fingerprint {:type {:type/DateTime {:earliest "2020-01-01T00:00:00Z"
+                                                  :latest   "2024-12-31T23:59:59Z"}}}}
+            nil nil))))
+
+  (testing "combined metadata"
+    (is (= "Order status; pending, shipped, delivered"
+           (#'context/build-column-comment
+            {:description "Order status"}
+            ["pending" "shipped" "delivered"]
+            nil))))
+
+  (testing "returns nil for no metadata"
+    (is (nil? (#'context/build-column-comment {} nil nil)))))
+
+(deftest truncate-value-test
+  (testing "short values unchanged"
+    (is (= "active" (#'context/truncate-value "active"))))
+
+  (testing "long values truncated"
+    (is (= "this is a very long value t..."
+           (#'context/truncate-value "this is a very long value that exceeds the limit")))))
+
+;;; ----------------------------------------- DDL with Comments Tests -----------------------------------------
+
+(deftest format-schema-ddl-with-comments-test
+  (testing "formats table with column comments"
+    (let [tables [{:name "orders"
+                   :schema nil
+                   :columns [{:name "id" :database_type "INTEGER" :comment "PK"}
+                             {:name "status" :database_type "VARCHAR" :comment "pending, shipped, delivered"}
+                             {:name "total" :database_type "DECIMAL" :comment "range: 0-9999.99"}]}]
+          result (#'context/format-schema-ddl tables)]
+      (is (str/includes? result "-- PK"))
+      (is (str/includes? result "-- pending, shipped, delivered"))
+      (is (str/includes? result "-- range: 0-9999.99"))
+      (is (str/includes? result "id INTEGER"))
+      (is (str/includes? result "status VARCHAR"))
+      (is (str/includes? result "total DECIMAL"))))
+
+  (testing "formats table with mixed commented and non-commented columns"
+    (let [tables [{:name "users"
+                   :schema nil
+                   :columns [{:name "id" :database_type "INTEGER" :comment "PK"}
+                             {:name "name" :database_type "VARCHAR"}
+                             {:name "email" :database_type "VARCHAR" :comment "email"}]}]
+          result (#'context/format-schema-ddl tables)]
+      (is (str/includes? result "-- PK"))
+      (is (str/includes? result "-- email"))
+      (is (str/includes? result "id INTEGER"))
+      (is (str/includes? result "name VARCHAR"))
+      (is (str/includes? result "email VARCHAR"))))
+
+  (testing "formats table without any comments (backward compatible)"
+    (let [tables [{:name "simple"
+                   :schema nil
+                   :columns [{:name "a" :database_type "INT"}
+                             {:name "b" :database_type "TEXT"}]}]
+          result (#'context/format-schema-ddl tables)]
+      (is (= "CREATE TABLE simple (\n  a INT,\n  b TEXT\n);" result)))))
+
+;;; ----------------------------------------- Enriched Context Integration Tests -----------------------------------------
+
+(deftest build-schema-context-with-description-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database db    {}
+                   :model/Table    table {:db_id (:id db) :name "products" :schema "public"}
+                   :model/Field    _f1   {:table_id    (:id table)
+                                          :name        "id"
+                                          :database_type "INTEGER"
+                                          :base_type   :type/Integer
+                                          :semantic_type :type/PK}
+                   :model/Field    _f2   {:table_id    (:id table)
+                                          :name        "name"
+                                          :database_type "VARCHAR"
+                                          :base_type   :type/Text
+                                          :description "Product display name"}]
+      (testing "includes field description in DDL comments"
+        (let [result (context/build-schema-context (:id db) #{(:id table)})]
+          (is (some? result))
+          (is (str/includes? result "products"))
+          (is (str/includes? result "-- Product display name")))))))
+
+(deftest build-schema-context-with-fk-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database db     {}
+                   :model/Table    users  {:db_id (:id db) :name "users" :schema "public"}
+                   :model/Field    uid    {:table_id (:id users) :name "id" :database_type "INTEGER" :base_type :type/Integer}
+                   :model/Table    orders {:db_id (:id db) :name "orders" :schema "public"}
+                   :model/Field    _oid   {:table_id (:id orders) :name "id" :database_type "INTEGER" :base_type :type/Integer}
+                   :model/Field    _fk    {:table_id         (:id orders)
+                                           :name             "user_id"
+                                           :database_type    "INTEGER"
+                                           :base_type        :type/Integer
+                                           :semantic_type    :type/FK
+                                           :fk_target_field_id (:id uid)}]
+      (testing "includes FK relationship in DDL comments"
+        (let [result (context/build-schema-context (:id db) #{(:id orders)})]
+          (is (some? result))
+          (is (str/includes? result "FK->users.id")))))))
+
+(deftest build-schema-context-with-field-values-test
+  (mt/with-test-user :crowberto
+    (mt/with-temp [:model/Database   db    {}
+                   :model/Table      table {:db_id (:id db) :name "orders" :schema "public"}
+                   :model/Field      field {:table_id       (:id table)
+                                            :name           "status"
+                                            :database_type  "VARCHAR"
+                                            :base_type      :type/Text
+                                            :has_field_values :list}
+                   :model/FieldValues _fv  {:field_id (:id field)
+                                            :values   ["pending" "shipped" "delivered"]
+                                            :type     :full}]
+      (testing "includes sample values in DDL comments"
+        (let [result (context/build-schema-context (:id db) #{(:id table)})]
+          (is (some? result))
+          (is (str/includes? result "pending"))
+          (is (str/includes? result "shipped"))
+          (is (str/includes? result "delivered")))))))
