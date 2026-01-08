@@ -38,8 +38,3 @@ export interface UpdateSegmentRequest {
   points_of_interest?: string;
   show_in_getting_started?: boolean;
 }
-
-export interface DeleteSegmentRequest {
-  id: SegmentId;
-  revision_message: string;
-}

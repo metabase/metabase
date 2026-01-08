@@ -80,7 +80,7 @@ export function DeleteSubscriptionAction({
   return (
     <>
       <Flex className={cx(CS.borderTop, CS.pt1, CS.pb3)} justify="flex-end">
-        <Button variant="subtle" c="text-light" onClick={openModal}>
+        <Button variant="subtle" c="text-tertiary" onClick={openModal}>
           {t`Delete this subscription`}
         </Button>
       </Flex>

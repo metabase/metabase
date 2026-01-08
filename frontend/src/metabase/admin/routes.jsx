@@ -101,8 +101,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
           <Route component={DataModelV1}>
             <Route path="segments" component={SegmentListApp} />
-            <Route path="segment/create" component={SegmentApp} />
-            <Route path="segment/:id" component={SegmentApp} />
+            <Route path="segment/create" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
+            <Route path="segment/:id" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
             <Route
               path="segment/:id/revisions"
               component={RevisionHistoryApp}

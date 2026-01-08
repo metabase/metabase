@@ -113,7 +113,7 @@ export function DependencyGraph({
         onEdgesChange={onEdgesChange}
       >
         <Background />
-        <Controls className={S.controls} />
+        <Controls className={S.controls} showInteractive={false} />
         <GraphNodeLayout />
         <Panel position="top-left">
           <Group>

@@ -65,7 +65,7 @@ export function SharedCombinedEmbeddingSettings({
           buttonLink={upgradeUrl}
           dismissible
         >
-          <Text c="text-medium" lh="md">
+          <Text c="text-secondary" lh="md">
             {t`Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on.`}
           </Text>
         </UpsellBanner>

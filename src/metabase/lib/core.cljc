@@ -31,6 +31,7 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util]
    [metabase.lib.limit :as lib.limit]
+   [metabase.lib.measure :as lib.measure]
    [metabase.lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.column]
@@ -107,6 +108,7 @@
          metabase.lib.schema/keep-me
          metabase.lib.schema.util/keep-me
          lib.segment/keep-me
+         lib.measure/keep-me
          metabase.lib.serialize/keep-me
          lib.stage/keep-me
          lib.swap/keep-me
@@ -449,7 +451,12 @@
  [metabase.lib.schema.util
   remove-lib-uuids]
  [lib.segment
-  available-segments]
+  available-segments
+  check-segment-overwrite]
+ [lib.measure
+  available-measures
+  check-measure-cycles
+  check-measure-overwrite]
  [metabase.lib.serialize
   prepare-for-serialization]
  [lib.stage
@@ -497,6 +504,7 @@
   all-field-ids
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
+  all-measure-ids
   all-segment-ids
   all-source-card-ids
   all-source-table-ids

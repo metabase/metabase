@@ -128,6 +128,24 @@
 (mr/def :event/segment-update ::segment-with-message)
 (mr/def :event/segment-delete ::segment-with-message)
 
+;; measure events
+
+(mr/def ::measure
+  [:map {:closed true}
+   [:user-id  pos-int?]
+   [:object   [:fn #(t2/instance-of? :model/Measure %)]]])
+
+(mr/def :event/measure-create ::measure)
+
+(mr/def ::measure-with-message
+  [:merge
+   ::measure
+   [:map {:closed true}
+    [:revision-message {:optional true} :string]]])
+
+(mr/def :event/measure-update ::measure-with-message)
+(mr/def :event/measure-delete ::measure-with-message)
+
 ;; database events
 
 (mr/def ::database
