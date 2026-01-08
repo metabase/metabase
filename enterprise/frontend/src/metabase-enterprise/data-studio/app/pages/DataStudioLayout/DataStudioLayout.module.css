@@ -10,6 +10,7 @@
 .logo {
   display: block;
   height: 2rem;
+  transition: opacity 400ms ease;
   width: 2rem;
 }
 
@@ -30,8 +31,9 @@
 
 .tab,
 .toggle {
-  position: relative;
   color: var(--mb-color-text-primary);
+  position: relative;
+  transition: opacity 400ms ease;
 
   &:hover,
   &.selected {
@@ -52,7 +54,6 @@
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    transition: opacity 400ms ease;
   }
 
   &.navbarClosed {
