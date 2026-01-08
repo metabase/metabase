@@ -12,8 +12,8 @@
 
 (deftest get-library-path-test
   (testing "GET /api/ee/transforms-python/library/:path"
-    (mt/with-premium-features #{:transforms-python}
-      (testing "requires superuser permissions"
+    (mt/with-premium-features #{:transforms-python :transforms}
+      (testing "requires permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 "ee/transforms-python/library/common"))))
       (testing "returns nil when no library exists"
@@ -33,7 +33,7 @@
 
 (deftest put-library-path-test
   (testing "PUT /api/ee/transforms-python/library/:path"
-    (mt/with-premium-features #{:transforms-python}
+    (mt/with-premium-features #{:transforms-python :transforms}
       (testing "requires superuser permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ee/transforms-python/library/common"

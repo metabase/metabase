@@ -417,7 +417,7 @@
                            ;; we sometimes get I/O error in CI due to it taking too long. it's too slow, too flakey to keep enabled
                            :redshift)
       (mt/with-empty-db
-        (mt/with-premium-features #{:transforms-python}
+        (mt/with-premium-features #{:transforms-python :transforms}
           (with-test-table [source-table-id source-table-name] [base-type-test-data (:data base-type-test-data)]
             (let [table-name (mt/random-name)
                   exotic-config (get driver-exotic-types driver/*driver*)
