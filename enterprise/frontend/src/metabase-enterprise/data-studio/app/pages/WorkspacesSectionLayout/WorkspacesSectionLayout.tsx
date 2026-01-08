@@ -5,7 +5,6 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { SectionLayout } from "../../components/SectionLayout";
 
 type WorkspacesSectionLayoutProps = {
-  location: Location;
   children?: React.ReactNode;
 };
 
@@ -14,9 +13,5 @@ export function WorkspacesSectionLayout({
 }: WorkspacesSectionLayoutProps) {
   usePageTitle(t`Workspaces`);
 
-  return (
-    <SectionLayout>
-      {children}
-    </SectionLayout>
-  );
+  return <SectionLayout>{children}</SectionLayout>;
 }
