@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { ResizableBox, type ResizableBoxProps } from "react-resizable";
-import { useMount } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -71,7 +71,6 @@ type OwnProps = {
 
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
-  viewHeight: number;
   placeholder?: string;
   highlightedLineNumbers?: number[];
 
@@ -195,7 +194,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       toggleDataReference,
       toggleSnippetSidebar,
       topBarInnerContent,
-      viewHeight,
     } = props;
 
     const editorRef = useRef<CodeMirrorEditorRef>(null);
@@ -203,11 +201,13 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
     const [initialHeight, setInitialHeight] = useState(
-      calcInitialEditorHeight({ query, viewHeight }),
+      calcInitialEditorHeight({ query, availableHeight }),
     );
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
     const [isCollapsing, setIsCollapsing] = useState(false);
+
+    const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
 
     const focus = useCallback(() => {
       if (readOnly) {
@@ -247,11 +247,12 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
     useEffect(() => {
-      if (isNativeEditorOpen && isNativeEditorOpen) {
-        const newHeight = calcInitialEditorHeight({ query, viewHeight });
+      // recalculate height when opening native editor
+      if (isNativeEditorOpen && !wasNativeEditorOpen) {
+        const newHeight = calcInitialEditorHeight({ query, availableHeight });
         setInitialHeight(newHeight);
       }
-    }, [query, viewHeight, isNativeEditorOpen]);
+    }, [query, availableHeight, isNativeEditorOpen, wasNativeEditorOpen]);
 
     const dragHandle = resizable ? (
       <div className={S.dragHandleContainer} data-testid="drag-handle">

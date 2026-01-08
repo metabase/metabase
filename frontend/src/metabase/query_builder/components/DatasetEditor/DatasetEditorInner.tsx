@@ -373,7 +373,7 @@ const _DatasetEditorInner = (props: DatasetEditorInnerProps) => {
     }
     return calcInitialEditorHeight({
       query: question.legacyNativeQuery(),
-      viewHeight: height ?? "full",
+      availableHeight: height ?? "full",
     });
   }, [question, height]);
 
