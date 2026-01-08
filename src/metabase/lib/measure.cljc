@@ -1,6 +1,6 @@
 (ns metabase.lib.measure
   "A Measure is a saved MBQL query stage snippet with `:aggregation`. Measures are numeric expressions."
-  (:refer-clojure :exclude [some not-empty])
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.graph.core :as graph]
@@ -20,7 +20,7 @@
    [metabase.lib.walk.util :as lib.walk.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some not-empty]]))
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- resolve-measure [query measure-id]
   (when (integer? measure-id)
