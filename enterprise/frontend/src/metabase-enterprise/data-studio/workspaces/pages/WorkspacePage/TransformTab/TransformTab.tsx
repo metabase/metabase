@@ -4,10 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import {
-  useLazyGetAdhocQueryQuery,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
+import { useListDatabaseSchemasQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -25,10 +22,8 @@ import {
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
-import {
-  CreateTransformModal,
-  type NewTransformValues,
-} from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
+import { CreateTransformModal } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
+import type { NewTransformValues } from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/form";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -48,7 +43,7 @@ import type {
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { SaveTransformButton } from "../SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
-import type { EditedTransform, PreviewTab } from "../WorkspaceProvider";
+import type { EditedTransform, TableTab } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -80,7 +75,6 @@ export const TransformTab = ({
     removeOpenedTransform,
     removeEditedTransform,
     addOpenedTab,
-    updatePreviewTab,
   } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
@@ -103,43 +97,23 @@ export const TransformTab = ({
       transform: wsTransform,
     });
 
-  const [runAdhocQuery] = useLazyGetAdhocQueryQuery();
-  const abortRef = useRef<(() => void) | undefined>();
-
   const handleRunQueryStart = useCallback(
     async (query: DatasetQuery) => {
-      // abort previous query
-      abortRef.current?.();
+      const tableTabId = `table-${transform.id}`;
 
-      const previewTabId = `preview-${transform.id}`;
-
-      const previewTab: PreviewTab = {
-        id: previewTabId,
+      const tableTab: TableTab = {
+        id: tableTabId,
         name: t`Preview (${transform.name})`,
-        type: "preview",
-        dataset: null,
-        transformId: transform.id,
-        isLoading: true,
+        type: "table",
+        table: {
+          tableId: transform.id,
+          name: t`Preview (${transform.name})`,
+          query,
+        },
       };
-      addOpenedTab(previewTab, false);
-
-      const action = runAdhocQuery(query);
-      abortRef.current = action.abort;
-
-      const { data: dataset } = await action;
-      abortRef.current = undefined;
-
-      if (dataset) {
-        updatePreviewTab(previewTabId, dataset);
-      }
+      addOpenedTab(tableTab);
     },
-    [
-      transform.id,
-      transform.name,
-      addOpenedTab,
-      updatePreviewTab,
-      runAdhocQuery,
-    ],
+    [transform.id, transform.name, addOpenedTab],
   );
 
   const normalizeSource = useCallback(

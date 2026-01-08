@@ -15,7 +15,7 @@ import { push, replace } from "react-router-redux";
 import { useLatest, useLocation } from "react-use";
 import { t } from "ttag";
 
-import { useLazyGetAdhocQueryQuery, useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -53,15 +53,14 @@ import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/componen
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
-import type { MetabotStoreState } from "metabase-enterprise/metabot/state";
+import type {
+  MetabotState,
+  MetabotStoreState,
+} from "metabase-enterprise/metabot/state";
 import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
-import type {
-  DraftTransformSource,
-  Transform,
-  WorkspaceTransformItem,
-} from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { isWorkspaceUninitialized } from "../../utils";
 
@@ -70,14 +69,12 @@ import { CodeTab } from "./CodeTab/CodeTab";
 import { DataTab, DataTabSidebar } from "./DataTab";
 import { GraphTab } from "./GraphTab";
 import { MetabotTab } from "./MetabotTab";
-import { PreviewTab as PreviewTabComponent } from "./PreviewTab";
 import { SetupTab } from "./SetupTab";
 import { TransformTab } from "./TransformTab/TransformTab";
 import styles from "./WorkspacePage.module.css";
 import {
   type EditedTransform,
   type OpenTable,
-  type PreviewTab,
   WorkspaceProvider,
   type WorkspaceTab,
   useWorkspace,
@@ -126,16 +123,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     patchEditedTransform,
     hasUnsavedChanges,
     unsavedTransforms,
-    updatePreviewTab,
   } = useWorkspace();
-
-  // Compute active preview from activeTab
-  const activePreview = useMemo(() => {
-    if (activeTab?.type === "preview") {
-      return activeTab;
-    }
-    return undefined;
-  }, [activeTab]);
 
   // RTK
   const id = Number(params.workspaceId);
@@ -152,17 +140,23 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       { workspaceId: id, databaseId: workspace?.database_id ?? null },
       { skip: !id || !workspace?.database_id },
     );
+
   const availableTransforms = useMemo(
     () => externalTransforms ?? [],
     [externalTransforms],
   );
   const [fetchTransform] = useLazyGetTransformQuery();
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
+  const isLoading =
+    isLoadingWorkspace ||
+    isLoadingExternalTransforms ||
+    isLoadingWorkspaceTransforms;
+
   useEffect(() => {
     // Initialize transform tab if redirected from transform page.
     if (transformId) {
       (async () => {
-        if (isLoadingExternalTransforms || isLoadingWorkspaceTransforms) {
+        if (isLoading) {
           return;
         }
 
@@ -184,25 +178,11 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             return transform.id === Number(transformId);
           },
         );
-        if (transform) {
-          let data;
-          if ("ref_id" in transform && transform.ref_id !== undefined) {
-            // Use workspace transform query for ref_id transforms
-            const result = await fetchWorkspaceTransform({
-              workspaceId: id,
-              transformId: transform.ref_id,
-            });
-            data = result.data;
-          } else {
-            // Use regular transform query for global_id or id transforms
-            const result = await fetchTransform(
-              "global_id" in transform && transform.global_id !== null
-                ? transform.global_id
-                : transform.id,
-              true,
-            );
-            data = result.data;
-          }
+
+        const isWsTransform = !!transform && "global_id" in transform;
+
+        if (transform && !isWsTransform) {
+          const { data } = await fetchTransform(transform.id, true);
           if (data) {
             addOpenedTransform(data);
             setActiveTransform(data);
@@ -230,13 +210,12 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     availableTransforms,
     addOpenedTransform,
     fetchTransform,
-    fetchWorkspaceTransform,
     dispatch,
     id,
-    isLoadingExternalTransforms,
+    isLoading,
     sendErrorToast,
-    isLoadingWorkspaceTransforms,
     workspaceTransforms,
+    fetchWorkspaceTransform,
   ]);
 
   const {
@@ -267,7 +246,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     useMergeWorkspaceMutation();
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const [runTransform] = useRunWorkspaceTransformMutation();
-  const [runAdhocQuery] = useLazyGetAdhocQueryQuery();
   const [runningTransforms, setRunningTransforms] = useState<Set<string>>(
     new Set(),
   );
@@ -537,14 +515,11 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       setTab(tableTab.id);
     },
     [addOpenedTab],
+
   );
 
   const handleRunTransformAndShowPreview = useCallback(
     async (transform: WorkspaceTransformItem) => {
-      const outputTable = workspaceTables.outputs.find(
-        (t) => t.isolated.transform_id === transform.ref_id,
-      );
-
       setRunningTransforms((prev) => new Set(prev).add(transform.ref_id));
 
       try {
@@ -558,42 +533,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           return;
         }
 
-        const { data: wsTransform } = await fetchWorkspaceTransform(
-          { workspaceId: id, transformId: transform.ref_id },
-          true,
-        );
-
-        if (!wsTransform) {
-          sendErrorToast(t`Could not load transform details`);
-          return;
-        }
-
-        if (wsTransform.source.type === "query") {
-          const previewTabId = `preview-${transform.ref_id}`;
-          const tabName = outputTable
-            ? outputTable.isolated.schema
-              ? `${outputTable.isolated.schema}.${outputTable.isolated.table}`
-              : outputTable.isolated.table
-            : transform.name;
-          const previewTab: PreviewTab = {
-            id: previewTabId,
-            name: tabName,
-            type: "preview",
-            dataset: null,
-            transformId: transform.ref_id,
-            isLoading: true,
-          };
-          addOpenedTab(previewTab, true);
-
-          // Run the adhoc query to get preview data
-          const { data: dataset } = await runAdhocQuery(
-            wsTransform.source.query,
-          );
-
-          if (dataset) {
-            updatePreviewTab(previewTabId, dataset);
-          }
-        } else {
           const { data: updatedTables } = await refetchWorkspaceTables();
           const updatedOutput = updatedTables?.outputs.find(
             (t) => t.isolated.transform_id === transform.ref_id,
@@ -607,7 +546,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
               transformId: transform.ref_id,
             });
           }
-        }
       } catch (error) {
         sendErrorToast(t`Failed to run transform`);
         console.error("Failed to run transform", error);
@@ -619,18 +557,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         });
       }
     },
-    [
-      id,
-      workspaceTables.outputs,
-      runTransform,
-      fetchWorkspaceTransform,
-      runAdhocQuery,
-      addOpenedTab,
-      updatePreviewTab,
-      refetchWorkspaceTables,
-      handleTableSelect,
-      sendErrorToast,
-    ],
+    [id, runTransform, refetchWorkspaceTables, handleTableSelect, sendErrorToast],
   );
 
   const handleTabDragEnd = useCallback(
@@ -763,7 +690,11 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   items={openedTabs}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel} data-testid="workspace-tabs">
+                  <Tabs.List
+                    ref={tabsListRef}
+                    className={styles.tabsPanel}
+                    data-testid="workspace-tabs"
+                  >
                     <Tabs.Tab value="setup">
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="database" aria-hidden />
@@ -868,6 +799,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     databaseId={workspace?.database_id ?? null}
                     tableId={activeTable.tableId}
                     transformId={activeTable.transformId}
+                    query={activeTable.query}
                   />
                 )}
               </Tabs.Panel>
@@ -905,15 +837,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   />
                 )}
               </Tabs.Panel>
-
-              {activePreview && (
-                <Tabs.Panel value={activePreview.id} h="100%">
-                  <PreviewTabComponent
-                    dataset={activePreview.dataset}
-                    isLoading={activePreview.isLoading}
-                  />
-                </Tabs.Panel>
-              )}
             </Box>
           </Tabs>
         </Box>

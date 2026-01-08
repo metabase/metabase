@@ -6,6 +6,7 @@
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
    [metabase-enterprise.workspaces.impl :as ws.impl]
+   [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.app-db.core :as app-db]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.test :as mt]
@@ -129,7 +130,7 @@
                                                     (select-keys gtx [:name :source :target])
                                                     {:workspace_id (:id ws)
                                                      :global_id    (:id gtx)})]
-        (ws.impl/sync-transform-dependencies! ws wtx)
+        (ws.tu/analyze-workspace! (:id ws))
         (let [entity     {:entity-type :transform, :id (:ref_id wtx)}
               result     (ws.dag/path-induced-subgraph (:id ws) [entity])
               translated (translate-result result id-map)]
@@ -159,8 +160,7 @@
       (mt/with-temp [:model/Workspace          ws    {:name "Test Workspace", :database_id (mt/id)}
                      :model/WorkspaceTransform wtx-2 (fork ws gtx-2)
                      :model/WorkspaceTransform wtx-4 (fork ws gtx-4)]
-        (ws.impl/sync-transform-dependencies! ws wtx-2)
-        (ws.impl/sync-transform-dependencies! ws wtx-4)
+        (ws.tu/analyze-workspace! (:id ws))
         (let [entities   (for [wtx [wtx-2 wtx-4]]
                            {:entity-type :transform, :id (:ref_id wtx)})
               result     (ws.dag/path-induced-subgraph (:id ws) entities)

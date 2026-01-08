@@ -1120,6 +1120,12 @@
                  ;; Drop database user
                  (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
                          username username)
+                 ;; Kill all sessions using this login before dropping it
+                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                              "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                              "EXEC sp_executesql @sql")
+                         login-name)
                  ;; Drop server login
                  (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
                          login-name login-name)]]

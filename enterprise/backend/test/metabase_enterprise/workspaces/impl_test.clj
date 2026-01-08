@@ -76,9 +76,11 @@
                                                               :schema   "analytics"
                                                               :name     "output_table"}})
               ws (t2/select-one :model/Workspace (:id ws))]
-          ;; Call sync again to test idempotency
-          (ws.impl/sync-transform-dependencies! ws wt)
-          (ws.impl/sync-transform-dependencies! ws wt)
+          ;; Trigger analysis again to test idempotency
+          (t2/update! :model/Workspace (:id ws) {:analysis_stale true})
+          (ws.tu/analyze-workspace! (:id ws))
+          (t2/update! :model/Workspace (:id ws) {:analysis_stale true})
+          (ws.tu/analyze-workspace! (:id ws))
           (testing "still has exactly one of each after multiple syncs"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))

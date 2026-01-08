@@ -59,7 +59,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (workspace) =>
         workspace ? provideWorkspaceTags(workspace) : [],
     }),
-    createWorkspace: builder.mutation<Workspace, void>({
+    createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: () => ({
         method: "POST",
         url: "/api/ee/workspace",

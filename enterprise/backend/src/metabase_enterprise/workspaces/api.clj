@@ -488,13 +488,18 @@
     :external-transform id
     :table (str (:db id) "-" (:schema id) "-" (:table id))))
 
+(defn- target->spec [{:keys [target] :as tx}]
+  (assoc tx :target {:db     (:database target)
+                     :schema (:schema target)
+                     :table  (:name target)}))
+
 ;; TODO we'll want to bulk query this of course...
 (defn- node-data [{:keys [node-type id]}]
   (case node-type
     :table id
-    :external-transform (t2/select-one [:model/Transform :id :name] id)
+    :external-transform (t2/select-one-fn target->spec [:model/Transform :id :name :target] id)
     ;; TODO we'll want to select by workspace as well here, to relax uniqueness assumption
-    :workspace-transform (t2/select-one [:model/WorkspaceTransform :ref_id :name] :ref_id id)))
+    :workspace-transform (t2/select-one-fn target->spec [:model/WorkspaceTransform :ref_id :name :target] :ref_id id)))
 
 (api.macros/defendpoint :get "/:ws-id/graph" :- GraphResult
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
@@ -728,31 +733,31 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    (t2/update! :model/WorkspaceTransform tx-id body)
-    ;; Being cheeky and using the API response value for the pre-validation, to save a query.
-    (u/prog1 (fetch-ws-transform ws-id tx-id)
-      ;; NOTE: FE may send these fields even when unchanged, causing unnecessary re-syncs.
-      ;; This is acceptable for now, but using t2/changes in hooks might catch false positives?
-      ;; The most reliable thing would be to have a clear, tested contract with the FE to NOT send them if unchanged.
-      (when (or (:source body) (:target body))
-        ;; Note that we do NOT want to couple ourselves to the response shape of this API.
-        ;; We want to be extremely mindful of the fields we depend on, in case we remove them from the response.
-        (let [transform (select-keys <> [:ref_id :source :source_type :target])
-              workspace (t2/select-one :model/Workspace :id ws-id)]
-          ;; Re-sync dependencies if source or target changed.
-          (ws.impl/sync-transform-dependencies! workspace transform))))))
+    ;; If source or target changed, mark as stale in the same update
+    (let [source-or-target-changed? (or (:source body) (:target body))
+          update-body (cond-> body
+                        source-or-target-changed? (assoc :analysis_stale true))]
+      (t2/update! :model/WorkspaceTransform tx-id update-body)
+      ;; Mark workspace as stale too if source/target changed
+      (when source-or-target-changed?
+        (ws.impl/mark-workspace-stale! ws-id)))
+    (fetch-ws-transform ws-id tx-id)))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
   "Mark the given transform to be archived when the workspace is merged.
    For provisional transforms we will skip even creating it in the first place."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at [:now]})))
+  (ws.impl/mark-workspace-stale! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/unarchive" :- :nil
   "Unmark the given transform for archival. This will recall the last definition it had within the workspace."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at nil})))
+  (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
+                                   {:ref_id tx-id :workspace_id id}
+                                   {:archived_at nil, :analysis_stale true})))
+  (ws.impl/mark-workspace-stale! id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/transform/:tx-id" :- :nil
@@ -760,6 +765,8 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id id)))
+  ;; Mark workspace as stale since the graph has changed
+  (ws.impl/mark-workspace-stale! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/run"
@@ -772,6 +779,8 @@
         transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
+    ;; Ensure analysis is up-to-date, as we may need grants to external input tables.
+    (ws.impl/analyze-transform-if-stale! workspace transform)
     (ws.impl/run-transform! workspace transform)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}

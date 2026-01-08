@@ -26,6 +26,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import S from "./DataStudioLayout.module.css";
 import { WorkspacesSection } from "./WorkspaceSection";
@@ -145,7 +146,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
-        {canAccessTransforms && (
+        {canAccessTransforms && hasPremiumFeature("workspaces") && (
           <WorkspacesSection showLabel={isNavbarOpened} />
         )}
       </Stack>
