@@ -1,11 +1,11 @@
 import type { ButtonHTMLAttributes } from "react";
 
-import type { ActionIconProps, ButtonProps } from "metabase/ui";
+import type { ActionIconProps } from "metabase/ui";
 
 export type DashboardSubscriptionsButtonProps = ActionIconProps &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
-export type QuestionAlertsButtonProps = ButtonProps &
+export type QuestionAlertsButtonProps = ActionIconProps &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
 function getDefaultPluginNotificationsSdk() {

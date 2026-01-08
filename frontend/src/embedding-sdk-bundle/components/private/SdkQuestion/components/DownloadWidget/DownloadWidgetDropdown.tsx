@@ -1,7 +1,9 @@
+import { t } from "ttag";
+
 import { Popover, type PopoverProps } from "metabase/ui";
 
 import { useSdkQuestionContext } from "../../context";
-import { ToolbarButton } from "../util/ToolbarButton";
+import { SdkActionIcon } from "../util/SdkActionIcon";
 
 import { DownloadWidget } from "./DownloadWidget";
 
@@ -35,9 +37,8 @@ export const DownloadWidgetDropdown = ({
       position="bottom-end"
     >
       <Popover.Target>
-        <ToolbarButton
-          variant="default"
-          px="sm"
+        <SdkActionIcon
+          tooltip={t`Download results`}
           icon="download"
           data-testid="question-download-widget-button"
         />

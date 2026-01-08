@@ -254,7 +254,7 @@ export const SdkQuestionDefaultView = ({
                 </>
               )}
             </Group>
-            <Group gap="sm">
+            <Group gap="sm" ml="auto">
               <DownloadWidgetDropdown />
               <QuestionAlertsButton />
               <EditorButton isOpen={isEditorOpen} onClick={toggleEditor} />
