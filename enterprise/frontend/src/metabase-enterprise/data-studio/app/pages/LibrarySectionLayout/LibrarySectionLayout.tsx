@@ -40,7 +40,7 @@ import {
   useErrorHandling,
 } from "./hooks";
 import { type TreeItem, isCollection } from "./types";
-import { getWritableCollection } from "./utils";
+import { getCollection, getWritableCollection } from "./utils";
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
@@ -62,10 +62,12 @@ export function LibrarySectionLayout() {
   const libraryCollection = collections.find(isLibraryCollection);
 
   const tableCollection =
-    libraryCollection &&
-    getWritableCollection(libraryCollection, "library-data");
+    libraryCollection && getCollection(libraryCollection, "library-data");
 
   const metricCollection =
+    libraryCollection && getCollection(libraryCollection, "library-metrics");
+
+  const writableMetricCollection =
     libraryCollection &&
     getWritableCollection(libraryCollection, "library-metrics");
 
@@ -225,7 +227,7 @@ export function LibrarySectionLayout() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <CreateMenu metricCollectionId={metricCollection?.id} />
+            <CreateMenu metricCollectionId={writableMetricCollection?.id} />
           </Flex>
           <Card withBorder p={0}>
             {isLoading ? (

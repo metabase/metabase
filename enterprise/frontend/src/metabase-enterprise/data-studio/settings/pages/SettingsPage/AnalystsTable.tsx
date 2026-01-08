@@ -29,13 +29,21 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
   const [sendToast] = useToast();
   const [updateUser] = useUpdateUserMutation();
 
-  const handleRemoveAnalyst = useCallback(
-    async (userId: number) => {
+  const handleToggleAnalystAccess = useCallback(
+    async (userId: number, grantAccess: boolean) => {
       try {
-        await updateUser({ id: userId, is_data_analyst: false }).unwrap();
-        sendToast({ message: t`Analyst removed` });
+        await updateUser({ id: userId, is_data_analyst: grantAccess }).unwrap();
+        sendToast({
+          message: grantAccess
+            ? t`Analyst access granted`
+            : t`Analyst access revoked`,
+        });
       } catch {
-        sendToast({ message: t`Failed to remove analyst` });
+        sendToast({
+          message: grantAccess
+            ? t`Failed to grant analyst access`
+            : t`Failed to revoke analyst access`,
+        });
       }
     },
     [updateUser, sendToast],
@@ -55,7 +63,9 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
               <UserAvatar user={row.original} />
             </Box>
             <Stack gap={0}>
-              <Text fw={500}>{getFullName(row.original) || "-"}</Text>
+              <Text lh="1.4rem" fw={500}>
+                {getFullName(row.original) || "-"}
+              </Text>
               <Text c="text-secondary" size="sm">
                 {row.original.email}
               </Text>
@@ -97,8 +107,9 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
         id: "actions",
         header: "",
         width: 48,
-        cell: ({ row }) =>
-          row.original.is_data_analyst ? (
+        cell: ({ row }) => {
+          const isAnalyst = row.original.is_data_analyst;
+          return (
             <Menu position="bottom-end" shadow="md">
               <Menu.Target>
                 <ActionIcon variant="subtle" c="text-secondary">
@@ -107,23 +118,29 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
               </Menu.Target>
               <Menu.Dropdown>
                 <Menu.Item
-                  c="error"
-                  onClick={() => handleRemoveAnalyst(row.original.id)}
+                  c={isAnalyst ? "error" : undefined}
+                  onClick={() =>
+                    handleToggleAnalystAccess(row.original.id, !isAnalyst)
+                  }
                 >
-                  {t`Remove analyst`}
+                  {isAnalyst
+                    ? t`Revoke analyst access`
+                    : t`Grant analyst access`}
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
-          ) : null,
+          );
+        },
       },
     ],
-    [handleRemoveAnalyst],
+    [handleToggleAnalystAccess],
   );
 
   const treeTableInstance = useTreeTableInstance({
     data: analysts,
     columns,
     getNodeId: (node) => String(node.id),
+    defaultRowHeight: 56,
   });
 
   if (analysts.length === 0) {
@@ -138,7 +155,7 @@ export function AnalystsTable({ analysts }: AnalystsTableProps) {
 
   return (
     <Card withBorder p={0}>
-      <TreeTable instance={treeTableInstance} />
+      <TreeTable instance={treeTableInstance} rowHeight={56} />
     </Card>
   );
 }

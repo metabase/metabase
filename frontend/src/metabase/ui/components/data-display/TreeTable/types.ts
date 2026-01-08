@@ -181,6 +181,7 @@ export interface TreeTableProps<TData extends TreeNodeData>
   showCheckboxes?: boolean;
   indentWidth?: number;
   headerVariant?: TreeTableHeaderVariant;
+  rowHeight?: number;
 
   emptyState?: ReactNode;
 
@@ -235,6 +236,7 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
   showCheckboxes: boolean;
   showExpandButtons: boolean;
   indentWidth: number;
+  rowHeight?: number;
   activeRowId: string | null;
   selectedRowId?: string | null;
   isExpanded: boolean;

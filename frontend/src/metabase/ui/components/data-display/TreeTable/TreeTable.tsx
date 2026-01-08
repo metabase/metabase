@@ -22,6 +22,7 @@ export function TreeTable<TData extends TreeNodeData>({
   showCheckboxes = false,
   indentWidth = DEFAULT_INDENT_WIDTH,
   headerVariant = "pill",
+  rowHeight,
   emptyState,
   onRowClick,
   onRowDoubleClick,
@@ -177,6 +178,7 @@ export function TreeTable<TData extends TreeNodeData>({
                     showCheckboxes={showCheckboxes}
                     showExpandButtons={hasExpandableNodes}
                     indentWidth={indentWidth}
+                    rowHeight={rowHeight}
                     activeRowId={activeRowId}
                     selectedRowId={selectedRowId}
                     isExpanded={row.getIsExpanded()}

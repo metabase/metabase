@@ -74,12 +74,19 @@ export function buildSnippetTree(
   return [{ ...rootNode, name: t`SQL snippets` }];
 }
 
+export function getCollection(
+  rootCollection: Collection,
+  type: CollectionType,
+) {
+  return rootCollection.children?.find(
+    (collection) => collection.type === type,
+  );
+}
+
 export function getWritableCollection(
   rootCollection: Collection,
   type: CollectionType,
 ) {
-  const collection = rootCollection.children?.find(
-    (collection) => collection.type === type,
-  );
+  const collection = getCollection(rootCollection, type);
   return collection?.can_write ? collection : undefined;
 }
