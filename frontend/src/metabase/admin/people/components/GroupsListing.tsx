@@ -247,7 +247,7 @@ function GroupRow({
   const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
 
   const membersLink = isTenantGroup
-    ? `/admin/tenants/groups/${group.id}`
+    ? `/admin/people/tenants/groups/${group.id}`
     : `/admin/people/groups/${group.id}`;
 
   return editing ? (
