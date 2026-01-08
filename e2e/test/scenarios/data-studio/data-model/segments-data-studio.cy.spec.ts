@@ -227,7 +227,6 @@ describe(
         SegmentEditor.getActionsButton().click();
         H.popover().findByText("Remove segment").click();
         H.modal().button("Remove").click();
-        cy.wait("@deleteSegment");
 
         cy.log("verify redirect to list and removal");
         H.undoToast().should("contain.text", "Segment removed");
@@ -581,7 +580,7 @@ describe(
           cy.findByText(/created this segment/i)
             .scrollIntoView()
             .should("be.visible");
-          cy.findByText(/made multiple changes/i)
+          cy.findByText("Total is greater than 100")
             .scrollIntoView()
             .should("be.visible");
           cy.findByText(/updated the description/i)
@@ -638,7 +637,7 @@ describe(
           `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/segments/new`,
         );
         H.main()
-          .findByText("Sorry, you don't have permission to see that.")
+          .findByText("Sorry, you don’t have permission to see that.")
           .should("be.visible");
       });
 
