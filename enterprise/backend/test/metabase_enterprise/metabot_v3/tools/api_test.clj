@@ -83,7 +83,7 @@
                                                             :field_id    (-> table-id
                                                                              metabot-v3.tools.u/table-field-id-prefix
                                                                              (str 4)) ; name
-                                                            :limt        15}
+                                                            :limit       15}
                                           :conversation_id conversation-id})]
       (is (=? {:structured_output {:statistics
                                    {:distinct_count 2499,
