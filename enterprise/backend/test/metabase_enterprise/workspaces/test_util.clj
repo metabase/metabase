@@ -114,3 +114,8 @@
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))
+
+(defn analyze-workspace!
+  "Trigger the reconstruction and persistence of the workspace graph."
+  [id]
+  (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/graph")))
