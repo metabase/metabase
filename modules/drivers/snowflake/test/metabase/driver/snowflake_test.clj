@@ -71,7 +71,7 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(deftest sanity-check-test
+(deftest ^:sequential sanity-check-test
   (mt/test-driver
     :snowflake
     (mt/dataset

@@ -3562,31 +3562,6 @@ databaseChangeLog:
             columnName: isolated_table_id
 
   - changeSet:
-      id: v58.2025-12-15T12:16:15
-      author: piranha
-      comment: Add target_db_id column to transform table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: transform
-                columnName: target_db_id
-      changes:
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: target_db_id
-                  type: int
-                  remarks: Target database ID for the transform output
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: target_db_id
-
-  - changeSet:
       id: v58.2025-12-15T12:16:16
       author: piranha
       runOnChange: true
@@ -4766,6 +4741,26 @@ databaseChangeLog:
               - column:
                   name: workspace_id
       rollback: # will be removed along the table
+
+  - changeSet:
+      id: v58.2025-12-18T16:14:03
+      author: winlost
+      comment: Add disable_links column to pulse table
+      changes:
+        - addColumn:
+            tableName: pulse
+            columns:
+              - column:
+                  name: disable_links
+                  type: ${boolean.type}
+                  remarks: "Whether to disable email subscription links"
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: pulse
+            columnName: disable_links
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

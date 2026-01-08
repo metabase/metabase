@@ -1,4 +1,4 @@
-import type { SegmentId, TableId } from "metabase-types/api";
+import type { MeasureId, SegmentId, TableId } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
@@ -69,12 +69,14 @@ export const DataStudio = {
     fieldsPage: () => cy.findByTestId("table-fields-page"),
     dependenciesPage: () => cy.findByTestId("table-dependencies-page"),
     segmentsPage: () => cy.findByTestId("table-segments-page"),
+    measuresPage: () => cy.findByTestId("table-measures-page"),
     header: () => cy.findByTestId("table-pane-header"),
     nameInput: () => cy.findByTestId("table-name-input"),
     moreMenu: () => DataStudio.Tables.header().icon("ellipsis"),
     overviewTab: () => DataStudio.Tables.header().findByText("Overview"),
     fieldsTab: () => DataStudio.Tables.header().findByText("Fields"),
     segmentsTab: () => DataStudio.Tables.header().findByText("Segments"),
+    measuresTab: () => DataStudio.Tables.header().findByText("Measures"),
     dependenciesTab: () =>
       DataStudio.Tables.header().findByText("Dependencies"),
     visitOverviewPage: (tableId: TableId) =>
@@ -87,6 +89,12 @@ export const DataStudio = {
       cy.visit(`/data-studio/library/tables/${tableId}/segments/${segmentId}`),
     visitNewSegmentPage: (tableId: TableId) =>
       cy.visit(`/data-studio/library/tables/${tableId}/segments/new`),
+    visitMeasuresPage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/measures`),
+    visitMeasurePage: (tableId: TableId, measureId: MeasureId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/measures/${measureId}`),
+    visitNewMeasurePage: (tableId: TableId) =>
+      cy.visit(`/data-studio/library/tables/${tableId}/measures/new`),
     moreMenuViewTable: () =>
       popover()
         .findByRole("menuitem", { name: /View/ })
@@ -122,5 +130,23 @@ export const DataStudio = {
     newButton: () => libraryPage().findByRole("button", { name: /New/ }),
     collectionItem: (name: string) =>
       libraryPage().findAllByTestId("collection-name").contains(name),
+  },
+  Tasks: {
+    visitBrokenEntities: () => cy.visit("/data-studio/tasks/broken"),
+    visitUnreferencedEntities: () =>
+      cy.visit("/data-studio/tasks/unreferenced"),
+    list: () => cy.findByTestId("dependency-list"),
+    searchInput: () => cy.findByTestId("dependency-list-search-input"),
+    filterButton: () => cy.findByTestId("dependency-list-filter-button"),
+    sidebar: () => cy.findByTestId("dependency-list-sidebar"),
+
+    Sidebar: {
+      get: () => cy.findByTestId("dependency-list-sidebar"),
+      header: () => cy.findByTestId("dependency-list-sidebar-header"),
+      locationInfo: () => cy.findByRole("region", { name: "Location" }),
+      errorInfo: (label: string) => cy.findByRole("region", { name: label }),
+      creationInfo: () =>
+        cy.findByRole("region", { name: "Creator and last editor" }),
+    },
   },
 };

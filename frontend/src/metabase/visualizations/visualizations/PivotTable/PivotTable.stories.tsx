@@ -27,8 +27,7 @@ export const EmbeddingTheme: StoryFn = () => {
   const theme = {
     colors: {
       border: "#95a5a6",
-      background: "#4c5773",
-      "background-hover": "#46464b",
+      background: "#46464b",
     },
     components: {
       table: {

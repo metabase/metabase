@@ -8,7 +8,7 @@
   gap: 0.25rem;
   padding: 0.5rem;
   margin-bottom: 0.125rem;
-  background: var(--mb-color-bg-white);
+  background: var(--mb-color-background-primary);
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);

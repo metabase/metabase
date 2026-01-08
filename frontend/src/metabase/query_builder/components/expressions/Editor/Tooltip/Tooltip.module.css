@@ -17,7 +17,7 @@
 }
 
 .tooltip {
-  background: var(--mb-color-background);
+  background: var(--mb-color-background-primary);
   z-index: 1000;
   width: 400px;
   max-height: 500px;

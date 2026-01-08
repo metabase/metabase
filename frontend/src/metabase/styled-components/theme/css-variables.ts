@@ -26,7 +26,6 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
 
   return css`
     :root {
-      --mb-default-font-family: "${theme.fontFamily}";
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */

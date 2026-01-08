@@ -16,10 +16,7 @@
 
 (defmethod transforms.i/target-db-id :query
   [transform]
-  (or (get-in transform [:target :database])
-      ;; Fallback to source. https://github.com/metabase/metabase/pull/67084#discussion_r2630147855
-      (-> transform :source :query :database)
-      (:target_db_id transform)))
+  (-> transform :source :query :database))
 
 (mr/def ::transform-details
   [:map
@@ -73,8 +70,11 @@
             (fn [_cancel-chan] (driver/run-transform! driver transform-details opts))))
          (transforms.instrumentation/with-stage-timing [run-id [:import :table-sync]]
            (transforms.util/sync-target! target database)
-         ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
-           (events/publish-event! :event/transform-run-complete {:object transform-details}))))
+           ;; This event must be published only after the sync is complete - the new table needs to be in AppDB.
+           (events/publish-event! :event/transform-run-complete {:object transform-details}))
+         ;; Creating an index after sync means the filter column is known in the appdb.
+         ;; The index would be synced the next time sync runs, but at time of writing, index sync is disabled.
+         (transforms.util/execute-secondary-index-ddl-if-required! transform run-id database target)))
      (catch Throwable t
        (log/error t "Error executing transform")
        (when start-promise

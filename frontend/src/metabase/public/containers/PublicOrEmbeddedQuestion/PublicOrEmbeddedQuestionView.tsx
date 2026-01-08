@@ -24,15 +24,12 @@ import type {
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
   card: Card | null;
   metadata: Metadata;
   result: Dataset | null;
-  uuid: string;
-  token: EntityToken;
   getParameters: () => UiParameter[];
   parameterValues: ParameterValuesMap;
   setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
@@ -49,8 +46,6 @@ export function PublicOrEmbeddedQuestionView({
   card,
   metadata,
   result,
-  uuid,
-  token,
   getParameters,
   parameterValues,
   setParameterValue,
@@ -78,8 +73,6 @@ export function PublicOrEmbeddedQuestionView({
         )}
         question={question}
         result={result}
-        uuid={uuid}
-        token={token}
         floating={!titled && !isTable}
       />
     ) : null;
@@ -140,8 +133,6 @@ export function PublicOrEmbeddedQuestionView({
             isDashboard
             metadata={metadata}
             onChangeCardAndRun={() => {}}
-            token={token}
-            uuid={uuid}
             tableFooterExtraButtons={
               downloadInFooter ? questionResultDownloadButton : null
             }

@@ -2,7 +2,9 @@ import { t } from "ttag";
 
 import EmptyState from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { getUserCanWriteSegments } from "metabase/selectors/user";
 import { Button, Group, Icon, Stack } from "metabase/ui";
 import type { Table } from "metabase-types/api";
 
@@ -13,6 +15,7 @@ type SegmentListProps = {
 };
 
 export function SegmentList({ table }: SegmentListProps) {
+  const canCreateSegment = useSelector(getUserCanWriteSegments);
   const segments = table.segments ?? [];
   const getSegmentHref = (segmentId: number) =>
     Urls.dataStudioDataModelSegment({
@@ -24,21 +27,23 @@ export function SegmentList({ table }: SegmentListProps) {
 
   return (
     <Stack gap="md" data-testid="table-segments-page">
-      <Group gap="md" justify="flex-start" wrap="nowrap">
-        <Button
-          component={ForwardRefLink}
-          to={Urls.newDataStudioDataModelSegment({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-          })}
-          h={32}
-          px="sm"
-          py="xs"
-          size="xs"
-          leftSection={<Icon name="add" />}
-        >{t`New segment`}</Button>
-      </Group>
+      {canCreateSegment && (
+        <Group gap="md" justify="flex-start" wrap="nowrap">
+          <Button
+            component={ForwardRefLink}
+            to={Urls.newDataStudioDataModelSegment({
+              databaseId: table.db_id,
+              schemaName: table.schema,
+              tableId: table.id,
+            })}
+            h={32}
+            px="sm"
+            py="xs"
+            size="xs"
+            leftSection={<Icon name="add" />}
+          >{t`New segment`}</Button>
+        </Group>
+      )}
 
       {segments.length === 0 ? (
         <EmptyState

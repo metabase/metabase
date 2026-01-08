@@ -3,7 +3,7 @@ import { t } from "ttag";
 import EmptyMetric from "assets/img/empty-states/qbnewb-metric.svg";
 import EmptyModel from "assets/img/empty-states/qbnewb-model.svg";
 import EmptyQuestion from "assets/img/empty-states/qbnewq-question.svg";
-import { Box, Button, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Modal, Stack, Text, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 interface Props {
@@ -60,14 +60,14 @@ export const SavedQuestionIntroModal = ({
       <Modal.Overlay />
       <Modal.Content p="xl" ta="center">
         <Modal.Header maw={contentWidth} mx="auto" my="md">
-          <Stack align="center">
+          <Stack align="center" w="100%">
             <Box w="6rem">
               <img
                 src={image}
                 alt={t`Saved entity modal empty state illustration`}
               />
             </Box>
-            <Modal.Title>{title}</Modal.Title>
+            <Title order={3}>{title}</Title>
           </Stack>
         </Modal.Header>
         <Modal.Body maw={contentWidth} mx="auto" my="md">
