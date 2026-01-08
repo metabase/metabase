@@ -1,6 +1,7 @@
 import dedent from "ts-dedent";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { NativeEditor } from "e2e/support/helpers";
 import type {
   PythonTransformTableAliases,
   TransformTagId,
@@ -396,8 +397,14 @@ describe("scenarios > data studio > workspaces", () => {
             expect($el.text()).to.match(/-1\b/);
           })
           .click();
-        cy.contains('[class*="cm-deletedLine"]', `SELECT * FROM "Schema A"."Animals"`)
-        cy.contains('[class*="cm-insertedLine"]', `SELECT * FROM "Schema A"."Animals" LIMIT 2`)
+        cy.contains(
+          '[class*="cm-deletedLine"]',
+          'SELECT * FROM "Schema A"."Animals"',
+        );
+        cy.contains(
+          '[class*="cm-insertedLine"]',
+          'SELECT * FROM "Schema A"."Animals" LIMIT 2',
+        );
 
         cy.findByRole("button", { name: /Merge/ }).click();
       });
@@ -969,7 +976,9 @@ describe("scenarios > data studio > workspaces", () => {
       });
       Workspaces.getSaveTransformButton().click();
 
-      cy.log("Check that all workspaces are available and sorted by checked status")
+      cy.log(
+        "Check that all workspaces are available and sorted by checked status",
+      );
       cy.visit("/data-studio/transforms");
       Transforms.list()
         .findByRole("row", { name: /SQL transform/ })
@@ -977,14 +986,14 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.findByRole("button", { name: /Edit transform/ }).click();
       H.popover().within(() => {
-        cy.get<string>('@workspaceA').then((workspaceA) => {
-          cy.get<string>('@workspaceB').then((workspaceB) => {
-            cy.findAllByRole('menuitem').eq(0).contains("New workspace");
-            cy.findAllByRole('menuitem').eq(1).contains(workspaceB);
-            cy.log("Check that edit redirects to correct workspace")
-            cy.findAllByRole('menuitem').eq(2).contains(workspaceA).click();
-          })
-        })
+        cy.get<string>("@workspaceA").then((workspaceA) => {
+          cy.get<string>("@workspaceB").then((workspaceB) => {
+            cy.findAllByRole("menuitem").eq(0).contains("New workspace");
+            cy.findAllByRole("menuitem").eq(1).contains(workspaceB);
+            cy.log("Check that edit redirects to correct workspace");
+            cy.findAllByRole("menuitem").eq(2).contains(workspaceA).click();
+          });
+        });
       });
 
       Workspaces.getWorkspaceContent().within(() => {
@@ -997,7 +1006,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceTransforms()
         .findByText("SQL transform")
         .should("not.exist");
-    })
+    });
 
     it("should open checked out transform in existing workspace from the transform page", () => {
       cy.log("Create 2 workspaces, add transform to the second one");
@@ -1025,14 +1034,14 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.findByRole("button", { name: /Edit transform/ }).click();
       H.popover().within(() => {
-        cy.get<string>('@workspaceA').then((workspaceA) => {
-          cy.get<string>('@workspaceB').then((workspaceB) => {
-            cy.findAllByRole('menuitem').eq(0).contains("New workspace");
-            cy.findAllByRole('menuitem').eq(2).contains(workspaceA);
-            cy.log("Edit transform in a workspace where it's been checked out")
-            cy.findAllByRole('menuitem').eq(1).contains(workspaceB).click();
-          })
-        })
+        cy.get<string>("@workspaceA").then((workspaceA) => {
+          cy.get<string>("@workspaceB").then((workspaceB) => {
+            cy.findAllByRole("menuitem").eq(0).contains("New workspace");
+            cy.findAllByRole("menuitem").eq(2).contains(workspaceA);
+            cy.log("Edit transform in a workspace where it's been checked out");
+            cy.findAllByRole("menuitem").eq(1).contains(workspaceB).click();
+          });
+        });
       });
 
       Workspaces.getWorkspaceContent().within(() => {
@@ -1043,10 +1052,10 @@ describe("scenarios > data studio > workspaces", () => {
         ]);
       });
       H.NativeEditor.value().should("contain", " LIMIT 2");
-      Workspaces.getWorkspaceTransforms()
-        .findByText("SQL transform")
-        .click();
-      cy.log("Tabs state should stay the same, because this transform is already checked and its tab should be opened after redirect")
+      Workspaces.getWorkspaceTransforms().findByText("SQL transform").click();
+      cy.log(
+        "Tabs state should stay the same, because this transform is already checked and its tab should be opened after redirect",
+      );
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("SQL transform", [
           "Setup",
@@ -1054,8 +1063,27 @@ describe("scenarios > data studio > workspaces", () => {
           "SQL transform",
         ]);
       });
-    })
-  })
+    });
+  });
+
+  describe("repros", () => {
+    it("should not show error when editing a new transform in a workspace (GDGT-1445)", () => {
+      Workspaces.visitTransformListPage();
+      cy.findByLabelText("Create a transform").click();
+      H.popover().findByText("SQL query").click();
+      NativeEditor.type("select 1");
+      cy.button("Save").click();
+      cy.findByPlaceholderText("My Great Transform").type("My transform");
+      H.modal().button("Save").click();
+
+      cy.button(/Edit transform/).click();
+      H.popover().findByText("New workspace").click();
+      H.undoToast().should("not.exist");
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe("My transform", ["Setup", "Agent Chat", "My transform"]);
+      });
+    });
+  });
 });
 
 function createWorkspace() {

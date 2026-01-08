@@ -53,15 +53,14 @@ import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/componen
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
-import type { MetabotStoreState } from "metabase-enterprise/metabot/state";
+import type {
+  MetabotState,
+  MetabotStoreState,
+} from "metabase-enterprise/metabot/state";
 import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
-import type {
-  DraftTransformSource,
-  Transform,
-  WorkspaceTransformItem,
-} from "metabase-types/api";
+import type { DraftTransformSource, Transform } from "metabase-types/api";
 
 import { isWorkspaceUninitialized } from "../../utils";
 
@@ -151,17 +150,23 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       { workspaceId: id, databaseId: workspace?.database_id ?? null },
       { skip: !id || !workspace?.database_id },
     );
+
   const availableTransforms = useMemo(
     () => externalTransforms ?? [],
     [externalTransforms],
   );
   const [fetchTransform] = useLazyGetTransformQuery();
   const [fetchWorkspaceTransform] = useLazyGetWorkspaceTransformQuery();
+  const isLoading =
+    isLoadingWorkspace ||
+    isLoadingExternalTransforms ||
+    isLoadingWorkspaceTransforms;
+
   useEffect(() => {
     // Initialize transform tab if redirected from transform page.
     if (transformId) {
       (async () => {
-        if (isLoadingExternalTransforms || isLoadingWorkspaceTransforms) {
+        if (isLoading) {
           return;
         }
 
@@ -175,11 +180,9 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         );
 
         const isWsTransform = !!transform && "global_id" in transform;
+
         if (transform && !isWsTransform) {
-          const { data } = await fetchTransform(
-              transform.id,
-            true,
-          );
+          const { data } = await fetchTransform(transform.id, true);
           if (data) {
             addOpenedTransform(data);
             setActiveTransform(data);
@@ -201,7 +204,19 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         dispatch(replace(Urls.dataStudioWorkspace(id)));
       })();
     }
-  }, [transformId, setActiveTransform, availableTransforms, addOpenedTransform, fetchTransform, dispatch, id, isLoadingExternalTransforms, sendErrorToast, isLoadingWorkspaceTransforms, workspaceTransforms, fetchWorkspaceTransform]);
+  }, [
+    transformId,
+    setActiveTransform,
+    availableTransforms,
+    addOpenedTransform,
+    fetchTransform,
+    dispatch,
+    id,
+    isLoading,
+    sendErrorToast,
+    workspaceTransforms,
+    fetchWorkspaceTransform,
+  ]);
 
   const {
     data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
@@ -726,7 +741,11 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   items={openedTabs}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <Tabs.List ref={tabsListRef} className={styles.tabsPanel} data-testid="workspace-tabs">
+                  <Tabs.List
+                    ref={tabsListRef}
+                    className={styles.tabsPanel}
+                    data-testid="workspace-tabs"
+                  >
                     <Tabs.Tab value="setup">
                       <Group gap="xs" wrap="nowrap">
                         <Icon name="database" aria-hidden />
