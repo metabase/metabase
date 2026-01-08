@@ -82,7 +82,7 @@ export const TableListItem = ({
       onClick={isClickable ? handleTableClick : undefined}
     >
       {isRunning ? (
-        <Loader size="sm" />
+        <Loader size="xs" />
       ) : (
         <Icon
           name={icon}
