@@ -43,31 +43,31 @@
             (is (:errors response) "Should return validation errors for blank name")))))))
 
 (deftest update-tag-test
-  (testing "PUT /api/ee/transform-tag/:tag-id"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms}
+    (testing "PUT /api/ee/transform-tag/:tag-id"
+      (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
         (testing "Updates tag name successfully"
           (mt/with-temp [:model/TransformTag tag {}]
             (let [updated-name (str "updated-" (u/generate-nano-id))
-                  response (mt/user-http-request :lucky :put 200
-                                                 (str "ee/transform-tag/" (:id tag))
-                                                 {:name updated-name})]
+                  response     (mt/user-http-request :lucky :put 200
+                                                     (str "ee/transform-tag/" (:id tag))
+                                                     {:name updated-name})]
               (is (= (:id tag) (:id response)))
-              (is (= updated-name (:name response)))))))
+              (is (= updated-name (:name response))))))
 
-      (testing "Returns 404 for non-existent tag"
-        (is (= "Not found."
-               (mt/user-http-request :lucky :put 404
-                                     "ee/transform-tag/999999"
-                                     {:name "new-name"}))))
+        (testing "Returns 404 for non-existent tag"
+          (is (= "Not found."
+                 (mt/user-http-request :lucky :put 404
+                                       "ee/transform-tag/999999"
+                                       {:name "new-name"}))))
 
-      (testing "Returns 400 when updating to duplicate name"
-        (mt/with-temp [:model/TransformTag existing-tag {}
-                       :model/TransformTag tag-to-update {}]
-          (is (string? (mt/user-http-request :lucky :put 400
-                                             (str "ee/transform-tag/" (:id tag-to-update))
-                                             {:name (:name existing-tag)}))
-              "Should return 400 with error message for duplicate name"))))))
+        (testing "Returns 400 when updating to duplicate name"
+          (mt/with-temp [:model/TransformTag existing-tag {}
+                         :model/TransformTag tag-to-update {}]
+            (is (string? (mt/user-http-request :lucky :put 400
+                                               (str "ee/transform-tag/" (:id tag-to-update))
+                                               {:name (:name existing-tag)}))
+                "Should return 400 with error message for duplicate name")))))))
 
 (deftest delete-tag-test
   (testing "DELETE /api/ee/transform-tag/:tag-id"

@@ -23,6 +23,7 @@
                                      :name "orders_transform_1"}
       :model/Transform {transform1-id# :id}
       {:name "Transform 1"
+       :source_database_id (mt/id)
        :source {:type "query"
                 :query (lib/native-query (mt/metadata-provider) "SELECT id, total FROM orders")}
        :target {:type "table"
@@ -30,6 +31,7 @@
                 :name "orders_transform_1"}}
       :model/Transform {transform2-id# :id}
       {:name "Transform 2"
+       :source_database_id (mt/id)
        :source {:type "query"
                 :query (lib/native-query (mt/metadata-provider) "SELECT id, total FROM orders_transform_1")}
        :target {:type "table"
@@ -242,13 +244,13 @@
                       :source {:type "python"
                                :body "print('hello')"
                                :source-database (mt/id)
-                               :source-tables {}}
+                               :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
                       :target {:type "table"
                                :schema "public"
                                :name "python_transform_table"}}]
         (let [modified-source {:type "python"
                                :body "print('modified')"
-                               :source-tables {}}
+                               :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
               result (metabot.dependencies/check-transform-dependencies
                       {:id python-transform-id
                        :source modified-source})]

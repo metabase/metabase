@@ -1350,7 +1350,7 @@
                                              :conversation_id conversation-id}))))))))))
 
 (deftest get-transform-python-library-details-test
-  (mt/with-premium-features #{:metabot-v3 :python-transforms}
+  (mt/with-premium-features #{:metabot-v3 :python-transforms :transforms}
     (let [conversation-id (str (random-uuid))
           rasta-ai-token (ai-session-token)
           crowberto-ai-token (ai-session-token :crowberto (str (random-uuid)))

@@ -224,7 +224,7 @@
 
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check_transform"
-    (mt/with-premium-features #{:dependencies}
+    (mt/with-premium-features #{:dependencies :transforms}
       (mt/with-temp [:model/Transform {_transform-id :id :as transform} {}]
         (let [response (mt/user-http-request :crowberto :post 200 "ee/dependencies/check_transform" transform)]
           (is (= {:bad_cards [], :bad_transforms [], :success true}
