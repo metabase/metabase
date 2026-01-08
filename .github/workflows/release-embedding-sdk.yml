@@ -375,10 +375,10 @@ jobs:
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
           npm publish --tag 57-stable
 
-      - name: Add `latest` tag to the latest release branch e.g. (`release-x.55.x`) deployment
-        working-directory: sdk
-        run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+      # - name: Add `latest` tag to the latest release branch deployment
+      #   working-directory: sdk
+      #   run: |
+      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
