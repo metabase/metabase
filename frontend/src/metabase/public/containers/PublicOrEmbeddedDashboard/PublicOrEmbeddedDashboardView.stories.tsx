@@ -461,6 +461,7 @@ function ScrollDecorator(Story: StoryFn) {
 
 function DarkBackgroundDecorator(Story: StoryFn) {
   return (
+    // @ts-expect-error story file
     <Box bg="#434e56" mih="100vh">
       <Story />
     </Box>
@@ -469,6 +470,7 @@ function DarkBackgroundDecorator(Story: StoryFn) {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
+    // @ts-expect-error story file
     <Box bg="#ddd" mih="100vh">
       <Story />
     </Box>

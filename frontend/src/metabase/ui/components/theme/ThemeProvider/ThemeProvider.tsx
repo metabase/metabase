@@ -29,6 +29,7 @@ import {
   setUserColorSchemeAfterUpdate,
 } from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
@@ -75,7 +76,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
       },
       fn: {
         themeColor: (
-          color: string,
+          color: ColorName,
           shade?: number,
           primaryFallback: boolean = true,
           useSplittedShade: boolean = true,
@@ -89,7 +90,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
               splittedShade >= 0 &&
               splittedShade < 10
             ) {
-              return theme.colors[splitterColor][
+              return theme.colors[splitterColor as ColorName][
                 typeof shade === "number" && !useSplittedShade
                   ? shade
                   : splittedShade
@@ -103,7 +104,7 @@ const ThemeProviderInner = (props: ThemeProviderProps) => {
           return color in theme.colors
             ? theme.colors[color][_shade]
             : primaryFallback
-              ? theme.colors[theme.primaryColor][_shade]
+              ? theme.colors[theme.primaryColor as ColorName][_shade]
               : color;
         },
       },
