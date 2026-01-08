@@ -43,13 +43,16 @@ if ! git diff --exit-code "$OPENAPI_SPEC" >/dev/null 2>&1; then
                         exit 1
                 fi
 
+                # Stash the generated spec from the merge commit
+                echo "Stashing generated OpenAPI spec from merge commit..."
+                cp "$OPENAPI_SPEC" "${OPENAPI_SPEC}.tmp"
+
                 # Checkout the actual PR branch (in case we're on a merge commit)
                 echo "Checking out branch: $BRANCH"
                 git checkout "$BRANCH"
 
-                # Regenerate the OpenAPI spec on the actual branch
-                echo "Regenerating OpenAPI spec on branch $BRANCH..."
-                yarn generate-openapi
+                # Restore the generated spec from the merge commit
+                mv -f "${OPENAPI_SPEC}.tmp" "$OPENAPI_SPEC"
 
                 git config user.name "github-actions[bot]"
                 git config user.email "github-actions[bot]@users.noreply.github.com"
