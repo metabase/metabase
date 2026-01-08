@@ -91,3 +91,11 @@
    [:status :string]
    [:message :string]
    [:task_id pos-int?]])
+
+(def HasRemoteChangesResponse
+  "Schema for GET /has-remote-changes response."
+  [:map
+   [:has_changes :boolean]
+   [:remote_version [:maybe :string]]
+   [:local_version [:maybe :string]]
+   [:cached :boolean]])

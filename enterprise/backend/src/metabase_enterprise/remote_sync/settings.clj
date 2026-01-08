@@ -86,6 +86,14 @@
   :encryption :no
   :default (* 1000 60 5))
 
+(defsetting remote-sync-check-changes-cache-ttl-seconds
+  (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")
+  :type :integer
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default 60)
+
 (defn check-git-settings!
   "Validates git repository settings by attempting to connect and retrieve the default branch.
 

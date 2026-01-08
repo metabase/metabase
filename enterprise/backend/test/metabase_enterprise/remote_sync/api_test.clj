@@ -779,3 +779,144 @@
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
           (is (= 1 @export-calls)))))))
+
+;;; ------------------------------------------------- Has Remote Changes Endpoint -------------------------------------------------
+
+(deftest has-remote-changes-requires-superuser-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes requires superuser permissions"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/remote-sync/has-remote-changes"))))))
+
+(deftest has-remote-changes-errors-when-not-configured-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes errors when remote sync is not configured"
+    (mt/with-temporary-setting-values [remote-sync-url nil]
+      (is (= "Remote sync is not configured."
+             (mt/user-http-request :crowberto :get 400 "ee/remote-sync/has-remote-changes"))))))
+
+(deftest has-remote-changes-returns-true-when-never-imported-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes returns true when never imported"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (with-redefs [source/source-from-settings (constantly mock-source)]
+          ;; Clear cache before test
+          (impl/invalidate-remote-changes-cache!)
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+            (is (true? (:has_changes response)))
+            (is (= "mock-version" (:remote_version response)))
+            (is (nil? (:local_version response)))
+            (is (= false (:cached response)))))))))
+
+(deftest has-remote-changes-returns-true-when-versions-differ-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes returns true when remote version differs from local"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "old-version"}]
+          (with-redefs [source/source-from-settings (constantly mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (true? (:has_changes response)))
+              (is (= "mock-version" (:remote_version response)))
+              (is (= "old-version" (:local_version response)))
+              (is (= false (:cached response))))))))))
+
+(deftest has-remote-changes-returns-false-when-versions-match-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes returns false when versions match"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (constantly mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (= false (:has_changes response)))
+              (is (= "mock-version" (:remote_version response)))
+              (is (= "mock-version" (:local_version response)))
+              (is (= false (:cached response))))))))))
+
+(deftest has-remote-changes-uses-cache-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes uses cache on subsequent calls"
+    (let [mock-source (test-helpers/create-mock-source)
+          call-count (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (fn [& _args]
+                                                      (swap! call-count inc)
+                                                      mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            ;; First call - should hit the source
+            (let [response1 (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (= false (:cached response1)))
+              (is (= 1 @call-count)))
+            ;; Second call - should use cache
+            (let [response2 (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (true? (:cached response2)))
+              (is (= 1 @call-count)))))))))
+
+(deftest has-remote-changes-force-refresh-bypasses-cache-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes?force-refresh=true bypasses cache"
+    (let [mock-source (test-helpers/create-mock-source)
+          call-count (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (fn [& _args]
+                                                      (swap! call-count inc)
+                                                      mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            ;; First call - should hit the source
+            (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")
+            (is (= 1 @call-count))
+            ;; Second call with force-refresh=true - should bypass cache
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes"
+                                                 :force-refresh true)]
+              (is (= false (:cached response)))
+              (is (= 2 @call-count)))))))))
+
+(deftest has-remote-changes-cache-invalidated-on-branch-change-test
+  (testing "GET /api/ee/remote-sync/has-remote-changes invalidates cache when branch changes"
+    (let [mock-source (test-helpers/create-mock-source)
+          call-count (atom 0)]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings (fn [& _args]
+                                                      (swap! call-count inc)
+                                                      mock-source)]
+            ;; Clear cache before test
+            (impl/invalidate-remote-changes-cache!)
+            ;; First call with main branch
+            (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")
+            (is (= 1 @call-count))
+            ;; Change branch setting
+            (mt/with-temporary-setting-values [remote-sync-branch "develop"]
+              ;; Should hit source again due to branch change
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+                (is (= false (:cached response)))
+                (is (= 2 @call-count))))))))))
