@@ -95,6 +95,12 @@ To render a collection browser so people can navigate a collection and open dash
 ### Optional parameters
 
 - `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
+- `collection-visible-columns` – which columns to show on the collection browser.
+- `collection-page-size` – how many items to show per page in the collection browser.
+- `collection-entity-types` – which entities to show on the collection browser.
+- `data-picker-entity-types` – which entities to show on the question's data picker.
+- `with-new-question` (default is true) – whether to show the "New exploration" button.
+- `with-new-dashboard` (default is true) – whether to show the "New dashboard" button. Only applies when `read-only` is false.
 
 ## AI chat
 
