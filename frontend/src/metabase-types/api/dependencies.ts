@@ -84,8 +84,10 @@ export type CardDependencyNodeData = Pick<
   | "creator"
   | "created_at"
   | "last-edit-info"
-  | "view_count"
->;
+> & {
+  view_count?: number | null;
+  query_type?: "native" | "query";
+};
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,

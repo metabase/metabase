@@ -270,7 +270,7 @@ describe("DataSelector", () => {
   it("should expand schemas after viewing tables on a single-schema db", async () => {
     // This is the same and the previous test except that it first opens/closes
     // the multi-schema db. This left some lingering traces in component state
-    // which caused a bug tha that the previous test didn't catch.
+    // which caused a bug that the previous test didn't catch.
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}

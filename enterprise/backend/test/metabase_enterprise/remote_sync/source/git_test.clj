@@ -228,7 +228,7 @@
                    (git/list-files (assoc remote :version "master"))))
             (is (= ["Update 1" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))))
 
-        (testing "If no root fils are touched, they all stay as-is"
+        (testing "If no root files are touched, they all stay as-is"
           (source.p/write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
           (is (= [(str otherdir-path "path.txt")
                   (str otherdir-path "path2.txt")
