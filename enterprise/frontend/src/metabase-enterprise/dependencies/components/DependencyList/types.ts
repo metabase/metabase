@@ -1,1 +1,1 @@
-export type DependencyListMode = "unreferenced";
+export type DependencyListMode = "broken" | "unreferenced";

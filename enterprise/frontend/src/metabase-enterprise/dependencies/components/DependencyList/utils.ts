@@ -1,8 +1,15 @@
-import { t } from "ttag";
-
 import type { DependencyGroupType } from "metabase-types/api";
 
 import type { DependencyListMode } from "./types";
+
+const BROKEN_GROUP_TYPES: DependencyGroupType[] = [
+  "question",
+  "model",
+  "metric",
+  "segment",
+  "measure",
+  "transform",
+];
 
 const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
   "model",
@@ -11,10 +18,6 @@ const UNREFERENCED_GROUP_TYPES: DependencyGroupType[] = [
   "snippet",
 ];
 
-export function getAvailableGroupTypes(_mode: DependencyListMode) {
-  return UNREFERENCED_GROUP_TYPES;
-}
-
-export function getNotFoundMessage(_mode: DependencyListMode) {
-  return t`No unreferenced entities found`;
+export function getAvailableGroupTypes(mode: DependencyListMode) {
+  return mode === "broken" ? BROKEN_GROUP_TYPES : UNREFERENCED_GROUP_TYPES;
 }

@@ -8,6 +8,7 @@ import {
   getNodeLabel,
   getNodeLocationInfo,
 } from "../../../utils";
+import type { DependencyListMode } from "../types";
 
 import { ErrorsCell } from "./ErrorsCell";
 import { LocationCell } from "./LocationCell";
@@ -73,19 +74,27 @@ function getNodeDependentsCountColumn(): TreeTableColumnDef<DependencyNode> {
   };
 }
 
-type ColumnOptions = {
-  withErrorsColumn: boolean;
-  withDependentsCountColumn: boolean;
-};
-
-export function getColumns({
-  withErrorsColumn,
-  withDependentsCountColumn,
-}: ColumnOptions): TreeTableColumnDef<DependencyNode>[] {
+export function getColumns(
+  mode: DependencyListMode,
+): TreeTableColumnDef<DependencyNode>[] {
   return [
     getNodeNameColumn(),
     getNodeLocationColumn(),
-    ...(withErrorsColumn ? [getNodeErrorsColumn()] : []),
-    ...(withDependentsCountColumn ? [getNodeDependentsCountColumn()] : []),
+    ...(mode === "broken" ? [getNodeErrorsColumn()] : []),
+    ...(mode === "broken" ? [getNodeDependentsCountColumn()] : []),
   ];
+}
+
+export function getColumnWidths(mode: DependencyListMode): number[] {
+  if (mode === "broken") {
+    return [0.3, 0.3, 0.3, 0.1];
+  } else {
+    return [0.5, 0.5];
+  }
+}
+
+export function getNotFoundMessage(mode: DependencyListMode) {
+  return mode === "broken"
+    ? t`No broken dependencies found`
+    : t`No unreferenced entities found`;
 }

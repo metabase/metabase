@@ -10,12 +10,11 @@ import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
-import { ListEmptyState } from "./ListEmptyState";
 import { ListHeader } from "./ListHeader";
 import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import type { DependencyListMode } from "./types";
-import { getAvailableGroupTypes, getNotFoundMessage } from "./utils";
+import { getAvailableGroupTypes } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
@@ -59,16 +58,17 @@ export function DependencyList({
           hasLoader={isFetching && !isLoading}
           onParamsChange={onParamsChange}
         />
-        {isLoading || error != null ? (
+        {error != null ? (
           <Center flex={1}>
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
-        ) : nodes.length === 0 ? (
-          <Center flex={1}>
-            <ListEmptyState label={getNotFoundMessage(mode)} />
-          </Center>
         ) : (
-          <ListBody nodes={nodes} onSelect={setSelectedEntry} />
+          <ListBody
+            nodes={nodes}
+            mode={mode}
+            isLoading={isLoading}
+            onSelect={setSelectedEntry}
+          />
         )}
       </Stack>
       {selectedNode != null && (
