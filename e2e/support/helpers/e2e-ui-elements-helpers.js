@@ -663,6 +663,20 @@ export function leaveConfirmationModal() {
   return cy.findByTestId("leave-confirmation");
 }
 
+export function getUniqueTableColumnValues(columnName) {
+  const values = [];
+
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`)
+      .each(($item) => values.push($item.text()))
+      .then(() => {
+        cy.wrap(Array.from(new Set(values))).as("items");
+      });
+  });
+
+  return cy.get("@items");
+}
+
 export function ensureParameterColumnValue({ columnName, columnValue }) {
   tableInteractiveBody().within(() => {
     cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
