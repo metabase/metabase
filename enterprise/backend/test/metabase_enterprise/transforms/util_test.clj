@@ -253,7 +253,7 @@
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
                 (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
-                  (binding [api/*current-user-id* (mt/user->id user)]
+                  (binding [api/*current-user-id* (:id user)]
                     (is (false? (transforms.util/source-tables-readable? transform))
                         "User with blocked database access should not be able to read source database"))))))
 
@@ -263,7 +263,7 @@
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
                 (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
-                  (binding [api/*current-user-id* (mt/user->id user)]
+                  (binding [api/*current-user-id* (:id user)]
                     (is (false? (transforms.util/source-tables-readable? transform))
                         "User with blocked database access should not be able to read source tables"))))))
 
@@ -275,7 +275,7 @@
                                        user [group]]
                 ;; Grant unrestricted access to the database
                 (mt/with-db-perm-for-group! group db-id :perms/view-data :unrestricted
-                  (binding [api/*current-user-id* (mt/user->id user)]
+                  (binding [api/*current-user-id* (:id user)]
                     (is (true? (transforms.util/source-tables-readable? transform))
                         "User with granular access to all source tables should have source_readable=true"))))))
 
@@ -290,7 +290,7 @@
                   (try
                     ;; Block access to table2 for this group
                     (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
-                    (binding [api/*current-user-id* (mt/user->id user)]
+                    (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.util/source-tables-readable? transform))
                           "User who cannot read all source tables should have source_readable=false"))
                     (finally
