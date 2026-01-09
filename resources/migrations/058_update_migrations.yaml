@@ -4701,7 +4701,7 @@ databaseChangeLog:
   - changeSet:
       id: v58.2026-01-09T07:51:01
       author: christruter
-      comment: Add ref_id and access_granted columns to workspace_input
+      comment: Add ref_id column to workspace_input
       changes:
         - addColumn:
             tableName: workspace_input
@@ -4712,6 +4712,19 @@ databaseChangeLog:
                   remarks: ref_id of the workspace_transform that depends on this input
                   constraints:
                     nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_input
+            columnName: ref_id
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:02
+      author: christruter
+      comment: Add access_granted column to workspace_input
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
               - column:
                   name: access_granted
                   type: ${boolean.type}
@@ -4722,13 +4735,10 @@ databaseChangeLog:
       rollback:
         - dropColumn:
             tableName: workspace_input
-            columnName: ref_id
-        - dropColumn:
-            tableName: workspace_input
             columnName: access_granted
 
   - changeSet:
-      id: v58.2026-01-09T07:51:02
+      id: v58.2026-01-09T07:51:03
       author: christruter
       comment: Drop old unique constraint on workspace_input (workspace_id, db_id, schema, table)
       changes:
@@ -4742,7 +4752,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_logical_table
 
   - changeSet:
-      id: v58.2026-01-09T07:51:03
+      id: v58.2026-01-09T07:51:04
       author: christruter
       comment: Add new unique constraint on workspace_input including ref_id
       changes:
@@ -4756,7 +4766,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_transform_table
 
   - changeSet:
-      id: v58.2026-01-09T07:51:04
+      id: v58.2026-01-09T07:51:05
       author: christruter
       comment: Add index on workspace_input (workspace_id, ref_id) for DAG queries
       changes:
@@ -4774,7 +4784,7 @@ databaseChangeLog:
             indexName: idx_workspace_input_ref_id
 
   - changeSet:
-      id: v58.2026-01-09T07:51:05
+      id: v58.2026-01-09T07:51:06
       author: christruter
       comment: Mark all workspace transforms as stale so inputs get recreated
       changes:
@@ -4785,7 +4795,7 @@ databaseChangeLog:
             sql: SELECT 1  # No rollback needed
 
   - changeSet:
-      id: v58.2026-01-09T07:51:06
+      id: v58.2026-01-09T07:51:07
       author: christruter
       comment: Drop workspace_dependency table (no longer needed after denormalization)
       changes:
