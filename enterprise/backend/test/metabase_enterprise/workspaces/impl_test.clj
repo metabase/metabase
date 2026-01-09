@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
-   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
@@ -68,7 +67,7 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           ws    (ws.tu/create-ready-ws! "Test Workspace")]
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
-        (let [wt (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+        (let [_  (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
                                               :transform nil
                                               {:name         "Transform"
                                                :source       {:type "query" :query query}
