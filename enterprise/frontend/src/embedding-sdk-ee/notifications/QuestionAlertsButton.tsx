@@ -32,8 +32,6 @@ export const QuestionAlertsButton = (props: QuestionAlertsButtonProps) => {
     return null;
   }
 
-  // XXX: Use the actual logic to hide/show the alerts button here
-
   return (
     <SdkActionIcon
       tooltip={t`Alerts`}

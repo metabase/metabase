@@ -157,7 +157,7 @@ const StaticQuestionInner = (
                 {title && <DefaultViewTitle title={title} />}
 
                 {hasResultToolbar && (
-                  <ResultToolbar>
+                  <ResultToolbar className={CS.hideEmpty}>
                     {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                     {/* This container is always shown on the right */}
                     <Group className={cx(CS.mlAuto, CS.hideEmpty)}>
