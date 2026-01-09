@@ -412,105 +412,101 @@ describe("scenarios > visualizations > maps", () => {
       .should("have.length.greaterThan", 10);
   });
 
-  describe(
-    "Pin Map brush filters",
-    { viewportWidth: 1280, viewportHeight: 800 },
-    () => {
-      function pinMapSelectRegion(
-        x,
-        y,
-        moveX,
-        moveY,
-        visualization_settings = {
-          "map.center_latitude": 0,
-          "map.center_longitude": 0,
-          "map.zoom": 0,
-          "map.type": "pin",
-          "map.latitude_column": "LATITUDE",
-          "map.longitude_column": "LONGITUDE",
-        },
-      ) {
-        H.visitQuestionAdhoc({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": PEOPLE_ID,
-            },
+  describe("Pin Map brush filters", () => {
+    function pinMapSelectRegion(
+      x,
+      y,
+      moveX,
+      moveY,
+      visualization_settings = {
+        "map.center_latitude": 0,
+        "map.center_longitude": 0,
+        "map.zoom": 0,
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      },
+    ) {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            "source-table": PEOPLE_ID,
           },
-          display: "map",
-          visualization_settings,
-        });
-
-        cy.get(".CardVisualization").realHover();
-        cy.findByTestId("visualization-root")
-          .findByText("Draw box to filter")
-          .click();
-
-        cy.findByTestId("visualization-root")
-          .realMouseDown({ x, y })
-          .realMouseMove(moveX, moveY)
-          .realMouseUp();
-
-        cy.wait("@dataset");
-      }
-
-      it("should apply brush filters by dragging map", () => {
-        pinMapSelectRegion(500, 500, 600, 600, {
-          "map.region": "us_states",
-          "map.type": "pin",
-          "map.latitude_column": "LATITUDE",
-          "map.longitude_column": "LONGITUDE",
-        });
-        cy.get(".CardVisualization").should("exist");
-        // selecting area at the map provides different filter values, so the simplified assertion is used
-        cy.findAllByTestId("filter-pill").should("have.length", 1);
+        },
+        display: "map",
+        visualization_settings,
       });
 
-      it("should apply brush filters by dragging map when zoomed out (metabase#41056)", () => {
-        pinMapSelectRegion(250, 150, 500, 250);
-        cy.get(".CardVisualization").should("exist");
-        cy.findAllByTestId("filter-pill").should("have.length", 1);
-      });
+      cy.get(".CardVisualization").realHover();
+      cy.findByTestId("visualization-root")
+        .findByText("Draw box to filter")
+        .click();
 
-      it("should handle brush filters that select zero data points (metabase#41056)", () => {
-        pinMapSelectRegion(10, 10, 20, 20);
-        cy.get(".CardVisualization").should("not.exist");
-        cy.findByTestId("question-row-count").findByText("Showing 0 rows");
-        cy.findAllByTestId("filter-pill").should("have.length", 1);
-      });
+      cy.findByTestId("visualization-root")
+        .realMouseDown({ x, y })
+        .realMouseMove(moveX, moveY)
+        .realMouseUp();
 
-      it("should handle brush filters that exceed 360 deg of longitude (metabase#41056)", () => {
-        pinMapSelectRegion(10, 10, 1270, 600);
-        cy.get(".CardVisualization").should("exist");
-        cy.findByTestId("question-row-count").findByText(
-          "Showing first 2,000 rows",
+      cy.wait("@dataset");
+    }
+
+    it("should apply brush filters by dragging map", () => {
+      pinMapSelectRegion(500, 500, 600, 600, {
+        "map.region": "us_states",
+        "map.type": "pin",
+        "map.latitude_column": "LATITUDE",
+        "map.longitude_column": "LONGITUDE",
+      });
+      cy.get(".CardVisualization").should("exist");
+      // selecting area at the map provides different filter values, so the simplified assertion is used
+      cy.findAllByTestId("filter-pill").should("have.length", 1);
+    });
+
+    it("should apply brush filters by dragging map when zoomed out (metabase#41056)", () => {
+      pinMapSelectRegion(250, 150, 500, 250);
+      cy.get(".CardVisualization").should("exist");
+      cy.findAllByTestId("filter-pill").should("have.length", 1);
+    });
+
+    it("should handle brush filters that select zero data points (metabase#41056)", () => {
+      pinMapSelectRegion(10, 10, 20, 20);
+      cy.get(".CardVisualization").should("not.exist");
+      cy.findByTestId("question-row-count").findByText("Showing 0 rows");
+      cy.findAllByTestId("filter-pill").should("have.length", 1);
+    });
+
+    it("should handle brush filters that exceed 360 deg of longitude (metabase#41056)", () => {
+      pinMapSelectRegion(10, 10, 1270, 600);
+      cy.get(".CardVisualization").should("exist");
+      cy.findByTestId("question-row-count").findByText(
+        "Showing first 2,000 rows",
+      );
+      cy.findAllByTestId("filter-pill")
+        .should("have.length", 1)
+        .contains("Longitude is between -180 and 180");
+    });
+
+    it("should handle brush filters that cross the 180th meridian (metabase#41056)", () => {
+      pinMapSelectRegion(100, 100, 200, 200);
+
+      cy.get(".CardVisualization").should("exist");
+      cy.findByTestId("question-row-count").findByText("Showing 9 rows");
+
+      // Exact value for these longitude bounds is not important.
+      const lngRegex = /\d+(\.\d+)?/.source;
+
+      cy.findAllByTestId("filter-pill")
+        .should("have.length", 1)
+        .contains(
+          new RegExp(
+            `(Latitude is between .*) and Longitude is between ${lngRegex} and 180` +
+              ` or \\1 and Longitude is between -180 and -${lngRegex}`,
+          ),
         );
-        cy.findAllByTestId("filter-pill")
-          .should("have.length", 1)
-          .contains("Longitude is between -180 and 180");
-      });
-
-      it("should handle brush filters that cross the 180th meridian (metabase#41056)", () => {
-        pinMapSelectRegion(100, 100, 200, 200);
-
-        cy.get(".CardVisualization").should("exist");
-        cy.findByTestId("question-row-count").findByText("Showing 9 rows");
-
-        // Exact value for these longitude bounds is not important.
-        const lngRegex = /\d+(\.\d+)?/.source;
-
-        cy.findAllByTestId("filter-pill")
-          .should("have.length", 1)
-          .contains(
-            new RegExp(
-              `(Latitude is between .*) and Longitude is between ${lngRegex} and 180` +
-                ` or \\1 and Longitude is between -180 and -${lngRegex}`,
-            ),
-          );
-      });
-    },
-  );
+    });
+  });
 });
 
 function toggleFieldSelectElement(field) {

@@ -257,7 +257,7 @@ describe("issue 23103", () => {
   });
 });
 
-describe("issue 39150", { viewportWidth: 1600 }, () => {
+describe("issue 39150", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

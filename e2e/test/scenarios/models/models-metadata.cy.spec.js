@@ -310,7 +310,7 @@ describe("scenarios > models metadata", () => {
       .should("be.visible");
   });
 
-  describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
+  describe("native models metadata overwrites", () => {
     beforeEach(() => {
       H.createNativeQuestion(
         {

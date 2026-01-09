@@ -1470,7 +1470,7 @@ describe("issue 54108 - nested question broken out by day", () => {
   });
 });
 
-describe("issue 29951", { requestTimeout: 10000, viewportWidth: 1600 }, () => {
+describe("issue 29951", { requestTimeout: 10000 }, () => {
   const questionDetails = {
     name: "29951",
     query: {
