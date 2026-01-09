@@ -108,7 +108,11 @@ function getContentWidth<TData extends TreeNodeData>(
 ): number {
   const baseWidth = contentWidths[column.id] ?? MIN_COLUMN_WIDTH;
   const padding = column.widthPadding ?? 0;
-  return baseWidth + padding;
+  let width = baseWidth + padding;
+  if (column.maxAutoWidth != null) {
+    width = Math.min(width, column.maxAutoWidth);
+  }
+  return width;
 }
 
 export function getMinConstraint<TData extends TreeNodeData>(
@@ -156,7 +160,11 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
     .filter((col) => col.width != null)
     .reduce((sum, col) => {
       if (col.width === "auto") {
-        return sum + getContentWidth(col, contentWidths);
+        let width = getContentWidth(col, contentWidths);
+        if (col.maxWidth != null) {
+          width = Math.min(width, col.maxWidth);
+        }
+        return sum + width;
       }
       return sum + (col.width ?? 0);
     }, 0);
@@ -172,7 +180,11 @@ export function calculateColumnWidths<TData extends TreeNodeData>(
   columns.forEach((column) => {
     if (column.width != null) {
       if (column.width === "auto") {
-        widths[column.id] = getContentWidth(column, contentWidths);
+        let width = getContentWidth(column, contentWidths);
+        if (column.maxWidth != null) {
+          width = Math.min(width, column.maxWidth);
+        }
+        widths[column.id] = width;
       } else {
         widths[column.id] = column.width;
       }
