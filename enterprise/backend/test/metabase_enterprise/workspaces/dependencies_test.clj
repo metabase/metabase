@@ -173,37 +173,12 @@
                                      :table (:name orders-table))]
             (is (some? input))
             (is (= (:db_id orders-table) (:db_id input)))
-            (is (= (:name orders-table) (:table input)))))))))
-
-(deftest write-dependencies-creates-edges-test
-  (testing "write-dependencies! creates workspace_dependency edges"
-    (let [iso-schema "test_isolated_schema"]
-      (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
-                                                 :database_id (mt/id)
-                                                 :schema      iso-schema}
-                     :model/WorkspaceTransform wt {:workspace_id (:id workspace)
-                                                   :name         "Test Transform"
-                                                   :source       {:type "query" :query {}}
-                                                   :target       {:database (mt/id)
-                                                                  :schema   "public"
-                                                                  :name     "test_output"}}]
-        (let [orders-table (t2/select-one [:model/Table :db_id :schema :name] :id (mt/id :orders))
-              analysis     {:output {:db_id  (mt/id)
-                                     :schema "public"
-                                     :table  "test_output"}
-                            :inputs [{:db_id  (:db_id orders-table)
-                                      :schema (:schema orders-table)
-                                      :table  (:name orders-table)}]}]
-          (ws.deps/write-dependencies! (:id workspace) iso-schema :transform (:ref_id wt) analysis)
-          (let [edges (t2/select :model/WorkspaceDependency
-                                 :workspace_id (:id workspace)
-                                 :from_entity_type :transform
-                                 :from_entity_id (:ref_id wt))]
-            (is (= 1 (count edges)))
-            (is (= :input (:to_entity_type (first edges))))))))))
+            (is (= (:name orders-table) (:table input)))
+            (testing "input has ref_id linking to transform"
+              (is (= (:ref_id wt) (:ref_id input))))))))))
 
 (deftest write-dependencies-internal-dependency-test
-  (testing "write-dependencies! links to workspace_output for internal dependencies"
+  (testing "write-dependencies! does not create input for internal dependencies"
     (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
                                                :database_id (mt/id)
                                                :schema      "test_isolated_schema"}
@@ -235,20 +210,13 @@
                                               :schema "public"
                                               :table  "upstream_output"}]})
 
-      (let [edges (t2/select :model/WorkspaceDependency
+      (testing "no workspace_input created for internal dependency (matches an output)"
+        (is (not (t2/exists? :model/WorkspaceInput
                              :workspace_id (:id workspace)
-                             :from_entity_type :transform
-                             :from_entity_id (:ref_id wt2))]
-        (testing "creates edge to output (internal dependency)"
-          (is (= 1 (count edges)))
-          (is (= :output (:to_entity_type (first edges)))))
-        (testing "no workspace_input created for internal dependency"
-          (is (not (t2/exists? :model/WorkspaceInput
-                               :workspace_id (:id workspace)
-                               :table "upstream_output"))))))))
+                             :table "upstream_output")))))))
 
 (deftest write-dependencies-updates-on-change-test
-  (testing "write-dependencies! updates records and removes stale edges"
+  (testing "write-dependencies! replaces inputs when dependencies change"
     (mt/with-temp [:model/Workspace workspace {:name        "Test Workspace"
                                                :database_id (mt/id)
                                                :schema      "test_isolated_schema"}
@@ -268,7 +236,7 @@
                                       :inputs [{:db_id  (:db_id orders-table)
                                                 :schema (:schema orders-table)
                                                 :table  (:name orders-table)}]})
-        (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace))))
+        (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace) :ref_id (:ref_id wt))))
 
         ;; Update to depend on products instead
         (ws.deps/write-dependencies! (:id workspace) "test_isolated_schema" :transform (:ref_id wt)
@@ -279,12 +247,16 @@
                                                 :schema (:schema products-table)
                                                 :table  (:name products-table)}]})
 
-        (testing "old edge is removed"
-          (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace)))))
-        (testing "new input is created"
+        (testing "old input is removed, new input exists"
+          (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace) :ref_id (:ref_id wt))))
           (is (t2/exists? :model/WorkspaceInput
                           :workspace_id (:id workspace)
-                          :table (:name products-table))))))))
+                          :ref_id (:ref_id wt)
+                          :table (:name products-table)))
+          (is (not (t2/exists? :model/WorkspaceInput
+                               :workspace_id (:id workspace)
+                               :ref_id (:ref_id wt)
+                               :table (:name orders-table)))))))))
 
 ;;; ---------------------------------------- Integration test ----------------------------------------
 
@@ -312,7 +284,7 @@
 
           (testing "output record created"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace)))))
-          (testing "input record created for ORDERS table"
-            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace)))))
-          (testing "dependency edge created"
-            (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace))))))))))
+          (testing "input record created for ORDERS table with ref_id"
+            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace))))
+            (let [input (t2/select-one :model/WorkspaceInput :workspace_id (:id workspace))]
+              (is (= (:ref_id wt) (:ref_id input))))))))))

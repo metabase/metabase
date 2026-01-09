@@ -77,12 +77,7 @@
                       {:node-type :table, :id (t2.realize/realize table-coord)})
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
                     :workspace_id ws-id
-                    :id [:in {:select [:to_entity_id]
-                              :from   [:workspace_dependency]
-                              :where  [:and
-                                       [:= "transform" :from_entity_type]
-                                       [:= ref-id :from_entity_id]
-                                       [:= "input" :to_entity_type]]}]))
+                    :ref_id ref-id))
 
 (defn- table-producers [ws-id id-or-coord]
   ;; Work with either logical co-ords or an id

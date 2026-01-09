@@ -83,5 +83,4 @@
           (ws.tu/analyze-workspace! (:id ws))
           (testing "still has exactly one of each after multiple syncs"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
-            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))
-            (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id ws))))))))))
+            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))))))))

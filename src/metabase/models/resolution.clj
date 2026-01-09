@@ -113,7 +113,6 @@
     :model/UserParameterValue                metabase.users.models.user-parameter-value
     :model/ViewLog                           metabase.view-log.models.view-log
     :model/Workspace                         metabase-enterprise.workspaces.models.workspace
-    :model/WorkspaceDependency               metabase-enterprise.workspaces.models.workspace-dependency
     :model/WorkspaceInput                    metabase-enterprise.workspaces.models.workspace-input
     :model/WorkspaceInputExternal            metabase-enterprise.workspaces.models.workspace-input-external
     :model/WorkspaceLog                      metabase-enterprise.workspaces.models.workspace-log

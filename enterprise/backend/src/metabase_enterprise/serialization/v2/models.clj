@@ -122,7 +122,6 @@
    "Workspace"
    ;; TODO (lbrdnk 2025/12/17): I've added rest of the workspace models. I believe some of those will be available for
    ;; serialization, hence we should revisit this later in the project.
-   "WorkspaceDependency"
    "WorkspaceInput"
    "WorkspaceInputExternal"
    "WorkspaceLog"

@@ -58,7 +58,6 @@
     :model/Undo
     :model/UserKeyValue
     :model/Workspace
-    :model/WorkspaceDependency
     :model/WorkspaceInput
     :model/WorkspaceInputExternal
     :model/WorkspaceLog
