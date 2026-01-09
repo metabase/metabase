@@ -4907,7 +4907,7 @@ databaseChangeLog:
   # - Graph level: graph_version on workspace, workspace_graph, workspace_input_external, workspace_output_external
 
   - changeSet:
-      id: v58.2026-01-09T09:58:00
+      id: v58.2026-01-12T14:00:00
       author: christruter
       comment: Add graph_version column to workspace for epochal versioning
       changes:
@@ -4927,7 +4927,7 @@ databaseChangeLog:
             columnName: graph_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:02
+      id: v58.2026-01-12T14:00:02
       author: christruter
       comment: Add analysis_version column to workspace_transform for transform-level versioning
       changes:
@@ -4947,7 +4947,7 @@ databaseChangeLog:
             columnName: analysis_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:03
+      id: v58.2026-01-12T14:00:03
       author: christruter
       comment: Add transform_version column to workspace_input
       changes:
@@ -4967,7 +4967,7 @@ databaseChangeLog:
             columnName: transform_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:04
+      id: v58.2026-01-12T14:00:04
       author: christruter
       comment: Add transform_version column to workspace_output
       changes:
@@ -4987,7 +4987,7 @@ databaseChangeLog:
             columnName: transform_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:05
+      id: v58.2026-01-12T14:00:05
       author: christruter
       comment: Add graph_version column to workspace_graph
       changes:
@@ -5007,7 +5007,7 @@ databaseChangeLog:
             columnName: graph_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:06
+      id: v58.2026-01-12T14:00:06
       author: christruter
       comment: Add graph_version column to workspace_input_external
       changes:
@@ -5027,7 +5027,7 @@ databaseChangeLog:
             columnName: graph_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:07
+      id: v58.2026-01-12T14:00:07
       author: christruter
       comment: Add graph_version column to workspace_output_external
       changes:
@@ -5048,7 +5048,7 @@ databaseChangeLog:
 
   # Clear existing data from versioned tables - will be recalculated on first access
   - changeSet:
-      id: v58.2026-01-09T09:58:10
+      id: v58.2026-01-12T14:00:10
       author: christruter
       comment: Clear workspace_graph data for epochal versioning migration
       changes:
@@ -5058,7 +5058,7 @@ databaseChangeLog:
         - empty
 
   - changeSet:
-      id: v58.2026-01-09T09:58:11
+      id: v58.2026-01-12T14:00:11
       author: christruter
       comment: Clear workspace_input data for epochal versioning migration
       changes:
@@ -5068,7 +5068,7 @@ databaseChangeLog:
         - empty
 
   - changeSet:
-      id: v58.2026-01-09T09:58:12
+      id: v58.2026-01-12T14:00:12
       author: christruter
       comment: Clear workspace_output data for epochal versioning migration
       changes:
@@ -5078,7 +5078,7 @@ databaseChangeLog:
         - empty
 
   - changeSet:
-      id: v58.2026-01-09T09:58:13
+      id: v58.2026-01-12T14:00:13
       author: christruter
       comment: Clear workspace_input_external data for epochal versioning migration
       changes:
@@ -5088,7 +5088,7 @@ databaseChangeLog:
         - empty
 
   - changeSet:
-      id: v58.2026-01-09T09:58:14
+      id: v58.2026-01-12T14:00:14
       author: christruter
       comment: Clear workspace_output_external data for epochal versioning migration
       changes:
@@ -5099,7 +5099,7 @@ databaseChangeLog:
 
   # Update unique constraints to include version columns
   - changeSet:
-      id: v58.2026-01-09T09:58:20
+      id: v58.2026-01-12T14:00:20
       author: christruter
       comment: Drop old unique index on workspace_graph.workspace_id
       changes:
@@ -5116,7 +5116,7 @@ databaseChangeLog:
                   name: workspace_id
 
   - changeSet:
-      id: v58.2026-01-09T09:58:21
+      id: v58.2026-01-12T14:00:21
       author: christruter
       comment: Add unique index on workspace_graph (workspace_id, graph_version)
       changes:
@@ -5135,7 +5135,7 @@ databaseChangeLog:
             indexName: idx_workspace_graph_workspace_version
 
   - changeSet:
-      id: v58.2026-01-09T09:58:22
+      id: v58.2026-01-12T14:00:22
       author: christruter
       comment: Drop old unique constraint on workspace_input (workspace_id, ref_id, db_id, schema, table)
       changes:
@@ -5149,7 +5149,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_transform_table
 
   - changeSet:
-      id: v58.2026-01-09T09:58:23
+      id: v58.2026-01-12T14:00:23
       author: christruter
       comment: Add unique constraint on workspace_input including transform_version
       changes:
@@ -5163,7 +5163,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_versioned
 
   - changeSet:
-      id: v58.2026-01-09T09:58:24
+      id: v58.2026-01-12T14:00:24
       author: christruter
       comment: Drop old unique constraint on workspace_output (workspace_id, ref_id)
       changes:
@@ -5177,7 +5177,7 @@ databaseChangeLog:
             constraintName: uq_workspace_output_workspace_ref
 
   - changeSet:
-      id: v58.2026-01-09T09:58:25
+      id: v58.2026-01-12T14:00:25
       author: christruter
       comment: Add unique constraint on workspace_output including transform_version
       changes:
@@ -5191,7 +5191,7 @@ databaseChangeLog:
             constraintName: uq_workspace_output_versioned
 
   - changeSet:
-      id: v58.2026-01-09T09:58:26
+      id: v58.2026-01-12T14:00:26
       author: christruter
       comment: Drop old unique constraint on workspace_input_external
       changes:
@@ -5205,7 +5205,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_external_logical_table
 
   - changeSet:
-      id: v58.2026-01-09T09:58:27
+      id: v58.2026-01-12T14:00:27
       author: christruter
       comment: Add unique constraint on workspace_input_external including graph_version
       changes:
@@ -5219,7 +5219,7 @@ databaseChangeLog:
             constraintName: uq_workspace_input_external_versioned
 
   - changeSet:
-      id: v58.2026-01-09T09:58:28
+      id: v58.2026-01-12T14:00:28
       author: christruter
       comment: Drop old unique constraint on workspace_output_external
       changes:
@@ -5233,7 +5233,7 @@ databaseChangeLog:
             constraintName: uq_workspace_output_external_workspace_transform
 
   - changeSet:
-      id: v58.2026-01-09T09:58:29
+      id: v58.2026-01-12T14:00:29
       author: christruter
       comment: Add unique constraint on workspace_output_external including graph_version
       changes:
@@ -5248,7 +5248,7 @@ databaseChangeLog:
 
   # Drop legacy analysis_stale columns (replaced by version comparison)
   - changeSet:
-      id: v58.2026-01-09T09:58:30
+      id: v58.2026-01-12T14:00:30
       author: christruter
       comment: Drop analysis_stale column from workspace (replaced by version comparison)
       changes:
@@ -5268,7 +5268,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v58.2026-01-09T09:58:31
+      id: v58.2026-01-12T14:00:31
       author: christruter
       comment: Drop analysis_stale column from workspace_transform (replaced by version comparison)
       changes:

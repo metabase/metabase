@@ -45,7 +45,7 @@
                   (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))
 
           ;; Not sure why this is here, but we're testing the analysis metadata, which is lazy
-          (ws.impl/get-or-calculate-graph workspace)
+          (ws.impl/get-or-calculate-graph! workspace)
           (is (=? [{:workspace_id      (:id workspace)
                     :global_table      output-table
                     :global_schema     nil

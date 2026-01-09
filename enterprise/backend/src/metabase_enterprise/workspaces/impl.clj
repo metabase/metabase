@@ -194,61 +194,6 @@
                  (map :id))
         entities))
 
-(defn- sync-external-outputs!
-  "Sync workspace_output_external table based on enclosed external transforms in the graph.
-   Deletes obsolete rows, upserts current ones, and backfills table IDs where possible."
-  [workspace-id isolated-schema entities]
-  (let [external-tx-ids (extract-external-transform-ids entities)
-        existing-rows   (when (seq external-tx-ids)
-                          (t2/select-fn->fn :transform_id identity
-                                            :model/WorkspaceOutputExternal
-                                            :workspace_id workspace-id))
-        existing-tx-ids (set (keys existing-rows))]
-    ;; Delete rows for transforms no longer in the graph
-    (let [obsolete-ids (set/difference existing-tx-ids (set external-tx-ids))]
-      (when (seq obsolete-ids)
-        (t2/delete! :model/WorkspaceOutputExternal
-                    :workspace_id workspace-id
-                    :transform_id [:in obsolete-ids])))
-    ;; Upsert rows for current external transforms
-    (when (seq external-tx-ids)
-      (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])]
-        (doseq [{tx-id :id, {:keys [database schema name]} :target} transforms]
-          (let [isolated-table (ws.u/isolated-table-name schema name)
-                existing       (get existing-rows tx-id)
-                ;; Try to find table IDs - reuse existing if schema/table match
-                global-table-id (or (when (and existing
-                                               (= schema (:global_schema existing))
-                                               (= name (:global_table existing)))
-                                      (:global_table_id existing))
-                                    (t2/select-one-fn :id [:model/Table :id]
-                                                      :db_id database :schema schema :name name))
-                isolated-table-id (or (when (and existing
-                                                 (= isolated-schema (:isolated_schema existing))
-                                                 (= isolated-table (:isolated_table existing)))
-                                        (:isolated_table_id existing))
-                                      (t2/select-one-fn :id [:model/Table :id]
-                                                        :db_id database :schema isolated-schema :name isolated-table))]
-            (if existing
-              (t2/update! :model/WorkspaceOutputExternal (:id existing)
-                          {:db_id             database
-                           :global_schema     schema
-                           :global_table      name
-                           :global_table_id   global-table-id
-                           :isolated_schema   isolated-schema
-                           :isolated_table    isolated-table
-                           :isolated_table_id isolated-table-id})
-              (t2/insert! :model/WorkspaceOutputExternal
-                          {:workspace_id      workspace-id
-                           :transform_id      tx-id
-                           :db_id             database
-                           :global_schema     schema
-                           :global_table      name
-                           :global_table_id   global-table-id
-                           :isolated_schema   isolated-schema
-                           :isolated_table    isolated-table
-                           :isolated_table_id isolated-table-id}))))))))
-
 (defn- normalize-table-schema
   "Normalize a table's schema: replace nil with the driver's default schema.
    Takes a map of db_id -> default-schema for lookup."
@@ -256,74 +201,6 @@
   (if (some? schema)
     table
     (assoc table :schema (get db-id->default-schema db_id))))
-
-(defn- sync-external-inputs!
-  "Sync workspace_input_external table based on enclosed external transforms in the graph.
-   Tracks external tables consumed by enclosed transforms that aren't outputs of other transforms.
-   Inputs are deduplicated per workspace. Normalizes nil schemas to driver defaults."
-  [workspace-id entities]
-  (let [external-tx-ids (extract-external-transform-ids entities)]
-    (when (seq external-tx-ids)
-      ;; Query global Dependency table for all inputs of external transforms
-      (let [input-tables (t2/select [:model/Dependency :to_entity_id]
-                                    :from_entity_type :transform
-                                    :from_entity_id [:in external-tx-ids]
-                                    :to_entity_type :table)
-            input-table-ids (into #{} (map :to_entity_id) input-tables)
-            ;; Get workspace output table IDs (both workspace and external outputs)
-            workspace-output-ids (t2/select-fn-set :global_table_id
-                                                   [:model/WorkspaceOutput :global_table_id]
-                                                   :workspace_id workspace-id
-                                                   {:where [:not= :global_table_id nil]})
-            external-output-ids (t2/select-fn-set :global_table_id
-                                                  [:model/WorkspaceOutputExternal :global_table_id]
-                                                  :workspace_id workspace-id
-                                                  {:where [:not= :global_table_id nil]})
-            all-output-ids (set/union workspace-output-ids external-output-ids)
-            ;; Filter to only true external inputs (not outputs of transforms in graph)
-            external-input-ids (set/difference input-table-ids all-output-ids)]
-        (when (seq external-input-ids)
-          ;; Get table details for external inputs
-          (let [tables (t2/select [:model/Table :id :db_id :schema :name] :id [:in external-input-ids])
-                ;; Build default schema lookup for each database involved
-                db-ids (into #{} (map :db_id) tables)
-                db-id->default-schema (when (seq db-ids)
-                                        (into {}
-                                              (map (fn [{:keys [id engine]}]
-                                                     [id (driver.sql/default-schema engine)]))
-                                              (t2/select [:model/Database :id :engine] :id [:in db-ids])))
-                ;; Normalize schemas: nil -> default schema for the table's database
-                normalized-tables (map (partial normalize-table-schema db-id->default-schema) tables)
-                new-inputs (into {}
-                                 (map (fn [{:keys [id db_id schema name]}]
-                                        [[db_id schema name] {:table_id id}]))
-                                 normalized-tables)
-                ;; Get existing external inputs
-                existing-inputs (t2/select-fn->fn (juxt :db_id :schema :table)
-                                                  #(select-keys % [:id :table_id])
-                                                  [:model/WorkspaceInputExternal :id :db_id :schema :table :table_id]
-                                                  :workspace_id workspace-id)
-                existing-keys (set (keys existing-inputs))
-                new-keys (set (keys new-inputs))
-                obsolete-keys (set/difference existing-keys new-keys)
-                missing-keys (set/difference new-keys existing-keys)]
-            ;; Delete obsolete rows
-            (doseq [[db_id schema table] obsolete-keys]
-              (t2/delete! :model/WorkspaceInputExternal
-                          :workspace_id workspace-id
-                          :db_id db_id
-                          :schema schema
-                          :table table))
-            ;; Insert missing rows
-            (when (seq missing-keys)
-              (t2/insert! :model/WorkspaceInputExternal
-                          (for [[db_id schema table] missing-keys]
-                            {:workspace_id   workspace-id
-                             :db_id          db_id
-                             :schema         schema
-                             :table          table
-                             :table_id       (:table_id (get new-inputs [db_id schema table]))
-                             :access_granted false})))))))))
 
 ;;;; ---------------------------------------- Epochal Versioning ----------------------------------------
 ;; Two-level versioning for thread-safe graph calculation:
@@ -448,34 +325,37 @@
                 :graph_version graph-version
                 :graph graph})))
 
-(defn- get-cached-graph
-  "Get the cached graph for a specific version, or nil if not found."
-  [ws-id graph-version]
-  (when-let [cached (t2/select-one :model/WorkspaceGraph
-                                   :workspace_id ws-id
-                                   :graph_version graph-version)]
-    (:graph cached)))
+(defn- latest-sufficient-graph-version
+  "Get the max completed graph_version >= min-version, or nil if none exist.
+   Uses workspace_output_external as the commit marker - if it exists, we know all the analysis tables are populated."
+  [ws-id min-version]
+  (t2/select-one-fn :graph_version [:model/WorkspaceOutputExternal :graph_version]
+                    :workspace_id ws-id
+                    :graph_version [:>= min-version]
+                    {:order-by [[:graph_version :desc]]
+                     :limit 1}))
 
-(defn- graph-exists-for-version?
-  "Check if a graph exists for the given version or newer."
-  [ws-id target-version]
-  (t2/exists? :model/WorkspaceGraph
-              :workspace_id ws-id
-              :graph_version [:>= target-version]))
+(defn- get-graph-at-version
+  "Fetch the graph data for a specific version from workspace_graph."
+  [ws-id version]
+  (:graph (t2/select-one [:model/WorkspaceGraph :graph]
+                         :workspace_id ws-id
+                         :graph_version version)))
 
-(defn- external-outputs-exist-for-version?
-  "Check if external outputs exist for the given version or newer."
-  [ws-id target-version]
-  (t2/exists? :model/WorkspaceOutputExternal
-              :workspace_id ws-id
-              :graph_version [:>= target-version]))
-
-(defn- external-inputs-exist-for-version?
-  "Check if external inputs exist for the given version or newer."
-  [ws-id target-version]
-  (t2/exists? :model/WorkspaceInputExternal
-              :workspace_id ws-id
-              :graph_version [:>= target-version]))
+(defn- get-completed-graph
+  "Get a completed graph for the given version or newer.
+   Returns nil if no sufficiently recent completed graph exists.
+   Uses any entry in the `workspace_output_external` table as a marker to determine all the tables were populated.
+   Uses a subselect to avoid races where the latest version could be superseded and deleted before we can fetch it."
+  [ws-id min-version]
+  (:graph (t2/select-one [:model/WorkspaceGraph :graph]
+                         :workspace_id ws-id
+                         {:where [:= :graph_version
+                                  {:select [[[:max :graph_version]]]
+                                   :from   [[:workspace_output_external :woe]]
+                                   :where  [:and
+                                            [:= :woe.workspace_id ws-id]
+                                            [:>= :woe.graph_version min-version]]}]})))
 
 (defn- sync-external-outputs-for-version!
   "Sync workspace_output_external for a specific graph version.
@@ -548,45 +428,68 @@
                               :table_id       id
                               :access_granted false}))))))))))
 
+(defn- max-graph-version
+  "Get the max graph_version in workspace_graph >= min-version, or nil if none exist."
+  [ws-id min-version]
+  (t2/select-one-fn :graph_version [:model/WorkspaceGraph :graph_version]
+                    :workspace_id ws-id
+                    :graph_version [:>= min-version]
+                    {:order-by [[:graph_version :desc]]
+                     :limit 1}))
+
+(defn- max-inputs-version
+  "Get the max graph_version in workspace_input_external >= min-version, or nil if none exist."
+  [ws-id min-version]
+  (t2/select-one-fn :graph_version [:model/WorkspaceInputExternal :graph_version]
+                    :workspace_id ws-id
+                    :graph_version [:>= min-version]
+                    {:order-by [[:graph_version :desc]]
+                     :limit 1}))
+
 (defn- calculate-graph-for-version!
   "Calculate the graph for target-version. Thread-safe implementation.
-   - Analyzes transforms that need it (transform-level versioning)
-   - Calculates and caches graph (graph-level versioning)
-   - Syncs external outputs/inputs
-   - Cleans up old versions"
+   If we find artifacts at a newer version (from a concurrent process), we bump our
+   target to that version and continue from there.
+   Write order: workspace_graph → workspace_input_external → workspace_output_external
+   (workspace_output_external is the commit marker indicating full completion)
+   Returns the graph."
   [{ws-id :id, isolated-schema :schema :as workspace} target-graph-version]
   ;; Step 1: Analyze transforms that need it (transform-level versioning)
   (analyze-stale-transforms! workspace)
 
-  ;; Step 2: Calculate and cache graph if needed
-  (when-not (graph-exists-for-version? ws-id target-graph-version)
-    (let [graph (calculate-graph! ws-id)]
-      (insert-workspace-graph! ws-id target-graph-version graph)))
+  ;; Step 2: Write workspace_graph if needed, bump version if we find newer
+  (let [version (or (max-graph-version ws-id target-graph-version)
+                    (let [graph (calculate-graph! ws-id)]
+                      (insert-workspace-graph! ws-id target-graph-version graph)
+                      target-graph-version))
+        graph (get-graph-at-version ws-id version)]
 
-  (let [graph (get-cached-graph ws-id target-graph-version)]
-    ;; Step 3: Sync external outputs if needed
-    (when-not (external-outputs-exist-for-version? ws-id target-graph-version)
-      (sync-external-outputs-for-version! ws-id isolated-schema (:entities graph) target-graph-version))
+    ;; Step 3: Write workspace_input_external if needed, bump version if we find newer
+    (let [version (or (max-inputs-version ws-id version)
+                      (do (sync-external-inputs-for-version! ws-id (:entities graph) version)
+                          version))]
 
-    ;; Step 4: Sync external inputs if needed
-    (when-not (external-inputs-exist-for-version? ws-id target-graph-version)
-      (sync-external-inputs-for-version! ws-id (:entities graph) target-graph-version))
+      ;; Step 4: Write workspace_output_external if needed (commit marker - must be last)
+      (let [version (or (latest-sufficient-graph-version ws-id version)
+                        (do (sync-external-outputs-for-version! ws-id isolated-schema (:entities graph) version)
+                            version))]
 
-    ;; Step 5: Cleanup old versions
-    (cleanup-old-graph-versions! ws-id)
+        (log/debugf "Calculated graph for workspace %d at version %d (target was %d)"
+                    ws-id version target-graph-version)
 
-    graph))
+        ;; Step 5: Cleanup old versions
+        (cleanup-old-graph-versions! ws-id)
 
-(defn get-or-calculate-graph
-  "Return the dependency graph for a workspace. Uses cached graph if version matches,
-   otherwise recalculates it. Thread-safe via epochal versioning.
+        graph))))
+
+(defn get-or-calculate-graph!
+  "Return the dependency graph for a workspace.
+   Uses cached graph if version matches, otherwise recalculates it.
+   Thread-safe via epochal versioning.
    Also syncs workspace_output_external and workspace_input_external tables when recalculating."
   [{ws-id :id, graph-version :graph_version :as workspace}]
-  (if-let [cached (get-cached-graph ws-id graph-version)]
-    ;; Return cached graph for current version
-    cached
-    ;; Recalculate
-    (calculate-graph-for-version! workspace graph-version)))
+  (or (get-completed-graph ws-id graph-version)
+      (calculate-graph-for-version! workspace graph-version)))
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
@@ -595,7 +498,7 @@
   ;; 2. For now, we never set this field to false, so we'll always run everything, even with the flag.
   ;; Why is there all this weird code then? To avoid unused references.
   (let [stale-clause (if stale-only? {:where [:= :stale true]} {})
-        entities     (:entities (get-or-calculate-graph workspace))
+        entities     (:entities (get-or-calculate-graph! workspace))
         type->ids    (u/group-by :node-type :id entities)
         id->tx       (merge
                       {}

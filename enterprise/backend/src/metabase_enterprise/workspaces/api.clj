@@ -186,7 +186,7 @@
    _query-params]
   (let [workspace        (api/check-404 (t2/select-one :model/Workspace :id id))
         ;; Trigger creation of the Workspace*External entries
-        _                (ws.impl/get-or-calculate-graph workspace)
+        _                (ws.impl/get-or-calculate-graph! workspace)
         order-by         {:order-by [:db_id :global_schema :global_table]}
         outputs          (t2/select [:model/WorkspaceOutput
                                      :db_id :global_schema :global_table :global_table_id
@@ -557,10 +557,10 @@
   "Display the dependency graph between the Changeset and the (potentially external) entities that they depend on."
   [{:keys [ws-id]} :- [:map [:ws-id ms/PositiveInt]]
    _query-params]
-  (let [workspace (api/check-404 (t2/select-one :model/Workspace :id ws-id))
-        db-id     (:database_id workspace)
-        driver    (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
-        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph workspace)
+  (let [workspace      (api/check-404 (t2/select-one :model/Workspace :id ws-id))
+        db-id          (:database_id workspace)
+        driver         (t2/select-one-fn :engine [:model/Database :engine] :id db-id)
+        {:keys [inputs entities dependencies]} (ws.impl/get-or-calculate-graph! workspace)
         ;; Batch fetch all transforms and build table-id lookup map
         transforms-map (fetch-transforms-for-graph entities)
         all-transforms (concat (vals (:external transforms-map))
@@ -568,12 +568,12 @@
         table-id-map   (table-ids-by-target db-id driver all-transforms)
         ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
         ;;      It could be cheaper to build it as we go.
-        inverted (reduce
-                  (fn [inv [c parents]]
-                    (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
-                  {}
-                  dependencies)
-        dep-count #(frequencies (map node-type (get inverted %)))]
+        inverted       (reduce
+                        (fn [inv [c parents]]
+                          (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
+                        {}
+                        dependencies)
+        dep-count      #(frequencies (map node-type (get inverted %)))]
 
     {:nodes (concat (for [i inputs]
                       {:type             :input-table
@@ -608,7 +608,7 @@
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params]
   (let [workspace (api/check-404 (t2/select-one :model/Workspace :id id))
-        graph     (ws.impl/get-or-calculate-graph workspace)]
+        graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.validation/find-downstream-problems id graph)))
 
 (def ^:private db+schema+table (juxt :database :schema :name))

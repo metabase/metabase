@@ -280,16 +280,21 @@
    {:keys [output inputs]} :- ::analysis
    transform-version :- :int]
   (ws.u/assert-transform! entity-type)
-  (t2/with-transaction [_conn]
-    (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
-                                              :id [:in {:select [:database_id]
-                                                        :from   [:workspace]
-                                                        :where  [:= :id workspace-id]}])
-          normalize         (partial sql.normalize/normalize-name driver)
-          default-schema    (driver.sql/default-schema driver)
-          ;; Normalize external inputs so schemas are consistent
-          normalized-inputs (map (partial normalize-input-schema default-schema) inputs)]
-      ;; Insert inputs first, then output - output row acts as "commit marker" for version check
-      (insert-workspace-inputs! workspace-id ref-id normalized-inputs transform-version)
-      (insert-workspace-output! workspace-id ref-id isolated-schema output normalize transform-version)
-      nil)))
+  ;; We could make this even more race friendly, and check for future versions as well.
+  (when-not (t2/exists? :model/WorkspaceOutput
+                        :workspace_id workspace-id
+                        :ref_id ref-id
+                        :transform_version transform-version)
+    (t2/with-transaction [_conn]
+      (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
+                                                :id [:in {:select [:database_id]
+                                                          :from   [:workspace]
+                                                          :where  [:= :id workspace-id]}])
+            normalize         (partial sql.normalize/normalize-name driver)
+            default-schema    (driver.sql/default-schema driver)
+            ;; Normalize external inputs so schemas are consistent
+            normalized-inputs (map (partial normalize-input-schema default-schema) inputs)]
+        ;; Insert inputs first, then output - output row acts as "commit marker" for version check
+        (insert-workspace-inputs! workspace-id ref-id normalized-inputs transform-version)
+        (insert-workspace-output! workspace-id ref-id isolated-schema output normalize transform-version)
+        nil))))
