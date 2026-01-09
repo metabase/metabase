@@ -83,7 +83,7 @@ export const IncrementalTransformSettings = ({
 
   const { checkIsQueryComplex, complexity } = useQueryComplexityCheck();
 
-  const handleCheckQueryComplexity = useCallback(async () => {
+  const runQueryComplexityCheck = useCallback(async () => {
     if (transformType !== "native" || hasCheckpointTag || !libQuery) {
       return;
     }
@@ -92,9 +92,9 @@ export const IncrementalTransformSettings = ({
 
   useEffect(() => {
     if (values.incremental) {
-      handleCheckQueryComplexity();
+      runQueryComplexityCheck();
     }
-  }, [values.incremental, handleCheckQueryComplexity]);
+  }, [values.incremental, runQueryComplexityCheck]);
 
   const renderIncrementalSwitch = () => (
     <FormSwitch
