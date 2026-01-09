@@ -102,20 +102,6 @@
             :m13 [:t11 :m12]}
            (dag-abstract/expand-shorthand example-graph)))))
 
-(create-test-workspaces
- {:global    {:x2 [:x1]}
-  :workspace {:define {:x1 [:x2]}}})
-
-api-basic -> create empty workspace, archive, delete, add first transform, checkout transform
-api-data-driven
-
-(create-test-workspaces!
- {:global    {:x6 [:x5]}
-  :workspace {:checkout [:x2 :x5]}})
-
- ;; finding the input tables -> graph
- ;; rewriting the query to run it -> run
-
 (deftest abstract-path-induced-subgraph-test
   (testing "path-induced-subgraph computes correct result for example graph"
     (is (= {:check-outs   [:x3 :m6 :m10 :m13]
