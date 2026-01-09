@@ -827,7 +827,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     workspaceTransforms={workspaceTransforms}
                     isDisabled={isArchived}
                     onChange={handleTransformChange}
-                    onOpenTransform={(transform) => {
+                    onSaveTransform={(transform) => {
                       // After adding first transform to a workspace,
                       // show 'Setup' tab with initialization status log.
                       if (isWorkspaceUninitialized(workspace)) {
