@@ -315,7 +315,8 @@
             (is (= (:details db)
                    (database/maybe-test-and-migrate-details! db)))
             (is (= (:details db)
-                   (t2/select-one-fn :details :model/Database (:id db))))))))))
+                   (t2/select-one-fn :details :model/Database (:id db)))
+                [(:id db) "query"])))))))
 
 (deftest maybe-test-and-migrate-details!-password-test
   (mt/with-driver

@@ -470,7 +470,7 @@
                     config/current-minor-version (constantly 6)]
         (is (true? (@#'stats/csv-upload-available?))))))
 
-      ;; If we can't detect the MB version, return nil
+  ;; If we can't detect the MB version, return nil
   (with-redefs [config/current-major-version (constantly nil)
                 config/current-minor-version (constantly nil)]
     (is (false? (@#'stats/csv-upload-available?)))))
