@@ -229,9 +229,13 @@
 
 (deftest bulk-set-remote-sync-only-updates-changed-descendants-test
   (testing "bulk-set-remote-sync only updates descendants that need changing"
+    ;; Create all collections with is_remote_synced=false first (valid state),
+    ;; then update child2 directly to avoid before-insert validation
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
                    :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced false}
-                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced true}]
+                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced false}]
+      ;; Set child2 to already be remote-synced directly in DB (bypasses hooks)
+      (t2/query-one {:update :collection :set {:is_remote_synced true} :where [:= :id child2-id]})
       ;; Parent and Child 1 are false, Child 2 is already true
       ;; When enabling parent, only parent and child1 should be updated, child2 should be skipped
       (core/bulk-set-remote-sync {parent-id true})
@@ -242,9 +246,13 @@
 
 (deftest bulk-set-remote-sync-only-updates-changed-descendants-disable-test
   (testing "bulk-set-remote-sync only updates descendants that need changing (disable)"
+    ;; Create all collections with is_remote_synced=true first (valid state),
+    ;; then update child2 directly to avoid before-insert validation
     (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
                    :model/Collection {child1-id :id} {:name "Child 1" :location (format "/%d/" parent-id) :is_remote_synced true}
-                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced false}]
+                   :model/Collection {child2-id :id} {:name "Child 2" :location (format "/%d/" parent-id) :is_remote_synced true}]
+      ;; Set child2 to already be not remote-synced directly in DB (bypasses hooks)
+      (t2/query-one {:update :collection :set {:is_remote_synced false} :where [:= :id child2-id]})
       ;; Parent and Child 1 are true, Child 2 is already false
       ;; When disabling parent, only parent and child1 should be updated, child2 should be skipped
       (core/bulk-set-remote-sync {parent-id false})
