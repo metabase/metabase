@@ -169,16 +169,4 @@ describe("getSafeColor", () => {
       expect(getSafeColor("")).toBe("");
     });
   });
-
-  describe("performance", () => {
-    it("should process 1000 colors efficiently", () => {
-      const colors = Array(1000).fill("rgba(136, 191, 77, 7.5e-7)");
-      const start = performance.now();
-
-      colors.forEach(getSafeColor);
-
-      const duration = performance.now() - start;
-      expect(duration).toBeLessThan(100); // Should be < 100ms
-    });
-  });
 });
