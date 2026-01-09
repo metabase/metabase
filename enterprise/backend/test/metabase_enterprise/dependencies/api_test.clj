@@ -1462,14 +1462,18 @@
 (deftest ^:sequential unreferenced-archived-measure-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
     (mt/with-premium-features #{:dependencies}
-      (let [products-id (mt/id :products)
-            price-field-id (mt/id :products :price)]
+      (let [mp (mt/metadata-provider)
+            products-id (mt/id :products)
+            products (lib.metadata/table mp products-id)
+            price (lib.metadata/field mp (mt/id :products :price))
+            measure-definition (-> (lib/query mp products)
+                                   (lib/aggregate (lib/sum price)))]
         (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
                                                                                       :table_id products-id
-                                                                                      :definition {:aggregation [[:sum [:field price-field-id nil]]]}}
+                                                                                      :definition measure-definition}
                        :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
                                                                                       :table_id products-id
-                                                                                      :definition {:aggregation [[:sum [:field price-field-id nil]]]}
+                                                                                      :definition measure-definition
                                                                                       :archived true}]
           (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
           (events/publish-event! :event/measure-create {:object archived-measure :user-id (mt/user->id :crowberto)})
