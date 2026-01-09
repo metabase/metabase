@@ -330,6 +330,7 @@
   {:team "UX West"
    :api  #{metabase.collections.api
            metabase.collections.core
+           metabase.collections.init
            metabase.collections.models.collection
            metabase.collections.models.collection.root}
    :uses #{api
@@ -349,6 +350,7 @@
            request
            revisions
            search
+           settings
            upload
            util}}
 
