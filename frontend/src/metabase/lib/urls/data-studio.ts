@@ -308,15 +308,3 @@ export function newDataStudioSegment(tableId: TableId) {
 export function dataStudioSegmentDependencies(segmentId: SegmentId) {
   return `${dataStudioSegment(segmentId)}/dependencies`;
 }
-
-export function dataStudioDependencyDiagnostics() {
-  return `${ROOT_URL}/dependency-diagnostics`;
-}
-
-export function dataStudioBrokenEntities() {
-  return `${dataStudioDependencyDiagnostics()}/broken`;
-}
-
-export function dataStudioUnreferencedEntities() {
-  return `${dataStudioDependencyDiagnostics()}/unreferenced`;
-}
