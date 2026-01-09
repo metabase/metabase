@@ -4845,6 +4845,31 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v58.2026-01-09T09:28:40
+      author: piranha
+      comment: Add target_db_id column to transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: transform
+                columnName: target_db_id
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: target_db_id
+                  type: int
+                  remarks: Target database ID for the transform output
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: target_db_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
