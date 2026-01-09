@@ -41,6 +41,20 @@ export const CollectionListView = ({
   containerStyle,
   containerClassName,
 }: CollectionListViewProps) => {
+  const renderItem = (item: CollectionListItem) => (
+    <Link to={item.link}>
+      <Card shadow="none" withBorder className={styles.card}>
+        <Group gap="xs">
+          <Icon name={item.icon} className={CS.mr1} size={18} />
+
+          <Title order={6} component="h3">
+            {item.name}
+          </Title>
+        </Group>
+      </Card>
+    </Link>
+  );
+
   return (
     <Flex
       direction="column"
@@ -59,27 +73,10 @@ export const CollectionListView = ({
           </Flex>
         ) : (
           <VirtualizedGrid
-            items={items.map((item) => ({
-              key: item.key,
-              content: (
-                <Link to={item.link}>
-                  <Card
-                    shadow="none"
-                    withBorder
-                    className={styles.card}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Group gap="xs">
-                      <Icon name={item.icon} className={CS.mr1} size={18} />
-                      <Title order={6} component="h3">
-                        {item.name}
-                      </Title>
-                    </Group>
-                  </Card>
-                </Link>
-              ),
-            }))}
-            columnsPerRow={4}
+            items={items}
+            keyExtractor={(item) => item.key}
+            renderItem={renderItem}
+            columnsPerRow={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 4 }}
             estimatedRowHeight={80}
           />
         )}

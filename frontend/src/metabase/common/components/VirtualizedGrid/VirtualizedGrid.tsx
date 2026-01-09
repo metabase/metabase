@@ -3,33 +3,42 @@ import type { Key, ReactNode } from "react";
 import { useMemo, useRef } from "react";
 import _ from "underscore";
 
-import { Box, type BoxProps, Flex } from "metabase/ui";
+import { Box, type BoxProps, Grid, useMatches } from "metabase/ui";
+import type { BreakpointName } from "metabase/ui/theme";
 
-type VirtualizedGridItem = {
-  key: Key;
-  content: ReactNode;
-};
-
-type VirtualizedGridProps = {
-  items: VirtualizedGridItem[];
-  columnsPerRow?: number;
-  estimatedRowHeight?: number;
+type VirtualizedGridProps<T> = {
+  items: T[];
+  keyExtractor: (item: T) => Key;
+  renderItem: (item: T) => ReactNode;
+  columnsPerRow: Record<BreakpointName, number>;
+  estimatedRowHeight: number;
   overscan?: number;
 } & Omit<BoxProps, "children">;
 
-export const VirtualizedGrid = ({
+export const VirtualizedGrid = <T,>({
   items,
-  columnsPerRow = 4,
-  estimatedRowHeight = 80,
+  keyExtractor,
+  renderItem,
+  columnsPerRow,
+  estimatedRowHeight,
   overscan = 5,
   ...boxProps
-}: VirtualizedGridProps) => {
+}: VirtualizedGridProps<T>) => {
   const parentRef = useRef<HTMLDivElement>(null);
 
-  // Group items into rows
+  // Use Mantine's useMatches to get the current column count based on breakpoint
+  const currentColumns = useMatches({
+    base: columnsPerRow.xs,
+    sm: columnsPerRow.sm,
+    md: columnsPerRow.md,
+    lg: columnsPerRow.lg,
+    xl: columnsPerRow.xl,
+  });
+
+  // Group items into rows based on current columns
   const rows = useMemo(
-    () => _.chunk(items, columnsPerRow),
-    [items, columnsPerRow],
+    () => _.chunk(items, currentColumns),
+    [items, currentColumns],
   );
 
   const virtualizer = useVirtualizer({
@@ -41,35 +50,32 @@ export const VirtualizedGrid = ({
 
   const virtualRows = virtualizer.getVirtualItems();
 
+  // Calculate span for current breakpoint
+  const currentSpan = useMemo(() => 12 / currentColumns, [currentColumns]);
+
   return (
     <Box ref={parentRef} h="100%" style={{ overflowY: "auto" }} {...boxProps}>
       <Box h={virtualizer.getTotalSize()} pos="relative">
         {virtualRows.map((virtualRow) => {
           const rowItems = rows[virtualRow.index];
+
           return (
-            <Flex
+            <Box
               key={virtualRow.key}
               pos="absolute"
               top={0}
               left={0}
               w="100%"
-              wrap="wrap"
-              ml="-0.5rem"
-              mr="-0.5rem"
-              style={{
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
+              style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
-              {rowItems.map((item) => (
-                <Box
-                  key={item.key}
-                  p="0.5rem"
-                  style={{ width: `${100 / columnsPerRow}%` }}
-                >
-                  {item.content}
-                </Box>
-              ))}
-            </Flex>
+              <Grid gutter="md">
+                {rowItems.map((item) => (
+                  <Grid.Col key={keyExtractor(item)} span={currentSpan}>
+                    {renderItem(item)}
+                  </Grid.Col>
+                ))}
+              </Grid>
+            </Box>
           );
         })}
       </Box>

@@ -29,11 +29,6 @@ export const TenantCollectionList = () => {
     }));
 
   return (
-    <CollectionListView
-      crumbs={crumbs}
-      loading={isLoading}
-      items={items}
-      virtualized
-    />
+    <CollectionListView crumbs={crumbs} loading={isLoading} items={items} />
   );
 };
