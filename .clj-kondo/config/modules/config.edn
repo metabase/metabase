@@ -1547,6 +1547,7 @@
            settings
            setup
            system
+           task
            tenants
            util}}
 
@@ -1567,7 +1568,6 @@
            request
            settings
            sso
-           task
            tenants
            users
            util
