@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import { Resizable } from "react-resizable";
-import { useMount, usePrevious } from "react-use";
+import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -192,8 +192,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
 
-    const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
-
     const maxHeight =
       availableHeight != null
         ? availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
@@ -259,14 +257,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       }
     }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
-    useEffect(() => {
-      // Recalculate height when opening native editor
-      if (isNativeEditorOpen && !wasNativeEditorOpen) {
-        const newHeight = getInitialEditorHeight({ query, availableHeight });
-        setHeight(newHeight);
-      }
-    }, [query, availableHeight, isNativeEditorOpen, wasNativeEditorOpen]);
-
     const dragHandle =
       resizable && isNativeEditorOpen ? (
         <div className={S.dragHandleContainer} data-testid="drag-handle">
@@ -286,8 +276,18 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const shouldOpenDataReference = screenSize !== "small";
 
     const toggleEditor = useCallback(() => {
+      if (!isNativeEditorOpen) {
+        // Recalculate height when opening native editor
+        setHeight(getInitialEditorHeight({ query, availableHeight }));
+      }
       setIsNativeEditorOpen?.(!isNativeEditorOpen, shouldOpenDataReference);
-    }, [isNativeEditorOpen, setIsNativeEditorOpen, shouldOpenDataReference]);
+    }, [
+      isNativeEditorOpen,
+      setIsNativeEditorOpen,
+      shouldOpenDataReference,
+      query,
+      availableHeight,
+    ]);
 
     const handleFormatQuery = useCallback(async () => {
       if (!canFormatQuery) {
