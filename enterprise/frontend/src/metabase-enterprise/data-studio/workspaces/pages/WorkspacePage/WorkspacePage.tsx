@@ -18,7 +18,7 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Sortable } from "metabase/common/components/Sortable";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
@@ -61,6 +61,7 @@ import type {
 } from "metabase-enterprise/metabot/state";
 import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
+import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
@@ -242,7 +243,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   );
 
   // Metabot
-  const metabotState = useSelector(getMetabotState);
+  const metabotState = useEnterpriseSelector(getMetabotState);
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
