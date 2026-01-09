@@ -1,4 +1,3 @@
-import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -34,14 +33,7 @@ export function TemporalUnitSettings({
   const selectedUnits = parameter.temporal_units ?? availableUnits;
   const isAll = selectedUnits.length === availableUnits.length;
   const isNone = selectedUnits.length === 0;
-  /**
-   * Using manual touched state instead of Formik because the parent form
-   * is not Formik-based, and introducing Formik here would be a regression
-   */
   const [isTouched, setIsTouched] = useState(false);
-  const [isOpened, { close, toggle }] = useDisclosure(false, {
-    onClose: () => setIsTouched(true),
-  });
   const showError = isTouched && isNone;
   const errorButtonStyles: MantineStyleProps | undefined = showError
     ? { c: "error", bd: "1px solid error" }
@@ -49,7 +41,7 @@ export function TemporalUnitSettings({
 
   return (
     <Stack gap="xs">
-      <Popover opened={isOpened} onDismiss={close} width="target">
+      <Popover onClose={() => setIsTouched(true)} width="target">
         <Popover.Target>
           <Button
             fw="normal"
@@ -59,7 +51,6 @@ export function TemporalUnitSettings({
             justify="space-between"
             c={errorButtonStyles?.c}
             bd={errorButtonStyles?.bd}
-            onClick={toggle}
           >
             {getSelectedText(selectedUnits, isAll, isNone)}
           </Button>
