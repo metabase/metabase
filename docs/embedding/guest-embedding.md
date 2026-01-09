@@ -143,7 +143,19 @@ You can propagate filter values into the external URL, unless the filter is lock
 
 ## Translating guest embeds
 
-See [Translating embedded questions and dashboards](./translations.md).
+To translate an embed, set the `locale` in `window.metabaseConfig`:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    locale: "es",
+  };
+</script>
+```
+
+The `locale` setting works for all modular embeds (guest and SSO). Metabase will automatically translate UI elements (like menus and buttons). To also translate content like dashboard titles and filter labels, you'll need to upload a translation dictionary. Translation dictionaries only work with guest embeds. See [Translating embedded questions and dashboards](./translations.md).
 
 ## How guest embedding works
 

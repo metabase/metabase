@@ -1,17 +1,19 @@
 ---
 title: Translate embedded dashboards and questions
-summary: Upload a translation dictionary to translate questions and dashboards into different languages. Only available for guest embeds.
+summary: Upload a translation dictionary to translate questions and dashboards into different languages. Translation dictionaries are only available for guest embeds.
 ---
 
 # Translate embedded dashboards and questions
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embbedding=true %}
 
-For now, translations are only available for [guest embeds](./guest-embedding.md). Translations aren't available for SSO-based modular embedding or full app embedding.
+You can set a locale on all modular embeds (guest and SSO) to translate Metabase's UI. Translation dictionaries, however, are only available for [guest embeds](./guest-embedding.md).
 
 ## Set a locale to translate UI, and upload a dictionary to translate content
 
-To translate an embed's user interface, set the locale in the config:
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest and SSO).
+
+For guest embeds, set the `locale` in `window.metabaseConfig`:
 
 ```html
 <script>
@@ -19,7 +21,7 @@ To translate an embed's user interface, set the locale in the config:
     isGuest: true,
     instanceUrl: "YOUR_METABASE_URL",
     // Translates UI elements to the locale's language.
-    // If you've uploaded a translation dictionary,
+    // For guest embeds, if you've uploaded a translation dictionary,
     // Metabase will also translate content strings
     // to this locale from that dictionary.
     locale: "es"
@@ -27,6 +29,16 @@ To translate an embed's user interface, set the locale in the config:
 </script>
 
 <metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
+```
+
+For the SDK, set the `locale` prop on the `MetabaseProvider` component:
+
+```tsx
+<MetabaseProvider
+  authConfig={authConfig}
+  locale="es"
+>
+</MetabaseProvider>
 ```
 
 Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
