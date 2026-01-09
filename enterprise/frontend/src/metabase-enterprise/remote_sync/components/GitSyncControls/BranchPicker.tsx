@@ -121,14 +121,14 @@ export const BranchPicker = ({
           flex={1}
           disabled={disabled || isLoading || isCreating}
           onClick={() => combobox.toggleDropdown()}
-          leftSection={<Icon name="git_branch" c="text-medium" size={14} />}
+          leftSection={<Icon name="git_branch" c="text-secondary" size={14} />}
           rightSection={
             isLoading || isCreating ? (
               <Loader size="xs" />
             ) : (
               <Icon
                 name="chevrondown"
-                c="text-medium"
+                c="text-secondary"
                 size={12}
                 style={{
                   transform: combobox.dropdownOpened
@@ -141,7 +141,7 @@ export const BranchPicker = ({
           }
           data-testid="branch-picker-button"
         >
-          <Text fw="bold" c="text-medium" size="sm" lh="md" truncate>
+          <Text fw="bold" c="text-secondary" size="sm" lh="md" truncate>
             {value}
           </Text>
         </Button>

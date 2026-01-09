@@ -230,7 +230,7 @@ export const RemoteSyncAdminSettings = () => {
           <Form disabled={!dirty}>
             <Stack gap="xl" maw="52rem">
               {!isRemoteSyncEnabled && (
-                <Text c="text-medium" size="sm">
+                <Text c="text-secondary" size="sm">
                   {jt`Need help setting this up? Check out our ${(
                     <ExternalLink key="link" href={docsUrl}>
                       {t`setup guide`}
