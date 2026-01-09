@@ -71,7 +71,6 @@ export interface SdkQuestionDefaultViewProps extends FlexibleSizeProps {
   withChartTypeSelector?: boolean;
 }
 
-// XXX: Add alerts button here too
 export const SdkQuestionDefaultView = ({
   height,
   width,
