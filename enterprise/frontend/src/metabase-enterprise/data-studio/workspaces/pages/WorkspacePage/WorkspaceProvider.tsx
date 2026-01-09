@@ -70,13 +70,13 @@ export interface WorkspaceContextValue {
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
-  removeOpenedTransform: (transformId: number) => void;
+  removeOpenedTransform: (transformId: string | number) => void;
   editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
     transformId: number,
     patch: Partial<EditedTransform>,
   ) => void;
-  removeEditedTransform: (transformId: number) => void;
+  removeEditedTransform: (transformId: string | number) => void;
   runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
   updateTab: <T extends WorkspaceTab>(tabId: string, patch: Partial<T>) => void;
@@ -102,7 +102,7 @@ interface WorkspaceState {
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
   editedTransforms: Map<number | string, EditedTransform>;
-  runTransforms: Set<number>;
+  runTransforms: Set<number | string>;
   unsavedTransforms: Transform[];
   nextUnsavedTransformIndex: number;
 }
@@ -339,7 +339,7 @@ export const WorkspaceProvider = ({
   );
 
   const removeOpenedTransform = useCallback(
-    (transformId: number) => {
+    (transformId: string | number) => {
       removeOpenedTab(`transform-${transformId}`);
     },
     [removeOpenedTab],
@@ -395,7 +395,7 @@ export const WorkspaceProvider = ({
   );
 
   const removeEditedTransform = useCallback(
-    (transformId: number) => {
+    (transformId: string | number) => {
       updateWorkspaceState((state) => {
         const newEditedTransforms = new Map(state.editedTransforms);
         newEditedTransforms.delete(transformId);
