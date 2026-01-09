@@ -64,7 +64,7 @@ function FilterOptionsPopover({
 
   const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
     setGroupTypes(groupTypes);
-    onParamsChange({ ...params, groupTypes, selectedEntry: undefined });
+    onParamsChange({ ...params, groupTypes });
   };
 
   return (

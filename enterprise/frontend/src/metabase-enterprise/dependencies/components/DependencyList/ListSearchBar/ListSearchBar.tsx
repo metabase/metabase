@@ -35,7 +35,7 @@ export const ListSearchBar = memo(function ListSearchBar({
   const handleSearchDebounce = useDebouncedCallback(
     (newSearchValue: string) => {
       const newQuery = getSearchQuery(newSearchValue);
-      onParamsChange({ ...params, query: newQuery, selectedEntry: undefined });
+      onParamsChange({ ...params, query: newQuery });
     },
     SEARCH_DEBOUNCE_DURATION,
   );
