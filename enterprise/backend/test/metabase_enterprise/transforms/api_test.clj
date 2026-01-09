@@ -180,7 +180,7 @@
 
 (deftest update-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+    (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
       (testing "Updating a query transform requires :transforms feature"
         (mt/with-premium-features #{:transforms}
           (mt/dataset transforms-dataset/transforms-test
