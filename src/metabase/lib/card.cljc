@@ -195,7 +195,7 @@
           (when (= (:type source-card) :model)
             source-card))))))
 
-(mu/defn- model-preserved-keys :- [:sequential :keyword]
+(mu/defn model-preserved-keys :- [:sequential :keyword]
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging
   metadata, the types returned should be authoritative. But things like semantic_type, display_name, and description
   can be merged on top.
