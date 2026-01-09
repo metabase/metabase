@@ -18,8 +18,6 @@ import ExplicitSize from "metabase/common/components/ExplicitSize";
 import { Databases } from "metabase/entities/databases";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
-import { useDispatch } from "metabase/lib/redux";
-import { runOrCancelQuestionOrSelectedQuery } from "metabase/query_builder/actions";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
@@ -94,7 +92,7 @@ type OwnProps = {
   question: Question;
   readOnly?: boolean;
   resizable?: boolean;
-  runQuery?: () => void;
+  runQuery: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
   setIsNativeEditorOpen?: (
     isOpen: boolean,
@@ -166,7 +164,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       question,
       readOnly,
       resizable = true,
-      runQuery: runQueryFromProps,
+      runQuery,
       setDatasetQuery,
       setIsNativeEditorOpen,
       setNativeEditorSelectedRange,
@@ -184,7 +182,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       toggleSnippetSidebar,
       topBarInnerContent,
     } = props;
-    const dispatch = useDispatch();
 
     const editorRef = useRef<CodeMirrorEditorRef>(null);
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
@@ -201,14 +198,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       availableHeight != null
         ? availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
         : Infinity;
-
-    const runQuery = useCallback(() => {
-      if (runQueryFromProps) {
-        runQueryFromProps();
-        return;
-      }
-      dispatch(runOrCancelQuestionOrSelectedQuery());
-    }, [dispatch, runQueryFromProps]);
 
     const handleChange = useCallback(
       (queryText: string) => {
