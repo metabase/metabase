@@ -36,7 +36,8 @@ To render a dashboard:
 - `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards exclude links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
 - `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
-- `locale` - see [translations](./translations.md) (only available for guest embeds).
+
+For guest embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
 
 Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 
