@@ -32,7 +32,3 @@
 .show .TableInteractiveDetailButton {
   opacity: 1;
 }
-
-.hideEmpty:not(:has(:not(:empty))) {
-  display: none;
-}

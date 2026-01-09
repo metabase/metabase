@@ -1,16 +1,17 @@
-import type { PropsWithChildren } from "react";
+import type { HTMLAttributes, PropsWithChildren } from "react";
 
 import { Group } from "metabase/ui";
 
-type Props = {
+type Props = HTMLAttributes<HTMLDivElement> & {
   className?: string;
   "data-testid"?: string;
 };
 
 export const ResultToolbar = ({
   children,
-  "data-testid": dataTestId,
   className,
+  "data-testid": dataTestId,
+  ...divProps
 }: PropsWithChildren<Props>) => (
   <Group
     className={className}
@@ -20,6 +21,7 @@ export const ResultToolbar = ({
       backgroundColor: "var(--mb-color-bg-sdk-question-toolbar)",
     }}
     data-testid={dataTestId}
+    {...divProps}
   >
     {children}
   </Group>

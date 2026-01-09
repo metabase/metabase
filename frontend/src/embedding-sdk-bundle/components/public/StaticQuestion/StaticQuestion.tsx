@@ -1,5 +1,4 @@
-import cx from "classnames";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useRef } from "react";
 
 import { FlexibleSizeComponent } from "embedding-sdk-bundle/components/private/FlexibleSizeComponent";
 import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
@@ -29,6 +28,7 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
+import { useHideEmptyElement } from "embedding-sdk-bundle/hooks/private/use-hide-empty-element";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
@@ -125,8 +125,8 @@ const StaticQuestionInner = (
     );
   };
 
-  const hasResultToolbar = withChartTypeSelector || withDownloads || withAlerts;
-  const hasTopBar = Boolean(title || hasResultToolbar || isGuestEmbed);
+  const hideEmptyParentRef = useRef<HTMLDivElement>(null);
+  useHideEmptyElement("[data-hide-empty]", hideEmptyParentRef);
 
   return (
     <SdkQuestion
@@ -151,25 +151,26 @@ const StaticQuestionInner = (
             w="100%"
             h="100%"
             gap="xs"
+            ref={hideEmptyParentRef}
           >
-            {hasTopBar && (
-              <Stack className={InteractiveQuestionS.TopBar} gap="sm" p="md">
-                {title && <DefaultViewTitle title={title} />}
+            <Stack
+              className={InteractiveQuestionS.TopBar}
+              gap="sm"
+              p="md"
+              data-hide-empty
+            >
+              {title && <DefaultViewTitle title={title} />}
+              <ResultToolbar data-hide-empty>
+                {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
+                {/* This container is always shown on the right */}
+                <Group className={CS.mlAuto} data-hide-empty>
+                  <SdkQuestion.DownloadWidgetDropdown />
+                  <QuestionAlertsButton />
+                </Group>
+              </ResultToolbar>
 
-                {hasResultToolbar && (
-                  <ResultToolbar className={CS.hideEmpty}>
-                    {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
-                    {/* This container is always shown on the right */}
-                    <Group className={cx(CS.mlAuto, CS.hideEmpty)}>
-                      <SdkQuestion.DownloadWidgetDropdown />
-                      <QuestionAlertsButton />
-                    </Group>
-                  </ResultToolbar>
-                )}
-
-                {isGuestEmbed && <SdkQuestion.SqlParametersList />}
-              </Stack>
-            )}
+              {isGuestEmbed && <SdkQuestion.SqlParametersList />}
+            </Stack>
 
             <Box className={InteractiveQuestionS.Main} w="100%" h="100%">
               <Box className={InteractiveQuestionS.Content}>
