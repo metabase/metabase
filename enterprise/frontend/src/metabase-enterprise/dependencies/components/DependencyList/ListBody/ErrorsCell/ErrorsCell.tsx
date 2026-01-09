@@ -1,3 +1,4 @@
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getDependencyErrorInfo } from "../../../../utils";
@@ -14,10 +15,14 @@ export function ErrorsCell({ node }: ErrorsCellProps) {
     return null;
   }
 
+  const fullText = errorsInfo.detail
+    ? `${errorsInfo.label} ${errorsInfo.detail}`
+    : errorsInfo.label;
+
   return (
-    <div>
+    <Ellipsified tooltip={fullText}>
       <span>{errorsInfo.label}</span>{" "}
       {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
-    </div>
+    </Ellipsified>
   );
 }
