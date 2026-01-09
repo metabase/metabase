@@ -941,7 +941,7 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByTestId("run-button").click();
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("SQL transform", [
+        H.tabsShouldBe("Preview (SQL transform)", [
           "Setup",
           "Agent Chat",
           "SQL transform",
