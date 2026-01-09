@@ -27,7 +27,7 @@ export function EditorTabs({
         {
           "--active-tab-color": "var(--mb-color-brand-dark)",
           "--inactive-tab-color":
-            "color-mix(in srgb, var(--mb-color-brand-dark), transparent 30%)",
+            "color-mix(in srgb, var(--mb-color-brand-dark) 30%, transparent )",
         } as CSSProperties
       }
     >
