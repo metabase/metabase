@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Resizable, type ResizableProps } from "react-resizable";
+import { Resizable } from "react-resizable";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -92,7 +92,6 @@ type OwnProps = {
   hasRunButton?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<Omit<ResizableProps, "axis">>;
 
   editorContext?: "question";
 
@@ -177,7 +176,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       question,
       readOnly,
       resizable = true,
-      resizableBoxProps = {},
       setDatasetQuery,
       setIsNativeEditorOpen,
       setNativeEditorSelectedRange,
@@ -383,13 +381,10 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
             axis="y"
             handle={dragHandle}
             resizeHandles={["s"]}
-            {...resizableBoxProps}
-            onResize={(event, data) => {
-              resizableBoxProps.onResizeStop?.(event, data);
+            onResize={(_event, data) => {
               resizeEditor(data.size.height);
             }}
-            onResizeStop={(event, data) => {
-              resizableBoxProps.onResizeStop?.(event, data);
+            onResizeStop={(_event, data) => {
               handleResize?.();
               resizeEditor(data.size.height);
             }}

@@ -379,14 +379,6 @@ export const NativeQueryModal = ({
                     setModifiedQuestion(newQuestion);
                   }}
                   resizable
-                  resizableBoxProps={{
-                    style: {
-                      border: "none",
-                      width: "100%",
-                      minWidth: 0,
-                      overflow: "hidden",
-                    },
-                  }}
                 />
               )}
             </Box>
