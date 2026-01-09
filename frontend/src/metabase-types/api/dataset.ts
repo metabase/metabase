@@ -188,7 +188,7 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   data: Dataset["data"] & {
     /**
      * The original, untranslated rows for this series (if any).
-     * Undefined if no translation occured.
+     * Undefined if no translation occurred.
      */
     untranslatedRows?: RowValues[];
   };
