@@ -26,7 +26,10 @@ export function ResizableArea(props: {
     className,
   } = props;
 
-  const maxHeight = maxHeightFromProps <= 0 ? Infinity : maxHeightFromProps;
+  const maxHeight =
+    maxHeightFromProps != null && maxHeightFromProps <= 0
+      ? Infinity
+      : maxHeightFromProps;
   const [height, setHeight] = useState(initialHeight);
 
   const resize = useCallback(
@@ -55,6 +58,11 @@ export function ResizableArea(props: {
       resize(Math.max(minHeight, maxHeight));
     }
   }, [height, minHeight, maxHeight, resize]);
+
+  // reset height to initialHeight if it started of as Infinity
+  if (height === Infinity && initialHeight !== Infinity) {
+    setHeight(initialHeight);
+  }
 
   const dragHandle = resizable ? (
     <div className={S.dragHandleContainer} data-testid="drag-handle">
