@@ -974,3 +974,43 @@ describe("issue 51717", () => {
     cy.get("@infoSidebar").should("contain", "You created this");
   });
 });
+
+describe("issue 59075", () => {
+  const WINDOW_HEIGHT = 1000;
+  const BUTTON_INDEX = 0;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewNativeQuestion();
+    cy.viewport(1024, WINDOW_HEIGHT);
+  });
+
+  it("should not be possible to resize the native query editor too far (metabase#59075)", () => {
+    cy.findByTestId("drag-handle").then((handle) => {
+      const coordsDrag = handle[0].getBoundingClientRect();
+
+      cy.wrap(handle)
+        .trigger("mousedown", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: coordsDrag.y,
+          force: true,
+        })
+        // Drag to the bottom of the screen
+        .trigger("mousemove", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: WINDOW_HEIGHT + 10,
+          force: true,
+        })
+        .trigger("mouseup");
+    });
+
+    H.NativeEditor.get().then((editor) => {
+      const { bottom } = editor.get()[0].getBoundingClientRect();
+      cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
+    });
+  });
+});
