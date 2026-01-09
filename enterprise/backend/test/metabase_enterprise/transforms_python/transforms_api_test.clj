@@ -23,9 +23,10 @@
       (letfn [(create-transform! []
                 (let [schema            (get-test-schema)
                       transform-payload {:name   "My beautiful python runner"
-                                         :source {:type          "python"
-                                                  :body          "print('hello world')"
-                                                  :source-tables {}}
+                                         :source {:type            "python"
+                                                  :body            "print('hello world')"
+                                                  :source-tables   {}
+                                                  :source-database (mt/id)}
                                          :target {:type     "table"
                                                   :schema   schema
                                                   :name     "gadget_products"
@@ -39,9 +40,10 @@
               (is (= "error-premium-feature-not-available"
                      (:status (mt/user-http-request :crowberto :post 402 "ee/transform"
                                                     {:name   "My beautiful python runner"
-                                                     :source {:type          "python"
-                                                              :body          "print('hello world')"
-                                                              :source-tables {}}
+                                                     :source {:type            "python"
+                                                              :body            "print('hello world')"
+                                                              :source-tables   {}
+                                                              :source-database (mt/id)}
                                                      :target {:type     "table"
                                                               :schema   (get-test-schema)
                                                               :name     "gadget_products"
@@ -53,9 +55,10 @@
               (is (= "Premium features required for this transform type are not enabled."
                      (mt/user-http-request :crowberto :post 402 "ee/transform"
                                            {:name   "My beautiful python runner"
-                                            :source {:type          "python"
-                                                     :body          "print('hello world')"
-                                                     :source-tables {}}
+                                            :source {:type            "python"
+                                                     :body            "print('hello world')"
+                                                     :source-tables   {}
+                                                     :source-database (mt/id)}
                                             :target {:type     "table"
                                                      :schema   (get-test-schema)
                                                      :name     "gadget_products"
@@ -68,9 +71,10 @@
                 (is (= "print('hello chris')"
                        (-> (mt/user-http-request :crowberto :put 200 (format "ee/transform/%s" (:id transform))
                                                  {:name   "My beautiful python runner"
-                                                  :source {:type          "python"
-                                                           :body          "print('hello chris')"
-                                                           :source-tables {}}
+                                                  :source {:type            "python"
+                                                           :body            "print('hello chris')"
+                                                           :source-tables   {}
+                                                           :source-database (mt/id)}
                                                   :target {:type     "table"
                                                            :schema   (get-test-schema)
                                                            :name     table-name
@@ -83,9 +87,10 @@
       (testing "Updating a python transform requires both :transforms and :transforms-python features"
         (mt/with-temp [:model/Transform {id :id
                                          :as transform} {:name   "Original Python Transform"
-                                                         :source {:type          "python"
-                                                                  :body          "print('original')"
-                                                                  :source-tables {}}
+                                                         :source {:type            "python"
+                                                                  :body            "print('original')"
+                                                                  :source-tables   {}
+                                                                  :source-database (mt/id)}
                                                          :target {:type     "table"
                                                                   :schema   "scheam"
                                                                   :name     "table"
@@ -106,9 +111,10 @@
             (with-transform-cleanup! [table-name "test_run_python"]
               (let [schema (get-test-schema)
                     transform-payload {:name   "Test Run Python Transform"
-                                       :source {:type          "python"
-                                                :body          "def transform():\n    pass"
-                                                :source-tables {}}
+                                       :source {:type            "python"
+                                                :body            "def transform():\n    pass"
+                                                :source-tables   {}
+                                                :source-database (mt/id)}
                                        :target {:type     "table"
                                                 :schema   schema
                                                 :name     table-name
@@ -206,6 +212,7 @@
                                          {:name   "Python logging test"
                                           :source {:type            "python"
                                                    :body            (program->source program)
+                                                   :source-database (mt/id)
                                                    :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}}
                                           :target (assoc target :database (mt/id))})))
 
@@ -507,12 +514,13 @@
                                                                      :name   "schema_change_test"}]
 
               (let [initial-transform {:name   "Schema Change Integration Test"
-                                       :source {:type          "python"
-                                                :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
-                                                :body          (str "import pandas as pd\n"
-                                                                    "\n"
-                                                                    "def transform():\n"
-                                                                    "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                       :source {:type            "python"
+                                                :source-database (mt/id)
+                                                :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                :body            (str "import pandas as pd\n"
+                                                                      "\n"
+                                                                      "def transform():\n"
+                                                                      "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                        :target (assoc target :database (mt/id))}
                     ;; Create initial transform via API
                     {transform-id :id} (mt/user-http-request :crowberto :post 200 "ee/transform" initial-transform)]
@@ -525,12 +533,13 @@
 
                 ;; Update transform with different schema via API endpoint
                 (let [updated-transform (assoc initial-transform
-                                               :source {:type          "python"
-                                                        :source-tables {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
-                                                        :body          (str "import pandas as pd\n"
-                                                                            "\n"
-                                                                            "def transform():\n"
-                                                                            "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'friend': ['Bob', 'Alice']})")})
+                                               :source {:type            "python"
+                                                        :source-database (mt/id)
+                                                        :source-tables   {:test (t2/select-one-pk :model/Table :db_id (mt/id))}
+                                                        :body            (str "import pandas as pd\n"
+                                                                              "\n"
+                                                                              "def transform():\n"
+                                                                              "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'friend': ['Bob', 'Alice']})")})
                       update-response (mt/user-http-request :crowberto :put 200 (format "ee/transform/%d" transform-id)
                                                             updated-transform)]
                   (is (some? update-response) "Transform update should succeed"))
@@ -558,9 +567,10 @@
                                           :schema      (get-test-schema)
                                           :table       "transforms_products"}}
                   transform-payload {:name   "Transform with table ref"
-                                     :source {:type          "python"
-                                              :body          "def transform(input):\n    return input"
-                                              :source-tables source-tables}
+                                     :source {:type            "python"
+                                              :body            "def transform(input):\n    return input"
+                                              :source-database (mt/id)
+                                              :source-tables   source-tables}
                                      :target (assoc target :database (mt/id))}
                   response (mt/user-http-request :crowberto :post 200 "ee/transform" transform-payload)]
               (testing "Transform is created successfully"

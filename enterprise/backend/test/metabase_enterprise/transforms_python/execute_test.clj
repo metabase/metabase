@@ -23,12 +23,13 @@
                                                                      :schema schema
                                                                      :name   "swap_tbl"}]
               (let [initial-transform {:name   "Python Transform Initial"
-                                       :source {:type  "python"
-                                                :source-tables {}
-                                                :body  (str "import pandas as pd\n"
-                                                            "\n"
-                                                            "def transform():\n"
-                                                            "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
+                                       :source {:type            "python"
+                                                :source-tables   {}
+                                                :source-database (mt/id)
+                                                :body            (str "import pandas as pd\n"
+                                                                      "\n"
+                                                                      "def transform():\n"
+                                                                      "    return pd.DataFrame({'name': ['Alice', 'Bob'], 'age': [25, 30]})")}
                                        :target (assoc target :database (mt/id))}]
                 (mt/with-temp [:model/Transform transform initial-transform]
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
@@ -38,12 +39,13 @@
                     (is (= [["Alice" 25] ["Bob" 30]] initial-rows) "Initial data should be Alice and Bob")
 
                     (t2/update! :model/Transform (:id transform)
-                                {:source {:type "python"
-                                          :source-tables {}
-                                          :body (str "import pandas as pd\n"
-                                                     "\n"
-                                                     "def transform():\n"
-                                                     "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
+                                {:source {:type            "python"
+                                          :source-tables   {}
+                                          :source-database (mt/id)
+                                          :body            (str "import pandas as pd\n"
+                                                                "\n"
+                                                                "def transform():\n"
+                                                                "    return pd.DataFrame({'name': ['Charlie', 'Diana', 'Eve'], 'age': [35, 40, 45]})")}}))
 
                   (let [swap-latch (CountDownLatch. 1)
                         original-rename-tables-atomic! transforms.util/rename-tables!]
@@ -73,12 +75,13 @@
                                                                      :schema schema
                                                                      :name   "cleanup_"}]
               (let [transform-def {:name   "Python Transform Cleanup"
-                                   :source {:type  "python"
-                                            :source-tables {}
-                                            :body  (str "import pandas as pd\n"
-                                                        "\n"
-                                                        "def transform():\n"
-                                                        "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
+                                   :source {:type            "python"
+                                            :source-tables   {}
+                                            :source-database (mt/id)
+                                            :body            (str "import pandas as pd\n"
+                                                                  "\n"
+                                                                  "def transform():\n"
+                                                                  "    return pd.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})")}
                                    :target (assoc target :database (mt/id))}]
                 (mt/with-temp [:model/Transform transform transform-def]
                   (transforms-python.execute/execute-python-transform! transform {:run-method :manual})
@@ -111,9 +114,10 @@
                                              "    time.sleep(10)  # Sleep longer than timeout\n"
                                              "    return pd.DataFrame({'result': ['should_not_reach_here']})")
                       transform-def {:name   "Python Transform Timeout Test"
-                                     :source {:type          "python"
-                                              :source-tables {}
-                                              :body          long-running-code}
+                                     :source {:type            "python"
+                                              :source-tables   {}
+                                              :source-database (mt/id)
+                                              :body            long-running-code}
                                      :target (assoc target :database (mt/id))}]
                   (mt/with-temp [:model/Transform transform transform-def]
                     (let [{:keys [run_id]} (try
@@ -138,11 +142,12 @@
                                               :schema schema
                                               :name   "unresolved_test"}]
               (mt/with-temp [:model/Transform transform {:name   "Transform with unresolved ref"
-                                                         :source {:type          "python"
-                                                                  :body          "def transform(input): return input"
-                                                                  :source-tables {"input" {:database_id (mt/id)
-                                                                                           :schema      schema
-                                                                                           :table       "nonexistent_table"}}}
+                                                         :source {:type            "python"
+                                                                  :body            "def transform(input): return input"
+                                                                  :source-database (mt/id)
+                                                                  :source-tables   {"input" {:database_id (mt/id)
+                                                                                             :schema      schema
+                                                                                             :table       "nonexistent_table"}}}
                                                          :target (assoc target :database (mt/id))}]
                 (testing "Execution throws with informative error message"
                   (is (thrown-with-msg?
@@ -159,11 +164,12 @@
                                             :schema nil
                                             :name   "unresolved_no_schema_test"}]
             (mt/with-temp [:model/Transform transform {:name   "Transform with unresolved ref no schema"
-                                                       :source {:type          "python"
-                                                                :body          "def transform(input): return input"
-                                                                :source-tables {"input" {:database_id (mt/id)
-                                                                                         :schema      nil
-                                                                                         :table       "missing_table"}}}
+                                                       :source {:type            "python"
+                                                                :body            "def transform(input): return input"
+                                                                :source-database (mt/id)
+                                                                :source-tables   {"input" {:database_id (mt/id)
+                                                                                           :schema      nil
+                                                                                           :table       "missing_table"}}}
                                                        :target (assoc target :database (mt/id))}]
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
