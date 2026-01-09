@@ -61,10 +61,13 @@ export const AddTransformMenu = ({
           <Menu.Item
             leftSection={<Icon name="sql" />}
             onClick={() => {
-              const mockTransform = createMockTransform({
-                source: getSource("sql"),
+              const mockTransform = {
+                ...createMockTransform({
+                  source: getSource("sql"),
+                }),
                 workspace_id: workspaceId,
-              });
+              };
+
               addUnsavedTransform(mockTransform);
             }}
           >
@@ -73,10 +76,13 @@ export const AddTransformMenu = ({
           <Menu.Item
             leftSection={<Icon name="code_block" />}
             onClick={() => {
-              const mockTransform = createMockTransform({
-                source: getSource("python"),
+              const mockTransform = {
+                ...createMockTransform({
+                  source: getSource("python"),
+                }),
                 workspace_id: workspaceId,
-              });
+              };
+
               addUnsavedTransform(mockTransform);
             }}
           >
