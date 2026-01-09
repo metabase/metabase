@@ -7,7 +7,6 @@ import {
   Divider,
   Icon,
   Popover,
-  Stack,
   Text,
   rem,
 } from "metabase/ui";
@@ -32,30 +31,28 @@ export function TemporalUnitSettings({
   const isAll = selectedUnits.length === availableUnits.length;
   const isNone = selectedUnits.length === 0;
   return (
-    <Stack gap="xs">
-      <Popover width="target">
-        <Popover.Target>
-          <Button
-            fw="normal"
-            rightSection={<Icon name="chevrondown" />}
-            fullWidth
-            px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
-            justify="space-between"
-          >
-            {getSelectedText(selectedUnits, isAll, isNone)}
-          </Button>
-        </Popover.Target>
-        <Popover.Dropdown>
-          <TemporalUnitDropdown
-            selectedUnits={selectedUnits}
-            availableUnits={availableUnits}
-            isAll={isAll}
-            isNone={isNone}
-            onChange={onChangeTemporalUnits}
-          />
-        </Popover.Dropdown>
-      </Popover>
-    </Stack>
+    <Popover width="target">
+      <Popover.Target>
+        <Button
+          fw="normal"
+          rightSection={<Icon name="chevrondown" />}
+          fullWidth
+          px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
+          justify="space-between"
+        >
+          {getSelectedText(selectedUnits, isAll, isNone)}
+        </Button>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <TemporalUnitDropdown
+          selectedUnits={selectedUnits}
+          availableUnits={availableUnits}
+          isAll={isAll}
+          isNone={isNone}
+          onChange={onChangeTemporalUnits}
+        />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
