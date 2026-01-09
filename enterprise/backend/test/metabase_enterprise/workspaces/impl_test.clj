@@ -88,6 +88,32 @@
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))
             (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id ws))))))))))
 
+(deftest transforms-to-execute-filters-by-staleness
+  (testing "stale-only=true filters to only stale transforms"
+    (let [t1-ref (str (random-uuid))
+          t2-ref (str (random-uuid))
+          ;; Mock the graph to include execution_stale info
+          mock-graph {:entities [{:node-type :workspace-transform :id t1-ref :execution_stale true :parents []}
+                                 {:node-type :workspace-transform :id t2-ref :execution_stale false :parents []}]}]
+      (mt/with-dynamic-fn-redefs [ws.impl/get-or-calculate-graph (constantly mock-graph)]
+        ;; When stale-only is true, should filter to only stale entities
+        (let [result (#'ws.impl/transforms-to-execute {:id (mt/id) :analysis_stale false} :stale-only? true)]
+          ;; Result should only include t1-ref (the stale one)
+          (is (= 1 (count result))))))))
+
+(deftest transforms-to-execute-includes-execution-stale
+  (testing "stale-only=true includes execution_stale transforms"
+    (let [t1-ref (str (random-uuid))
+          t2-ref (str (random-uuid))
+          ;; Mock the graph with execution_stale set
+          mock-graph {:entities [{:node-type :workspace-transform :id t1-ref :execution_stale false :parents []}
+                                 {:node-type :workspace-transform :id t2-ref :execution_stale true :parents [t1-ref]}]}]
+      (mt/with-dynamic-fn-redefs [ws.impl/get-or-calculate-graph (constantly mock-graph)]
+        ;; When stale-only is true, should include both stale and execution_stale
+        (let [result (#'ws.impl/transforms-to-execute {:id (mt/id) :analysis_stale false} :stale-only? true)]
+          ;; Result should include both transforms
+          (is (= 2 (count result))))))))
+
 ;;;; Helpers for mark-execution-stale tests
 
 (defn- workspace-transform
@@ -163,6 +189,24 @@
       (is (= {true  #{t2}
               false #{t1}} (stale->id (:entities result)))))))
 
+(deftest mark-execution-stale-preserves-other-fields
+  (testing "Marked entities retain their original fields"
+    (let [t1 (workspace-transform)
+          t2 (workspace-transform)
+          t1-with-name (assoc t1 :name "Transform 1")
+          t2-with-name (assoc t2 :name "Transform 2")
+          graph {:entities [t1-with-name t2-with-name]
+                 :dependencies {t2-with-name [t1-with-name]}}
+          stale-entities #{t1}
+          result (#'ws.impl/mark-execution-stale graph stale-entities)
+          entity-map (reduce (fn [m e] (assoc m (select-keys e [:node-type :id]) e)) {} (:entities result))]
+      (let [t1-result (entity-map t1)
+            t2-result (entity-map t2)]
+        (is (= :workspace-transform (:node-type t2-result)))
+        (is (= (:id t2) (:id t2-result)))
+        (is (= "Transform 2" (:name t2-result)))
+        (is (= {true #{t1 t2}} (stale->id (:entities result))))))))
+
 (deftest mark-execution-stale-depends-on-stale-global
   (testing "workspace-transforms are marked stale if they depend on stale global-transforms"
     (let [g (global-transform)
@@ -211,7 +255,7 @@
                  :dependencies {a [r1] b [r2] c [r1] d [r2] m [a b c d]}}
           stale-entities #{r1 r2}
           result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{r1 r2 a b c d m}} (stale->id (:entities result))))))
+      (is (= {true #{r1 r2 a b c d m}} (stale->id (:entities result)))))))
 
 (deftest mark-execution-stale-only-global-transforms
   (testing "graph with only global (external) transforms marks none as stale"
@@ -235,4 +279,4 @@
           ;; Mark t2 as stale (not the root), should mark t3 and t4
           stale-entities #{t2}
           result (#'ws.impl/mark-execution-stale graph stale-entities)]
-      (is (= {true #{t2 t3 t4} false #{t1}} (stale->id (:entities result))))))
+      (is (= {true #{t2 t3 t4} false #{t1}} (stale->id (:entities result)))))))
