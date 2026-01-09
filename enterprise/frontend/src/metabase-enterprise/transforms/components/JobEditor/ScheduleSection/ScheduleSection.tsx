@@ -29,6 +29,7 @@ import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
   job: TransformJobInfo;
+  readOnly?: boolean;
   onScheduleChange: (
     schedule: string,
     uiDisplayType: ScheduleDisplayType,
@@ -37,6 +38,7 @@ type ScheduleSectionProps = {
 
 export function ScheduleSection({
   job,
+  readOnly,
   onScheduleChange,
 }: ScheduleSectionProps) {
   return (
@@ -45,7 +47,9 @@ export function ScheduleSection({
       description={t`Configure when this job should run.`}
     >
       <Box px="xl" py="lg">
-        <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
+        <Box display="contents" component="fieldset" disabled={readOnly}>
+          <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
+        </Box>
       </Box>
       <Divider />
       <Group px="xl" py="md" justify="space-between">

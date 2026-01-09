@@ -1,4 +1,4 @@
-import { type MouseEvent, useState } from "react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -12,10 +12,15 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useListTransformsQuery } from "metabase-enterprise/api/transform";
 import {
   useCreateTransformTagMutation,
   useListTransformTagsQuery,
 } from "metabase-enterprise/api/transform-tag";
+import {
+  canEditTransform,
+  useTransformPermissions,
+} from "metabase-enterprise/transforms/hooks/use-transform-permissions";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
 
 import { DeleteTagModal } from "./DeleteTagModal";
@@ -37,6 +42,25 @@ export function TagMultiSelect({
   onChange,
   disabled,
 }: TagMultiSelectProps) {
+  const { transformsDatabases } = useTransformPermissions();
+  const { data: transforms = [] } = useListTransformsQuery({});
+
+  // TODO: Do this on the BE? Via new TransformTag flag?
+  const tagReadOnlyMap = useMemo(() => {
+    const map = {} as Record<TransformTagId, boolean>;
+    if (!transforms || !transformsDatabases) {
+      return map;
+    }
+    transforms.forEach((t) => {
+      t.tag_ids?.forEach((tagId) => {
+        if (!map[tagId] && !canEditTransform(t, transformsDatabases)) {
+          map[tagId] = true;
+        }
+      });
+    });
+    return map;
+  }, [transforms, transformsDatabases]);
+
   const { data: tags = [], isLoading } = useListTransformTagsQuery();
   const [createTag, { isLoading: isCreating }] =
     useCreateTransformTagMutation();
@@ -98,8 +122,9 @@ export function TagMultiSelect({
   return (
     <>
       <MultiSelect
+        classNames={{ option: S.option }}
         value={tagIds.map(getValue)}
-        data={getOptions(tags, trimmedSearchValue)}
+        data={getOptions(tags, tagReadOnlyMap, trimmedSearchValue)}
         disabled={disabled}
         placeholder={t`Add tags`}
         searchValue={searchValue}
@@ -125,6 +150,7 @@ export function TagMultiSelect({
               selected={item.checked}
               onUpdateClick={handleUpdateClick}
               onDeleteClick={handleDeleteClick}
+              readOnly={tagReadOnlyMap[+item.option.value]}
             />
           )
         }
@@ -177,6 +203,7 @@ function NewTagSelectItem({
 
 type ExistingTagSelectItemProps = SelectItemProps & {
   tag: TransformTag;
+  readOnly?: boolean;
   onUpdateClick: (tag: TransformTag) => void;
   onDeleteClick: (tag: TransformTag) => void;
 };
@@ -184,6 +211,7 @@ type ExistingTagSelectItemProps = SelectItemProps & {
 function ExistingTagSelectItem({
   tag,
   selected,
+  readOnly,
   onUpdateClick,
   onDeleteClick,
 }: ExistingTagSelectItemProps) {
@@ -203,6 +231,11 @@ function ExistingTagSelectItem({
     <SelectItem className={S.selectItem} selected={selected} py="xs">
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
+        {readOnly && (
+          <Tooltip label={t`You don't have permission to run this tag`}>
+            <Icon name="lock_filled" size={14} ml="xs" />
+          </Tooltip>
+        )}
       </Text>
       <Tooltip label={t`Rename tag`}>
         <ActionIcon
@@ -238,11 +271,16 @@ function getTagId(value: string): TransformTagId {
   return parseInt(value, 10);
 }
 
-function getOptions(tags: TransformTag[], trimmedSearchValue: string) {
+function getOptions(
+  tags: TransformTag[],
+  tagReadOnlyMap: Record<TransformTagId, boolean>,
+  trimmedSearchValue: string,
+) {
   const options = tags.map((tag) => ({
     tag,
     value: getValue(tag.id),
     label: tag.name,
+    disabled: tagReadOnlyMap[tag.id],
   }));
 
   if (
