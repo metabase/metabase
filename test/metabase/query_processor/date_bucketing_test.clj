@@ -1267,7 +1267,7 @@
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
-(defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
+(defn- count-of-grouping! [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
   (mt/dataset dataset
     ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
     ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
@@ -1279,7 +1279,7 @@
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
         (t2/delete! :model/Database :id (mt/id))
         (tx/destroy-db! driver/*driver* (tx/get-dataset-definition dataset))
-        (apply count-of-grouping dataset field-grouping relative-datetime-args))
+        (apply count-of-grouping! dataset field-grouping relative-datetime-args))
       ;; Use UTC timezone for queries to match the timezone used during data insertion (see
       ;; metabase.test.data.sql-jdbc.load-data/do-insert! which sets timezone to UTC before inserting).
       ;; Without this, drivers like Redshift that use GETDATE() for relative datetime comparisons
@@ -1293,39 +1293,39 @@
           (or (some-> results mt/first-row first int)
               results))))))
 
-(deftest ^:parallel count-of-grouping-test
+(deftest count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
-                 (apply count-of-grouping checkins:4-per-minute :minute args))
+                 (apply count-of-grouping! checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args))))))))
 
-(deftest ^:parallel count-of-grouping-test-2
+(deftest count-of-grouping-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
           (is (= 4
-                 (apply count-of-grouping checkins:4-per-hour :hour args))
+                 (apply count-of-grouping! checkins:4-per-hour :hour args))
               (format "filter by hour = %s" (into [:relative-datetime] args))))))))
 
-(deftest ^:parallel count-of-grouping-test-3
+(deftest count-of-grouping-test-3
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "1 checkin per day dataset"
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
           (is (= 1
-                 (apply count-of-grouping checkins:1-per-day :day args))
+                 (apply count-of-grouping! checkins:1-per-day :day args))
               (format "filter by day = %s" (into [:relative-datetime] args))))))))
 
-(deftest ^:parallel count-of-grouping-test-4
+(deftest count-of-grouping-test-4
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
     (testing "1 checkin per day dataset"
       (testing "group by week"
         (is (= 7
-               (count-of-grouping checkins:1-per-day :week :current))
+               (count-of-grouping! checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest ^:parallel time-interval-test
