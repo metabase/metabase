@@ -71,7 +71,7 @@
                                   :region_name nil}}]
           (if should-pass?
             (is (valid? geojson geojson) (str url))
-            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson)) (str url))))))))
+            (is (thrown? clojure.lang.ExceptionInfo (valid? geojson geojson)) (str url))))))))
 
 (deftest custom-geojson-disallow-overriding-builtins-test
   (testing "We shouldn't let people override the builtin GeoJSON and put weird stuff in there; ignore changes to them"
