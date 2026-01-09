@@ -506,7 +506,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       setTab(tableTab.id);
     },
     [addOpenedTab],
-
   );
 
   const handleRunTransformAndShowPreview = useCallback(
@@ -524,19 +523,19 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           return;
         }
 
-          const { data: updatedTables } = await refetchWorkspaceTables();
-          const updatedOutput = updatedTables?.outputs.find(
-            (t) => t.isolated.transform_id === transform.ref_id,
-          );
+        const { data: updatedTables } = await refetchWorkspaceTables();
+        const updatedOutput = updatedTables?.outputs.find(
+          (t) => t.isolated.transform_id === transform.ref_id,
+        );
 
-          if (updatedOutput?.isolated.table_id) {
-            handleTableSelect({
-              tableId: updatedOutput.isolated.table_id,
-              name: updatedOutput.global.table,
-              schema: updatedOutput.global.schema,
-              transformId: transform.ref_id,
-            });
-          }
+        if (updatedOutput?.isolated.table_id) {
+          handleTableSelect({
+            tableId: updatedOutput.isolated.table_id,
+            name: updatedOutput.global.table,
+            schema: updatedOutput.global.schema,
+            transformId: transform.ref_id,
+          });
+        }
       } catch (error) {
         sendErrorToast(t`Failed to run transform`);
       } finally {
@@ -547,7 +546,13 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         });
       }
     },
-    [id, runTransform, refetchWorkspaceTables, handleTableSelect, sendErrorToast],
+    [
+      id,
+      runTransform,
+      refetchWorkspaceTables,
+      handleTableSelect,
+      sendErrorToast,
+    ],
   );
 
   const handleTabDragEnd = useCallback(
@@ -722,6 +727,12 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                           onClick={() => {
                             setActiveTab(tab);
                           }}
+                          onMouseDown={(event) => {
+                            // close tab on middle-click (mouse wheel)
+                            if (event.button === 1) {
+                              handleTabClose(event, tab, index);
+                            }
+                          }}
                         >
                           <Group gap="xs" wrap="nowrap">
                             <Icon
@@ -799,8 +810,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 style={{ overflow: "auto" }}
               >
                 {openedTabs.length === 0 ||
-                  !activeTransform ||
-                  !activeEditedTransform ? (
+                !activeTransform ||
+                !activeEditedTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>
