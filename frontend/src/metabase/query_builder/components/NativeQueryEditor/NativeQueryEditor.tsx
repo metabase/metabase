@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ResizableBox, type ResizableBoxProps } from "react-resizable";
+import { Resizable, type ResizableProps } from "react-resizable";
 import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -26,7 +26,7 @@ import {
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -72,7 +72,7 @@ type OwnProps = {
   nativeEditorSelectedText?: string;
   modalSnippet?: NativeQuerySnippet;
   placeholder?: string;
-  highlightedLineNumbers?: number[];
+  highlightedLineNumbers?: number;
 
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
@@ -92,7 +92,7 @@ type OwnProps = {
   hasRunButton?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
+  resizableBoxProps?: Partial<Omit<ResizableProps, "axis">>;
 
   editorContext?: "question";
 
@@ -117,7 +117,7 @@ type OwnProps = {
   onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
   topBarInnerContent?: ReactNode;
-  availableHeight: number;
+  availableHeight?: number;
 };
 
 interface ExplicitSizeProps {
@@ -195,26 +195,27 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       toggleSnippetSidebar,
       topBarInnerContent,
     } = props;
+    const dispatch = useDispatch();
 
     const editorRef = useRef<CodeMirrorEditorRef>(null);
-    const resizeBoxRef = useRef<HTMLDivElement & ResizableBox>(null);
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
-    const [initialHeight, setInitialHeight] = useState(
+    const [height, setHeight] = useState(
       calcInitialEditorHeight({ query, availableHeight }),
     );
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
-    const [isCollapsing, setIsCollapsing] = useState(false);
 
     const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
 
-    const focus = useCallback(() => {
-      if (readOnly) {
-        return;
-      }
-      editorRef.current?.focus();
-    }, [readOnly]);
+    const maxHeight =
+      availableHeight != null
+        ? availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
+        : Infinity;
+
+    const runQuery = useCallback(() => {
+      dispatch(runOrCancelQuestionOrSelectedQuery());
+    }, [dispatch]);
 
     const handleChange = useCallback(
       (queryText: string) => {
@@ -230,35 +231,71 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       setSelectedTextPopoverOpen(true);
     }, []);
 
+    const focusEditor = useCallback(() => {
+      if (readOnly) {
+        return;
+      }
+      editorRef.current?.focus();
+    }, [readOnly]);
+
+    const closeEditor = useCallback(() => {
+      setIsNativeEditorOpen?.(false);
+      setHeight(calcInitialEditorHeight({ query, availableHeight }));
+    }, [setIsNativeEditorOpen, query, availableHeight]);
+
+    const resizeEditor = useCallback(
+      (height: number) => {
+        // If the height is lower than the threshold for auto-closing,
+        // close the editor
+        if (height <= THRESHOLD_FOR_AUTO_CLOSE) {
+          closeEditor();
+          return;
+        }
+        setHeight(height);
+      },
+      [closeEditor],
+    );
+
     useMount(() => {
       if (typeof isInitiallyOpen !== "undefined") {
         setIsNativeEditorOpen?.(isInitiallyOpen);
-        return;
+      } else {
+        setIsNativeEditorOpen?.(!question || !question.isSaved());
       }
-
-      setIsNativeEditorOpen?.(!question || !question.isSaved());
     });
 
     useEffect(() => {
+      // if the height is higher than the max height,
+      // resize to the max height
+      if (maxHeight == null) {
+        return;
+      }
+      if (height >= maxHeight) {
+        resizeEditor(maxHeight);
+      }
+    }, [height, maxHeight, resizeEditor]);
+
+    useEffect(() => {
+      // Close selected text popover if text is deselected
       if (isSelectedTextPopoverOpen && !nativeEditorSelectedText) {
-        // close selected text popover if text is deselected
         setSelectedTextPopoverOpen(false);
       }
     }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
     useEffect(() => {
-      // recalculate height when opening native editor
+      // Recalculate height when opening native editor
       if (isNativeEditorOpen && !wasNativeEditorOpen) {
         const newHeight = calcInitialEditorHeight({ query, availableHeight });
-        setInitialHeight(newHeight);
+        setHeight(newHeight);
       }
     }, [query, availableHeight, isNativeEditorOpen, wasNativeEditorOpen]);
 
-    const dragHandle = resizable ? (
-      <div className={S.dragHandleContainer} data-testid="drag-handle">
-        <div className={S.dragHandle} />
-      </div>
-    ) : null;
+    const dragHandle =
+      resizable && isNativeEditorOpen ? (
+        <div className={S.dragHandleContainer} data-testid="drag-handle">
+          <div className={S.dragHandle} />
+        </div>
+      ) : null;
 
     const canSaveSnippets = snippetCollections.some(
       (collection) => collection.can_write,
@@ -268,11 +305,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const canFormatQuery = engine != null && canFormatForEngine(engine);
 
     const screenSize = useNotebookScreenSize();
-    const dispatch = useDispatch();
-
-    const runQuery = useCallback(() => {
-      dispatch(runOrCancelQuestionOrSelectedQuery());
-    }, [dispatch]);
 
     /**
      * do not show reference sidebar on small screens automatically
@@ -300,15 +332,8 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
 
       const formattedQuery = await formatQuery(queryText, engine);
       handleChange(formattedQuery);
-      focus();
-    }, [question, canFormatQuery, focus, handleChange]);
-
-    const handleTransitionEnd = useCallback(() => {
-      if (isCollapsing) {
-        setIsCollapsing(false);
-        setInitialHeight(MIN_EDITOR_HEIGHT_AFTER_DRAGGING);
-      }
-    }, [isCollapsing]);
+      focusEditor();
+    }, [question, canFormatQuery, focusEditor, handleChange]);
 
     return (
       <div
@@ -322,7 +347,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
             hasEditingSidebar={hasEditingSidebar}
             question={question}
             query={query}
-            focus={focus}
+            focus={focusEditor}
             canChangeDatabase={canChangeDatabase}
             sidebarFeatures={sidebarFeatures}
             isRunnable={isRunnable}
@@ -350,107 +375,105 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
             {topBarInnerContent}
           </NativeQueryEditorTopBar>
         )}
-        <div className={S.editorWrapper} onTransitionEnd={handleTransitionEnd}>
-          <ResizableBox
-            ref={resizeBoxRef}
-            height={initialHeight}
-            className={cx(
-              S.resizableBox,
-              isNativeEditorOpen && S.open,
-              isCollapsing && S.collapsing,
-            )}
+        <div className={S.editorWrapper}>
+          <Resizable
+            height={height}
             minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-            maxConstraints={[
-              Infinity,
-              availableHeight
-                ? availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
-                : Infinity,
-            ]}
+            maxConstraints={[Infinity, maxHeight]}
             axis="y"
             handle={dragHandle}
             resizeHandles={["s"]}
             {...resizableBoxProps}
-            onResizeStop={(e, data) => {
+            onResize={(event, data) => {
+              resizableBoxProps.onResizeStop?.(event, data);
+              resizeEditor(data.size.height);
+            }}
+            onResizeStop={(event, data) => {
+              resizableBoxProps.onResizeStop?.(event, data);
               handleResize?.();
-              if (typeof resizableBoxProps?.onResizeStop === "function") {
-                resizableBoxProps.onResizeStop(e, data);
-              }
-              const size = data.size;
-
-              if (size.height < THRESHOLD_FOR_AUTO_CLOSE) {
-                // Start animation to collapse
-                setIsCollapsing(true);
-                setIsNativeEditorOpen?.(false);
-              }
+              resizeEditor(data.size.height);
             }}
           >
-            <Flex w="100%" flex="1" className={S.resizableBoxContent}>
-              <CodeMirrorEditor
-                ref={editorRef}
-                query={question.query()}
-                proposedQuery={proposedQuestion?.query()}
-                readOnly={readOnly}
-                placeholder={placeholder}
-                highlightedLineNumbers={highlightedLineNumbers}
-                extensions={extensions}
-                onChange={handleChange}
-                onRunQuery={runQuery}
-                onSelectionChange={setNativeEditorSelectedRange}
-                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-                onRightClickSelection={handleRightClickSelection}
-                onFormatQuery={canFormatQuery ? handleFormatQuery : undefined}
-              />
+            <Box
+              h={height}
+              className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
+            >
+              <Flex w="100%" flex="1" className={S.resizableBoxContent}>
+                <CodeMirrorEditor
+                  ref={editorRef}
+                  query={question.query()}
+                  proposedQuery={proposedQuestion?.query()}
+                  readOnly={readOnly}
+                  placeholder={placeholder}
+                  highlightedLineNumbers={highlightedLineNumbers}
+                  extensions={extensions}
+                  onChange={handleChange}
+                  onRunQuery={runQuery}
+                  onSelectionChange={setNativeEditorSelectedRange}
+                  onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                  onRightClickSelection={handleRightClickSelection}
+                  onFormatQuery={canFormatQuery ? handleFormatQuery : undefined}
+                />
 
-              <Stack m="1rem" gap="md" mt="auto">
-                {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                  <>
-                    <Tooltip label={t`Accept proposed changes`} position="top">
-                      <Button
-                        data-testid="accept-proposed-changes-button"
-                        variant="filled"
-                        bg="success"
-                        px="0"
-                        w="2.5rem"
-                        onClick={() => {
-                          const proposedQuery =
-                            proposedQuestion.legacyNativeQuery();
-                          if (proposedQuery) {
-                            handleChange(proposedQuery.queryText());
-                            onAcceptProposed(proposedQuery.datasetQuery());
-                          }
-                        }}
+                <Stack m="1rem" gap="md" mt="auto">
+                  {proposedQuestion && onRejectProposed && onAcceptProposed && (
+                    <>
+                      <Tooltip
+                        label={t`Accept proposed changes`}
+                        position="top"
                       >
-                        <Icon name="check" />
-                      </Button>
-                    </Tooltip>
-                    <Tooltip label={t`Reject proposed changes`} position="top">
-                      <Button
-                        data-testid="reject-proposed-changes-button"
-                        w="2.5rem"
-                        px="0"
-                        variant="filled"
-                        bg="danger"
-                        onClick={onRejectProposed}
+                        <Button
+                          data-testid="accept-proposed-changes-button"
+                          variant="filled"
+                          bg="success"
+                          px="0"
+                          w="2.5rem"
+                          onClick={() => {
+                            const proposedQuery =
+                              proposedQuestion.legacyNativeQuery();
+                            if (proposedQuery) {
+                              handleChange(proposedQuery.queryText());
+                              onAcceptProposed(proposedQuery.datasetQuery());
+                            }
+                          }}
+                        >
+                          <Icon name="check" />
+                        </Button>
+                      </Tooltip>
+                      <Tooltip
+                        label={t`Reject proposed changes`}
+                        position="top"
                       >
-                        <Icon name="close" />
-                      </Button>
-                    </Tooltip>
-                  </>
-                )}
-                {hasRunButton && !readOnly && (
-                  <NativeQueryEditorRunButton
-                    cancelQuery={cancelQuery}
-                    isResultDirty={isResultDirty}
-                    isRunnable={isRunnable}
-                    isRunning={isRunning}
-                    nativeEditorSelectedText={nativeEditorSelectedText}
-                    runQuery={runQuery}
-                    questionErrors={Lib.validateTemplateTags(question.query())}
-                  />
-                )}
-              </Stack>
-            </Flex>
-          </ResizableBox>
+                        <Button
+                          data-testid="reject-proposed-changes-button"
+                          w="2.5rem"
+                          px="0"
+                          variant="filled"
+                          bg="danger"
+                          onClick={onRejectProposed}
+                        >
+                          <Icon name="close" />
+                        </Button>
+                      </Tooltip>
+                    </>
+                  )}
+                  {hasRunButton && !readOnly && (
+                    <NativeQueryEditorRunButton
+                      cancelQuery={cancelQuery}
+                      isResultDirty={isResultDirty}
+                      isRunnable={isRunnable}
+                      isRunning={isRunning}
+                      nativeEditorSelectedText={nativeEditorSelectedText}
+                      runQuery={runQuery}
+                      questionErrors={Lib.validateTemplateTags(
+                        question.query(),
+                      )}
+                    />
+                  )}
+                </Stack>
+              </Flex>
+            </Box>
+          </Resizable>
         </div>
 
         <RightClickPopover
