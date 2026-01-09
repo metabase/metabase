@@ -51,7 +51,7 @@ export const VirtualizedGrid = <T,>({
   const virtualRows = virtualizer.getVirtualItems();
 
   // Calculate span for current breakpoint
-  const currentSpan = useMemo(() => 12 / currentColumns, [currentColumns]);
+  const currentSpan = 12 / currentColumns;
 
   return (
     <Box ref={parentRef} h="100%" style={{ overflowY: "auto" }} {...boxProps}>
