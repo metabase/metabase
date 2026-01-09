@@ -91,7 +91,7 @@
                :model/Card (backfill-card! id target-version)
                (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                            {:dependency_analysis_version target-version})))
-           (log/debug "Backfilled " (name model-kw) id)))
+    (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
   [model-kw batch-size]
