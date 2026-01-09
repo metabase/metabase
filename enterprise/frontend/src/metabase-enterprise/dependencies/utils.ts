@@ -62,6 +62,7 @@ export function getNodeIcon(node: DependencyNode): IconName {
     node.type,
     node.type === "card" ? node.data.type : undefined,
     node.type === "card" ? node.data.display : undefined,
+    node.type === "card" ? node.data.query_type : undefined,
   );
 }
 
@@ -69,11 +70,15 @@ export function getNodeIconWithType(
   type: DependencyType,
   cardType?: CardType,
   cardDisplay?: VisualizationDisplay,
+  queryType?: "native" | "query",
 ): IconName {
   switch (type) {
     case "card":
       switch (cardType) {
         case "question":
+          if (queryType === "native") {
+            return "sql";
+          }
           return cardDisplay != null
             ? (visualizations.get(cardDisplay)?.iconName ?? "table2")
             : "table2";
@@ -89,7 +94,7 @@ export function getNodeIconWithType(
     case "transform":
       return "transform";
     case "snippet":
-      return "sql";
+      return "snippet";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -495,6 +500,20 @@ export function getDependencyGroupTypeInfo(
     case "measure":
       return { label: t`Measure`, color: "summarize" };
   }
+}
+
+export function getNodeTypeInfo(node: DependencyNode): DependencyGroupTypeInfo {
+  // For SQL questions, return a special label
+  if (
+    node.type === "card" &&
+    node.data.type === "question" &&
+    node.data.query_type === "native"
+  ) {
+    return { label: t`SQL question`, color: "text-secondary" };
+  }
+
+  // For all other cases, use the standard group type info
+  return getDependencyGroupTypeInfo(getDependencyGroupType(node));
 }
 
 export function getDependencyTypes(

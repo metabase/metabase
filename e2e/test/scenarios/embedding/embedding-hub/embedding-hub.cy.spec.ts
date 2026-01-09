@@ -326,7 +326,7 @@ describe("scenarios - embedding hub", () => {
         .scrollIntoView()
         .should("be.visible")
         .closest("a")
-        .should("have.attr", "href", "/admin/tenants");
+        .should("have.attr", "href", "/admin/people/tenants");
     });
   });
 });

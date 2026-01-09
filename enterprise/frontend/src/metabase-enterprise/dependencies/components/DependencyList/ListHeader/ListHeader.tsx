@@ -11,12 +11,12 @@ import {
 export const ListHeader = memo(function ListHeader() {
   const tabs: PaneHeaderTab[] = [
     {
-      label: t`Broken`,
+      label: t`Broken entities`,
       to: Urls.dataStudioBrokenEntities(),
       icon: "list",
     },
     {
-      label: t`Unreferenced`,
+      label: t`Unreferenced entities`,
       to: Urls.dataStudioUnreferencedEntities(),
       icon: "list",
     },
@@ -24,7 +24,14 @@ export const ListHeader = memo(function ListHeader() {
 
   return (
     <Stack gap="md">
-      <Title order={1} py="sm" fz="sm" lh="1rem" fw="normal">{t`Tasks`}</Title>
+      <Title
+        order={1}
+        py="sm"
+        fz="sm"
+        lh="1rem"
+        fw="normal"
+        c="text-secondary"
+      >{t`Dependency diagnostics`}</Title>
       <PaneHeaderTabs tabs={tabs} />
     </Stack>
   );

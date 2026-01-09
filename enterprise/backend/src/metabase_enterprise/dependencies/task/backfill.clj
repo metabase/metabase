@@ -36,7 +36,7 @@
   "The list of models to backfill.
 
   This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
-  involing tables are found via analysis of the other side of the relation."
+  involving tables are found via analysis of the other side of the relation."
   [:model/Card
    :model/Transform
    :model/NativeQuerySnippet

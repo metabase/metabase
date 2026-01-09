@@ -153,7 +153,7 @@
 
 (def ^:private entity-keys
   {:table     [:name :description :display_name :db_id :db :schema :fields]
-   :card      [:name :type :display :database_id :view_count
+   :card      [:name :type :display :database_id :view_count :query_type
                :created_at :creator :creator_id :description
                :result_metadata :last-edit-info
                :collection :collection_id :dashboard :dashboard_id :document :document_id]
@@ -293,7 +293,7 @@
 ;; and others (like :last-edit-info, :view_count) are computed/added separately.
 ;; This map only lists the base database columns to SELECT.
 (def ^:private entity-select-fields
-  {:card      [:id :name :description :type :display :database_id :collection_id :dashboard_id :document_id :result_metadata
+  {:card      [:id :name :description :type :display :database_id :query_type :collection_id :dashboard_id :document_id :result_metadata
                :created_at :creator_id
                ;; :card_schema always has to be selected
                :card_schema]
