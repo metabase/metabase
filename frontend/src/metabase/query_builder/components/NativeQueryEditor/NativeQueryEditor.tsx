@@ -1,5 +1,4 @@
 import { useElementSize } from "@mantine/hooks";
-import cx from "classnames";
 import {
   type ForwardedRef,
   type ReactNode,
@@ -186,9 +185,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const editorRef = useRef<CodeMirrorEditorRef>(null);
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
-    const [height, setHeight] = useState(
-      getInitialEditorHeight({ query, availableHeight }),
-    );
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
 
@@ -218,19 +214,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       editorRef.current?.focus();
     }, [readOnly]);
 
-    const resizeEditor = useCallback(
-      (height: number) => {
-        // If the height is lower than the threshold for auto-closing,
-        // close the editor
-        if (height <= THRESHOLD_FOR_AUTO_CLOSE) {
-          setIsNativeEditorOpen?.(false);
-          return;
-        }
-        setHeight(height);
-      },
-      [setIsNativeEditorOpen],
-    );
-
     useMount(() => {
       if (typeof isInitiallyOpen !== "undefined") {
         setIsNativeEditorOpen?.(isInitiallyOpen);
@@ -240,29 +223,11 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     });
 
     useEffect(() => {
-      // if the height is higher than the max height,
-      // resize to the max height
-      if (maxHeight == null) {
-        return;
-      }
-      if (height >= maxHeight) {
-        resizeEditor(maxHeight);
-      }
-    }, [height, maxHeight, resizeEditor]);
-
-    useEffect(() => {
       // Close selected text popover if text is deselected
       if (isSelectedTextPopoverOpen && !nativeEditorSelectedText) {
         setSelectedTextPopoverOpen(false);
       }
     }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
-
-    const dragHandle =
-      resizable && isNativeEditorOpen ? (
-        <div className={S.dragHandleContainer} data-testid="drag-handle">
-          <div className={S.dragHandle} />
-        </div>
-      ) : null;
 
     const canSaveSnippets = snippetCollections.some(
       (collection) => collection.can_write,
@@ -276,18 +241,8 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const shouldOpenDataReference = screenSize !== "small";
 
     const toggleEditor = useCallback(() => {
-      if (!isNativeEditorOpen) {
-        // Recalculate height when opening native editor
-        setHeight(getInitialEditorHeight({ query, availableHeight }));
-      }
       setIsNativeEditorOpen?.(!isNativeEditorOpen, shouldOpenDataReference);
-    }, [
-      isNativeEditorOpen,
-      setIsNativeEditorOpen,
-      shouldOpenDataReference,
-      query,
-      availableHeight,
-    ]);
+    }, [setIsNativeEditorOpen, shouldOpenDataReference, isNativeEditorOpen]);
 
     const handleFormatQuery = useCallback(async () => {
       if (!canFormatQuery) {
@@ -348,26 +303,14 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
           </NativeQueryEditorTopBar>
         )}
         <div className={S.editorWrapper}>
-          <Resizable
-            height={height}
-            minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-            maxConstraints={[Infinity, maxHeight]}
-            axis="y"
-            handle={dragHandle}
-            resizeHandles={["s"]}
-            onResize={(_event, data) => {
-              resizeEditor(data.size.height);
-            }}
-            onResizeStop={(_event, data) => {
-              handleResize?.();
-              resizeEditor(data.size.height);
-            }}
-          >
-            <Flex
-              w="100%"
-              flex="1"
-              h={height}
-              className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
+          {isNativeEditorOpen && (
+            <ResizableArea
+              resizable={resizable}
+              maxHeight={maxHeight}
+              onResize={handleResize}
+              initialHeight={getInitialEditorHeight({ query, availableHeight })}
+              collapseEditor={() => setIsNativeEditorOpen?.(false)}
+              className={S.resizableArea}
             >
               <CodeMirrorEditor
                 ref={editorRef}
@@ -433,8 +376,8 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
                   />
                 )}
               </Stack>
-            </Flex>
-          </Resizable>
+            </ResizableArea>
+          )}
         </div>
 
         <RightClickPopover
@@ -461,6 +404,85 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     );
   },
 );
+
+function ResizableArea(props: {
+  children: ReactNode;
+  resizable: boolean;
+  initialHeight: number;
+  maxHeight: number;
+  onResize?: () => void;
+  collapseEditor?: () => void;
+  className?: string;
+}) {
+  const {
+    children,
+    resizable,
+    initialHeight,
+    maxHeight,
+    onResize,
+    collapseEditor,
+    className,
+  } = props;
+
+  const [height, setHeight] = useState(initialHeight);
+
+  const resize = useCallback(
+    (height: number) => {
+      onResize?.();
+
+      // If the height is lower than the threshold for auto-closing,
+      // close the editor
+      if (height <= THRESHOLD_FOR_AUTO_CLOSE) {
+        collapseEditor?.();
+        return;
+      }
+      setHeight(height);
+    },
+    [collapseEditor, onResize],
+  );
+
+  const handleResize = useCallback(
+    (_event: unknown, data: { size: { height: number } }) => {
+      const { height } = data.size;
+      resize(height);
+    },
+    [resize],
+  );
+
+  useEffect(() => {
+    // If the height is higher than the max height,
+    // resize to the max height
+    if (maxHeight == null) {
+      return;
+    }
+    if (height >= maxHeight) {
+      resize(maxHeight);
+    }
+  }, [height, maxHeight, resize]);
+
+  const dragHandle = resizable ? (
+    <div className={S.dragHandleContainer} data-testid="drag-handle">
+      <div className={S.dragHandle} />
+    </div>
+  ) : null;
+
+  return (
+    <Resizable
+      height={height}
+      minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
+      maxConstraints={[Infinity, maxHeight]}
+      axis="y"
+      handle={dragHandle}
+      resizeHandles={["s"]}
+      onResize={handleResize}
+      onResizeStop={handleResize}
+    >
+      <Flex w="100%" flex="1" h={height} className={className}>
+        {children}
+      </Flex>
+    </Resizable>
+  );
+}
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(

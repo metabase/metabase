@@ -25,15 +25,11 @@
   width: 100%;
 }
 
-.resizableBox {
-  display: none;
+.resizableArea {
+  display: flex;
   border-top: 1px solid var(--mb-color-border);
   overflow: hidden;
-
-  &.open {
-    display: flex;
-    flex-direction: column;
-  }
+  flex-direction: column;
 }
 
 .actionButtons {
