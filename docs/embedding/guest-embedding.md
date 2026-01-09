@@ -37,7 +37,7 @@ To create a guest embed:
 
 ## Notes on the code the wizard generates
 
-You can edit the code (see [components](./components.md) and [appearance](./appearance.md). But here's an overview of the code the wizard generates, and where to put it.
+You can edit the code (see [components](./components.md) and [appearance](./appearance.md)). But here's an overview of the code the wizard generates, and where to put it.
 
 ### Client-side code
 
@@ -91,6 +91,7 @@ const token = jwt.sign(payload, METABASE_SECRET_KEY);
 Replace `YOUR_METABASE_SECRET_KEY` with your [embedding secret key](#regenerating-the-embedding-secret-key).
 
 ### Component attributes
+
 You can set different attributes to enable/disable UI. Here are some example attributes:
 
 | Attribute            | Description                                                          |
@@ -101,6 +102,10 @@ You can set different attributes to enable/disable UI. Here are some example att
 | `initial-parameters` | JSON string of parameter values. Example: `'{"category":["Gizmo"]}'` |
 
 Attributes will differ based on the type of thing you're embedding. Guest embeds have fewer options that embeds that use SSO. See more on [components and their attributes](./components.md).
+
+### Customizing appearance of guest embeds
+
+Appearance settings available for guest embeds depend on your Metabase plan. If you're running Metabase OSS/Starter, you can select light or dark theme. If you're running Metabase Pro/Enterprise, you'll have access to granular customization options, see [Appearance](./appearance.md)
 
 ## Editing parameters on an embedded question or dashboard
 
