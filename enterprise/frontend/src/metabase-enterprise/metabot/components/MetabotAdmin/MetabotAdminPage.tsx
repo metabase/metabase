@@ -21,6 +21,10 @@ import { useToast } from "metabase/common/hooks";
 import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
 import {
+  FIXED_METABOT_ENTITY_IDS,
+  FIXED_METABOT_IDS,
+} from "metabase/metabot/constants";
+import {
   Box,
   Button,
   Flex,
@@ -34,10 +38,6 @@ import {
   useListMetabotsQuery,
   useUpdateMetabotMutation,
 } from "metabase-enterprise/api";
-import {
-  FIXED_METABOT_ENTITY_IDS,
-  FIXED_METABOT_IDS,
-} from "metabase-enterprise/metabot/constants";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Collection,

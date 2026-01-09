@@ -8,15 +8,16 @@ import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
 
-import { addUndo } from "metabase/redux/undo";
-import { getIsEmbedding } from "metabase/selectors/embed";
-import { getUser } from "metabase/selectors/user";
 import {
   type JSONValue,
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
-} from "metabase-enterprise/api/ai-streaming";
-import type { ProcessedChatResponse } from "metabase-enterprise/api/ai-streaming/process-stream";
+} from "metabase/api/ai-streaming";
+import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
+import { addUndo } from "metabase/redux/undo";
+import { getIsEmbedding } from "metabase/selectors/embed";
+import { getUser } from "metabase/selectors/user";
 import type {
   MetabotAgentRequest,
   MetabotAgentResponse,
@@ -24,8 +25,6 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
-
-import { METABOT_ERR_MSG } from "../constants";
 
 import { metabot } from "./reducer";
 import {

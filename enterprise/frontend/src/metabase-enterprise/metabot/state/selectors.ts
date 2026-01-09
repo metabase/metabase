@@ -1,14 +1,13 @@
 import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
-import { getIsEmbedding } from "metabase/selectors/embed";
-import type { TransformId } from "metabase-types/api";
-
 import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
   METABOT_REQUEST_IDS,
-} from "../constants";
+} from "metabase/metabot/constants";
+import { getIsEmbedding } from "metabase/selectors/embed";
+import type { TransformId } from "metabase-types/api";
 
 import type {
   MetabotAgentId,

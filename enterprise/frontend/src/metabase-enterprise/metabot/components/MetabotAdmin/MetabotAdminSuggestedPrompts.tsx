@@ -8,6 +8,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { Table } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   ActionIcon,
   Box,
@@ -24,7 +25,6 @@ import {
   useGetSuggestedMetabotPromptsQuery,
   useRegenerateSuggestedMetabotPromptsMutation,
 } from "metabase-enterprise/api";
-import { FIXED_METABOT_IDS } from "metabase-enterprise/metabot/constants";
 import * as Urls from "metabase-enterprise/urls";
 import type { MetabotInfo, SuggestedMetabotPrompt } from "metabase-types/api";
 

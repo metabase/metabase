@@ -3,9 +3,8 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
+import { TOOL_CALL_MESSAGES } from "metabase/metabot/constants";
 import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
-
-import { TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {

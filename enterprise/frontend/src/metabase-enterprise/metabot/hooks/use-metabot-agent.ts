@@ -2,8 +2,8 @@ import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
 import { useMetabotContext } from "metabase/metabot";
+import { trackMetabotRequestSent } from "metabase/metabot/analytics";
 
-import { trackMetabotRequestSent } from "../analytics";
 import {
   type MetabotAgentId,
   type MetabotPromptSubmissionResult,

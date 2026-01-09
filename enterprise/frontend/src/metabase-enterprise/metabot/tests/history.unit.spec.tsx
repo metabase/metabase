@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
 import { act, screen, waitFor } from "__support__/ui";
-import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase-enterprise/metabot/constants";
+import { LONG_CONVO_MSG_LENGTH_THRESHOLD } from "metabase/metabot/constants";
 import {
   addUserMessage,
   getHistory,

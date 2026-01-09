@@ -5,7 +5,7 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor, within } from "__support__/ui";
 import { logout } from "metabase/auth/actions";
 import * as domModule from "metabase/lib/dom";
-import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import { getMetabotInitialState } from "metabase-enterprise/metabot/state/reducer-utils";
 

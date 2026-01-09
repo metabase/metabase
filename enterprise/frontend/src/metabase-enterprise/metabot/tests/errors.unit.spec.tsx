@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { METABOT_ERR_MSG } from "metabase-enterprise/metabot/constants";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
   assertConversation,

@@ -6,6 +6,7 @@ import { assocIn } from "icepick";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -13,7 +14,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
-import { FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import { metabotReducer } from "../state";
 import { getMetabotInitialState } from "../state/reducer-utils";

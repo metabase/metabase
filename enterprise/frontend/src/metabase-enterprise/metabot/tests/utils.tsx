@@ -18,7 +18,8 @@ import {
   createMockReadableStream,
   createPauses,
   mockStreamedEndpoint,
-} from "metabase-enterprise/api/ai-streaming/test-utils";
+} from "metabase/api/ai-streaming/test-utils";
+import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -27,7 +28,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
-import { FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,

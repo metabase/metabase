@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
 import { METAKEY } from "metabase/lib/browser";
+import { trackMetabotChatOpened } from "metabase/metabot/analytics";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
-
-import { trackMetabotChatOpened } from "../analytics";
 
 interface MetabotAppBarButtonProps extends ActionIconProps {
   className?: string;
