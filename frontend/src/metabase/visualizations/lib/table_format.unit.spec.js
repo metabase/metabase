@@ -158,3 +158,105 @@ describe("extent", () => {
     expect(extent([[null], [1], [undefined]], 0)).toEqual([1, 1]);
   });
 });
+
+describe("compileFormatter with extreme ranges", () => {
+  it("should handle color ranges with extreme numeric scales", () => {
+    const formatter = compileFormatter(
+      {
+        type: "range",
+        columns: ["value"],
+        colors: ["#FFFFFF", "#88BF4D"],
+        min_type: "custom",
+        min_value: "0",
+        max_type: "custom",
+        max_value: "1000000000",
+      },
+      "value",
+      { value: [0, 1000000000] },
+    );
+
+    // Test values near zero (produces extremely small interpolation factors)
+    [0, 1, 10, 100, 1000, 500000000, 1000000000].forEach((val) => {
+      const color = formatter(val);
+      expect(color).not.toBeNull();
+
+      // Ensure the color can be parsed by Color library (no scientific notation issues)
+      expect(() => require("color")(color)).not.toThrow();
+    });
+  });
+
+  it("should produce visually distinguishable colors across the range", () => {
+    const formatter = compileFormatter(
+      {
+        type: "range",
+        columns: ["value"],
+        colors: ["#FFFFFF", "#88BF4D"],
+        min_type: "custom",
+        min_value: "0",
+        max_type: "custom",
+        max_value: "1000000000",
+      },
+      "value",
+      { value: [0, 1000000000] },
+    );
+
+    const colorMin = formatter(0);
+    const colorMid = formatter(500000000);
+    const colorMax = formatter(1000000000);
+
+    // Colors should be different
+    expect(colorMin).not.toEqual(colorMid);
+    expect(colorMid).not.toEqual(colorMax);
+
+    // All should be valid
+    expect(colorMin).toBeTruthy();
+    expect(colorMid).toBeTruthy();
+    expect(colorMax).toBeTruthy();
+  });
+
+  it("should clamp alpha values to prevent scientific notation", () => {
+    const formatter = compileFormatter(
+      {
+        type: "range",
+        columns: ["value"],
+        colors: ["rgba(255, 255, 255, 0.0000001)", "#88BF4D"], // Alpha below MIN_ALPHA threshold
+        min_type: "custom",
+        min_value: "0",
+        max_type: "custom",
+        max_value: "100",
+      },
+      "value",
+      { value: [0, 100] },
+    );
+
+    const color = formatter(0);
+
+    // Should not contain scientific notation
+    expect(color).not.toMatch(/e[+-]\d+/i);
+
+    // Should be parseable
+    expect(() => require("color")(color)).not.toThrow();
+  });
+
+  it("should handle very small numeric differences", () => {
+    const formatter = compileFormatter(
+      {
+        type: "range",
+        columns: ["value"],
+        colors: ["#FFFFFF", "#88BF4D"],
+        min_type: "custom",
+        min_value: "0",
+        max_type: "custom",
+        max_value: "0.001",
+      },
+      "value",
+      { value: [0, 0.001] },
+    );
+
+    [0, 0.0001, 0.0005, 0.001].forEach((val) => {
+      const color = formatter(val);
+      expect(color).not.toBeNull();
+      expect(() => require("color")(color)).not.toThrow();
+    });
+  });
+});
