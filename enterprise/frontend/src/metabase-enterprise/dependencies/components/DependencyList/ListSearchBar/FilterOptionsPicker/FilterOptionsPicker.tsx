@@ -1,14 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useState } from "react";
 import { t } from "ttag";
 
 import type * as Urls from "metabase/lib/urls";
 import { Box, Button, FixedSizeIcon, Popover, Stack } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
 
 import type { DependencyListMode } from "../../types";
-import { getAvailableGroupTypes } from "../../utils";
 
+import { LocationFilterPicker } from "./LocationFilterPicker";
 import { TypeFilterPicker } from "./TypeFilterPicker";
 
 type FilterOptionsPickerProps = {
@@ -57,24 +55,15 @@ function FilterOptionsPopover({
   params,
   onParamsChange,
 }: FilterOptionsPopoverProps) {
-  const availableGroupTypes = getAvailableGroupTypes(mode);
-  const [groupTypes, setGroupTypes] = useState(
-    params.groupTypes ?? availableGroupTypes,
-  );
-
-  const handleTypesChange = (groupTypes: DependencyGroupType[]) => {
-    setGroupTypes(groupTypes);
-    onParamsChange({ ...params, groupTypes });
-  };
-
   return (
     <Box w="20rem" p="md">
       <Stack>
         <TypeFilterPicker
-          groupTypes={groupTypes}
-          availableGroupTypes={availableGroupTypes}
-          onChange={handleTypesChange}
+          mode={mode}
+          params={params}
+          onParamsChange={onParamsChange}
         />
+        <LocationFilterPicker params={params} onParamsChange={onParamsChange} />
       </Stack>
     </Box>
   );

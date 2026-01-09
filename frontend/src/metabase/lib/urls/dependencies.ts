@@ -29,15 +29,13 @@ export function dependencyTasks() {
 export type DependencyListParams = {
   query?: string;
   groupTypes?: DependencyGroupType[];
-  includeInDashboards?: boolean;
-  includeInPersonalCollections?: boolean;
+  includePersonalCollections?: boolean;
 };
 
 function dependencyListQueryString({
   query,
   groupTypes,
-  includeInDashboards,
-  includeInPersonalCollections,
+  includePersonalCollections,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
   if (query != null) {
@@ -48,13 +46,10 @@ function dependencyListQueryString({
       searchParams.append("groupTypes", groupType);
     });
   }
-  if (includeInDashboards != null) {
-    searchParams.set("includeInDashboards", String(includeInDashboards));
-  }
-  if (includeInPersonalCollections != null) {
+  if (includePersonalCollections != null) {
     searchParams.set(
-      "includeInPersonalCollections",
-      String(includeInPersonalCollections),
+      "includePersonalCollections",
+      String(includePersonalCollections),
     );
   }
 

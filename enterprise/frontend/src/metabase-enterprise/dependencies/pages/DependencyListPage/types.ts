@@ -3,6 +3,5 @@ export type DependencyListQueryParams = {
   groupTypes?: unknown;
   selectedId?: unknown;
   selectedType?: unknown;
-  includeInDashboards?: unknown;
-  includeInPersonalCollections?: unknown;
+  includePersonalCollections?: unknown;
 };

@@ -13,9 +13,6 @@ export function parseParams(
     groupTypes: parseList(params.groupTypes, (item) =>
       parseEnum(item, DEPENDENCY_GROUP_TYPES),
     ),
-    includeInDashboards: parseBoolean(params.includeInDashboards),
-    includeInPersonalCollections: parseBoolean(
-      params.includeInPersonalCollections,
-    ),
+    includePersonalCollections: parseBoolean(params.includePersonalCollections),
   };
 }

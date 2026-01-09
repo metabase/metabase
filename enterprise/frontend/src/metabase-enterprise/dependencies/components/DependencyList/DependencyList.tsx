@@ -41,6 +41,7 @@ export function DependencyList({
     query: params.query,
     types: getDependencyTypes(params.groupTypes ?? availableGroupTypes),
     card_types: getCardTypes(params.groupTypes ?? availableGroupTypes),
+    include_personal_collections: params.includePersonalCollections,
   });
 
   const selectedNode =
