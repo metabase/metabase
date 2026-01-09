@@ -26,7 +26,7 @@ import {
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { Box, Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -394,85 +394,77 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
               resizeEditor(data.size.height);
             }}
           >
-            <Box
+            <Flex
+              w="100%"
+              flex="1"
               h={height}
               className={cx(S.resizableBox, isNativeEditorOpen && S.open)}
             >
-              <Flex w="100%" flex="1" className={S.resizableBoxContent}>
-                <CodeMirrorEditor
-                  ref={editorRef}
-                  query={question.query()}
-                  proposedQuery={proposedQuestion?.query()}
-                  readOnly={readOnly}
-                  placeholder={placeholder}
-                  highlightedLineNumbers={highlightedLineNumbers}
-                  extensions={extensions}
-                  onChange={handleChange}
-                  onRunQuery={runQuery}
-                  onSelectionChange={setNativeEditorSelectedRange}
-                  onCursorMoveOverCardTag={openDataReferenceAtQuestion}
-                  onRightClickSelection={handleRightClickSelection}
-                  onFormatQuery={canFormatQuery ? handleFormatQuery : undefined}
-                />
+              <CodeMirrorEditor
+                ref={editorRef}
+                query={question.query()}
+                proposedQuery={proposedQuestion?.query()}
+                readOnly={readOnly}
+                placeholder={placeholder}
+                highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
+                onChange={handleChange}
+                onRunQuery={runQuery}
+                onSelectionChange={setNativeEditorSelectedRange}
+                onCursorMoveOverCardTag={openDataReferenceAtQuestion}
+                onRightClickSelection={handleRightClickSelection}
+                onFormatQuery={canFormatQuery ? handleFormatQuery : undefined}
+              />
 
-                <Stack m="1rem" gap="md" mt="auto">
-                  {proposedQuestion && onRejectProposed && onAcceptProposed && (
-                    <>
-                      <Tooltip
-                        label={t`Accept proposed changes`}
-                        position="top"
+              <Stack m="1rem" gap="md" mt="auto">
+                {proposedQuestion && onRejectProposed && onAcceptProposed && (
+                  <>
+                    <Tooltip label={t`Accept proposed changes`} position="top">
+                      <Button
+                        data-testid="accept-proposed-changes-button"
+                        variant="filled"
+                        bg="success"
+                        px="0"
+                        w="2.5rem"
+                        onClick={() => {
+                          const proposedQuery =
+                            proposedQuestion.legacyNativeQuery();
+                          if (proposedQuery) {
+                            handleChange(proposedQuery.queryText());
+                            onAcceptProposed(proposedQuery.datasetQuery());
+                          }
+                        }}
                       >
-                        <Button
-                          data-testid="accept-proposed-changes-button"
-                          variant="filled"
-                          bg="success"
-                          px="0"
-                          w="2.5rem"
-                          onClick={() => {
-                            const proposedQuery =
-                              proposedQuestion.legacyNativeQuery();
-                            if (proposedQuery) {
-                              handleChange(proposedQuery.queryText());
-                              onAcceptProposed(proposedQuery.datasetQuery());
-                            }
-                          }}
-                        >
-                          <Icon name="check" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        label={t`Reject proposed changes`}
-                        position="top"
+                        <Icon name="check" />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip label={t`Reject proposed changes`} position="top">
+                      <Button
+                        data-testid="reject-proposed-changes-button"
+                        w="2.5rem"
+                        px="0"
+                        variant="filled"
+                        bg="danger"
+                        onClick={onRejectProposed}
                       >
-                        <Button
-                          data-testid="reject-proposed-changes-button"
-                          w="2.5rem"
-                          px="0"
-                          variant="filled"
-                          bg="danger"
-                          onClick={onRejectProposed}
-                        >
-                          <Icon name="close" />
-                        </Button>
-                      </Tooltip>
-                    </>
-                  )}
-                  {hasRunButton && !readOnly && (
-                    <NativeQueryEditorRunButton
-                      cancelQuery={cancelQuery}
-                      isResultDirty={isResultDirty}
-                      isRunnable={isRunnable}
-                      isRunning={isRunning}
-                      nativeEditorSelectedText={nativeEditorSelectedText}
-                      runQuery={runQuery}
-                      questionErrors={Lib.validateTemplateTags(
-                        question.query(),
-                      )}
-                    />
-                  )}
-                </Stack>
-              </Flex>
-            </Box>
+                        <Icon name="close" />
+                      </Button>
+                    </Tooltip>
+                  </>
+                )}
+                {hasRunButton && !readOnly && (
+                  <NativeQueryEditorRunButton
+                    cancelQuery={cancelQuery}
+                    isResultDirty={isResultDirty}
+                    isRunnable={isRunnable}
+                    isRunning={isRunning}
+                    nativeEditorSelectedText={nativeEditorSelectedText}
+                    runQuery={runQuery}
+                    questionErrors={Lib.validateTemplateTags(question.query())}
+                  />
+                )}
+              </Stack>
+            </Flex>
           </Resizable>
         </div>
 

@@ -28,15 +28,12 @@
 .resizableBox {
   display: none;
   border-top: 1px solid var(--mb-color-border);
+  overflow: hidden;
 
   &.open {
     display: flex;
     flex-direction: column;
   }
-}
-
-.resizableBoxContent {
-  overflow: hidden;
 }
 
 .actionButtons {
