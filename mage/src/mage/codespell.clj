@@ -12,7 +12,7 @@
    #_"e2e"
    "enterprise"
    #_"frontend"
-   #_"modules/drivers"
+   "modules/drivers"
    #_"src"
    #_"test"])
 
