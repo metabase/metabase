@@ -309,14 +309,14 @@ export function dataStudioSegmentDependencies(segmentId: SegmentId) {
   return `${dataStudioSegment(segmentId)}/dependencies`;
 }
 
-export function dataStudioTasks() {
-  return `${ROOT_URL}/tasks`;
+export function dataStudioDependencyDiagnostics() {
+  return `${ROOT_URL}/dependency-diagnostics`;
 }
 
 export function dataStudioBrokenEntities() {
-  return `${dataStudioTasks()}/broken`;
+  return `${dataStudioDependencyDiagnostics()}/broken`;
 }
 
 export function dataStudioUnreferencedEntities() {
-  return `${dataStudioTasks()}/unreferenced`;
+  return `${dataStudioDependencyDiagnostics()}/unreferenced`;
 }
