@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.events :as lib.events]
+   [metabase-enterprise.remote-sync.impl :as impl]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -45,10 +46,8 @@
                                                  :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/card-create
                              {:object remote-sync-card :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Card"
@@ -63,10 +62,8 @@
                                                  :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/card-update
                              {:object remote-sync-card :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Card"
@@ -81,11 +78,9 @@
                                                  :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/card-update
                              {:object (assoc remote-sync-card :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Card"
@@ -100,10 +95,8 @@
                                                  :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/card-delete
                              {:object remote-sync-card :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Card"
@@ -118,32 +111,22 @@
                                                  :dataset_query (mt/mbql-query venues)
                                                  :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry at time T1
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))]
         (t/with-clock clock-t1
           (events/publish-event! :event/card-create
                                  {:object remote-sync-card :user-id (mt/user->id :rasta)}))
-
         (let [initial-entry (t2/select-one :model/RemoteSyncObject
                                            :model_type "Card"
                                            :model_id (:id remote-sync-card))]
-
-          ;; Update the card at time T2 (1 hour later)
           (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
             (t/with-clock clock-t2
               (events/publish-event! :event/card-update
                                      {:object remote-sync-card :user-id (mt/user->id :rasta)})))
-
           (let [entries (t2/select :model/RemoteSyncObject)]
-            ;; Should still be just one entry
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
-              ;; Should be the same ID
               (is (= (:id initial-entry) (:id update-entry)))
-              ;; Status should remain "create" (not update)
               (is (= "create" (:status update-entry)))
-              ;; Timestamp should not change
               (is (= (:status_changed_at initial-entry) (:status_changed_at update-entry))))))))))
 
 (deftest card-event-in-normal-collection-no-entry-test
@@ -153,10 +136,8 @@
                                             :dataset_query (mt/mbql-query venues)
                                             :collection_id (:id normal-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/card-create
                              {:object normal-card :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
 
@@ -166,10 +147,8 @@
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/dashboard-create
                              {:object dashboard :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Dashboard"
@@ -183,10 +162,8 @@
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/dashboard-update
                              {:object dashboard :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Dashboard"
@@ -200,11 +177,9 @@
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/dashboard-update
                              {:object (assoc dashboard :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Dashboard"
@@ -218,10 +193,8 @@
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/dashboard-delete
                              {:object dashboard :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Dashboard"
@@ -234,10 +207,8 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/document-create
                              {:object document :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Document"
@@ -250,10 +221,8 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/document-update
                              {:object document :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Document"
@@ -266,11 +235,9 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/document-update
                              {:object (assoc document :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Document"
@@ -283,10 +250,8 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/document-delete
                              {:object document :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Document"
@@ -301,10 +266,8 @@
                                                       :content "SELECT 1"
                                                       :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/snippet-create
                              {:object snippet :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "NativeQuerySnippet"
@@ -319,10 +282,8 @@
                                                       :content "SELECT 1"
                                                       :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/snippet-update
                              {:object snippet :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "NativeQuerySnippet"
@@ -337,11 +298,9 @@
                                                       :content "SELECT 1"
                                                       :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/snippet-update
                              {:object (assoc snippet :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "NativeQuerySnippet"
@@ -356,10 +315,8 @@
                                                       :content "SELECT 1"
                                                       :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/snippet-delete
                              {:object snippet :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "NativeQuerySnippet"
@@ -374,37 +331,48 @@
                                                       :content "SELECT 1"
                                                       :collection_id (:id normal-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/snippet-create
                              {:object snippet :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
 
-(deftest snippet-moved-out-of-remote-synced-collection-test
+(deftest existing-snippet-moved-out-of-remote-synced-collection-test
   (testing "snippet moved out of remote-synced collection is marked as removed"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
                    :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
                    :model/NativeQuerySnippet snippet {:name "Test Snippet"
                                                       :content "SELECT 1"
                                                       :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry for snippet in remote-synced collection
-      (events/publish-event! :event/snippet-create
-                             {:object snippet :user-id (mt/user->id :rasta)})
+      (#'impl/sync-objects! (t/instant) {"NativeQuerySnippet" #{(:entity_id snippet)}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
-        (is (= "create" (:status initial-entry)))
-
-        ;; Move snippet to normal collection
+        (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/snippet-update
                                {:object (assoc snippet :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
 
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
           (is (= "removed" (:status update-entry)))
-          (is (= (:id initial-entry) (:id update-entry))))))))
+          (is (= (:id initial-entry) (:id update-entry)))))
+      "done")))
+
+(deftest new-snippet-moved-out-of-remote-synced-collection-test
+  (testing "new snippet moved out of remote-synced collection are not tracked"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync" :namespace "snippets"}
+                   :model/Collection normal-collection {:name "Normal" :namespace "snippets"}
+                   :model/NativeQuerySnippet snippet {:name "Test Snippet"
+                                                      :content "SELECT 1"
+                                                      :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/snippet-create
+                             {:object snippet :user-id (mt/user->id :rasta)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
+        (is (= "create" (:status initial-entry)))
+        (events/publish-event! :event/snippet-update
+                               {:object (assoc snippet :collection_id (:id normal-collection))
+                                :user-id (mt/user->id :rasta)})
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))]
+          (is (nil? update-entry)))))))
 
 (deftest snippet-moved-into-remote-synced-collection-test
   (testing "snippet moved into remote-synced collection gets tracked"
@@ -414,18 +382,14 @@
                                                       :content "SELECT 1"
                                                       :collection_id (:id normal-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create snippet in normal collection (no entry should be created)
       (events/publish-event! :event/snippet-create
                              {:object snippet :user-id (mt/user->id :rasta)})
-
       (is (= 0 (count (t2/select :model/RemoteSyncObject))))
 
       ;; Move snippet to remote-synced collection
       (events/publish-event! :event/snippet-update
                              {:object (assoc snippet :collection_id (:id remote-sync-collection))
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "NativeQuerySnippet"
@@ -438,10 +402,8 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-create
                              {:object remote-sync-collection :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Collection"
@@ -453,10 +415,8 @@
   (testing "collection-create event doesn't create entry for non-remote-synced collections"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-create
                              {:object normal-collection :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
 
@@ -465,11 +425,9 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-create
                              {:object (assoc remote-sync-collection :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Collection"
@@ -482,10 +440,8 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-update
                              {:object remote-sync-collection :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Collection"
@@ -498,11 +454,9 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-update
                              {:object (assoc remote-sync-collection :archived true)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Collection"
@@ -515,11 +469,9 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-update
                              {:object (assoc remote-sync-collection :archived false)
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Collection"
@@ -531,10 +483,8 @@
   (testing "collection-update event doesn't create entry for non-remote-synced collections"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/collection-update
                              {:object normal-collection :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
 
@@ -543,29 +493,20 @@
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced"
                                                              :name "Remote-Sync"}]
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; First update at time T1
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))]
         (t/with-clock clock-t1
           (events/publish-event! :event/collection-update
                                  {:object remote-sync-collection :user-id (mt/user->id :rasta)}))
-
         (let [initial-entry (t2/select-one :model/RemoteSyncObject
                                            :model_type "Collection"
-                                           :model_id (:id remote-sync-collection))]
-
-          ;; Second update at time T2 (1 hour later)
-          (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
-            (t/with-clock clock-t2
-              (events/publish-event! :event/collection-update
-                                     {:object remote-sync-collection :user-id (mt/user->id :rasta)})))
-
+                                           :model_id (:id remote-sync-collection))
+              clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
+          (t/with-clock clock-t2
+            (events/publish-event! :event/collection-update
+                                   {:object remote-sync-collection :user-id (mt/user->id :rasta)}))
           (let [entries (t2/select :model/RemoteSyncObject :model_id (:id remote-sync-collection))]
-            ;; Should still be just one entry
             (is (= 1 (count entries)))
-            ;; Should be the same ID
             (is (= (:id initial-entry) (:id (first entries))))
-            ;; But with update timestamp
             (is (t/after? (:status_changed_at (first entries))
                           (:status_changed_at initial-entry)))))))))
 
@@ -573,10 +514,8 @@
   (testing "create-remote-sync-object-entry! creates new entry when none exists"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-
       (let [existing-card-id (t2/select-one-fn :id [:model/Card :id])]
         (#'lib.events/create-or-update-remote-sync-object-entry! "Card" existing-card-id "create" 456)
-
         (let [entries (t2/select :model/RemoteSyncObject)]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Card"
@@ -588,69 +527,47 @@
   (testing "create-remote-sync-object-entry! updates existing entry when one exists"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry with "update" status at time T1
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
             existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])]
         (t/with-clock clock-t1
           (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "update"))
-
         (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)
-              initial-time (:status_changed_at initial-entry)]
-
-          ;; Update to synced status at time T2 (1 hour later)
-          (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
-            (t/with-clock clock-t2
-              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced")))
-
+              initial-time (:status_changed_at initial-entry)
+              clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
+          (t/with-clock clock-t2
+            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced"))
           (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
-            ;; Should still be just one entry
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
-              ;; Should be the same ID
               (is (= (:id initial-entry) (:id update-entry)))
-              ;; Should have update status
               (is (= "synced" (:status update-entry)))
-              ;; Should have update timestamp
               (is (t/after? (:status_changed_at update-entry) initial-time)))))))))
 
 (deftest create-remote-sync-object-entry-does-not-update-create-status-test
   (testing "create-remote-sync-object-entry! does not update entry when status is 'create'"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry with "create" status at time T1
       (let [clock-t1 (t/mock-clock (t/instant "2024-01-01T10:00:00Z") (t/zone-id "UTC"))
             existing-dashboard-id (t2/select-one-fn :id [:model/Dashboard :id])]
         (t/with-clock clock-t1
           (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "create"))
-
-        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
-
-          ;; Try to update to synced status at time T2 (1 hour later)
-          (let [clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
-            (t/with-clock clock-t2
-              (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced")))
-
+        (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)
+              clock-t2 (t/mock-clock (t/instant "2024-01-01T11:00:00Z") (t/zone-id "UTC"))]
+          (t/with-clock clock-t2
+            (#'lib.events/create-or-update-remote-sync-object-entry! "Dashboard" existing-dashboard-id "synced"))
           (let [entries (t2/select :model/RemoteSyncObject :model_type "Dashboard" :model_id existing-dashboard-id)]
-            ;; Should still be just one entry
             (is (= 1 (count entries)))
             (let [update-entry (first entries)]
-              ;; Should be the same ID
               (is (= (:id initial-entry) (:id update-entry)))
-              ;; Status should remain "create" (not update)
               (is (= "create" (:status update-entry)))
-              ;; Timestamp should not change
               (is (= (:status_changed_at initial-entry) (:status_changed_at update-entry))))))))))
 
 (deftest create-remote-sync-object-entry-uses-current-user-test
   (testing "create-remote-sync-object-entry! uses current user when user-id not specified"
     (mt/with-current-user (mt/user->id :rasta)
       (t2/delete! :model/RemoteSyncObject)
-
       (let [existing-collection-id (t2/select-one-fn :id [:model/Collection :id])]
         (#'lib.events/create-or-update-remote-sync-object-entry! "Collection" existing-collection-id "create")
-
         (let [entries (t2/select :model/RemoteSyncObject)]
           (is (= 1 (count entries)))
           (is (=? {:model_type "Collection"
@@ -658,23 +575,17 @@
                    :status "create"}
                   (first entries))))))))
 
-(deftest card-moved-out-of-remote-synced-collection-test
-  (testing "card moved out of remote-synced collection is marked as removed"
+(deftest existing-card-moved-out-of-remote-synced-collection-test
+  (testing "existing card moved out of remote-synced collection is marked as removed"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Card card {:name "Test Card"
                                      :dataset_query (mt/mbql-query venues)
                                      :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry for card in remote-synced collection
-      (events/publish-event! :event/card-create
-                             {:object card :user-id (mt/user->id :rasta)})
+      (#'impl/sync-objects! (t/instant) {"Card" #{(:entity_id card)}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
-        (is (= "create" (:status initial-entry)))
-
-        ;; Move card to normal collection
+        (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/card-update
                                {:object (assoc card :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
@@ -683,22 +594,34 @@
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
 
-(deftest dashboard-moved-out-of-remote-synced-collection-test
-  (testing "dashboard moved out of remote-synced collection is marked as removed"
+(deftest new-card-moved-out-of-remote-synced-collection-test
+  (testing "new card moved out of remote-synced collection is no longer tracked"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal"}
+                   :model/Card card {:name "Test Card"
+                                     :dataset_query (mt/mbql-query venues)
+                                     :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/card-create
+                             {:object card :user-id (mt/user->id :rasta)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
+        (is (= "create" (:status initial-entry)))
+        (events/publish-event! :event/card-update
+                               {:object (assoc card :collection_id (:id normal-collection))
+                                :user-id (mt/user->id :rasta)})
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
+          (is (nil? update-entry)))))))
+
+(deftest existing-dashboard-moved-out-of-remote-synced-collection-test
+  (testing "existing dashboard moved out of remote-synced collection is marked as removed"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Dashboard dashboard {:name "Test Dashboard"
                                                :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry for dashboard in remote-synced collection
-      (events/publish-event! :event/dashboard-create
-                             {:object dashboard :user-id (mt/user->id :rasta)})
+      (#'impl/sync-objects! (t/instant) {"Dashboard" #{(:entity_id dashboard)}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
-        (is (= "create" (:status initial-entry)))
-
-        ;; Move dashboard to normal collection
+        (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/dashboard-update
                                {:object (assoc dashboard :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
@@ -707,21 +630,32 @@
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
 
-(deftest document-moved-out-of-remote-synced-collection-test
-  (testing "document moved out of remote-synced collection is marked as removed"
+(deftest new-dashboard-moved-out-of-remote-synced-collection-test
+  (testing "new dashboard moved out of remote-synced collection is no longer tracked"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal"}
+                   :model/Dashboard dashboard {:name "Test Dashboard"
+                                               :collection_id (:id remote-sync-collection)}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/dashboard-create
+                             {:object dashboard :user-id (mt/user->id :rasta)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
+        (is (= "create" (:status initial-entry)))
+        (events/publish-event! :event/dashboard-update
+                               {:object (assoc dashboard :collection_id (:id normal-collection))
+                                :user-id (mt/user->id :rasta)})
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id (:id dashboard))]
+          (is (nil? update-entry)))))))
+
+(deftest existing-document-moved-out-of-remote-synced-collection-test
+  (testing "existing document moved out of remote-synced collection is marked as removed"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal"}
                    :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry for document in remote-synced collection
-      (events/publish-event! :event/document-create
-                             {:object document :user-id (mt/user->id :rasta)})
+      (#'impl/sync-objects! (t/instant) {"Document" #{(:entity_id document)}})
 
       (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
-        (is (= "create" (:status initial-entry)))
-
-        ;; Move document to normal collection
+        (is (= "synced" (:status initial-entry)))
         (events/publish-event! :event/document-update
                                {:object (assoc document :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
@@ -730,26 +664,49 @@
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
 
-(deftest collection-type-changed-from-remote-synced-test
-  (testing "collection type changed from remote-synced is marked as removed"
-    (mt/with-temp [:model/Collection collection {:type "remote-synced" :name "Remote-Sync"}]
+(deftest new-document-moved-out-of-remote-synced-collection-test
+  (testing "new document moved out of remote-synced collection is no longer tracked"
+    (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
+                   :model/Collection normal-collection {:name "Normal"}
+                   :model/Document document {:collection_id (u/the-id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry for remote-synced collection
-      (events/publish-event! :event/collection-create
-                             {:object collection :user-id (mt/user->id :rasta)})
-
-      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
+      (events/publish-event! :event/document-create
+                             {:object document :user-id (mt/user->id :rasta)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
         (is (= "create" (:status initial-entry)))
-
-        ;; Change collection type to default
-        (events/publish-event! :event/collection-update
-                               {:object (assoc collection :type nil)
+        (events/publish-event! :event/document-update
+                               {:object (assoc document :collection_id (:id normal-collection))
                                 :user-id (mt/user->id :rasta)})
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
+          (is (nil? update-entry)))))))
 
+(deftest existing-collection-type-changed-from-remote-synced-test
+  (testing "existing collection type changed from remote-synced is marked as removed"
+    (mt/with-temp [:model/Collection collection {:type "remote-synced" :name "Remote-Sync"}]
+      (#'impl/sync-objects! (t/instant) {"Collection" #{(:entity_id collection)}})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
+        (is (= "synced" (:status initial-entry)))
+        (events/publish-event! :event/collection-update
+                               {:object (dissoc collection :type)
+                                :user-id (mt/user->id :rasta)})
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
           (is (= "removed" (:status update-entry)))
           (is (= (:id initial-entry) (:id update-entry))))))))
+
+(deftest new-collection-type-changed-from-remote-synced-test
+  (testing "new collection type changed from remote-synced is marked as removed"
+    (mt/with-temp [:model/Collection collection {:type "remote-synced" :name "Remote-Sync"}]
+      (t2/delete! :model/RemoteSyncObject)
+      (events/publish-event! :event/collection-create
+                             {:object collection :user-id (mt/user->id :rasta)})
+      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
+        (is (= "create" (:status initial-entry)))
+        (events/publish-event! :event/collection-update
+                               {:object (dissoc collection :type)
+                                :user-id (mt/user->id :rasta)})
+
+        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
+          (is (nil? update-entry)))))))
 
 (deftest model-not-tracked-moved-to-normal-collection-test
   (testing "model not previously tracked doesn't create removed entry when moved to normal collection"
@@ -758,12 +715,8 @@
                                      :dataset_query (mt/mbql-query venues)
                                      :collection_id (:id normal-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
-      ;; Update card while it's in normal collection (no prior entry exists)
       (events/publish-event! :event/card-update
                              {:object card :user-id (mt/user->id :rasta)})
-
-      ;; Should not create any entry
       (let [entries (t2/select :model/RemoteSyncObject :model_type "Card" :model_id (:id card))]
         (is (= 0 (count entries)))))))
 
@@ -807,10 +760,8 @@
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/timeline-create
                              {:object timeline :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Timeline"
@@ -824,10 +775,8 @@
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/timeline-update
                              {:object timeline :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Timeline"
@@ -842,10 +791,8 @@
                                              :collection_id (:id remote-sync-collection)
                                              :archived true}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/timeline-update
                              {:object timeline :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Timeline"
@@ -859,10 +806,8 @@
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/timeline-delete
                              {:object timeline :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Timeline"
@@ -876,32 +821,22 @@
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id normal-collection)}]
       (t2/delete! :model/RemoteSyncObject)
-
       (events/publish-event! :event/timeline-create
                              {:object timeline :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 0 (count entries)))))))
 
-(deftest timeline-moved-out-of-remote-synced-collection-test
-  (testing "timeline moved out of remote-synced collection gets marked as removed"
+(deftest existing-timeline-moved-out-of-remote-synced-collection-test
+  (testing "existing timeline moved out of remote-synced collection gets marked as removed"
     (mt/with-temp [:model/Collection remote-sync-collection {:type "remote-synced" :name "Remote-Sync"}
                    :model/Collection normal-collection {:name "Normal Collection"}
                    :model/Timeline timeline {:name "Test Timeline"
                                              :collection_id (:id remote-sync-collection)}]
-      (t2/delete! :model/RemoteSyncObject)
-
-      ;; Create initial entry
-      (events/publish-event! :event/timeline-create
-                             {:object timeline :user-id (mt/user->id :rasta)})
-
+      (#'impl/sync-objects! (t/instant) {"Timeline" #{(:entity_id timeline)}})
       (is (= 1 (count (t2/select :model/RemoteSyncObject))))
-
-      ;; Move to normal collection
       (events/publish-event! :event/timeline-update
                              {:object (assoc timeline :collection_id (:id normal-collection))
                               :user-id (mt/user->id :rasta)})
-
       (let [entries (t2/select :model/RemoteSyncObject)]
         (is (= 1 (count entries)))
         (is (=? {:model_type "Timeline"
