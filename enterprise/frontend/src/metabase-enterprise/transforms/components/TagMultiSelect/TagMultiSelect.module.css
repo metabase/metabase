@@ -1,3 +1,21 @@
+.option[data-combobox-disabled] {
+  pointer-events: all;
+  cursor: not-allowed;
+
+  &:hover {
+    background-color: transparent;
+  }
+
+  .selectItem {
+    color: inherit;
+    background-color: inherit;
+
+    &:hover .actionIcon {
+      visibility: hidden;
+    }
+  }
+}
+
 .actionIcon {
   visibility: hidden;
 }
