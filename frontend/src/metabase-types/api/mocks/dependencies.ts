@@ -47,6 +47,7 @@ export function createMockTransformDependencyNodeData(
   return {
     name: "Transform",
     description: null,
+    created_at: "2020-01-01T00:00:00Z",
     ...opts,
   };
 }
@@ -59,6 +60,7 @@ export function createMockCardDependencyNodeData(
     description: null,
     type: "question",
     display: "table",
+    query_type: "query",
     dashboard_id: 1,
     collection_id: null,
     result_metadata: [],
@@ -144,6 +146,9 @@ export function createMockSnippetDependencyNodeData(
   return {
     name: "Snippet",
     description: null,
+    created_at: "2020-01-01T00:00:00Z",
+    creator_id: 1,
+    collection_id: null,
     ...opts,
   };
 }

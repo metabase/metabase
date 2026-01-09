@@ -80,7 +80,7 @@ export function ListViewColumnsSidebar({
       <Stack gap="md">
         <TextInput
           placeholder={t`Find a column...`}
-          leftSection={<Icon name="search" size={14} c="text-light" />}
+          leftSection={<Icon name="search" size={14} c="text-tertiary" />}
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
         />
@@ -98,7 +98,7 @@ export function ListViewColumnsSidebar({
             />
           ))}
           {filtered.length === 0 ? (
-            <Text size="sm" c="text-light">{t`No available columns`}</Text>
+            <Text size="sm" c="text-tertiary">{t`No available columns`}</Text>
           ) : null}
         </Stack>
       </Stack>{" "}

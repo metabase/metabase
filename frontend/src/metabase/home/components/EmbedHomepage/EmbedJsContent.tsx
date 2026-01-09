@@ -43,7 +43,7 @@ export const EmbedJsContent = ({
         fw="bold"
         mb="sm"
         size="lg"
-        color="text-medium"
+        color="text-secondary"
         id="embed-js-title"
       >{t`Modular embedding`}</Text>
       <Text mb="md">

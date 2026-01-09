@@ -43,6 +43,7 @@ export interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   allowCustomExpressions?: boolean;
+  allowMetrics?: boolean;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
   onBack?: () => void;
@@ -62,13 +63,24 @@ type MetricListItem = Lib.MetricDisplayInfo & {
   selected: boolean;
 };
 
+type MeasureListItem = Lib.MeasureDisplayInfo & {
+  type: "measure";
+  measure: Lib.MeasureMetadata;
+  name: string;
+  selected: boolean;
+};
+
 type ExpressionClauseListItem = {
   type: "expression-clause";
   clause: MBQLClauseFunctionConfig;
   displayName: string;
 };
 
-type Item = OperatorListItem | MetricListItem | ExpressionClauseListItem;
+type Item =
+  | OperatorListItem
+  | MetricListItem
+  | MeasureListItem
+  | ExpressionClauseListItem;
 type Section = BaseSection<Item>;
 
 export function AggregationPicker({
@@ -79,6 +91,7 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   allowCustomExpressions = false,
+  allowMetrics = true,
   onClose,
   onQueryChange,
   onBack,
@@ -137,10 +150,20 @@ export function AggregationPicker({
     [query, stageIndex, clause, clauseIndex, onQueryChange],
   );
 
+  const availableColumns = useMemo(
+    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
+    [query, stageIndex, clauseIndex],
+  );
+
+  const availableMetrics = useMemo(
+    () => (allowMetrics ? Lib.availableMetrics(query, stageIndex) : []),
+    [query, stageIndex, allowMetrics],
+  );
+
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
-    const metrics = Lib.availableMetrics(query, stageIndex);
+    const measures = Lib.availableMeasures(query, stageIndex);
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const supportsCustomExpressions = database?.hasFeature(
@@ -160,11 +183,22 @@ export function AggregationPicker({
       });
     }
 
-    if (metrics.length > 0) {
+    if (measures.length > 0) {
+      sections.push({
+        key: "measures",
+        name: t`Measures`,
+        items: measures.map((measure) =>
+          getMeasureListItem(query, stageIndex, measure, clauseIndex),
+        ),
+        icon: "ruler",
+      });
+    }
+
+    if (availableMetrics.length > 0) {
       sections.push({
         key: "metrics",
         name: t`Metrics`,
-        items: metrics.map((metric) =>
+        items: availableMetrics.map((metric) =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
         icon: "metric",
@@ -200,12 +234,8 @@ export function AggregationPicker({
     operators,
     allowCustomExpressions,
     isSearching,
+    availableMetrics,
   ]);
-
-  const availableColumns = useMemo(
-    () => Lib.aggregableColumns(query, stageIndex, clauseIndex),
-    [query, stageIndex, clauseIndex],
-  );
 
   const checkIsItemSelected = useCallback(
     (item: Item) => "selected" in item && item.selected,
@@ -275,17 +305,32 @@ export function AggregationPicker({
     [onSelect, onClose],
   );
 
+  const handleMeasureSelect = useCallback(
+    (item: MeasureListItem) => {
+      onSelect(item.measure);
+      onClose?.();
+    },
+    [onSelect, onClose],
+  );
+
   const handleChange = useCallback(
     (item: Item) => {
       if (item.type === "operator") {
         handleOperatorSelect(item);
       } else if (item.type === "metric") {
         handleMetricSelect(item);
+      } else if (item.type === "measure") {
+        handleMeasureSelect(item);
       } else if (item.type === "expression-clause") {
         handleExpressionSelect(item.clause.name);
       }
     },
-    [handleOperatorSelect, handleMetricSelect, handleExpressionSelect],
+    [
+      handleOperatorSelect,
+      handleMetricSelect,
+      handleMeasureSelect,
+      handleExpressionSelect,
+    ],
   );
 
   const handleSectionChange = useCallback(
@@ -312,6 +357,7 @@ export function AggregationPicker({
         query={query}
         stageIndex={stageIndex}
         availableColumns={availableColumns}
+        availableMetrics={availableMetrics}
         name={displayInfo?.displayName}
         clause={clause}
         withName
@@ -405,7 +451,7 @@ function renderItemWrapper(content: ReactNode) {
 }
 
 function renderItemIcon(item: Item) {
-  if (item.type !== "metric") {
+  if (item.type !== "metric" && item.type !== "measure") {
     return null;
   }
 
@@ -506,6 +552,28 @@ function getMetricListItem(
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
+  };
+}
+
+function getMeasureListItem(
+  query: Lib.Query,
+  stageIndex: number,
+  measure: Lib.MeasureMetadata,
+  clauseIndex?: number,
+): MeasureListItem {
+  const measureInfo = Lib.displayInfo(
+    query,
+    stageIndex,
+    measure,
+  ) as Lib.MeasureDisplayInfo;
+  return {
+    ...measureInfo,
+    type: "measure",
+    name: measureInfo.displayName,
+    measure,
+    selected:
+      clauseIndex != null &&
+      measureInfo.aggregationPositions?.includes(clauseIndex) === true,
   };
 }
 

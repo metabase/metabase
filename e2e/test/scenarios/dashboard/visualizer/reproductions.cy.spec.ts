@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   DashboardDetails,
@@ -288,5 +289,53 @@ describe("issue 65908 (UXW-2293)", () => {
         expect($main[0].scrollHeight).to.be.lessThan(1000);
       });
     });
+  });
+});
+
+describe("issue 65317", () => {
+  const SANKEY_QUERY = `
+SELECT 'A' AS source, 'B' AS target, 100 AS value
+UNION ALL
+SELECT 'B', 'C', 80
+UNION ALL
+SELECT 'C', 'D', 60
+`;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show 'Visualize another way' button for Sankey charts (metabase#65317)", () => {
+    H.createDashboard({
+      name: "Dashboard with Sankey",
+    }).then(({ body: dashboard }) => {
+      H.createNativeQuestion({
+        name: "Sankey Question",
+        native: {
+          query: SANKEY_QUERY,
+        },
+        display: "sankey",
+        database: SAMPLE_DB_ID,
+      }).then(({ body: card }) => {
+        H.addOrUpdateDashboardCard({
+          card_id: card.id,
+          dashboard_id: dashboard.id,
+          card: {
+            size_x: 12,
+            size_y: 8,
+          },
+        });
+
+        H.visitDashboard(dashboard.id);
+      });
+    });
+
+    H.editDashboard();
+
+    H.getDashboardCard(0).realHover({ scrollBehavior: "bottom" });
+
+    cy.findByTestId("dashboardcard-actions-panel").should("be.visible");
+    cy.findByLabelText("Visualize another way").should("not.exist");
   });
 });

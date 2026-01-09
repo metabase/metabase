@@ -14,6 +14,7 @@
    [environ.core :refer [env]]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -103,6 +104,12 @@
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false})
 
+(defn- yesterday []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      (t/minus (t/days 1))
+      t/local-date
+      str))
+
 (defenterprise metabot-stats
   "Stats for Metabot"
   metabase-enterprise.metabot-v3.core
@@ -110,10 +117,15 @@
   {:metabot-tokens     0
    :metabot-queries    0
    :metabot-users      0
-   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
-                           (t/minus (t/days 1))
-                           t/local-date
-                           str)})
+   :metabot-usage-date (yesterday)})
+
+(defenterprise transform-stats
+  "Stats for Transforms"
+  metabase-enterprise.transforms.core
+  []
+  {:transform-native-runs    0
+   :transform-python-runs    0
+   :transform-usage-date     (yesterday)})
 
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
@@ -127,6 +139,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (metabot-stats)
+                                         (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
                                           :embedding-question-count  embedding-question-count
@@ -458,6 +471,8 @@
   ([checker token]
    (-check-token checker token)))
 
+(derive :event/set-premium-embedding-token :metabase/event)
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
@@ -475,6 +490,7 @@
           (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
+    (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
       (log/error e "Error setting premium features token")
       ;; merge in error-details if present

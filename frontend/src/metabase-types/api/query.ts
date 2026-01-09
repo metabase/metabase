@@ -198,6 +198,10 @@ type CommonAggregation =
 
 export type MetricAgg = ["metric", CardId];
 
+export type MeasureAgg =
+  | ["measure", { "display-name"?: string }, CardId]
+  | ["measure", CardId];
+
 type InlineExpressionAgg = [
   "aggregation-options",
   CommonAggregation,
@@ -207,7 +211,11 @@ type InlineExpressionAgg = [
 /**
  * An aggregation MBQL clause
  */
-export type Aggregation = CommonAggregation | MetricAgg | InlineExpressionAgg;
+export type Aggregation =
+  | CommonAggregation
+  | MetricAgg
+  | MeasureAgg
+  | InlineExpressionAgg;
 
 type BreakoutClause = Breakout[];
 export type Breakout = ConcreteFieldReference;
