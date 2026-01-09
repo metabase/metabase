@@ -37,7 +37,7 @@ export function RunSection({ transform, readOnly }: RunSectionProps) {
       <Stack>
         <Group p="lg" justify="space-between">
           <RunStatusSection transform={transform} />
-          <RunButtonSection transform={transform} />
+          <RunButtonSection transform={transform} readOnly={readOnly} />
         </Group>
         <RunOutputSection transform={transform} />
       </Stack>
@@ -92,9 +92,10 @@ function RunStatusSection({ transform }: RunStatusSectionProps) {
 
 type RunButtonSectionProps = {
   transform: Transform;
+  readOnly?: boolean;
 };
 
-function RunButtonSection({ transform }: RunButtonSectionProps) {
+function RunButtonSection({ transform, readOnly }: RunButtonSectionProps) {
   const [runTransform] = useRunTransformMutation();
   const [cancelTransform] = useCancelCurrentTransformRunMutation();
   const { sendErrorToast } = useMetadataToasts();
@@ -126,6 +127,7 @@ function RunButtonSection({ transform }: RunButtonSectionProps) {
         allowCancellation
         onRun={handleRun}
         onCancel={openConfirmModal}
+        isDisabled={readOnly}
       />
       <ConfirmModal
         title={t`Cancel this run?`}
