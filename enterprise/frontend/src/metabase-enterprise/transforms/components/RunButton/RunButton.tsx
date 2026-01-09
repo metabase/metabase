@@ -22,7 +22,6 @@ type RunButtonProps = {
   run: TransformRun | null | undefined;
   isDisabled?: boolean;
   allowCancellation?: boolean;
-  loading?: boolean;
   onRun: () => void;
   onCancel?: () => void;
 };
@@ -33,7 +32,6 @@ export const RunButton = forwardRef(function RunButton(
     run,
     isDisabled: isExternallyDisabled = false,
     allowCancellation = false,
-    loading,
     onRun,
     onCancel,
   }: RunButtonProps,
@@ -66,7 +64,6 @@ export const RunButton = forwardRef(function RunButton(
         disabled={isDisabled}
         data-testid="run-button"
         onClick={onRun}
-        loading={loading}
       >
         {label}
       </Button>
