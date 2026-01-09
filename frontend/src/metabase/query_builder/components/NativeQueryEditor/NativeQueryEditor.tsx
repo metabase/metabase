@@ -185,8 +185,30 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const editorRef = useRef<CodeMirrorEditorRef>(null);
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
+    const canSaveSnippets = snippetCollections.some(
+      (collection) => collection.can_write,
+    );
+
+    const canToggleEditor = typeof setIsNativeEditorOpen === "function";
+    const shouldShowEditor = isNativeEditorOpen || !canToggleEditor;
+
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
+
+    useMount(() => {
+      setIsNativeEditorOpen?.(
+        typeof isInitiallyOpen !== "undefined"
+          ? isInitiallyOpen
+          : question?.isSaved(),
+      );
+    });
+
+    useEffect(() => {
+      // Close selected text popover if text is deselected
+      if (isSelectedTextPopoverOpen && !nativeEditorSelectedText) {
+        setSelectedTextPopoverOpen(false);
+      }
+    }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
 
     const handleChange = useCallback(
       (queryText: string) => {
@@ -209,28 +231,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       editorRef.current?.focus();
     }, [readOnly]);
 
-    useMount(() => {
-      if (typeof isInitiallyOpen !== "undefined") {
-        setIsNativeEditorOpen?.(isInitiallyOpen);
-      } else {
-        setIsNativeEditorOpen?.(!question || !question.isSaved());
-      }
-    });
-
-    useEffect(() => {
-      // Close selected text popover if text is deselected
-      if (isSelectedTextPopoverOpen && !nativeEditorSelectedText) {
-        setSelectedTextPopoverOpen(false);
-      }
-    }, [nativeEditorSelectedText, isSelectedTextPopoverOpen]);
-
-    const canSaveSnippets = snippetCollections.some(
-      (collection) => collection.can_write,
-    );
-
-    const engine = Lib.engine(question.query());
-    const canFormatQuery = engine != null && canFormatForEngine(engine);
-
     // do not show reference sidebar on small screens automatically
     const screenSize = useNotebookScreenSize();
     const shouldOpenDataReference = screenSize !== "small";
@@ -240,12 +240,13 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     }, [setIsNativeEditorOpen, shouldOpenDataReference, isNativeEditorOpen]);
 
     const handleFormatQuery = useCallback(async () => {
-      if (!canFormatQuery) {
-        return;
-      }
       const query = question.query();
       const engine = Lib.engine(query);
       const queryText = Lib.rawNativeQuery(query);
+      const canFormatQuery = engine != null && canFormatForEngine(engine);
+      if (!canFormatQuery) {
+        return undefined;
+      }
 
       if (!engine || !canFormatForEngine(engine)) {
         // no engine found, do nothing
@@ -255,7 +256,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       const formattedQuery = await formatQuery(queryText, engine);
       handleChange(formattedQuery);
       focusEditor();
-    }, [question, canFormatQuery, focusEditor, handleChange]);
+    }, [question, focusEditor, handleChange]);
 
     const handleResize = useCallback(
       (height: number) => {
@@ -270,8 +271,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       },
       [handleResizeFromProps, setIsNativeEditorOpen],
     );
-
-    const shouldShowEditor = isNativeEditorOpen || !setIsNativeEditorOpen;
 
     return (
       <div
@@ -306,7 +305,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
             toggleSnippetSidebar={toggleSnippetSidebar}
             setParameterValue={setParameterValue}
             setDatasetQuery={setDatasetQuery}
-            onFormatQuery={canFormatQuery ? handleFormatQuery : undefined}
+            onFormatQuery={handleFormatQuery}
             databaseIsDisabled={databaseIsDisabled}
             readOnly={readOnly}
           >
@@ -338,7 +337,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
                 onSelectionChange={setNativeEditorSelectedRange}
                 onCursorMoveOverCardTag={openDataReferenceAtQuestion}
                 onRightClickSelection={handleRightClickSelection}
-                onFormatQuery={canFormatQuery ? handleFormatQuery : undefined}
+                onFormatQuery={handleFormatQuery}
               />
 
               <Stack m="1rem" gap="md" mt="auto">
