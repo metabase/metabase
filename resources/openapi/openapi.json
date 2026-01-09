@@ -1414,6 +1414,7 @@
               "document_id" : { },
               "last-edit-info" : { },
               "name" : { },
+              "query_type" : { },
               "result_metadata" : { },
               "type" : { },
               "view_count" : { }
@@ -1675,6 +1676,7 @@
               "document_id" : { },
               "last-edit-info" : { },
               "name" : { },
+              "query_type" : { },
               "result_metadata" : { },
               "type" : { },
               "view_count" : { }
@@ -21585,7 +21587,7 @@
     },
     "/api/ee/data-studio/table/sync-schema" : {
       "post" : {
-        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asyncronous. This call may return before all tables synced.",
+        "description" : "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.\n  - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)\n  - The sync itself is however, asynchronous. This call may return before all tables synced.",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
@@ -30392,7 +30394,7 @@
         "tags" : [ "/api/mt/gtap" ]
       },
       "put" : {
-        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.",
+        "description" : "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the\n  parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new\n  one. If that's what you want to do, do so explicitly with appropriate calls to the `DELETE` and `POST` endpoints.",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
           "in" : "path",
