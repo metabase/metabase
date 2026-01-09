@@ -30,6 +30,7 @@ import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
 import ViewMainContainerS from "./ViewMainContainer.module.css";
+import { useHeightAboveFold } from "./utils";
 
 interface ViewMainContainerProps {
   question: Question;
@@ -107,7 +108,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
     updateQuestion,
   } = props;
 
-  const { ref: mainRef, height: mainHeight } = useElementSize();
+  const { ref: mainRef, height: mainHeight } = useHeightAboveFold();
   const { ref: footerRef, height: footerHeight } = useElementSize();
 
   if (queryBuilderMode === "notebook") {
@@ -119,6 +120,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
   const isSidebarOpen = showLeftSidebar || showRightSidebar;
 
+  const availableHeight = mainHeight ? mainHeight - footerHeight : undefined;
+
   return (
     <Box
       component="main"
@@ -129,10 +132,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
       ref={mainRef}
     >
       {isNative ? (
-        <ViewNativeQueryEditor
-          {...props}
-          availableHeight={mainHeight - footerHeight}
-        />
+        <ViewNativeQueryEditor {...props} availableHeight={availableHeight} />
       ) : (
         <SyncedParametersList
           className={ViewMainContainerS.StyledSyncedParametersList}
