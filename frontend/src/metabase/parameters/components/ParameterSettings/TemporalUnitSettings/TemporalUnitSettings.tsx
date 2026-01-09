@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
   Checkbox,
   Divider,
   Icon,
+  type MantineStyleProps,
   Popover,
   Stack,
   Text,
@@ -28,37 +30,36 @@ export function TemporalUnitSettings({
   parameter,
   onChangeTemporalUnits,
 }: TemporalUnitSettingsProps) {
+  const availableUnits = Lib.availableTemporalUnits();
+  const selectedUnits = parameter.temporal_units ?? availableUnits;
+  const isAll = selectedUnits.length === availableUnits.length;
+  const isNone = selectedUnits.length === 0;
   /**
    * Using manual touched state instead of Formik because the parent form
    * is not Formik-based, and introducing Formik here would be a regression
    */
   const [isTouched, setIsTouched] = useState(false);
-  const availableUnits = Lib.availableTemporalUnits();
-  const selectedUnits = parameter.temporal_units ?? availableUnits;
-  const isAll = selectedUnits.length === availableUnits.length;
-  const isNone = selectedUnits.length === 0;
+  const [isOpened, { close, toggle }] = useDisclosure(false, {
+    onClose: () => setIsTouched(true),
+  });
   const showError = isTouched && isNone;
+  const errorButtonStyles: MantineStyleProps | undefined = showError
+    ? { c: "error", bd: "1px solid error" }
+    : undefined;
 
   return (
     <Stack gap="xs">
-      <Popover width="target" onClose={() => setIsTouched(true)}>
+      <Popover opened={isOpened} onDismiss={close} width="target">
         <Popover.Target>
           <Button
             fw="normal"
-            rightSection={
-              <Icon name="chevrondown" c={showError ? "error" : undefined} />
-            }
+            rightSection={<Icon name="chevrondown" c={errorButtonStyles?.c} />}
             fullWidth
             px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
             justify="space-between"
-            styles={{
-              root: showError
-                ? {
-                    color: "var(--mb-color-error)",
-                    borderColor: "var(--mb-color-error)",
-                  }
-                : undefined,
-            }}
+            c={errorButtonStyles?.c}
+            bd={errorButtonStyles?.bd}
+            onClick={toggle}
           >
             {getSelectedText(selectedUnits, isAll, isNone)}
           </Button>
