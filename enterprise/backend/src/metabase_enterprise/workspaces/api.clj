@@ -820,6 +820,7 @@
                                    {:archived_at nil})))
   ;; Increment both versions - transform re-enters graph and needs re-analysis
   (ws.impl/increment-analysis-version! id tx-id)
+  ;; We could merge this with the initial WorkspaceTransform update to save a statement, but it adds complexity.
   (ws.impl/increment-graph-version! id)
   nil)
 

@@ -17,8 +17,10 @@
    External inputs are tables that are not shadowed by any output.
    Returns seq of WorkspaceInput records where access_granted is false."
   [workspace-id]
-  ;; NOTE: Could optimize with table_id join if workspace_output gets that column,
-  ;; but not worth it given the small number of rows per workspace.
+  ;; It would be nice if we could optimize this join to use table_id.
+  ;; In the case where the table doesn't exist yet (i.e. table_id is nil) it's OK to skip it - we can't grant any
+  ;; permissions until it exists.
+  ;; Currently, though, we fail if any of the global input tables don't yet exist. Maybe we're happy changing that.
   (t2/select :model/WorkspaceInput
              :workspace_id workspace-id
              {:where [:and
@@ -385,15 +387,13 @@
                                             :from   [:workspace]
                                             :where  [:= :id ws-id]}]})))
 
-(defn- analyze-transform-for-version!
+(defn- analyze-transform!
   "Analyze a transform and write its outputs/inputs with the given transform_version.
    Called when the transform's output doesn't exist for current analysis_version."
   [{ws-id :id, isolated-schema :schema :as _workspace}
    {:keys [ref_id analysis_version] :as transform}]
   (let [analysis (ws.deps/analyze-entity :transform transform)]
-    ;; Write dependencies with transform_version
-    (ws.deps/write-dependencies! ws-id isolated-schema :transform ref_id analysis analysis_version)
-    ;; Cleanup old versions for this transform
+    (ws.deps/write-entity-analysis! ws-id isolated-schema :transform ref_id analysis analysis_version)
     (cleanup-old-transform-versions! ws-id ref_id)))
 
 (defn analyze-stale-transforms!
@@ -416,26 +416,26 @@
                                                                  [:= :wo.transform_version :workspace_transform.analysis_version]]}]]]})]
     ;; Analyze each stale transform
     (doseq [transform stale-transforms]
-      (analyze-transform-for-version! workspace transform))
+      (analyze-transform! workspace transform))
     ;; Grant read access to any new external inputs
     (when (seq stale-transforms)
       (sync-grant-accesses! workspace))
     (boolean (seq stale-transforms))))
 
 (defn- transform-output-exists-for-version?
-  "Check if workspace_output exists for a transform at its current analysis_version."
+  "Check if workspace_output exists for a transform at the given version or later."
   [ws-id ref-id analysis-version]
   (t2/exists? :model/WorkspaceOutput
               :workspace_id ws-id
               :ref_id ref-id
-              :transform_version analysis-version))
+              :transform_version [:>= analysis-version]))
 
 (defn analyze-transform-if-stale!
   "Analyze a single transform if its workspace_output doesn't exist for current analysis_version.
    Used before running a transform to ensure grants are up-to-date."
   [{ws-id :id :as workspace} {:keys [ref_id analysis_version] :as transform}]
   (when-not (transform-output-exists-for-version? ws-id ref_id analysis_version)
-    (analyze-transform-for-version! workspace transform)
+    (analyze-transform! workspace transform)
     (sync-grant-accesses! workspace)))
 
 (defn- insert-workspace-graph!

@@ -233,14 +233,6 @@
                   :isolated_table    isolated-table
                   :isolated_table_id isolated-table-id}))))
 
-(defn- build-output-lookup
-  "Build a lookup map for workspace outputs: [db_id global_schema global_table] -> output_id.
-   Single query to fetch all outputs for the workspace."
-  [workspace-id]
-  (t2/select-fn->fn (juxt :db_id :global_schema :global_table) :id
-                    :model/WorkspaceOutput
-                    :workspace_id workspace-id))
-
 (defn- normalize-input-schema
   "Normalize an input's schema: replace nil with the driver's default schema.
    This ensures consistent comparison with output schemas which are always explicit."
@@ -266,7 +258,7 @@
                     :table_id          table_id}))))
   nil)
 
-(mu/defn write-dependencies! :- :nil
+(mu/defn write-entity-analysis! :- :nil
   "Persist dependency analysis for a workspace entity.
 
    Arguments:
@@ -289,20 +281,15 @@
    transform-version :- :int]
   (ws.u/assert-transform! entity-type)
   (t2/with-transaction [_conn]
-    (let [output-lookup (build-output-lookup workspace-id)
-          driver        (t2/select-one-fn :engine [:model/Database :engine]
-                                          :id [:in {:select [:database_id]
-                                                    :from   [:workspace]
-                                                    :where  [:= :id workspace-id]}])
-          normalize     (partial sql.normalize/normalize-name driver)
-          ;; Filter out internal inputs (those matching workspace outputs) - they don't need tracking
-          external-inputs (remove (fn [{:keys [db_id schema table]}]
-                                    (contains? output-lookup [db_id schema table]))
-                                  inputs)
-          default-schema (driver.sql/default-schema driver)
+    (let [driver            (t2/select-one-fn :engine [:model/Database :engine]
+                                              :id [:in {:select [:database_id]
+                                                        :from   [:workspace]
+                                                        :where  [:= :id workspace-id]}])
+          normalize         (partial sql.normalize/normalize-name driver)
+          default-schema    (driver.sql/default-schema driver)
           ;; Normalize external inputs so schemas are consistent
-          normalized-external-inputs (map (partial normalize-input-schema default-schema) external-inputs)]
+          normalized-inputs (map (partial normalize-input-schema default-schema) inputs)]
       ;; Insert inputs first, then output - output row acts as "commit marker" for version check
-      (insert-workspace-inputs! workspace-id ref-id normalized-external-inputs transform-version)
-      (insert-workspace-output! workspace-id ref-id isolated-schema output normalize transform-version)))
-  nil)
+      (insert-workspace-inputs! workspace-id ref-id normalized-inputs transform-version)
+      (insert-workspace-output! workspace-id ref-id isolated-schema output normalize transform-version)
+      nil)))
