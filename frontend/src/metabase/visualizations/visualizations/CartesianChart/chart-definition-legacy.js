@@ -129,7 +129,7 @@ function transformSingleSeries(s, series, seriesIndex) {
       const name = [
         // show series title if it's multiseries
         series.length > 1 && card.name,
-        // show column name if there are multiple metrics or sigle series
+        // show column name if there are multiple metrics or single series
         (metricColumnIndexes.length > 1 || series.length === 1) &&
           col?.display_name,
       ]

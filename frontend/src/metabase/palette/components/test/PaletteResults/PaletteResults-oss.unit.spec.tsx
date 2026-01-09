@@ -161,7 +161,7 @@ describe("PaletteResults", () => {
     expect(screen.queryByText("Permissions")).not.toBeInTheDocument();
   });
 
-  it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {
+  it("should not compute search results if 'search-typeahead-enabled' is disabled", async () => {
     setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
     expect(
       await screen.findByRole("option", { name: /View search results/ }),
