@@ -1,8 +1,7 @@
-import type { MantineTheme } from "@mantine/core";
+import type { MantineColorsTuple } from "@mantine/core";
 
 import { colorConfig } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
-type ColorShades = MantineTheme["colors"]["dark"];
 
 export const ALL_COLOR_NAMES = Object.keys(colorConfig);
 
@@ -23,7 +22,7 @@ const ORIGINAL_COLORS = [
   "teal",
 ] as const;
 
-export function getColorShades(colorName: string): ColorShades {
+export function getColorShades(colorName: string): MantineColorsTuple {
   // yes this is silly, but it makes typescript so happy
   return [
     colorName,
@@ -41,7 +40,7 @@ export function getColorShades(colorName: string): ColorShades {
 
 export function getThemeColors(
   colorScheme: "light" | "dark",
-): Record<string, ColorShades> {
+): Record<string, MantineColorsTuple> {
   return {
     ...Object.fromEntries(
       ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),

@@ -176,7 +176,7 @@ export function ColumnValue({
           truncate
           fw="bold"
           style={style}
-          c={style?.color || "text-primary"}
+          c={style?.color ? undefined : "text-primary"}
         >
           {value}
         </Ellipsified>
@@ -305,7 +305,7 @@ export function ColumnValue({
       size="sm"
       truncate
       style={style}
-      c={style?.color || "text-primary"}
+      c={style?.color ? undefined : "text-primary"}
     >
       {value}
     </Ellipsified>
