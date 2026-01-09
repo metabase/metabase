@@ -98,7 +98,7 @@ export const ChartSettingSegmentsEditor = ({
               <td>
                 {segments.length > 1 && (
                   <Button
-                    leftSection={<Icon name="trash" c="text-light" />}
+                    leftSection={<Icon name="trash" c="text-tertiary" />}
                     onClick={() =>
                       onChange(segments.filter((v, i) => i !== index))
                     }
@@ -126,7 +126,7 @@ function getColorPalette() {
     color("error"),
     color("warning"),
     color("success"),
-    color("bg-medium"),
+    color("background-tertiary"),
   ];
 }
 

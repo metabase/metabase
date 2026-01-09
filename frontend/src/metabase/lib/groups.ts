@@ -33,7 +33,7 @@ export function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
   if (isAdminGroup(group)) {
     return color("filter");
   } else if (isDefaultGroup(group)) {
-    return color("text-medium");
+    return color("text-secondary");
   } else {
     return color("brand");
   }

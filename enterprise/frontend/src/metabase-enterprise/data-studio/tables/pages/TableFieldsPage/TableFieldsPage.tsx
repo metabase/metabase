@@ -108,14 +108,14 @@ export function TableFieldsPage({ params }: TableFieldsPageProps) {
               pos="sticky"
               top={0}
               className={S.header}
-              bg="bg-light"
+              bg="background-secondary"
             >
               <Text fw="bold">{t`Field Details`}</Text>
               <Button
                 component={ForwardRefLink}
                 to={Urls.dataStudioTableFields(table.id)}
                 onClick={closePreview}
-                leftSection={<Icon name="close" c="text-medium" />}
+                leftSection={<Icon name="close" c="text-secondary" />}
                 variant="subtle"
                 size="compact-sm"
                 p="sm"
