@@ -193,6 +193,11 @@
                                                   :schema         nil
                                                   :table          "test_table"
                                                   :access_granted true}]
+        ;; workaround for bad mocking
+        (t2/update! :model/WorkspaceTransform {:ref_id (:ref_id t)} {:target {:type     :table
+                                                                              :database (mt/id)
+                                                                              :name     "output"}})
+
         (testing "Archive resets access_granted to false"
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
           (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))))
