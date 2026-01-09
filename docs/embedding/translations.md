@@ -11,9 +11,9 @@ You can set a locale on all modular embeds (guest and SSO) to translate Metabase
 
 ## Set a locale to translate UI, and upload a dictionary to translate content
 
-To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest and SSO).
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest and SSO). Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
 
-For guest embeds, set the `locale` in `window.metabaseConfig`:
+For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
 
 ```html
 <script>
@@ -31,6 +31,10 @@ For guest embeds, set the `locale` in `window.metabaseConfig`:
 <metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
 ```
 
+For guest embeds (and only guest embeds), if you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
+
+### SDK translations
+
 For the SDK, set the `locale` prop on the `MetabaseProvider` component:
 
 ```tsx
@@ -40,10 +44,6 @@ For the SDK, set the `locale` prop on the `MetabaseProvider` component:
 >
 </MetabaseProvider>
 ```
-
-Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
-
-For guest embeds, if you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
 
 ## Add a translation dictionary
 
