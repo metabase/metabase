@@ -341,6 +341,13 @@ describe("Remote Sync", () => {
         // Make a change in metabase
         H.moveCollectionItemToSyncedCollection("Orders");
 
+        // Ensure that remote is ahead of us so that the pull button is enabled
+        // Make a change outside metabase
+        H.updateRemoteQuestion((doc) => {
+          doc.description = "Lalala";
+          return doc;
+        });
+
         H.goToSyncedCollection();
         H.getPullOption().click();
       });
@@ -351,12 +358,12 @@ describe("Remote Sync", () => {
           cy.button("Push changes").click();
         });
 
-        H.waitForTask({ taskName: "export" });
-
-        H.getGitSyncControls().should("contain.text", "main");
-        H.collectionTable().within(() => {
-          cy.findByText("Orders").should("exist");
-          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
+        cy.findByTestId("undo-list").within(() => {
+          cy.root()
+            .findByText(
+              /Cannot export changes that will overwrite new changes in the branch/,
+            )
+            .should("be.visible");
         });
       });
 
@@ -399,23 +406,6 @@ describe("Remote Sync", () => {
           cy.findByText("Orders").should("not.exist");
           cy.findByText(REMOTE_QUESTION_NAME).should("exist");
         });
-      });
-
-      it("upstream changes", () => {
-        // Make a change outside metabase
-        H.updateRemoteQuestion((doc) => {
-          doc.name = "Sloan for Frontend Emperor";
-          return doc;
-        });
-
-        cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /Push/ }).click();
-          cy.button("Push changes").click();
-        });
-
-        cy.findByRole("list", { name: /undo-list/i }).findByText(
-          /Cannot export changes/,
-        );
       });
     });
   });

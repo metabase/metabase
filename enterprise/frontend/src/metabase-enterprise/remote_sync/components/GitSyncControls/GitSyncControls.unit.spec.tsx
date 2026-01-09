@@ -15,6 +15,7 @@ import {
 const setup = ({
   isAdmin = true,
   remoteSyncEnabled = true,
+  hasRemoteChanges = true,
   currentBranch = "main",
   syncType = "read-write",
   dirty = [],
@@ -22,12 +23,13 @@ const setup = ({
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
+  hasRemoteChanges?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
   branches?: string[];
 } = {}) => {
-  setupRemoteSyncEndpoints({ branches, dirty });
+  setupRemoteSyncEndpoints({ branches, dirty, hasRemoteChanges });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
 
@@ -186,6 +188,32 @@ describe("GitSyncControls", () => {
           fetchMock.callHistory.done("path:/api/ee/remote-sync/import"),
         ).toBe(true);
       });
+    });
+
+    it("is enabled when there are changes to pull", async () => {
+      setup({ hasRemoteChanges: true });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).not.toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
+    });
+
+    it("is disabled when there are no changes to pull", async () => {
+      setup({ hasRemoteChanges: false });
+
+      await waitFor(() => {
+        expect(getBranchButton(/main/)).toBeInTheDocument();
+      });
+      await userEvent.click(getBranchButton(/main/));
+      expect(await findOption(/Pull changes/)).toHaveAttribute(
+        "data-combobox-disabled",
+        "true",
+      );
     });
   });
 
