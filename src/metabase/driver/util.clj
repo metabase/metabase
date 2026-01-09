@@ -444,11 +444,11 @@
               (= :group (:type prop))
               (merge acc (collect-all-props-by-name (:fields prop)))
 
-              ;; Regular property with a name - add to map
+              ;; Regular fields
               (:name prop)
               (assoc acc (:name prop) prop)
 
-              ;; Other cases (properties without names) - skip
+              ;; This should not happen but let's leave it as a fallback
               :else
               acc))
           {}
