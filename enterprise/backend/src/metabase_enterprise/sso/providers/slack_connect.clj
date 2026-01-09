@@ -9,7 +9,8 @@
    [metabase.sso.core :as sso]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [methodical.core :as methodical]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -22,6 +23,7 @@
 (defn- extract-slack-claims
   "Extract Slack-specific claims from ID token.
    Returns map with Slack team and user information for storage in login_attributes.
+   Keys are strings to match the login_attributes schema [:map-of :string :string].
 
    NOTE: team_name is NOT included in Slack ID tokens per research.
    Use team_id only or make additional API call if team name is required."
@@ -29,19 +31,19 @@
   (let [team-id-claim (sso-settings/slack-connect-attribute-team-id)]
     (cond-> {}
       (get id-token-claims team-id-claim)
-      (assoc :slack-team-id (get id-token-claims team-id-claim))
+      (assoc "slack-team-id" (get id-token-claims team-id-claim))
 
       (:sub id-token-claims)
-      (assoc :slack-user-id (:sub id-token-claims))
+      (assoc "slack-user-id" (:sub id-token-claims))
 
       (get id-token-claims "https://slack.com/team_image_230")
-      (assoc :slack-team-image (get id-token-claims "https://slack.com/team_image_230"))
+      (assoc "slack-team-image" (get id-token-claims "https://slack.com/team_image_230"))
 
       (:email_verified id-token-claims)
-      (assoc :slack-email-verified (:email_verified id-token-claims))
+      (assoc "slack-email-verified" (str (:email_verified id-token-claims)))
 
       (:locale id-token-claims)
-      (assoc :slack-locale (:locale id-token-claims)))))
+      (assoc "slack-locale" (:locale id-token-claims)))))
 
 (defn- build-slack-oidc-config
   "Build OIDC configuration map for parent provider.
@@ -128,16 +130,33 @@
 
 ;;; -------------------------------------------------- Login Implementation --------------------------------------------------
 
+(defn- create-auth-identity-for-link!
+  "Create an AuthIdentity record linking an authenticated user to their Slack identity.
+   Used in link-only mode where we don't create users or sessions."
+  [user-id provider-id]
+  (when (and user-id provider-id)
+    (when-not (t2/exists? :model/AuthIdentity
+                          :user_id user-id
+                          :provider "slack-connect")
+      (t2/insert! :model/AuthIdentity
+                  {:user_id user-id
+                   :provider "slack-connect"
+                   :provider_id provider-id}))))
+
 (methodical/defmethod auth-identity/login! :provider/slack-connect
-  [provider {:keys [user] :as request}]
+  [provider {:keys [user authenticated-user user-data] :as request}]
   (case (sso-settings/slack-connect-authentication-mode)
     "sso"
     (do (when-not user
           (sso-utils/check-user-provisioning :slack-connect))
         (next-method provider request))
 
-    "link-only" ;; don't call next-method to prevent user creation
-    request))
+    "link-only"
+    ;; In link-only mode, create AuthIdentity for the authenticated user
+    ;; but don't create a session or new user
+    (do
+      (create-auth-identity-for-link! (:id @authenticated-user) (:provider-id user-data))
+      (assoc request :success? true))))
 
 (methodical/defmethod auth-identity/login! :after :provider/slack-connect
   [_provider {:keys [user slack-data] :as result}]

@@ -146,7 +146,7 @@
   "Should we enable SAML-based authentication?"
   :sso-saml)
 
-(define-premium-feature enable-sso-slack?
+(define-premium-feature ^{:added "0.59.0"} enable-sso-slack?
   "Should we enable Slack Connect (OIDC) authentication?"
   :sso-slack)
 

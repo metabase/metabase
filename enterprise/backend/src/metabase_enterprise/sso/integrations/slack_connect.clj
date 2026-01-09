@@ -84,13 +84,17 @@
 
       (cond
         (:success? login-result)
-        (let [final-redirect (or (:redirect-url login-result) "/")]
+        (let [final-redirect (or (:redirect-url login-result) "/")
+              base-response (-> (response/redirect final-redirect)
+                                (sso/clear-oidc-state-cookie))]
           (log/infof "Slack authentication successful for user %s" (get-in login-result [:user :email]))
-          (request/set-session-cookies request
-                                       (-> (response/redirect final-redirect)
-                                           (sso/clear-oidc-state-cookie))
-                                       (:session login-result)
-                                       (t/zoned-date-time (t/zone-id "GMT"))))
+          ;; In link-only mode, there's no session to set - just return the redirect
+          (if-let [session (:session login-result)]
+            (request/set-session-cookies request
+                                         base-response
+                                         session
+                                         (t/zoned-date-time (t/zone-id "GMT")))
+            base-response))
 
         ;; Login failed (includes state validation failures)
         :else

@@ -412,15 +412,20 @@
 
 (deftest authentication-mode-validation-test
   (testing "authentication mode setting only accepts valid values"
-    (with-slack-default-setup!
-      (testing "valid values are accepted"
-        (sso-settings/slack-connect-authentication-mode! "sso")
-        (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
-        (sso-settings/slack-connect-authentication-mode! "link-only")
-        (is (= "link-only" (sso-settings/slack-connect-authentication-mode))))
+    ;; Don't use with-slack-default-setup! here because it sets env vars
+    ;; which take precedence over DB values when reading settings.
+    ;; This test only needs to verify the setter validates input correctly.
+    (mt/with-additional-premium-features #{:sso-slack}
+      (mt/with-temporary-setting-values
+        [slack-connect-authentication-mode nil]
+        (testing "valid values are accepted"
+          (sso-settings/slack-connect-authentication-mode! "sso")
+          (is (= "sso" (sso-settings/slack-connect-authentication-mode)))
+          (sso-settings/slack-connect-authentication-mode! "link-only")
+          (is (= "link-only" (sso-settings/slack-connect-authentication-mode))))
 
-      (testing "invalid values are rejected"
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"Invalid authentication mode"
-             (sso-settings/slack-connect-authentication-mode! "invalid")))))))
+        (testing "invalid values are rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Invalid authentication mode"
+               (sso-settings/slack-connect-authentication-mode! "invalid"))))))))
