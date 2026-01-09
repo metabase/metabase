@@ -543,7 +543,7 @@
       (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
-  (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
+  (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
     (with-redefs [remote-sync.object/dirty-global? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
