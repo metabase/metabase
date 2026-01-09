@@ -96,7 +96,7 @@ export function color(color: any, palette: ColorPalette = colors) {
 export const alpha = (c: string, a: number) => {
   const colorObj = safeColorParse(color(c));
   if (!colorObj) {
-    return c; // Return original if parsing fails
+    return c;
   }
   return colorObj.alpha(a).string();
 };
