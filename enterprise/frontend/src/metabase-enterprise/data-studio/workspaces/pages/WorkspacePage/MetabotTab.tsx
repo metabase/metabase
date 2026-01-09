@@ -16,15 +16,16 @@ const MetabotContextRegistration = ({ transform, source }: MetabotTabProps) => {
 export const MetabotTab = ({ transform, source }: MetabotTabProps) => {
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
   const MetabotChat = PLUGIN_METABOT.MetabotChat;
-  const metabotConfig = {
-    // Show top-level mention menu for transforms and databases.
-    suggestionModels: ["transform", "database"],
-  };
 
   return (
     <MetabotProvider>
       <MetabotContextRegistration transform={transform} source={source} />
-      <MetabotChat config={metabotConfig} />
+      <MetabotChat
+        config={{
+          // Show top-level mention menu for transforms and databases.
+          suggestionModels: ["transform", "database"],
+        }}
+      />
     </MetabotProvider>
   );
 };
