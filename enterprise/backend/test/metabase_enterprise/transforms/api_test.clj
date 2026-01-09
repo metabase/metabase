@@ -246,7 +246,11 @@
                 (is (seq list-resp))
                 (testing "List response hydrates creator"
                   (is (every? #(map? (:creator %)) list-resp))
-                  (is (some #(= lucky-id (get-in % [:creator :id])) list-resp)))))))))))
+                  (is (some #(= lucky-id (get-in % [:creator :id])) list-resp)))
+                (testing "List response includes source_readable field"
+                  (is (every? #(contains? % :source_readable) list-resp))
+                  (is (some #(true? (:source_readable %)) list-resp)
+                      "At least one transform should have readable sources"))))))))))
 
 (deftest filter-transforms-test
   (testing "should be able to filter transforms"
@@ -299,6 +303,56 @@
               (testing "GET response hydrates creator"
                 (is (map? (:creator get-resp)))
                 (is (= lucky-id (get-in get-resp [:creator :id])))))))))))
+
+(deftest source-readable-field-test
+  (testing "Transforms API includes source_readable field"
+    (mt/with-premium-features #{:transforms}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (mt/dataset transforms-dataset/transforms-test
+          (with-transform-cleanup! [table-name "test_readable"]
+            (let [body {:name        "Test Transform"
+                        :description "Test"
+                        :source      {:type  "query"
+                                      :query (make-query "Gadget")}
+                        :target      {:type   "table"
+                                      :schema (get-test-schema)
+                                      :name   table-name}}]
+              (testing "Users with transforms permission can see source_readable field"
+                (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+                  (let [created (mt/user-http-request :lucky :post 200 "ee/transform" body)]
+                    (testing "in POST /ee/transform response"
+                      (is (contains? created :source_readable))
+                      (is (boolean? (:source_readable created))))
+
+                    (testing "in GET /ee/transform response"
+                      (let [list-resp (mt/user-http-request :lucky :get 200 "ee/transform")]
+                        (is (every? #(contains? % :source_readable) list-resp))
+                        (is (every? #(boolean? (:source_readable %)) list-resp))))
+
+                    (testing "in GET /ee/transform/:id response"
+                      (let [get-resp (mt/user-http-request :lucky :get 200 (format "ee/transform/%s" (:id created)))]
+                        (is (contains? get-resp :source_readable))
+                        (is (boolean? (:source_readable get-resp)))))
+
+                    (testing "source_readable is true when user has database read permission"
+                      (let [get-resp (mt/user-http-request :lucky :get 200 (format "ee/transform/%s" (:id created)))]
+                        (is (true? (:source_readable get-resp))
+                            "User with transforms permission should be able to read the source database"))))))
+
+              (testing "source_readable field is present even without database permissions"
+                (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+                  ;; Create transform as lucky
+                  (let [created (mt/user-http-request :lucky :post 200 "ee/transform" body)
+                        transform-id (:id created)]
+                    ;; Now test with a user who has transforms permission but not database view permission
+                    (mt/with-user-in-groups [group {:name "Transforms Only Group"}
+                                             user [group]]
+                      (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
+                        (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :blocked
+                          (let [get-resp (mt/user-http-request user :get 200 (format "ee/transform/%s" transform-id))]
+                            (is (contains? get-resp :source_readable))
+                            (is (false? (:source_readable get-resp))
+                                "User without database view permission should have source_readable=false")))))))))))))))
 
 (defn- ->transform [transform-name query]
   {:source {:type "query",

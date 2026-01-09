@@ -19,6 +19,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.query :as lib.query]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor :as qp]
@@ -115,6 +116,48 @@
   [user-id]
   (or api/*is-superuser?*
       (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
+
+(defn source-tables-readable?
+  "Check if the source tables/database in a transform are readable by the current user.
+  Returns true if the user can read all source tables (for python transforms) or the
+  source database (for query transforms)."
+  [transform]
+  (let [source (:source transform)]
+    (case (keyword (:type source))
+      :query
+      (if-let [db-id (get-in source [:query :database])]
+        (boolean (mi/can-read? (t2/select-one :model/Database db-id)))
+        false)
+
+      :python
+      (let [source-tables (get-in source [:source-tables])]
+        (if (empty? source-tables)
+          true
+          (let [table-ids (into []
+                                (comp (map val)
+                                      (map #(cond
+                                              (int? %) %
+                                              (map? %) (:table_id %)
+                                              :else nil))
+                                      (filter some?))
+                                source-tables)]
+            (and (seq table-ids)
+                 (every? (fn [table-id]
+                           (when-let [table (t2/select-one :model/Table table-id)]
+                             (mi/can-read? table)))
+                         table-ids)))))
+
+      (throw (ex-info (str "Unknown transform source type: " (:type source)) {})))))
+
+(defn add-source-readable
+  "Add :source_readable field to a transform or collection of transforms.
+  The field indicates whether the current user can read the source tables/database
+  referenced by the transform."
+  [transform-or-transforms]
+  (if (sequential? transform-or-transforms)
+    (mapv #(assoc % :source_readable (source-tables-readable? %))
+          transform-or-transforms)
+    (assoc transform-or-transforms :source_readable (source-tables-readable? transform-or-transforms))))
 
 (defn try-start-unless-already-running
   "Start a transform run, throwing an informative error if already running."

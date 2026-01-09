@@ -102,13 +102,14 @@
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
   (check-transforms-read-permission)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
-    (into []
-          (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
-                (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map python-source-table-ref->table-id))
-          (t2/hydrate transforms :last_run :transform_tag_ids :creator))))
+    (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator)
+         (into []
+               (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
+                     (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)
+                     (transforms.util/->tag-filter-xf [:tag_ids] tag_ids)
+                     (map #(update % :last_run transforms.util/localize-run-timestamps))
+                     (map python-source-table-ref->table-id)))
+         transforms.util/add-source-readable)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -163,7 +164,9 @@
                       ;; Return with hydrated tag_ids
                       (t2/hydrate transform :transform_tag_ids :creator)))]
     (events/publish-event! :event/transform-create {:object transform :user-id api/*current-user-id*})
-    (python-source-table-ref->table-id transform)))
+    (-> transform
+        python-source-table-ref->table-id
+        transforms.util/add-source-readable)))
 
 (defn get-transform
   "Get a specific transform."
@@ -175,7 +178,8 @@
         (t2/hydrate :last_run :transform_tag_ids :creator)
         (u/update-some :last_run transforms.util/localize-run-timestamps)
         (assoc :table target-table)
-        python-source-table-ref->table-id)))
+        python-source-table-ref->table-id
+        transforms.util/add-source-readable)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -201,7 +205,9 @@
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids         (get global-ordering id)
         dependencies    (map id->transform dep-ids)]
-    (mapv python-source-table-ref->table-id (t2/hydrate dependencies :creator))))
+    (->> (t2/hydrate dependencies :creator)
+         (mapv python-source-table-ref->table-id)
+         transforms.util/add-source-readable)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -271,7 +277,9 @@
                       (transform.model/update-transform-tags! id (:tag_ids body)))
                     (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
-    (python-source-table-ref->table-id transform)))
+    (-> transform
+        python-source-table-ref->table-id
+        transforms.util/add-source-readable)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
