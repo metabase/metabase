@@ -171,7 +171,13 @@ export function ColumnValue({
     case isProduct(column):
     case isSource(column):
       return (
-        <Ellipsified size="sm" truncate fw="bold">
+        <Ellipsified
+          size="sm"
+          truncate
+          fw="bold"
+          style={style}
+          c={style?.color ? undefined : "text-primary"}
+        >
           {value}
         </Ellipsified>
       );
@@ -295,7 +301,12 @@ export function ColumnValue({
   }
 
   return (
-    <Ellipsified size="sm" truncate>
+    <Ellipsified
+      size="sm"
+      truncate
+      style={style}
+      c={style?.color ? undefined : "text-primary"}
+    >
       {value}
     </Ellipsified>
   );
