@@ -111,9 +111,10 @@
                 (let [schema (get-test-schema)
                       response (mt/user-http-request :lucky :post 200 "ee/transform"
                                                      {:name   "My beautiful python runner"
-                                                      :source {:type          "python"
-                                                               :body          "print('hello world')"
-                                                               :source-tables {}}
+                                                      :source {:type            "python"
+                                                               :body            "print('hello world')"
+                                                               :source-tables   {}
+                                                               :source-database (mt/id)}
                                                       :target {:type     "table"
                                                                :schema   schema
                                                                :name     table-name
@@ -346,10 +347,11 @@
                   (let [created (mt/user-http-request :lucky :post 200 "ee/transform" body)
                         transform-id (:id created)]
                     ;; Now test with a user who has transforms permission but not database view permission
-                    (mt/with-user-in-groups [group {:name "Transforms Only Group"}
-                                             user [group]]
-                      (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
-                        (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :blocked
+                    ;; Block view-data for all-users so the test user doesn't inherit it
+                    (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/view-data :blocked
+                      (mt/with-user-in-groups [group {:name "Transforms Only Group"}
+                                               user [group]]
+                        (mt/with-db-perm-for-group! group (mt/id) :perms/transforms :yes
                           (let [get-resp (mt/user-http-request user :get 200 (format "ee/transform/%s" transform-id))]
                             (is (contains? get-resp :source_readable))
                             (is (false? (:source_readable get-resp))

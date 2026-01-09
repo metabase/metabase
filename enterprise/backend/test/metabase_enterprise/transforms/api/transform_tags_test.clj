@@ -21,9 +21,9 @@
 
 (deftest create-transform-with-tags-test
   (testing "POST /api/ee/transform with tag_ids"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (let [schema (t2/select-one-fn :schema :model/Table :db_id (mt/id) :active true)]
             (testing "Can create transform with tags"
               ;; Create tags via API since we're testing transform creation with existing tags
@@ -57,9 +57,9 @@
 
 (deftest update-transform-tags-test
   (testing "PUT /api/ee/transform/:id with tag_ids"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-temp [:model/Transform transform {:name "Test Transform"
                                                      :source {:type "query"
                                                               :query {:database (mt/id)
@@ -88,9 +88,9 @@
 
 (deftest get-transform-with-tags-test
   (testing "GET /api/ee/transform/:id returns tag_ids"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-temp [:model/Transform transform {:name "Transform With Tags"
                                                      :source {:type "query"
                                                               :query {:database (mt/id)
@@ -120,9 +120,9 @@
 
 (deftest list-transforms-with-tags-test
   (testing "GET /api/ee/transform returns transforms with tag_ids"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-temp [:model/Transform transform1 {:name "Transform 1"
                                                       :source {:type "query"
                                                                :query {:database (mt/id)
@@ -152,9 +152,9 @@
 
 (deftest delete-tag-removes-associations-test
   (testing "Deleting a tag removes it from all transforms"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-temp [:model/Transform transform {:name   "Transform for Delete Test"
                                                      :source {:type  "query"
                                                               :query {:database (mt/id)
@@ -185,9 +185,9 @@
 
 (deftest preserve-tag-order-test
   (testing "Tag order is preserved when adding/updating transform tags"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-temp [:model/TransformTag tag1 {:name "order-tag-1"}
                          :model/TransformTag tag2 {:name "order-tag-2"}
                          :model/TransformTag tag3 {:name "order-tag-3"}]

@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]))
 
@@ -221,24 +222,22 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table-id :id} {:db_id db-id :name "test_table"}]
+          (binding [api/*current-user-id* (mt/user->id :lucky)]
+            (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :unrestricted
+              (testing "returns true for query transform when user can read database"
+                (let [transform {:source {:type :query
+                                          :query {:database db-id}}}]
+                  (is (true? (transforms.util/source-tables-readable? transform)))))
 
-          (testing "returns true for query transform when user can read database"
-            (let [transform {:source {:type :query
-                                      :query {:database db-id}}}]
-              (mt/with-full-data-perms-for-all-users!
-                (is (true? (transforms.util/source-tables-readable? transform))))))
+              (testing "returns true for python transform when user can read all source tables"
+                (let [transform {:source {:type :python
+                                          :source-tables {"t1" table-id}}}]
+                  (is (true? (transforms.util/source-tables-readable? transform)))))
 
-          (testing "returns true for python transform when user can read all source tables"
-            (let [transform {:source {:type :python
-                                      :source-tables {"t1" table-id}}}]
-              (mt/with-full-data-perms-for-all-users!
-                (is (true? (transforms.util/source-tables-readable? transform))))))
-
-          (testing "handles source tables with table_id in map format"
-            (let [transform {:source {:type :python
-                                      :source-tables {"t1" {:table_id table-id}}}}]
-              (mt/with-full-data-perms-for-all-users!
-                (is (true? (transforms.util/source-tables-readable? transform)))))))))))
+              (testing "handles source tables with table_id in map format"
+                (let [transform {:source {:type :python
+                                          :source-tables {"t1" {:table_id table-id}}}}]
+                  (is (true? (transforms.util/source-tables-readable? transform))))))))))))
 
 (deftest source-tables-readable-permissions-test
   (testing "source-tables-readable? with various permission levels"
