@@ -55,7 +55,7 @@
     x))
 
 (def ^:private timezone
-  {:utc     "UTC"
+  {:utc "UTC"
    :pacific "America/Los_Angeles"
    :eastern "America/New_York"})
 
@@ -94,8 +94,8 @@
     sanity-check-test-utc-results
     (for [[id s cnt] sanity-check-test-utc-results]
       (let [zone-id (t/zone-id (->timezone-id timezone))
-            t       (t/offset-date-time (t/with-zone-same-instant (u.date/parse s) zone-id))
-            s       (t/format :iso-offset-date-time t)]
+            t (t/offset-date-time (t/with-zone-same-instant (u.date/parse s) zone-id))
+            s (t/format :iso-offset-date-time t)]
         [id s cnt]))))
 
 (defmethod sanity-check-test-expected-rows :sqlite
@@ -106,11 +106,11 @@
               [3 "2015-06-09 15:42:00.000" 5]
               [4 "2015-06-22 23:49:00.000" 3]
               [5 "2015-06-20 01:45:00.000" 3]]
-    :utc     [[1 "2015-06-06 10:40:00.000" 4]
-              [2 "2015-06-10 19:51:00.000" 0]
-              [3 "2015-06-09 15:42:00.000" 5]
-              [4 "2015-06-22 23:49:00.000" 3]
-              [5 "2015-06-20 01:45:00.000" 3]]
+    :utc [[1 "2015-06-06 10:40:00.000" 4]
+          [2 "2015-06-10 19:51:00.000" 0]
+          [3 "2015-06-09 15:42:00.000" 5]
+          [4 "2015-06-22 23:49:00.000" 3]
+          [5 "2015-06-20 01:45:00.000" 3]]
     :eastern [[1 "2015-06-06 10:40:00.000" 4]
               [2 "2015-06-10 19:51:00.000" 0]
               [3 "2015-06-09 15:42:00.000" 5]
@@ -130,9 +130,9 @@
                          (mt/formatted-rows
                           [int identity int]
                           (mt/run-mbql-query incidents
-                            {:fields   [$id $timestamp $severity]
+                            {:fields [$id $timestamp $severity]
                              :order-by [[:asc $id]]
-                             :limit    5})))))))))))))
+                             :limit 5})))))))))))))
 
 (defn- sad-toucan-incidents-with-bucketing!
   "Returns 10 sad toucan incidents grouped by `unit`"
@@ -140,8 +140,8 @@
    (->> (mt/dataset sad-toucan-incidents
           (mt/run-mbql-query incidents
             {:aggregation [[:count]]
-             :breakout    [[:field %timestamp {:temporal-unit unit}]]
-             :limit       10}))
+             :breakout [[:field %timestamp {:temporal-unit unit}]]
+             :limit 10}))
         mt/rows
         (mt/format-rows-by [->long-if-number int])))
 
@@ -168,7 +168,7 @@
   "sqlite returns dates that do not include their time, this formatter is useful for those DBs"
   [t]
   (condp instance? t
-    LocalDate     (t/format :iso-local-date t)
+    LocalDate (t/format :iso-local-date t)
     LocalDateTime (t/format :iso-local-date t)
     (t/format :iso-offset-date t)))
 
@@ -488,8 +488,8 @@
     (testing "results in pacific timezone"
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
                       (qp.test-util/supports-report-timezone? driver/*driver*))
-               [[0 8]  [1 9] [2 7] [3 10] [4 10] [5 9]  [6 6]  [7 5] [8 7] [9 7]]
-               [[0 13] [1 8] [2 4] [3 7]  [4 5]  [5 13] [6 10] [7 8] [8 9] [9 7]])
+               [[0 8] [1 9] [2 7] [3 10] [4 10] [5 9] [6 6] [7 5] [8 7] [9 7]]
+               [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]])
              (sad-toucan-incidents-with-bucketing! :hour-of-day :pacific))))
     (testing "results in UTC"
       (is (= [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]]
@@ -502,8 +502,8 @@
   (-> (mt/dataset sad-toucan-incidents
         (mt/run-mbql-query incidents
           {:aggregation [[:count]]
-           :breakout    [!day.timestamp]
-           :filter      [:between !default.timestamp start-date-str end-date-str]}))
+           :breakout [!day.timestamp]
+           :filter [:between !default.timestamp start-date-str end-date-str]}))
       mt/rows
       first
       second
@@ -520,13 +520,13 @@
                                               :eastern [1 -1 3 -3 3 -2 -1 0 1 1]}]
       (testing (format "Timezone = %s" timezone-id)
         (doseq [[i expected-net-gain] (map-indexed vector expected-net-gains)
-                :let                  [start                (t/local-date 2015 6 (inc i))
-                                       end                  (t/plus start (t/days 1))
-                                       ->tz                 #(t/zoned-date-time % (t/local-time 0) (t/zone-id (->timezone-id timezone-id)))
-                                       find-events-in-range (fn [x y]
-                                                              (find-events-in-range (u.date/format x) (u.date/format y)))
-                                       num-events-gained    (find-events-in-range end (->tz end))
-                                       num-events-lost      (find-events-in-range start (->tz start))]]
+                :let [start (t/local-date 2015 6 (inc i))
+                      end (t/plus start (t/days 1))
+                      ->tz #(t/zoned-date-time % (t/local-time 0) (t/zone-id (->timezone-id timezone-id)))
+                      find-events-in-range (fn [x y]
+                                             (find-events-in-range (u.date/format x) (u.date/format y)))
+                      num-events-gained (find-events-in-range end (->tz end))
+                      num-events-lost (find-events-in-range start (->tz start))]]
           (testing (format "events between %s and %s" start end)
             (is (= expected-net-gain
                    (- num-events-gained num-events-lost))
@@ -564,7 +564,7 @@
 
 (defmethod group-by-day-utc-test-expected-rows :sqlite
   [_driver]
-  (results-by-day u.date/parse date-without-time-format-fn  [6 10 4 9 9 8 8 9 7 9]))
+  (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9]))
 
 (deftest group-by-day-utc-test
   (mt/test-drivers (mt/normal-drivers)
@@ -734,10 +734,10 @@
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
                       (qp.test-util/supports-report-timezone? driver/*driver*))
                [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
-               [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
+               [[1 6] [2 10] [3 4] [4 9] [5 9] [6 8] [7 8] [8 9] [9 7] [10 9]])
              (sad-toucan-incidents-with-bucketing! :day-of-month :pacific))))
     (testing "\nUTC timezone"
-      (is (= [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]]
+      (is (= [[1 6] [2 10] [3 4] [4 9] [5 9] [6 8] [7 8] [8 9] [9 7] [10 9]]
              (sad-toucan-incidents-with-bucketing! :day-of-month :utc))))))
 
 (deftest group-by-day-of-year-test
@@ -745,11 +745,11 @@
     (testing "\nPacific timezone"
       (is (= (if (and (not (qp.test-util/tz-shifted-driver-bug? driver/*driver*))
                       (qp.test-util/supports-report-timezone? driver/*driver*))
-               [[152 8] [153 9]  [154 9] [155 4] [156 11] [157 8]  [158 6] [159 10] [160 6] [161 10]]
-               [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
+               [[152 8] [153 9] [154 9] [155 4] [156 11] [157 8] [158 6] [159 10] [160 6] [161 10]]
+               [[152 6] [153 10] [154 4] [155 9] [156 9] [157 8] [158 8] [159 9] [160 7] [161 9]])
              (sad-toucan-incidents-with-bucketing! :day-of-year :pacific))))
     (testing "\nUTC timezone"
-      (is (= [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]]
+      (is (= [[152 6] [153 10] [154 4] [155 9] [156 9] [157 8] [158 8] [159 9] [160 7] [161 9]]
              (sad-toucan-incidents-with-bucketing! :day-of-year :utc))))))
 
 ;; This test helps in debugging why event counts change with a given timezone. It queries only a UTC H2 datatabase to
@@ -770,13 +770,13 @@
                                                                    "2015-06-28" 0}}]
       (testing (format "Timezone = %s" timezone-id)
         (doseq [[start-str expected-net-gain] start-date->expected-net-gain
-                :let                          [start                (u.date/parse start-str)
-                                               end                  (t/plus start (t/days 7))
-                                               ->tz                 #(t/zoned-date-time % (t/local-time 0) (t/zone-id (->timezone-id timezone-id)))
-                                               find-events-in-range (fn [x y]
-                                                                      (find-events-in-range (u.date/format x) (u.date/format y)))
-                                               num-events-gained    (find-events-in-range end (->tz end))
-                                               num-events-lost      (find-events-in-range start (->tz start))]]
+                :let [start (u.date/parse start-str)
+                      end (t/plus start (t/days 7))
+                      ->tz #(t/zoned-date-time % (t/local-time 0) (t/zone-id (->timezone-id timezone-id)))
+                      find-events-in-range (fn [x y]
+                                             (find-events-in-range (u.date/format x) (u.date/format y)))
+                      num-events-gained (find-events-in-range end (->tz end))
+                      num-events-lost (find-events-in-range start (->tz start))]]
           (testing (format "events between %s and %s" start end)
             (is (= expected-net-gain
                    (- num-events-gained num-events-lost))
@@ -960,8 +960,8 @@
 
 (defn- week-of-year-and-week-count-should-be-consistent-test-break-out [unit]
   (->> (mt/mbql-query orders
-         {:filter      [:between $created_at "2019-01-01" "2019-12-31"]
-          :breakout    [:field $created_at {:temporal-unit unit}]
+         {:filter [:between $created_at "2019-01-01" "2019-12-31"]
+          :breakout [:field $created_at {:temporal-unit unit}]
           :aggregation [[:count]]})
        mt/process-query
        (mt/formatted-rows
@@ -1135,7 +1135,7 @@
             [int int]
             (mt/run-mbql-query checkins
               {:aggregation [[:count]]
-               :breakout    [!quarter-of-year.date]}))))))
+               :breakout [!quarter-of-year.date]}))))))
 
 (defmulti group-by-year-test-expected-rows
   "Expected rows for [[group-by-year-test]]."
@@ -1184,7 +1184,7 @@
             [str int]
             (mt/run-mbql-query checkins
               {:aggregation [[:count]]
-               :breakout    [!year.date]}))))))
+               :breakout [!year.date]}))))))
 
 ;; RELATIVE DATES
 (p.types/deftype+ ^:private TimestampDatasetDef [randomName intervalSeconds intervalCount]
@@ -1204,12 +1204,12 @@
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
   (let [interval-seconds (.intervalSeconds this)
-        intervalCount    (.intervalCount this)]
+        intervalCount (.intervalCount this)]
     (mt/dataset-definition
      (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)) "_" (.randomName this))
      [["checkins"
        [{:field-name "timestamp"
-         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
+         :base-type (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
        (mapv (fn [i]
                ;; TIMESTAMP FIXME — not sure if still needed
                ;;
@@ -1267,7 +1267,7 @@
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
-(defn- count-of-grouping! [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
+(defn- count-of-grouping [^TimestampDatasetDef dataset field-grouping & relative-datetime-args]
   (mt/dataset dataset
     ;; DB has values in the range of now() - (interval-seconds * 15) and now() + (interval-seconds * 15). So if it
     ;; was created more than (interval-seconds * 5) seconds ago, delete the Database and recreate it to make sure
@@ -1279,7 +1279,7 @@
         (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
         (t2/delete! :model/Database :id (mt/id))
         (tx/destroy-db! driver/*driver* (tx/get-dataset-definition dataset))
-        (apply count-of-grouping! dataset field-grouping relative-datetime-args))
+        (apply count-of-grouping dataset field-grouping relative-datetime-args))
       ;; Use UTC timezone for queries to match the timezone used during data insertion (see
       ;; metabase.test.data.sql-jdbc.load-data/do-insert! which sets timezone to UTC before inserting).
       ;; Without this, drivers like Redshift that use GETDATE() for relative datetime comparisons
@@ -1287,9 +1287,9 @@
       (mt/with-report-timezone-id! "UTC"
         (let [results (mt/run-mbql-query checkins
                         {:aggregation [[:count]]
-                         :filter      [:=
-                                       [:field %timestamp {:temporal-unit field-grouping}]
-                                       (cons :relative-datetime relative-datetime-args)]})]
+                         :filter [:=
+                                  [:field %timestamp {:temporal-unit field-grouping}]
+                                  (cons :relative-datetime relative-datetime-args)]})]
           (or (some-> results mt/first-row first int)
               results))))))
 
@@ -1299,7 +1299,7 @@
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
           (is (= 4
-                 (apply count-of-grouping! checkins:4-per-minute :minute args))
+                 (apply count-of-grouping checkins:4-per-minute :minute args))
               (format "filter by minute = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-2
@@ -1308,7 +1308,7 @@
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
           (is (= 4
-                 (apply count-of-grouping! checkins:4-per-hour :hour args))
+                 (apply count-of-grouping checkins:4-per-hour :hour args))
               (format "filter by hour = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-3
@@ -1317,7 +1317,7 @@
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
           (is (= 1
-                 (apply count-of-grouping! checkins:1-per-day :day args))
+                 (apply count-of-grouping checkins:1-per-day :day args))
               (format "filter by day = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-4
@@ -1325,7 +1325,7 @@
     (testing "1 checkin per day dataset"
       (testing "group by week"
         (is (= 7
-               (count-of-grouping! checkins:1-per-day :week :current))
+               (count-of-grouping checkins:1-per-day :week :current))
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest ^:parallel time-interval-test
@@ -1338,7 +1338,7 @@
                  [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:time-interval $timestamp :current :day]})))))))))
+                    :filter [:time-interval $timestamp :current :day]})))))))))
 
 (deftest ^:parallel time-interval-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
@@ -1350,7 +1350,7 @@
                  [int]
                  (mt/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:time-interval $timestamp :last :week]})))))))))
+                    :filter [:time-interval $timestamp :last :week]})))))))))
 
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
@@ -1381,25 +1381,25 @@
                  (mt/run-mbql-query
                    checkins
                    {:aggregation [[:count]]
-                    :filter      [:relative-time-interval $timestamp -1 :week -1 :week]})))
+                    :filter [:relative-time-interval $timestamp -1 :week -1 :week]})))
                (ffirst
                 (mt/formatted-rows
                  [int]
                  (mt/run-mbql-query
                    checkins
                    {:aggregation [[:count]]
-                    :filter      [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
+                    :filter [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
 ;; and the col info use the unit used by breakout
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
-                                        :or   {with-interval :current}}]
+                                        :or {with-interval :current}}]
   (let [results (mt/dataset checkins:1-per-day
                   (mt/run-mbql-query checkins
                     {:aggregation [[:count]]
-                     :breakout    [[:field %timestamp {:temporal-unit breakout-by}]]
-                     :filter      [:time-interval $timestamp with-interval filter-by]}))]
+                     :breakout [[:field %timestamp {:temporal-unit breakout-by}]]
+                     :filter [:time-interval $timestamp with-interval filter-by]}))]
     {:rows (or (-> results :row_count)
                (throw (ex-info "Query failed!" results)))
      :unit (-> results :data :cols first :unit)}))
@@ -1440,7 +1440,7 @@
               [int]
               (mt/run-mbql-query checkins
                 {:aggregation [[:count]]
-                 :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+                 :filter [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
 
 (deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
@@ -1452,7 +1452,7 @@
               [int]
               (mt/run-mbql-query checkins
                 {:aggregation [[:count]]
-                 :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
+                 :filter [:= [:field $timestamp nil] "2019-01-16"]})))))))
 
 (deftest ^:parallel default-bucketing-test-3
   (mt/test-drivers (mt/normal-drivers)
@@ -1463,9 +1463,9 @@
                 [int]
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
-                   :filter      [:and
-                                 [:= [:field $timestamp nil] "2019-01-16"]
-                                 [:= [:field $id nil] 6]]}))))))))
+                   :filter [:and
+                            [:= [:field $timestamp nil] "2019-01-16"]
+                            [:= [:field $id nil] 6]]}))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::empty-results-wrong-because-of-issue-5419]
   [_driver _feature _database]
@@ -1487,21 +1487,21 @@
                 [int]
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
-                   :filter      [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
-                                                                 "T14:16:00Z")]}))))))))
+                   :filter [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
+                                                            "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals
-  [[3   :day             "2014-03-03"]
-   [135 :day-of-week     1]
-   [36  :day-of-month    1]
-   [9   :day-of-year     214]
-   [11  :week            "2014-03-03"]
-   [7   :week-of-year    2]
-   [48  :month           "2014-03"]
-   [38  :month-of-year   1]
-   [107 :quarter         "2014-01"]
+  [[3 :day "2014-03-03"]
+   [135 :day-of-week 1]
+   [36 :day-of-month 1]
+   [9 :day-of-year 214]
+   [11 :week "2014-03-03"]
+   [7 :week-of-year 2]
+   [48 :month "2014-03"]
+   [38 :month-of-year 1]
+   [107 :quarter "2014-01"]
    [200 :quarter-of-year 1]
-   [498 :year            "2014"]])
+   [498 :year "2014"]])
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst
@@ -1509,14 +1509,14 @@
     [int]
     (mt/run-mbql-query checkins
       {:aggregation [[:count]]
-       :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
+       :filter [:= [:field %date {:temporal-unit unit}] filter-value]}))))
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (mt/with-temporary-setting-values [start-of-week :sunday]
       (mt/test-drivers (mt/normal-drivers)
         (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-          (doseq [tz [nil "UTC"]]         ;iterate on at least two report time zones to suss out bugs related to that
+          (doseq [tz [nil "UTC"]] ;iterate on at least two report time zones to suss out bugs related to that
             (mt/with-temporary-setting-values [report-timezone tz]
               (testing (format "\nunit = %s" unit)
                 (is (= expected-count (count-of-checkins unit filter-value))
@@ -1538,7 +1538,7 @@
             (-> (qp.compile/compile
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:= $date [:relative-datetime :current]]}))
+                    :filter [:= $date [:relative-datetime :current]]}))
                 (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))
 
 (deftest ^:parallel compile-time-interval-test
@@ -1561,7 +1561,7 @@
               "  1048575"]
              (->> (qp.compile/compile
                    (mt/mbql-query checkins
-                     {:filter   [:time-interval $date -4 :month]
+                     {:filter [:time-interval $date -4 :month]
                       :breakout [!day.date]}))
                   :query
                   sql.qp-test-util/pretty-sql
@@ -1628,28 +1628,28 @@
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
     (mt/dataset checkins:1-per-day
-      (let [query (mt/native-query {:query         (str "SELECT dayname(\"TIMESTAMP\") as \"day\" "
-                                                        "FROM checkins "
-                                                        "[[WHERE {{date_range}}]] "
-                                                        "ORDER BY \"TIMESTAMP\" ASC "
-                                                        "LIMIT 1")
+      (let [query (mt/native-query {:query (str "SELECT dayname(\"TIMESTAMP\") as \"day\" "
+                                                "FROM checkins "
+                                                "[[WHERE {{date_range}}]] "
+                                                "ORDER BY \"TIMESTAMP\" ASC "
+                                                "LIMIT 1")
                                     :template-tags {"date_range"
-                                                    {:name         "date_range"
+                                                    {:name "date_range"
                                                      :display-name "Date Range"
-                                                     :type         :dimension
-                                                     :widget-type  :date/all-options
-                                                     :dimension    (mt/$ids $checkins.timestamp)}}
-                                    :parameters    [{:type   :date/range
-                                                     :name   "created_at"
-                                                     :target [:dimension [:template-tag "date_range"]]
-                                                     :value  "past1weeks"}]})]
-        (doseq [[first-day-of-week expected] {"sunday"    ["Sunday"]
-                                              "monday"    ["Monday"]
-                                              "tuesday"   ["Tuesday"]
+                                                     :type :dimension
+                                                     :widget-type :date/all-options
+                                                     :dimension (mt/$ids $checkins.timestamp)}}
+                                    :parameters [{:type :date/range
+                                                  :name "created_at"
+                                                  :target [:dimension [:template-tag "date_range"]]
+                                                  :value "past1weeks"}]})]
+        (doseq [[first-day-of-week expected] {"sunday" ["Sunday"]
+                                              "monday" ["Monday"]
+                                              "tuesday" ["Tuesday"]
                                               "wednesday" ["Wednesday"]
-                                              "thursday"  ["Thursday"]
-                                              "friday"    ["Friday"]
-                                              "saturday"  ["Saturday"]}]
+                                              "thursday" ["Thursday"]
+                                              "friday" ["Friday"]
+                                              "saturday" ["Saturday"]}]
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (is (= expected
                    (mt/first-row
@@ -1658,15 +1658,15 @@
 (deftest ^:parallel temporal-unit-parameters-test
   (mt/dataset test-data
     (let [query-months (mt/query orders
-                         {:type       :query
-                          :query      {:source-table $$orders
-                                       :aggregation  [[:sum $subtotal]]
-                                       :breakout     [!month.created_at]
-                                       :filter       [:between $created_at "2018-01-01T00:00:00Z" "2018-12-31T23:59:59Z"]}
+                         {:type :query
+                          :query {:source-table $$orders
+                                  :aggregation [[:sum $subtotal]]
+                                  :breakout [!month.created_at]
+                                  :filter [:between $created_at "2018-01-01T00:00:00Z" "2018-12-31T23:59:59Z"]}
                           ;; The value for this parameter gets overridden below.
-                          :parameters [{:type   :temporal-unit
+                          :parameters [{:type :temporal-unit
                                         :target [:dimension !month.created_at]
-                                        :value  "month"}]})
+                                        :value "month"}]})
           unit-totals (fn [unit]
                         (->> (qp/process-query (assoc-in query-months [:parameters 0 :value] unit))
                              (mt/formatted-rows
@@ -1689,21 +1689,21 @@
          #"\QThis chart can not be broken out by the selected unit of time: minute.\E"
          (qp.preprocess/preprocess
           (mt/$ids checkins
-            {:database   (mt/id)
-             :type       :query
-             :query      {:source-table $$checkins
-                          :aggregation  [[:count]]
-                          :breakout     [!day.date]}
-             :parameters [{:type   :temporal-unit
+            {:database (mt/id)
+             :type :query
+             :query {:source-table $$checkins
+                     :aggregation [[:count]]
+                     :breakout [!day.date]}
+             :parameters [{:type :temporal-unit
                            :target [:dimension !day.date]
-                           :value  "minute"}]}))))))
+                           :value "minute"}]}))))))
 
 (deftest day-of-week-custom-start-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
       (testing "filter by `:day-of-week` should work correctly (#15044)"
-        (doseq [[day [thursday-day-of-week saturday-day-of-week]] {:sunday  [5 7]
-                                                                   :monday  [4 6]
+        (doseq [[day [thursday-day-of-week saturday-day-of-week]] {:sunday [5 7]
+                                                                   :monday [4 6]
                                                                    :tuesday [3 5]}]
           (mt/with-temporary-setting-values [start-of-week day]
             (is (= (sort-by
@@ -1714,22 +1714,22 @@
                     [int int]
                     (mt/run-mbql-query checkins
                       {:aggregation [[:count]]
-                       :breakout    [!day-of-week.date]
-                       :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+                       :breakout [!day-of-week.date]
+                       :filter [:between $date "2013-01-03" "2013-01-20"]}))))))))))
 
 (deftest first-day-of-week-for-day-of-week-bucketing-test
   (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
     (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
       (let [query (mt/mbql-query checkins
                     {:aggregation [[:count]]
-                     :breakout    [!day-of-week.date]})]
-        (doseq [[first-day-of-week expected-rows] {:sunday    [[1 135] [2 143] [3 153] [4 136] [5 139] [6 160] [7 134]]
-                                                   :monday    [[1 143] [2 153] [3 136] [4 139] [5 160] [6 134] [7 135]]
-                                                   :tuesday   [[1 153] [2 136] [3 139] [4 160] [5 134] [6 135] [7 143]]
+                     :breakout [!day-of-week.date]})]
+        (doseq [[first-day-of-week expected-rows] {:sunday [[1 135] [2 143] [3 153] [4 136] [5 139] [6 160] [7 134]]
+                                                   :monday [[1 143] [2 153] [3 136] [4 139] [5 160] [6 134] [7 135]]
+                                                   :tuesday [[1 153] [2 136] [3 139] [4 160] [5 134] [6 135] [7 143]]
                                                    :wednesday [[1 136] [2 139] [3 160] [4 134] [5 135] [6 143] [7 153]]
-                                                   :thursday  [[1 139] [2 160] [3 134] [4 135] [5 143] [6 153] [7 136]]
-                                                   :friday    [[1 160] [2 134] [3 135] [4 143] [5 153] [6 136] [7 139]]
-                                                   :saturday  [[1 134] [2 135] [3 143] [4 153] [5 136] [6 139] [7 160]]}]
+                                                   :thursday [[1 139] [2 160] [3 134] [4 135] [5 143] [6 153] [7 136]]
+                                                   :friday [[1 160] [2 134] [3 135] [4 143] [5 153] [6 136] [7 139]]
+                                                   :saturday [[1 134] [2 135] [3 143] [4 153] [5 136] [6 139] [7 160]]}]
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (mt/with-native-query-testing-context query
               (is (= expected-rows
@@ -1761,7 +1761,7 @@
                            checkins
                            {:expressions {"customdate" $timestamp}
                             :filter [:time-interval [:expression "customdate" {:base-type :type/DateTime}] :current :week]})
-              processed  (qp/process-query query)
+              processed (qp/process-query query)
               mbql-processed (qp/process-query mbql-query)]
           ;; Test both path ways since only mbql-queries were affected.
           (is (= 7 (count (mt/rows processed))))
@@ -1786,7 +1786,7 @@
                            {:expressions {"customdate" $timestamp}
                             :filter [:relative-time-interval
                                      [:expression "customdate" {:base-type :type/DateTime}] -1 :week -1 :week]})
-              processed  (qp/process-query query)
+              processed (qp/process-query query)
               mbql-processed (qp/process-query mbql-query)]
           (is (= 7 (count (mt/rows processed))))
           (is (= 7 (count (mt/rows mbql-processed))))
@@ -1806,19 +1806,19 @@
         (mt/with-metadata-provider (mt/id)
           (doseq [[n unit] [[3 :month]
                             [1 :quarter]]
-                  t        [#t "2022-03-31"
-                            #t "2022-03-31T00:00:00"
-                            #t "2022-03-31T00:00:00-00:00"]]
+                  t [#t "2022-03-31"
+                     #t "2022-03-31T00:00:00"
+                     #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
-                    june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
-                    checkins     (mt/with-metadata-provider (mt/id)
-                                   (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))
-                    honeysql     {:select [[june-31 :june_31]]
-                                  :from   [[checkins]]}
-                    honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+              (let [march-31 (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                    june-31 (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                    checkins (mt/with-metadata-provider (mt/id)
+                               (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))
+                    honeysql {:select [[june-31 :june_31]]
+                              :from [[checkins]]}
+                    honeysql (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
                     [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
-                    query        (mt/native-query {:query sql, :params args})]
+                    query (mt/native-query {:query sql, :params args})]
                 (mt/with-native-query-testing-context query
                   (is (re= (u.regex/rx #"^2022-"
                                        ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
