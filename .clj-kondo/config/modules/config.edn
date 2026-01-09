@@ -799,7 +799,6 @@
    :api  #{metabase.measures.api}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models
