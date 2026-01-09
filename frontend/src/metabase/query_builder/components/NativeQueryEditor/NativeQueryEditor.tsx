@@ -126,7 +126,7 @@ type Props = OwnProps &
 const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
   function NativeQueryEditorInner(props) {
     const {
-      availableHeight,
+      availableHeight = Infinity,
       canChangeDatabase = true,
       cancelQuery,
       closeSnippetModal,
@@ -187,11 +187,6 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
 
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
-
-    const maxHeight =
-      availableHeight != null
-        ? availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
-        : Infinity;
 
     const handleChange = useCallback(
       (queryText: string) => {
@@ -306,7 +301,9 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
           {isNativeEditorOpen && (
             <ResizableArea
               resizable={resizable}
-              maxHeight={maxHeight}
+              availableHeight={
+                availableHeight - topBarHeight - RESIZE_CONSTRAINT_OFFSET
+              }
               onResize={handleResize}
               initialHeight={getInitialEditorHeight({ query, availableHeight })}
               collapseEditor={() => setIsNativeEditorOpen?.(false)}
@@ -409,7 +406,7 @@ function ResizableArea(props: {
   children: ReactNode;
   resizable: boolean;
   initialHeight: number;
-  maxHeight: number;
+  availableHeight: number;
   onResize?: () => void;
   collapseEditor?: () => void;
   className?: string;
@@ -418,7 +415,7 @@ function ResizableArea(props: {
     children,
     resizable,
     initialHeight,
-    maxHeight,
+    availableHeight,
     onResize,
     collapseEditor,
     className,
@@ -452,13 +449,13 @@ function ResizableArea(props: {
   useEffect(() => {
     // If the height is higher than the max height,
     // resize to the max height
-    if (maxHeight == null) {
+    if (availableHeight == null) {
       return;
     }
-    if (height >= maxHeight) {
-      resize(maxHeight);
+    if (height >= availableHeight) {
+      resize(availableHeight);
     }
-  }, [height, maxHeight, resize]);
+  }, [height, availableHeight, resize]);
 
   const dragHandle = resizable ? (
     <div className={S.dragHandleContainer} data-testid="drag-handle">
@@ -470,7 +467,7 @@ function ResizableArea(props: {
     <Resizable
       height={height}
       minConstraints={[Infinity, MIN_EDITOR_HEIGHT_AFTER_DRAGGING]}
-      maxConstraints={[Infinity, maxHeight]}
+      maxConstraints={[Infinity, availableHeight]}
       axis="y"
       handle={dragHandle}
       resizeHandles={["s"]}
