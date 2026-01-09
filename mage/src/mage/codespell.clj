@@ -10,7 +10,7 @@
   [#_"dev"
    "docs"
    #_"e2e"
-   #_"enterprise"
+   "enterprise"
    #_"frontend"
    #_"modules/drivers"
    #_"src"
