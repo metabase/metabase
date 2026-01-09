@@ -29,7 +29,6 @@ export function dependencyTasks() {
 export type DependencyListParams = {
   query?: string;
   groupTypes?: DependencyGroupType[];
-  selectedEntry?: DependencyEntry;
   includeInDashboards?: boolean;
   includeInPersonalCollections?: boolean;
 };
@@ -37,7 +36,6 @@ export type DependencyListParams = {
 function dependencyListQueryString({
   query,
   groupTypes,
-  selectedEntry,
   includeInDashboards,
   includeInPersonalCollections,
 }: DependencyListParams = {}) {
@@ -49,10 +47,6 @@ function dependencyListQueryString({
     groupTypes.forEach((groupType) => {
       searchParams.append("groupTypes", groupType);
     });
-  }
-  if (selectedEntry != null) {
-    searchParams.set("selectedId", String(selectedEntry.id));
-    searchParams.set("selectedType", selectedEntry.type);
   }
   if (includeInDashboards != null) {
     searchParams.set("includeInDashboards", String(includeInDashboards));

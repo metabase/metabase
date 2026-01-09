@@ -1,8 +1,10 @@
+import { useState } from "react";
+
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
 import { Center, Flex, Stack } from "metabase/ui";
 import { useListUnreferencedGraphNodesQuery } from "metabase-enterprise/api";
-import type { DependencyNode } from "metabase-types/api";
+import type { DependencyEntry } from "metabase-types/api";
 
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 
@@ -26,7 +28,7 @@ export function DependencyList({
   params,
   onParamsChange,
 }: DependencyListProps) {
-  const { query, groupTypes, selectedEntry } = params;
+  const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
   const availableGroupTypes = getAvailableGroupTypes(mode);
   const useListGraphNodesQuery = useListUnreferencedGraphNodesQuery;
 
@@ -36,19 +38,15 @@ export function DependencyList({
     isLoading,
     error,
   } = useListGraphNodesQuery({
-    query: query,
-    types: getDependencyTypes(groupTypes ?? availableGroupTypes),
-    card_types: getCardTypes(groupTypes ?? availableGroupTypes),
+    query: params.query,
+    types: getDependencyTypes(params.groupTypes ?? availableGroupTypes),
+    card_types: getCardTypes(params.groupTypes ?? availableGroupTypes),
   });
 
   const selectedNode =
     selectedEntry != null
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
-
-  const handleSelect = (node: DependencyNode | undefined) => {
-    onParamsChange({ ...params, selectedEntry: node });
-  };
 
   return (
     <Flex h="100%">
@@ -69,13 +67,13 @@ export function DependencyList({
             <ListEmptyState label={getNotFoundMessage(mode)} />
           </Center>
         ) : (
-          <ListBody nodes={nodes} onSelect={handleSelect} />
+          <ListBody nodes={nodes} onSelect={setSelectedEntry} />
         )}
       </Stack>
       {selectedNode != null && (
         <ListSidebar
           node={selectedNode}
-          onClose={() => handleSelect(undefined)}
+          onClose={() => setSelectedEntry(undefined)}
         />
       )}
     </Flex>
