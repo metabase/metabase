@@ -97,6 +97,7 @@ type OwnProps = {
 
   handleResize?: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  runQuery?: () => void;
   runQuestionQuery: (opts?: {
     overrideWithQuestion?: Question;
     shouldUpdateUrl?: boolean;
@@ -176,6 +177,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       question,
       readOnly,
       resizable = true,
+      runQuery: runQueryFromProps,
       setDatasetQuery,
       setIsNativeEditorOpen,
       setNativeEditorSelectedRange,
@@ -212,8 +214,12 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
         : Infinity;
 
     const runQuery = useCallback(() => {
+      if (runQueryFromProps) {
+        runQueryFromProps();
+        return;
+      }
       dispatch(runOrCancelQuestionOrSelectedQuery());
-    }, [dispatch]);
+    }, [dispatch, runQueryFromProps]);
 
     const handleChange = useCallback(
       (queryText: string) => {
