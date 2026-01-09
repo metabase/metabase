@@ -35,6 +35,8 @@ import type {
   FilterOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
+  MeasureDisplayInfo,
+  MeasureMetadata,
   MetadataProvider,
   MetricDisplayInfo,
   MetricMetadata,
@@ -117,6 +119,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   metric: MetricMetadata,
 ): MetricDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  measure: MeasureMetadata,
+): MeasureDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,

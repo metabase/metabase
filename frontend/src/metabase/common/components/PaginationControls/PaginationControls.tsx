@@ -48,7 +48,7 @@ export const PaginationControls = ({
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (
           <>
-            <Text component="span" c="text-light">
+            <Text component="span" c="text-tertiary">
               &nbsp;
               {c(
                 "Appears in phrases like '1-10 of 100', referring to a page of results",

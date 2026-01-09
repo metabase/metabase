@@ -124,13 +124,12 @@ visualization_settings:
     - {base-type: type/Text}
     name: parameters
   table.pivot_column: archived
-card_schema: 22
+card_schema: 23
 serdes/meta:
 - {id: Bp2r19P5a9HjDTR4-VuZa, label: subscriptions_on_this_dashboard, model: Card}
 archived_directly: false
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
 document_id: null
 embedding_type: null
-published_table_id: null
 source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question

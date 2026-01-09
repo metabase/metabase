@@ -32,7 +32,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{:model/ApiKey
+  #{:model/AnalysisFinding
+    :model/ApiKey
     :model/AuthIdentity
     :model/HTTPAction
     :model/ImplicitAction

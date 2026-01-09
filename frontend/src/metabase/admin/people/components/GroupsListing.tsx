@@ -148,7 +148,7 @@ function ActionsPopover({
       <Menu shadow="md" width={200} position="bottom-end">
         <Menu.Target>
           <UnstyledButton aria-label={`group-action-button`}>
-            <Icon c="text-light" name="ellipsis" />
+            <Icon c="text-tertiary" name="ellipsis" />
           </UnstyledButton>
         </Menu.Target>
         <Menu.Dropdown>
@@ -247,7 +247,7 @@ function GroupRow({
   const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
 
   const membersLink = isTenantGroup
-    ? `/admin/tenants/groups/${group.id}`
+    ? `/admin/people/tenants/groups/${group.id}`
     : `/admin/people/groups/${group.id}`;
 
   return editing ? (
@@ -300,7 +300,7 @@ const ApiKeyCount = ({ apiKeys }: { apiKeys: ApiKey[] }) => {
     return null;
   }
   return (
-    <Box component="span" c="text-light">
+    <Box component="span" c="text-tertiary">
       {apiKeys.length === 1
         ? t` (includes 1 API key)`
         : t` (includes ${apiKeys.length} API keys)`}

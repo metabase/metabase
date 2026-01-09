@@ -507,9 +507,10 @@
   #{:and :or :not :< :<= :> :>= := :!= :in :not-in :between :starts-with :ends-with :contains
     :does-not-contain :inside :is-empty :not-empty :is-null :not-null :relative-time-interval :time-interval :during})
 
+;; TODO (Tamas 2026-01-05): Remove :measure from this set once FE tests switch to using MBQL5
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :distinct-where :metric :aggregation-options :count :offset})
+    :distinct-where :metric :measure :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match `::DatetimeExpression`."
@@ -1323,6 +1324,10 @@
 ;;; V1 (Legacy) Metrics (which lived in their own table) do not exist anymore! A V2 Metric is just a subtype of a Card.
 (defclause metric
   metric-id ::lib.schema.id/card)
+
+;; TODO (Tamas 2026-01-05): Remove this defclause once FE tests switch to using MBQL5
+(defclause measure
+  measure-id ::lib.schema.id/measure)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;

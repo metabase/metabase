@@ -182,15 +182,15 @@ function ForbiddenDomainError({ url }: { url: string }) {
 
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
-      <Text color="text-dark">
+      <Icon name="lock" c="text-primary" mb="s" />
+      <Text c="text-primary">
         {jt`${(
           <Text key="domain" fw="bold" display="inline">
             {domain}
           </Text>
         )} can not be embedded in iframe cards.`}
       </Text>
-      <InteractiveText c="text-dark" px="lg" mt="md">
+      <InteractiveText c="text-primary" px="lg" mt="md">
         {renderMessage()}
       </InteractiveText>
     </Box>
@@ -200,8 +200,8 @@ function ForbiddenDomainError({ url }: { url: string }) {
 function GenericError() {
   return (
     <Box p={12} w="100%" style={{ textAlign: "center" }}>
-      <Icon name="lock" color="var(--mb-color-text-dark)" mb="s" />
-      <Text color="text-dark">
+      <Icon name="lock" c="text-primary" mb="s" />
+      <Text color="text-primary">
         {t`There was a problem rendering this content.`}
       </Text>
     </Box>
