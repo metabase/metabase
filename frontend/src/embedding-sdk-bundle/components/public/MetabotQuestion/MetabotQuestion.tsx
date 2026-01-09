@@ -10,12 +10,10 @@ type MetabotQuestionComponent = ((props: MetabotQuestionProps) => ReactNode) & {
 
 export const METABOT_SDK_EE_PLUGIN: {
   MetabotQuestion: MetabotQuestionComponent;
-  MetabotProvider: ({ children }: { children: ReactNode }) => ReactNode;
 } = {
   // Placeholder implementation – replaced by EE plugin at runtime
   MetabotQuestion: ((_props: MetabotQuestionProps) =>
     null) as MetabotQuestionComponent,
-  MetabotProvider: ({ children }: { children: ReactNode }) => children,
 };
 
 export const MetabotQuestion = (props: MetabotQuestionProps) => {

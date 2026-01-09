@@ -18,6 +18,7 @@ import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { MetabaseReduxProvider, useSelector } from "metabase/lib/redux";
+import { MetabotProvider } from "metabase/metabot/context";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
@@ -27,7 +28,6 @@ import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
-import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
 export type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
@@ -167,14 +167,14 @@ export const ComponentProvider = memo(function ComponentProvider({
 
   return (
     <MetabaseReduxProvider store={reduxStoreRef.current!}>
-      <METABOT_SDK_EE_PLUGIN.MetabotProvider>
+      <MetabotProvider>
         <ComponentProviderInternal
           {...props}
           reduxStore={reduxStoreRef.current!}
         >
           {children}
         </ComponentProviderInternal>
-      </METABOT_SDK_EE_PLUGIN.MetabotProvider>
+      </MetabotProvider>
     </MetabaseReduxProvider>
   );
 });

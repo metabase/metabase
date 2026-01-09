@@ -19,7 +19,6 @@ import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
-import { MetabotContext, MetabotProvider, defaultContext } from "./context";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 /**
@@ -29,10 +28,8 @@ import { getMetabotVisible, metabotReducer } from "./state";
  * store allowing injecting reducers dynamically since the store would
  * already be created before PLUGIN_REDUCERS.* is set via the dynamic EE plugin.
  */
-PLUGIN_METABOT.getMetabotProvider = () => MetabotProvider;
-PLUGIN_METABOT.defaultMetabotContextValue = defaultContext;
-PLUGIN_METABOT.MetabotContext = MetabotContext;
 
+// TODO TODO TODO: remove this
 PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 
 /**

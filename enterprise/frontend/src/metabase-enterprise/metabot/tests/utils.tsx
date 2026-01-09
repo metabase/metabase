@@ -20,6 +20,7 @@ import {
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { MetabotProvider } from "metabase/metabot/context";
 import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -28,7 +29,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
-import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
   type MetabotState,
