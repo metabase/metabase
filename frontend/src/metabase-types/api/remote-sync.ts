@@ -21,15 +21,10 @@ export type RemoteSyncEntityStatus =
 export type RemoteSyncEntity = {
   id: number;
   name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string | null;
   model: RemoteSyncEntityModel;
   collection_id?: number;
   display?: CardDisplayType;
-  query_type?: string;
   sync_status: RemoteSyncEntityStatus;
-  authority_level?: string | null;
 };
 
 export type RemoteSyncChangesResponse = {

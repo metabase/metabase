@@ -23,6 +23,35 @@
   (boolean
    (collections/remote-synced-collection? collection_id)))
 
+(defmulti ^:private remote-sync-model-details
+  "Returns a map of relevant fields for the model."
+  {:arglists '([model-type model-id])}
+  (fn [model-type _model-id] model-type))
+
+(defmethod remote-sync-model-details "Card"
+  [_model-type model-id]
+  (t2/select-one [:model/Card :name :collection_id :display] :id model-id))
+
+(defmethod remote-sync-model-details "Dashboard"
+  [_model-type model-id]
+  (t2/select-one [:model/Dashboard :name :collection_id] :id model-id))
+
+(defmethod remote-sync-model-details "Document"
+  [_model-type model-id]
+  (t2/select-one [:model/Document :name :collection_id] :id model-id))
+
+(defmethod remote-sync-model-details "NativeQuerySnippet"
+  [_model-type model-id]
+  (t2/select-one [:model/NativeQuerySnippet :name :id] :id model-id))
+
+(defmethod remote-sync-model-details "Timeline"
+  [_model-type model-id]
+  (t2/select-one [:model/Timeline :name :collection_id] :id model-id))
+
+(defmethod remote-sync-model-details "Collection"
+  [_model-type model-id]
+  (t2/select-one [:model/Collection :name [:id :collection_id]] :id model-id))
+
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change. Takes a model-type (type of model: 'Card',
   'Dashboard', 'Document', 'Collection'), a model-id (ID of the affected model), a status (status of the sync:
@@ -31,19 +60,36 @@
   [model-type model-id status & [_user-id]]
   (let [existing (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
     (cond
-      (or (and existing (not= "create" (:status existing)))
-          (and (= "create" (:status existing))
-               (contains? #{"removed" "delete"} status)))
+      (not existing)
+      (let [model-details (remote-sync-model-details model-type model-id)]
+        (t2/insert! :model/RemoteSyncObject
+                    {:model_type model-type
+                     :model_id model-id
+                     :model_name (:name model-details)
+                     :model_collection_id (:collection_id model-details)
+                     :model_display (some-> model-details :display name)
+                     :status status
+                     :status_changed_at (t/offset-date-time)}))
+
+      ;; If the entity was created and then removed/deleted before sync, just delete the entry from tracking
+      (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
+      (t2/delete! :model/RemoteSyncObject (:id existing))
+
+      ;; Just update the status, object doesn't exist to update other info
+      (= "delete" (:status existing))
       (t2/update! :model/RemoteSyncObject (:id existing)
                   {:status status
                    :status_changed_at (t/offset-date-time)})
 
-      (not existing)
-      (t2/insert! :model/RemoteSyncObject
-                  {:model_type model-type
-                   :model_id model-id
-                   :status status
-                   :status_changed_at (t/offset-date-time)}))))
+      ;; If the entry was created, the status should remain create until synced
+      (not (= "create" (:status existing)))
+      (let [model (remote-sync-model-details model-type model-id)]
+        (t2/update! :model/RemoteSyncObject (:id existing)
+                    {:status status
+                     :status_changed_at (t/offset-date-time)
+                     :model_name (:name model)
+                     :model_collection_id (:collection_id model)
+                     :model_display (some-> model :display name)})))))
 
 ;; Model change tracking event handlers
 
