@@ -6,13 +6,20 @@ on:
       - "master"
       - "release-**"
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   merge_group:
   workflow_dispatch:
 
 jobs:
   files-changed:
-    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
+    if: |
+      !contains(github.event.pull_request.labels.*.name,'ci skip') &&
+      !contains(github.event.pull_request.labels.*.name,'minimal-tests') &&
+      (
+        !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) ||
+        github.event.label.name == 'ci:all-cloud-drivers' ||
+        startsWith(github.event.label.name, 'break-quarantine-')
+      )
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
