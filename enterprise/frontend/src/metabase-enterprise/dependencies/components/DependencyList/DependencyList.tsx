@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useState } from "react";
 
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
@@ -48,15 +48,9 @@ export function DependencyList({
       ? nodes.find((node) => isSameNode(node, selectedEntry))
       : undefined;
 
-  useLayoutEffect(() => {
-    if (selectedEntry != null && selectedNode == null) {
-      setSelectedEntry(undefined);
-    }
-  }, [nodes, selectedEntry, selectedNode]);
-
   return (
     <Flex h="100%">
-      <Stack className={S.main} flex={1} px="3.5rem" py="md" gap="md">
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <ListHeader />
         <ListSearchBar
           mode={mode}
