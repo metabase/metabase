@@ -21,11 +21,12 @@ export function ResizableArea(props: {
     resizable,
     initialHeight,
     minHeight = 0,
-    maxHeight,
+    maxHeight: maxHeightFromProps,
     onResize,
     className,
   } = props;
 
+  const maxHeight = maxHeightFromProps <= 0 ? Infinity : maxHeightFromProps;
   const [height, setHeight] = useState(initialHeight);
 
   const resize = useCallback(
