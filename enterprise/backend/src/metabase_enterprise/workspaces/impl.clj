@@ -359,26 +359,31 @@
                                                         :workspace_id ws-id)))
 
 (defn- cleanup-old-transform-versions!
-  "Delete workspace_input and workspace_output rows for old transform versions."
-  [ws-id ref-id current-version]
-  (t2/delete! :model/WorkspaceOutput
-              :workspace_id ws-id
-              :ref_id ref-id
-              :transform_version [:< current-version])
-  (t2/delete! :model/WorkspaceInput
-              :workspace_id ws-id
-              :ref_id ref-id
-              :transform_version [:< current-version]))
+  "Delete obsolete analysis for a given workspace transform."
+  [ws-id ref-id]
+  (doseq [model [:model/WorkspaceOutput :model/WorkspaceInput]]
+    (t2/delete! model
+                :workspace_id ws-id
+                :ref_id ref-id
+                ;; Use a subselect to avoid left over gunk from race conditions.
+                {:where [:< :transform_version {:select [:analysis_version]
+                                                :from   [:workspace_transform]
+                                                :where  [:and
+                                                         [:= :workspace_id ws-id]
+                                                         [:= :ref_id ref-id]]}]})))
 
 (defn- cleanup-old-graph-versions!
-  "Delete graph-level rows for old versions."
-  [ws-id current-version]
+  "Delete obsolete graph-level rows."
+  [ws-id]
   (doseq [model [:model/WorkspaceGraph
                  :model/WorkspaceInputExternal
                  :model/WorkspaceOutputExternal]]
     (t2/delete! model
                 :workspace_id ws-id
-                :graph_version [:< current-version])))
+                ;; Use a subselect to avoid left over gunk from race conditions.
+                {:where [:< :graph_version {:select [:graph_version]
+                                            :from   [:workspace]
+                                            :where  [:= :id ws-id]}]})))
 
 (defn- analyze-transform-for-version!
   "Analyze a transform and write its outputs/inputs with the given transform_version.
@@ -389,7 +394,7 @@
     ;; Write dependencies with transform_version
     (ws.deps/write-dependencies! ws-id isolated-schema :transform ref_id analysis analysis_version)
     ;; Cleanup old versions for this transform
-    (cleanup-old-transform-versions! ws-id ref_id analysis_version)))
+    (cleanup-old-transform-versions! ws-id ref_id)))
 
 (defn analyze-stale-transforms!
   "Analyze transforms where workspace_output doesn't exist for current analysis_version.
@@ -568,7 +573,7 @@
       (sync-external-inputs-for-version! ws-id (:entities graph) target-graph-version))
 
     ;; Step 5: Cleanup old versions
-    (cleanup-old-graph-versions! ws-id target-graph-version)
+    (cleanup-old-graph-versions! ws-id)
 
     graph))
 
