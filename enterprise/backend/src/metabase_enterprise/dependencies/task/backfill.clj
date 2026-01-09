@@ -9,17 +9,17 @@
   and populates the dependency table. For cards, the event is emitted by the job handler itself,
   because the update of the record doesn't trigger the event handler. "
   (:require
-   [clojurewerkz.quartzite.jobs :as jobs]
-   [clojurewerkz.quartzite.scheduler :as qs]
-   [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.dependencies.settings :as deps.settings]
+   [metabase-enterprise.dependencies.task-util :as deps.task-util]
+   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.premium-features.core :as premium-features]
    [metabase.task.core :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
    (java.util Map Set)
@@ -33,13 +33,18 @@
   (t/to-millis-from-epoch (t/instant)))
 
 (def ^:private entities
+  "The list of models to backfill.
+
+  This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
+  involving tables are found via analysis of the other side of the relation."
   [:model/Card
    :model/Transform
    :model/NativeQuerySnippet
    :model/Dashboard
    :model/Document
    :model/Sandbox
-   :model/Segment])
+   :model/Segment
+   :model/Measure])
 
 ;; In-memory state for tracking failed entities
 ;; Stores {:model/Type {id {:fail-count N :next-retry-timestamp M}}}
@@ -68,25 +73,30 @@
            (take batch-size))
           (t2/reducible-select [model-kw :id] :dependency_analysis_version [:< target-version]))))
 
-(defn- backfill-card!
-  [id target-version]
-  ;; We don't want to change the card at all, we just want to update the dependency data and
-  ;; mark the card as processed for this dependency analysis version.
-  (let [update-count (t2/update! :model/Card id :dependency_analysis_version [:< target-version]
+(def ^:private custom-backfill-events
+  {:model/Card :event/card-dependency-backfill
+   :model/Dashboard :event/dashboard-dependency-backfill})
+
+(defn- custom-backfill-entity!
+  [model-kw event id target-version]
+  ;; We don't want to change the entity at all, we just want to update the dependency data and
+  ;; mark the entity as processed for this dependency analysis version.
+  (let [update-count (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                                  {:dependency_analysis_version target-version})]
-    (when-let [card (and (pos? update-count)
-                         (t2/select-one :model/Card id))]
-      (events/publish-event! :event/card-dependency-backfill {:object card}))
+    (when-let [entity (and (pos? update-count)
+                           (t2/select-one model-kw id))]
+      (events/publish-event! event {:object entity}))
     update-count))
 
 (defn- backfill-entity!
   [model-kw id target-version]
   (log/debug "Backfilling " (name model-kw) id)
-  (u/prog1 (t2/with-transaction [_]
-             (case model-kw
-               :model/Card (backfill-card! id target-version)
-               (t2/update! model-kw id :dependency_analysis_version [:< target-version]
-                           {:dependency_analysis_version target-version})))
+  (u/prog1
+    (t2/with-transaction [_]
+      (if-let [event (custom-backfill-events model-kw)]
+        (custom-backfill-entity! model-kw event id target-version)
+        (t2/update! model-kw id :dependency_analysis_version [:< target-version]
+                    {:dependency_analysis_version target-version})))
     (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
@@ -156,9 +166,9 @@
         retries? (has-pending-retries?)]
     (if (or full-batch-selected?
             retries?)
-      (let [delay-seconds    (* (deps.settings/dependency-backfill-delay-minutes) 60)
-            variance-seconds (* (deps.settings/dependency-backfill-variance-minutes) 60)
-            delay-in-seconds (max 0 (+ (- delay-seconds variance-seconds) (rand-int (* 2 variance-seconds))))]
+      (let [delay-in-seconds (deps.task-util/job-delay
+                              (deps.settings/dependency-backfill-delay-minutes)
+                              (deps.settings/dependency-backfill-variance-minutes))]
         (schedule-next-run! delay-in-seconds (.getScheduler ctx)))
       (log/info "No more entities to backfill for, stopping."))))
 
@@ -168,20 +178,27 @@
 (defn- schedule-next-run!
   ([delay-in-seconds] (schedule-next-run! delay-in-seconds nil))
   ([delay-in-seconds scheduler]
-   (let [start-at (java.util.Date. (long (+ (current-millis) (* delay-in-seconds 1000))))
-         trigger  (triggers/build
-                   (triggers/with-identity (triggers/key (str trigger-key \. (random-uuid))))
-                   (triggers/for-job job-key)
-                   (triggers/start-at start-at))]
-     (log/info "Scheduling next run at" start-at)
-     (if scheduler
-       ;; re-scheduling from the job
-       (qs/add-trigger scheduler trigger)
-       ;; first schedule
-       (let [job (jobs/build (jobs/of-type BackfillDependencies) (jobs/with-identity job-key))]
-         (task/schedule-task! job trigger))))))
+   (deps.task-util/schedule-next-run!
+    {:job-type         BackfillDependencies
+     :job-name         "Dependency Backfill"
+     :job-key          job-key
+     :trigger-key      trigger-key
+     :delay-in-seconds delay-in-seconds
+     :scheduler        scheduler})))
 
 (defmethod task/init! ::DependencyBackfill [_]
   (if (pos? (deps.settings/dependency-backfill-batch-size))
-    (schedule-next-run! (rand-int (* (deps.settings/dependency-backfill-variance-minutes) 60)))
+    (schedule-next-run! (if config/is-test?
+                          0
+                          (deps.task-util/job-initial-delay
+                           (deps.settings/dependency-backfill-variance-minutes))))
     (log/info "Not starting dependency backfill job because the batch size is not positive")))
+
+(derive ::backfill :metabase/event)
+(derive :event/serdes-load ::backfill)
+(derive :event/set-premium-embedding-token ::backfill)
+
+(methodical/defmethod events/publish-event! ::backfill
+  [_ _]
+  (when (premium-features/has-feature? :dependencies)
+    (backfill-dependencies!)))

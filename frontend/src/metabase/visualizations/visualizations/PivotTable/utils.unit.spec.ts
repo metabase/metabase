@@ -167,7 +167,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
   });
 
   describe("addMissingCardBreakouts", () => {
-    it("should not mess with pivot settings that aren't misssing breakouts", () => {
+    it("should not mess with pivot settings that aren't missing breakouts", () => {
       const oldPivotSettings: PivotTableColumnSplitSetting = {
         columns: [cols[0].name],
         rows: [cols[1].name, cols[2].name],

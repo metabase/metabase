@@ -1,5 +1,6 @@
 (ns metabase.queries.schema
   (:require
+   [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
@@ -61,7 +62,13 @@
   "Schema for an instance of a `:model/Card` (everything is optional to support updates)."
   [:map
    [:id                 {:optional true} [:maybe ::lib.schema.id/card]]
+   [:collection_id      {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:dashboard_id       {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
+   [:document_id        {:optional true} [:maybe ::documents.schema/document.id]]
    [:dataset_query      {:optional true} [:maybe ::query]]
+   [:description        {:optional true} [:maybe :string]]
+   [:name               {:optional true} [:maybe :string]]
    [:parameters         {:optional true} [:maybe [:ref ::parameters.schema/parameters]]]
    [:parameter_mappings {:optional true} [:maybe [:ref ::parameters.schema/parameter-mappings]]]
    [:type               {:optional true} [:maybe ::lib.schema.metadata/card.type]]

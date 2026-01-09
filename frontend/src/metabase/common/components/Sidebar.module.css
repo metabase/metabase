@@ -3,8 +3,8 @@
   composes: py2 from "style";
   width: 30%;
   max-width: 500px;
-  background-color: var(--mb-color-bg-light);
-  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-secondary);
 }
 
 .sidebar a {
@@ -16,7 +16,7 @@
   align-items: center;
   display: flex;
   font-size: 1em;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .item .icon {
@@ -24,7 +24,7 @@
 }
 
 .item:hover {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   color: var(--mb-color-brand);
 }
 
@@ -39,7 +39,7 @@
 
 .name {
   composes: ml2 textBold from "style";
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow-x: hidden;

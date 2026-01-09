@@ -16,6 +16,7 @@ import {
   createMockSegment,
   createMockStructuredDatasetQuery,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
@@ -71,9 +72,14 @@ const TEST_SEGMENT = createMockSegment({
 type SetupOpts = {
   segment?: Segment;
   table?: Table;
+  isAdmin?: boolean;
 };
 
-function setup({ segment = TEST_SEGMENT, table = TEST_TABLE }: SetupOpts = {}) {
+function setup({
+  segment = TEST_SEGMENT,
+  table = TEST_TABLE,
+  isAdmin = true,
+}: SetupOpts = {}) {
   setupSegmentEndpoint(segment);
   setupSchemaEndpoints(checkNotNull(table.db));
 
@@ -105,6 +111,7 @@ function setup({ segment = TEST_SEGMENT, table = TEST_TABLE }: SetupOpts = {}) {
     {
       withRouter: true,
       storeInitialState: {
+        currentUser: createMockUser({ is_superuser: isAdmin }),
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE],
           tables: [table],
@@ -227,5 +234,53 @@ describe("SegmentDetailPage", () => {
       screen.getByText("This segment will be permanently removed."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
+  });
+
+  describe("readonly state for non-admin users", () => {
+    it("has readonly segment name input", async () => {
+      setup({ isAdmin: false });
+
+      const nameInput = screen.getByDisplayValue("High Value Orders");
+      expect(nameInput).toBeDisabled();
+    });
+
+    it("shows description as plain text", async () => {
+      setup({ isAdmin: false });
+
+      expect(screen.getByText("Description")).toBeInTheDocument();
+      expect(screen.getByText("Orders with total > 100")).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Give it a description"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides description section when there is no description", async () => {
+      setup({
+        isAdmin: false,
+        segment: createMockSegment({ ...TEST_SEGMENT, description: "" }),
+      });
+
+      expect(screen.queryByText("Description")).not.toBeInTheDocument();
+    });
+
+    it("does not show Remove segment option in actions menu", async () => {
+      setup({ isAdmin: false });
+
+      await userEvent.click(screen.getByLabelText("Segment actions"));
+
+      expect(screen.getByText("Preview")).toBeInTheDocument();
+      expect(screen.queryByText("Remove segment")).not.toBeInTheDocument();
+    });
+
+    it("does not show Save/Cancel buttons", async () => {
+      setup({ isAdmin: false });
+
+      expect(
+        screen.queryByRole("button", { name: "Save" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Cancel" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

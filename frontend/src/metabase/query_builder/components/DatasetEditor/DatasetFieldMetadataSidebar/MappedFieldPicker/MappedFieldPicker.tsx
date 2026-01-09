@@ -100,7 +100,7 @@ function MappedFieldPicker({
 
   return (
     <>
-      <Text fw="bold" c="text-medium">
+      <Text fw="bold" c="text-secondary">
         {label}
       </Text>
       <SchemaTableAndFieldDataSelector

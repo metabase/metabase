@@ -197,10 +197,10 @@ function PaletteEmptyState() {
   return (
     <Stack align="center" justify="center" py="6rem" px="2rem" gap={0}>
       <Image src={NoResults} alt="no results" w={115} h={65} />
-      <Text c="text-medium" fw={700} mt="xl">
+      <Text c="text-secondary" fw={700} mt="xl">
         {t`No recent items`}
       </Text>
-      <Text c="text-light" size="sm" mt="xs" ta="center">
+      <Text c="text-tertiary" size="sm" mt="xs" ta="center">
         {t`Items you've recently viewed will appear here.`}
       </Text>
     </Stack>

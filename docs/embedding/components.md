@@ -27,13 +27,19 @@ To render a dashboard:
 ### Optional parameters
 
 - `with-title` (default is true) - show the dashboard title in the embed
-- `with-downloads` (default is false) - show the button to download the dashboard as PDF and download question results
+
+{% include plans-blockquote.html feature="More parameters for dashboard component" convert_pro_link_to_embbedding=true is_plural=true%}
+
+- `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show the button to download the dashboard as PDF and download question results
 - `drills` (default is true) - lets you drill through the dashboard
 - `initial-parameters` - default value for dashboard filters, like `{ 'productId': '42' }`.
-- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards will not include links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
+- `with-subscriptions` - let people set up [dashboard subscriptions](../dashboards/subscriptions.md). Unlike subscriptions sent from non-embedded dashboards, subscriptions sent from embedded dashboards exclude links to Metabase items, as Metabase assumes the recipient lacks access to the embedded Metabase.
 - `refresh` - auto-refreshes the dashboard. `refresh="60"` will refresh the dashboard every 60 seconds.
 - `hidden-parameters` - list of filter names to hide from the dashboard, like `['productId']`
-- `locale` - see [translations](./translations.md) (only available for guest embeds).
+
+For guest embeds, you can also set a `locale` in your page-level configuration to [translate embedded content](./translations.md).
+
+Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
 
 If you surround your attribute value with double quotes, make sure to use single quotes:
 
@@ -73,19 +79,33 @@ To render a question (chart):
 
 ### Optional parameters
 
-- `drills` (default is true) - lets you drill through the question
 - `with-title` (default is true) - show the title
-- `with-downloads` (default is false) - show downloads
+
+{% include plans-blockquote.html feature="More parameters for dashboard component" convert_pro_link_to_embbedding=true is_plural=true%}
+
+- `drills` (default is true) - lets you drill through the question
+- `with-downloads` (default is true on OSS/Starter and false on Pro/Enterprise) - show downloads
 - `initial-sql-parameters` - default value for SQL parameters, only applicable to native SQL questions, like `{ "productId": "42" }`
 - `is-save-enabled` (default is false)
 - `target-collection` - this is to enforce saving into a particular collection. Values: regular ID, entity ID, `"personal”`, `"root”`
 
+Only `with-title` and `with-downloads` are supported in [guest embeds](./guest-embedding.md).
+
 ## Browser
+
+{% include plans-blockquote.html feature="Browser component" convert_pro_link_to_embbedding=true%}
+
+Browser component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
 To render a collection browser so people can navigate a collection and open dashboards or questions:
 
 ```html
-<metabase-browser initial-collection="14" read-only="false"></metabase-browser>
+<metabase-browser
+  initial-collection="14"
+  read-only="false"
+  collection-entity-types="['collection', 'dashboard']"
+>
+</metabase-browser>
 ```
 
 ### Required parameters
@@ -94,9 +114,19 @@ To render a collection browser so people can navigate a collection and open dash
 
 ### Optional parameters
 
-- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but cannot save. If false, they can create and edit items in the collection.
+- `read-only` (default is true) – if true, people can interact with items (filter, summarize, drill-through) but can't save. If `false`, they can create and edit items in the collection.
+- `collection-visible-columns` – an array of columns to show in the collection browser: `type`, `name`, `description`, `lastEditedBy`, `lastEditedAt`, `archive`. For example, `collection-visible-columns="['type', 'name']"` shows only the type and name columns.
+- `collection-page-size` – how many items to show per page in the collection browser.
+- `collection-entity-types` – an array of entity types to show in the collection browser: `collection`, `dashboard`, `question`, `model`. For example, `collection-entity-types="['collection', 'dashboard']"` shows only collections and dashboards.
+- `data-picker-entity-types` – an array of entity types to show in the question's data picker: `model`, `table`. For example, `data-picker-entity-types="['model']"` shows only models.
+- `with-new-question` (default is true) – whether to show the "New exploration" button.
+- `with-new-dashboard` (default is true) – whether to show the "New dashboard" button. Only applies when `read-only` is false.
 
 ## AI chat
+
+{% include plans-blockquote.html feature="AI chat component" convert_pro_link_to_embbedding=true%}
+
+AI chat component is only available for authenticated modular embeds. It's unavailable for [Guest embeds](./guest-embedding.md).
 
 To render the AI chat interface:
 
@@ -116,6 +146,8 @@ None.
   - `sidebar`: the question visualization appears to the left of the chat interface, which is in the right sidebar.
 
 ## Customizing loader and error components
+
+{% include plans-blockquote.html feature="Customizing loader and error componentst" convert_pro_link_to_embbedding=true%}
 
 If you're using the [modular embedding SDK](./sdk/introduction.md), you can provide your own components for loading and error states by specifying `loaderComponent` and `errorComponent` as props to `MetabaseProvider`.
 
