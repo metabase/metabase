@@ -18,6 +18,7 @@ function getNodeNameColumn(): TreeTableColumnDef<DependencyNode> {
     id: "name",
     header: t`Name`,
     minWidth: "auto",
+    maxAutoWidth: 400,
     accessorFn: (node) => getNodeLabel(node),
     cell: ({ row }) => {
       const node = row.original;
@@ -31,6 +32,7 @@ function getNodeLocationColumn(): TreeTableColumnDef<DependencyNode> {
     id: "location",
     header: t`Location`,
     minWidth: "auto",
+    maxAutoWidth: 400,
     accessorFn: (node) => {
       const location = getNodeLocationInfo(node);
       const links = location?.links ?? [];
@@ -48,6 +50,7 @@ function getNodeErrorsColumn(): TreeTableColumnDef<DependencyNode> {
     id: "error",
     header: t`Errors`,
     minWidth: "auto",
+    maxAutoWidth: 400,
     accessorFn: (node) => node.errors?.length ?? 0,
     cell: ({ row }) => {
       const node = row.original;
