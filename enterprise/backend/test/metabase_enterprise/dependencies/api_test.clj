@@ -1570,4 +1570,3 @@
                     card-ids (set (map :id response))]
                 (is (contains? card-ids broken-in-personal))
                 (is (contains? card-ids broken-regular))))))))))
-
