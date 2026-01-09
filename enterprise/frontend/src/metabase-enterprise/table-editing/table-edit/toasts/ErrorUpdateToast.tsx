@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { jt, t } from "ttag";
 
 import { useGetTableQuery } from "metabase/api";
+import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import { Anchor, Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import {
@@ -29,6 +30,9 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
   );
 
   if (showPkError) {
+    const schemaId = table
+      ? generateSchemaId(table.db_id, table.schema)
+      : undefined;
     return (
       <Box w="18rem">
         <Text
@@ -38,7 +42,7 @@ export const ErrorUpdateToast = ({ error }: ErrorUpdateToastProps) => {
         <Text c="text-primary-inverse">{jt`Add a primary key in your database or set an ${(
           <Anchor
             component={Link}
-            to={`/data-studio/data/database/${table?.db_id}/schema/${table?.schema}/table/${table?.id}`}
+            to={`/data-studio/data/database/${table?.db_id}/schema/${schemaId}/table/${table?.id}`}
             disabled={!table}
             key="entity-key-link"
             target="_blank"
