@@ -37,7 +37,7 @@ export function TemporalUnitPicker({
   return (
     <Box p="sm" miw={MIN_WIDTH}>
       {availableItems.length === 0 && (
-        <Text px="sm" c="text-light">{t`No options`}</Text>
+        <Text px="sm" c="text-tertiary">{t`No options`}</Text>
       )}
       {visibleItems.map((item) => (
         <DefaultSelectItem
