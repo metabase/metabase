@@ -19,11 +19,12 @@ export type NodeLocationInfo = {
   links: NodeLink[];
 };
 
+export type DependentGroup = {
+  type: DependencyGroupType;
+  count: number;
+};
+
 export type DependencyErrorInfo = {
   label: string;
   detail: string | null;
-};
-
-export type DependencyFilterOptions = {
-  groupTypes: DependencyGroupType[];
 };
