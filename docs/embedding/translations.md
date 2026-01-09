@@ -43,7 +43,7 @@ For the SDK, set the `locale` prop on the `MetabaseProvider` component:
 
 Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
 
-If you also want to translate content---item titles, headings, filter labels, etc---you'll need to add a translation dictionary.
+For guest embeds, if you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
 
 ## Add a translation dictionary
 
