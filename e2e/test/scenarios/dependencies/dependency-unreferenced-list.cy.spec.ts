@@ -125,7 +125,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
       });
 
       H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Model").click();
+      H.popover().findByText("Snippet").click();
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
         hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
@@ -141,11 +141,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Model").click();
-      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+      checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
 
       H.popover().findByText("Segment").click();
       checkList({
-        visibleEntities: [
+        hiddenEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
           SEGMENT_FOR_QUESTION_FILTER,
         ],
@@ -153,22 +153,15 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
       H.popover().findByText("Metric").click();
       checkList({
-        visibleEntities: [
+        hiddenEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
           SEGMENT_FOR_QUESTION_FILTER,
           METRIC_FOR_QUESTION_AGGREGATION,
         ],
       });
 
-      H.popover().findByText("Snippet").click();
-      checkList({
-        visibleEntities: [
-          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
-          SEGMENT_FOR_QUESTION_FILTER,
-          METRIC_FOR_QUESTION_AGGREGATION,
-          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
-        ],
-      });
+      H.popover().findByText("Model").click();
+      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
     });
   });
 
