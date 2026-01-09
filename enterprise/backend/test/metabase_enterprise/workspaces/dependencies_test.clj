@@ -124,14 +124,16 @@
 ;;; ---------------------------------------- write-analysis! tests ----------------------------------------
 
 (defn- write-analysis! [workspace-id isolated-schema entity-type ref-id analysis]
+  ;; Always do new analysis
+  (t2/query {:update :workspace_transform
+             :set    {:analysis_version [:+ :analysis_version 1]}
+             :where  [:and [:= :workspace_id workspace-id] [:= :ref_id ref-id]]})
   (ws.deps/write-entity-analysis! workspace-id isolated-schema entity-type ref-id analysis
                                   (case entity-type
-                                    ;; Always do new analysis...
-                                    :transform (inc (or (t2/select-one-fn :transform_version
-                                                                          [:model/WorkspaceOutput :transform_version]
-                                                                          :workspace_id workspace-id
-                                                                          :ref_id ref-id)
-                                                        0)))))
+                                    :transform (t2/select-one-fn :analysis_version
+                                                                 [:model/WorkspaceTransform :analysis_version]
+                                                                 :workspace_id workspace-id
+                                                                 :ref_id ref-id))))
 
 (deftest write-dependencies-creates-output-test
   (testing "write-dependencies! creates workspace_output record"
@@ -221,11 +223,6 @@
                                     :table  (:name products-table)}]})
 
         ;; Trigger clean-up
-        (t2/update! :model/WorkspaceTransform
-                    {:ref_id (:ref_id wt)}
-                    {:analysis_version (t2/select-one-fn :transform_version :model/WorkspaceOutput
-                                                         :workspace_id (:id workspace)
-                                                         :ref_id (:ref_id wt))})
         (#'ws.impl/cleanup-old-transform-versions! (:id workspace) (:ref_id wt))
 
         (testing "old input is removed, new input exists"

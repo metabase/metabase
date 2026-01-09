@@ -77,7 +77,8 @@
                       {:node-type :table, :id (t2.realize/realize table-coord)})
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
                     :workspace_id ws-id
-                    :ref_id ref-id))
+                    :ref_id ref-id
+                    {:order-by [[:transform_version :desc]] :limit 1}))
 
 (defn- table-producers [ws-id id-or-coord]
   ;; Work with either logical co-ords or an id
@@ -91,7 +92,10 @@
                                               [:and
                                                [:= :db_id db]
                                                [:= :global_schema schema]
-                                               [:= :global_table table]]]]})]
+                                               [:= :global_table table]]]]
+                                     ;; There may be stale records from other transforms that previously targeted it.
+                                     :order-by [[:id :desc]]
+                                     :limit 1})]
     (if tx-ref-id
       ;; If there is a workspace transform that targets this table, ignore any global transform that also targets it.
       [{:node-type :workspace-transform :id tx-ref-id}]
@@ -180,8 +184,7 @@
 ;;;; Public API
 
 (defn path-induced-subgraph
-  "Given a map of entity types to IDs, compute the path-induced subgraph.
-   `entities-by-type` is a map like {:transform [1 2 3]}.
+  "Given a list of internal entities, compute the path-induced subgraph.
 
    Returns a map with:
    - :inputs       - tables that the subgraph directly depends on, that are not themselves produced by the subgraph.
@@ -190,27 +193,42 @@
                      both the external names, and the internal (isolated) names. sorted by the external names.
                      point back to their relevant transform.
 
-   - :entities     - the full list of entities, both in the changeset, and those that are enclosed. topo-sorted.
+   - :entities     - the full list of entities, both internal, and those that are enclosed. topo-sorted.
    - :dependencies - association list for the subgraph, with keys and values both in topological order"
-  [ws-id changeset]
-  (ws.u/assert-transforms! changeset)
-  (if (empty? changeset)
+  [ws-id internal-entities]
+  (ws.u/assert-transforms! internal-entities)
+  (if (empty? internal-entities)
     {:inputs       []
      :outputs      []
      :entities     []
      :dependencies {}}
-    (let [tx-nodes   (for [{:keys [entity-type id]} changeset]
+    (let [tx-nodes   (for [{:keys [entity-type id]} internal-entities]
                        (case entity-type
                          :transform {:node-type :workspace-transform, :id id}))
+          ->latest   (fn [versioned-entities]
+                       (let [versions (u/group-by (juxt :node-type :id) versioned-entities)
+                             latest?  (into #{}
+                                            (map (fn [[entity versions]]
+                                                   (if (= 1 (count versions))
+                                                     (first versions)
+                                                     (assoc entity :version (transduce (map :version) max versions)))))
+                                            versions)]
+                         (filter latest? versioned-entities)))
           outputs    (when (seq tx-nodes)
-                       (t2/select-fn-vec (fn [row]
-                                           {:node-type :table, :id (t2.realize/realize row)})
-                                         [:model/WorkspaceOutput
-                                          [:db_id :db]
-                                          [:global_schema :schema]
-                                          [:global_table :table]
-                                          [:global_table_id :id]]
-                                         :ref_id [:in (map :id tx-nodes)]))
+                       (->latest
+                        (t2/select-fn-vec (fn [row]
+                                            ;; We use workspace_output.id (i.e. analysis write order) as a proxy for
+                                            ;; the order in which the corresponding transforms were updated.
+                                            {:node-type :table
+                                             :id        (t2.realize/realize row)
+                                             :version   (:id row)})
+                                          [:model/WorkspaceOutput
+                                           :id
+                                           [:db_id :db]
+                                           [:global_schema :schema]
+                                           [:global_table :table]
+                                           [:global_table_id :id]]
+                                          :ref_id [:in (map :id tx-nodes)])))
           init-nodes (concat tx-nodes outputs)
           fns        {:node-parents (partial node-parents ws-id)
                       :table?       table?}]

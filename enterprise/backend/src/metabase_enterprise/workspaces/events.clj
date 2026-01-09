@@ -16,7 +16,7 @@
   (let [result (t2/query {:update :workspace
                           :set {:graph_version [:+ :graph_version 1]}})]
     (when (pos? (:next.jdbc/update-count result 0))
-      (log/debugf "Incremented graph_version for all workspaces due to global transform change"))))
+      (log/debug "Incremented graph_version for all workspaces due to global transform change"))))
 
 ;; These events are published by metabase-enterprise.transforms.api when transforms are
 ;; created, updated, or deleted. We subscribe to increment graph versions.

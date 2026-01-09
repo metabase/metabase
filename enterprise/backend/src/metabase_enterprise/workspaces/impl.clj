@@ -229,13 +229,18 @@
 
 ;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
 
+(defn- workspace-transforms
+  "Return the entity values for the internal transforms."
+  [ws-id]
+  (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
+                    [:model/WorkspaceTransform :ref_id]
+                    :workspace_id ws-id))
+
 (defn- calculate-graph!
   "Calculate the dependency graph for a workspace.
    Returns the graph without caching - caller is responsible for caching."
   [ws-id]
-  (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
-                                                        [:model/WorkspaceTransform :ref_id]
-                                                        :workspace_id ws-id)))
+  (ws.dag/path-induced-subgraph ws-id (workspace-transforms ws-id)))
 
 (defn- cleanup-old-transform-versions!
   "Delete obsolete analysis for a given workspace transform."
@@ -319,168 +324,155 @@
   "Insert a new graph for the given version. Silently ignores constraint violations
    from concurrent inserts (another process already inserted this version)."
   [ws-id graph-version graph]
-  (ws.u/ignore-constraint-violation
-   (t2/insert! :model/WorkspaceGraph
-               {:workspace_id ws-id
-                :graph_version graph-version
-                :graph graph})))
+  (when-not (t2/exists? :model/WorkspaceGraph :graph_version [:>= graph-version])
+    (ws.u/ignore-constraint-violation
+     (t2/insert! :model/WorkspaceGraph
+                 {:workspace_id  ws-id
+                  :graph_version graph-version
+                  :graph         graph}))))
 
-(defn- latest-sufficient-graph-version
-  "Get the max completed graph_version >= min-version, or nil if none exist.
-   Uses workspace_output_external as the commit marker - if it exists, we know all the analysis tables are populated."
-  [ws-id min-version]
-  (t2/select-one-fn :graph_version [:model/WorkspaceOutputExternal :graph_version]
-                    :workspace_id ws-id
-                    :graph_version [:>= min-version]
-                    {:order-by [[:graph_version :desc]]
-                     :limit 1}))
-
-(defn- get-graph-at-version
-  "Fetch the graph data for a specific version from workspace_graph."
-  [ws-id version]
-  (:graph (t2/select-one [:model/WorkspaceGraph :graph]
-                         :workspace_id ws-id
-                         :graph_version version)))
-
-(defn- get-completed-graph
-  "Get a completed graph for the given version or newer.
-   Returns nil if no sufficiently recent completed graph exists.
-   Uses any entry in the `workspace_output_external` table as a marker to determine all the tables were populated.
-   Uses a subselect to avoid races where the latest version could be superseded and deleted before we can fetch it."
-  [ws-id min-version]
-  (:graph (t2/select-one [:model/WorkspaceGraph :graph]
-                         :workspace_id ws-id
-                         {:where [:= :graph_version
-                                  {:select [[[:max :graph_version]]]
-                                   :from   [[:workspace_output_external :woe]]
-                                   :where  [:and
-                                            [:= :woe.workspace_id ws-id]
-                                            [:>= :woe.graph_version min-version]]}]})))
-
-(defn- sync-external-outputs-for-version!
+(defn- insert-external-outputs-for-version!
   "Sync workspace_output_external for a specific graph version.
    Creates new rows with graph_version set. Silently ignores constraint violations."
   [workspace-id isolated-schema entities graph-version]
-  (let [external-tx-ids (extract-external-transform-ids entities)]
-    (when (seq external-tx-ids)
-      (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
-            rows (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
-                   (let [isolated-table (ws.u/isolated-table-name schema name)
-                         global-table-id (t2/select-one-fn :id [:model/Table :id]
-                                                           :db_id database :schema schema :name name)
-                         isolated-table-id (t2/select-one-fn :id [:model/Table :id]
-                                                             :db_id database :schema isolated-schema :name isolated-table)]
-                     {:workspace_id      workspace-id
-                      :transform_id      tx-id
-                      :graph_version     graph-version
-                      :db_id             database
-                      :global_schema     schema
-                      :global_table      name
-                      :global_table_id   global-table-id
-                      :isolated_schema   isolated-schema
-                      :isolated_table    isolated-table
-                      :isolated_table_id isolated-table-id}))]
-        (when (seq rows)
-          (ws.u/ignore-constraint-violation
-           (t2/insert! :model/WorkspaceOutputExternal rows)))))))
+  (when-not (t2/exists? :model/WorkspaceOutputExternal :workspace_id workspace-id :graph_version [:>= graph-version])
+    (let [external-tx-ids (extract-external-transform-ids entities)]
+      (when (seq external-tx-ids)
+        (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
+              rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
+                           (let [isolated-table    (ws.u/isolated-table-name schema name)
+                                 global-table-id   (t2/select-one-fn :id [:model/Table :id]
+                                                                     :db_id database :schema schema :name name)
+                                 isolated-table-id (t2/select-one-fn :id [:model/Table :id]
+                                                                     :db_id database :schema isolated-schema :name isolated-table)]
+                             {:workspace_id      workspace-id
+                              :transform_id      tx-id
+                              :graph_version     graph-version
+                              :db_id             database
+                              :global_schema     schema
+                              :global_table      name
+                              :global_table_id   global-table-id
+                              :isolated_schema   isolated-schema
+                              :isolated_table    isolated-table
+                              :isolated_table_id isolated-table-id}))]
+          (when (seq rows)
+            (ws.u/ignore-constraint-violation
+             (t2/insert! :model/WorkspaceOutputExternal rows))))))))
 
-(defn- sync-external-inputs-for-version!
-  "Sync workspace_input_external for a specific graph version.
-   Creates new rows with graph_version set. Silently ignores constraint violations."
+(defn- insert-external-inputs-for-version!
+  "Write `workspace_input_external` for a specific graph version, unless they (or a new version) already have been."
   [workspace-id entities graph-version]
-  (let [external-tx-ids (extract-external-transform-ids entities)]
-    (when (seq external-tx-ids)
-      (let [input-tables (t2/select [:model/Dependency :to_entity_id]
-                                    :from_entity_type :transform
-                                    :from_entity_id [:in external-tx-ids]
-                                    :to_entity_type :table)
-            input-table-ids (into #{} (map :to_entity_id) input-tables)
-            ;; Get workspace output table IDs (both workspace and external outputs)
-            workspace-output-ids (t2/select-fn-set :global_table_id
-                                                   [:model/WorkspaceOutput :global_table_id]
-                                                   :workspace_id workspace-id
-                                                   {:where [:not= :global_table_id nil]})
-            external-output-ids (t2/select-fn-set :global_table_id
-                                                  [:model/WorkspaceOutputExternal :global_table_id]
-                                                  :workspace_id workspace-id
-                                                  :graph_version graph-version
-                                                  {:where [:not= :global_table_id nil]})
-            all-output-ids (set/union workspace-output-ids external-output-ids)
-            external-input-ids (set/difference input-table-ids all-output-ids)]
-        (when (seq external-input-ids)
-          (let [tables (t2/select [:model/Table :id :db_id :schema :name] :id [:in external-input-ids])
-                db-ids (into #{} (map :db_id) tables)
-                db-id->default-schema (when (seq db-ids)
-                                        (into {}
-                                              (map (fn [{:keys [id engine]}]
-                                                     [id (driver.sql/default-schema engine)]))
-                                              (t2/select [:model/Database :id :engine] :id [:in db-ids])))
-                normalized-tables (map (partial normalize-table-schema db-id->default-schema) tables)]
-            (when (seq normalized-tables)
-              (ws.u/ignore-constraint-violation
-               (t2/insert! :model/WorkspaceInputExternal
-                           (for [{:keys [id db_id schema name]} normalized-tables]
-                             {:workspace_id   workspace-id
-                              :graph_version  graph-version
-                              :db_id          db_id
-                              :schema         schema
-                              :table          name
-                              :table_id       id
-                              :access_granted false}))))))))))
+  (when-not (t2/exists? :model/WorkspaceInputExternal :workspace_id workspace-id :graph_version [:>= graph-version])
+    (let [external-tx-ids (extract-external-transform-ids entities)]
+      (when (seq external-tx-ids)
+        (let [input-tables         (t2/select [:model/Dependency :to_entity_id]
+                                              :from_entity_type :transform
+                                              :from_entity_id [:in external-tx-ids]
+                                              :to_entity_type :table)
+              input-table-ids      (into #{} (map :to_entity_id) input-tables)
+              ;; Get workspace output table IDs (both workspace and external outputs)
+              workspace-output-ids (t2/select-fn-set :global_table_id
+                                                     [:model/WorkspaceOutput :global_table_id]
+                                                     :workspace_id workspace-id
+                                                     {:where [:not= :global_table_id nil]})
+              external-output-ids  (t2/select-fn-set :global_table_id
+                                                     [:model/WorkspaceOutputExternal :global_table_id]
+                                                     :workspace_id workspace-id
+                                                     :graph_version graph-version
+                                                     {:where [:not= :global_table_id nil]})
+              all-output-ids       (set/union workspace-output-ids external-output-ids)
+              external-input-ids   (set/difference input-table-ids all-output-ids)]
+          (when (seq external-input-ids)
+            (let [tables                (t2/select [:model/Table :id :db_id :schema :name] :id [:in external-input-ids])
+                  db-ids                (into #{} (map :db_id) tables)
+                  db-id->default-schema (when (seq db-ids)
+                                          (into {}
+                                                (map (fn [{:keys [id engine]}]
+                                                       [id (driver.sql/default-schema engine)]))
+                                                (t2/select [:model/Database :id :engine] :id [:in db-ids])))
+                  normalized-tables     (map (partial normalize-table-schema db-id->default-schema) tables)]
+              (when (seq normalized-tables)
+                (ws.u/ignore-constraint-violation
+                 (t2/insert! :model/WorkspaceInputExternal
+                             (for [{:keys [id db_id schema name]} normalized-tables]
+                               {:workspace_id   workspace-id
+                                :graph_version  graph-version
+                                :db_id          db_id
+                                :schema         schema
+                                :table          name
+                                :table_id       id
+                                :access_granted false})))))))))))
 
-(defn- max-graph-version
-  "Get the max graph_version in workspace_graph >= min-version, or nil if none exist."
+(defn- fully-persisted-graph
+  "Fetch the latest graph for which all the related tables have all been populated, that meets a minimum version.
+   Returns nil if no sufficiently recent graph, with all its derivatives persisted, exists.
+   It uses a subselect to avoid races where the latest version could be superseded and deleted before we can fetch it."
   [ws-id min-version]
-  (t2/select-one-fn :graph_version [:model/WorkspaceGraph :graph_version]
+  (t2/select-one-fn :graph
+                    [:model/WorkspaceGraph :graph]
                     :workspace_id ws-id
                     :graph_version [:>= min-version]
-                    {:order-by [[:graph_version :desc]]
-                     :limit 1}))
+                    {:order-by [[:workspace_graph.graph_version :desc]]
+                     :limit    1}))
 
-(defn- max-inputs-version
-  "Get the max graph_version in workspace_input_external >= min-version, or nil if none exist."
+(defn- minimum-graph
+  "Fetch the latest graph (and its version) that meets a minimum version constraint.
+   It's possible that we have not persisted all the related tables yet."
   [ws-id min-version]
-  (t2/select-one-fn :graph_version [:model/WorkspaceInputExternal :graph_version]
-                    :workspace_id ws-id
-                    :graph_version [:>= min-version]
-                    {:order-by [[:graph_version :desc]]
-                     :limit 1}))
+  (t2/select-one [:model/WorkspaceGraph :graph [:graph_version :version]]
+                 :workspace_id ws-id
+                 {:where    [:in :workspace_graph.graph_version
+                             {:select [:woe.graph_version]
+                              :from   [[:workspace_output_external :woe]]
+                              :where  [:>= :woe.graph_version min-version]}]
+                  :order-by [[:workspace_graph.graph_version :desc]]
+                  :limit    1}))
 
-(defn- calculate-graph-for-version!
-  "Calculate the graph for target-version. Thread-safe implementation.
-   If we find artifacts at a newer version (from a concurrent process), we bump our
-   target to that version and continue from there.
-   Write order: workspace_graph → workspace_input_external → workspace_output_external
-   (workspace_output_external is the commit marker indicating full completion)
+(defn- calculate-and-persist-graph!
+  "Return a graph for version > min-version.
+
+   Non-blocking implementation that uses epochal steps to avoid co-ordination while providing workable consistency.
+   If at any step we find results for a later version, we proceed to calculating (if necessary) that version.
+   In the best case, we find complete results for the latest version and simply return them, without any computation.
+
+   The analysis is computed in various stages, and written to the following tables in the given order:
+
+   1. workspace_input  (per tx)
+   2. workspace_output (per tx, marks that we're done for that tx)
+   3. workspace_input_external
+   4. workspace_output_external
+   5. workspace_graph (marks that we're done)
+
+   (It's a pity we write the graph only after the external input and output, as it's authoritative for them)
+
    Returns the graph."
-  [{ws-id :id, isolated-schema :schema :as workspace} target-graph-version]
-  ;; Step 1: Analyze transforms that need it (transform-level versioning)
+  [{ws-id :id, isolated-schema :schema :as workspace} min-version]
+  ;; Analyze transforms that need it (transform-level versioning)
+  ;; This writes workspace_input and workspace_output.
   (analyze-stale-transforms! workspace)
-
-  ;; Step 2: Write workspace_graph if needed, bump version if we find newer
-  (let [version (or (max-graph-version ws-id target-graph-version)
-                    (let [graph (calculate-graph! ws-id)]
-                      (insert-workspace-graph! ws-id target-graph-version graph)
-                      target-graph-version))
-        graph (get-graph-at-version ws-id version)]
-
-    ;; Step 3: Write workspace_input_external if needed, bump version if we find newer
-    (let [version (or (max-inputs-version ws-id version)
-                      (do (sync-external-inputs-for-version! ws-id (:entities graph) version)
-                          version))]
-
-      ;; Step 4: Write workspace_output_external if needed (commit marker - must be last)
-      (let [version (or (latest-sufficient-graph-version ws-id version)
-                        (do (sync-external-outputs-for-version! ws-id isolated-schema (:entities graph) version)
-                            version))]
-
-        (log/debugf "Calculated graph for workspace %d at version %d (target was %d)"
-                    ws-id version target-graph-version)
-
-        ;; Step 5: Cleanup old versions
-        (cleanup-old-graph-versions! ws-id)
-
-        graph))))
+  ;; See if there's already a computed graph we can use, otherwise compute a new one.
+  (let [{:keys [graph version]} (minimum-graph ws-id min-version)
+        graph   (or graph
+                    ;; Note that we can't freeze the versions of the transform's input and outputs, used to
+                    ;; calculate the graph, they don't use the same version numbering.
+                    ;; Instead, it will use the latest version across its various reads.
+                    ;; This means the graph is only eventually consistent - it doesn't have snapshot consistency
+                    ;; across the reads we make to the transforms. There are perverse cases where this can lead
+                    ;; to cycles or other data defects. Since such a graph will itself be stale, we will recover
+                    ;; from those defects on the next read.
+                    (u/prog1 (calculate-graph! ws-id)
+                      (insert-workspace-graph! ws-id min-version <>)))
+        version (or version min-version)
+        ;; Write workspace_input_external if needed, bump version if we have been overtaken.
+        _ (insert-external-inputs-for-version! ws-id (:entities graph) version)
+        ;; Write workspace_putput_external if needed, bump version if we have been overtaken.
+        _ (insert-external-outputs-for-version! ws-id isolated-schema (:entities graph) version)]
+    (log/debugf "Have graph for workspace %d at version %d (target was %d)" ws-id version min-version)
+    ;; Discard any obsolete rows (including our own, if we've been overtaken)
+    (cleanup-old-graph-versions! ws-id)
+    ;; If there's an even more recent version in the database now, return that.
+    ;; This decreases the chance of returning a graph with transient corruption.
+    (or (minimum-graph ws-id (inc version)) graph)))
 
 (defn get-or-calculate-graph!
   "Return the dependency graph for a workspace.
@@ -488,8 +480,8 @@
    Thread-safe via epochal versioning.
    Also syncs workspace_output_external and workspace_input_external tables when recalculating."
   [{ws-id :id, graph-version :graph_version :as workspace}]
-  (or (get-completed-graph ws-id graph-version)
-      (calculate-graph-for-version! workspace graph-version)))
+  (or (fully-persisted-graph ws-id graph-version)
+      (calculate-and-persist-graph! workspace graph-version)))
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."
