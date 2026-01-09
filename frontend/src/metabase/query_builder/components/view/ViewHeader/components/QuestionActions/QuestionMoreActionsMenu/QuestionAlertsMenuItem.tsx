@@ -4,7 +4,6 @@ import { skipToken, useListNotificationsQuery } from "metabase/api";
 import { CommonNotificationsMenuItem } from "metabase/notifications/NotificationsActionsMenu/CommonNotificationsMenuItem";
 import type Question from "metabase-lib/v1/Question";
 
-// XXX: This is how we determine how to show the alerts button, maybe there are other places like for the dashboard. I need to confirm this later.
 export function QuestionAlertsMenuItem({
   question,
   onClick,
