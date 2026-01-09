@@ -5,7 +5,8 @@ import { useWindowSize } from "react-use";
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
 import type { DataPickerItem } from "metabase/common/components/Pickers/DataPicker";
 import { useSetting } from "metabase/common/hooks";
-import NativeQueryEditor, {
+import {
+  NativeQueryEditor,
   type SelectionRange,
 } from "metabase/query_builder/components/NativeQueryEditor";
 import type { QueryModalType } from "metabase/query_builder/constants";

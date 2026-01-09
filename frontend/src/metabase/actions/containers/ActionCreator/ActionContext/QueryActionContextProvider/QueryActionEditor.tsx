@@ -1,4 +1,4 @@
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 

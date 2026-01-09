@@ -2,7 +2,7 @@ import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_METABOT } from "metabase/plugins";
-import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
+import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
   SidebarFeatures,

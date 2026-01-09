@@ -123,7 +123,7 @@ type Props = OwnProps &
     forwardedRef?: ForwardedRef<HTMLDivElement>;
   };
 
-const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
+const NativeQueryEditorInner = forwardRef<HTMLDivElement, Props>(
   function NativeQueryEditorInner(props) {
     const {
       availableHeight = Infinity,
@@ -417,10 +417,9 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
   },
 );
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
+export const NativeQueryEditor = _.compose(
   Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   ExplicitSize(),
-)(NativeQueryEditor);
+)(NativeQueryEditorInner);
