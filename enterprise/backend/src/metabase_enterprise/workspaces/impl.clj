@@ -332,18 +332,20 @@
   "Atomically increment graph_version for a workspace. Returns the new version."
   [workspace-id]
   (:graph_version
-   (first (t2/query {:update :workspace
-                     :set {:graph_version [:+ :graph_version 1]}
-                     :where [:= :id workspace-id]
+   (first (t2/query {:update    :workspace
+                     :set       {:graph_version [:+ :graph_version 1]}
+                     :where     [:= :id workspace-id]
                      :returning [:graph_version]}))))
 
 (defn increment-analysis-version!
   "Atomically increment analysis_version for a transform. Returns the new version."
-  [ref-id]
+  [workspace-id ref-id]
   (:analysis_version
-   (first (t2/query {:update :workspace_transform
-                     :set {:analysis_version [:+ :analysis_version 1]}
-                     :where [:= :ref_id ref-id]
+   (first (t2/query {:update    :workspace_transform
+                     :set       {:analysis_version [:+ :analysis_version 1]}
+                     :where     [:and
+                                 [:= :workspace_id workspace-id]
+                                 [:= :ref_id ref-id]]
                      :returning [:analysis_version]}))))
 
 ;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
@@ -580,9 +582,6 @@
     cached
     ;; Recalculate
     (calculate-graph-for-version! workspace graph-version)))
-
-;; Legacy alias for compatibility during transition
-(def mark-workspace-stale! increment-graph-version!)
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."

@@ -796,7 +796,10 @@
       (t2/update! :model/WorkspaceTransform tx-id body)
       ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
-        (ws.impl/increment-analysis-version! tx-id)
+        (ws.impl/increment-analysis-version! ws-id tx-id)
+        ;; It's unfortunate that we are using an extra SQL statement for this, rather than doing it in the earlier
+        ;; statement that set the [[body]]. Combining them would be tricky, as we still need the model transforms to
+        ;; serialize the fields in the body, but the increment requires using an SQL expression.
         (ws.impl/increment-graph-version! ws-id)))
     (fetch-ws-transform ws-id tx-id)))
 
@@ -816,7 +819,7 @@
                                    {:ref_id tx-id :workspace_id id}
                                    {:archived_at nil})))
   ;; Increment both versions - transform re-enters graph and needs re-analysis
-  (ws.impl/increment-analysis-version! tx-id)
+  (ws.impl/increment-analysis-version! id tx-id)
   (ws.impl/increment-graph-version! id)
   nil)
 
@@ -825,7 +828,7 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id id)))
-  ;; Increment graph version since transform is leaving the graph
+  ;; Increment graph version since transform is potentially leaving the graph, or reverting to the global definition.
   (ws.impl/increment-graph-version! id)
   nil)
 
