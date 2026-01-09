@@ -185,12 +185,19 @@
   (testing "Archive/unarchive properly manages access_granted flags and grants"
     (let [workspace      (ws.tu/create-ready-ws! "Archive Grant Test")
           granted-tables (atom [])]
-      ;; TODO this hack doesn't work anymore - need to put a real transform inside the workspace to generate the input
-      (mt/with-temp [:model/WorkspaceInput input {:workspace_id   (:id workspace)
+      ;; This hack has rotted - since we re-do the analysis now on unarchive, we need to add a tx with a real query
+      (mt/with-temp [:model/WorkspaceTransform t {:workspace_id (:id workspace)}
+                     :model/WorkspaceInput input {:workspace_id   (:id workspace)
                                                   :db_id          (mt/id)
+                                                  :ref_id         (:ref_id t)
                                                   :schema         nil
                                                   :table          "test_table"
                                                   :access_granted true}]
+        ;; workaround for bad mocking
+        (t2/update! :model/WorkspaceTransform {:ref_id (:ref_id t)} {:target {:type     :table
+                                                                              :database (mt/id)
+                                                                              :name     "output"}})
+
         (testing "Archive resets access_granted to false"
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
           (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))))
@@ -1379,7 +1386,7 @@
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]
           (mt/with-temp [;; Global transforms (workspace_id = null)
-                         :model/Database          {db-2 :id}   {:name "Other Db"}
+                         :model/Database           {db-2 :id}   {:name "Other Db"}
                          :model/Transform          {xf1-id :id} {:name   "Checked out - 1"
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf2-id :id} {:name   "Checked out - 2"

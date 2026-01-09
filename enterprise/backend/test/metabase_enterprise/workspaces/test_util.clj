@@ -29,8 +29,7 @@
                                                 :model/Workspace
                                                 :model/WorkspaceTransform
                                                 :model/WorkspaceInput
-                                                :model/WorkspaceOutput
-                                                :model/WorkspaceDependency]
+                                                :model/WorkspaceOutput]
                           (tests)))))
 
 (derive :model/Workspace :model/WorkspaceCleanUpInTest)

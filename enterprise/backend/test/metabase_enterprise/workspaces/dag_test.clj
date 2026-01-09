@@ -5,7 +5,6 @@
    [flatland.ordered.map :as ordered-map]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.dag-abstract :as dag-abstract]
-   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.app-db.core :as app-db]
    [metabase.driver.sql.normalize :as sql.normalize]

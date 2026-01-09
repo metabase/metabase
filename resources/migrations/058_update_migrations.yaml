@@ -4684,6 +4684,167 @@ databaseChangeLog:
                   name: workspace_id
       rollback: # will be removed along the table
 
+  # Denormalize workspace_dependency into workspace_input by adding ref_id column
+  # This allows direct lookup of inputs per transform without a join table
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:00
+      author: christruter
+      comment: Delete existing workspace_input rows (will be recreated when transforms marked stale)
+      changes:
+        - sql:
+            sql: DELETE FROM workspace_input
+      rollback:
+        - sql:
+            sql: SELECT 1  # No rollback needed, data will be regenerated
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:01
+      author: christruter
+      comment: Add ref_id column to workspace_input
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: ref_id
+                  type: char(36)
+                  remarks: ref_id of the workspace_transform that depends on this input
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_input
+            columnName: ref_id
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:02
+      author: christruter
+      comment: Add access_granted column to workspace_input
+      changes:
+        - addColumn:
+            tableName: workspace_input
+            columns:
+              - column:
+                  name: access_granted
+                  type: ${boolean.type}
+                  remarks: Whether read access has been granted to the workspace user
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_input
+            columnName: access_granted
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:03
+      author: christruter
+      comment: Drop old unique constraint on workspace_input (workspace_id, db_id, schema, table)
+      changes:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_logical_table
+      rollback:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, db_id, schema, table
+            constraintName: uq_workspace_input_logical_table
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:04
+      author: christruter
+      comment: Add new unique constraint on workspace_input including ref_id
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_input
+            columnNames: workspace_id, ref_id, db_id, schema, table
+            constraintName: uq_workspace_input_transform_table
+      rollback:
+        - dropUniqueConstraint:
+            tableName: workspace_input
+            constraintName: uq_workspace_input_transform_table
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:05
+      author: christruter
+      comment: Add index on workspace_input (workspace_id, ref_id) for DAG queries
+      changes:
+        - createIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_ref_id
+            columns:
+              - column:
+                  name: workspace_id
+              - column:
+                  name: ref_id
+      rollback:
+        - dropIndex:
+            tableName: workspace_input
+            indexName: idx_workspace_input_ref_id
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:06
+      author: christruter
+      comment: Mark all workspace transforms as stale so inputs get recreated
+      changes:
+        - sql:
+            sql: UPDATE workspace_transform SET stale = true
+      rollback:
+        - sql:
+            sql: SELECT 1  # No rollback needed
+
+  - changeSet:
+      id: v58.2026-01-09T07:51:07
+      author: christruter
+      comment: Drop workspace_dependency table (no longer needed after denormalization)
+      changes:
+        - dropTable:
+            tableName: workspace_dependency
+      rollback:
+        - createTable:
+            tableName: workspace_dependency
+            remarks: Edges between workspace transforms and their dependencies
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

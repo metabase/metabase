@@ -33,6 +33,8 @@
                                         :target {:database (mt/id)
                                                  :schema   "analytics"
                                                  :name     "table_a"}})
+          ;; Trigger analysis
+          (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace (:id workspace)))
           (testing "creates output and input records"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace))))
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace)))))
@@ -68,7 +70,7 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           ws    (ws.tu/create-ready-ws! "Test Workspace")]
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
-        (let [wt (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+        (let [_  (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
                                               :transform nil
                                               {:name         "Transform"
                                                :source       {:type "query" :query query}
@@ -83,5 +85,4 @@
           (ws.tu/analyze-workspace! (:id ws))
           (testing "still has exactly one of each after multiple syncs"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
-            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))
-            (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id ws))))))))))
+            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))))))))
