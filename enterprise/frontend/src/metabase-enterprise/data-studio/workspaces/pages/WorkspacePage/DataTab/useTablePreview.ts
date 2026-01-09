@@ -59,10 +59,10 @@ export function useTablePreview({
         ? query
         : tableBasedQuery
           ? {
-            ...Lib.toJsQuery(tableBasedQuery),
-            ignore_error: true,
-            _refetchDeps: last_transform_run_time,
-          }
+              ...Lib.toJsQuery(tableBasedQuery),
+              ignore_error: true,
+              _refetchDeps: last_transform_run_time,
+            }
           : skipToken,
   );
 

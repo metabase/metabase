@@ -499,7 +499,10 @@ export const WorkspaceProvider = ({
   const hasTransformEdits = useCallback(
     (originalTransform: Transform | WorkspaceTransform) => {
       // Check if it's an unsaved transform (negative IDs, always has changes)
-      if (typeof originalTransform.id === "number" && originalTransform.id < 0) {
+      if (
+        typeof originalTransform.id === "number" &&
+        originalTransform.id < 0
+      ) {
         return true;
       }
 
@@ -510,7 +513,7 @@ export const WorkspaceProvider = ({
 
       // We don't store workspace transforms sources in the provider, so we can't compare
       // changes. So we just mark all "dirty" workspace transforms as edited.
-      if ('ref_id' in originalTransform && edited) {
+      if ("ref_id" in originalTransform && edited) {
         return true;
       }
 
