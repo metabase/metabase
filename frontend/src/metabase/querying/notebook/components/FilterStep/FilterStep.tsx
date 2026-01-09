@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import * as Lib from "metabase-lib";
 
@@ -17,14 +19,23 @@ export function FilterStep({
   updateQuery,
 }: NotebookStepProps) {
   const { stageIndex } = step;
+  const tc = useTranslateContent();
 
   const filters = useMemo(
     () => Lib.filters(query, stageIndex),
     [query, stageIndex],
   );
 
-  const renderFilterName = (filter: Lib.FilterClause) =>
-    Lib.displayInfo(query, stageIndex, filter).longDisplayName;
+  const renderFilterName = useCallback(
+    (filter: Lib.FilterClause) =>
+      PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
+        query,
+        stageIndex,
+        filter,
+        tc,
+      ),
+    [query, stageIndex, tc],
+  );
 
   const handleAddFilter = (clause: Lib.Filterable) => {
     const nextQuery = Lib.filter(query, stageIndex, clause);

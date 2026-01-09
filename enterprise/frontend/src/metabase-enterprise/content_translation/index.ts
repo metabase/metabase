@@ -5,6 +5,7 @@ import { ContentTranslationConfiguration } from "./components";
 import { contentTranslationEndpoints } from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
+  getTranslatedFilterDisplayName,
   translateDisplayNames,
   useSortByContentTranslation,
   useTranslateFieldValuesInHoveredObject,
@@ -40,6 +41,7 @@ export function initializePlugin() {
         contentTranslationEndpoints.getDictionary = `${getDictionaryBasePath}/${encodedToken}`;
       },
       translateDisplayNames,
+      getTranslatedFilterDisplayName,
       ContentTranslationConfiguration,
     });
   }

@@ -6,6 +6,7 @@ import _ from "underscore";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type {
   DictionaryArray,
   MaybeTranslatedSeries,
@@ -246,4 +247,43 @@ export const useSortByContentTranslation = () => {
     (a: string, b: string) => tc(a).localeCompare(tc(b)),
     [tc],
   );
+};
+
+/**
+ * Translates a filter's display name by extracting and translating the column name.
+ * The longDisplayName from metabase-lib is a pre-formatted string like "Plan is Business"
+ * where individual parts (column names) need to be translated separately.
+ */
+export const getTranslatedFilterDisplayName = (
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.FilterClause,
+  tc: ContentTranslationFunction,
+): string => {
+  const displayInfo = Lib.displayInfo(query, stageIndex, filter);
+  const longDisplayName = displayInfo.longDisplayName;
+
+  if (!longDisplayName) {
+    return longDisplayName ?? "";
+  }
+
+  if (!hasTranslations(tc)) {
+    return longDisplayName;
+  }
+
+  const parts = Lib.filterParts(query, stageIndex, filter);
+  const columnDisplayName = parts?.column
+    ? Lib.displayInfo(query, stageIndex, parts.column).displayName
+    : undefined;
+
+  if (columnDisplayName) {
+    const translatedColumnName = tc(columnDisplayName);
+
+    if (translatedColumnName !== columnDisplayName) {
+      return longDisplayName.replace(columnDisplayName, translatedColumnName);
+    }
+  }
+
+  // Fallback to translate the whole string
+  return tc(longDisplayName);
 };

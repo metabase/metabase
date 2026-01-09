@@ -124,6 +124,8 @@ export const ComponentProviderInternal = (
             <>
               <LocaleProvider locale={locale || instanceLocale}>
                 {children}
+
+                {isInstanceToRender && <ContentTranslationsProvider />}
               </LocaleProvider>
 
               {isInstanceToRender && (
@@ -139,8 +141,6 @@ export const ComponentProviderInternal = (
                     allowConsoleLog={allowConsoleLog}
                     isLocalHost={isLocalHost}
                   />
-
-                  <ContentTranslationsProvider />
 
                   <PortalContainer />
                 </>
