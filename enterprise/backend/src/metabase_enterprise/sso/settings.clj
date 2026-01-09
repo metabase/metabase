@@ -392,28 +392,6 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :encryption :when-encryption-key-set
   :audit      :getter)
 
-(defsetting slack-connect-group-sync
-  (deferred-tru "Enable group membership synchronization with Slack.")
-  :type    :boolean
-  :export? false
-  :default false
-  :feature :sso-slack
-  :audit   :getter)
-
-(defsetting slack-connect-group-mappings
-  ;; Should be in the form: {"groupName": [1, 2, 3]} where keys are Slack groups and values are lists of MB groups IDs
-  (deferred-tru "JSON containing Slack to {0} group mappings."
-                (setting/application-name-for-setting-descriptions appearance/application-name))
-  :encryption :when-encryption-key-set
-  :export?    false
-  :type       :json
-  :cache?     false
-  :default    {}
-  :feature    :sso-slack
-  :audit      :getter
-  :setter     (comp (partial setting/set-value-of-type! :json :slack-connect-group-mappings)
-                    (partial mu/validate-throw validate-group-mappings)))
-
 (defsetting slack-connect-configured
   (deferred-tru "Are the mandatory Slack Connect settings configured?")
   :type    :boolean

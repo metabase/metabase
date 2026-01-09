@@ -6,8 +6,6 @@
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.premium-features.core :as premium-features]
-   [metabase.sso.core :as sso]
-   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -57,25 +55,6 @@
      :scopes ["openid" "profile" "email"]
      :redirect-uri (get request :redirect-uri)}))
 
-(defn- slack-group-names->ids
-  "Map Slack group names to Metabase group IDs using slack-connect-group-mappings."
-  [slack-group-names]
-  (when (and slack-group-names
-             (seq slack-group-names))
-    (let [mappings (update-keys (sso-settings/slack-connect-group-mappings) name)]
-      (reduce (fn [acc group-name]
-                (if-let [group-ids (get mappings group-name)]
-                  (into acc group-ids)
-                  acc))
-              #{}
-              slack-group-names))))
-
-(defn- all-slack-mapped-group-ids
-  "Get all Metabase group IDs that have Slack group mappings."
-  []
-  (let [mappings (sso-settings/slack-connect-group-mappings)]
-    (into #{} (mapcat val mappings))))
-
 ;;; -------------------------------------------------- Authentication Implementation --------------------------------------------------
 
 (methodical/defmethod auth-identity/authenticate :provider/slack-connect
@@ -98,7 +77,7 @@
 
     (and (= "link-only" (sso-settings/slack-connect-authentication-mode))
          (not (:code request))
-         (not (:authenticated-user request)))
+         (not (some-> (:authenticated-user request) deref)))
     {:success? false
      :error :authentication-required
      :message (tru "Account linking requires an authenticated session")}
@@ -159,19 +138,7 @@
       (assoc request :success? true))))
 
 (methodical/defmethod auth-identity/login! :after :provider/slack-connect
-  [_provider {:keys [user slack-data] :as result}]
-  (let [auth-mode (sso-settings/slack-connect-authentication-mode)]
-    (case auth-mode
-      "link-only"
-      (dissoc result :user)
-
-      "sso"
-      (u/prog1 result
-        (when (and (sso-settings/slack-connect-group-sync)
-                   slack-data
-                   (:groups slack-data))
-          (let [group-ids (slack-group-names->ids (:groups slack-data))
-                all-mapped-ids (all-slack-mapped-group-ids)]
-            (sso/sync-group-memberships! user group-ids all-mapped-ids))))
-
-      result)))
+  [_provider result]
+  (if (= "link-only" (sso-settings/slack-connect-authentication-mode))
+    (dissoc result :user)
+    result))

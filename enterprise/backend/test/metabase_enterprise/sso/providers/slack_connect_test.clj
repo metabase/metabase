@@ -93,46 +93,6 @@
         (is (nil? (get slack-attrs "slack-email-verified")))
         (is (nil? (get slack-attrs "slack-locale")))))))
 
-;;; -------------------------------------------------- Group Mapping Tests --------------------------------------------------
-
-(deftest slack-group-names->ids-test
-  (testing "Maps Slack group names to Metabase group IDs"
-    (mt/with-temporary-setting-values
-      [slack-connect-group-mappings {"developers" [1 2]
-                                     "analysts" [3]
-                                     "admins" [4 5 6]}]
-      (let [slack-groups ["developers" "analysts"]
-            group-ids (#'metabase-enterprise.sso.providers.slack-connect/slack-group-names->ids slack-groups)]
-        (is (= #{1 2 3} group-ids)))))
-
-  (testing "Returns empty set when no groups provided"
-    (mt/with-temporary-setting-values
-      [slack-connect-group-mappings {"developers" [1 2]}]
-      (let [group-ids (#'metabase-enterprise.sso.providers.slack-connect/slack-group-names->ids nil)]
-        (is (nil? group-ids)))))
-
-  (testing "Ignores unmapped groups"
-    (mt/with-temporary-setting-values
-      [slack-connect-group-mappings {"developers" [1 2]}]
-      (let [slack-groups ["developers" "unmapped-group"]
-            group-ids (#'metabase-enterprise.sso.providers.slack-connect/slack-group-names->ids slack-groups)]
-        (is (= #{1 2} group-ids))))))
-
-(deftest all-slack-mapped-group-ids-test
-  (testing "Returns all Metabase group IDs that have Slack mappings"
-    (mt/with-temporary-setting-values
-      [slack-connect-group-mappings {"developers" [1 2]
-                                     "analysts" [3]
-                                     "admins" [4 5 6]}]
-      (let [all-ids (#'metabase-enterprise.sso.providers.slack-connect/all-slack-mapped-group-ids)]
-        (is (= #{1 2 3 4 5 6} all-ids)))))
-
-  (testing "Returns empty set when no mappings configured"
-    (mt/with-temporary-setting-values
-      [slack-connect-group-mappings {}]
-      (let [all-ids (#'metabase-enterprise.sso.providers.slack-connect/all-slack-mapped-group-ids)]
-        (is (= #{} all-ids))))))
-
 ;;; -------------------------------------------------- Authentication Tests --------------------------------------------------
 
 (deftest authenticate-missing-premium-feature-test
@@ -176,7 +136,7 @@
          slack-connect-client-id "test-client-id"
          slack-connect-client-secret "test-secret"
          slack-connect-authentication-mode "link-only"]
-        (let [request {:authenticated-user nil}
+        (let [request {:authenticated-user (delay nil)}
               result (auth-identity/authenticate :provider/slack-connect request)]
           (is (false? (:success? result)))
           (is (= :authentication-required (:error result)))
@@ -207,7 +167,7 @@
                        :state "test-state"
                        :oidc-nonce "test-nonce"
                        :redirect-uri "https://metabase.example.com/auth/sso"
-                       :authenticated-user nil}
+                       :authenticated-user (delay nil)}
               result (auth-identity/authenticate :provider/slack-connect request)]
           ;; The presence of :code indicates callback, so should not error even without authenticated-user
           (is (true? (:success? result)))
@@ -259,7 +219,7 @@
          slack-connect-client-secret "test-secret"
          slack-connect-authentication-mode "link-only"
          slack-connect-user-provisioning-enabled false]
-        (mt/with-temp [:model/User user {:email "test@example.com"}]
+        (mt/with-temp [:model/User user {:email "link-only-no-session@example.com"}]
           (with-redefs [oidc.discovery/discover-oidc-configuration
                         (fn [_issuer] slack-discovery-doc)
                         oidc.state/validate-oidc-callback
@@ -278,7 +238,7 @@
                            :claims {:sub "U12345678"
                                     :iss "https://slack.com"
                                     :aud "test-client-id"
-                                    :email "test@example.com"}})]
+                                    :email "link-only-no-session@example.com"}})]
             (let [initial-session-count (t2/count :model/Session :user_id (:id user))
                   request {:code "test-code"
                            :state "test-state"
