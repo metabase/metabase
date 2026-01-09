@@ -27,7 +27,6 @@ export interface AppBarProps {
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBar = (props: AppBarProps): JSX.Element => {

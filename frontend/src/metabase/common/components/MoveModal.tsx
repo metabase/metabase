@@ -7,16 +7,25 @@ import type {
   MoveDestination,
   OnMoveWithOneItem,
 } from "metabase/collections/types";
-import { isItemCollection } from "metabase/collections/utils";
+import {
+  type EntityType,
+  canPlaceEntityInCollection,
+  canPlaceEntityInCollectionOrDescendants,
+  isItemCollection,
+} from "metabase/collections/utils";
 import {
   type CollectionPickerItem,
   CollectionPickerModal,
   type CollectionPickerModel,
   type CollectionPickerValueItem,
+  getCollectionType,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import { isItemInCollectionOrItsDescendants } from "metabase/common/components/Pickers/utils";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionId,
   CollectionItem,
+  CollectionNamespace,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
@@ -26,7 +35,20 @@ interface BaseMoveModalProps {
   onClose: () => void;
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
+  entityType?: EntityType;
   recentAndSearchFilter?: (item: CollectionPickerItem) => boolean;
+  /**
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
+   */
+  savingModel?: "collection" | null;
+  /**
+   * The namespace of the collection being moved. Used to restrict which
+   * collections are shown in the picker:
+   * - If "shared-tenant-collection", only tenant collections are shown
+   * - Otherwise, tenant collections are hidden from the picker
+   */
+  movingCollectionNamespace?: CollectionNamespace;
 }
 
 type MoveModalProps =
@@ -67,19 +89,29 @@ export const MoveModal = ({
   onMove,
   initialCollectionId,
   movingCollectionId,
+  entityType,
   canMoveToDashboard,
   recentAndSearchFilter,
+  savingModel,
+  movingCollectionNamespace,
 }: MoveModalProps) => {
-  // if we are moving a collection, we can't move it into itself or any of its children
-  const shouldDisableItem = movingCollectionId
-    ? (item: CollectionPickerItem) =>
-        Boolean(
-          item.id === movingCollectionId ||
-            (item.effective_location ?? item?.location)
-              ?.split("/")
-              .includes(String(movingCollectionId)),
-        )
-    : undefined;
+  const isMovingTenantCollection = PLUGIN_TENANTS.isTenantNamespace(
+    movingCollectionNamespace,
+  );
+  const shouldDisableItem = (item: CollectionPickerItem): boolean => {
+    if (isItemInCollectionOrItsDescendants(item, movingCollectionId)) {
+      return true;
+    }
+
+    if (entityType && item.model === "collection") {
+      return !canPlaceEntityInCollectionOrDescendants(
+        entityType,
+        getCollectionType(item),
+      );
+    }
+
+    return false;
+  };
 
   const searchResultFilter = makeSearchResultFilter([
     shouldDisableItem,
@@ -128,6 +160,12 @@ export const MoveModal = ({
     ? ["collection", "dashboard"]
     : ["collection"];
 
+  const restrictToNamespace: string | undefined = movingCollectionId
+    ? isMovingTenantCollection && PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+      ? PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE
+      : "default"
+    : undefined;
+
   return (
     <CollectionPickerModal
       title={title}
@@ -138,14 +176,18 @@ export const MoveModal = ({
       onChange={handleMove}
       models={models}
       options={{
-        showSearch: true,
+        showSearch: !isMovingTenantCollection,
         allowCreateNew: true,
         hasConfirmButtons: true,
-        showRootCollection: true,
-        showPersonalCollections: true,
+        showRootCollection: !isMovingTenantCollection,
+        showPersonalCollections: !isMovingTenantCollection,
         confirmButtonText: t`Move`,
+        savingModel,
+        hasRecents: !isMovingTenantCollection,
+        restrictToNamespace,
       }}
       shouldDisableItem={shouldDisableItem}
+      entityType={entityType}
       searchResultFilter={searchResultFilter}
       recentFilter={recentFilter}
       onClose={onClose}
@@ -172,18 +214,35 @@ export const BulkMoveModal = ({
     .filter((item: CollectionItem) => isItemCollection(item))
     .map((item: CollectionItem) => String(item.id));
 
-  const shouldDisableItem = movingCollectionIds.length
-    ? (item: CollectionPickerItem) => {
-        const collectionItemFullPath =
-          (item?.effective_location ?? item?.location)
-            ?.split("/")
-            .map(String)
-            .concat(String(item.id)) ?? [];
-        return (
-          _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
-        );
+  const shouldDisableItem = (item: CollectionPickerItem): boolean => {
+    if (movingCollectionIds.length > 0) {
+      const collectionItemFullPath =
+        (item?.effective_location ?? item?.location)
+          ?.split("/")
+          .map(String)
+          .concat(String(item.id)) ?? [];
+      if (
+        _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
+      ) {
+        return true;
       }
-    : undefined;
+    }
+
+    if (item.model === "collection") {
+      const hasInvalidItem = selectedItems.some(
+        (selectedItem) =>
+          !canPlaceEntityInCollectionOrDescendants(
+            selectedItem.model,
+            getCollectionType(item),
+          ),
+      );
+      if (hasInvalidItem) {
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   const searchResultFilter = makeSearchResultFilter([
     shouldDisableItem,
@@ -206,6 +265,21 @@ export const BulkMoveModal = ({
   const models: CollectionPickerModel[] = canMoveToDashboard
     ? ["collection", "dashboard"]
     : ["collection"];
+
+  const canSelectItem = useCallback(
+    (item: CollectionPickerItem) => {
+      if (item.model === "collection") {
+        return selectedItems.every((selectedItem) =>
+          canPlaceEntityInCollection(
+            selectedItem.model,
+            getCollectionType(item),
+          ),
+        );
+      }
+      return true;
+    },
+    [selectedItems],
+  );
 
   const handleMove = useCallback(
     async (destination: CollectionPickerValueItem) => {
@@ -234,6 +308,7 @@ export const BulkMoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      canSelectItem={canSelectItem}
       searchResultFilter={searchResultFilter}
       recentFilter={recentFilter}
       onClose={onClose}

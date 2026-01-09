@@ -174,6 +174,42 @@ describe("CheckDependenciesForm", () => {
     ).toHaveAttribute("href", "/dashboard/2-card-dashboard");
   });
 
+  it("should display the document that the question belongs to", () => {
+    setup({
+      checkData: createMockCheckDependenciesResponse({
+        success: false,
+        bad_cards: [
+          createMockCard({
+            name: "Card",
+            type: "question",
+            collection: createMockCollection({
+              id: 1,
+              name: "First collection",
+              effective_ancestors: [
+                createMockCollection({ id: "root", name: "Our analytics" }),
+              ],
+            }),
+            document: {
+              id: 3,
+              name: "Card document",
+            },
+          }),
+        ],
+      }),
+    });
+    expect(screen.getByRole("link", { name: "Our analytics" })).toHaveAttribute(
+      "href",
+      "/collection/root",
+    );
+    expect(
+      screen.getByRole("link", { name: "First collection" }),
+    ).toHaveAttribute("href", "/collection/1-first-collection");
+    expect(screen.getByRole("link", { name: "Card document" })).toHaveAttribute(
+      "href",
+      "/document/3",
+    );
+  });
+
   it("should display transforms", () => {
     setup({
       checkData: createMockCheckDependenciesResponse({
@@ -188,7 +224,7 @@ describe("CheckDependenciesForm", () => {
     });
     expect(screen.getByRole("link", { name: /SQL transform/ })).toHaveAttribute(
       "href",
-      "/admin/transforms/1",
+      "/data-studio/transforms/1",
     );
   });
 });

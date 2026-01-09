@@ -31,21 +31,43 @@
          ~@body))))
 
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
-(defmacro with-new-search-if-available
+(defmacro with-new-search-if-available*
+  "Create a temporary index table for the duration of the body."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/appdb)]
+     (with-temp-index-table
+       (search/reindex! {:async? false :in-place? true})
+       ~@body)))
+
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
+(defmacro with-new-search-if-available-otherwise-legacy
   "Create a temporary index table for the duration of the body."
   [& body]
   `(if (search/supports-index?)
-     (mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/appdb)]
-       (with-temp-index-table
-         (search/reindex! {:async? false :in-place? true})
-         ~@body))
+     (with-new-search-if-available* ~@body)
      ~@body))
 
-(defmacro with-legacy-search
-  "Ensure legacy search, which doesn't require an index, is used."
+(defmacro with-new-search-if-available-without-fallback
+  "Create a temporary index table for the duration of the body.
+   Only runs if the appdb search engine is supported."
   [& body]
-  `(mt/with-dynamic-fn-redefs [search.impl/default-engine (constantly :search.engine/in-place)]
+  `(when (search.engine/supported-engine? :search.engine/appdb)
+     (with-new-search-if-available* ~@body)))
+
+(defmacro with-legacy-search
+  "Ensure legacy search, which doesn't require an index, is used.
+   Semantic queries go to :search.engine/semantic and keyword queries fall back to :search.engine/in-place."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [search.engine/default-engine (constantly :search.engine/in-place)
+                               search.engine/supported-engines (constantly [:search.engine/semantic :search.engine/in-place])]
      ~@body))
+
+(defmacro with-new-search-and-legacy-search
+  "Run the body twice, once with the legacy search engine, and once with the appdb search engine."
+  [& body]
+  `(do
+     (with-legacy-search ~@body)
+     (with-new-search-if-available-without-fallback ~@body)))
 
 (defmacro with-index-disabled
   "Skip any index maintenance during this test."

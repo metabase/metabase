@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.parameters.params :as params]
-   [metabase.public-sharing.api-test :as public-test]
+   [metabase.public-sharing-rest.api-test :as public-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

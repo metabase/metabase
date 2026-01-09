@@ -57,8 +57,8 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -124,8 +124,8 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("QB Binning").click();
       });
 
@@ -197,8 +197,8 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
     beforeEach(() => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
         cy.findByText("QB Binning").click();
       });
 

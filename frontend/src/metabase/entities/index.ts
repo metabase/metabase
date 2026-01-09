@@ -1,23 +1,25 @@
-export { default as actions } from "./actions";
-export { default as collections } from "./collections";
-export { default as snippetCollections } from "./snippet-collections";
-export { default as dashboards } from "./dashboards";
-export { default as pulses } from "./pulses";
-export { default as questions } from "./questions";
+export { Actions as actions } from "./actions/actions";
+export { Collections as collections } from "./collections";
+export { SnippetCollections as snippetCollections } from "./snippet-collections";
+export { Dashboards as dashboards } from "./dashboards";
+export { Pulses as pulses } from "./pulses";
+export { Questions as questions } from "./questions";
 export { IndexedEntities as indexedEntities } from "./indexed-entities";
 
-export { default as timelines } from "./timelines";
-export { default as timelineEvents } from "./timeline-events";
+export { Timelines as timelines } from "./timelines";
+export { TimelineEvents as timelineEvents } from "./timeline-events";
 
-export { default as bookmarks } from "./bookmarks";
-export { default as databases } from "./databases";
-export { default as schemas } from "./schemas";
-export { default as tables } from "./tables";
-export { default as fields } from "./fields";
-export { default as segments } from "./segments";
+export { Bookmarks as bookmarks } from "./bookmarks";
+export { Databases as databases } from "./databases";
+export { Schemas as schemas } from "./schemas";
+export { Tables as tables } from "./tables";
+export { Fields as fields } from "./fields";
+export { Segments as segments } from "./segments";
+export { Measures as measures } from "./measures";
 
-export { default as groups } from "./groups";
+export { Groups as groups } from "./groups";
 
-export { default as search } from "./search";
-export { default as persistedModels } from "./persisted-models";
-export { default as snippets } from "./snippets";
+export { Search as search } from "./search";
+export { PersistedModels as persistedModels } from "./persisted-models";
+export { Snippets as snippets } from "./snippets";
+export { Documents as documents } from "./documents";

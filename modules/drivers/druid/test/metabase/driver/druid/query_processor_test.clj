@@ -10,8 +10,8 @@
    [metabase.driver.druid.query-processor :as druid.qp]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -101,7 +101,7 @@
 (deftest ^:parallel compile-topN-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
-      (is (= {:projections [:venue_price :__count_0 :expression]
+      (is (= {:projections [:venue_price :__count :expression]
               :query       {:queryType        :topN
                             :threshold        1000
                             :granularity      :all
@@ -111,7 +111,7 @@
                             :postAggregations [{:type   :arithmetic
                                                 :name   "expression"
                                                 :fn     :*
-                                                :fields [{:type :fieldAccess, :fieldName "__count_0"}
+                                                :fields [{:type :fieldAccess, :fieldName "__count"}
                                                          {:type :constant, :name "10", :value 10}]}]
                             :intervals        ["1900-01-01/2100-01-01"]
                             :metric           {:type :alphaNumeric}
@@ -119,7 +119,7 @@
                             [{:type       :filtered
                               :filter     {:type  :not
                                            :field {:type :selector, :dimension "id", :value nil}}
-                              :aggregator {:type :count, :name "__count_0"}}]}
+                              :aggregator {:type :count, :name "__count"}}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
              (query->native

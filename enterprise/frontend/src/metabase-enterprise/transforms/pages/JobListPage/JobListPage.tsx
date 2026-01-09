@@ -1,46 +1,130 @@
-import type { Location } from "history";
-import { Link } from "react-router";
+import { useCallback, useMemo, useState } from "react";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import DateTime from "metabase/common/components/DateTime";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
-import { useListTransformTagsQuery } from "metabase-enterprise/api";
+import type { TreeTableColumnDef } from "metabase/ui";
+import {
+  Button,
+  Card,
+  Flex,
+  Icon,
+  Stack,
+  TextInput,
+  TreeTable,
+  TreeTableSkeleton,
+  useTreeTableInstance,
+} from "metabase/ui";
+import { useListTransformJobsQuery } from "metabase-enterprise/api";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
+import type { TransformJob } from "metabase-types/api";
 
-import { JobFilterList } from "./JobFilterList";
-import { JobList } from "./JobList";
-import { getParsedParams } from "./utils";
+export const JobListPage = () => {
+  const dispatch = useDispatch();
+  const [searchQuery, setSearchQuery] = useState("");
 
-type JobListPageProps = {
-  location: Location;
-};
+  const { data: jobs = [], error, isLoading } = useListTransformJobsQuery({});
 
-export function JobListPage({ location }: JobListPageProps) {
-  const params = getParsedParams(location);
-  const { data: tags = [], isLoading, error } = useListTransformTagsQuery();
+  const handleRowActivate = useCallback(
+    (row: { original: TransformJob }) => {
+      dispatch(push(Urls.transformJob(row.original.id)));
+    },
+    [dispatch],
+  );
 
-  if (!tags || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  const jobColumnDef = useMemo<TreeTableColumnDef<TransformJob>[]>(
+    () => [
+      {
+        id: "name",
+        accessorKey: "name",
+        header: t`Name`,
+      },
+      {
+        id: "last_run",
+        accessorFn: (job) => job.last_run?.start_time,
+        header: t`Last Run`,
+        minWidth: "auto",
+        cell: ({ row }) =>
+          row.original.last_run ? (
+            <>
+              {row.original.last_run.status === "failed"
+                ? t`Failed`
+                : t`Last run`}{" "}
+              <DateTime value={row.original.last_run.start_time} />
+            </>
+          ) : null,
+      },
+    ],
+    [],
+  );
+
+  const treeTableInstance = useTreeTableInstance({
+    data: jobs,
+    columns: jobColumnDef,
+    getNodeId: (node) => String(node.id),
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+    onRowActivate: handleRowActivate,
+  });
+
+  let emptyMessage = null;
+  if (jobs.length === 0) {
+    emptyMessage = t`No jobs yet`;
+  } else if (searchQuery) {
+    emptyMessage = t`No jobs found`;
+  }
+
+  if (error) {
+    return <LoadingAndErrorWrapper loading={false} error={error} />;
   }
 
   return (
-    <Stack gap="xl" data-testid="job-list-page">
-      <Group justify="space-between" align="start">
-        <Stack gap="sm">
-          <Title order={1}>{t`Jobs`}</Title>
-          <Box>{t`Jobs let you run groups of transforms on a schedule.`}</Box>
-        </Stack>
-        <Button
-          component={Link}
-          to={Urls.newTransformJob()}
-          variant="filled"
-          leftSection={<Icon name="add" aria-hidden />}
-        >
-          {t`Create a job`}
-        </Button>
-      </Group>
-      <JobFilterList params={params} tags={tags} />
-      <JobList params={params} />
-    </Stack>
+    <PageContainer data-testid="transforms-job-list" gap={0}>
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Jobs`}</DataStudioBreadcrumbs>}
+        py={0}
+        showMetabotButton
+      />
+      <Stack style={{ overflow: "hidden" }}>
+        <Flex gap="0.5rem">
+          <TextInput
+            placeholder={t`Search...`}
+            leftSection={<Icon name="search" />}
+            bdrs="md"
+            flex="1"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Button
+            leftSection={<Icon name="add" />}
+            component={ForwardRefLink}
+            to={Urls.newTransformJob()}
+          >{t`New`}</Button>
+        </Flex>
+
+        <Flex direction="column" flex={1} mih={0}>
+          <Card withBorder p={0}>
+            {isLoading ? (
+              <TreeTableSkeleton columnWidths={[0.6, 0.3]} />
+            ) : (
+              <TreeTable
+                instance={treeTableInstance}
+                emptyState={
+                  emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
+                }
+                onRowClick={handleRowActivate}
+              />
+            )}
+          </Card>
+        </Flex>
+      </Stack>
+    </PageContainer>
   );
-}
+};

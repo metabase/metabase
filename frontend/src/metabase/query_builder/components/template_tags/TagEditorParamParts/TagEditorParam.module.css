@@ -1,5 +1,5 @@
 .ContainerLabel {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-weight: 700;
   /* it's 7px and not aligned with our DS */
   margin-bottom: 0.5em;
@@ -10,10 +10,10 @@
 }
 
 .DefaultParameterValueWidget {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: 0.75rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 4px;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   font-weight: normal;
 }

@@ -165,6 +165,7 @@ describe("saved question helpers", () => {
         description: question.description,
         moderated_status: question.moderated_status,
         db_id: question.dataset_query.database,
+        type: "question",
         schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${question.collection.name}`,
         schema_name: question.collection.name,
       });
@@ -182,6 +183,7 @@ describe("saved question helpers", () => {
         description: question.description,
         moderated_status: question.moderated_status,
         db_id: question.dataset_query.database,
+        type: "question",
         schema: `${SAVED_QUESTIONS_VIRTUAL_DB_ID}:${encodeURIComponent(
           "Everything else",
         )}`,

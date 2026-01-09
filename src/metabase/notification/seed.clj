@@ -137,7 +137,25 @@
                                                           :path           "metabase/channel/email/invitation_reminder_notification.hbs"
                                                           :recipient-type "cc"}}
                             :recipients   [{:type    :notification-recipient/template
-                                            :details {:pattern "{{payload.event_info.object.email}}"}}]}]}]))
+                                            :details {:pattern "{{payload.event_info.object.email}}"}}]}]}
+
+          ;; support access grant created
+                    {:internal_id "system-event/support-access-grant-created"
+                     :active true
+                     :payload_type :notification/system-event
+                     :subscriptions [{:type :notification-subscription/system-event
+                                      :event_name :event/support-access-grant-created}]
+                     :handlers [{:active true
+                                 :channel_type :channel/email
+                                 :channel_id nil
+                                 :template {:name "Support Access Grant Created Email"
+                                            :channel_type :channel/email
+                                            :details {:type "email/handlebars-resource"
+                                                      :subject "Support Access Grant Created"
+                                                      :path "metabase/channel/email/support_access_grant.hbs"
+                                                      :recipient-type "cc"}}
+                                 :recipients [{:type :notification-recipient/template
+                                               :details {:pattern "{{payload.event_info.support_email}}"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]

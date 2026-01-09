@@ -126,10 +126,6 @@ export function downloadAndAssert({
 
   cy.log(`Downloading ${fileType} file`);
 
-  // For _some_ reason wait is necessary for dashcard menu to stay open after
-  // the click. I assume card needs to finish loading.
-  cy.wait(200);
-
   if (isDashboard) {
     if (isEmbed) {
       getDashboardCard().realHover();

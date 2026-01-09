@@ -9,29 +9,31 @@ import S from "./NameDescriptionInput.module.css";
 import { Textarea } from "./Textarea";
 
 interface Props {
-  description: string;
-  descriptionPlaceholder: string;
   name: string;
   nameIcon: IconName;
   nameMaxLength?: number;
   namePlaceholder: string;
   namePrefix?: string;
   nameRightSection?: ReactNode;
-  onDescriptionChange: (description: string) => void;
+  description: string;
+  descriptionPlaceholder: string;
+  readOnly?: boolean;
   onNameChange: (name: string) => void;
+  onDescriptionChange: (description: string) => void;
 }
 
 export const NameDescriptionInput = ({
-  description,
-  descriptionPlaceholder,
   name,
   nameIcon,
   nameMaxLength,
   namePlaceholder,
   namePrefix,
   nameRightSection,
-  onDescriptionChange,
+  description,
+  descriptionPlaceholder,
+  readOnly,
   onNameChange,
+  onDescriptionChange,
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
@@ -65,7 +67,7 @@ export const NameDescriptionInput = ({
         leftSection={
           <Group
             align="center"
-            c="text-light"
+            c="text-tertiary"
             gap={10}
             flex="1"
             fs="lg"
@@ -75,7 +77,7 @@ export const NameDescriptionInput = ({
             ref={sectionRef}
             wrap="nowrap"
           >
-            <Icon c="brand" flex="0 0 auto" name={nameIcon} size={20} />
+            <Icon flex="0 0 auto" name={nameIcon} size={20} c="brand" />
 
             {namePrefix && (
               <Ellipsified
@@ -83,7 +85,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-light" component="span" size="lg">
+                <Text c="text-tertiary" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>
@@ -115,6 +117,7 @@ export const NameDescriptionInput = ({
           },
         }}
         value={name}
+        readOnly={readOnly}
         onChange={handleNameChange}
       />
 
@@ -128,6 +131,7 @@ export const NameDescriptionInput = ({
         minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
+        readOnly={readOnly}
         onChange={handleDescriptionChange}
       />
     </Box>

@@ -1,8 +1,13 @@
+import { setLocalization } from "metabase/lib/i18n";
 import type { DateFilterValue } from "metabase/querying/filters/types";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
-import { getDateFilterClause, getDateFilterDisplayName } from "./dates";
+import {
+  formatDate,
+  getDateFilterClause,
+  getDateFilterDisplayName,
+} from "./dates";
 
 type DateFilterClauseCase = {
   value: DateFilterValue;
@@ -318,6 +323,33 @@ describe("getDateFilterDisplayName", () => {
       expect(getDateFilterDisplayName(value, { withPrefix })).toEqual(
         displayName,
       );
+    },
+  );
+});
+
+describe("formatDate", () => {
+  afterAll(() => jest.resetModules());
+
+  describe.each([{ hasTime: false }, { hasTime: true }])(
+    "with hasTime=$hasTime",
+    ({ hasTime }) => {
+      it.each([
+        { locale: "en", expectedDate: "January 2, 2025" },
+        { locale: "de", expectedDate: "2. Januar 2025" },
+      ])("respects locale $locale", ({ locale, expectedDate }) => {
+        setLocalization({
+          headers: {
+            language: locale,
+            "plural-forms": "nplurals=2; plural=(n != 1);",
+          },
+          translations: { "": {} },
+        });
+
+        const date = new Date(2025, 0, 2, 0, 0);
+        const expectedTime = hasTime ? " 12:00 AM" : "";
+        const expected = `${expectedDate}${expectedTime}`;
+        expect(formatDate(date, hasTime)).toBe(expected);
+      });
     },
   );
 });

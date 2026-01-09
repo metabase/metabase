@@ -5,6 +5,7 @@ export const COLLECTION_PAGE_SIZE = 25;
 const COLLECTION_CONTENT_COLUMNS = [
   "type",
   "name",
+  "description",
   "lastEditedBy",
   "lastEditedAt",
   "actionMenu",
@@ -34,4 +35,5 @@ export const ALL_MODELS: CollectionItemModel[] = [
   "snippet",
   "collection",
   "document",
+  "table",
 ];

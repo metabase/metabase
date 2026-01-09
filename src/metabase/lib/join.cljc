@@ -1,6 +1,6 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
-  (:refer-clojure :exclude [mapv run! some empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -36,7 +36,7 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv run! some empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))
@@ -227,7 +227,7 @@
   [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]
   (or
    (when source-table
-     (:display-name (lib.metadata/table query source-table)))
+     ((some-fn :display-name :name) (lib.metadata/table query source-table)))
    (when source-card
      (if-let [card-metadata (lib.metadata/card query source-card)]
        (lib.metadata.calculation/display-name query 0 card-metadata)
@@ -357,7 +357,7 @@
                         ;; ignore `:source-field` in field refs... join `:fields` probably shouldn't be adding
                         ;; implicitly joined columns anyway (this is not something you can do in the UI at any rate).
                         ;; It might possibly be getting incorrectly propagated somewhere,
-                        ;; see [[metabase.query-processor-test.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
+                        ;; see [[metabase.query-processor.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
                         ;; for an example of where this happens. Having it here will cause `lib.equality` to fail to
                         ;; find a match.
                         ;;

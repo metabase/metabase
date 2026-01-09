@@ -16,14 +16,28 @@ import {
  */
 export function initializePlugin() {
   if (hasPremiumFeature("content_translation")) {
+    const getDictionaryBasePath = `/api/ee/content-translation/dictionary`;
+
     Object.assign(PLUGIN_CONTENT_TRANSLATION, {
       isEnabled: true,
       useSortByContentTranslation,
       useTranslateContent,
       useTranslateFieldValuesInHoveredObject,
       useTranslateSeries,
+      getDictionaryBasePath,
+      setEndpointsForAuthEmbedding: () => {
+        if (contentTranslationEndpoints.getDictionary) {
+          return;
+        }
+
+        contentTranslationEndpoints.getDictionary = getDictionaryBasePath;
+      },
       setEndpointsForStaticEmbedding: (encodedToken: string) => {
-        contentTranslationEndpoints.getDictionary = `/api/ee/content-translation/dictionary/${encodedToken}`;
+        if (contentTranslationEndpoints.getDictionary) {
+          return;
+        }
+
+        contentTranslationEndpoints.getDictionary = `${getDictionaryBasePath}/${encodedToken}`;
       },
       translateDisplayNames,
       ContentTranslationConfiguration,

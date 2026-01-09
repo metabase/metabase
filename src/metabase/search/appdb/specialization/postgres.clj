@@ -26,8 +26,10 @@
 (defmethod specialization/batch-upsert! :postgres [table entries]
   (when (seq entries)
     (t2/query
-     ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized.
-     (let [update-keys (vec (disj (set (keys (first entries))) :id :model :model_id))
+     ;; The cost of dynamically calculating these keys should be small compared to the IO cost, so unoptimized. Note
+     ;; that the entries are not guaranteed to be homogeneous - some may be missing nullable columns. So we need to
+     ;; get the keys from *all* the entries.
+     (let [update-keys (vec (disj (set (mapcat keys entries)) :id :model :model_id))
            excluded-kw (fn [column] (keyword (str "excluded." (name column))))]
        {:insert-into   table
         :values        entries

@@ -2,7 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.metabot-v3.dummy-tools :as metabot-v3.dummy-tools]
+   [metabase-enterprise.metabot-v3.tools.entity-details :as metabot-v3.tools.entity-details]
    [metabase-enterprise.metabot-v3.tools.filters :as metabot-v3.tools.filters]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -37,7 +37,7 @@
                                 :filters []
                                 :group-by []}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [metric-details (metabot-v3.dummy-tools/metric-details metric-id)
+        (let [metric-details (metabot-v3.tools.entity-details/metric-details metric-id)
               ->field-id #(u/prog1 (-> metric-details :queryable-dimensions (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
@@ -175,7 +175,7 @@
                               :filters []
                               :group-by []}))))
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
+      (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
@@ -314,7 +314,7 @@
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
-          table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
           ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
@@ -373,7 +373,7 @@
                                {:data-source {:table-id (str "card__" model-id)}
                                 :filters []}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [model-details (#'metabot-v3.dummy-tools/card-details model-id)
+        (let [model-details (#'metabot-v3.tools.entity-details/card-details model-id)
               table-id (str "card__" model-id)
               ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)
                             (when-not <>
@@ -420,7 +420,7 @@
                                {:data-source {:report-id card-id}
                                 :filters []}))))
       (mt/with-current-user (mt/user->id :crowberto)
-        (let [report-details (#'metabot-v3.dummy-tools/card-details card-id)
+        (let [report-details (#'metabot-v3.tools.entity-details/card-details card-id)
               ->field-id #(u/prog1 (-> report-details :fields (by-name %) :field_id)
                             (when-not <>
                               (throw (ex-info (str "Column " % " not found") {:column %}))))]
@@ -461,7 +461,7 @@
         query (lib/query mp (lib.metadata/table mp table-id))
         legacy-query (lib.convert/->legacy-MBQL query)
         query-details (mt/with-current-user (mt/user->id :crowberto)
-                        (#'metabot-v3.dummy-tools/execute-query query-id legacy-query))
+                        (#'metabot-v3.tools.entity-details/execute-query query-id legacy-query))
         ->field-id #(u/prog1 (-> query-details :result-columns (by-name %) :field_id)
                       (when-not <>
                         (throw (ex-info (str "Column " % " not found") {:column %}))))
@@ -488,13 +488,17 @@
         (testing "new tool call with just query"
           (is (=? expected
                   (metabot-v3.tools.filters/filter-records
-                   (assoc input :data-source (select-keys query-details [:query]))))))))))
+                   (assoc input :data-source (select-keys query-details [:query]))))))
+        (testing "MBQL v5 query works"
+          (is (=? expected
+                  (metabot-v3.tools.filters/filter-records
+                   (assoc input :data-source {:query query})))))))))
 
 (deftest ^:parallel query-datasource-table-test
   (mt/with-current-user (mt/user->id :crowberto)
     (let [mp (mt/metadata-provider)
           table-id (mt/id :orders)
-          table-details (#'metabot-v3.dummy-tools/table-details table-id {:metadata-provider mp})
+          table-details (#'metabot-v3.tools.entity-details/table-details table-id {:metadata-provider mp})
           ->field-id #(u/prog1 (-> table-details :fields (by-name %) :field_id)
                         (when-not <>
                           (throw (ex-info (str "Column " % " not found") {:column %}))))]
@@ -596,7 +600,7 @@
                                              :description "Test model for orders"
                                              :type :model}]
     (mt/with-current-user (mt/user->id :crowberto)
-      (let [model-details (-> (metabot-v3.dummy-tools/get-table-details {:model-id model-id})
+      (let [model-details (-> (metabot-v3.tools.entity-details/get-table-details {:model-id model-id})
                               :structured-output)
             model-card-id (str "card__" model-id)
             ->field-id #(u/prog1 (-> model-details :fields (by-name %) :field_id)

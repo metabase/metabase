@@ -341,7 +341,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().findByText("People").click();
+    H.miniPicker().findByText("People").click();
 
     H.getNotebookStep("join").should("not.exist");
 

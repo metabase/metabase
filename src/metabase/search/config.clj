@@ -43,8 +43,7 @@
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
   (cond-> api/model->db-model
-    config/ee-available? (assoc "document" {:db-model :model/Document :alias :document}
-                                "transform" {:db-model :model/Transform :alias :transform})))
+    config/ee-available? (assoc "transform" {:db-model :model/Transform :alias :transform})))
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -74,8 +73,8 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  (cond-> ["dashboard" "metric" "segment" "indexed-entity" "card" "dataset" "collection" "table" "action"]
-    config/ee-available? (concat ["document" "transform"])
+  (cond-> ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document"]
+    config/ee-available? (concat ["transform"])
     :always (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
@@ -155,6 +154,7 @@
   "Specifications for the optional search filters."
   (build-filters
    {:archived                {:type :single-value, :context-key :archived?}
+    :collection-id           {:type :collection-hierarchy, :context-key :collection}
     ;; TODO dry this alias up with the index hydration code
     :created-at              {:type :date-range, :field "model_created_at"}
     :creator-id              {:type :list, :context-key :created-by}
@@ -256,6 +256,7 @@
    ;;
    ;; optional
    ;;
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
    [:created-at                          {:optional true} ms/NonBlankString]
    [:created-by                          {:optional true} [:set {:min 1} ms/PositiveInt]]
    [:display-type                        {:optional true} [:set {:min 1} ms/NonBlankString]]

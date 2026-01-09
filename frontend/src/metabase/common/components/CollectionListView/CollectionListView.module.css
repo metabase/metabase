@@ -1,0 +1,11 @@
+.listGridItem {
+  width: 33.33%;
+}
+
+.card {
+  color: var(--mb-color-text-secondary);
+}
+
+.card:hover {
+  color: var(--mb-color-brand);
+}

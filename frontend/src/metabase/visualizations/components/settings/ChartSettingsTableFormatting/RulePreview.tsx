@@ -40,7 +40,7 @@ export const RulePreview = ({
     data-testid="formatting-rule-preview"
     {...paperProps}
   >
-    <Group wrap="nowrap" px="md" bg="bg-light">
+    <Group wrap="nowrap" px="md" bg="background-secondary">
       <Text flex="1" fw="bold" fz="md">
         {rule.columns.length > 0 ? (
           rule.columns

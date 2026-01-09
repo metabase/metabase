@@ -2,8 +2,7 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as mdb]
-   [metabase.config.core :as config]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.collections.models.collection :as collection]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -15,11 +14,13 @@
 (methodical/defmethod t2/table-name :model/DashboardBookmark  [_model] :dashboard_bookmark)
 (methodical/defmethod t2/table-name :model/CollectionBookmark [_model] :collection_bookmark)
 (methodical/defmethod t2/table-name :model/BookmarkOrdering   [_model] :bookmark_ordering)
+(methodical/defmethod t2/table-name :model/DocumentBookmark   [_model] :document_bookmark)
 
 (derive :model/CardBookmark :metabase/model)
 (derive :model/DashboardBookmark :metabase/model)
 (derive :model/CollectionBookmark :metabase/model)
 (derive :model/BookmarkOrdering :metabase/model)
+(derive :model/DocumentBookmark :metabase/model)
 
 (defn- unqualify-key
   [k]
@@ -61,11 +62,6 @@
                       :authority_level])
         (assoc :id id-str))))
 
-(defn- has-documents?
-  []
-  (and (premium-features/enable-documents?)
-       config/ee-available?))
-
 (defn- bookmarks-union-query
   [user-id]
   (let [as-null (when (= (mdb/db-type) :postgres) (h2x/->integer nil))
@@ -96,56 +92,50 @@
                                 :created_at]
                        :from   [:collection_bookmark]
                        :where [:= :user_id user-id]}]]
-    {:union-all (if (has-documents?)
-                  (conj base-queries
-                        {:select [[as-null :card_id]
-                                  [as-null :dashboard_id]
-                                  [as-null :collection_id]
-                                  :document_id
-                                  [:document_id :item_id]
-                                  [(h2x/literal "document") :type]
-                                  :created_at]
-                         :from [:document_bookmark]
-                         :where [:= :user_id user-id]})
-                  base-queries)}))
+    {:union-all (conj base-queries
+                      {:select [[as-null :card_id]
+                                [as-null :dashboard_id]
+                                [as-null :collection_id]
+                                :document_id
+                                [:document_id :item_id]
+                                [(h2x/literal "document") :type]
+                                :created_at]
+                       :from [:document_bookmark]
+                       :where [:= :user_id user-id]})}))
 
 (mu/defn bookmarks-for-user :- [:sequential BookmarkResult]
   "Get all bookmarks for a user. Each bookmark will have a string id made of the model and model-id, a type, and
   item_id, name, and description from the underlying bookmarked item."
   [user-id]
-  (let [select-fields (cond-> [[:bookmark.created_at :created_at]
-                               [:bookmark.type              :type]
-                               [:bookmark.item_id           :item_id]
-                               [:card.name                  (mdb/qualify :model/Card :name)]
-                               [:card.type                  (mdb/qualify :model/Card :card_type)]
-                               [:card.display               (mdb/qualify :model/Card :display)]
-                               [:card.description           (mdb/qualify :model/Card :description)]
-                               [:card.archived              (mdb/qualify :model/Card :archived)]
-                               [:dashboard.name             (mdb/qualify :model/Dashboard :name)]
-                               [:dashboard.description      (mdb/qualify :model/Dashboard :description)]
-                               [:dashboard.archived         (mdb/qualify :model/Dashboard :archived)]
-                               [:collection.name            (mdb/qualify :model/Collection  :name)]
-                               [:collection.authority_level (mdb/qualify :model/Collection :authority_level)]
-                               [:collection.description     (mdb/qualify :model/Collection :description)]
-                               [:collection.archived        (mdb/qualify :model/Collection :archived)]]
-                        (has-documents?)
-                        (conj [:document.name (mdb/qualify :model/Document :name)]
-                              [:document.archived (mdb/qualify :model/Document :archived)]))
-        left-joins (cond-> [[:report_card :card] [:= :bookmark.card_id :card.id]
-                            [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
-                     ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
-                            [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
-                                                                                         (h2x/identifier :field :dashboard :collection_id)]]
-                            [:bookmark_ordering :bookmark_ordering] [:and
-                                                                     [:= :bookmark_ordering.user_id user-id]
-                                                                     [:= :bookmark_ordering.type :bookmark.type]
-                                                                     [:= :bookmark_ordering.item_id :bookmark.item_id]]]
-                     (has-documents?)
-                     (conj [:document :document] [:= :bookmark.document_id :document.id]))
+  (let [select-fields [[:bookmark.created_at :created_at]
+                       [:bookmark.type              :type]
+                       [:bookmark.item_id           :item_id]
+                       [:card.name                  (mdb/qualify :model/Card :name)]
+                       [:card.type                  (mdb/qualify :model/Card :card_type)]
+                       [:card.display               (mdb/qualify :model/Card :display)]
+                       [:card.description           (mdb/qualify :model/Card :description)]
+                       [:card.archived              (mdb/qualify :model/Card :archived)]
+                       [:dashboard.name             (mdb/qualify :model/Dashboard :name)]
+                       [:dashboard.description      (mdb/qualify :model/Dashboard :description)]
+                       [:dashboard.archived         (mdb/qualify :model/Dashboard :archived)]
+                       [:collection.name            (mdb/qualify :model/Collection  :name)]
+                       [:collection.authority_level (mdb/qualify :model/Collection :authority_level)]
+                       [:collection.description     (mdb/qualify :model/Collection :description)]
+                       [:collection.archived        (mdb/qualify :model/Collection :archived)]
+                       [:document.name (mdb/qualify :model/Document :name)]
+                       [:document.archived (mdb/qualify :model/Document :archived)]]
+        left-joins [[:report_card :card] [:= :bookmark.card_id :card.id]
+                    [:report_dashboard :dashboard]          [:= :bookmark.dashboard_id :dashboard.id]
+             ;; use of [[h2x/identifier]] here is a workaround for https://github.com/seancorfield/honeysql/issues/450
+                    [:collection :collection]               [:in :collection.id [(h2x/identifier :field :bookmark :collection_id)
+                                                                                 (h2x/identifier :field :dashboard :collection_id)]]
+                    [:bookmark_ordering :bookmark_ordering] [:and
+                                                             [:= :bookmark_ordering.user_id user-id]
+                                                             [:= :bookmark_ordering.type :bookmark.type]
+                                                             [:= :bookmark_ordering.item_id :bookmark.item_id]]
+                    [:document :document] [:= :bookmark.document_id :document.id]]
         where-conditions (into [:and]
-                               (for [table (if (has-documents?)
-                                             [:card :dashboard :collection :document]
-                                             [:card :dashboard :collection])
+                               (for [table [:card :dashboard :collection :document]
                                      :let  [field (keyword (str (name table) "." "archived"))]]
                                  [:or [:= field false] [:= field nil]]))]
     (->> (mdb/query
@@ -169,3 +159,11 @@
   (t2/insert! :model/BookmarkOrdering (->> orderings
                                            (map #(select-keys % [:type :item_id]))
                                            (map-indexed #(assoc %2 :user_id user-id :ordering %1)))))
+
+(t2/define-before-insert :model/CollectionBookmark [bookmark]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id bookmark))
+  bookmark)
+
+(t2/define-before-update :model/CollectionBookmark [model]
+  (collection/check-allowed-content :model/CollectionBookmark (:collection_id (t2/changes model)))
+  model)

@@ -25,7 +25,7 @@
   `name` is `:remapped_from` `:category_id`.
 
   See also [[metabase.parameters.chain-filter]] for another explanation of remapping."
-  (:refer-clojure :exclude [mapv select-keys some empty? not-empty])
+  (:refer-clojure :exclude [mapv select-keys some empty? not-empty get-in])
   (:require
    [clojure.data :as data]
    [medley.core :as m]
@@ -47,7 +47,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some empty? not-empty]]))
+   [metabase.util.performance :refer [mapv select-keys some empty? not-empty get-in]]))
 
 (mr/def ::simplified-ref
   [:tuple
@@ -90,14 +90,17 @@
    field-id              :- ::lib.schema.id/field]
   (let [col (lib.metadata/field metadata-providerable field-id)]
     (when-let [{remap-id :id, remap-name :name, remap-field-id :field-id} (:lib/external-remap col)]
-      (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
-        (when (not= (:visibility-type remap-field) :sensitive)
-          {:id                        remap-id
-           :name                      remap-name
-           :field-id                  (:id col)
-           :field-name                (:name col)
-           :human-readable-field-id   remap-field-id
-           :human-readable-field-name (:name remap-field)})))))
+      (when-let [fk-target-field-id (:fk-target-field-id col)]
+        (when-let [fk-field (lib.metadata/field metadata-providerable fk-target-field-id)]
+          (when (not (contains? #{:sensitive :retired} (:visibility-type fk-field)))
+            (when-let [remap-field (lib.metadata/field metadata-providerable remap-field-id)]
+              (when (not (contains? #{:sensitive :retired} (:visibility-type remap-field)))
+                {:id                        remap-id
+                 :name                      remap-name
+                 :field-id                  (:id col)
+                 :field-name                (:name col)
+                 :human-readable-field-id   remap-field-id
+                 :human-readable-field-name (:name remap-field)}))))))))
 
 (mr/def ::remap-info
   [:and
@@ -301,7 +304,7 @@
                                                           (contains? original-join-field-ids (get-in remap-info path)))
                                                         [[:dimension :field-id]
                                                          ;; (not sure this is really something we want to support,
-                                                         ;; but [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+                                                         ;; but [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
                                                          ;; alleges that you can include just the remapped column in
                                                          ;; join `:fields` and it's supposed to work)
                                                          [:dimension :human-readable-field-id]]))
@@ -349,10 +352,19 @@
           ;; last stage (only stage) is native
           (= (:lib/type (lib/query-stage query -1)) :mbql.stage/native))
     query
-    (let [{:keys [remaps query]} (add-fk-remaps query)]
+    (let [{:keys [remaps query]} (add-fk-remaps query)
+          returned-ids           (into #{} (keep :id) (lib/returned-columns query))
+          ;; Only retain those remappings which actually apply to returned columns.
+          ;; Otherwise, if an FK has an external remapping (say, Orders.PRODUCT_ID -> Product.TITLE) and we implicitly
+          ;; join `Product.TITLE` directly, we actually don't want to mark that column as :remapped_from anything -
+          ;; it wasn't remapped, it was explicitly referenced. So if the FK doesn't appear as a returned column, any
+          ;; remaps we might have inherited from earlier stages etc. don't apply. See #65726
+          remaps                 (into [] (comp (filter (comp returned-ids :field-id))
+                                                ;; Convert the remappings to plain maps rather than record types.
+                                                (map #(into {} %)))
+                                       remaps)]
       (cond-> query
-        ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
-        (seq remaps) (assoc ::external-remaps (mapv (partial into {}) remaps))))))
+        (seq remaps) (assoc ::external-remaps remaps)))))
 
 ;;;; Post-processing
 

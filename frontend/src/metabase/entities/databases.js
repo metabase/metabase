@@ -11,7 +11,6 @@ import {
 import { color } from "metabase/lib/colors";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { DatabaseSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -26,7 +25,7 @@ export const FETCH_DATABASE_METADATA =
 /**
  * @deprecated use "metabase/api" instead
  */
-const Databases = createEntity({
+export const Databases = createEntity({
   name: "databases",
   path: "/api/database",
   schema: DatabaseSchema,
@@ -110,8 +109,6 @@ const Databases = createEntity({
 
   objectSelectors: {
     getName: (db) => db && db.name,
-    getUrl: (db) => db && Urls.browseDatabase(db),
-    getIcon: (db) => ({ name: "database" }),
     getColor: (db) => color("database"),
   },
 
@@ -147,5 +144,3 @@ const Databases = createEntity({
     ),
   },
 });
-
-export default Databases;

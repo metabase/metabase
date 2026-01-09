@@ -90,6 +90,42 @@
             {:name "id", :id test-uuid, :display-name "ID", :type :number}
             [{:type :category, :target [:variable [:template-tag {:id test-uuid}]], :value "9223372036854775808"}])))))
 
+(deftest ^:parallel variable-multiple-values-test
+  (testing "Allows multiple bindings of the same tag"
+    (testing "if only one has a value set"
+      (is (= "2"
+             (#'params.values/value-for-tag
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+    (testing "if all values are equal"
+      (is (= "2"
+             (#'params.values/value-for-tag
+              {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+              [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+               {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+    (testing "if no values are given"
+      (testing "required tags use their defaults"
+        (is (= "100"
+               (#'params.values/value-for-tag
+                {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+                [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))
+      (testing "optional tags get no value"
+        (is (= params/no-value
+               (#'params.values/value-for-tag
+                {:name "id", :display-name "ID", :type :text, :required false, :default "100"}
+                [{:type :category, :target [:variable [:template-tag "id"]], :value nil}
+                 {:type :category, :target [:variable [:template-tag "id"]], :value nil}]))))))
+  (testing "Throws if multiple real values are set"
+    (is (thrown-with-msg? Exception #"Multiple conflicting values"
+                          (#'params.values/value-for-tag
+                           {:name "id", :display-name "ID", :type :text, :required true, :default "100"}
+                           [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}
+                            {:type :category, :target [:variable [:template-tag "id"]], :value "8"}])))))
+
 (defn- value-for-tag
   "Call the private function and de-recordize the field"
   [field-info info]
@@ -558,6 +594,21 @@
         (testing "`:snippet-name` property in query shouldn't have to match `:name` of Snippet in DB"
           (is (= expected
                  (query->params-map (query-with-snippet :snippet-id 1, :snippet-name "Old Name")))))))))
+
+(deftest ^:parallel unnormalized-snippet-test
+  (testing "Snippet parsing should normalize snippet names when parsing"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "expensive-venues"
+                                                               :content "venues WHERE price = 4"}]
+      (let [expected {"snippet: expensive-venues" (params/map->ReferencedQuerySnippet {:snippet-id snippet-id
+                                                                                       :content    "venues WHERE price = 4"})}
+            query (assoc (mt/native-query {:query "SELECT * FROM {{snippet:expensive-venues}}"})
+                         :template-tags {"snippet:expensive-venues" {:type :snippet
+                                                                     :name         "expensive-venues"
+                                                                     :display-name "Expensive Venues"
+                                                                     :snippet-name "expensive-venues"
+                                                                     :snippet-id snippet-id}})]
+        (is (= expected
+               (query->params-map query)))))))
 
 (deftest ^:parallel invalid-param-test
   (testing "Should throw an Exception if we try to pass with a `:type` we don't understand"

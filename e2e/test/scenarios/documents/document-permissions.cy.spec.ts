@@ -3,11 +3,10 @@ import { USER_GROUPS } from "e2e/support/cypress_data";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
 
-H.describeWithSnowplowEE("document permissions", () => {
+describe("document permissions", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
     cy.signOut();
   });

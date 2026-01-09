@@ -258,7 +258,7 @@
               (is (= "2017-04-18T09:53:37.046-07:00"
                      (last (first rows)))))))))))
 
-(deftest additional-options-test
+(deftest ^:synchronized additional-options-test
   (mt/test-driver
     :databricks
     (testing "Connections with UserAgentEntry"

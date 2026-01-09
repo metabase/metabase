@@ -21,9 +21,15 @@ import type {
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
-  isSelected?: boolean,
+  {
+    isSelected,
+    isTenantUser,
+  }: {
+    isSelected?: boolean;
+    isTenantUser?: boolean;
+  } = {},
 ) => {
-  const icon = getIcon(item as ObjectWithModel);
+  const icon = getIcon(item as ObjectWithModel, { isTenantUser });
 
   if (["person", "group"].includes(icon.name)) {
     // should inherit color
@@ -31,7 +37,7 @@ export const getEntityPickerIcon = <Id, Model extends string>(
   }
 
   if (isSelected && !icon.color) {
-    icon.color = "text-white";
+    icon.color = "text-primary-inverse";
   }
 
   if (icon.name === "folder" && isSelected) {
@@ -134,7 +140,11 @@ export const isSearchFolder = <
   folder: Item,
   folderModels: Model[],
 ) => {
-  return folder.id !== "personal" && folderModels.includes(folder.model);
+  return (
+    folder.id !== "personal" &&
+    folder.id !== "databases" &&
+    folderModels.includes(folder.model)
+  );
 };
 
 const isSearchModel = (model: string): model is SearchModel => {

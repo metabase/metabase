@@ -3,6 +3,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -20,8 +21,39 @@
 
 (def visibility-types
   "Valid values for `Table.visibility_type` (field may also be `nil`).
-   (Basically any non-nil value is a reason for hiding the table.)"
+   (Basically any non-nil value is a reason for hiding the table.)
+
+  Deprecated and will eventually be replaced by data-layer"
   #{:hidden :technical :cruft})
+
+(def data-sources
+  "Valid values for data source"
+  #{:unknown :ingested :metabase-transform :transform :source-data :upload})
+
+(def data-layers
+  "Valid values for `Table.data_layer`.
+  :gold   - highest quality, fully visible, synced
+  :silver - high quality, visible, synced
+  :bronze - acceptable quality, visible, synced
+  :copper - low quality, hidden, not synced"
+  #{:gold :silver :bronze :copper})
+
+(defn- visibility-type->data-layer
+  "Convert legacy visibility_type to data_layer.
+  Used when updating via the legacy field."
+  [visibility-type]
+  (if (contains? #{:hidden :retired :sensitive :technical :cruft} visibility-type)
+    :copper
+    :gold))
+
+(defn- data-layer->visibility-type
+  "Convert data_layer back to legacy visibility_type.
+  Used for rollback compatibility to v56."
+  [data-layer]
+  (case data-layer
+    :copper :hidden
+    ;; gold, silver, bronze all map to visible (nil)
+    nil))
 
 (def field-orderings
   "Valid values for `Table.field_order`.
@@ -82,7 +114,9 @@
 (t2/deftransforms :model/Table
   {:entity_type     mi/transform-keyword
    :visibility_type mi/transform-keyword
+   :data_layer      (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-layers))
    :field_order     mi/transform-keyword
+   :data_source     (mi/transform-validator mi/transform-keyword (partial mi/assert-optional-enum data-sources))
    ;; Warning: by using a transform to handle unexpected enum values, serialization becomes lossy
    :data_authority  transform-data-authority})
 
@@ -94,10 +128,39 @@
   [table]
   (dissoc table :is_defective_duplicate :unique_table_helper))
 
+(defn- sync-visibility-fields
+  "Sync visibility_type and data_layer fields, ensuring only one is updated at a time.
+  Returns updated changes map with both fields in sync for rollback compatibility."
+  [{:keys [visibility_type data_layer] :as changes}
+   {original-v1 :visibility_type, original-v2 :data_layer}]
+  (let [v1-changing? (and (contains? changes :visibility_type)
+                          (not= (keyword visibility_type)
+                                (keyword original-v1)))
+        v2-changing? (and (contains? changes :data_layer)
+                          (not= (keyword data_layer)
+                                (keyword original-v2)))]
+    (cond
+      ;; Error: don't allow updating both at once
+      (and v1-changing? v2-changing?)
+      (throw (ex-info "Cannot update both visibility_type and data_layer"
+                      {:status-code 400}))
+
+      ;; Legacy field update -> convert to new field and sync back
+      v1-changing?
+      (assoc changes :data_layer (visibility-type->data-layer (keyword visibility_type)))
+
+      ;; New field update -> sync back to legacy field for rollback
+      v2-changing?
+      (assoc changes :visibility_type
+             (data-layer->visibility-type (keyword data_layer)))
+
+      :else changes)))
+
 (t2/define-before-insert :model/Table
   [table]
   (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
-                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))}]
+                  :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))
+                  :data_layer   :bronze}]
     (merge defaults table)))
 
 (t2/define-before-delete :model/Table
@@ -119,18 +182,33 @@
       (throw (ex-info "Cannot set data_authority back to unconfigured once it has been configured"
                       {:status-code 400})))
 
-    (cond
-      ;; active: true -> false (table being deactivated)
-      (and (true? current-active) (false? new-active))
-      (assoc changes :deactivated_at (mi/now))
+    ;; Prevent changing data_source to/from metabase-transform
+    (when (contains? changes :data_source)
+      (let [original-data-source (:data_source original-table)
+            new-data-source      (:data_source changes)]
+        (when (and (= original-data-source :metabase-transform)
+                   (not= new-data-source :metabase-transform))
+          (throw (ex-info "Cannot change data_source from metabase-transform"
+                          {:status-code 400})))
+        (when (and (not= original-data-source :metabase-transform)
+                   (= new-data-source :metabase-transform))
+          (throw (ex-info "Cannot set data_source to metabase-transform"
+                          {:status-code 400})))))
 
-      ;; active: false -> true (table being reactivated)
-      (and (false? current-active) (true? new-active))
-      (assoc changes
-             :deactivated_at nil
-             :archived_at nil)
+    ;; Sync visibility_type and data_layer fields
+    (let [changes (sync-visibility-fields changes original-table)]
+      (cond
+        ;; active: true -> false (table being deactivated)
+        (and (true? current-active) (false? new-active))
+        (assoc changes :deactivated_at (mi/now))
 
-      :else table)))
+        ;; active: false -> true (table being reactivated)
+        (and (false? current-active) (true? new-active))
+        (assoc changes
+               :deactivated_at nil
+               :archived_at nil)
+
+        :else (merge table changes)))))
 
 (defn- set-new-table-permissions!
   [table]
@@ -196,8 +274,7 @@
    column-or-exp      :- :any
    user-info          :- perms/UserInfo
    permission-mapping :- perms/PermissionMapping]
-  [:in column-or-exp
-   (perms/visible-table-filter-select :id user-info permission-mapping)])
+  (perms/visible-table-filter-with-cte column-or-exp user-info permission-mapping))
 
 ;;; ------------------------------------------------ Serdes Hashing -------------------------------------------------
 
@@ -268,6 +345,25 @@
         (update-vals (fn [fvs] (->> fvs (map (juxt :field_id :values)) (into {})))))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Table :transform]
+  "Hydrate transforms that created the tables."
+  [_model k tables]
+  (if config/ee-available?
+    (mi/instances-with-hydrated-data
+     tables k
+     #(let [table-ids                (map :id tables)
+            table-id->transform-id   (t2/select-fn->fn :from_entity_id :to_entity_id :model/Dependency
+                                                       :from_entity_type "table"
+                                                       :from_entity_id [:in table-ids]
+                                                       :to_entity_type "transform")
+            transform-id->transform  (when-let [transform-ids (seq (vals table-id->transform-id))]
+                                       (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))]
+        (update-vals table-id->transform-id transform-id->transform))
+     :id
+     {:default nil})
+    ;; EE not available, so no transforms
+    tables))
+
 (methodical/defmethod t2/batched-hydrate [:model/Table :pk_field]
   [_model k tables]
   (mi/instances-with-hydrated-data
@@ -293,6 +389,15 @@
   (with-objects :segments
     (fn [table-ids]
       (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+    tables))
+
+(mi/define-batched-hydration-method with-measures
+  :measures
+  "Efficiently hydrate the Measures for a collection of `tables`."
+  [tables]
+  (with-objects :measures
+    (fn [table-ids]
+      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics
@@ -335,8 +440,9 @@
   (t2/select-one :model/Database :id (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
-(defmethod serdes/dependencies "Table" [table]
-  [[{:model "Database" :id (:db_id table)}]])
+(defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
+  (cond-> [[{:model "Database" :id db_id}]]
+    collection_id (conj [{:model "Collection" :id collection_id}])))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]
@@ -360,12 +466,15 @@
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
-               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority]
+               :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
+               :data_source :owner_email :owner_user_id :is_published]
    :skip      [:estimated_row_count :view_count]
-   :transform {:created_at (serdes/date)
-               :archived_at (serdes/date)
+   :transform {:created_at     (serdes/date)
+               :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
-               :db_id      (serdes/fk :model/Database :name)}})
+               :data_layer     (serdes/optional-kw)
+               :db_id          (serdes/fk :model/Database :name)
+               :collection_id  (serdes/fk :model/Collection)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-path-prefixes (serdes/path table))
@@ -378,24 +487,36 @@
    :attrs        {;; legacy search uses :active for this, but then has a rule to only ever show active tables
                   ;; so we moved that to the where clause
                   :archived      false
-                  :collection-id false
+                  ;; For published tables with no collection, we want to show "root" as the collection id
+                  :collection-id true
                   :creator-id    false
                   :database-id   :db_id
                   :view-count    true
                   :created-at    true
-                  :updated-at    true}
+                  :updated-at    true
+                  :is-published  :is_published}
    :search-terms {:name         search.spec/explode-camel-case
                   :display_name true
                   :description  true}
-   :render-terms {:initial-sync-status true
-                  :table-id            :id
-                  :table-description   :description
-                  :table-name          :name
-                  :table-schema        :schema
-                  :database-name       :db.name}
+   :render-terms {:initial-sync-status        true
+                  :table-id                   :id
+                  :table-description          :description
+                  :table-name                 :name
+                  :table-schema               :schema
+                  :database-name              :db.name
+                  :collection-authority_level :collection.authority_level
+                  :collection-location        :collection.location
+                  ;; For published tables with no collection, show "Our analytics" as the collection name
+                  :collection-name            [:coalesce :collection.name
+                                               [:case
+                                                [:and :this.is_published
+                                                 [:= :this.collection_id nil]] [:inline "Our analytics"]
+                                                :else nil]]
+                  :collection-type            :collection.type}
    :where        [:and
                   :active
                   [:= :visibility_type nil]
                   [:= :db.router_database_id nil]
                   [:not= :db_id [:inline audit/audit-db-id]]]
-   :joins        {:db [:model/Database [:= :db.id :this.db_id]]}})
+   :joins        {:db         [:model/Database   [:= :db.id :this.db_id]]
+                  :collection [:model/Collection [:and [:= :this.is_published true] [:= :collection.id :this.collection_id]]]}})

@@ -14,18 +14,17 @@ import type { Document } from "metabase-types/api";
 
 const { H } = cy;
 
-H.describeWithSnowplowEE("documents", () => {
+describe("documents", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
   });
 
   it("should allow you to create a new document from the new button and save", () => {
     const getDocumentStub = cy.stub();
 
-    cy.intercept("GET", "/api/ee/document/1", getDocumentStub);
+    cy.intercept("GET", "/api/document/1", getDocumentStub);
 
     cy.visit("/");
 
@@ -101,7 +100,7 @@ H.describeWithSnowplowEE("documents", () => {
     });
 
     H.navigationSidebar()
-      .findByRole("tab", { name: "Bookmarks" })
+      .findByRole("section", { name: "Bookmarks" })
       .findByText("Test Document")
       .click();
 
@@ -192,11 +191,23 @@ H.describeWithSnowplowEE("documents", () => {
     H.documentSaveButton().should("exist");
 
     H.newButton("Document").click();
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "unsaved_changes_warning_displayed",
+      },
+      1,
+    );
     H.leaveConfirmationModal().findByRole("button", { name: "Cancel" }).click();
 
     H.documentContent().should("have.text", "This is some content");
 
     H.newButton("Document").click();
+    H.expectUnstructuredSnowplowEvent(
+      {
+        event: "unsaved_changes_warning_displayed",
+      },
+      2,
+    );
     H.leaveConfirmationModal()
       .findByRole("button", { name: "Discard changes" })
       .click();
@@ -553,6 +564,9 @@ H.describeWithSnowplowEE("documents", () => {
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
+        H.activateToken("bleeding-edge");
+        H.visitDocument("@documentId");
+
         H.documentContent().click();
         H.addToDocument("/", false);
 
@@ -591,7 +605,7 @@ H.describeWithSnowplowEE("documents", () => {
 
         assertOnlyOneOptionActive(/Orders, Count$/, "mention");
 
-        H.documentSuggestionDialog()
+        H.documentMentionDialog()
           .findByRole("option", { name: /Browse all/ })
           .realHover();
 
@@ -799,11 +813,11 @@ H.describeWithSnowplowEE("documents", () => {
       it("should copy an added card on save", () => {
         cy.intercept({
           method: "PUT",
-          path: "/api/ee/document/*",
+          path: "/api/document/*",
         }).as("documentUpdate");
         cy.intercept({
           method: "GET",
-          path: "/api/ee/document/*",
+          path: "/api/document/*",
         }).as("documentGet");
 
         cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -927,9 +941,9 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New Question/).click();
 
       cy.log("Create a simple query in the notebook editor");
-      cy.findByTestId("entity-picker-modal").within(() => {
-        H.entityPickerModalTab("Tables").click();
-        H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
       });
 
       cy.log("Save and use the new question");
@@ -1019,7 +1033,6 @@ H.describeWithSnowplowEE("documents", () => {
 
       cy.log("Trigger command menu and navigate to 'Chart' item");
       H.addToDocument("/", false);
-      cy.realPress("{downarrow}");
       H.commandSuggestionItem("Chart").should(
         "have.attr",
         "aria-selected",
@@ -1099,10 +1112,10 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New Question/).click();
 
       cy.log("Create a time series query with Orders table");
-      cy.findByRole("dialog", { name: "Pick your starting data" }).should(
-        "be.visible",
-      );
-      H.entityPickerModalItem(2, "Orders").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders").click();
+      });
 
       H.addSummaryField({ metric: "Sum of ...", field: "Total" });
       H.addSummaryGroupingField({ field: "Created At" });
@@ -1217,7 +1230,7 @@ H.describeWithSnowplowEE("documents", () => {
       H.commandSuggestionItem(/New SQL query/).should("not.exist");
 
       cy.log("Verify notebook modal opens automatically");
-      cy.findByRole("dialog", { name: "Pick your starting data" }).should(
+      cy.findByRole("dialog", { name: "Create new question" }).should(
         "be.visible",
       );
     });
@@ -1226,16 +1239,20 @@ H.describeWithSnowplowEE("documents", () => {
   describe("error handling", () => {
     it("should display an error toast when creating a new document fails", () => {
       // setup
-      cy.intercept("POST", "/api/ee/document", { statusCode: 500 });
+      cy.intercept("POST", "/api/document", { statusCode: 500 });
+      cy.intercept("GET", "/api/collection/*").as("getCollection");
       cy.visit("/document/new");
 
       // make changes and attempt to save
       cy.findByRole("textbox", { name: "Document Title" }).type("Title");
       H.documentSaveButton().click();
       H.entityPickerModalTab("Collections").click();
-      H.entityPickerModalItem(0, "Our analytics")
-        .should("have.attr", "data-active", "true")
-        .click();
+      cy.wait("@getCollection");
+      H.entityPickerModalItem(0, "Our analytics").should(
+        "have.attr",
+        "data-active",
+        "true",
+      );
       H.entityPickerModal().findByRole("button", { name: "Select" }).click();
 
       // assert error toast is visible and user can reattempt save
@@ -1247,7 +1264,7 @@ H.describeWithSnowplowEE("documents", () => {
 
     it("should display an error toast when updating a document fails", () => {
       // setup
-      cy.intercept("PUT", "/api/ee/document/*", { statusCode: 500 });
+      cy.intercept("PUT", "/api/document/*", { statusCode: 500 });
       H.createDocument({
         name: "Test Document",
         document: { type: "doc", content: [] },
@@ -1267,6 +1284,87 @@ H.describeWithSnowplowEE("documents", () => {
       H.documentSaveButton().should("be.visible");
     });
   });
+
+  describe("revision history", () => {
+    beforeEach(() => {
+      cy.intercept("POST", "/api/revision/revert").as("revert");
+      cy.intercept("GET", "/api/revision*").as("revisionHistory");
+    });
+
+    it("should be able to view and revert document revisions", () => {
+      cy.log("Create a document with initial content");
+      H.createDocument({
+        name: "Revision Test Document",
+        document: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: "Initial content",
+                },
+              ],
+            },
+          ],
+        },
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.log("Make changes to create a revision");
+      cy.findByRole("textbox", { name: "Document Title" })
+        .clear()
+        .type("Updated Document Title");
+      H.documentContent().click();
+      H.addToDocument("Updated content");
+      H.documentSaveButton().click();
+
+      cy.log("Make another change");
+      H.documentContent().click();
+      H.addToDocument("More changes");
+      H.documentSaveButton().click();
+
+      cy.log("Open revision history");
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("History").click();
+
+      cy.wait("@revisionHistory");
+
+      cy.log("Verify revision history sidebar is open");
+      cy.findByTestId("document-history-list").should("be.visible");
+
+      cy.log("Verify revision entries are displayed");
+      cy.findByTestId("document-history-list")
+        .findByText(/created this/)
+        .should("be.visible");
+
+      cy.log("Revert to an earlier revision");
+      cy.intercept("GET", "/api/document/*").as("documentReload");
+      cy.findByTestId("document-history-list")
+        .findByText(/created this/)
+        .parent()
+        .within(() => {
+          cy.findByTestId("question-revert-button").click();
+        });
+      cy.wait(["@revert", "@documentReload"]);
+
+      cy.log("Verify document was reverted");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Revision Test Document",
+      );
+      H.documentContent().should("contain.text", "Initial content");
+      H.documentContent().should("not.contain.text", "Updated content");
+
+      cy.log("Verify revert entry appears in history");
+      cy.findByTestId("document-history-list")
+        .findByText(/reverted to an earlier version/)
+        .should("be.visible");
+    });
+  });
 });
 
 const assertOnlyOneOptionActive = (
@@ -1277,7 +1375,7 @@ const assertOnlyOneOptionActive = (
     dialog === "command"
       ? H.commandSuggestionDialog
       : dialog === "mention"
-        ? H.documentSuggestionDialog
+        ? H.documentMentionDialog
         : H.documentMetabotDialog;
 
   dialogContainer()

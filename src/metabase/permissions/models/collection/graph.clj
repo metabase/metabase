@@ -110,7 +110,8 @@
                      :from [:collection]
                      :where [:and
                              [:or [:= :type nil] [:not= :type [:inline "trash"]]]
-                             (perms/audit-namespace-clause :namespace (u/qualified-name collection-namespace))
+                             (perms/namespace-clause
+                              :namespace (u/qualified-name collection-namespace))
                              [:not :archived]
                              [:= :personal_owner_id nil]
                              (let [ids-without-root (disj collection-ids :root)]
@@ -259,10 +260,11 @@
   (let [other-ns-ids (when (seq (disj collection-ids :root))
                        ;; This query selects collection IDs that don't match the target namespace:
                        ;; - If target namespace is non-nil: collections with different non-nil namespaces OR nil namespaces
-                       ;; - If target namespace is nil: collections with any non-nil namespace
+                       ;; - If target namespace is nil: collections with any non-nil namespace (except the 'analytics' namespace)
                        (t2/select-pks-set :model/Collection {:where [:and [:in :id (disj collection-ids :root)]
-                                                                     (cond-> [:or [:not= :namespace (some-> namespace name)]]
-                                                                       (some? namespace) (into [[:= :namespace nil]]))]}))]
+                                                                     (cond->> [[:not= :namespace (some-> namespace name)]]
+                                                                       (nil? namespace) (into [:and [:not= :namespace "analytics"]])
+                                                                       (some? namespace) (into [:or [:= :namespace nil]]))]}))]
     (cond-> graph
       (seq other-ns-ids) (update :groups update-vals #(apply dissoc % other-ns-ids)))))
 

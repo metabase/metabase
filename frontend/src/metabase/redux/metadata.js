@@ -2,10 +2,10 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { cardApi, dashboardApi, datasetApi } from "metabase/api";
-import Databases from "metabase/entities/databases";
-import Fields from "metabase/entities/fields";
-import Segments from "metabase/entities/segments";
-import Tables from "metabase/entities/tables";
+import { Databases } from "metabase/entities/databases";
+import { Fields } from "metabase/entities/fields";
+import { Segments } from "metabase/entities/segments";
+import { Tables } from "metabase/entities/tables";
 import { isProduction } from "metabase/env";
 import { entityCompatibleQuery } from "metabase/lib/entities";
 import { createThunkAction, fetchData } from "metabase/lib/redux";
@@ -195,7 +195,7 @@ export const addRemappings = (fieldId, remappings) => {
 const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
 export const fetchRemapping = createThunkAction(
   FETCH_REMAPPING,
-  ({ parameter, value, field, cardId, dashboardId }) =>
+  ({ parameter, value, field, cardId, dashboardId, uuid, token }) =>
     async (dispatch, getState) => {
       if (
         field == null ||
@@ -205,10 +205,14 @@ export const fetchRemapping = createThunkAction(
         return;
       }
 
+      const entityIdentifier = uuid ?? token ?? null;
+
       if (dashboardId != null && parameter != null) {
         const remapping = await entityCompatibleQuery(
           {
-            dashboard_id: dashboardId,
+            ...(entityIdentifier
+              ? { entityIdentifier }
+              : { dashboard_id: dashboardId }),
             parameter_id: parameter.id,
             value,
           },
@@ -222,7 +226,7 @@ export const fetchRemapping = createThunkAction(
       } else if (cardId != null && parameter != null) {
         const remapping = await entityCompatibleQuery(
           {
-            card_id: cardId,
+            ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
             parameter_id: parameter.id,
             value,
           },

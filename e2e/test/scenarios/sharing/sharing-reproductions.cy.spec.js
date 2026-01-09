@@ -323,10 +323,10 @@ describe("issue 21559", { tags: "@external" }, () => {
   it("should respect dashboard card visualization (metabase#21559)", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       H.switchToAddMoreData();
@@ -658,12 +658,13 @@ describe("issue 26988", () => {
       },
     }).then(({ body: card }) => {
       H.visitDashboard(card.dashboard_id);
-    });
 
-    H.openStaticEmbeddingModal({
-      activeTab: "lookAndFeel",
-      previewMode: "preview",
-      acceptTerms: false,
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: card.dashboard_id,
+        activeTab: "lookAndFeel",
+        previewMode: "preview",
+      });
     });
 
     cy.wait("@previewDashboard");

@@ -68,6 +68,8 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   font: null,
   theme: "light",
   downloadsEnabled: { pdf: true, results: true },
+  // TODO: (Kelvin 2025-11-17) this will be removed when I work on EMB-1025
+  withSubscriptions: true,
   withFooter: true,
   getClickActionMode: undefined,
 };

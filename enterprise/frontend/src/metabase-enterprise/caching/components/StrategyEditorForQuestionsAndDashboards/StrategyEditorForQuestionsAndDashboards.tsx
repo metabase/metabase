@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -33,13 +31,7 @@ import { formatValueForSorting } from "./utils";
 
 type CacheableItemResult = DashboardResult | QuestionResult;
 
-const _StrategyEditorForQuestionsAndDashboards = ({
-  router,
-  route,
-}: {
-  router: InjectedRouter;
-  route?: Route;
-}) => {
+export const StrategyEditorForQuestionsAndDashboards = () => {
   const [
     // The targetId is the id of the object that is currently being edited
     targetId,
@@ -178,7 +170,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     confirmationModal,
     isStrategyFormDirty,
     setIsStrategyFormDirty,
-  } = useConfirmIfFormIsDirty(router, route);
+  } = useConfirmIfFormIsDirty();
 
   /** Change the target, but first confirm if the form is unsaved */
   const updateTarget: UpdateTarget = useCallback(
@@ -305,10 +297,6 @@ const _StrategyEditorForQuestionsAndDashboards = ({
   );
 };
 
-export const StrategyEditorForQuestionsAndDashboards = withRouter(
-  _StrategyEditorForQuestionsAndDashboards,
-);
-
 const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
   <ClientSortableTable<{ id: number }>
     columns={columns}
@@ -327,7 +315,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
 );
 
 const NoResultsTableRow = () => (
-  <Center fw="bold" c="text-light">
+  <Center fw="bold" c="text-tertiary">
     {t`No dashboards or questions have their own caching policies yet.`}
   </Center>
 );

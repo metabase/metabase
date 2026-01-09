@@ -5,6 +5,7 @@ import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { Center } from "metabase/ui";
 import {
   useGetTransformJobQuery,
   useUpdateTransformJobMutation,
@@ -16,8 +17,10 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-import { JobView } from "../../components/JobView";
+import { JobEditor } from "../../components/JobEditor";
 import { POLLING_INTERVAL } from "../../constants";
+
+import { JobMoreMenu } from "./JobMoreMenu";
 
 type JobPageParams = {
   jobId: string;
@@ -46,12 +49,12 @@ export function JobPage({ params }: JobPageProps) {
     setIsPolling(isPollingNeeded(job));
   }
 
-  if (isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  if (job == null) {
-    return <LoadingAndErrorWrapper error={t`Not found.`} />;
+  if (isLoading || error != null || job == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return <JobPageBody job={job} />;
@@ -75,32 +78,7 @@ function JobPageBody({ job }: JobPageBodyProps) {
     if (error) {
       sendErrorToast(t`Failed to update job name`);
     } else {
-      sendSuccessToast(t`Job name updated`, async () => {
-        const { error } = await updateJob({
-          id: job.id,
-          name: job.name,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleDescriptionChange = async (description: string | null) => {
-    const { error } = await updateJob({
-      id: job.id,
-      description,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update job description`);
-    } else {
-      sendSuccessToast(t`Job description updated`, async () => {
-        const { error } = await updateJob({
-          id: job.id,
-          description: job.description,
-        });
-        sendUndoToast(error);
-      });
+      sendSuccessToast(t`Job name updated`);
     }
   };
 
@@ -147,10 +125,10 @@ function JobPageBody({ job }: JobPageBodyProps) {
   };
 
   return (
-    <JobView
+    <JobEditor
       job={job}
+      menu={<JobMoreMenu job={job} />}
       onNameChange={handleNameChange}
-      onDescriptionChange={handleDescriptionChange}
       onScheduleChange={handleScheduleChange}
       onTagListChange={handleTagListChange}
     />

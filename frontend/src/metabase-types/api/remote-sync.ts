@@ -21,15 +21,10 @@ export type RemoteSyncEntityStatus =
 export type RemoteSyncEntity = {
   id: number;
   name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string | null;
   model: RemoteSyncEntityModel;
   collection_id?: number;
   display?: CardDisplayType;
-  query_type?: string;
   sync_status: RemoteSyncEntityStatus;
-  authority_level?: string | null;
 };
 
 export type RemoteSyncChangesResponse = {
@@ -63,6 +58,8 @@ export type ImportFromBranchResponse = {
   message?: string;
 };
 
+export type CollectionSyncPreferences = Record<number, boolean>;
+
 export type RemoteSyncConfigurationSettings = Pick<
   EnterpriseSettings,
   | "remote-sync-enabled"
@@ -70,7 +67,9 @@ export type RemoteSyncConfigurationSettings = Pick<
   | "remote-sync-token"
   | "remote-sync-type"
   | "remote-sync-branch"
->;
+> & {
+  collections?: CollectionSyncPreferences;
+};
 
 export type UpdateRemoteSyncConfigurationResponse = {
   success: boolean;

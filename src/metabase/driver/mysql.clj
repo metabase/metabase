@@ -25,6 +25,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -94,6 +95,8 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              ;; currently disabled as :describe-indexes is not supported
+                              :transforms/index-ddl                   false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true}]
@@ -102,7 +105,8 @@
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
 ;; And MariaDB doesn't have the JSON type at all, though `JSON` was introduced as an alias for LONGTEXT in 10.2.7.
 ;; But since JSON unfolding will only apply columns with JSON types, this won't cause any problems during sync.
-(defmethod driver/database-supports? [:mysql :nested-field-columns] [_driver _feat db]
+(defmethod driver/database-supports? [:mysql :nested-field-columns]
+  [_driver _feat db]
   (driver.common/json-unfolding-default db))
 
 (doseq [feature [:actions :actions/custom :actions/data-editing]]
@@ -148,6 +152,11 @@
               (catch Exception e
                 (log/warn e "Failed to check table writable")
                 false)))))
+
+(defmethod driver/database-supports? [:mysql :regex/lookaheads-and-lookbehinds]
+  [driver _feat db]
+  (and (= driver :mysql)
+       (not (mariadb? db))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -223,8 +232,10 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 3306)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 3306)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options #{:aws-iam})
@@ -431,7 +442,7 @@
           nfc-path              (:nfc-path stored-field)
           parent-identifier     (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier stored-field)
           jsonpath-query        (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))
-          json-extract+jsonpath [:json_extract parent-identifier jsonpath-query]]
+          json-extract+jsonpath [:json_unquote [:json_extract parent-identifier jsonpath-query]]]
       (case (u/lower-case-en field-type)
         ;; If we see JSON datetimes we expect them to be in ISO8601. However, MySQL expects them as something different.
         ;; We explicitly tell MySQL to go and accept ISO8601, because that is JSON datetimes, although there is no real standard for JSON, ISO8601 is the de facto standard.
@@ -966,8 +977,16 @@
 
 (defmethod driver/insert-col->val [:mysql :jsonl-file]
   [_driver _ column-def v]
-  (if (and (string? v) (isa? (:type column-def) :type/DateTimeWithTZ))
-    (t/offset-date-time v)
+  (if (string? v)
+    (cond
+      (isa? (:type column-def) :type/DateTimeWithTZ)
+      (t/offset-date-time v)
+
+      (isa? (:type column-def) :type/DateTime)
+      (u.date/parse v)
+
+      :else
+      v)
     v))
 
 (defn- parse-grant
@@ -1144,6 +1163,10 @@
   ;; ok to hardcode driver name here because this function only supports app DB types
   (driver-api/query-canceled-exception? :mysql e))
 
+(defmethod sql-jdbc/drop-index-sql :mysql [_ _schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :mysql)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name)) (quote-identifier (name table-name)))))
+
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/default-database-role :mysql
@@ -1160,4 +1183,27 @@
 
 (defmethod driver.sql/default-schema :mysql
   [_]
+  nil)
+
+;; Override db-type-name to handle tinyint(1) as boolean
+;; During sync, tinyint(1) is mapped to BIT (boolean) unless tinyInt1isBit=false is set
+;; We need to do the same during query execution to ensure type consistency
+(defmethod sql-jdbc.execute/db-type-name :mysql
+  [_driver ^ResultSetMetaData rsmeta column-index]
+  (let [db (try
+             (driver-api/database (driver-api/metadata-provider))
+             (catch Throwable _ nil))
+        tiny-int-1-is-bit? (not (some-> db :details :additional-options (str/includes? "tinyInt1isBit=false")))
+        db-type-name (.getColumnTypeName rsmeta column-index)
+        precision    (try
+                       (.getPrecision rsmeta column-index)
+                       (catch Throwable _ nil))]
+    (if (and (= "TINYINT" db-type-name)
+             (= precision 1)
+             tiny-int-1-is-bit?)
+      "BIT"
+      db-type-name)))
+
+(defmethod driver/extra-info :mysql
+  [_driver]
   nil)

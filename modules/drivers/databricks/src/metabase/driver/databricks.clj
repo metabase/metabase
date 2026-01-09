@@ -1,5 +1,5 @@
 (ns metabase.driver.databricks
-  (:refer-clojure :exclude [not-empty])
+  (:refer-clojure :exclude [not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -19,7 +19,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [metabase.util.performance :refer [not-empty]]
+   [metabase.util.performance :refer [not-empty get-in]]
    [ring.util.codec :as codec])
   (:import
    [java.sql

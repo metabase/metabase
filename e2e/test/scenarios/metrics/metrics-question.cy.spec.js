@@ -214,7 +214,7 @@ describe("scenarios > metrics > question", () => {
   });
 });
 
-H.describeWithSnowplow("metrics", () => {
+describe("metrics", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

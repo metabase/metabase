@@ -522,8 +522,8 @@ describe("scenarios > admin > datamodel", () => {
         verifyAndCloseToast("Hid Orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("Orders").should("not.exist");
         });
@@ -540,8 +540,8 @@ describe("scenarios > admin > datamodel", () => {
         verifyAndCloseToast("Unhid Orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("Orders").should("be.visible");
         });
@@ -741,8 +741,8 @@ describe("scenarios > admin > datamodel", () => {
 
         // It shouldn't show in a new question data picker
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.contains("Products").should("exist");
           cy.contains("Orders").should("not.exist");
         });
@@ -938,8 +938,8 @@ describe("scenarios > admin > datamodel", () => {
         TableSection.getNameInput().should("have.value", "New orders");
 
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("New orders").should("be.visible");
         });
@@ -964,8 +964,8 @@ describe("scenarios > admin > datamodel", () => {
 
         cy.signInAsNormalUser();
         H.startNewQuestion();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("People").should("be.visible");
           cy.findByText("New orders").should("be.visible");
         });
@@ -1879,8 +1879,8 @@ describe("scenarios > admin > datamodel", () => {
             mode: "notebook",
           });
           cy.icon("join_left_outer").click();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
@@ -1936,8 +1936,8 @@ describe("scenarios > admin > datamodel", () => {
             mode: "notebook",
           });
           cy.icon("join_left_outer").click();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Products").click();
           });
           cy.findByLabelText("Left column").should("contain.text", "User ID");
@@ -3009,6 +3009,7 @@ describe("scenarios > admin > datamodel", () => {
           FieldSection.getNameInput().should("have.value", "A");
           FieldSection.get()
             .findByTestId("name-prefix")
+            .scrollIntoView()
             .should("be.visible")
             .and("have.text", "Json:");
           verifyTablePreview({
@@ -3454,7 +3455,7 @@ describe("scenarios > admin > datamodel", () => {
       cy.log("discard field values");
       H.modal().button("Discard cached field values").click();
       verifyAndCloseToast("Failed to discard values");
-      cy.realPress("Escape");
+      H.modal().findByLabelText("Close").click();
 
       cy.log("field name");
       TableSection.getFieldNameInput("Quantity").type("a").blur();
@@ -3503,7 +3504,9 @@ describe("scenarios > admin > datamodel", () => {
       verifyAndCloseToast("Failed to update display values of Quantity");
 
       cy.log("JSON unfolding");
-      TablePicker.getDatabase("Writable Postgres12").click();
+      // navigating away would cause onChange to be triggered in InputBlurChange and TextareaBlurChange
+      // components, so new undos will appear - this makes this test flaky, so we navigate with page reload instead
+      H.DataModel.visit({ databaseId: WRITABLE_DB_ID });
       TablePicker.getTable("Many Data Types").click();
       TableSection.clickField("Json");
       FieldSection.getUnfoldJsonInput().click();
@@ -3511,6 +3514,7 @@ describe("scenarios > admin > datamodel", () => {
       verifyAndCloseToast("Failed to disable JSON unfolding for Json");
 
       cy.log("formatting");
+      TablePicker.getDatabase("Sample Database").click();
       TablePicker.getTable("Orders").click();
       TableSection.clickField("Quantity");
       FieldSection.getPrefixInput().type("5").blur();
@@ -3903,7 +3907,7 @@ function verifyToastAndUndo(message: string) {
   H.undoToast().should("contain.text", message);
   H.undoToast().button("Undo").click();
   H.undoToast().should("contain.text", "Change undone");
-  H.undoToast().icon("close").click();
+  H.undoToast().icon("close").click({ force: true });
 }
 
 function verifyTablesVisible(tables: string[]) {

@@ -3,7 +3,7 @@
 ;; We use a custom macro called `defendpoint` for defining all endpoints. It's best illustrated with an example:
 ;;
 ;; <pre><code>
-;; (ns metabase.dashboards.api ...)
+;; (ns metabase.dashboards-rest.api ...)
 ;;
 ;; (api/defendpoint :get "/"
 ;;  "Get `Dashboards`. With filter option `f`..."
@@ -38,27 +38,29 @@
 ;;
 ;; ## How does defendpoint coersion work?
 ;;
-;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
-;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
-;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;; The `defendpoint` macro uses the schemas to generate code which binds args to their decoded values. Values are
+;; decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be coerced; unmentioned
+;; aliases will not be bound.
 ;;
-;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; The exact coersion function [[mc/decode]], uses the [[metabase.api.macros/decode-transformer]],
 ;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
+;; for more details
 ;;
 ;; ### Here's an example repl session showing how it works:
 ;;
 ;; <pre><code>
+;;
 ;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
 ;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
-;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
+;;          '[malli.transform :as mtx] '[metabase.api.macros :as api.macros])
 ;; </code></pre>
 ;;
-;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
+;; To see how a schema will be transformed, call `mc/decode` with `api.macros/decode-transformer`.
 ;;
 ;; With the `:keyword` schema:
 ;;
 ;; <pre><code>
-;; (mc/decode :keyword "foo/bar" defendpoint-transformer)
+;; (mc/decode :keyword "foo/bar" @#'api.macros/decode-transformer)
 ;; ;; => :foo/bar
 ;; </code></pre>
 ;;
@@ -71,7 +73,7 @@
 ;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
 ;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
 ;;
-;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
+;; (mc/decode DecodableKwInt :123 @#'metabase.api.macros/decode-transformer)
 ;; ;; => 123
 ;; </code></pre>
 ;; <hr />
@@ -80,7 +82,6 @@
   "Dynamic variables and utility functions/macros for writing API functions."
   (:require
    [metabase.api.open-api :as open-api]
-   [metabase.config.core :as config]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -422,8 +423,7 @@
    old-position  :- [:maybe ms/PositiveInt]
    new-position  :- [:maybe ms/PositiveInt]]
   (let [update-fn! (fn [plus-or-minus position-update-clause]
-                     (doseq [model (cond-> '[Card Dashboard Pulse]
-                                     config/ee-available? (conj 'Document))]
+                     (doseq [model '[Card Dashboard Pulse Document]]
                        (t2/update! model {:collection_id       collection-id
                                           :collection_position position-update-clause}
                                    {:collection_position [plus-or-minus :collection_position 1]})))]
@@ -491,11 +491,16 @@
 ;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
 
 (defn bit->boolean
-  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean.
+
+  MariaDB is especially strange: https://stackoverflow.com/questions/78466426/bit1-in-view-using-conditionals-in-mariadb-returns-48-49"
   [v]
-  (if (number? v)
-    (not (zero? v))
-    v))
+  (cond
+    (number? v)                      (not (zero? v))
+    (and (bytes? v) (= (count v) 1)) (case (char (first v))
+                                       \0 false
+                                       \1 true)
+    :else                            v))
 
 (defn parse-multi-values-param
   "Parse a param that could have a single value or multiple values using `parse-fn`.
@@ -570,9 +575,11 @@
    "dashboard"         {:db-model :model/Dashboard          :alias :dashboard}
    "database"          {:db-model :model/Database           :alias :database}
    "dataset"           {:db-model :model/Card               :alias :card}
+   "document"          {:db-model :model/Document           :alias :document}
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
+   "measure"           {:db-model :model/Measure            :alias :measure}
    "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
    "table"             {:db-model :model/Table              :alias :table}
    "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}

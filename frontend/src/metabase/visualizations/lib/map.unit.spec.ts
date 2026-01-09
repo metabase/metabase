@@ -262,6 +262,38 @@ describe("map", () => {
           `/api/embed/tiles/card/embed-token/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}&parameters=${encodeURIComponent(expectedParameters)}`,
         );
       });
+
+      it("should generate url for embed question with isEmbedPreview=true", () => {
+        const url = getTileUrl({
+          cardId: 123,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          token: "embed-token",
+          isEmbedPreview: true,
+        });
+
+        expect(url).toBe(
+          `/api/preview_embed/tiles/card/embed-token/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}`,
+        );
+      });
+
+      it("should generate url for embed question with isEmbedPreview=false", () => {
+        const url = getTileUrl({
+          cardId: 123,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          token: "embed-token",
+          isEmbedPreview: false,
+        });
+
+        expect(url).toBe(
+          `/api/embed/tiles/card/embed-token/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}`,
+        );
+      });
     });
 
     describe("embed dashboard", () => {
@@ -310,6 +342,42 @@ describe("map", () => {
 
         expect(url).toBe(
           `/api/embed/tiles/dashboard/embed-token/dashcard/20/card/30/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}&parameters=${encodeURIComponent(expectedParameters)}`,
+        );
+      });
+
+      it("should generate url for embed dashboard with isEmbedPreview=true", () => {
+        const url = getTileUrl({
+          dashboardId: jwt,
+          dashcardId: 20,
+          cardId: 30,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          token: "embed-token",
+          isEmbedPreview: true,
+        });
+
+        expect(url).toBe(
+          `/api/preview_embed/tiles/dashboard/embed-token/dashcard/20/card/30/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}`,
+        );
+      });
+
+      it("should generate url for embed dashboard with isEmbedPreview=false", () => {
+        const url = getTileUrl({
+          dashboardId: jwt,
+          dashcardId: 20,
+          cardId: 30,
+          zoom,
+          coord,
+          latField,
+          lonField,
+          token: "embed-token",
+          isEmbedPreview: false,
+        });
+
+        expect(url).toBe(
+          `/api/embed/tiles/dashboard/embed-token/dashcard/20/card/30/${zoom}/${coord.x}/${coord.y}?latField=${encodeURIComponent(latField)}&lonField=${encodeURIComponent(lonField)}`,
         );
       });
     });

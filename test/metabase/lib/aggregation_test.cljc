@@ -951,3 +951,5 @@
                  {:display-name "Max of Quantity: 50 bins"
                   :name         "max"}]
                 (lib/aggregations-metadata query 1)))))))
+
+;; trivial change to test CI; remove this next time you see it

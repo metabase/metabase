@@ -41,7 +41,7 @@ const MOCK_SERIES = [
   },
 ] as Series;
 
-export const Default: StoryFn = () => (
+const DefaultTemplate: StoryFn = () => (
   <VisualizationWrapper>
     <Box h={500}>
       <Visualization rawSeries={MOCK_SERIES} width={500} />
@@ -49,7 +49,7 @@ export const Default: StoryFn = () => (
   </VisualizationWrapper>
 );
 
-export const Watermark: StoryFn = () => (
+const WatermarkTemplate: StoryFn = () => (
   <VisualizationWrapper
     initialStore={createMockState({
       settings: createMockSettingsState({
@@ -64,3 +64,17 @@ export const Watermark: StoryFn = () => (
     </Box>
   </VisualizationWrapper>
 );
+
+export const Default = {
+  render: DefaultTemplate,
+  parameters: {
+    loki: { skip: true },
+  },
+};
+
+export const Watermark = {
+  render: WatermarkTemplate,
+  parameters: {
+    loki: { skip: true },
+  },
+};

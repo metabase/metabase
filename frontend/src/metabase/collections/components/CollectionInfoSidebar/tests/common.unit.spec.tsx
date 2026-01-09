@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { screen } from "__support__/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -49,5 +51,26 @@ describe("CollectionInfoSidebar (OSS)", () => {
     expect(
       screen.queryByText("entity_id_of_trusted_collection"),
     ).not.toBeInTheDocument();
+  });
+
+  it("should truncate description if it exceeds 255 characters", async () => {
+    setup({
+      collection: {
+        ...regularCollection,
+        description: "Test Description",
+      },
+    });
+
+    const editableText = screen.getByText("Test Description");
+    await userEvent.click(editableText);
+
+    const input = screen.getByDisplayValue("Test Description");
+    await userEvent.clear(input);
+
+    const longDescription = "a".repeat(256);
+    await userEvent.type(input, longDescription);
+    await userEvent.tab();
+
+    expect(input).toHaveValue(longDescription.slice(0, 255));
   });
 });

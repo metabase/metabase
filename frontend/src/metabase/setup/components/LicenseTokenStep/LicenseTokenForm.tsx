@@ -88,7 +88,7 @@ export const LicenseTokenForm = ({
                   </HoverCard>
                 </Box>
               }
-              rightSectionWidth="1rem"
+              rightSectionWidth="2rem"
             />
             <FormErrorMessage />
           </Box>
@@ -108,7 +108,7 @@ export const LicenseTokenForm = ({
               px={0}
               fw="normal"
             >{t`I'll activate later`}</Button>
-            <Text c="text-light" size="sm">
+            <Text c="text-tertiary" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
           </Box>

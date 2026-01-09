@@ -11,14 +11,14 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.timezones-test :as timezones-test]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.timezones-test :as timezones-test]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses-rest.api :as api.database]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import

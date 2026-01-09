@@ -6,7 +6,7 @@
 
   Traditionally this code lived in the [[metabase.query-processor.middleware.annotate]] namespace, where it is still
   used today."
-  (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty #?(:clj for)])
+  (:refer-clojure :exclude [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)])
   (:require
    #?@(:clj
        ([metabase.config.core :as config]))
@@ -22,6 +22,7 @@
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
    [metabase.lib.join.util :as lib.join.util]
+
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -33,7 +34,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty #?(:clj for)]]))
+   [metabase.util.performance :refer [mapv select-keys some update-keys every? empty? not-empty get-in #?(:clj for)]]))
 
 (mr/def ::col
   ;; TODO (Cam 6/19/25) -- I think we should actually namespace all the keys added here (to make it clear where they
@@ -118,7 +119,8 @@
           (log/error e)
           (mapv merge-col
                 initial-cols
-                (concat lib-cols (repeat nil))))
+                ;; `util.perf/mapv` checks the `count` of all args, so it's NSFIS - Not Safe For Infinite Seqs.
+                (take (count initial-cols) (concat lib-cols (repeat nil)))))
         (throw e)))))
 
 (mu/defn- legacy-source :- ::lib.schema.metadata/column.legacy-source
@@ -378,9 +380,17 @@
    cols  :- [:sequential ::kebab-cased-map]]
   (let [model-metadata (some->> (get-in query [:info :metadata/model-metadata])
                                 (lib.card/->card-metadata-columns query))]
-    (cond-> cols
-      (seq model-metadata)
-      (lib.card/merge-model-metadata model-metadata))))
+    (if-not (seq model-metadata)
+      cols ; If not a model, nothing to change
+      (let [last-stage (lib.util/query-stage query -1)
+            ;; Assumption: we're in a call path in which fetch-source-query has added this field.
+            ;; Fallback: for direct model queries (e.g. viewing a native model), fetch-source-query
+            ;; doesn't run because there's no :source-card to resolve. In that case, check if the
+            ;; query stage itself is native.
+            native-model? (if (contains? last-stage :source-query/native-model?)
+                            (:source-query/native-model? last-stage)
+                            (lib.util/native-stage? last-stage))]
+        (lib.card/merge-model-metadata cols model-metadata native-model?)))))
 
 (defn- add-source-and-desired-aliases [query cols]
   (into []
@@ -420,7 +430,7 @@
   (merge
    ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
    ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
+   ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
    (when-let [temporal-unit ((some-fn :metabase.lib.field/temporal-unit :inherited-temporal-unit) col)]
      {:unit temporal-unit})
    col))

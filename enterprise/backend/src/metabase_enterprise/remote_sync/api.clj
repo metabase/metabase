@@ -1,6 +1,7 @@
 (ns metabase-enterprise.remote-sync.api
   (:require
    [medley.core :as m]
+   [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -81,7 +82,7 @@
                                        [:force {:optional true} :boolean]]
   (api/check-superuser)
   (api/check-400 (settings/remote-sync-enabled) "Remote sync is not configured.")
-  (api/check-400 (= (settings/remote-sync-type) :development) "Exports are only allowed when remote-sync-type is set to 'development'")
+  (api/check-400 (= (settings/remote-sync-type) :read-write) "Exports are only allowed when remote-sync-type is set to 'read-write'")
   (let [branch-name (or branch (settings/remote-sync-branch))
         {task-id :id :as task} (impl/async-export! branch-name
                                                    (or force false)
@@ -111,17 +112,29 @@
   "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [remote-sync-type] :as settings}
+   {:keys [remote-sync-type collections] :as settings}
    :- [:map
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
-       [:remote-sync-type {:optional true} [:maybe [:enum :production :development]]]
-       [:remote-sync-branch {:optional true} [:maybe :string]]]]
+       [:remote-sync-type {:optional true} [:maybe [:enum :read-only :read-write]]]
+       [:remote-sync-branch {:optional true} [:maybe :string]]
+       [:collections {:optional true} [:maybe [:map-of pos-int? :boolean]]]]]
   (api/check-superuser)
-  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :production remote-sync-type)))
-                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to production mode.")
+  (api/check-400 (not (and (remote-sync.object/dirty-global?) (= :read-only remote-sync-type)))
+                 "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
+  ;; Check if trying to change collections while in read-only mode
+  (let [effective-type (or remote-sync-type (settings/remote-sync-type))]
+    (api/check-400 (not (and (seq collections) (= :read-only effective-type)))
+                   "Cannot change synced collections when remote-sync-type is read-only."))
+  (when (seq collections)
+    (try
+      (remote-sync.core/bulk-set-remote-sync collections)
+      (catch Exception e
+        (throw (ex-info (or (ex-message e) "Invalid collection settings")
+                        {:error       (ex-message e)
+                         :status-code 400} e)))))
   (try
-    (settings/check-and-update-remote-settings! settings)
+    (settings/check-and-update-remote-settings! (dissoc settings :collections))
     (catch Exception e
       (throw (ex-info (or (ex-message e) "Invalid settings")
                       {:error       (ex-message e)
@@ -187,7 +200,7 @@
                                                  [:new_branch ms/NonBlankString]
                                                  [:message ms/NonBlankString]]]
   (api/check-superuser)
-  (api/check-400 (= (settings/remote-sync-type) :development) "Stash is only allowed when remote-sync-type is set to 'development'")
+  (api/check-400 (= (settings/remote-sync-type) :read-write) "Stash is only allowed when remote-sync-type is set to 'read-write'")
   (let [source (source/source-from-settings)]
     (api/check-400 source  "Source not configured")
     (try

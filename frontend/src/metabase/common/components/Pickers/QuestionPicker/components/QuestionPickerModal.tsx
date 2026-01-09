@@ -31,7 +31,10 @@ interface QuestionPickerModalProps {
   value?: QuestionPickerValue;
   models?: QuestionPickerModel[];
   recentFilter?: (items: RecentItem[]) => RecentItem[];
-  shouldDisableItem?: (item: QuestionPickerItem) => boolean;
+  shouldDisableItem?: (
+    item: QuestionPickerItem,
+    models?: QuestionPickerModel[],
+  ) => boolean;
 }
 
 const canSelectItem = (
@@ -105,12 +108,12 @@ export const QuestionPickerModal = ({
       displayName: t`Questions`,
       models: ["card" as const],
       folderModels: ["collection" as const],
-      icon: "table",
+      icon: "folder",
       render: ({ onItemSelect }) => (
         <QuestionPicker
           initialValue={value}
           models={["card", "dashboard"]}
-          options={options}
+          options={{ ...options, showLibrary: false }}
           path={questionsPath}
           onInit={onItemSelect}
           onItemSelect={onItemSelect}

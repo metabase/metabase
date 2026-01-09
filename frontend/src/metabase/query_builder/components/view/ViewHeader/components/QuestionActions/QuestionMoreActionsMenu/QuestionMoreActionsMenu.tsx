@@ -135,7 +135,7 @@ export const QuestionMoreActionsMenu = ({
         onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
       />
     ),
-    ...PLUGIN_MODERATION.useQuestionMenuItems(question, reload),
+    ...PLUGIN_MODERATION.useCardMenuItems(question.card(), reload),
     hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
       <Menu.Item
         key="edit_definition"

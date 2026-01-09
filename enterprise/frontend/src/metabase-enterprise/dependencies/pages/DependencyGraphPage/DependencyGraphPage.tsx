@@ -3,9 +3,10 @@ import { useContext } from "react";
 
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Stack } from "metabase/ui";
 
 import { DependencyGraph } from "../../components/DependencyGraph";
-import { isSameNode } from "../../components/DependencyGraph/utils";
+import { isSameNode } from "../../utils";
 
 import { parseDependencyEntry } from "./utils";
 
@@ -27,10 +28,12 @@ export function DependencyGraphPage({ location }: DependencyGraphPageProps) {
     defaultEntry == null || (entry != null && !isSameNode(entry, defaultEntry));
 
   return (
-    <DependencyGraph
-      entry={entry ?? defaultEntry}
-      getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
-      withEntryPicker={withEntryPicker}
-    />
+    <Stack h="100%">
+      <DependencyGraph
+        entry={entry ?? defaultEntry}
+        getGraphUrl={(entry) => Urls.dependencyGraph({ entry, baseUrl })}
+        withEntryPicker={withEntryPicker}
+      />
+    </Stack>
   );
 }

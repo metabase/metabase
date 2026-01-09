@@ -36,7 +36,7 @@
       (some-> metabase-user-id perms/user-permissions-set)))
 
 (mu/defn do-with-current-user
-  "Impl for [[with-current-user]]."
+  "Impl for [[with-current-user]] and [[metabase.server.middleware.session/with-current-user-for-request]]"
   [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?], :as current-user-info} :- [:maybe ::request.schema/current-user-info]
    thunk]
   (binding [*current-user-id*              metabase-user-id
@@ -78,7 +78,7 @@
    thunk))
 
 (defmacro as-admin
-  "Execude code in body as an admin user."
+  "Execute code in body as an admin user."
   {:style/indent 0}
   [& body]
   `(do-as-admin (^:once fn* [] ~@body)))

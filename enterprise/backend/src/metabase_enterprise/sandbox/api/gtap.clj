@@ -15,7 +15,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch a list of all GTAPs currently in use, or a single GTAP if both `group_id` and `table_id` are provided."
   [_route-params
@@ -26,6 +31,10 @@
     (t2/select-one :model/Sandbox :group_id group_id :table_id table_id)
     (t2/select :model/Sandbox {:order-by [[:id :asc]]})))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Fetch GTAP by `id`"
   [{:keys [id]} :- [:map
@@ -34,6 +43,10 @@
 
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new GTAP."
   [_route-params
@@ -47,10 +60,14 @@
           :model/Sandbox
           (select-keys body [:table_id :card_id :group_id :attribute_remappings]))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
   parameter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
-  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints."
+  one. If that's what you want to do, do so explicitly with appropriate calls to the `DELETE` and `POST` endpoints."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
@@ -66,6 +83,10 @@
                                     :present #{:card_id :attribute_remappings})))
   (t2/select-one :model/Sandbox :id id))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/validate"
   "Validate a sandbox which may not have yet been saved. This runs the same validation that is performed when the
   sandbox is saved, but doesn't actually save the sandbox."
@@ -86,6 +107,10 @@
   (sandbox/check-columns-match-table {:table_id table_id
                                       :card_id  card_id}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete a GTAP entry."
   [{:keys [id]} :- [:map

@@ -51,7 +51,8 @@ describe("scenarios > models > create", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().findByText("People").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("People").click();
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal")
       .should("contain", "Save model")

@@ -9,20 +9,66 @@ import type {
   TransformTagId,
 } from "metabase-types/api";
 
-const ROOT_URL = "/admin/transforms";
+const TRANSFORMS_ROOT_URL = `/data-studio/transforms`;
+const JOBS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/jobs`;
+const RUNS_ROOT_URL = `${TRANSFORMS_ROOT_URL}/runs`;
+const LIBRARY_ROOT_URL = `${TRANSFORMS_ROOT_URL}/library`;
 
-export type TransformListParams = {
-  lastRunStartTime?: string;
-  lastRunStatuses?: TransformRunStatus[];
-  tagIds?: TransformTagId[];
+export type TransformPythonLibraryParams = {
+  path: string;
 };
 
-export type TransformJobListParams = {
-  lastRunStartTime?: string;
-  lastRunStatuses?: TransformRunStatus[];
-  nextRunStartTime?: string;
-  tagIds?: TransformTagId[];
-};
+export function transformList() {
+  return TRANSFORMS_ROOT_URL;
+}
+
+export function newQueryTransform() {
+  return `${TRANSFORMS_ROOT_URL}/new/query`;
+}
+
+export function newNativeTransform() {
+  return `${TRANSFORMS_ROOT_URL}/new/native`;
+}
+
+export function newPythonTransform() {
+  return `${TRANSFORMS_ROOT_URL}/new/python`;
+}
+
+export function newTransformFromCard(cardId: CardId) {
+  return `${TRANSFORMS_ROOT_URL}/new/card/${cardId}`;
+}
+
+export function transform(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}`;
+}
+
+export function transformEdit(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/edit`;
+}
+
+export function transformRun(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/run`;
+}
+
+export function transformSettings(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/settings`;
+}
+
+export function transformDependencies(transformId: TransformId) {
+  return `${TRANSFORMS_ROOT_URL}/${transformId}/dependencies`;
+}
+
+export function transformJobList() {
+  return JOBS_ROOT_URL;
+}
+
+export function newTransformJob() {
+  return `${JOBS_ROOT_URL}/new`;
+}
+
+export function transformJob(id: TransformJobId) {
+  return `${JOBS_ROOT_URL}/${id}`;
+}
 
 export type TransformRunListParams = {
   page?: number;
@@ -33,92 +79,6 @@ export type TransformRunListParams = {
   endTime?: string;
   runMethods?: TransformRunMethod[];
 };
-
-export type TransformPythonLibraryParams = {
-  path: string;
-};
-
-export function transformList({
-  lastRunStartTime,
-  lastRunStatuses,
-  tagIds,
-}: TransformListParams = {}) {
-  const searchParams = new URLSearchParams();
-  if (lastRunStartTime != null) {
-    searchParams.set("lastRunStartTime", lastRunStartTime);
-  }
-  lastRunStatuses?.forEach((status) => {
-    searchParams.append("lastRunStatuses", status);
-  });
-  tagIds?.forEach((tagId) => {
-    searchParams.append("tagIds", String(tagId));
-  });
-  const queryString = searchParams.toString();
-  if (queryString.length > 0) {
-    return `${ROOT_URL}?${queryString}`;
-  } else {
-    return ROOT_URL;
-  }
-}
-
-export function newQueryTransform() {
-  return `${ROOT_URL}/new/query`;
-}
-
-export function newNativeTransform() {
-  return `${ROOT_URL}/new/native`;
-}
-
-export function newPythonTransform() {
-  return `${ROOT_URL}/new/python`;
-}
-
-export function newCardTransform(cardId: CardId) {
-  return `${ROOT_URL}/new/card/${cardId}`;
-}
-
-export function transform(transformId: TransformId) {
-  return `${ROOT_URL}/${transformId}`;
-}
-
-export function transformQuery(transformId: TransformId) {
-  return `${ROOT_URL}/${transformId}/query`;
-}
-
-export function transformJobList({
-  lastRunStartTime,
-  lastRunStatuses,
-  nextRunStartTime,
-  tagIds,
-}: TransformJobListParams = {}) {
-  const searchParams = new URLSearchParams();
-  if (lastRunStartTime != null) {
-    searchParams.set("lastRunStartTime", lastRunStartTime);
-  }
-  lastRunStatuses?.forEach((status) => {
-    searchParams.append("lastRunStatuses", status);
-  });
-  if (nextRunStartTime != null) {
-    searchParams.set("nextRunStartTime", nextRunStartTime);
-  }
-  tagIds?.forEach((tagId) => {
-    searchParams.append("tagIds", String(tagId));
-  });
-  const queryString = searchParams.toString();
-  if (queryString.length > 0) {
-    return `${ROOT_URL}/jobs?${queryString}`;
-  } else {
-    return `${ROOT_URL}/jobs`;
-  }
-}
-
-export function newTransformJob() {
-  return `${ROOT_URL}/jobs/new`;
-}
-
-export function transformJob(id: TransformJobId) {
-  return `${ROOT_URL}/jobs/${id}`;
-}
 
 export function transformRunList({
   page,
@@ -154,14 +114,14 @@ export function transformRunList({
 
   const queryString = searchParams.toString();
   if (queryString.length > 0) {
-    return `${ROOT_URL}/runs?${queryString}`;
+    return `${RUNS_ROOT_URL}?${queryString}`;
   } else {
-    return `${ROOT_URL}/runs`;
+    return RUNS_ROOT_URL;
   }
 }
 
 export function transformPythonLibrary({ path }: TransformPythonLibraryParams) {
-  return `/admin/transforms/library/${path}`;
+  return `${LIBRARY_ROOT_URL}/${path}`;
 }
 
 export function queryBuilderTable(tableId: TableId, databaseId: DatabaseId) {

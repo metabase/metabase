@@ -161,10 +161,12 @@ config:
     index-update-thread-count: 2
     install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
+    jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
+    jwt-attribute-tenant: '@tenant'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
@@ -209,6 +211,7 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
+    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
@@ -222,15 +225,16 @@ config:
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
-    retry-max-attempts: 7
+    retry-jitter-factor: 0.1
     retry-max-interval-millis: 30000
+    retry-max-retries: 6
     retry-multiplier: 2.0
-    retry-randomization-factor: 0.1
     saml-application-name: Metabase
     saml-attribute-email: null
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
     saml-attribute-group: null
     saml-attribute-lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
+    saml-attribute-tenant: null
     saml-enabled: false
     saml-group-mappings: {}
     saml-group-sync: false

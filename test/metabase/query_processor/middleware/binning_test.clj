@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.binning-test
-  "There are more 'e2e' tests related to binning in [[metabase.query-processor-test.breakout-test]]."
+  "There are more 'e2e' tests related to binning in [[metabase.query-processor.breakout-test]]."
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]

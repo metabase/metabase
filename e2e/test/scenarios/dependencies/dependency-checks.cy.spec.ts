@@ -6,7 +6,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
-H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
+describe("scenarios > dependencies > dependency checks", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -185,16 +185,21 @@ H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
   });
 
   describe("transforms", () => {
+    const goToEditorAndType = (queryString: string) => {
+      H.DataStudio.Transforms.editDefinition().click();
+      cy.url().should("include", "/edit");
+      H.NativeEditor.clear().type(queryString);
+    };
+
     it("should be able to confirm or cancel breaking changes to a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
 
       cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
-      H.NativeEditor.clear().type('SELECT name FROM "Schema A"."Animals"');
+      goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
 
       cy.log("cancel breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.DataStudio.Transforms.saveChangesButton().click();
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
         cy.findByText("Question without fields").should("not.exist");
@@ -203,8 +208,10 @@ H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
       });
       cy.get("@updateTransform.all").should("have.length", 0);
 
+      goToEditorAndType('SELECT name FROM "Schema A"."Animals"');
+
       cy.log("confirm breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.DataStudio.Transforms.saveChangesButton().click();
       H.modal().within(() => {
         cy.findByText("Question with fields").should("be.visible");
         cy.findByText("Question without fields").should("not.exist");
@@ -217,11 +224,8 @@ H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
     it("should not show a confirmation if there are no breaking changes when updating a SQL transform after it was run", () => {
       createSqlTransformWithDependentMbqlQuestions();
       cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
-      H.NativeEditor.clear().type(
-        'SELECT score, name FROM "Schema A"."Animals"',
-      );
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      goToEditorAndType('SELECT score, name FROM "Schema A"."Animals"');
+      H.DataStudio.Transforms.saveChangesButton().click();
       cy.wait("@updateTransform");
     });
 
@@ -230,12 +234,12 @@ H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
 
       cy.log("make breaking changes");
       cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
+      H.DataStudio.Transforms.editDefinition().click();
       H.getNotebookStep("data").findByLabelText("Pick columns").click();
       H.popover().findByLabelText("Score").click();
 
       cy.log("cancel breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.DataStudio.Transforms.saveChangesButton().click();
       H.modal().within(() => {
         cy.findByText("Score transform").should("be.visible");
         cy.findByText("Name transform").should("not.exist");
@@ -244,8 +248,12 @@ H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
       });
       cy.get("@updateTransform.all").should("have.length", 0);
 
+      H.DataStudio.Transforms.editDefinition().click();
+      H.getNotebookStep("data").findByLabelText("Pick columns").click();
+      H.popover().findByLabelText("Score").click();
+
       cy.log("confirm breaking changes");
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.DataStudio.Transforms.saveChangesButton().click();
       H.modal().within(() => {
         cy.findByText("Score transform").should("be.visible");
         cy.findByText("Name transform").should("not.exist");
@@ -257,10 +265,10 @@ H.describeWithSnowplowEE("scenarios > dependencies > dependency checks", () => {
     it("should not show a confirmation if there are no breaking changes when updating a MBQL transform before it was run", () => {
       createMbqlTransformWithDependentSqlTransforms();
       cy.get<number>("@transformId").then(H.visitTransform);
-      cy.findByTestId("transform-page").findByText("Edit query").click();
+      H.DataStudio.Transforms.editDefinition().click();
       H.getNotebookStep("data").button("Sort").click();
       H.popover().findByText("Score").click();
-      cy.findByTestId("transform-query-editor").button("Save changes").click();
+      H.DataStudio.Transforms.saveChangesButton().click();
       cy.wait("@updateTransform");
     });
   });

@@ -46,7 +46,7 @@ const ToolCallDetailsModal = ({
       title={
         <Flex align="center">
           {t`Tool Call: ${message.name}`}
-          <Badge ml="sm" color="text-dark">
+          <Badge ml="sm" color="text-primary">
             {message.id}
           </Badge>
         </Flex>
@@ -71,7 +71,14 @@ const ToolCallDetailsModal = ({
         {message.result && (
           <Stack gap="xs">
             <Flex gap="xs">
-              <Text fw="bold">{t`Response`}</Text>
+              <Flex align="center">
+                <Text fw="bold">{t`Response`}</Text>
+                {message.is_error && (
+                  <Badge ml="sm" bg="danger" c="text-primary-inverse">
+                    {t`Errored`}
+                  </Badge>
+                )}
+              </Flex>
               <ActionIcon h="sm" onClick={() => copy(message.result)}>
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
@@ -100,7 +107,7 @@ export const AgentToolCallMessage = ({
       <Flex
         p="sm"
         pl="md"
-        bg="bg-light"
+        bg="background-secondary"
         bd="1px solid var(--mb-color-border)"
         bdrs="sm"
         direction="row"

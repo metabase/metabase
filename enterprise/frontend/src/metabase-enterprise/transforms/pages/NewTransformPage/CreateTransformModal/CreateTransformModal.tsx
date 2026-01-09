@@ -1,6 +1,4 @@
-import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
 import { hasFeature } from "metabase/admin/databases/utils";
 import {
@@ -8,6 +6,7 @@ import {
   useGetDatabaseQuery,
   useListDatabaseSchemasQuery,
 } from "metabase/api";
+import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Form,
@@ -15,50 +14,35 @@ import {
   FormProvider,
   FormSubmitButton,
   FormTextInput,
-  FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { Box, Button, FocusTrap, Group, Modal, Stack } from "metabase/ui";
-import { useCreateTransformMutation } from "metabase-enterprise/api";
-import type {
-  CreateTransformRequest,
-  SuggestedTransform,
-  Transform,
-  TransformSource,
-} from "metabase-types/api";
+import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
+import type { Transform, TransformSource } from "metabase-types/api";
 
-import { trackTransformCreated } from "../../../analytics";
+import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
-import { SchemaFormSelect } from "./../../../components/SchemaFormSelect";
-
-const NEW_TRANSFORM_SCHEMA = Yup.object({
-  name: Yup.string().required(Errors.required),
-  description: Yup.string().nullable(),
-  targetName: Yup.string().required(Errors.required),
-  targetSchema: Yup.string().nullable(),
-});
-
-type NewTransformValues = Yup.InferType<typeof NEW_TRANSFORM_SCHEMA>;
+import { TargetNameInput } from "./TargetNameInput";
+import type { NewTransformValues } from "./form";
+import { useCreateTransform } from "./hooks";
 
 type CreateTransformModalProps = {
   source: TransformSource;
-  suggestedTransform: SuggestedTransform | undefined;
+  defaultValues: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 export function CreateTransformModal({
   source,
-  suggestedTransform,
+  defaultValues,
   onCreate,
   onClose,
 }: CreateTransformModalProps) {
   return (
     <Modal title={t`Save your transform`} opened padding="xl" onClose={onClose}>
-      <FocusTrap.InitialFocus />
       <CreateTransformForm
         source={source}
-        suggestedTransform={suggestedTransform}
+        defaultValues={defaultValues}
         onCreate={onCreate}
         onClose={onClose}
       />
@@ -68,14 +52,14 @@ export function CreateTransformModal({
 
 type CreateTransformFormProps = {
   source: TransformSource;
-  suggestedTransform: SuggestedTransform | undefined;
+  defaultValues: Partial<NewTransformValues>;
   onCreate: (transform: Transform) => void;
   onClose: () => void;
 };
 
 function CreateTransformForm({
   source,
-  suggestedTransform,
+  defaultValues,
   onCreate,
   onClose,
 }: CreateTransformFormProps) {
@@ -99,13 +83,10 @@ function CreateTransformForm({
   const isLoading = isDatabaseLoading || isSchemasLoading;
   const error = databaseError ?? schemasError;
 
-  const [createTransform] = useCreateTransformMutation();
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const initialValues: NewTransformValues = useMemo(
-    () => getInitialValues(schemas, suggestedTransform),
-    [schemas, suggestedTransform],
-  );
+  const { initialValues, validationSchema, createTransform } =
+    useCreateTransform(schemas, defaultValues);
 
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -115,33 +96,23 @@ function CreateTransformForm({
     if (!databaseId) {
       throw new Error("Database ID is required");
     }
-    const request = getCreateRequest(source, values, databaseId);
-    const transform = await createTransform(request).unwrap();
-
-    trackTransformCreated({ transformId: transform.id });
-
+    const transform = await createTransform(databaseId, source, values);
     onCreate(transform);
   };
 
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={NEW_TRANSFORM_SCHEMA}
+      validationSchema={validationSchema}
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="lg">
+        <Stack gap="lg" mt="sm">
           <FormTextInput
             name="name"
             label={t`Name`}
             placeholder={t`My Great Transform`}
-          />
-          <FormTextarea
-            name="description"
-            label={t`Description`}
-            placeholder={t`This is optional, but helpful`}
-            minRows={4}
-            maxRows={10}
+            data-autofocus
           />
           {supportsSchemas && (
             <SchemaFormSelect
@@ -150,52 +121,23 @@ function CreateTransformForm({
               data={schemas}
             />
           )}
-          <FormTextInput
-            name="targetName"
-            label={t`Table name`}
-            placeholder={t`descriptive_name`}
+          <TargetNameInput />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Collection`}
+            type="transform-collections"
+            style={{ marginBottom: 0 }}
           />
+          <IncrementalTransformSettings source={source} />
           <Group>
             <Box flex={1}>
               <FormErrorMessage />
             </Box>
-            <Button variant="subtle" onClick={onClose}>{t`Back`}</Button>
+            <Button onClick={onClose}>{t`Back`}</Button>
             <FormSubmitButton label={t`Save`} variant="filled" />
           </Group>
         </Stack>
       </Form>
     </FormProvider>
   );
-}
-
-function getInitialValues(
-  schemas: string[],
-  suggestedTransform: SuggestedTransform | undefined,
-): NewTransformValues {
-  return {
-    name: "",
-    description: suggestedTransform ? suggestedTransform.description : null,
-    targetName: suggestedTransform ? suggestedTransform.target.name : "",
-    targetSchema: suggestedTransform
-      ? suggestedTransform.target.schema
-      : schemas?.[0] || null,
-  };
-}
-
-function getCreateRequest(
-  source: TransformSource,
-  { name, description, targetName, targetSchema }: NewTransformValues,
-  databaseId: number,
-): CreateTransformRequest {
-  return {
-    name: name,
-    description,
-    source,
-    target: {
-      type: "table",
-      name: targetName,
-      schema: targetSchema ?? null,
-      database: databaseId,
-    },
-  };
 }

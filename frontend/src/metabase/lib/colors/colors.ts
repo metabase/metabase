@@ -1,10 +1,5 @@
 /* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
-// NOTE: KEEP SYNCHRONIZED WITH:
-// frontend/src/metabase/css/core/colors.module.css
-// frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// frontend/src/metabase/styled-components/theme/css-variables.ts
-// NOTE: this file is used in the embedding SDK, so it should not contain anything else except the `colors` constant.
 
 import type { ColorSettings } from "metabase-types/api/settings";
 
@@ -51,7 +46,7 @@ const baseColors = {
 
   // Deprecated Gray
   gray: {
-    100: "hsla(206, 16%, 8%, 1.00)", // bg-black
+    100: "hsla(206, 16%, 8%, 1.00)", // background-primary-inverse
     90: "hsla(202, 15%, 15%, 1.00)",
     80: "hsla(205, 15%, 23%, 1.00)",
     70: "hsla(206, 14%, 32%, 1.00)",
@@ -263,8 +258,8 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     dark: baseColors.octopus[60],
   },
   "background-brand": {
-    light: baseColors.brand[20],
-    dark: baseColors.brand[70],
+    light: baseColors.brand[10],
+    dark: baseColors.brand[90],
   },
   "background-disabled": {
     light: baseColors.orionAlpha[10],
@@ -286,62 +281,50 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
     dark: `color-mix(in srgb, var(--mb-color-brand) 7%, transparent)`, //baseColors.oceanAlpha[10],
   },
-  "background-inverse": {
-    light: baseColors.orion[80],
-    dark: baseColors.orion[20],
-  },
-  "background-light": {
-    //should be background-secondary
-    light: baseColors.orion[5],
-    dark: baseColors.orion[110],
-  },
+
   "background-selected": {
     light: baseColors.brand[50],
     dark: baseColors.brand[40],
   },
-  background: { light: baseColors.white, dark: baseColors.orion[100] }, //should be background-primary
-  "bg-black-alpha-60": {
-    //should be called overlay? this label is not semantic
+  "background-primary": {
+    light: baseColors.white,
+    dark: baseColors.orion[100],
+  },
+  "background-secondary": {
+    light: baseColors.orion[5],
+    dark: baseColors.orion[110],
+  },
+  "background-tertiary": {
+    light: baseColors.orion[10],
+    dark: baseColors.orion[80],
+  },
+  "background-primary-inverse": {
+    light: baseColors.orion[80],
+    dark: baseColors.orion[20],
+  },
+  "background-secondary-inverse": {
+    light: baseColors.orion[70],
+    dark: baseColors.orion[30],
+  }, // Only used one place
+  "background-tertiary-inverse": {
+    light: baseColors.orion[40],
+    dark: baseColors.orion[70],
+  },
+  overlay: {
     light: baseColors.orionAlpha[60],
     dark: baseColors.orionAlpha[70],
   },
-  "bg-black": { light: baseColors.orion[80], dark: baseColors.orion[20] }, //should be background-primary-inverse
-  "bg-dark": { light: baseColors.orion[40], dark: baseColors.orion[70] }, //should be background-tertiary-inverse
-  "bg-darker": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //should be background-secondary-inverse
-  "bg-error": { light: baseColors.lobster[10], dark: baseColors.lobster[90] }, //should be background-error
+  "bg-ocean-alpha-light": {
+    light: baseColors.oceanAlpha[5],
+    dark: baseColors.oceanAlpha[20],
+  },
   "background-error": {
     light: baseColors.lobster[10],
     dark: baseColors.lobster[90],
   },
-  "bg-light": { light: baseColors.orion[5], dark: baseColors.orion[110] }, //should be background-secondary
-  "bg-medium": { light: baseColors.orion[10], dark: baseColors.orion[80] }, //should be background-tertiary
-  "bg-night": { light: baseColors.orion[70], dark: baseColors.orion[30] }, //merge with background-secondary-inverse?
-  "bg-white-alpha-15": {
-    light: baseColors.orionAlphaInverse[20],
-    dark: baseColors.orionAlphaInverse[20],
-  },
-  "bg-white": {
-    //should be background-primary
-    light: baseColors.white,
-    dark: baseColors.orion[100],
-  },
-  "bg-yellow": {
-    light: baseColors.dubloon[5],
-    dark: baseColors.dubloon[90],
-  },
-  "border-alpha-30": {
-    //should be border
-    light: baseColors.orionAlpha[20],
-    dark: baseColors.orionAlphaInverse[20],
-  },
-  "border-dark": {
-    //should be border-strong
-    light: baseColors.orionAlpha[50],
-    dark: baseColors.orionAlphaInverse[50],
-  },
-  border: {
-    light: baseColors.orion[20],
-    dark: baseColors.orionAlphaInverse[20],
+  "background-success": {
+    light: baseColors.palm[5],
+    dark: baseColors.palm[90],
   },
   "brand-alpha-04": {
     //all of these colors derived from brand should be reworked to fit the values in the new color palette, and to have semantic names
@@ -388,21 +371,17 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.blue[20],
     dark: baseColors.blue[70],
   },
-  "icon-primary-disabled": {
-    light: baseColors.orion[30],
-    dark: baseColors.orion[30],
-  },
   "icon-primary": {
     light: baseColors.brand[40],
     dark: baseColors.brand[40],
   },
-  "icon-secondary-disabled": {
-    light: baseColors.orion[10],
-    dark: baseColors.orion[10],
+  "icon-disabled": {
+    light: baseColors.orionAlpha[30],
+    dark: baseColors.orionAlphaInverse[30],
   },
   "icon-secondary": {
-    light: baseColors.orion[50],
-    dark: baseColors.orion[50],
+    light: baseColors.orionAlpha[50],
+    dark: baseColors.orionAlphaInverse[50],
   },
   "metabase-brand": {
     light: baseColors.blue[40], // not for whitelabeling
@@ -428,22 +407,15 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.dubloon[30],
     dark: baseColors.dubloon[30],
   },
-  "shadow-embedding-hub-card": {
-    //I think this can be removed?
-    light: "hsla(208, 55%, 77%, 0.70)",
-    dark: "hsla(208, 55%, 77%, 0.70)",
-  },
   shadow: {
     light: baseColors.orionAlpha[20],
     dark: `color-mix(in srgb, ${baseColors.orion[110]} 20%, transparent)`,
   },
-  "success-darker": {
-    //should be success-primary?
+  "success-secondary": {
     light: baseColors.palm[60],
     dark: baseColors.palm[40],
   },
   success: {
-    //should be success-secondary?
     light: baseColors.palm[50],
     dark: baseColors.palm[50],
   },
@@ -467,15 +439,11 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.brand[50],
     dark: baseColors.brand[40],
   },
-  "text-dark": {
-    light: baseColors.orionAlpha[80] /* @deprecated, use text-primary */,
-    dark: baseColors.orionAlphaInverse[80],
-  },
-  "text-disabled": {
+  "text-tertiary": {
     light: baseColors.orionAlpha[40],
     dark: baseColors.orionAlphaInverse[40],
   },
-  "text-disabled-inverse": {
+  "text-tertiary-inverse": {
     light: baseColors.orionAlphaInverse[40],
     dark: baseColors.orionAlpha[40],
   },
@@ -483,20 +451,9 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: baseColors.brand[60],
     dark: baseColors.brand[30], //CHANGED DOWN TO HERE
   },
-  "text-light": {
-    //should be text-disabled
-    light: baseColors.orionAlpha[40],
-    dark: baseColors.orionAlphaInverse[40],
-  },
-  "text-medium": {
-    //should be text-secondary
-    light: baseColors.orionAlpha[60],
-    dark: baseColors.orionAlphaInverse[60],
-  },
 
   //Used in gauge viz... there should be a better way to do this
-  "text-medium-opaque": {
-    //should be text-secondary
+  "text-secondary-opaque": {
     light: baseColors.orion[60],
     dark: baseColors.orion[20],
   },
@@ -519,21 +476,6 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
   "text-selected": {
     light: baseColors.white,
     dark: baseColors.white,
-  },
-  "text-tertiary": {
-    //should be text-disabled
-    light: baseColors.orionAlpha[40],
-    dark: baseColors.orionAlphaInverse[40],
-  },
-  "text-white-alpha-85": {
-    //should be text-primary-inverse
-    light: baseColors.orionAlphaInverse[80],
-    dark: baseColors.orionAlpha[80],
-  },
-  "text-white": {
-    //should be text-primary-inverse
-    light: baseColors.orionAlphaInverse[80],
-    dark: baseColors.orionAlpha[80],
   },
   "tooltip-background-focused": {
     light: `color-mix(in srgb, ${baseColors.orion[80]} 50%, #000)`,
@@ -558,8 +500,8 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
   },
 
   "background-warning": {
-    light: baseColors.dubloon[10],
-    dark: baseColors.dubloon[60],
+    light: baseColors.dubloon[5],
+    dark: baseColors.dubloon[90],
   },
 
   info: {
@@ -569,7 +511,7 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
 
   "background-info": {
     light: baseColors.orion[10],
-    dark: baseColors.orion[80],
+    dark: baseColors.orion[90],
   },
 
   white: {
@@ -610,47 +552,37 @@ const getColorConfig = (settings: ColorSettings = {}) => ({
     light: "#7172AD",
     dark: "#7172AD",
   },
-  "bg-primary": {
-    light: baseColors.white,
-    dark: baseColors.orion[110],
+
+  border: {
+    light: baseColors.orion[20],
+    dark: baseColors.orionAlphaInverse[20],
   },
-  "bg-secondary": {
-    light: baseColors.orion[5],
-    dark: baseColors.orion[100],
-  },
-  "bg-tertiary": {
-    //I don't think this is used?
-    light: baseColors.orion[10],
-    dark: baseColors.orion[90],
-  },
-  "bg-hover": {
-    //I don't think this is used?
-    light: baseColors.orion[5],
-    dark: baseColors.orion[90],
-  },
-  overlay: {
-    //see the other color above where I mentioned it should be called overlay
-    light: baseColors.orionAlpha[60],
-    dark: "hsla(207, 100%, 4.3%, 0.8)", // FIXME: should be part of palette
-  },
-  "text-inverse": {
-    //should be text-primary-inverse
-    light: baseColors.orionAlphaInverse[80],
-    dark: baseColors.orionAlpha[80],
-  },
-  "border-primary": {
-    //should be border-strong
+  "border-strong": {
     light: baseColors.orionAlpha[50],
     dark: baseColors.orionAlphaInverse[50],
-  },
-  "border-secondary": {
-    //should be border
-    light: baseColors.orionAlpha[20],
-    dark: baseColors.orionAlphaInverse[20],
   },
   "border-subtle": {
     light: baseColors.orionAlpha[10],
     dark: baseColors.orionAlphaInverse[10],
+  },
+
+  // one-off colors for data layers which are not part of Metabase color palette
+  // we got a blessing from the design team to use these colors 😇
+  copper: {
+    light: "#B87333",
+    dark: "#B87333",
+  },
+  bronze: {
+    light: "#CD7F32",
+    dark: "#CD7F32",
+  },
+  silver: {
+    light: "#C0C0C0",
+    dark: "#C0C0C0",
+  },
+  gold: {
+    light: "#FFD700",
+    dark: "#FFD700",
   },
 });
 
@@ -660,6 +592,14 @@ export const getColors = (settings?: ColorSettings) =>
   ({
     ...Object.fromEntries(
       Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.light]),
+    ),
+    ...settings,
+  }) as Record<keyof typeof colorConfig, string>;
+
+export const getDarkColors = (settings?: ColorSettings) =>
+  ({
+    ...Object.fromEntries(
+      Object.entries(getColorConfig(settings)).map(([k, v]) => [k, v.dark]),
     ),
     ...settings,
   }) as Record<keyof typeof colorConfig, string>;
@@ -677,7 +617,7 @@ export const mutateColors = (settings: ColorSettings) => {
 };
 
 export const staticVizOverrides = {
-  "text-dark": baseColors.orion[80],
-  "text-medium": baseColors.orion[60],
-  "text-light": baseColors.orion[40],
+  "text-primary": baseColors.orion[80],
+  "text-secondary": baseColors.orion[60],
+  "text-tertiary": baseColors.orion[40],
 };

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import type Question from "metabase-lib/v1/Question";
+import type { Card } from "metabase-types/api";
 
-export const getVerifyQuestionTitle = (question: Question): string => {
-  const type = question.type();
+export const getVerifyCardTitle = (card: Card): string => {
+  const type = card.type;
 
   if (type === "question") {
     return t`Verify this question`;

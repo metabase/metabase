@@ -1,8 +1,8 @@
 import { getIn } from "icepick";
 import { msgid, ngettext, t } from "ttag";
 
-import Dashboards from "metabase/entities/dashboards";
-import Questions from "metabase/entities/questions";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
 import Question from "metabase-lib/v1/Question";
 
 export function getClickBehaviorDescription(dashcard) {

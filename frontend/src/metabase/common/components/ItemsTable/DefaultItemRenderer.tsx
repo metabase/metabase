@@ -5,7 +5,7 @@ import type { OnToggleSelectedWithItem } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
 import type { BaseItemsTableProps } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { color } from "metabase/ui/utils/colors";
+import { getIcon } from "metabase/lib/icon";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 
@@ -42,9 +42,9 @@ export const DefaultItemRenderer = ({
     (collection?.can_write || isRootTrashCollection(collection)) &&
     typeof onToggleSelected === "function";
 
-  const icon = item.getIcon();
+  const icon = getIcon(item);
   if (item.model === "card" || item.archived) {
-    icon.color = color("text-light");
+    icon.color = "text-tertiary";
   }
 
   const handleSelectionToggled = useCallback(() => {
@@ -74,7 +74,11 @@ export const DefaultItemRenderer = ({
           item={item}
           testIdPrefix={testIdPrefix}
           onClick={onClick}
+          includeDescription={!visibleColumnsMap["description"]}
         />
+      )}
+      {visibleColumnsMap["description"] && (
+        <Columns.Description.Cell item={item} testIdPrefix={testIdPrefix} />
       )}
       {visibleColumnsMap["lastEditedBy"] && (
         <Columns.LastEditedBy.Cell item={item} testIdPrefix={testIdPrefix} />

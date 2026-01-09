@@ -41,7 +41,7 @@ type DashboardHeaderViewProps = {
   editingButtons?: JSX.Element[];
   editWarning?: string;
   dashboard: IDashboard;
-  collection: Collection;
+  collection: Collection | undefined;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onLastEditInfoClick?: () => void;
@@ -157,13 +157,15 @@ export function DashboardHeaderView({
                       top={2}
                     >
                       <PLUGIN_MODERATION.EntityModerationIcon
-                        dashboard={dashboard}
+                        moderationReviews={dashboard.moderation_reviews}
                       />
-                      <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                        color="brand"
-                        collection={collection}
-                        entity="dashboard"
-                      />
+                      {!!collection && (
+                        <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                          c="brand"
+                          collection={collection}
+                          entity="dashboard"
+                        />
+                      )}
                     </Flex>
                   </Flex>
                   <Flex className={S.HeaderBadges}>

@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 import type { CollectionAuthorityLevelIcon as CollectionAuthorityLevelIconComponent } from "metabase/plugins/index";
 import { Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
@@ -14,7 +12,7 @@ export const CollectionAuthorityLevelIcon: CollectionAuthorityLevelIconComponent
     }
     const level = AUTHORITY_LEVELS[String(collection.authority_level)];
     const levelColor = level.color ? color(level.color) : undefined;
-    const iconColor = archived ? color("text-light") : levelColor;
+    const iconColor = archived ? color("text-tertiary") : levelColor;
     return (
       <Icon
         {...iconProps}

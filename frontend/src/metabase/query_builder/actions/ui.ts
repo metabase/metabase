@@ -102,12 +102,6 @@ export const navigateBackToDashboard = createAction(NAVIGATE_BACK_TO_DASHBOARD);
 export const CLOSE_QB = "metabase/qb/CLOSE_QB";
 export const closeQB = createAction(CLOSE_QB);
 
-export const setNotebookNativePreviewState = (isShown: boolean) =>
-  updateUserSetting({
-    key: "notebook-native-preview-shown",
-    value: isShown,
-  });
-
 export const setDidFirstNonTableChartRender = (card: Card) => {
   trackFirstNonTableChartGenerated(card);
   return updateSetting({

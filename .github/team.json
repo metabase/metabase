@@ -50,7 +50,7 @@
         "nemanjaglumac"
       ]
     },
-     {
+    {
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
@@ -92,7 +92,10 @@
         "deniskaber",
         "alxnddr",
         "bpander",
-        "andsalves"
+        "andsalves",
+        "gantoreno",
+        "kevinkelleher12",
+        "undrfined"
       ]
     },
     {
@@ -106,7 +109,8 @@
         "chodorowicz",
         "kamilmielnik",
         "stasgavrylov",
-        "uladzimirdev"
+        "uladzimirdev",
+        "egorgrushin"
       ]
     }
   ]

@@ -5,8 +5,8 @@ import { type SetupOpts, setup } from "./setup";
 
 function setupWhitelabelled(opts: SetupOpts) {
   return setup({
-    hasEnterprisePlugins: true,
     hasWhitelabelToken: true,
+    enterprisePlugins: ["whitelabel"],
     ...opts,
   });
 }

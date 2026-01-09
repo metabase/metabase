@@ -9,10 +9,7 @@ import {
 } from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 import QuestionModerationSection from "./components/QuestionModerationSection";
-import {
-  useDashboardMenuItems,
-  useQuestionMenuItems,
-} from "./hooks/useMenuItems";
+import { useCardMenuItems, useDashboardMenuItems } from "./hooks/useMenuItems";
 import {
   getModerationTimelineEvents,
   getQuestionIcon,
@@ -35,7 +32,7 @@ export function initializePlugin() {
       getStatusIcon,
       getQuestionIcon,
       getModerationTimelineEvents,
-      useQuestionMenuItems,
+      useCardMenuItems,
       useDashboardMenuItems,
     });
   }

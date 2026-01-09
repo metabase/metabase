@@ -394,8 +394,7 @@ describe("exercise today() function", () => {
 
 function startNewQuestion() {
   H.startNewQuestion();
-  H.entityPickerModal().within(() => {
-    H.entityPickerModalTab("Tables").click();
+  H.miniPicker().within(() => {
     cy.findByText("QA Postgres12").click();
     cy.findByText("Products").click();
   });

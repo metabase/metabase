@@ -41,7 +41,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
-   [metabase.warehouses.api-test :as api.database-test]
+   [metabase.warehouses-rest.api-test :as api.database-test]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2])
   (:import
@@ -109,6 +109,10 @@
                             :details       (json/encode {:channel "general"})
                             :schedule_type "daily"
                             :schedule_hour 15})
+      :metabase_table    (with-timestamped
+                           {:name (mt/random-name)
+                            :active true})
+      :permissions_group {:name (mt/random-name)}
       {})))
 
 (defn- new-instance-with-default
@@ -2200,7 +2204,7 @@
 ;;; 52 tests
 ;;;
 
-(deftest create-sample-content-test
+(deftest ^:mb/old-migrations-test create-sample-content-test
   (testing "The sample content is created iff *create-sample-content*=true"
     (doseq [create? [true false]]
       (testing (str "*create-sample-content* = " create?)
@@ -2219,7 +2223,7 @@
                       :perm_value    :read-and-write}
                      (t2/select-one :model/Permissions :collection_id id)))))))))))
 
-(deftest create-sample-content-test-2
+(deftest ^:mb/old-migrations-test create-sample-content-test-2
   (testing "The sample content isn't created if the sample database existed already in the past (or any database for that matter)"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (is (false? (sample-content-created?)))
@@ -2234,7 +2238,7 @@
       (is (empty? (t2/query "SELECT * FROM metabase_database"))
           "No database should have been created"))))
 
-(deftest create-sample-content-test-3
+(deftest ^:mb/old-migrations-test create-sample-content-test-3
   (testing "The sample content isn't created if a user existed already"
     (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
       (is (false? (sample-content-created?)))
@@ -2341,7 +2345,7 @@
      :multi-stage-question-id  multi-stage-question-id
      :multi-stage-model-id     multi-stage-model-id}))
 
-(deftest set-stage-number-in-parameter-mappings-test
+(deftest ^:mb/old-migrations-test set-stage-number-in-parameter-mappings-test
   (testing "v52.2024-10-26T18:42:42"
     (impl/test-migrations ["v52.2024-10-26T18:42:42"] [migrate!]
       (let [{:keys [dashboard-id
@@ -2443,7 +2447,7 @@
                    (no-stage-pattern multi-stage-model-id)]
                   (query-parameter-mappings))))))))
 
-(deftest set-stage-number-in-viz-settings-parameter-mappings-test
+(deftest ^:mb/old-migrations-test set-stage-number-in-viz-settings-parameter-mappings-test
   (testing "v52.2024-11-12T15:13:18"
     (impl/test-migrations ["v52.2024-11-12T15:13:18"] [migrate!]
       (let [{:keys [dashboard-id
@@ -2555,7 +2559,7 @@
                  (query-viz-settings))))))))
 
 ;; see [[custom-migrations/MigrateAlertToNotification]] for info about how this migration works
-(deftest migrate-alert-to-notification-test
+(deftest ^:mb/old-migrations-test migrate-alert-to-notification-test
   (testing "v53.2024-12-12T08:06:00: migrate alerts from pulse to notification"
     (impl/test-migrations ["v53.2024-12-12T08:05:00"] [migrate!]
       (binding [custom-migrations.util/*allow-temp-scheduling* true]
@@ -2696,3 +2700,28 @@
           (migrate! :down 56)
           ;; assert pre conditions
           (assert-pre-conditions))))))
+
+(deftest escape-existing-at-symbol-user-attributes-test
+  (testing "v58.2025-11-18T12:31:49 : rename any existing `@.+` user attrs to add a preceding underscore"
+    (impl/test-migrations ["v58.2025-11-18T12:31:49"] [migrate!]
+      (let [user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bar\"}"}))
+            other-user-id (:id (new-instance-with-default :core_user {:login_attributes "{\"@foo\": \"bang\"}"}))
+            database-id (:id (new-instance-with-default :metabase_database))
+            table-id (:id (new-instance-with-default :metabase_table {:db_id database-id}))
+            group-id (:id (new-instance-with-default :permissions_group))
+            sandbox-id (:id (new-instance-with-default :sandboxes {:attribute_remappings "{\"@foo\": \"bar\"}"
+                                                                   :table_id table-id
+                                                                   :group_id group-id}))
+            impersonation-id (:id (new-instance-with-default :connection_impersonations {:attribute "@foo"
+                                                                                         :db_id database-id
+                                                                                         :group_id group-id}))
+            db-router-id (:id (new-instance-with-default :db_router {:user_attribute "@foo" :database_id database-id}))]
+        (migrate!)
+        (is (= {"_@foo" "bar"}
+               (json/decode (:attribute_remappings (t2/select-one :sandboxes :id sandbox-id)))))
+        (is (= "_@foo" (:attribute (t2/select-one :connection_impersonations impersonation-id))))
+        (is (= "_@foo" (:user_attribute (t2/select-one :db_router db-router-id))))
+        (is (= {"_@foo" "bar"}
+               (json/decode (t2/select-one-fn :login_attributes :core_user :id user-id))))
+        (is (= {"_@foo" "bang"}
+               (json/decode (t2/select-one-fn :login_attributes :core_user :id other-user-id))))))))

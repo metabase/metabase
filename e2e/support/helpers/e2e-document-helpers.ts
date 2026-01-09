@@ -19,11 +19,11 @@ export const clearDocumentContent = () => {
   documentContent().type("{selectAll}{backspace}");
 };
 
-export const documentSuggestionDialog = () =>
+export const documentMentionDialog = () =>
   cy.findByRole("dialog", { name: "Mention Dialog" });
 
-export const documentSuggestionItem = (name: RegExp | string) =>
-  documentSuggestionDialog().findByRole("option", { name });
+export const documentMentionItem = (name: RegExp | string) =>
+  documentMentionDialog().findByRole("option", { name });
 
 export const commandSuggestionDialog = () =>
   cy.findByRole("dialog", { name: "Command Dialog" });
@@ -92,7 +92,7 @@ function visitDocumentCommentById(
   commentId?: CommentId,
 ) {
   const alias = `documentQuery-${documentId}`;
-  cy.intercept("GET", `/api/ee/document/${documentId}`).as(alias);
+  cy.intercept("GET", `/api/document/${documentId}`).as(alias);
 
   const hash = commentId == null ? "" : `#comment-${commentId}`;
   cy.visit(`/document/${documentId}/comments/${nodeId}${hash}`);
@@ -102,40 +102,40 @@ function visitDocumentCommentById(
 
 const visitDocumentById = (id: DocumentId) => {
   const alias = `documentQuery-${id}`;
-  cy.intercept("GET", `/api/ee/document/${id}`).as(alias);
+  cy.intercept("GET", `/api/document/${id}`).as(alias);
 
   cy.visit(`/document/${id}`);
 
   cy.wait(`@${alias}`);
 };
 
-export function dragAndDropCardOnAnotherCard(
-  sourceCardTitle: string,
-  targetCardTitle: string,
-  {
-    side = "left",
-  }: {
-    side?: "left" | "right";
-  } = {},
-) {
-  // Perform drag and drop: drag sourceCard card onto targetCard
-  getDocumentCard(sourceCardTitle)
+export function documentsDragAndDrop({
+  getSource,
+  getTarget,
+  side = "left",
+}: {
+  getSource: () => Cypress.Chainable;
+  getTarget: () => Cypress.Chainable;
+  side?: "left" | "right";
+}) {
+  // Perform drag and drop: drag source onto target
+  getSource()
     .should("exist")
-    .then(($ordersCard) => {
-      getDocumentCard(targetCardTitle)
+    .then(($source) => {
+      getTarget()
         .should("exist")
-        .then(($ordersCountCard) => {
-          const sourceRect = $ordersCard[0].getBoundingClientRect();
+        .then(($target) => {
+          const sourceRect = $source[0].getBoundingClientRect();
 
-          // Start drag from center of Orders card
-          getDocumentCard(sourceCardTitle).trigger("mousedown", {
+          // Start drag from center of source
+          getSource().trigger("mousedown", {
             x: 10,
             y: 10,
             scrollBehavior: false,
             force: true,
           });
           const dataTransfer = new DataTransfer();
-          getDocumentCard(sourceCardTitle).trigger("dragstart", {
+          getSource().trigger("dragstart", {
             dataTransfer,
             clientX: sourceRect.left + 10,
             clientY: sourceRect.top + 10,
@@ -143,8 +143,8 @@ export function dragAndDropCardOnAnotherCard(
             force: true,
           });
 
-          const targetRect = $ordersCountCard[0].getBoundingClientRect();
-          // Calculate position for target card side drop (20% from left or 20% from right based on 'side' param)
+          const targetRect = $target[0].getBoundingClientRect();
+          // Calculate position for target side drop (20% from left or 20% from right based on 'side' param)
           const sideX =
             targetRect.left + targetRect.width * (side === "left" ? 0.2 : 0.8);
           const centerY = targetRect.top + 10;
@@ -153,29 +153,43 @@ export function dragAndDropCardOnAnotherCard(
             clientY: centerY,
             scrollBehavior: false,
           });
-          getDocumentCard(targetCardTitle).trigger("dragover", {
+          getTarget().trigger("dragover", {
             clientX: sideX,
             clientY: centerY,
             scrollBehavior: false,
             force: true,
           });
 
-          getDocumentCard(sourceCardTitle).realMouseUp({
+          getSource().realMouseUp({
             scrollBehavior: false,
           });
-          getDocumentCard(targetCardTitle).trigger("drop", {
+          getTarget().trigger("drop", {
             dataTransfer,
             clientX: sideX,
             clientY: centerY,
             scrollBehavior: false,
             force: true,
           });
-          getDocumentCard(sourceCardTitle).trigger("dragend", {
+          getSource().trigger("dragend", {
             scrollBehavior: false,
             force: true,
           });
         });
     });
+}
+
+export function dragAndDropCardOnAnotherCard(
+  sourceCardTitle: string,
+  targetCardTitle: string,
+  options: {
+    side?: "left" | "right";
+  } = {},
+) {
+  return documentsDragAndDrop({
+    getSource: () => getDocumentCard(sourceCardTitle),
+    getTarget: () => getDocumentCard(targetCardTitle),
+    ...options,
+  });
 }
 
 export function documentUndo() {

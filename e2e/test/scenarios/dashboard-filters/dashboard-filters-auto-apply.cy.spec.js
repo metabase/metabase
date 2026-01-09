@@ -439,7 +439,7 @@ describe(
   },
 );
 
-H.describeWithSnowplow("scenarios > dashboards > filters > auto apply", () => {
+describe("scenarios > dashboards > filters > auto apply", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();

@@ -290,7 +290,9 @@ describe("FileUploadStatus", () => {
     });
 
     // only appendable model should be pre-selected
-    await screen.findByText("my uploaded model");
+    expect(
+      await screen.findByRole("textbox", { name: "Select a model" }),
+    ).toHaveValue("my uploaded model");
 
     await waitFor(() => expect(submitButton).toBeEnabled());
     await userEvent.click(submitButton);

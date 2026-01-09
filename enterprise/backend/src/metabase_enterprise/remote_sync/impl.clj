@@ -25,7 +25,16 @@
 (defn- all-top-level-remote-synced-collections
   "Returns a vector of primary keys for all top-level remote-synced collections."
   []
-  (t2/select-pks-vec :model/Collection :type "remote-synced"))
+  (t2/select-pks-vec :model/Collection :is_remote_synced true))
+
+(defn- model-fields-for-sync
+  "Returns the fields to select for a given model type when syncing."
+  [model-name]
+  (case model-name
+    "Card" [:id :name :collection_id :display]
+    "NativeQuerySnippet" [:id :name]
+    "Collection" [:id :name [:id :collection_id]]
+    [:id :name :collection_id]))
 
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
@@ -37,10 +46,15 @@
   (t2/delete! :model/RemoteSyncObject)
   (let [inserts (->> imported-entities-by-model
                      (mapcat (fn [[model entity-ids]]
-                               (t2/select [(keyword "model" model) :id] :entity_id [:in entity-ids])))
-                     (map (fn [{:keys [id] :as model}]
-                            {:model_type (name (t2/model model))
+                               (let [fields (model-fields-for-sync model)
+                                     model-kw (keyword "model" model)]
+                                 (t2/select (into [model-kw] fields) :entity_id [:in entity-ids]))))
+                     (map (fn [{:keys [id name collection_id display] :as model}]
+                            {:model_type (clojure.core/name (t2/model model))
                              :model_id id
+                             :model_name name
+                             :model_collection_id collection_id
+                             :model_display (some-> display clojure.core/name)
                              :status "synced"
                              :status_changed_at timestamp})))]
     (t2/insert! :model/RemoteSyncObject inserts)))
@@ -153,7 +167,7 @@
               (t2/with-transaction [_conn]
                 (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
                 (sync-objects! sync-timestamp imported-entities-by-model)
-                (when (and (nil? (collection/remote-synced-collection)) (= :development (settings/remote-sync-type)))
+                (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
                   (collection/create-remote-synced-collection!)))
               (remote-sync.task/update-progress! task-id 0.95)
               (remote-sync.task/set-version!
@@ -182,7 +196,7 @@
   [^SourceSnapshot snapshot task-id message]
   (if snapshot
     (let [sync-timestamp (t/instant)
-          collections (t2/select-fn-set :entity_id :model/Collection :type "remote-synced" :location "/")]
+          collections (t2/select-fn-set :entity_id :model/Collection :is_remote_synced true :location "/")]
       (if (empty? collections)
         {:status :error
          :message "No remote-synced collections available to sync."}
@@ -199,7 +213,15 @@
                                                  :continue-on-error false
                                                  :skip-archived true})]
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [written-version (source/store! models snapshot task-id message)]
+              (let [top-level-removed-prefixes (->> (t2/query {:select [:c.entity_id]
+                                                               :from [[:collection :c]]
+                                                               :join [[:remote_sync_object :rso]
+                                                                      [:and [:= :rso.model_type [:inline "Collection"]]
+                                                                       [:= :rso.status [:inline "removed"]]
+                                                                       [:= :rso.model_id :c.id]]]
+                                                               :where [:= :location "/"]})
+                                                    (map #(str "collections/" (:entity_id %))))
+                    written-version (source/store! models top-level-removed-prefixes snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success
@@ -304,7 +326,7 @@
 (defn finish-remote-config!
   "Based on the current configuration, fill in any missing settings and finalize remote sync setup.
 
-  Will attempt, import the remote collection if no remote-collection exists locally or you are in production mode.
+  Will attempt, import the remote collection if no remote-collection exists locally or you are in read-only mode.
 
   Returns the async-task id if an async task was started, otherwise nil."
   []
@@ -312,7 +334,7 @@
     (do
       (when (str/blank? (setting/get :remote-sync-branch))
         (setting/set! :remote-sync-branch (source.p/default-branch (source/source-from-settings))))
-      (when (or (nil? (collection/remote-synced-collection)) (= :production (settings/remote-sync-type)))
+      (when (or (nil? (collection/remote-synced-collection)) (= :read-only (settings/remote-sync-type)))
         (:id (async-import! (settings/remote-sync-branch) true {}))))
     (u/prog1 nil
       (collection/clear-remote-synced-collection!))))

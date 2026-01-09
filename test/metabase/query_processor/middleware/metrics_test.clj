@@ -648,7 +648,8 @@
             {:segments [{:id         1
                          :name       "Segment 1"
                          :table-id   (meta/id :venues)
-                         :definition {:filter [:= [:field (meta/id :venues :name) nil] "abc"]}}]})
+                         :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                         (lib/filter (lib/= (meta/field-metadata :venues :name) "abc")))}]})
         [source-metric mp] (mock-metric mp (-> (basic-metric-query)
                                                (lib/filter (lib.metadata/segment mp 1))))]
     ;; Segments are handled further in the pipeline when the source is a metric
@@ -1130,5 +1131,5 @@
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :aggregation :metric :offset)
+                       :aggregation :metric :measure :offset)
                  (set (map :operator tested-aggregations)))))))

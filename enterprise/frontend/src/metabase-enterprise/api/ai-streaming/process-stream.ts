@@ -1,4 +1,4 @@
-import { match } from "ts-pattern";
+import { isMatching, match } from "ts-pattern";
 import _ from "underscore";
 
 import type { MetabotHistory } from "metabase-types/api";
@@ -50,7 +50,7 @@ function parseDataStreamPart(line: string) {
 
   const prefix = line.slice(0, firstSeparatorIndex);
   if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
-    console.warn(`Recieved invalid message code: ${prefix}`);
+    console.warn(`Received invalid message code: ${prefix}`);
     return;
   }
 
@@ -190,73 +190,95 @@ type StreamPartValue<name extends ParsedStreamPartName> = Extract<
 
 export type AIStreamingConfig = {
   onTextPart?: (part: StreamPartValue<"text">) => void;
-  // callback is only called if this version of the client is aware of the recieved data part type
+  // callback is only called if this version of the client is aware of the received data part type
   onDataPart?: (part: KnownDataPart) => void;
   onToolCallPart?: (part: StreamPartValue<"tool_call">) => void;
   onToolResultPart?: (part: StreamPartValue<"tool_result">) => void;
   onError?: (error: StreamPartValue<"error">) => void;
 };
 
+export interface ProcessedChatResponse extends AccumulatedStreamParts {
+  aborted: boolean;
+}
+
+/**
+ * Processes a stream that follows our AI response protocol and notifies
+ * the appropriate handlers as text, data, tool call, etc. parts come in.
+ *
+ * This function does not error on aborted requests and will return whatever
+ * values that it has received so far as a result.
+ */
 export async function processChatResponse(
   stream: ReadableStream<Uint8Array>,
   config: AIStreamingConfig,
-) {
+): Promise<ProcessedChatResponse> {
   const parsedStreamParts: ParsedStreamPart[] = [];
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let chunks: Uint8Array[] = [];
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const { value: chunk } = await reader.read();
+  let aborted = false;
+  while (!aborted) {
+    try {
+      const { value: chunk } = await reader.read();
 
-    if (chunk) {
-      chunks.push(chunk);
-      if (chunk[chunk.length - 1] !== "\n".charCodeAt(0)) {
-        // if the last character is not a newline, we have not read the whole JSON value
-        continue;
-      }
-    }
-
-    if (chunks.length === 0) {
-      break; // we have reached the end of the stream
-    }
-
-    const concatenatedChunks = concatChunks(chunks);
-    chunks = [];
-
-    const streamParts = _.compact(
-      decoder
-        .decode(concatenatedChunks, { stream: true })
-        .split("\n")
-        .filter((line) => line !== "") // splitting leaves an empty string at the end
-        .map(parseDataStreamPart),
-    );
-
-    for (const streamPart of streamParts) {
-      parsedStreamParts.push(streamPart);
-
-      if (streamPart.name === "text") {
-        config.onTextPart?.(streamPart.value);
-      }
-      if (streamPart.name === "data") {
-        if (isKnownDataPart(streamPart)) {
-          config.onDataPart?.(streamPart.value);
-        } else {
-          console.warn("Skipping unknown data part:", streamPart);
+      if (chunk) {
+        chunks.push(chunk);
+        if (chunk[chunk.length - 1] !== "\n".charCodeAt(0)) {
+          // if the last character is not a newline, we have not read the whole JSON value
+          continue;
         }
       }
-      if (streamPart.name === "tool_call") {
-        config.onToolCallPart?.(streamPart.value);
+
+      if (chunks.length === 0) {
+        break; // we have reached the end of the stream
       }
-      if (streamPart.name === "tool_result") {
-        config.onToolResultPart?.(streamPart.value);
+
+      const concatenatedChunks = concatChunks(chunks);
+      chunks = [];
+
+      const streamParts = _.compact(
+        decoder
+          .decode(concatenatedChunks, { stream: true })
+          .split("\n")
+          .filter((line) => line !== "") // splitting leaves an empty string at the end
+          .map(parseDataStreamPart),
+      );
+
+      for (const streamPart of streamParts) {
+        parsedStreamParts.push(streamPart);
+
+        if (streamPart.name === "text") {
+          config.onTextPart?.(streamPart.value);
+        }
+        if (streamPart.name === "data") {
+          if (isKnownDataPart(streamPart)) {
+            config.onDataPart?.(streamPart.value);
+          } else {
+            console.warn("Skipping unknown data part:", streamPart);
+          }
+        }
+        if (streamPart.name === "tool_call") {
+          config.onToolCallPart?.(streamPart.value);
+        }
+        if (streamPart.name === "tool_result") {
+          config.onToolResultPart?.(streamPart.value);
+        }
+        if (streamPart.name === "error") {
+          config.onError?.(streamPart.value);
+        }
       }
-      if (streamPart.name === "error") {
-        config.onError?.(streamPart.value);
+    } catch (err) {
+      if (isMatching({ name: "AbortError" }, err)) {
+        aborted = true;
+      } else {
+        throw err;
       }
     }
   }
 
-  return accumulateStreamParts(parsedStreamParts);
+  return {
+    ...accumulateStreamParts(parsedStreamParts),
+    aborted,
+  };
 }

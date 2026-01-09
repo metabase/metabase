@@ -1,6 +1,7 @@
 export * from "./actions";
 export * from "./admin";
 export * from "./auth";
+export * from "./data-studio";
 export * from "./bookmarks";
 export * from "./browse";
 export * from "./collections";

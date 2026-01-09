@@ -1,45 +1,45 @@
-import type { Location } from "history";
-import { useEffect, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
+import { useEffect, useRef } from "react";
 import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
+import { useRouter } from "metabase/router";
 
-export const useConfirmOnRouteLeave = ({
-  router,
-  route,
-  shouldConfirm,
-  confirm,
-}: {
-  router?: InjectedRouter;
-  route?: Route;
+type Props = {
   shouldConfirm: boolean;
   confirm: (onConfirm: () => void) => void;
-}) => {
-  const [isConfirmed, setIsConfirmed] = useState(false);
-  const [nextLocation, setNextLocation] = useState<Location>();
+};
 
-  useEffect(() => {
-    if (!route || !router) {
-      return;
-    }
-    const removeLeaveHook = router.setRouteLeaveHook(route, (location) => {
-      if (shouldConfirm && !isConfirmed) {
+export const useConfirmOnRouteLeave = ({ shouldConfirm, confirm }: Props) => {
+  const dispatch = useDispatch();
+  const { router, routes } = useRouter();
+  /**
+   * to prevent endless loop
+   */
+  const confirmedRef = useRef<boolean>(false);
+  const currentRoute = routes.at(-1);
+
+  useEffect(
+    () =>
+      router.setRouteLeaveHook(currentRoute, (nextLocation) => {
+        if (confirmedRef.current || !shouldConfirm) {
+          return true;
+        }
+        /**
+         * This will roll browser's URL back.
+         * Returning false from this function cancels routing on the redux level, but browser's URL changes anyway.
+         * So we need to roll this change back and then roll forward if user confirms.
+         *
+         * Unfortunately it won't work if user somewhere in the middle of history (e.g. has forward button available)
+         */
+        router.goForward();
         confirm(() => {
-          setIsConfirmed(true);
-          setNextLocation(location);
+          confirmedRef.current = true;
+          if (nextLocation) {
+            dispatch(push(nextLocation));
+          }
         });
         return false;
-      }
-    });
-    return removeLeaveHook;
-  }, [router, route, isConfirmed, shouldConfirm, confirm]);
-
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (nextLocation) {
-      dispatch(push(nextLocation));
-    }
-  }, [dispatch, nextLocation]);
+      }),
+    [router, currentRoute, shouldConfirm, confirm, dispatch],
+  );
 };

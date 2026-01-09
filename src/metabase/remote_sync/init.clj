@@ -11,9 +11,7 @@
   (mi/instances-with-hydrated-data items k
                                    #(into {}
                                           (map (juxt :id (comp api/bit->boolean :is_remote_synced))
-                                               (t2/select [model :id [[:and [:= :c.type [:inline "remote-synced"]]
-                                                                       [:not= :c.type nil]]
-                                                                      :is_remote_synced]]
+                                               (t2/select [model :id [:c.is_remote_synced :is_remote_synced]]
                                                           {:where [:in (keyword (str (name (t2/table-name model)) ".id"))
                                                                    (map :id items)]
                                                            :join [[:collection :c]

@@ -4,7 +4,14 @@ const path = require("path");
 const TEST_FILES_NAME_PATTERN_ERROR_MESSAGE = `Please name your test setup and utils files with a ".spec.*" in the filename, or put them under "/tests", e.g. "setup.spec.ts", "MyComponent.setup.spec.ts", or "tests/setup.ts". This is to ensure they won't be imported in the SDK build.`;
 
 const baseRestrictedConfig = {
-  patterns: [{ group: ["cljs/metabase.lib*"] }],
+  patterns: [
+    { group: ["cljs/metabase.lib*"] },
+    {
+      group: ["metabase-types/openapi", "metabase-types/openapi/**"],
+      message:
+        "Direct imports from metabase-types/openapi are restricted. Reexport types under readable names from metabase-types/api instead.",
+    },
+  ],
   paths: [
     {
       name: "@mantine/core",
@@ -107,6 +114,18 @@ module.exports = {
       },
     },
     {
+      files: ["**/metabase-types/**/*.{ts,tsx,js,jsx}"],
+      rules: {
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [{ group: ["cljs/metabase.lib*"] }],
+            paths: baseRestrictedConfig.paths,
+          },
+        ],
+      },
+    },
+    {
       files: ["embedding-sdk-{package,shared}/**/*.{ts,tsx,js,jsx}"],
       excludedFiles: [
         "embedding-sdk-package/{bin,cli}/**/*.{ts,tsx,js,jsx}",
@@ -122,7 +141,10 @@ module.exports = {
           {
             allowedPaths: [
               path.join(__dirname, "embedding-sdk-package"),
-              path.join(__dirname, "embedding-sdk-shared"),
+              path.resolve(
+                __dirname,
+                "../../../frontend/src/embedding-sdk-shared",
+              ),
             ],
           },
         ],

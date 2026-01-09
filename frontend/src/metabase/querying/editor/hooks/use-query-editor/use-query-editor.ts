@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 
-import type { QueryEditorUiState } from "../../types";
+import type { QueryEditorUiOptions, QueryEditorUiState } from "../../types";
 import { useQueryControls } from "../use-query-controls";
 import { useQueryMetadata } from "../use-query-metadata";
 import { useQueryQuestion } from "../use-query-question";
@@ -9,6 +9,7 @@ import { useQueryResults } from "../use-query-results";
 type UseQueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
+  uiOptions?: QueryEditorUiOptions;
   proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
@@ -17,6 +18,7 @@ type UseQueryEditorProps = {
 export function useQueryEditor({
   query,
   uiState,
+  uiOptions,
   proposedQuery,
   onChangeQuery,
   onChangeUiState,
@@ -24,6 +26,7 @@ export function useQueryEditor({
   const { question, proposedQuestion, setQuestion } = useQueryQuestion(
     query,
     proposedQuery,
+    uiOptions,
     onChangeQuery,
   );
   const { isLoading, error } = useQueryMetadata(question);

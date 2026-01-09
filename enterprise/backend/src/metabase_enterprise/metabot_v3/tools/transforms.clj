@@ -11,7 +11,7 @@
 
 (defn get-transforms
   "Get a list of all known transforms."
-  []
+  [_args]
   (try
     {:structured_output
      (->> (api.transforms/get-transforms)
@@ -23,7 +23,7 @@
 
 (defn get-transform-details
   "Get information about a transform."
-  [transform-id]
+  [{:keys [transform-id]}]
   (try
     {:structured_output
      (api.transforms/get-transform transform-id)}
@@ -32,7 +32,7 @@
 
 (defn get-transform-python-library-details
   "Get information about a Python library by path."
-  [path]
+  [{:keys [path]}]
   (try
     {:structured_output
      (transforms-python.api/get-python-library-by-path path)}

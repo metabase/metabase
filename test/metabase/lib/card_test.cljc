@@ -358,7 +358,7 @@
                    :dataset-query   query
                    :result-metadata (result-metadata-fn (lib/query mp query))})]}))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
     (doseq [result-metadata-style [::mlv2-returned-columns ::mlv2-expected-columns ::legacy-snake-case-qp]]
@@ -460,12 +460,12 @@
                                      (lib/expression query "ID" 1)
                                      (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))
 
-(deftest ^:parallel source-model-cols-test
-  (testing "source-model-cols should not fail in FE usage where Card metadata may not have a query"
+(deftest ^:parallel source-model-card-test
+  (testing "source-model-card should not fail in FE usage where Card metadata may not have a query"
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+      (is (nil? (#'lib.card/source-model-card mp (lib.metadata/card mp 1)))))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
@@ -478,20 +478,18 @@
                                             %)
                :effective-type            :type/Text}
               (m/find-first #(= (:name %) "CATEGORY")
-                            (lib/returned-columns query))))
-      (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
-        (let [mp    (lib.tu/merged-mock-metadata-provider
-                     (lib.metadata/->metadata-provider query)
-                     {:cards [{:id 1, :type :model}]})
-              query (lib/query mp query)]
-          (is (=? {:name                   "CATEGORY"
-                   :display-name           "Products → Category"
-                   :lib/model-display-name "Products → Category"
-                   :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                                  "Category"} %)
-                   :effective-type         :type/Text}
-                  (m/find-first #(= (:name %) "CATEGORY")
-                                (lib/returned-columns query)))))))))
+                            (lib/returned-columns query))))))
+  (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
+    (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true :model)]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (=? {:name                   "CATEGORY"
+                 :display-name           "Products → Category"
+                 :lib/model-display-name "Products → Category"
+                 :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
+                                                "Category"} %)
+                 :effective-type         :type/Text}
+                (m/find-first #(= (:name %) "CATEGORY")
+                              (lib/returned-columns query))))))))
 
 (deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
   (testing "Columns coming from a source card should not propagate :lib/expression-name"

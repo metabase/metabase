@@ -7,6 +7,7 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
+   [metabase.config.core :as config]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -28,6 +29,10 @@
    "Document"  #{:document}
    "Card"      #{:dashboard_id :document_id}})
 
+(def ^:private ^:dynamic *warned-version-mismatch*
+  "Used to avoid double-logging on version mismatches. Warns if nil or set to true"
+  nil)
+
 (defn- keys-to-strip [ingested]
   (let [model (-> ingested :serdes/meta last :model)]
     (or (model->circular-dependency-keys model)
@@ -41,21 +46,22 @@
   If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
   our database."
   [ctx deps]
-  (if (empty? deps)
-    ctx
-    (letfn [(loader [ctx dep]
-              (try
-                (load-one! ctx dep)
-                (catch Exception e
-                  (cond
-                    ;; It was missing, but we found it locally, so just return the context.
-                    (and (= (:error (ex-data e)) ::not-found)
-                         (serdes/load-find-local dep))
-                    ctx
+  (binding [*warned-version-mismatch* (if (nil? *warned-version-mismatch*) (atom false) *warned-version-mismatch*)]
+    (if (empty? deps)
+      ctx
+      (letfn [(loader [ctx dep]
+                (try
+                  (load-one! ctx dep)
+                  (catch Exception e
+                    (cond
+                      ;; It was missing, but we found it locally, so just return the context.
+                      (and (= (:error (ex-data e)) ::not-found)
+                           (serdes/load-find-local dep))
+                      ctx
 
-                    :else
-                    (throw e)))))]
-      (reduce loader ctx deps))))
+                      :else
+                      (throw e)))))]
+        (reduce loader ctx deps)))))
 
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
@@ -80,6 +86,21 @@
   (when (valid-model-name-for-load? model-name)
     (let [model (t2.model/resolve-model (symbol model-name))]
       (serdes.backfill/has-entity-id? model))))
+
+(defn- warn-if-version-mismatch
+  "Checks if the version in the exported entity's serdes/meta differs from the current Metabase version.
+  Logs a warning if there is a mismatch."
+  [ingested path]
+  (when (or (nil? *warned-version-mismatch*) (not @*warned-version-mismatch*))
+    (let [current-version config/mb-version-string
+          exported-version (or (:metabase_version ingested) "UNKNOWN")]
+      (when (not= exported-version current-version)
+        (log/warnf "Version mismatch loading %s: exported with: %s, current version: %s"
+                   path
+                   exported-version
+                   current-version)
+        (when (not (nil? *warned-version-mismatch*))
+          (reset! *warned-version-mismatch* true))))))
 
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
@@ -149,10 +170,11 @@
                                                                             :level     (count expanding)}))
               local-or-nil       (when-not require-new-entity (serdes/load-find-local rebuilt-path))]
           (try
+            (warn-if-version-mismatch ingested path)
             (serdes/load-one! ingested local-or-nil)
             ctx
             (catch Exception e
-              ;; ugly mapv here to convered #ordered/map into normal map so it's readable in the logs
+              ;; ugly mapv here to convert #ordered/map into normal map so it's readable in the logs
               (throw (ex-info (format "Failed to load into database for %s" (serdes/log-path-str path))
                               (path-error-data ::load-failure expanding path)
                               e)))))))))
@@ -180,29 +202,30 @@
                 :or   {backfill?         true
                        continue-on-error false
                        reindex?          true}}]
-  (u/prog1
-    (t2/with-transaction [_tx]
-      ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
-      ;; guide the import, and make sure all containers are imported before contents, etc.
-      (when backfill?
-        (serdes.backfill/backfill-ids!))
-      (let [contents (serdes.ingest/ingest-list ingestion)
-            ctx (new-context ingestion)]
-        (log/infof "Starting deserialization, total %s documents" (count contents))
-        (reduce (fn [ctx item]
-                  (try
-                    (load-one! ctx item)
-                    (catch Exception e
-                      (when-not continue-on-error
-                        (throw e))
-                      ;; eschew big and scary stacktrace
-                      (log/warnf (u/strip-error e "Skipping deserialization error"))
-                      (update ctx :errors conj e))))
-                ctx
-                contents)))
-    (when reindex?
-    ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
-    ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
-    ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
-    ;;       while we're figuring that out, here's a crude stopgap.
-      (search/reindex!))))
+  (binding [*warned-version-mismatch* (atom false)]
+    (u/prog1
+      (t2/with-transaction [_tx]
+        ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
+        ;; guide the import, and make sure all containers are imported before contents, etc.
+        (when backfill?
+          (serdes.backfill/backfill-ids!))
+        (let [contents (serdes.ingest/ingest-list ingestion)
+              ctx (new-context ingestion)]
+          (log/infof "Starting deserialization, total %s documents" (count contents))
+          (reduce (fn [ctx item]
+                    (try
+                      (load-one! ctx item)
+                      (catch Exception e
+                        (when-not continue-on-error
+                          (throw e))
+                        ;; eschew big and scary stacktrace
+                        (log/warnf (u/strip-error e "Skipping deserialization error"))
+                        (update ctx :errors conj e))))
+                  ctx
+                  contents)))
+      (when reindex?
+      ;; Hack: the transaction above typically takes much longer than our delay on the search indexing queue.
+      ;;       this means that the corresponding entries would have been missing or stale when we indexed them.
+      ;;       ideally, we would delay the indexing somehow, or only reindex what we've loaded.
+      ;;       while we're figuring that out, here's a crude stopgap.
+        (search/reindex!)))))

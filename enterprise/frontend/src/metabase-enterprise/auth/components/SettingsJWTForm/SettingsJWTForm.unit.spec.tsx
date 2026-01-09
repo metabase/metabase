@@ -21,7 +21,10 @@ const GROUPS = [
 ];
 
 const setup = async (
-  settingValues?: Partial<JWTFormValues> & { "jwt-enabled"?: boolean },
+  settingValues?: Partial<JWTFormValues> & {
+    "jwt-enabled"?: boolean;
+    "use-tenants"?: boolean;
+  },
 ) => {
   const settings = createMockSettings(settingValues);
   setupSettingsEndpoints([]);
@@ -45,6 +48,7 @@ describe("SettingsJWTForm", () => {
     "jwt-attribute-firstname": "John",
     "jwt-attribute-lastname": "Doe",
     "jwt-attribute-groups": "grouper",
+    "jwt-attribute-tenant": null,
     "jwt-enabled": true,
     "jwt-group-sync": true,
   };
@@ -91,6 +95,45 @@ describe("SettingsJWTForm", () => {
     // it's strange that there's no special JWT endpoint when other SSO methods have endpoints with fancy validation 🤷‍♀️
     expect(url).toMatch(/\/api\/setting$/);
     expect(body).toEqual(ATTRS);
+  });
+
+  it("should not show tenant attribute unless tenanting is on", async () => {
+    await setup();
+
+    expect(
+      screen.queryByText(/Tenant assignment attribute/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show tenant attribute when tenanting is on", async () => {
+    await setup({ "use-tenants": true });
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: /JWT Identity Provider URI/ }),
+      ATTRS["jwt-identity-provider-uri"],
+    );
+    await userEvent.type(
+      await screen.findByRole("textbox", {
+        name: /String used by the JWT signing key/,
+      }),
+      ATTRS["jwt-shared-secret"],
+    );
+
+    await userEvent.type(
+      await screen.findByRole("textbox", {
+        name: /Tenant assignment attribute/,
+      }),
+      "Cat",
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /Save/ }));
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    const [{ url, body }] = puts;
+
+    expect(url).toMatch(/\/api\/setting$/);
+    expect(body).toHaveProperty("jwt-attribute-tenant", "Cat");
   });
 
   it("User provisioning should not appear if JWT has not been enabled", async () => {

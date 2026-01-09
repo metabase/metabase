@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_query_log
+table_id: [Internal Metabase Database, public, v_query_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,17 +21,16 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
       - started_at
-      - base-type: type/DateTimeWithLocalTZ
-        temporal-unit: week
+      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week}
     filter:
     - time-interval
     - - field
       - started_at
-      - base-type: type/DateTimeWithLocalTZ
+      - {base-type: type/DateTimeWithLocalTZ}
     - -52
     - week
     source-table: QOtZaiTLf2FDD4AT6Oinb
@@ -46,13 +42,8 @@ result_metadata:
   field_ref:
   - field
   - started_at
-  - base-type: type/DateTimeWithLocalTZ
-    temporal-unit: week
-  id:
-  - Internal Metabase Database
-  - public
-  - v_query_log
-  - started_at
+  - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week}
+  id: [Internal Metabase Database, public, v_query_log, started_at]
   name: started_at
   semantic_type: type/CreationTimestamp
   unit: week
@@ -60,18 +51,14 @@ result_metadata:
 - base_type: type/BigInteger
   display_name: Count
   effective_type: type/BigInteger
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: count
   semantic_type: type/Quantity
 visualization_settings:
   column_settings: null
-  graph.dimensions:
-  - started_at
+  graph.dimensions: [started_at]
   graph.label_value_formatting: compact
-  graph.metrics:
-  - count
+  graph.metrics: [count]
   graph.show_goal: false
   graph.show_values: true
   graph.x_axis.labels_enabled: false
@@ -79,13 +66,12 @@ visualization_settings:
   stackable.stack_type: normalized
   table.cell_column: running_time_seconds
   table.pivot_column: error
+card_schema: 23
 serdes/meta:
-- id: ycqt74TQ1W0kjmkLXFae5
-  label: total_number_of_queries
-  model: Card
+- {id: ycqt74TQ1W0kjmkLXFae5, label: total_number_of_queries, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: Glqmoytsnu0n6rfLUjock
-metabase_version: vUNKNOWN (9aa572c)
+document_id: null
+embedding_type: null
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

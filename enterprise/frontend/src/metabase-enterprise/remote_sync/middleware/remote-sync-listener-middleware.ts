@@ -5,11 +5,11 @@ import { Api } from "metabase/api";
 import { cardApi } from "metabase/api/card";
 import { collectionApi } from "metabase/api/collection";
 import { dashboardApi } from "metabase/api/dashboard";
+import { documentApi } from "metabase/api/document";
 import { tag } from "metabase/api/tags";
 import { timelineApi } from "metabase/api/timeline";
 import { timelineEventApi } from "metabase/api/timeline-event";
 import { getCollectionFromCollectionsTree } from "metabase/selectors/collection";
-import { documentApi } from "metabase-enterprise/api/document";
 import { remoteSyncApi } from "metabase-enterprise/api/remote-sync";
 import type {
   Card,
@@ -35,11 +35,6 @@ export const remoteSyncListenerMiddleware = createListenerMiddleware<State>();
 
 function invalidateRemoteSyncTags(dispatch: any) {
   dispatch(Api.util.invalidateTags(REMOTE_SYNC_INVALIDATION_TAGS as any));
-}
-
-function isDeactivatingRemoteSync(action: any): boolean {
-  const settings = action.meta?.arg?.originalArgs;
-  return settings?.["remote-sync-url"] === "";
 }
 
 const ALL_INVALIDATION_TAGS = [
@@ -90,10 +85,10 @@ function shouldInvalidateForCollection(
     return false;
   }
 
-  const oldType = oldCollection?.type;
-  const newType = newCollection.type;
+  const oldSynced = oldCollection?.is_remote_synced ?? false;
+  const newSynced = newCollection.is_remote_synced ?? false;
 
-  return oldType === "remote-synced" || newType === "remote-synced";
+  return oldSynced || newSynced;
 }
 
 function getOriginalDocument(originalState: State, id: number) {
@@ -240,7 +235,7 @@ remoteSyncListenerMiddleware.startListening({
   effect: async (action: PayloadAction<Collection>, { dispatch }) => {
     const collection = action.payload;
 
-    if (collection.type === "remote-synced") {
+    if (collection.is_remote_synced) {
       invalidateRemoteSyncTags(dispatch);
     }
   },
@@ -277,7 +272,7 @@ remoteSyncListenerMiddleware.startListening({
         deleteRequest.id,
       );
 
-      if (collection?.type === "remote-synced") {
+      if (collection?.is_remote_synced) {
         invalidateRemoteSyncTags(dispatch);
       }
     }
@@ -328,19 +323,18 @@ remoteSyncListenerMiddleware.startListening({
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchPending,
+  matcher: remoteSyncApi.endpoints.updateRemoteSyncSettings.matchFulfilled,
   effect: async (action, { dispatch }) => {
-    if (!isDeactivatingRemoteSync(action)) {
+    const response = action.payload;
+    // Only show modal if a task was actually started (indicated by task_id presence)
+    if (response.task_id) {
       dispatch(taskStarted({ taskType: "import" }));
     }
   },
 });
 
 remoteSyncListenerMiddleware.startListening({
-  matcher: isAnyOf(
-    remoteSyncApi.endpoints.importChanges.matchRejected,
-    remoteSyncApi.endpoints.updateRemoteSyncSettings.matchRejected,
-  ),
+  matcher: remoteSyncApi.endpoints.importChanges.matchRejected,
   effect: async (_action, { dispatch }) => {
     dispatch(taskCleared());
   },

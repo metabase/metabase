@@ -362,9 +362,10 @@ describe("scenarios > models", () => {
 
     it("transforms the data picker", () => {
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders").should("exist");
         cy.findByText("Orders Model").should("exist");
         cy.findByText("Orders, Count").should("exist");
@@ -373,11 +374,13 @@ describe("scenarios > models", () => {
         );
         cy.findByText("Products").should("exist");
 
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        H.entityPickerModalItem(0, "Databases").click();
+
+        H.entityPickerModalItem(1, "Orders").should("exist");
+        H.entityPickerModalItem(1, "People").should("exist");
+        H.entityPickerModalItem(1, "Products").should("exist");
+        H.entityPickerModalItem(1, "Reviews").should("exist");
+
         cy.findByText("Orders, Count").should("not.exist");
 
         cy.findByPlaceholderText("Search this database or everywhere…").type(
@@ -422,20 +425,23 @@ describe("scenarios > models", () => {
       cy.intercept(`/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as("schema");
 
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
+        H.entityPickerModalItem(0, "Our analytics").click();
         cy.findByText("Orders").click();
       });
 
       cy.icon("join_left_outer").click();
+      H.miniPickerBrowseAll().click();
+      H.entityPickerModalTab("Data").click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").should("exist");
-        cy.findByText("People").should("exist");
-        cy.findByText("Products").should("exist");
-        cy.findByText("Reviews").should("exist");
+        H.entityPickerModalItem(0, "Databases").click();
+        H.entityPickerModalItem(1, "Orders").should("exist");
+        H.entityPickerModalItem(1, "People").should("exist");
+        H.entityPickerModalItem(1, "Products").should("exist");
+        H.entityPickerModalItem(1, "Reviews").should("exist");
 
-        cy.findByText("Products").click();
+        H.entityPickerModalItem(1, "Products").click();
       });
 
       H.getNotebookStep("filter")
@@ -479,9 +485,8 @@ describe("scenarios > models", () => {
     it("should not display models if nested queries are disabled", () => {
       H.mockSessionProperty("enable-nested-queries", false);
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("not.exist");
-
         cy.findByText("Orders").should("exist");
         cy.findByText("People").should("exist");
         cy.findByText("Products").should("exist");

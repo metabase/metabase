@@ -6,6 +6,7 @@ import type { JSX } from "react";
 import React from "react";
 
 import { METABASE_INSTANCE_URL } from "e2e/support/helpers";
+import type { DeepPartial } from "metabase/embedding-sdk/types/utils";
 import { ThemeProvider } from "metabase/ui";
 
 export const DEFAULT_SDK_AUTH_PROVIDER_CONFIG = {
@@ -26,7 +27,7 @@ export function mountSdk(
 }
 
 export interface MountSdkContentOptions extends MountSdkOptions {
-  sdkProviderProps?: Partial<MetabaseProviderProps>;
+  sdkProviderProps?: DeepPartial<MetabaseProviderProps>;
   waitForUser?: boolean;
 }
 
@@ -38,7 +39,11 @@ export function mountSdkContent(
     waitForUser = true,
   }: MountSdkContentOptions = {},
 ) {
-  cy.intercept("GET", "/api/user/current").as("getUser");
+  const isGuest = !!sdkProviderProps?.authConfig?.isGuest;
+
+  if (!isGuest) {
+    cy.intercept("GET", "/api/user/current").as("getUser");
+  }
 
   const reactNode = (
     <ThemeProvider>
@@ -60,7 +65,7 @@ export function mountSdkContent(
     cy.mount(reactNode);
   }
 
-  if (waitForUser) {
+  if (!isGuest && waitForUser) {
     // When running stress tests with network throttling, the request can take longer to complete
     // as it first needs to fetch the bundle from the server
     cy.wait("@getUser", { timeout: 20_000 }).then(({ response }) => {

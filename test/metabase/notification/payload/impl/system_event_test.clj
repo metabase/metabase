@@ -161,7 +161,7 @@
              "You're invited to join SuperStar's Metabase"
              [#"Kratos could use your help setting up Metabase"
               #"Your Metabase is up and running, but Kratos needs you to connect your data. You'll probably need:"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create#new\"[^>]*>"]
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
              "Kratos")
 
       (testing "with invitor's first_name not defined"
@@ -169,7 +169,7 @@
                "You're invited to join SuperStar's Metabase"
                [#"You are invited to help setting up Metabase"
                 #"Your Metabase is up and running, but your help is needed to connect data. You'll probably need:"
-                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create#new\"[^>]*>"]
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
                nil)))))
 
 (deftest notification-create-email-test

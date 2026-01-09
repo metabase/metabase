@@ -48,7 +48,7 @@
 
 (mr/def ::collection
   [:map {:closed true}
-   [:user-id pos-int?]
+   [:user-id [:maybe pos-int?]]
    [:object [:fn #(t2/instance-of? :model/Collection %)]]])
 
 (mr/def :event/collection-create ::collection)
@@ -76,6 +76,16 @@
   [:map {:closed true}
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
+
+(mr/def ::publicize
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])
+
+(mr/def :event/dashboard-public-link-created ::publicize)
+(mr/def :event/dashboard-public-link-deleted ::publicize)
+(mr/def :event/card-public-link-created ::publicize)
+(mr/def :event/card-public-link-deleted ::publicize)
 
 ;; user events
 
@@ -123,6 +133,24 @@
 
 (mr/def :event/segment-update ::segment-with-message)
 (mr/def :event/segment-delete ::segment-with-message)
+
+;; measure events
+
+(mr/def ::measure
+  [:map {:closed true}
+   [:user-id  pos-int?]
+   [:object   [:fn #(t2/instance-of? :model/Measure %)]]])
+
+(mr/def :event/measure-create ::measure)
+
+(mr/def ::measure-with-message
+  [:merge
+   ::measure
+   [:map {:closed true}
+    [:revision-message {:optional true} :string]]])
+
+(mr/def :event/measure-update ::measure-with-message)
+(mr/def :event/measure-delete ::measure-with-message)
 
 ;; database events
 

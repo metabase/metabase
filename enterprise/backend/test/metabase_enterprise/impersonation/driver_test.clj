@@ -50,11 +50,11 @@
              (impersonation.driver/connection-impersonation-role (mt/db))))))))
 
 (deftest connection-impersonation-role-test-4
-  (testing "Returns nil if the permissions in another group supercede the impersonation"
+  (testing "Returns nil if the permissions in another group supersede the impersonation"
     (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                    :attributes     {"impersonation_attr" "impersonation_role"}}
       ;; `with-impersonations!` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
-      ;; for all users, it should supercede the impersonation policy in the new group
+      ;; for all users, it should supersede the impersonation policy in the new group
       (mt/with-full-data-perms-for-all-users!
         (is (nil? (impersonation.driver/connection-impersonation-role (mt/db))))))))
 
@@ -210,10 +210,17 @@
   [driver {:keys [details]}]
   (assoc details :role (impersonation-default-user driver)))
 
-(doseq [driver [:postgres :snowflake]]
-  (defmethod impersonation-details driver
-    [_driver {:keys [details]}]
-    details))
+(defmethod impersonation-details :snowflake
+  [driver {:keys [details]}]
+  (let [priv-key (tx/db-test-env-var-or-throw driver :private-key)]
+    (merge (dissoc details :private-key-id)
+           {:private-key-options "uploaded"
+            :private-key-value (mt/priv-key->base64-uri priv-key)
+            :use-password false})))
+
+(defmethod impersonation-details :postgres
+  [_driver {:keys [details]}]
+  details)
 
 (deftest conn-impersonation-simple-test
   (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
@@ -391,7 +398,7 @@
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))
-            ;; todo: this relies on the impersonation user being the login credential. This is not necessarilly true
+            ;; todo: this relies on the impersonation user being the login credential. This is not necessarily true
             ;; on sqlserver. see #60672
             impersonation-user (impersonation-default-user driver/*driver*)
             details (:details (mt/db))]
@@ -608,7 +615,7 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 
-          ;; Non-impersonated user should stil be able to query the table
+          ;; Non-impersonated user should still be able to query the table
           (request/as-admin
             (is (= [100]
                    (mt/first-row

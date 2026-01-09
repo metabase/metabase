@@ -1,6 +1,6 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
-  (:refer-clojure :exclude [mapv select-keys not-empty])
+  (:refer-clojure :exclude [mapv select-keys not-empty get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -11,7 +11,7 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.performance :as perf :refer [mapv select-keys not-empty]])
+   [metabase.util.performance :as perf :refer [mapv select-keys not-empty get-in]])
   (:import
    (clojure.lang ISeq)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))

@@ -28,9 +28,9 @@
   #_regex [:schema [:ref ::expression/string]])
 
 (mbql-clause/define-tuple-mbql-clause :replace :- :type/Text
-  #_str [:schema [:ref ::expression/string]]
-  #_find [:schema :string]
-  #_replace [:schema :string])
+  #_str     [:schema [:ref ::expression/string]]
+  #_find    :string
+  #_replace :string)
 
 (mbql-clause/define-catn-mbql-clause :substring :- :type/Text
   [:str    [:schema [:ref ::expression/string]]]
@@ -39,8 +39,12 @@
 
 (mbql-clause/define-tuple-mbql-clause :split-part :- :type/Text
   #_text      [:schema [:ref ::expression/string]]
-  #_delimiter [:schema [:string {:min 1}]] ;; literal string
+  #_delimiter [:string {:min 1}] ; literal string
   #_position  [:schema [:ref ::expression/positive-integer-or-numeric-expression]])
+
+(mbql-clause/define-tuple-mbql-clause :collate :- :type/Text
+  #_str [:schema [:ref ::expression/string]]
+  #_collation :string)
 
 (mbql-clause/define-catn-mbql-clause :concat :- :type/Text
   [:args [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])

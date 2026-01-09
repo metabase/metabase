@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sso.settings
-  "Namesapce for defining settings used by the SSO backends. This is separate as both the functions needed to support
+  "Namespace for defining settings used by the SSO backends. This is separate as both the functions needed to support
   the SSO backends and the generic routing code used to determine which SSO backend to use need this
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
@@ -120,6 +120,13 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :encryption :when-encryption-key-set
   :audit      :getter)
 
+(defsetting saml-attribute-tenant
+  (deferred-tru "SAML attribute for the user''s tenant slug")
+  :encryption :when-encryption-key-set
+  :export?    false
+  :feature    :sso-saml
+  :audit      :getter)
+
 (defsetting saml-attribute-firstname
   (deferred-tru "SAML attribute for the user''s first name")
   :default    "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"
@@ -234,6 +241,14 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   (deferred-tru "Key to retrieve the JWT user''s last name")
   :encryption :when-encryption-key-set
   :default    "last_name"
+  :feature    :sso-jwt
+  :audit      :getter)
+
+(defsetting jwt-attribute-tenant
+  (deferred-tru "Key to retrieve the JWT user''s tenant")
+  :export?    false
+  :encryption :when-encryption-key-set
+  :default    "@tenant"
   :feature    :sso-jwt
   :audit      :getter)
 

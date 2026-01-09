@@ -1,7 +1,6 @@
+import { useDraggable } from "@dnd-kit/core";
 import cx from "classnames";
-import * as React from "react";
-import type { ControlPosition, DraggableBounds } from "react-draggable";
-import Draggable from "react-draggable";
+import { useEffect, useId, useRef } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
@@ -26,22 +25,53 @@ interface CellProps {
   hasTopBorder?: boolean;
   onClick?: ((e: React.MouseEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
+  showTooltip?: boolean;
 }
 
-interface CellProps {
-  value: React.ReactNode;
-  style?: React.CSSProperties;
-  icon?: React.ReactNode;
-  backgroundColor?: string;
-  isBody?: boolean;
-  isBold?: boolean;
-  isEmphasized?: boolean;
-  isBorderedHeader?: boolean;
-  isTransparent?: boolean;
-  hasTopBorder?: boolean;
-  onClick?: ((e: React.MouseEvent) => void) | undefined;
-  onResize?: (newWidth: number) => void;
-  showTooltip?: boolean;
+interface ResizableHandleProps {
+  id: string;
+  initialWidth: number;
+  onResizeEnd: (newWidth: number) => void;
+}
+
+function ResizableHandle({
+  id,
+  initialWidth,
+  onResizeEnd,
+}: ResizableHandleProps) {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id,
+  });
+
+  const prevTransformRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const prevTransform = prevTransformRef.current;
+    prevTransformRef.current = transform;
+
+    if (prevTransform !== null && transform === null) {
+      const newWidth = Math.max(
+        RESIZE_HANDLE_WIDTH,
+        initialWidth + prevTransform.x,
+      );
+      onResizeEnd(newWidth);
+    }
+  }, [transform, initialWidth, onResizeEnd]);
+
+  const currentPosition = initialWidth + (transform ? transform.x : 0);
+
+  return (
+    <ResizeHandle
+      ref={setNodeRef}
+      data-testid="pivot-table-resize-handle"
+      style={{
+        left: `${currentPosition}px`,
+        cursor: "col-resize",
+      }}
+      {...listeners}
+      {...attributes}
+    />
+  );
 }
 
 export function Cell({
@@ -59,7 +89,7 @@ export function Cell({
   onResize,
   showTooltip = true,
 }: CellProps) {
-  const resizeHandleRef = React.useRef<HTMLDivElement | null>(null);
+  const cellId = useId();
 
   return (
     <PivotTableCell
@@ -90,26 +120,11 @@ export function Cell({
           {icon && <div className={CS.pl1}>{icon}</div>}
         </div>
         {!!onResize && (
-          <Draggable
-            axis="x"
-            enableUserSelectHack
-            bounds={{ left: RESIZE_HANDLE_WIDTH } as DraggableBounds}
-            position={
-              {
-                x: style?.width ?? 0,
-                y: 0,
-              } as ControlPosition
-            }
-            onStop={(e, { x }) => {
-              onResize(x);
-            }}
-            nodeRef={resizeHandleRef}
-          >
-            <ResizeHandle
-              data-testid="pivot-table-resize-handle"
-              ref={resizeHandleRef}
-            />
-          </Draggable>
+          <ResizableHandle
+            id={`resize-handle-${cellId}`}
+            initialWidth={(style?.width as number) ?? 0}
+            onResizeEnd={onResize}
+          />
         )}
       </>
     </PivotTableCell>

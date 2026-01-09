@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 14
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_subscriptions
+table_id: [Internal Metabase Database, public, v_subscriptions]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_subscriptions
+    source-table: [Internal Metabase Database, public, v_subscriptions]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -36,17 +30,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - entity_id
+  - [Internal Metabase Database, public, v_subscriptions, entity_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - entity_id
+  id: [Internal Metabase Database, public, v_subscriptions, entity_id]
   name: entity_id
   semantic_type: type/PK
   settings: null
@@ -58,17 +45,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - entity_qualified_id
+  - [Internal Metabase Database, public, v_subscriptions, entity_qualified_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - entity_qualified_id
+  id: [Internal Metabase Database, public, v_subscriptions, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: type/PK
   settings: null
@@ -80,17 +60,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - created_at
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_subscriptions, created_at]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - created_at
+  id: [Internal Metabase Database, public, v_subscriptions, created_at]
   name: created_at
   semantic_type: type/CreationTimestamp
   settings: null
@@ -103,17 +76,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - updated_at
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_subscriptions, updated_at]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - updated_at
+  id: [Internal Metabase Database, public, v_subscriptions, updated_at]
   name: updated_at
   semantic_type: type/UpdatedTimestamp
   settings: null
@@ -126,21 +92,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - creator_id
+  - [Internal Metabase Database, public, v_subscriptions, creator_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - creator_id
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_subscriptions, creator_id]
   name: creator_id
   semantic_type: type/FK
   settings: null
@@ -152,17 +107,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - archived
+  - [Internal Metabase Database, public, v_subscriptions, archived]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - archived
+  id: [Internal Metabase Database, public, v_subscriptions, archived]
   name: archived
   semantic_type: type/Category
   settings: null
@@ -174,21 +122,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - dashboard_qualified_id
+  - [Internal Metabase Database, public, v_subscriptions, dashboard_qualified_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_content
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - dashboard_qualified_id
+  fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_subscriptions, dashboard_qualified_id]
   name: dashboard_qualified_id
   semantic_type: type/FK
   settings: null
@@ -200,17 +137,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - schedule_type
+  - [Internal Metabase Database, public, v_subscriptions, schedule_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - schedule_type
+  id: [Internal Metabase Database, public, v_subscriptions, schedule_type]
   name: schedule_type
   semantic_type: type/Category
   settings: null
@@ -222,17 +152,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - schedule_day
+  - [Internal Metabase Database, public, v_subscriptions, schedule_day]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - schedule_day
+  id: [Internal Metabase Database, public, v_subscriptions, schedule_day]
   name: schedule_day
   semantic_type: type/Category
   settings: null
@@ -244,17 +167,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - schedule_hour
+  - [Internal Metabase Database, public, v_subscriptions, schedule_hour]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - schedule_hour
+  id: [Internal Metabase Database, public, v_subscriptions, schedule_hour]
   name: schedule_hour
   semantic_type: type/Category
   settings: null
@@ -266,17 +182,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - recipient_type
+  - [Internal Metabase Database, public, v_subscriptions, recipient_type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - recipient_type
+  id: [Internal Metabase Database, public, v_subscriptions, recipient_type]
   name: recipient_type
   semantic_type: type/Category
   settings: null
@@ -288,17 +197,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - recipients
+  - [Internal Metabase Database, public, v_subscriptions, recipients]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - recipients
+  id: [Internal Metabase Database, public, v_subscriptions, recipients]
   name: recipients
   semantic_type: type/Category
   settings: null
@@ -310,17 +212,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - recipient_external
+  - [Internal Metabase Database, public, v_subscriptions, recipient_external]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - recipient_external
+  id: [Internal Metabase Database, public, v_subscriptions, recipient_external]
   name: recipient_external
   semantic_type: null
   settings: null
@@ -332,17 +227,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_subscriptions
-    - parameters
+  - [Internal Metabase Database, public, v_subscriptions, parameters]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_subscriptions
-  - parameters
+  id: [Internal Metabase Database, public, v_subscriptions, parameters]
   name: parameters
   semantic_type: type/SerializedJSON
   settings: null
@@ -350,20 +238,14 @@ result_metadata:
 visualization_settings:
   column_settings: null
   table.cell_column: recipient_external
-  table.column_widths:
-  - null
-  - null
-  - null
-  - null
-  - 136
+  table.column_widths: [null, null, null, null, 136]
   table.pivot_column: name
+card_schema: 23
 serdes/meta:
-- id: 5ojUtU9iE-DCggHdFPIll
-  label: dashboard_subscriptions
-  model: Card
+- {id: 5ojUtU9iE-DCggHdFPIll, label: dashboard_subscriptions, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

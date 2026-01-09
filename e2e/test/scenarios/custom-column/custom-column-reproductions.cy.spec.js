@@ -109,8 +109,7 @@ describe("issue 13751", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText(PG_DB_NAME).should("be.visible").click();
       cy.findByTextEnsureVisible("People").click();
     });
@@ -816,16 +815,10 @@ describe("issue 25189", { tags: "@skip" }, () => {
     it("should display all summarize options if the only numeric field is a custom column (metabase#27745)", () => {
       H.startNewQuestion();
 
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Collections").click();
-        cy.findByPlaceholderText("Search this collection or everywhere…").type(
-          "colors",
-        );
-        cy.findByText("Everywhere").click();
+      H.miniPicker().within(() => {
+        cy.realType("colors");
         cy.wait("@search");
-        cy.findByTestId("result-item")
-          .contains(/colors/i)
-          .click();
+        cy.contains(/colors/i).click();
       });
       cy.findByLabelText("Custom column").click();
       H.enterCustomColumnDetails({
@@ -1295,8 +1288,10 @@ describe("issue 49305", () => {
     // This bug does not reproduce if the base question is created via H.createQuestion or H.visitQuestionAdhoc, so create it manually in the UI.
     cy.visit("/");
     H.newButton("Question").click();
-    H.entityPickerModalTab("Tables").click();
-    H.entityPickerModalItem(2, "Products").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Products").click();
+    });
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: 'concat("49305 ", [Title])',
@@ -2311,7 +2306,7 @@ describe("Issue 38498", { tags: "@external" }, () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -2341,8 +2336,8 @@ describe("issue 52451", () => {
     });
     H.popover().button("Done").click();
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
     H.popover().findByText("Expr").click();
@@ -2382,13 +2377,13 @@ describe("issue 56602", () => {
     H.createQuestion(productsModelDetails);
     H.createQuestion(ordersModelDetails);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.realType(productsModelDetails.name);
       cy.findByText(productsModelDetails.name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.realType(ordersModelDetails.name);
       cy.findByText(ordersModelDetails.name).click();
     });
     H.addCustomColumn();
@@ -2456,7 +2451,7 @@ describe("issue 61010", () => {
 
     H.CustomExpressionEditor.clear().type("[New count]");
     H.popover()
-      .findByText("Unknown Aggregation or Metric: New count")
+      .findByText("Unknown Aggregation, Measure or Metric: New count")
       .should("be.visible");
   });
 });

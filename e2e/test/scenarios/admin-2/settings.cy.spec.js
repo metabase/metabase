@@ -10,7 +10,7 @@ import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 const { SMTP_PORT, WEB_PORT } = WEBMAIL_CONFIG;
 
-H.describeWithSnowplow("scenarios > admin > settings", () => {
+describe("scenarios > admin > settings", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -346,7 +346,7 @@ describe("Cloud settings section", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > admin > settings > email settings", () => {
+describe("scenarios > admin > settings > email settings", () => {
   describe("self-hosted instance", () => {
     beforeEach(() => {
       cy.intercept("PUT", "api/email").as("smtpSaved");

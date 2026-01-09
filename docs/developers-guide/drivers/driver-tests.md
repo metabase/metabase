@@ -174,7 +174,7 @@ You'll almost certainly be running your database in a local Docker container. Ra
 
 Tells Metabase to look for the environment variable `MB_MYSQL_TEST_USER`; if not found, default to `"root"`. The name of the environment variable follows the pattern `MB_<driver>_TEST_<property>`, as passed into the function as first and second args, respectively. You don't need to specify a default value for `tx/db-test-env-var`; perhaps `user` is an optional parameter; and if `MB_MYSQL_TEST_USER` isn't specified, you don't need to specify it in the connection details.
 
-But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding enviornment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
+But what about properties you want to require, but do not have sane defaults? In those cases, you can use `tx/db-test-env-var-or-throw`. It the corresponding environment variable isn't set, these will throw an Exception, ultimately causing tests to fail.
 
 ```clj
 ;; If MB_SQLSERVER_TEST_USER is unset, the test suite will quit with a message saying something like
@@ -190,7 +190,7 @@ Besides `tx/db-test-env-var`, `metabase.test.data.interface` has several other h
 
 There's a few other things Metabase needs to know when comparing test results. For example, different databases name tables and columns in different ways; methods exist to let Metabase know it should expect something like the `venues` table in the `test-data` Database Definition to come back as `VENUES` for a database that uppercases everything. (We consider such minor variations in naming to still mean the same thing.) Take a look at `tx/format-name` and other methods like that and see which ones you need to implement.
 
-## What about DBMSes that don't let you create new databases programatically?
+## What about DBMSes that don't let you create new databases programmatically?
 
 This is actually a common problem, and luckily we have figured out how to work around it. The solution is usually something like using different _schemas_ in place of different databases, or prefixing table names with the database name, and creating everything in the same database. For SQL-based databases, you can implement `sql.tx/qualified-name-components` to have tests use a different identifier instead of what they would normally use, for example `"shared_db"."test-data_venues".id` instead of `"test-data".venues.id`. The SQL Server and Oracle test extensions are good examples of such black magic in action.
 

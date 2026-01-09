@@ -8,7 +8,7 @@ on:
       target_branch:
         description: "Target branch for documentation update"
         required: false
-        default: "release-x.56.x"
+        default: "release-x.58.x"
         type: string
 
 jobs:
@@ -16,6 +16,6 @@ jobs:
     name: Call documentation update for release branch
     uses: ./.github/workflows/docs-generate-base.yml
     with:
-      target_branch: ${{ inputs.target_branch || 'release-x.56.x' }}
+      target_branch: ${{ inputs.target_branch || 'release-x.58.x' }}
     secrets:
       automation_token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}

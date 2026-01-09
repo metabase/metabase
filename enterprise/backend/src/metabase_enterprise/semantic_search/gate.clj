@@ -118,7 +118,7 @@
                                          (group-by :id)
                                          (map (fn [[id updates]]
                                                 (when (< 1 (count updates))
-                                                  (log/warnf "More than one (%d) update issued for a gate entry: %s" (count updates) id))
+                                                  (log/debugf "More than one (%d) update issued for a gate entry: %s" (count updates) id))
                                                 (peek updates)))
                                          seq)]
       (let [{:keys [gate-table-name]} index-metadata

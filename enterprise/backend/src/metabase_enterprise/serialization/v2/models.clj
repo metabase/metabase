@@ -6,6 +6,7 @@
   ["Database"
    "Field"
    "FieldUserSettings"
+   "Measure"
    "Segment"
    "Table"
    "Channel"])
@@ -48,9 +49,11 @@
 
 (def excluded-models
   "List of models which are not going to be serialized ever."
-  ["ApiKey"
+  ["AnalysisFinding"
+   "ApiKey"
    "ApplicationPermissionsRevision"
    "AuditLog"
+   "AuthIdentity"
    "BookmarkOrdering"
    "CacheConfig"
    "CardBookmark"
@@ -105,7 +108,9 @@
    "Secret"
    "SemanticSearchTokenTracking"
    "Session"
+   "SupportAccessGrantLog"
    "TaskHistory"
+   "Tenant"
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"

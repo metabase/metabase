@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_view_log
+table_id: [Internal Metabase Database, public, v_view_log]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,109 +21,144 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     breakout:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - user_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_view_log, user_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_users
-        - full_name
-      - base-type: type/Text
-        join-alias: People - Creator
+      - [Internal Metabase Database, public, v_users, full_name]
+      - {base-type: type/Text, join-alias: People - Creator}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_view_log
-        - entity_type
-      - null
+      - [Internal Metabase Database, public, v_view_log, entity_type]
+      - {base-type: type/Text}
     - dashboard
     joins:
     - alias: Content - Entity Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - entity_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Entity Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Entity Qualified}
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
     - alias: Group Members - User
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_view_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_group_members
-          - user_id
-        - base-type: type/Integer
-          join-alias: Group Members - User
+        - [Internal Metabase Database, public, v_group_members, user_id]
+        - {base-type: type/Integer, join-alias: Group Members - User}
       source-table: lTp-ATFsCUFEr9I0fMEaO
       strategy: left-join
     - alias: People - Creator
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_view_log
-          - user_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_view_log, user_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - Creator
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - Creator}
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     order-by:
     - - desc
-      - - aggregation
-        - 0
+      - [aggregation, 0]
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
-result_metadata: null
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  description: Who viewed the content
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, user_id]
+  - null
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_view_log, user_id]
+  name: user_id
+  options: {metabase.query-processor.middleware.add-remaps/original-field-dimension-id: 77}
+  position: 2
+  semantic_type: type/FK
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 281
+  lib/deduplicated-name: user_id
+  lib/desired-column-alias: user_id
+  lib/external-remap: {field-id: 136726, id: 77, name: User ID, lib/type: metadata.column.remapping/external}
+  lib/model-display-name: User ID
+  lib/original-display-name: User ID
+  lib/original-name: user_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: user_id
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: People - Creator → Full Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, full_name]
+  - {join-alias: People - Creator}
+  id: [Internal Metabase Database, public, v_users, full_name]
+  name: full_name
+  position: 6
+  semantic_type: type/Name
+  source: breakout
+  source_alias: People - Creator
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 282
+  lib/deduplicated-name: full_name
+  lib/desired-column-alias: People - Creator__full_name
+  lib/model-display-name: Full Name
+  lib/original-display-name: Full Name
+  lib/original-join-alias: People - Creator
+  lib/original-name: full_name
+  lib/source: source/joins
+  lib/source-column-alias: full_name
+  metabase.lib.join/join-alias: People - Creator
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
 visualization_settings:
   column_settings: null
-  graph.dimensions:
-  - full_name
-  graph.metrics:
-  - count
+  graph.dimensions: [full_name]
+  graph.metrics: [count]
   graph.series_order: null
   graph.series_order_dimension: null
   graph.show_values: true
   table.pivot: false
+card_schema: 23
 serdes/meta:
-- id: _p6UGMWOQn5-yf03uGsaN
-  label: most_active_people_on_this_dashboard
-  model: Card
+- {id: _p6UGMWOQn5-yf03uGsaN, label: most_active_people_on_this_dashboard, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: bJEYb0o5CXlfWFcIztDwJ
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

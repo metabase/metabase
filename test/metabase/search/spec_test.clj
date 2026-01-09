@@ -100,16 +100,22 @@
                                {:search-model "table",
                                 :fields
                                 #{:active :description :schema :name :id :db_id :initial_sync_status :display_name
-                                  :visibility_type :view_count :created_at :updated_at}
+                                  :visibility_type :view_count :created_at :updated_at :collection_id :is_published}
                                 :where        [:= :updated.id :this.id]}},
-                 :Database   #{{:search-model "table", :fields #{:name :router_database_id}, :where [:= :updated.id :this.db_id]}}
+                 :Database   #{{:search-model "table"
+                                :fields #{:name :router_database_id}
+                                :where [:= :updated.id :this.db_id]}}
                  :Segment    #{{:search-model "segment"
                                 :fields       #{:description :archived :table_id :name :id :updated_at}
                                 :where        [:= :updated.id :this.id]}}
                  :Collection #{{:search-model "collection"
                                 :fields       #{:authority_level :archived :description :name :type :id
+
                                                 :archived_directly :location :namespace :created_at}
-                                :where        [:= :updated.id :this.id]}}}
+                                :where        [:= :updated.id :this.id]}
+                               {:search-model "table"
+                                :fields       #{:authority_level :name :type :location}
+                                :where        [:and [:= :this.is_published true] [:= :updated.id :this.collection_id]]}}}
          (#'search.spec/merge-hooks
           [(#'search.spec/search-model-hooks (search.spec/spec "table"))
            (#'search.spec/search-model-hooks (search.spec/spec "segment"))
@@ -121,7 +127,8 @@
   (is (= #{["table" [:= 123 :this.db_id]]
            ["database" [:= 123 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Database {:id 123 :name "databass"}))))
-  (is (= #{["segment" [:= 321 :this.table_id]]
+  (is (= #{["measure" [:= 321 :this.table_id]]
+           ["segment" [:= 321 :this.table_id]]
            ["table" [:= 321 :this.id]]}
          (search.spec/search-models-to-update (t2/instance :model/Table {:id 321 :name "turn-tables"})))))
 
@@ -137,3 +144,11 @@
           (is (actual-models em))))
       (testing "... and nothing else does"
         (is (empty? (sort-by name (remove expected-models actual-models))))))))
+
+(deftest ^:parallel index-version-hash-test
+  (testing "index-version-hash returns a consistent value"
+    (let [hash1 (search.spec/index-version-hash)
+          hash2 (search.spec/index-version-hash)]
+      (is (string? hash1))
+      (is (= 64 (count hash1)) "SHA-256 hex string should be 64 characters")
+      (is (= hash1 hash2) "Hash should be deterministic"))))

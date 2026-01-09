@@ -12,7 +12,7 @@
 
 (def token-like-comment (str ";;" (apply str (repeat 100 \a)) "\n"))
 (def sample-file-path
-  (str u/project-root-directory "/test/mage/token_scan_test_example.clj"))
+  (str u/project-root-directory "/" "mage/test/mage/token_scan_test_example.clj"))
 
 (deftest token-scan-finds-error
   (try

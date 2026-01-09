@@ -6,6 +6,7 @@ import {
   type DataPickerItem,
   DataPickerModal,
 } from "metabase/common/components/Pickers/DataPicker";
+import type { TablePickerValue } from "metabase/common/components/Pickers/TablePicker";
 import {
   ActionIcon,
   Box,
@@ -63,6 +64,9 @@ export function TableSelector({
     if (item.model === "database") {
       return item.id !== database;
     }
+    if (item.model === "collection" && item.id === "databases") {
+      return false;
+    }
     return true;
   }
 
@@ -81,13 +85,13 @@ export function TableSelector({
           <Stack gap={0} align="start" justify="center">
             {table ? (
               <>
-                <Box fz="sm" c="text-medium" fw="normal">
+                <Box fz="sm" c="text-secondary" fw="normal">
                   {table?.db?.name} / {table?.schema}
                 </Box>
-                <Box c="text-dark">{table?.display_name}</Box>
+                <Box c="text-primary">{table?.display_name}</Box>
               </>
             ) : (
-              <Box c="text-dark">{t`Select a table…`}</Box>
+              <Box c="text-primary">{t`Select a table…`}</Box>
             )}
           </Stack>
         </Button>
@@ -98,7 +102,7 @@ export function TableSelector({
             pr="sm"
             aria-label={t`Remove this table`}
           >
-            <Icon name="close" c="text-dark" />
+            <Icon name="close" c="text-primary" />
           </ActionIcon>
         </Tooltip>
       </Group>
@@ -110,18 +114,26 @@ export function TableSelector({
           onChange={handleChange}
           onClose={close}
           shouldDisableItem={shouldDisableItem}
+          models={["table"]}
+          options={{
+            showLibrary: false,
+            showRootCollection: false,
+            showPersonalCollections: false,
+          }}
         />
       )}
     </>
   );
 }
 
-function getDataPickerValue(table: Table | undefined) {
+function getDataPickerValue(
+  table: Table | undefined,
+): TablePickerValue | undefined {
   if (!table) {
-    return undefined;
+    return;
   }
   return {
-    model: "table" as const,
+    model: "table",
     id: table.id,
     name: table.display_name,
     db_id: table.db_id,

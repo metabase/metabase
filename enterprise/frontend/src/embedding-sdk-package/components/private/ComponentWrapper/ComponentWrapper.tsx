@@ -5,6 +5,7 @@ import {
   type PropsWithChildren,
   useEffect,
   useId,
+  useMemo,
   useRef,
 } from "react";
 
@@ -23,6 +24,7 @@ import {
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-state";
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import {
@@ -41,7 +43,7 @@ type Props<TComponentProps> = {
 
 const NOT_STARTED_LOADING_WAIT_TIMEOUT = 1000;
 
-// When the ComponentWrapper is rendered without being wrapped withing the MetabaseProvider,
+// When the ComponentWrapper is rendered without being wrapped within the MetabaseProvider,
 // the SDK bundle loading is not triggered.
 // We wait for 1 second and if the loading state is still not set or Initial - we set the NotStartedLoading error
 const NotStartedLoadingTrigger = () => {
@@ -150,16 +152,21 @@ const ComponentWrapperInner = <TComponentProps,>({
   } = useMetabaseProviderPropsStore();
   const { isLoading, isError, isNotStartedLoading } = useSdkLoadingState();
 
+  const { theme } = metabaseProviderProps ?? {};
+  const adjustedTheme = useMemo(() => applyThemePreset(theme), [theme]);
+
   if (isError) {
-    return <Error message={SDK_LOADING_ERROR_MESSAGE} />;
+    return <Error theme={adjustedTheme} message={SDK_LOADING_ERROR_MESSAGE} />;
   }
 
   if (isNotStartedLoading) {
-    return <Error message={SDK_NOT_STARTED_LOADING_MESSAGE} />;
+    return (
+      <Error theme={adjustedTheme} message={SDK_NOT_STARTED_LOADING_MESSAGE} />
+    );
   }
 
   if (isLoading || !metabaseProviderInternalProps.loadingState) {
-    return <Loader />;
+    return <Loader theme={adjustedTheme} />;
   }
 
   const ComponentProvider = isLoading
@@ -171,13 +178,18 @@ const ComponentWrapperInner = <TComponentProps,>({
     !metabaseProviderInternalProps.reduxStore ||
     !metabaseProviderProps
   ) {
-    return <Error message={SDK_NOT_LOADED_YET_MESSAGE} />;
+    return <Error theme={adjustedTheme} message={SDK_NOT_LOADED_YET_MESSAGE} />;
   }
 
   const Component = getComponent();
 
   if (!Component) {
-    return <Error message={SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE} />;
+    return (
+      <Error
+        theme={adjustedTheme}
+        message={SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE}
+      />
+    );
   }
 
   return (

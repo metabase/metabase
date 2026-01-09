@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 19
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_tasks
+table_id: [Internal Metabase Database, public, v_tasks]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_tasks
+    source-table: [Internal Metabase Database, public, v_tasks]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -37,17 +31,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - id
+  - [Internal Metabase Database, public, v_tasks, id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - id
+  id: [Internal Metabase Database, public, v_tasks, id]
   name: id
   semantic_type: type/PK
   settings: null
@@ -60,17 +47,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - task
+  - [Internal Metabase Database, public, v_tasks, task]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - task
+  id: [Internal Metabase Database, public, v_tasks, task]
   name: task
   semantic_type: type/Category
   settings: null
@@ -83,17 +63,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - status
+  - [Internal Metabase Database, public, v_tasks, status]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - status
+  id: [Internal Metabase Database, public, v_tasks, status]
   name: status
   semantic_type: type/Category
   settings: null
@@ -106,21 +79,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - database_qualified_id
+  - [Internal Metabase Database, public, v_tasks, database_qualified_id]
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - v_databases
-  - entity_qualified_id
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - database_qualified_id
+  fk_target_field_id: [Internal Metabase Database, public, v_databases, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_tasks, database_qualified_id]
   name: database_qualified_id
   semantic_type: type/FK
   settings: null
@@ -133,17 +95,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - started_at
+  - [Internal Metabase Database, public, v_tasks, started_at]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - started_at
+  id: [Internal Metabase Database, public, v_tasks, started_at]
   name: started_at
   semantic_type: type/CreationTimestamp
   settings: null
@@ -156,17 +111,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - ended_at
+  - [Internal Metabase Database, public, v_tasks, ended_at]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - ended_at
+  id: [Internal Metabase Database, public, v_tasks, ended_at]
   name: ended_at
   semantic_type: null
   settings: null
@@ -179,17 +127,10 @@ result_metadata:
   effective_type: type/Float
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - duration_seconds
+  - [Internal Metabase Database, public, v_tasks, duration_seconds]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - duration_seconds
+  id: [Internal Metabase Database, public, v_tasks, duration_seconds]
   name: duration_seconds
   semantic_type: type/Quantity
   settings: null
@@ -202,31 +143,21 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_tasks
-    - details
+  - [Internal Metabase Database, public, v_tasks, details]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_tasks
-  - details
+  id: [Internal Metabase Database, public, v_tasks, details]
   name: details
   semantic_type: null
   settings: null
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: duration_seconds
+visualization_settings: {column_settings: null, table.cell_column: duration_seconds}
+card_schema: 23
 serdes/meta:
-- id: PKhlEfegdbTozSMfj0aLB
-  label: system_tasks
-  model: Card
+- {id: PKhlEfegdbTozSMfj0aLB, label: system_tasks, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: vUNKNOWN (1308cef)
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

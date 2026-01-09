@@ -631,8 +631,8 @@ describe("scenarios > admin > people", () => {
 
     const { first_name, last_name, email } = TEST_USER;
     const FULL_NAME = `${first_name} ${last_name}`;
-    cy.visit("/admin/people");
 
+    cy.visit("/admin/people");
     clickButton("Invite someone");
 
     // first modal
@@ -642,25 +642,23 @@ describe("scenarios > admin > people", () => {
     clickButton("Create");
 
     // second modal
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(`${FULL_NAME} has been added`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(
-      `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
-    );
-    cy.url().then((url) => {
-      const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
-      const { userId } = URL_REGEX.exec(url).groups;
-      assertLinkMatchesUrl(
-        "reset their password.",
-        `/admin/people/${userId}/reset`,
+    H.modal().within(() => {
+      cy.findByText(`${FULL_NAME} has been added`);
+      cy.contains(
+        `We’ve sent an invite to ${email} with instructions to log in. If this user is unable to authenticate then you can reset their password.`,
       );
+      cy.url().then((url) => {
+        const URL_REGEX = /\/admin\/people\/(?<userId>\d+)\/success/;
+        const { userId } = URL_REGEX.exec(url).groups;
+        assertLinkMatchesUrl(
+          "reset their password.",
+          `/admin/people/${userId}/reset`,
+        );
+      });
+      cy.button("Done").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(FULL_NAME);
+    cy.findByTestId("admin-people-list-table").should("contain", FULL_NAME);
   });
 });
 
@@ -711,7 +709,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.icon("ellipsis").eq(0).click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Edit Name").click();
-      cy.get("input").type(" updated");
+      cy.findByDisplayValue("collection").type(" updated");
       cy.button("Done").click();
 
       // Click on the group with the new name
@@ -778,7 +776,7 @@ describe("scenarios > admin > people > group managers", () => {
       cy.url().should("match", /\/$/);
     });
 
-    it("can manage members from the people page", { tags: "@flaky" }, () => {
+    it("can manage members from the people page", () => {
       // Open membership select for a user
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(noCollectionUserName)

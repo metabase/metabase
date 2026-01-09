@@ -9,7 +9,7 @@ const { H } = cy;
 
 const suiteTitle = "scenarios > sharing > embed flow pre-selection";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -26,10 +26,7 @@ H.describeWithSnowplow(suiteTitle, () => {
   it("pre-selects dashboard in embed flow when opened from dashboard sharing modal", () => {
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
-    });
+    H.embedModalEnableEmbedding();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -44,6 +41,7 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByText("Orders in a dashboard", { timeout: 10_000 })
       .should("be.visible");
 
+    getEmbedSidebar().findByText("Back").should("not.exist");
     getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
@@ -55,10 +53,7 @@ H.describeWithSnowplow(suiteTitle, () => {
   it("pre-selects question in embed flow when opened from question sharing modal", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane()
-      .findByRole("button", { name: "Embedded Analytics JS" })
-      .click();
+    H.embedModalEnableEmbedding();
 
     H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
@@ -73,57 +68,12 @@ H.describeWithSnowplow(suiteTitle, () => {
       .findByText("Orders", { timeout: 10_000 })
       .should("be.visible");
 
+    getEmbedSidebar().findByText("Back").should("not.exist");
     getEmbedSidebar().findByText("Get code").click();
 
     H.expectUnstructuredSnowplowEvent({
       event: "embed_wizard_options_completed",
       event_detail: "settings=default",
-    });
-  });
-
-  it("tracks default resources for pre-selected dashboard", () => {
-    H.visitDashboard(ORDERS_DASHBOARD_ID);
-    H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.log("go back to resource selection step");
-    getEmbedSidebar().within(() => {
-      cy.findByText("Back").click();
-      cy.findByText("Select a dashboard to embed").should("be.visible");
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
-    });
-  });
-
-  it("tracks default resources for pre-selected question", () => {
-    H.visitQuestion(ORDERS_QUESTION_ID);
-    H.openSharingMenu("Embed");
-
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByRole("button", { name: "Embedded Analytics JS" }).click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
-
-    cy.log("go back to resource selection step");
-    getEmbedSidebar().within(() => {
-      cy.findByText("Back").click();
-      cy.findByText("Select a chart to embed").should("be.visible");
-      cy.findByText("Next").click();
-    });
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_resource_selection_completed",
-      event_detail: "default",
     });
   });
 });

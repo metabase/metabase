@@ -770,3 +770,26 @@
                  :topic :remote-sync-stash
                  :model "RemoteSyncTask"}
                 (mt/latest-audit-log-entry :remote-sync-stash task-id))))))))
+
+(deftest action-v2-events-test
+  (mt/when-ee-evailable
+   (mt/with-current-user (mt/user->id :rasta)
+     (testing :event/action-v2-execute
+       (is (=
+            {:details
+             {:action "data-grid.row/create"
+              :scope {:table_id 123}
+              :input_count 1}}
+            (events/publish-event! :event/action-v2-execute
+                                   {:details
+                                    {:action "data-grid.row/create"
+                                     :scope {:table_id 123}
+                                     :input_count 1}})))
+       (is (= {:user_id (mt/user->id :rasta)
+               :details {:action "data-grid.row/create"
+                         :scope {:table_id 123}
+                         :input_count 1}
+               :topic :table-data-edit
+               :model "Table"
+               :model_id 123}
+              (mt/latest-audit-log-entry :table-data-edit)))))))

@@ -15,9 +15,10 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.findByText(table).click();
+      H.entityPickerModalItem(0, "Databases").click();
+      H.entityPickerModalItem(1, table).click();
     });
   }
 
@@ -196,6 +197,7 @@ describe("scenarios > visualizations > table", () => {
       "GET",
       "/api/search?models=dataset&models=table&table_db_id=*",
     ).as("getSearchResults");
+    cy.intercept("POST", "/api/dataset").as("getDataset");
     H.startNewNativeQuestion({
       query: 'select 1 "first_column", 2 "second_column"',
       display: "table",
@@ -203,7 +205,7 @@ describe("scenarios > visualizations > table", () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@getSearchResults");
+    cy.wait(["@getSearchResults", "@getDataset"]);
 
     H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
     H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
@@ -231,7 +233,8 @@ describe("scenarios > visualizations > table", () => {
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
     // Wait for column widths to be set
-    cy.wait("@getSearchResults");
+    cy.wait(["@getSearchResults", "@getDataset"]);
+    H.tableHeaderColumn("first_column").should("be.visible");
     assertUnchangedWidths();
   });
 
@@ -595,7 +598,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.editDashboard();
 
     // Ensure resizing change page size
-    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 600 });
+    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 700 });
     H.saveDashboard();
     cy.get("@tableDashcard")
       .findByText(rowsRegex)

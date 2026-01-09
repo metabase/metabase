@@ -1,6 +1,8 @@
+import type { ButtonHTMLAttributes } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
   type DashboardAccessedVia,
@@ -10,10 +12,12 @@ import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
-import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
+import type { ActionIconProps } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 
-export const ExportAsPdfButton = (props: ActionIconProps) => {
+export const ExportAsPdfButton = (
+  props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,
+) => {
   const { dashboard } = useDashboardContext();
   const isWhitelabeled = useHasTokenFeature("whitelabel");
   const includeBranding = !isWhitelabeled;
@@ -38,15 +42,12 @@ export const ExportAsPdfButton = (props: ActionIconProps) => {
   };
 
   return (
-    <Tooltip label={t`Download as PDF`}>
-      <ActionIcon
-        onClick={saveAsPDF}
-        aria-label={t`Download as PDF`}
-        data-testid="export-as-pdf-button"
-        {...props}
-      >
-        <Icon name="download" />
-      </ActionIcon>
-    </Tooltip>
+    <ToolbarButton
+      icon="download"
+      onClick={saveAsPDF}
+      tooltipLabel={t`Download as PDF`}
+      data-testid="export-as-pdf-button"
+      {...props}
+    />
   );
 };

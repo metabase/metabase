@@ -5,7 +5,8 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -1047,3 +1048,28 @@
                     :tables    empty?
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id))))))))))
+
+(deftest published-table-does-not-grant-database-access-oss-test
+  (testing "POST /api/dataset in OSS: published table access does NOT grant database access"
+    (mt/with-premium-features #{}
+      (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
+                         :model/Collection collection {}]
+            ;; Publish the venues table into this collection
+            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (let [all-users (perms/all-users-group)]
+              ;; Set database-level permissions first to establish baseline
+              (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)
+              (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+              ;; Grant collection read permission - gives create-queries via published table mechanism in EE
+              (perms/grant-collection-read-permissions! all-users (u/the-id collection))
+              ;; Set table-level permissions
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
+              ;; In OSS: published tables don't grant database access, so user gets 403 at database check
+              (testing "Query should be blocked because OSS doesn't grant database access via published tables"
+                (is (= "You don't have permissions to do that."
+                       (mt/with-current-user user-id
+                         (mt/user-http-request user-id :post 403 "dataset"
+                                               (mt/mbql-query venues {:limit 1})))))))))))))

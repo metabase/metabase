@@ -10,6 +10,9 @@
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor :as qp]
    [metabase.search.test-util :as search.tu]
@@ -890,28 +893,113 @@
                         :creator_id ann-id
                         :table_id   no-schema-id
                         :definition {:source-table no-schema-id
-                                     :aggregation  [[:count]]
                                      :filter       [:< [:field field-id nil] 18]}}]
       (testing "segment"
         (let [ser (serdes/extract-one "Segment" {} (t2/select-one :model/Segment :id s1-id))]
           (is (=? {:serdes/meta [{:model "Segment" :id s1-eid :label "my_segment"}]
                    :table_id    ["My Database" nil "Schemaless Table"]
                    :creator_id  "ann@heart.band"
-                   :definition  {:source-table ["My Database" nil "Schemaless Table"]
-                                 :aggregation  [[:count]]
-                                 :filter       [:< [:field ["My Database" nil
-                                                            "Schemaless Table" "Some Field"]
-                                                    nil] 18]}
+                   :definition  {:database "My Database",
+                                 :type     :query,
+                                 :query    {:source-table ["My Database" nil "Schemaless Table"],
+                                            :filter       [:< [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]}}
                    :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "depend on the Table and any fields from the definition"
-            (is (= #{[{:model "Database" :id "My Database"}
+          (testing "depend on the Database, the Table and any fields from the definition"
+            (is (= #{[{:model "Database" :id "My Database"}]
+                     [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}]
                      [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}
                       {:model "Field" :id "Some Field"}]}
                    (set (serdes/dependencies ser))))))))))
+
+(defn- pmbql-measure-definition
+  "Create an MBQL5 measure definition with a sum aggregation."
+  [db-id table-id field-id]
+  (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+        table (lib.metadata/table metadata-provider table-id)
+        query (lib/query metadata-provider table)
+        field (lib.metadata/field metadata-provider field-id)]
+    (lib/aggregate query (lib/sum field))))
+
+(deftest measures-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}
+                       :model/Database   {db-id :id}        {:name "My Database"}
+                       :model/Table      {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
+                       :model/Field      {field-id :id}     {:name "Some Field" :table_id no-schema-id}]
+      (let [definition (pmbql-measure-definition db-id no-schema-id field-id)]
+        (ts/with-temp-dpc [:model/Measure
+                           {m1-id  :id
+                            m1-eid :entity_id}
+                           {:name       "My Measure"
+                            :creator_id ann-id
+                            :table_id   no-schema-id
+                            :definition definition}]
+          ;; Uncomment to regenerate measure baseline: (round-trip-test/add-to-baseline!)
+          (testing "measure"
+            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m1-id))]
+              (is (=? {:serdes/meta [{:model "Measure" :id m1-eid :label "my_measure"}]
+                       :table_id    ["My Database" nil "Schemaless Table"]
+                       :creator_id  "ann@heart.band"
+                       :definition  {:database "My Database"
+                                     :type     :query
+                                     :query    {:source-table ["My Database" nil "Schemaless Table"]
+                                                :aggregation  [[:sum [:field ["My Database" nil "Schemaless Table" "Some Field"] map?]]]}}
+                       :created_at  string?}
+                      ser))
+              (is (not (contains? ser :id)))
+              (testing "depend on the Database, the Table and any fields from the definition"
+                (is (= #{[{:model "Database" :id "My Database"}]
+                         [{:model "Database" :id "My Database"}
+                          {:model "Table" :id "Schemaless Table"}]
+                         [{:model "Database" :id "My Database"}
+                          {:model "Table" :id "Schemaless Table"}
+                          {:model "Field" :id "Some Field"}]}
+                       (set (serdes/dependencies ser))))))))))))
+
+(deftest table-publishing-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database   {db-id :id}           {:name "My Database"}
+                       :model/Table      {table-id :id}        {:name "Schemaless Table" :db_id db-id}
+                       :model/Collection {coll-id  :id
+                                          coll-eid :entity_id} {:name "Publishing Collection"}
+                       :model/Table      {pub-table-id :id}    {:name         "Published Table"
+                                                                :db_id        db-id
+                                                                :is_published true
+                                                                :collection_id coll-id}
+                       :model/Table      {unpub-table-id :id}  {:name         "Unpublished Table"
+                                                                :db_id        db-id
+                                                                :is_published false}]
+      (testing "published table with collection_id"
+        (let [ser (ts/extract-one "Table" pub-table-id)]
+          (testing "is_published is included in extraction"
+            (is (true? (:is_published ser))))
+          (testing "collection_id is transformed to entity_id"
+            (is (= coll-eid (:collection_id ser))))
+          (testing "depends on the collection"
+            (is (contains? (set (serdes/dependencies ser))
+                           [{:model "Collection" :id coll-eid}])))))
+      (testing "unpublished table without collection_id"
+        (let [ser (ts/extract-one "Table" unpub-table-id)]
+          (testing "is_published defaults to false"
+            (is (false? (:is_published ser))))
+          (testing "collection_id is nil"
+            (is (nil? (:collection_id ser))))
+          (testing "does not depend on any collection"
+            (is (not (some #(= "Collection" (:model (first %)))
+                           (serdes/dependencies ser)))))))
+      (testing "regular table without publishing fields set"
+        (let [ser (ts/extract-one "Table" table-id)]
+          (testing "is_published defaults to false"
+            (is (false? (:is_published ser))))
+
+          (testing "collection_id is nil"
+            (is (nil? (:collection_id ser)))))))))
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
@@ -1685,6 +1773,40 @@
                                   :no-data-model true})]
         (is (= #{} (ids-by-model "Collection" ser)))))))
 
+(deftest xray-of-analytics-model-export-test
+  (testing "X-rays of analytics models can be exported without errors"
+    (mt/with-empty-h2-app-db!
+      (mbc/ensure-audit-db-installed!)
+      (testing "sanity check that the analytics content exists"
+        (is (some? (audit/default-audit-collection)))
+        ;; Find the Query log model (entity_id: QOtZaiTLf2FDD4AT6Oinb)
+        (let [query-log-card (t2/select-one :model/Card :entity_id "QOtZaiTLf2FDD4AT6Oinb")]
+          (is (some? query-log-card) "Query log model should exist in analytics")
+          (when query-log-card
+            ;; Create a card that depends on the analytics model (simulating an x-ray)
+            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Test Collection"}
+                           :model/Card {_xray-card-id :id xray-card-eid :entity_id}
+                           {:name          "X-ray of Query log"
+                            :collection_id coll-id
+                            :database_id   (:database_id query-log-card)
+                            :dataset_query {:type     :query
+                                            :database (:database_id query-log-card)
+                                            :query    {:source-table (str "card__" (:id query-log-card))}}}]
+              (testing "Export should succeed without warnings about analytics dependencies"
+                (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                  (let [ser (extract/extract {:targets       [["Collection" coll-id]]
+                                              :no-settings   true
+                                              :no-data-model true})]
+                    (is (contains? (ids-by-model "Card" ser) xray-card-eid)
+                        "X-ray card should be exported")
+                    (is (contains? (ids-by-model "Collection" ser) coll-eid)
+                        "Collection should be exported")
+                    (is (not (contains? (ids-by-model "Card" ser) "QOtZaiTLf2FDD4AT6Oinb"))
+                        "Analytics model should NOT be exported")
+                    (let [warn-msgs (into #{} (map :message) (messages))]
+                      (is (not (some #(str/starts-with? % "Failed to export") warn-msgs))
+                          (str "Should not have export warnings, got: " warn-msgs)))))))))))))
+
 (deftest entity-id-in-targets-test
   (mt/with-temp [:model/Collection c {:name "Top-Level Collection"}]
     (testing "Conversion from eid to id works"
@@ -2271,3 +2393,36 @@
           (testing "all transform jobs are extracted"
             (is (= #{hourly-job-eid custom-job-eid}
                    (ids-by-model "TransformJob" (extract/extract {}))))))))))
+
+(deftest collection-export-includes-published-tables-test
+  (testing "Exporting a collection includes published tables without requiring data_model flag"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}   {:name "My Database"}
+                         :model/Collection {coll-id :id} {:name "Export Collection"}
+                         :model/Table      _             {:name          "Published Table"
+                                                          :db_id         db-id
+                                                          :is_published  true
+                                                          :collection_id coll-id}
+                         :model/Table      _             {:name          "Unpublished Table"
+                                                          :db_id         db-id
+                                                          :is_published  false}
+                         :model/Table      _             {:name          "Other Table"
+                                                          :db_id         db-id
+                                                          :is_published  true
+                                                          :collection_id nil}]
+        (let [opts        {:targets       [["Collection" coll-id]]
+                           :no-data-model true
+                           :no-settings   true}
+              extracted   (into [] (extract/extract opts))
+              table-names (->> extracted
+                               (filter #(= "Table" (-> % :serdes/meta last :model)))
+                               (map :name)
+                               set)]
+          (testing "published table in target collection is exported"
+            (is (contains? table-names "Published Table")))
+          (testing "unpublished table is not exported"
+            (is (not (contains? table-names "Unpublished Table"))))
+          (testing "published table in other collection is not exported"
+            (is (not (contains? table-names "Other Table"))))
+          (testing "database is not exported (no-data-model: true)"
+            (is (empty? (filter #(= "Database" (-> % :serdes/meta last :model)) extracted)))))))))

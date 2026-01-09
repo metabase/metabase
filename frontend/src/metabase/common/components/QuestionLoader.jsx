@@ -24,7 +24,7 @@ import { serializeCardForUrl } from "metabase/lib/card";
  *
  *        { // link to a new question created by adding a filter }
  *        <Link
- *          to={question.getUrl()}
+ *          to={modelToUrl(question)}
  *        >
  *          View this ad-hoc exploration
  *        </Link>

@@ -5,6 +5,7 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import {
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -16,13 +17,23 @@ import {
   isStaticEmbedding,
 } from "metabase/embedding/config";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PUT } from "metabase/lib/api";
 import { parseHashOptions } from "metabase/lib/browser";
+import type {
+  ColorScheme,
+  ResolvedColorScheme,
+} from "metabase/lib/color-scheme";
+import {
+  getUserColorScheme,
+  isValidColorScheme,
+  setUserColorSchemeAfterUpdate,
+} from "metabase/lib/color-scheme";
 import { mutateColors } from "metabase/lib/colors/colors";
+import MetabaseSettings from "metabase/lib/settings";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 import { getThemeOverrides } from "../../../theme";
 import { ColorSchemeProvider, useColorScheme } from "../ColorSchemeProvider";
-import type { ResolvedColorScheme } from "../ColorSchemeProvider/ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
@@ -38,6 +49,8 @@ interface ThemeProviderProps {
   theme?: MantineThemeOverride;
 
   displayTheme?: DisplayTheme | string;
+
+  initialColorScheme?: ColorScheme | undefined;
 }
 
 const ThemeProviderInner = (props: ThemeProviderProps) => {
@@ -124,6 +137,7 @@ const getColorSchemeFromDisplayTheme = (
   switch (displayTheme) {
     case "light":
     case "transparent":
+    case undefined:
       return "light";
     case "night":
     case "dark":
@@ -163,8 +177,39 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
     ? getColorSchemeFromDisplayTheme(props.displayTheme)
     : schemeFromHash;
 
+  const [colorSchemeFromSettings, setColorSchemeFromSettings] =
+    useState<ColorScheme>(() => getUserColorScheme() ?? "auto");
+
+  // FIXME: Not only does this use a deprecated API, it also adds a complementary
+  // method to the already deprecated method to remove the listener. This is just
+  // done provisionally for CI testing purposes.
+  useEffect(() => {
+    const updateSetting = (value: ColorScheme) => {
+      if (value && isValidColorScheme(value)) {
+        setColorSchemeFromSettings(value);
+      }
+    };
+
+    MetabaseSettings.on("color-scheme", updateSetting);
+
+    return () => MetabaseSettings.off("color-scheme", updateSetting);
+  }, [setColorSchemeFromSettings]);
+
+  const handleUpdateColorScheme = useCallback(async (value: ColorScheme) => {
+    await PUT("/api/setting/:key")({
+      key: "color-scheme",
+      value: value,
+    });
+
+    setUserColorSchemeAfterUpdate(value);
+  }, []);
+
   return (
-    <ColorSchemeProvider forceColorScheme={forceColorScheme}>
+    <ColorSchemeProvider
+      defaultColorScheme={colorSchemeFromSettings ?? getUserColorScheme()}
+      forceColorScheme={forceColorScheme}
+      onUpdateColorScheme={handleUpdateColorScheme}
+    >
       <ThemeProviderInner {...props} />
     </ColorSchemeProvider>
   );

@@ -8,7 +8,6 @@
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.app-db.core :as mdb]
    [metabase.channel.settings :as channel.settings]
-   [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -89,7 +88,7 @@
 
 (deftest anonymous-usage-stats-test
   (with-redefs [channel.settings/email-configured? (constantly false)
-                slack/slack-configured? (constantly false)]
+                channel.settings/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
@@ -127,7 +126,7 @@
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
     (with-redefs [channel.settings/email-configured? (constantly false)
-                  slack/slack-configured? (constantly false)]
+                  channel.settings/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
@@ -558,6 +557,7 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :development-mode
+    :data-studio
     :embedding
     :embedding-sdk
     :embedding-simple
@@ -627,3 +627,21 @@
         (is (= "metabase" (get-in snowplow-settings [3 :value]))))
       (testing "converts boolean changed? to string"
         (is (= "default" (get-in snowplow-settings [4 :value])))))))
+
+(deftest document-metrics-test
+  (mt/with-empty-h2-app-db!
+    (testing "with no documents"
+      (is (=? {:documents {}}
+              (#'stats/document-metrics))))
+    (testing "with documents"
+      (mt/with-temp [:model/Document _ {}
+                     :model/Document _ {:archived true}]
+        (is (=? {:documents {:total 2
+                             :archived 1}}
+                (#'stats/document-metrics)))))))
+
+(deftest transform-metrics-test
+  (testing "ee-transform-metrics should return zeros for OSS"
+    (mt/with-empty-h2-app-db!
+      (is (= {:transforms 0, :transform_runs_last_24h 0}
+             (stats/ee-transform-metrics))))))

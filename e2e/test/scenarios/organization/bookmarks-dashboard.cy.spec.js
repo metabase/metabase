@@ -1,7 +1,7 @@
 const { H } = cy;
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
-H.describeWithSnowplow("scenarios > dashboard > bookmarks", () => {
+describe("scenarios > dashboard > bookmarks", () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();

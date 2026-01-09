@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { logout } from "metabase/auth/actions";
 import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
 import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -18,6 +19,7 @@ import {
 import { capitalize } from "metabase/lib/formatting";
 import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { openDiagnostics } from "metabase/redux/app";
 import { setOpenModal } from "metabase/redux/ui";
 import {
@@ -35,19 +37,22 @@ import { useHelpLink } from "./useHelpLink";
 const mapStateToProps = (state: State) => ({
   adminItems: getAdminPaths(state),
   canAccessOnboardingPage: getCanAccessOnboardingPage(state),
+  canAccessDataStudio: PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
   isNewInstance: getIsNewInstance(state),
 });
 
 const mapDispatchToProps = {
-  openDiagnostics,
+  onOpenDiagnostics: openDiagnostics,
+  onLogout: logout,
 };
 
 interface ProfileLinkProps {
   adminItems: AdminPath[];
   canAccessOnboardingPage: boolean;
+  canAccessDataStudio: boolean;
   isNewInstance: boolean;
+  onOpenDiagnostics: () => void;
   onLogout: () => void;
-  openDiagnostics: () => void;
 }
 
 interface MenuItem {
@@ -57,15 +62,15 @@ interface MenuItem {
   link?: string;
   action?: () => void;
   separator?: boolean;
-  event?: string;
 }
 
 function ProfileLinkInner({
   adminItems,
   canAccessOnboardingPage,
+  canAccessDataStudio,
   isNewInstance,
   onLogout,
-  openDiagnostics,
+  onOpenDiagnostics,
 }: ProfileLinkProps) {
   const [modalOpen, setModalOpen] = useState<string | null>(null);
   const version = useSetting("version") as MetabaseInfo["version"];
@@ -84,59 +89,64 @@ function ProfileLinkInner({
 
   const generateOptionsForUser = (): MenuItem[] => {
     const showAdminSettingsItem = adminItems?.length > 0;
-
     // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
     const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
 
-    return [
-      {
-        title: t`Account settings`,
-        icon: null,
-        link: Urls.accountSettings(),
-        event: `Navbar;Profile Dropdown;Edit Profile`,
-      },
-      showAdminSettingsItem && {
+    const menuItems: MenuItem[] = [];
+    menuItems.push({
+      title: t`Account settings`,
+      icon: null,
+      link: Urls.accountSettings(),
+    });
+    if (showAdminSettingsItem) {
+      menuItems.push({
         title: t`Admin settings`,
         icon: null,
         link: "/admin",
-        event: `Navbar;Profile Dropdown;Enter Admin`,
-      },
+      });
+    }
+    if (canAccessDataStudio) {
+      menuItems.push({
+        title: t`Data studio`,
+        icon: null,
+        link: Urls.dataStudio(),
+      });
+    }
+    menuItems.push({ separator: true });
+    if (helpLink.visible) {
+      menuItems.push({
+        title: t`Help`,
+        icon: null,
+        link: helpLink.href,
+        externalLink: true,
+      });
+    }
+    if (showOnboardingLink) {
+      menuItems.push({
+        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
+        title: t`How to use Metabase`,
+        icon: null,
+        link: "/getting-started",
+      });
+    }
+    menuItems.push(
       {
         title: t`Keyboard shortcuts`,
         icon: null,
         action: () => dispatch(setOpenModal("help")),
       },
       {
-        separator: true,
-      },
-      helpLink.visible && {
-        title: t`Help`,
-        icon: null,
-        link: helpLink.href,
-        externalLink: true,
-        event: `Navbar;Profile Dropdown;About ${tag}`,
-      },
-      showOnboardingLink && {
-        // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for non-whitelabeled instances
-        title: t`How to use Metabase`,
-        icon: null,
-        link: "/getting-started",
-        event: `Navbar;Profile Dropdown;Getting Started`,
-      },
-      {
-        title: t`Report an issue`,
+        title: t`Download diagnostics`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");
-          openDiagnostics();
+          onOpenDiagnostics();
         },
-        event: `Navbar;Profile Dropdown;Report Bug`,
       },
       {
         title: t`About ${applicationName}`,
         icon: null,
         action: () => openModal("about"),
-        event: `Navbar;Profile Dropdown;About ${tag}`,
       },
       {
         separator: true,
@@ -145,15 +155,15 @@ function ProfileLinkInner({
         title: t`Sign out`,
         icon: null,
         action: () => onLogout(),
-        event: `Navbar;Profile Dropdown;Logout`,
       },
-    ].filter((item) => !!item);
+    );
+
+    return menuItems;
   };
 
   // show trademark if application name is not whitelabeled
   const isWhiteLabeling = useSelector(getIsWhiteLabeling);
   const showTrademark = !isWhiteLabeling;
-
   const menuItems = generateOptionsForUser();
 
   return (
@@ -165,7 +175,7 @@ function ProfileLinkInner({
               size="2.25rem"
               p="sm"
               variant="outline"
-              color="text-dark"
+              color="text-primary"
               bd="1px solid var(--mb-color-border)"
               aria-label={t`Settings`}
             >

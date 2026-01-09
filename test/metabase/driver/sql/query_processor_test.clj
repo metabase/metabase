@@ -11,6 +11,7 @@
    [metabase.driver.sql.query-processor.deprecated]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -1525,7 +1526,7 @@
                (-> (qp.compile/compile query)
                    (update :query #(str/split-lines (driver/prettify-native-form :h2 %))))))))))
 
-;;; see also [[metabase.query-processor-test.order-by-test/order-by-aggregate-fields-test-6]]
+;;; see also [[metabase.query-processor.order-by-test/order-by-aggregate-fields-test-6]]
 (deftest ^:parallel order-by-aggregation-reference-test
   (testing "Should order by aggregation references correctly (#62885)"
     (let [mp    meta/metadata-provider
@@ -1626,3 +1627,24 @@
                  :query
                  (->> (driver/prettify-native-form :h2))
                  str/split-lines))))))
+
+(deftest ^:parallel order-by-aggregate-custom-expression-test
+  (mt/test-drivers (mt/normal-driver-select)
+    (let [mp (mt/metadata-provider)
+          orders-table (lib.metadata/table mp (mt/id :orders))
+          id-field (lib.metadata/field mp (mt/id :orders :id))
+          created-at (lib.metadata/field mp (mt/id :orders :created_at))
+          query (-> (lib/query mp orders-table)
+                    (lib/aggregate (lib.options/update-options
+                                    (lib/distinct id-field)
+                                    assoc :name "a b"))
+                    (lib/breakout (lib/with-temporal-bucket created-at :month))
+                    (as-> $query
+                          (lib/order-by $query
+                                        (m/find-first (comp #{"a b"} :name)
+                                                      (lib/orderable-columns $query))))
+                    (lib/limit 3))]
+      (is (= [1 19 37]
+             (->> (qp/process-query query)
+                  (mt/formatted-rows [identity int])
+                  (map second)))))))

@@ -1,5 +1,4 @@
-import type { MatcherOptions } from "@testing-library/cypress";
-import yamljs from "yamljs";
+import yaml from "js-yaml";
 
 import type { Collection } from "metabase-types/api";
 
@@ -44,7 +43,7 @@ export const commitToRepo = (
 
 // Setup remote sync via the API
 export function configureGit(
-  syncType: "development" | "production",
+  syncType: "read-write" | "read-only",
   syncUrl = LOCAL_GIT_PATH + "/.git",
 ) {
   cy.request("PUT", "/api/ee/remote-sync/settings", {
@@ -96,7 +95,7 @@ export const wrapSyncedCollection = (alias = "syncedCollection", n = 0) => {
 
   cy.request("/api/collection").then(({ body: collections }) => {
     const syncedCollection = collections.find(
-      (c: Collection) => c.type === "remote-synced" && c.location === "/",
+      (c: Collection) => c.is_remote_synced && c.location === "/",
     );
 
     if (syncedCollection) {
@@ -125,13 +124,13 @@ export const updateRemoteQuestion = (
     const fullPath = `${LOCAL_GIT_PATH}/${questionFilePath}`;
 
     cy.readFile(fullPath).then((str) => {
-      const doc = yamljs.parse(str);
+      const doc = yaml.load(str) as Record<string, unknown>;
 
       assertionsFn?.(doc);
 
       const updatedDoc = updateFn(doc);
 
-      cy.writeFile(fullPath, yamljs.stringify(updatedDoc));
+      cy.writeFile(fullPath, yaml.dump(updatedDoc));
       cy.exec(`git -C ${LOCAL_GIT_PATH} commit -am '${commitMessage}'`);
     });
   });
@@ -164,8 +163,45 @@ export const goToSyncedCollection = (opts?: Partial<Cypress.ClickOptions>) =>
     .findByRole("treeitem", { name: /Synced Collection/ })
     .click(opts);
 
-export const branchPicker = (opts?: Partial<MatcherOptions>) =>
-  navigationSidebar().findByTestId("branch-picker-button", opts);
+// Git sync controls are now in the app bar, not the sidebar
+export const getGitSyncControls = () => cy.findByTestId("git-sync-controls");
+
+const ensureGitSyncMenuOpen = () => {
+  getGitSyncControls().then(($btn) => {
+    if ($btn.attr("data-expanded") !== "true") {
+      cy.wrap($btn).click();
+    }
+  });
+};
+
+export const getPullOption = () => {
+  ensureGitSyncMenuOpen();
+  return popover().findByRole("option", { name: /Pull changes/ });
+};
+
+export const getPushOption = () => {
+  ensureGitSyncMenuOpen();
+  return popover().findByRole("option", { name: /Push changes/ });
+};
+
+export const getSwitchBranchOption = () => {
+  ensureGitSyncMenuOpen();
+  return popover().findByRole("option", { name: /Switch branch/ });
+};
+
+// Enable tenants feature for testing
+export const enableTenants = () => {
+  cy.request("PUT", "/api/setting/use-tenants", { value: true });
+};
+
+// Create a shared tenant collection for testing
+// Note: namespace must be "shared-tenant-collection" to match the API query in SharedTenantCollectionsList
+export const createSharedTenantCollection = (name: string) => {
+  return cy.request("POST", "/api/collection", {
+    name,
+    namespace: "shared-tenant-collection",
+  });
+};
 
 export const interceptTask = () =>
   cy.intercept("/api/ee/remote-sync/current-task").as("currentTask");
@@ -178,10 +214,10 @@ export const waitForTask = (
     throw Error(`Too many retries waiting for ${taskName}`);
   }
   cy.wait("@currentTask").then(({ response }) => {
-    const { body } = response;
-    if (body.sync_task_type !== taskName) {
+    const { body } = response || {};
+    if (body?.sync_task_type !== taskName) {
       waitForTask({ taskName });
-    } else if (body.status !== "successful") {
+    } else if (body?.status !== "successful") {
       waitForTask({ taskName }, retries + 1);
     }
   });

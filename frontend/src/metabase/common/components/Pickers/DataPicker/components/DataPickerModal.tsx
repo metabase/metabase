@@ -5,7 +5,6 @@ import { useSetting } from "metabase/common/hooks";
 import { Button, Checkbox, Icon, Popover } from "metabase/ui";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  CollectionItemModel,
   DatabaseId,
   RecentContexts,
   RecentItem,
@@ -18,6 +17,7 @@ import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-ite
 import type { CollectionPickerItem } from "../../CollectionPicker";
 import {
   QuestionPicker,
+  type QuestionPickerModel,
   type QuestionPickerStatePath,
 } from "../../QuestionPicker";
 import { TablePicker } from "../../TablePicker";
@@ -32,7 +32,6 @@ import {
   createQuestionPickerItemSelectHandler,
   createShouldShowItem,
   getRecentItemDatabaseId,
-  isCollectionItem,
   isTableItem,
   isValueItem,
 } from "../utils";
@@ -50,24 +49,28 @@ interface Props {
   shouldDisableItem?: (
     item: DataPickerItem | CollectionPickerItem | RecentItem,
   ) => boolean;
+  options?: DataPickerModalOptions;
 }
 
-type FilterOption = { label: string; value: CollectionItemModel };
+type FilterOption = { label: string; value: QuestionPickerModel };
 
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = [
+const QUESTION_PICKER_MODELS: QuestionPickerModel[] = [
   "card",
   "dataset",
   "metric",
   "dashboard",
+  "table",
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
-const options: DataPickerModalOptions = {
+const OPTIONS: DataPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
   showPersonalCollections: true,
   showRootCollection: true,
+  showLibrary: true,
+  showDatabases: true,
   hasRecents: true,
 };
 
@@ -75,19 +78,26 @@ export const DataPickerModal = ({
   databaseId,
   title,
   value,
-  models = ["table", "card", "dataset"],
   onChange,
   onClose,
   shouldDisableItem,
+  options,
+  models = ["card", "dataset", "metric", "table"],
 }: Props) => {
-  const [modelFilter, setModelFilter] = useState<CollectionItemModel[]>(
+  options = {
+    ...OPTIONS,
+    ...options,
+  };
+  const [modelFilter, setModelFilter] = useState<QuestionPickerModel[]>(
     QUESTION_PICKER_MODELS,
   );
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
+
   const {
     hasQuestions,
     hasModels,
     hasMetrics,
+    hasTables,
     isLoading: isLoadingAvailableData,
   } = useAvailableData({
     databaseId,
@@ -114,8 +124,14 @@ export const DataPickerModal = ({
         value: "metric" as const,
       });
     }
+    if (hasTables) {
+      filterOptions.push({
+        label: t`Tables`,
+        value: "table" as const,
+      });
+    }
     return filterOptions;
-  }, [hasQuestions, hasModels, hasMetrics]);
+  }, [hasQuestions, hasModels, hasMetrics, hasTables]);
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -164,7 +180,6 @@ export const DataPickerModal = ({
 
   const [questionsPath, setQuestionsPath] = useState<QuestionPickerStatePath>();
   const [tablesPath, setTablesPath] = useState<TablePickerStatePath>();
-
   const filterButton = (
     <FilterButton
       value={modelFilter}
@@ -180,7 +195,9 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    if (models.includes("table")) {
+    const hasOnlyTableModels =
+      models != null && models.length === 1 && models[0] === "table";
+    if (hasOnlyTableModels || !hasNestedQueriesEnabled) {
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
@@ -198,27 +215,21 @@ export const DataPickerModal = ({
           />
         ),
       });
-    }
-
-    const shouldShowCollectionsTab =
-      (hasQuestions || hasMetrics || hasModels) &&
-      hasNestedQueriesEnabled &&
-      (models.includes("card") ||
-        models.includes("dataset") ||
-        models.includes("metric"));
-
-    if (shouldShowCollectionsTab) {
+    } else {
       computedTabs.push({
         id: "questions-tab",
-        displayName: t`Collections`,
-        models: ["card" as const, "dataset" as const, "metric" as const],
-        folderModels: ["collection" as const, "dashboard" as const],
+        displayName: t`Data`,
+        models,
+        folderModels: ["collection", "dashboard", "schema", "database"],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
-            initialValue={isCollectionItem(value) ? value : undefined}
-            models={QUESTION_PICKER_MODELS}
+            initialValue={value}
+            models={[
+              ...models,
+              ...(models.includes("card") ? ["dashboard" as const] : []),
+            ]}
             options={options}
             path={questionsPath}
             shouldShowItem={shouldShowItem}
@@ -226,6 +237,8 @@ export const DataPickerModal = ({
             onItemSelect={createQuestionPickerItemSelectHandler(onItemSelect)}
             onPathChange={setQuestionsPath}
             shouldDisableItem={shouldDisableItem}
+            tablesPath={tablesPath}
+            onTablesPathChange={setTablesPath}
           />
         ),
       });
@@ -250,6 +263,7 @@ export const DataPickerModal = ({
       onItemSelect={handleItemSelect}
       isLoadingTabs={isLoadingAvailableData}
       searchExtraButtons={[filterButton]}
+      searchModels={models}
     />
   );
 };
@@ -259,8 +273,8 @@ const FilterButton = ({
   onChange,
   options,
 }: {
-  value: CollectionItemModel[];
-  onChange: (value: CollectionItemModel[]) => void;
+  value: QuestionPickerModel[];
+  onChange: (value: QuestionPickerModel[]) => void;
   options: FilterOption[];
 }) => {
   return (
@@ -274,7 +288,7 @@ const FilterButton = ({
         <Checkbox.Group
           value={value}
           onChange={(newValues: string[]) =>
-            onChange(newValues as CollectionItemModel[])
+            onChange(newValues as QuestionPickerModel[])
           }
           px="1rem"
           py="0.5rem"

@@ -5,9 +5,8 @@ import { SetByEnvVarWrapper } from "metabase/admin/settings/components/widgets/A
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import InputBlurChange from "metabase/common/components/InputBlurChange";
 import { UtilApi } from "metabase/services";
-import { Box, Button, Flex } from "metabase/ui";
+import { Box, Button, Flex, TextInputBlurChange } from "metabase/ui";
 
 import { SettingHeader } from "../SettingHeader";
 
@@ -44,7 +43,7 @@ export const EmbeddingSecretKeyWidget = () => {
         settingKey="embedding-secret-key"
       >
         <Flex gap="md" w="100%">
-          <InputBlurChange
+          <TextInputBlurChange
             value={value}
             onBlurChange={(e) => handleChange(e.target.value)}
             rightSection={value && <CopyButton value={value} />}

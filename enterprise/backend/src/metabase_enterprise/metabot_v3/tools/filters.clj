@@ -146,20 +146,20 @@
     (lib/breakout query expr)))
 
 (defn- query-metric*
-  [{:keys [metric-id filters group-by] :as _arguments}]
+  [{:keys [metric-id filters group-by]}]
   (let [card (metabot-v3.tools.u/get-card metric-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (->> (lib/query mp (lib.metadata/card mp metric-id))
                         lib/remove-all-breakouts)
+        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         query (as-> base-query $q
                 (reduce add-filter
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) filters))
+                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) filters))
                 (reduce add-breakout
                         $q
-                        (map #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols) group-by)))
+                        (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
@@ -170,12 +170,6 @@
      :result-columns (into []
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
-
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (let [id 135]
-      (query-metric* {:metric-id id})))
-  -)
 
 (defn query-metric
   "Create a query based on a metric."
@@ -225,18 +219,16 @@
   (lib/order-by query (:column field) direction))
 
 (defn- add-limit [query limit]
-  (if limit
-    (lib/limit query limit)
-    query))
+  (cond-> query limit (lib/limit limit)))
 
 (defn- query-model*
-  [{:keys [model-id fields filters aggregations group-by order-by limit] :as _arguments}]
+  [{:keys [model-id fields filters aggregations group-by order-by limit]}]
   (let [card (metabot-v3.tools.u/get-card model-id)
         mp (lib-be/application-database-metadata-provider (:database_id card))
         base-query (lib/query mp (lib.metadata/card mp model-id))
+        field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
-        filter-field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -244,17 +236,17 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        reduce-query (fn [query f coll] (reduce f query coll))
-        query (-> base-query
-                  (reduce-query (fn [query [expr-or-column expr-name]]
-                                  (lib/expression query expr-name expr-or-column))
-                                (filter (comp expression? first) projection))
-                  (add-fields projection)
-                  (reduce-query add-filter (map resolve-visible-column filters))
-                  (reduce-query add-aggregation (map resolve-visible-column aggregations))
-                  (reduce-query add-breakout (map resolve-visible-column group-by))
-                  (reduce-query add-order-by (map resolve-order-by-column order-by))
-                  (add-limit limit))
+        query (as-> base-query query
+                (reduce (fn [query [expr-or-column expr-name]]
+                          (lib/expression query expr-name expr-or-column))
+                        query
+                        (filter (comp expression? first) projection))
+                (add-fields query projection)
+                (reduce add-filter query (map resolve-visible-column filters))
+                (reduce add-aggregation query (map resolve-visible-column aggregations))
+                (reduce add-breakout query (map resolve-visible-column group-by))
+                (reduce add-order-by query (map resolve-order-by-column order-by))
+                (add-limit query limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
@@ -304,17 +296,17 @@
                                                                (lib/display-name base-query -1 column :long))))
                               resolve-visible-column)
                         fields)
-        reduce-query (fn [query f coll] (reduce f query coll))
-        query (-> base-query
-                  (reduce-query (fn [query [expr-or-column expr-name]]
-                                  (lib/expression query expr-name expr-or-column))
-                                (filter (comp expression? first) projection))
-                  (add-fields projection)
-                  (reduce-query add-filter (map resolve-visible-column filters))
-                  (reduce-query add-aggregation (map resolve-visible-column aggregations))
-                  (reduce-query add-breakout (map resolve-visible-column group-by))
-                  (reduce-query add-order-by (map resolve-order-by-column order-by))
-                  (add-limit limit))
+        query (as-> base-query query
+                (reduce (fn [query [expr-or-column expr-name]]
+                          (lib/expression query expr-name expr-or-column))
+                        query
+                        (filter (comp expression? first) projection))
+                (add-fields query projection)
+                (reduce add-filter query (map resolve-visible-column filters))
+                (reduce add-aggregation query (map resolve-visible-column aggregations))
+                (reduce add-breakout query (map resolve-visible-column group-by))
+                (reduce add-order-by query (map resolve-order-by-column order-by))
+                (add-limit query limit))
         query-id (u/generate-nano-id)
         query-field-id-prefix (metabot-v3.tools.u/query-field-id-prefix query-id)
         returned-cols (lib/returned-columns query)]
@@ -350,13 +342,14 @@
   (let [{:keys [table-id query query-id report-id]} data-source
         model-id (lib.util/legacy-string-table-id->card-id table-id)
         handle-query (fn [query query-id]
-                       (let [database-id (:database query)
+                       (let [normalized-query (lib-be/normalize-query query)
+                             database-id (:database normalized-query)
                              _ (api/read-check :model/Database database-id)
                              mp (lib-be/application-database-metadata-provider database-id)]
                          [(if query-id
                             (metabot-v3.tools.u/query-field-id-prefix query-id)
                             metabot-v3.tools.u/any-prefix-pattern)
-                          (-> (lib/query mp query) lib/append-stage)]))]
+                          (-> (lib/query mp normalized-query) lib/append-stage)]))]
     (cond
       model-id
       (if-let [model-query (metabot-v3.tools.u/card-query model-id)]
@@ -387,7 +380,7 @@
 
 (defn filter-records
   "Add `filters` to the query referenced by `data-source`"
-  [{:keys [data-source filters] :as _arguments}]
+  [{:keys [data-source filters]}]
   (try
     (let [[filter-field-id-prefix base] (base-query data-source)
           returned-cols (lib/returned-columns base)
@@ -404,22 +397,3 @@
                               (lib/returned-columns query))}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
-
-(comment
-  (require '[metabase.query-processor :as qp]
-           '[toucan2.core :as t2])
-  (t2/select :model/Field)
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (-> (filter-records #_{:data-source {:tabl-id 3}
-                           :filters [{:operation "number-greater-than"
-                                      :field-id "t3/6"
-                                      :value 50}]}
-         {:data-source {:table-id 1}
-          :filters [{:operation "greater-than"
-                     :bucket "month-of-year"
-                     :field-id "t1/3"
-                     :value #_"2020-01-01" 1}]})
-        :structured-output :query qp/process-query :data :native_form :query))
-  -)

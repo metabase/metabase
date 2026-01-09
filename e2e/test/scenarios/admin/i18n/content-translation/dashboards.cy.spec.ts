@@ -7,6 +7,7 @@ import type {
   DashboardDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
+import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
 import {
   ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CATEGORY_PIE,
@@ -22,11 +23,10 @@ import {
   germanFieldNames,
   germanFieldValues,
 } from "./constants";
-import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
 
-describe("scenarios > content translation > static embedding > dashboards", () => {
+describe("scenarios > content translation > static embeds > dashboards", () => {
   describe("pivot table renamed column (metabase#63296)", () => {
     beforeEach(() => {
       H.restore();
@@ -85,8 +85,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
         H.saveDashboard();
 
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
         });
         H.publishChanges("dashboard", () => {});
 
@@ -156,7 +157,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       );
     });
 
-    it("should translate static embedding dashboard card titles and descriptions", () => {
+    it("should translate guest embeds dashboard card titles and descriptions", () => {
       H.createDashboard({
         name: "the_dashboard",
       }).then(({ body: { id: dashboardId } }) => {
@@ -167,8 +168,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
         H.saveDashboard();
 
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
         });
         H.publishChanges("dashboard", () => {});
 
@@ -263,8 +265,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
         H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
         H.saveDashboard();
 
-        H.openStaticEmbeddingModal({
-          acceptTerms: false,
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
         });
         H.publishChanges("dashboard", () => {});
 
@@ -307,7 +310,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       });
     });
 
-    it("should translate static embedding dashboard values on visualizer cards (metabase#62373)", () => {
+    it("should translate guest embeds dashboard values on visualizer cards (metabase#62373)", () => {
       H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.editDashboard();
@@ -327,8 +330,9 @@ describe("scenarios > content translation > static embedding > dashboards", () =
       H.saveDashcardVisualizerModal({ mode: "create" });
       H.saveDashboard();
 
-      H.openStaticEmbeddingModal({
-        acceptTerms: false,
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: ORDERS_DASHBOARD_ID,
       });
       H.publishChanges("dashboard", () => {});
 
@@ -676,7 +680,6 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           );
           cy.wait("@cardQuery");
 
-          H.filterWidget().contains("vrai");
           cy.findByTestId("table-body").within(() => {
             cy.findAllByText(/vrai/).should("have.length", 2);
             cy.findAllByText(/true/).should("have.length", 0);
@@ -768,6 +771,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           H.filterWidget().findByText("Multi").click();
           // Search matches against untranslated text, hence "Fran" matching these names
           cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
+          cy.wait("@searchQuery");
           cy.findByTestId("parameter-value-dropdown").within(() => {
             cy.findByText(/Glacia Froskeon/).click();
             cy.button(/Ajouter un filtre/).click();
@@ -786,6 +790,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           // Search matches against untranslated text, hence "Fran" matching these names
           cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
           cy.findByText(/Hammera Francite/).click();
+          cy.realPress("Escape");
           cy.findByTestId("parameter-value-dropdown")
             .button(/Mettre à jour le filtre/)
             .click();

@@ -32,7 +32,7 @@ const MODEL_NAME = "Test Action Model";
         );
       });
 
-      H.describeWithSnowplow("adding and executing actions", () => {
+      describe("adding and executing actions", () => {
         beforeEach(() => {
           H.resetSnowplow();
           H.restore(`${dialect}-writable`);
@@ -354,16 +354,24 @@ const MODEL_NAME = "Test Action Model";
                   });
                   cy.visit(`/dashboard/${dashboard.id}`);
                   cy.wrap(dashboard.id).as("dashboardId");
+
+                  cy.log("The action should be visible in the dashboard");
+                  cy.findByRole("button", { name: "Create" }).should(
+                    "be.visible",
+                  );
+
+                  cy.log("Visit static embed dashboard");
+
+                  H.openLegacyStaticEmbeddingModal({
+                    resource: "dashboard",
+                    resourceId: dashboard.id,
+                    activeTab: "parameters",
+                    unpublishBeforeOpen: false,
+                  });
                 },
               );
             });
 
-          cy.log("The action should be visible in the dashboard");
-          cy.findByRole("button", { name: "Create" }).should("be.visible");
-
-          cy.log("Visit static embed dashboard");
-
-          H.openStaticEmbeddingModal({ activeTab: "parameters" });
           H.visitIframe();
 
           cy.log("Assert static embed dashboard");

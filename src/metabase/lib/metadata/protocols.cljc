@@ -10,7 +10,7 @@
 (mr/def ::metadata-type-excluding-database
   "Database metadata is stored separately/in a special way. These are the types of metadata that are stored with the
   other non-Database methods."
-  [:enum :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/segment :metadata/native-query-snippet :metadata/transform])
+  [:enum :metadata/table :metadata/column :metadata/card :metadata/measure :metadata/metric :metadata/segment :metadata/native-query-snippet :metadata/transform])
 
 (mr/def ::metadata-spec
   "Spec for fetching objects from a metadata provider. `:lib/type` is the type of the object to fetch, and the other
@@ -32,10 +32,10 @@
     {:error/message ":id and :name cannot be used at the same time."}
     (complement (every-pred :id :name))]
    [:fn
-    {:error/message ":table-id is currently only supported for Fields, Metrics, and Segments."}
+    {:error/message ":table-id is currently only supported for Fields, Measures, Metrics, and Segments."}
     (fn [spec]
       (or (not (:table-id spec))
-          (#{:metadata/column :metadata/metric :metadata/segment} (:lib/type spec))))]
+          (#{:metadata/column :metadata/measure :metadata/metric :metadata/segment} (:lib/type spec))))]
    [:fn
     {:error/message ":card-id is currently only supported for Metrics."}
     (fn [spec]
@@ -80,7 +80,7 @@
                             (not (false? (:active %)))
                             (not (#{:sensitive :retired} (:visibility-type %))))
 
-                          (:metadata/card :metadata/metric :metadata/segment)
+                          (:metadata/card :metadata/measure :metadata/metric :metadata/segment)
                           #(not (:archived %))
 
                           #_else
@@ -204,10 +204,10 @@
   (metadatas metadata-provider {:lib/type :metadata/table}))
 
 (mu/defn metadatas-for-table :- [:maybe [:sequential ::metadata]]
-  "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
-  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, or `:metadata/segment`."
+  "Return active (non-archived) metadatas associated with a particular Table, either Fields, Measures, Metrics, or
+  Segments -- `metadata-type` must be one of `:metadata/column`, `:metadata/measure`, `:metadata/metric`, or `:metadata/segment`."
   [metadata-provider :- ::metadata-provider
-   metadata-type     :- [:enum :metadata/column :metadata/metric :metadata/segment]
+   metadata-type     :- [:enum :metadata/column :metadata/measure :metadata/metric :metadata/segment]
    table-id          :- ::lib.schema.id/table]
   (metadatas metadata-provider {:lib/type metadata-type, :table-id table-id}))
 
@@ -270,6 +270,13 @@
    segment-id        :- ::lib.schema.id/segment]
   (metadata-by-id metadata-provider :metadata/segment segment-id))
 
+(mu/defn measure :- [:maybe ::lib.schema.metadata/measure]
+  "Return metadata for a particular Measure, i.e. something from the `measure` table in the application
+  database. Metadata should match `:metabase.lib.schema.metadata/measure`."
+  [metadata-provider :- ::metadata-provider
+   measure-id        :- ::lib.schema.id/measure]
+  (metadata-by-id metadata-provider :metadata/measure measure-id))
+
 (mu/defn fields :- [:maybe [:sequential ::lib.schema.metadata/column]]
   "Return a sequence of Fields associated with a Table with the given `table-id`. Fields should satisfy
   the `:metabase.lib.schema.metadata/column` schema. If no such Table exists, this should error."
@@ -283,6 +290,13 @@
   [metadata-provider :- ::metadata-provider
    table-id          :- ::lib.schema.id/table]
   (metadatas metadata-provider {:lib/type :metadata/segment, :table-id table-id}))
+
+(mu/defn measures :- [:maybe [:sequential ::lib.schema.metadata/measure]]
+  "Return a sequence of Measures associated with a Table with the given `table-id`. Measures should satisfy
+  the `:metabase.lib.schema.metadata/measure` schema. If no Table with ID `table-id` exists, this should error."
+  [metadata-provider :- ::metadata-provider
+   table-id          :- ::lib.schema.id/table]
+  (metadatas metadata-provider {:lib/type :metadata/measure, :table-id table-id}))
 
 (#?(:clj p/defprotocol+ :cljs defprotocol) CachedMetadataProvider
   "Optional. A protocol for a MetadataProvider that some sort of internal cache. This is mostly useful for
@@ -305,7 +319,10 @@
   (has-cache? [cached-metadata-provider]
     "Whether this metadata provider actually has a cache or not. (Some metadata providers like
   ComposedMetadataProvider implement this method but can only cache stuff if one of the providers they wrap is a cached
-  metadata provider.)"))
+  metadata provider.)")
+  (clear-cache! [cached-metadata-provider]
+    "Removes everything from the cache of this `CachedMetadataProvider`. Should not need to be called in general,
+    but some tests want to eg. reuse card numbers and caching can return stale cards."))
 
 (defn cached-metadata-provider?
   "Whether `x` satisfies the [[CachedMetadataProvider]] protocol. This does not necessarily mean it actually caches

@@ -252,7 +252,7 @@
 
 ; the "-feature" suffix avoids name collision with the setting getter
 (define-premium-feature ^{:added "0.55.0"} enable-embedding-simple-feature?
-  "Should we enable Embedded Analytics JS?"
+  "Should we enable modular embedding?"
   :embedding-simple)
 
 (define-premium-feature ^{:added "0.57.0"} enable-embedding-hub?
@@ -291,10 +291,6 @@
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
-(define-premium-feature ^{:added "0.57.0"} enable-documents?
-  "Does this instance support the new document entity."
-  :documents)
-
 (define-premium-feature ^{:added "0.57.0"} enable-remote-sync?
   "Does this instance support remote syncing collections."
   :remote-sync)
@@ -310,6 +306,18 @@
 (define-premium-feature ^{:added "0.57.0"} enable-dependencies?
   "Should we allow users to use dependency tracking?"
   :dependencies)
+
+(define-premium-feature ^{:added "0.57.1"} enable-support-users?
+  "Should users be allowed to enable support users in-app?"
+  :support-users)
+
+(define-premium-feature ^{:added "0.58.0"} enable-data-studio?
+  "Should we enable the Data Studio?"
+  :data-studio)
+
+(define-premium-feature ^{:added "0.58.0"} enable-tenants?
+  "Should the multi-tenant feature be enabled?"
+  :tenants)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -328,10 +336,10 @@
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)
+   :data_studio                    (enable-data-studio?)
    :dependencies                   (enable-dependencies?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)
-   :documents                      (enable-documents?)
    :email_allow_list               (enable-email-allow-list?)
    :email_restrict_recipients      (enable-email-restrict-recipients?)
    :embedding                      (hide-embed-branding?)
@@ -357,7 +365,9 @@
    :sso_jwt                        (enable-sso-jwt?)
    :sso_ldap                       (enable-sso-ldap?)
    :sso_saml                       (enable-sso-saml?)
+   :support-users                  (enable-support-users?)
    :table_data_editing             (table-data-editing?)
+   :tenants                        (enable-tenants?)
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
@@ -368,4 +378,12 @@
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

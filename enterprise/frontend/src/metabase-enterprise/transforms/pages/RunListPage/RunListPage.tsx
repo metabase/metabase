@@ -4,15 +4,17 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
-import { Box, Stack, Title } from "metabase/ui";
+import { Center, Stack } from "metabase/ui";
 import {
   useListTransformRunsQuery,
   useListTransformTagsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
+import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
+import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import { POLLING_INTERVAL } from "metabase-enterprise/transforms/constants";
 import type { TransformRun } from "metabase-types/api";
-
-import { POLLING_INTERVAL } from "../../constants";
 
 import { RunFilterList } from "./RunFilterList";
 import { RunList } from "./RunList";
@@ -27,11 +29,14 @@ export function RunListPage({ location }: RunListPageProps) {
   const params = getParsedParams(location);
 
   return (
-    <div>
-      <Title order={1} mb="sm">{t`Runs`}</Title>
-      <Box mb="xl">{t`A list of when each transform ran.`}</Box>
+    <PageContainer data-testid="transforms-run-list" gap={0}>
+      <PaneHeader
+        breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
+        py={0}
+        showMetabotButton
+      />
       <RunListPageBody params={params} />
-    </div>
+    </PageContainer>
   );
 }
 
@@ -89,11 +94,15 @@ function RunListPageBody({ params }: RunListPageBodyProps) {
   }
 
   if (!data || isLoading || error != null) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
   }
 
   return (
-    <Stack data-testid="run-list-page">
+    <Stack>
       <RunFilterList params={params} transforms={transforms} tags={tags} />
       <RunList
         runs={data.data}

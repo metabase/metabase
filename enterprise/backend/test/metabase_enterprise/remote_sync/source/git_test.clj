@@ -228,7 +228,7 @@
                    (git/list-files (assoc remote :version "master"))))
             (is (= ["Update 1" "Initial commit"] (map :message (git/log (assoc remote :branch "master")))))))
 
-        (testing "If no root fils are touched, they all stay as-is"
+        (testing "If no root files are touched, they all stay as-is"
           (source.p/write-files! (source.p/snapshot master) "Update 2" [{:path (str thirddir-path "path.txt") :content "Only third dir content"}])
           (is (= [(str otherdir-path "path.txt")
                   (str otherdir-path "path2.txt")
@@ -355,3 +355,65 @@
   (mt/with-temp-dir [remote-dir nil]
     (let [[master _remote] (init-source! "master" remote-dir)]
       (is (= "master" (git/default-branch master))))))
+
+(deftest write-files-removal-test
+  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
+        otherdir-path (str "collections/" "o" (subs (u/generate-nano-id "b") 1) "_otherdir/")]
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"
+                                                   (str subdir-path "file1.yaml") "File 1 in subdir"
+                                                   (str subdir-path "file2.yaml") "File 2 in subdir"
+                                                   (str otherdir-path "file1.yaml") "File 1 in otherdir"
+                                                   (str otherdir-path "file2.yaml") "File 2 in otherdir"})]
+        (testing "Removal entry deletes all files under that path recursively"
+          (source.p/write-files! (source.p/snapshot master) "Remove subdir"
+                                 [{:path (subs subdir-path 0 (dec (count subdir-path))) :remove? true}])
+          (let [files (set (source.p/list-files (source.p/snapshot master)))]
+            (is (contains? files "master.txt") "Root files should remain")
+            (is (contains? files (str otherdir-path "file1.yaml")) "Other collection files should remain")
+            (is (contains? files (str otherdir-path "file2.yaml")) "Other collection files should remain")
+            (is (not (contains? files (str subdir-path "file1.yaml"))) "Subdir files should be removed")
+            (is (not (contains? files (str subdir-path "file2.yaml"))) "Subdir files should be removed")))))))
+
+(deftest write-files-mixed-write-and-removal-test
+  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")
+        newdir-path (str "collections/" "n" (subs (u/generate-nano-id "b") 1) "_newdir/")]
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master _remote] (init-source! "master" remote-dir
+                                           :files {"master.txt" "File in master"
+                                                   (str subdir-path "old-file.yaml") "Old file in subdir"})]
+        (testing "Can combine write and removal entries in same call"
+          (source.p/write-files! (source.p/snapshot master) "Mixed operations"
+                                 [{:path (subs subdir-path 0 (dec (count subdir-path))) :remove? true}
+                                  {:path (str newdir-path "new-file.yaml") :content "New file content"}])
+          (let [snap (source.p/snapshot master)
+                files (set (source.p/list-files snap))]
+            (is (contains? files "master.txt") "Root files should remain")
+            (is (contains? files (str newdir-path "new-file.yaml")) "New files should be added")
+            (is (not (contains? files (str subdir-path "old-file.yaml"))) "Old files should be removed")
+            (is (= "New file content" (source.p/read-file snap (str newdir-path "new-file.yaml"))))))))))
+
+(deftest write-files-empty-removal-path-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "File in master"
+                                                 "subdir/file.yaml" "File in subdir"})]
+      (testing "Empty removal paths are ignored (no-op)"
+        (source.p/write-files! (source.p/snapshot master) "Empty removal"
+                               [{:path "" :remove? true}
+                                {:path "   " :remove? true}])
+        (let [files (set (source.p/list-files (source.p/snapshot master)))]
+          (is (= #{"master.txt" "subdir/file.yaml"} files)
+              "All files should remain when removal path is empty"))))))
+
+(deftest write-files-nonexistent-removal-path-test
+  (mt/with-temp-dir [remote-dir nil]
+    (let [[master _remote] (init-source! "master" remote-dir
+                                         :files {"master.txt" "File in master"})]
+      (testing "Removing non-existent path is a no-op"
+        (source.p/write-files! (source.p/snapshot master) "Remove nonexistent"
+                               [{:path "collections/nonexistent" :remove? true}])
+        (let [files (set (source.p/list-files (source.p/snapshot master)))]
+          (is (= #{"master.txt"} files)
+              "Files should remain unchanged"))))))

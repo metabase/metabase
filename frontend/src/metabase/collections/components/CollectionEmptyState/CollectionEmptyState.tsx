@@ -2,8 +2,12 @@ import type { PropsWithChildren } from "react";
 import { t } from "ttag";
 
 import EmptyStateIcon from "assets/img/empty-states/collection.svg";
-import { isRootTrashCollection } from "metabase/collections/utils";
+import {
+  isLibraryCollection,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import NewItemMenu from "metabase/common/components/NewItemMenu";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { Box, Button, Icon, Stack, Text, useMantineTheme } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -52,16 +56,17 @@ const ArchivedCollectionEmptyState = () => {
 const DefaultCollectionEmptyState = ({
   collection,
 }: CollectionEmptyStateProps) => {
+  const { title, description } = getDefaultEmptyStateMessages(collection);
   const canWrite = !!collection?.can_write;
+  const isSemanticLayer = collection != null && isLibraryCollection(collection);
+  const showAddButton = canWrite && !isSemanticLayer;
 
   return (
     <EmptyStateWrapper>
       <CollectionEmptyIcon />
-      <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
-      <EmptyStateSubtitle>
-        {t`Use collections to organize questions, dashboards, models, and other collections.`}
-      </EmptyStateSubtitle>
-      {canWrite && (
+      <EmptyStateTitle>{title}</EmptyStateTitle>
+      <EmptyStateSubtitle>{description}</EmptyStateSubtitle>
+      {showAddButton && (
         <NewItemMenu
           trigger={
             <Button
@@ -78,6 +83,26 @@ const DefaultCollectionEmptyState = ({
   );
 };
 
+function getDefaultEmptyStateMessages(collection: Collection | undefined) {
+  switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection?.type)) {
+    case "data":
+      return {
+        title: t`No published tables yet`,
+        description: t`Publish tables in the Library to see them here.`,
+      };
+    case "metrics":
+      return {
+        title: t`No metrics yet`,
+        description: t`Put metrics in the Library to see them here.`,
+      };
+    default:
+      return {
+        title: t`This collection is empty`,
+        description: t`Use collections to organize questions, dashboards, models, and other collections.`,
+      };
+  }
+}
+
 export const CollectionEmptyIcon = (): JSX.Element => {
   return (
     <Box w="6rem">
@@ -86,11 +111,11 @@ export const CollectionEmptyIcon = (): JSX.Element => {
   );
 };
 
-const EmptyStateTitle = ({ children }: PropsWithChildren) => {
+export const EmptyStateTitle = ({ children }: PropsWithChildren) => {
   const theme = useMantineTheme();
   return (
     <Box
-      c="text-dark"
+      c="text-primary"
       fz={theme.other.collectionBrowser.emptyContent.title.fontSize}
       fw="bold"
       lh="2rem"
@@ -102,12 +127,12 @@ const EmptyStateTitle = ({ children }: PropsWithChildren) => {
   );
 };
 
-const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
+export const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   const theme = useMantineTheme();
   return (
     <Text
       fz={theme.other.collectionBrowser.emptyContent.subtitle.fontSize}
-      c="text-medium"
+      c="text-secondary"
       ta="center"
       mb="1.5rem"
       maw="25rem"
@@ -117,9 +142,16 @@ const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   );
 };
 
-const EmptyStateWrapper = ({ children }: PropsWithChildren) => {
+export const EmptyStateWrapper = ({
+  children,
+  ...props
+}: PropsWithChildren<{ "data-testid"?: string }>) => {
   return (
-    <Stack data-testid="collection-empty-state" align="center" gap={0}>
+    <Stack
+      data-testid={props["data-testid"] || "collection-empty-state"}
+      align="center"
+      gap={0}
+    >
       {children}
     </Stack>
   );

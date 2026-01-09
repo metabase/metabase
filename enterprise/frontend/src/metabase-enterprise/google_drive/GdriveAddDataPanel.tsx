@@ -57,7 +57,7 @@ const PanelWrapper = ({
         <Title order={2} size="h4" mb="sm">
           {title}
         </Title>
-        <Text c="text-medium">{subtitle}</Text>
+        <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {children}
     </Stack>
@@ -308,7 +308,7 @@ const ErrorAlert = ({
         },
         label: {
           fontSize: "var(--mantine-font-size-md)",
-          color: "var(--mb-color-text-dark)",
+          color: "var(--mb-color-text-primary)",
         },
       }}
     >

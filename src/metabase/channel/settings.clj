@@ -318,3 +318,15 @@
                   (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
                           (tru "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed.")))
                 (setting/set-value-of-type! :keyword :http-channel-host-strategy new-value)))
+
+(defsetting slack-configured?
+  "Is Slack integration configured?"
+  :type       :boolean
+  :visibility :internal
+  :getter     (fn []
+                (boolean
+                 (or
+                  (seq (slack-app-token))
+                  (seq (slack-token)))))
+  :export?    false
+  :setter     :none)

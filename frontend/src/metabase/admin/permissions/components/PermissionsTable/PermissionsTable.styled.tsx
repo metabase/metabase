@@ -6,23 +6,21 @@ import { forwardRef } from "react";
 
 import Link from "metabase/common/components/Link";
 import Label from "metabase/common/components/type/Label";
-import { alpha } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
 
 const getTableBorder = (theme: Theme) =>
-  `1px solid ${alpha(theme.fn.themeColor("border"), 0.5)}`;
+  `1px solid color-mix(in srgb, ${theme.fn.themeColor("border")}, transparent 50%)`;
 
 // background with 1px of border color at the bottom
 // to work properly with sticky positioning
 const getHeaderBackground = (theme: Theme) =>
-  `linear-gradient(to top, ${alpha(
-    theme.fn.themeColor("border"),
-    0.5,
-  )}, ${alpha(
-    theme.fn.themeColor("border"),
-    0.5,
-  )} 1px, var(--mb-color-bg-white) 1px, var(--mb-color-bg-white) 100%)`;
+  `linear-gradient(
+    to top,
+    color-mix(in srgb, ${theme.fn.themeColor("border")} 50%, ${theme.fn.themeColor("background-primary")} 50%) 1px,
+    var(--mb-color-background-primary) 1px,
+    var(--mb-color-background-primary) 100%
+  )`;
 
 export const PermissionsTableRoot = styled.table`
   border-collapse: collapse;
@@ -37,6 +35,7 @@ export const PermissionsTableCell = styled.td`
   box-sizing: border-box;
   min-height: 40px;
   overflow: hidden;
+  background: var(--mb-color-background-primary);
 
   &:first-of-type {
     max-width: 300px;
@@ -45,6 +44,7 @@ export const PermissionsTableCell = styled.td`
     position: sticky;
     padding-left: 0;
     padding-right: 1.5rem;
+    background: var(--mb-color-background-primary);
 
     &:after {
       position: absolute;
@@ -80,10 +80,6 @@ export const PermissionsTableRow = styled.tr`
   border-bottom: ${({ theme }) => getTableBorder(theme)};
 `;
 
-export const EntityName = styled.span`
-  font-weight: 700;
-`;
-
 export const EntityNameLink = styled(Link)`
   display: inline;
   font-weight: 700;
@@ -103,7 +99,7 @@ export const HintIcon = styled(
     );
   }),
 )`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   margin-left: 0.375rem;
   cursor: pointer;
 `;

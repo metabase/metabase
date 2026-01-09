@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import type { TagType } from "metabase/api/tags";
 import {
   TAG_TYPES,
   provideCollectionTags,
@@ -8,22 +9,27 @@ import {
   provideTableTags,
   provideUserTags,
 } from "metabase/api/tags";
-import type {
-  CardDependencyNode,
-  Comment,
-  DashboardDependencyNode,
-  DependencyGraph,
-  DependencyNode,
-  DocumentDependencyNode,
-  PythonLibrary,
-  SandboxDependencyNode,
-  SnippetDependencyNode,
-  TableDependencyNode,
-  Transform,
-  TransformDependencyNode,
-  TransformJob,
-  TransformRun,
-  TransformTag,
+import {
+  type BulkTableInfo,
+  type BulkTableSelectionInfo,
+  type CardDependencyNode,
+  DEPENDENCY_TYPES,
+  type DashboardDependencyNode,
+  type DependencyGraph,
+  type DependencyNode,
+  type DocumentDependencyNode,
+  type MeasureDependencyNode,
+  type PythonLibrary,
+  type SandboxDependencyNode,
+  type SegmentDependencyNode,
+  type SnippetDependencyNode,
+  type SupportAccessGrant,
+  type TableDependencyNode,
+  type Transform,
+  type TransformDependencyNode,
+  type TransformJob,
+  type TransformRun,
+  type TransformTag,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -33,9 +39,6 @@ export const ENTERPRISE_TAG_TYPES = [
   "metabot-entities-list",
   "metabot-prompt-suggestions",
   "gsheets-status",
-  "document",
-  "public-document",
-  "comment",
   "sandbox",
   "transform-tag",
   "transform-job",
@@ -48,9 +51,12 @@ export const ENTERPRISE_TAG_TYPES = [
   "remote-sync-branches",
   "remote-sync-current-task",
   "python-transform-library",
+  "support-access-grant",
+  "support-access-grant-current",
+  "library-collection",
 ] as const;
 
-export type EnterpriseTagType = (typeof ENTERPRISE_TAG_TYPES)[number];
+export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
 
 export function tag(
   type: EnterpriseTagType,
@@ -134,22 +140,6 @@ export function provideTransformJobListTags(
   jobs: TransformJob[],
 ): TagDescription<EnterpriseTagType>[] {
   return [listTag("transform-job"), ...jobs.flatMap(provideTransformJobTags)];
-}
-
-export function provideCommentListTags(
-  comments: Comment[],
-): TagDescription<EnterpriseTagType>[] {
-  return [listTag("comment"), ...comments.flatMap(provideCommentTags)];
-}
-
-export function provideCommentTags(
-  comment: Comment,
-): TagDescription<EnterpriseTagType>[] {
-  if (comment.creator) {
-    return [idTag("comment", comment.id), ...provideUserTags(comment.creator)];
-  }
-
-  return [idTag("comment", comment.id)];
 }
 
 export function providePythonLibraryTags(
@@ -237,6 +227,26 @@ function provideSandboxDependencyNodeTags(
   ];
 }
 
+function provideSegmentDependencyNodeTags(
+  node: SegmentDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("segment", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
+function provideMeasureDependencyNodeTags(
+  node: MeasureDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("measure", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -255,15 +265,16 @@ export function provideDependencyNodeTags(
       return provideDocumentDependencyNodeTags(node);
     case "sandbox":
       return provideSandboxDependencyNodeTags(node);
+    case "segment":
+      return provideSegmentDependencyNodeTags(node);
+    case "measure":
+      return provideMeasureDependencyNodeTags(node);
   }
 }
 
 export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
   return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
+    ...DEPENDENCY_TYPES.map(listTag),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }
@@ -272,4 +283,38 @@ export function provideDependencyGraphTags(
   graph: DependencyGraph,
 ): TagDescription<EnterpriseTagType>[] {
   return provideDependencyNodeListTags(graph.nodes);
+}
+
+export function provideSupportAccessGrantTags(
+  grant: SupportAccessGrant,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("support-access-grant", grant.id)];
+}
+
+export function provideSupportAccessGrantListTags(
+  grants: SupportAccessGrant[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("support-access-grant"),
+    ...grants.flatMap(provideSupportAccessGrantTags),
+  ];
+}
+
+export function provideBulkTableInfoTags(
+  table: BulkTableInfo,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("table", table.id)];
+}
+
+export function provideBulkTableSelectionInfoTags({
+  selected_table,
+  published_downstream_tables,
+  unpublished_upstream_tables,
+}: BulkTableSelectionInfo): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("table"),
+    ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
+    ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
+    ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
 }

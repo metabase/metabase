@@ -35,16 +35,6 @@ export const isWithinIframe = function () {
 // add a global so we can check if the parent iframe is Metabase
 window.METABASE = true;
 
-// check that we're both iframed, and the parent is a Metabase instance
-// used for detecting if we're previewing an embed
-export const IFRAMED_IN_SELF = (function () {
-  try {
-    return window.self !== window.parent && window.parent.METABASE;
-  } catch (e) {
-    return false;
-  }
-})();
-
 // check whether scrollbars are visible to the user,
 // this is off by default on Macs, but can be changed
 // Always on on most other non mobile platforms
@@ -373,7 +363,7 @@ export function shouldOpenInBlankWindow(
   } = {},
 ) {
   if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + EAJS)
+    // always open in new window in modular embedding (react SDK + modular embedding)
     return true;
   }
   const isMetaKey = event && event.metaKey != null ? event.metaKey : metaKey;
@@ -412,7 +402,13 @@ const getLocation = (url) => {
   }
 };
 
-function getPathnameWithoutSubPath(pathname) {
+/**
+ * Returns the pathname without the site subpath, if any
+ *
+ * @param {string} pathname the pathname
+ * @returns the pathname without it subpath, if any
+ */
+export function getPathnameWithoutSubPath(pathname) {
   const pathnameSections = pathname.split("/");
   const sitePathSections = getSitePath().split("/");
 
@@ -453,7 +449,7 @@ export function isSameOrSiteUrlOrigin(url) {
 
 export function getUrlTarget(url) {
   if (isEmbeddingSdk()) {
-    // always open in new window in modular embedding (react SDK + EAJS)
+    // always open in new window in modular embedding (react SDK + modular embedding)
     return "_blank";
   }
   return isSameOrSiteUrlOrigin(url) ? "_self" : "_blank";

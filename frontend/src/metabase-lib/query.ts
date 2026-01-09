@@ -1,4 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
+import { metadataProvider } from "metabase-lib/metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   CardType,
@@ -14,6 +16,7 @@ import type {
   ClauseType,
   ColumnMetadata,
   Join,
+  MeasureMetadata,
   MetadataProvider,
   MetricMetadata,
   Query,
@@ -87,7 +90,13 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause:
+    | Clause
+    | ColumnMetadata
+    | MeasureMetadata
+    | MetricMetadata
+    | SegmentMetadata
+    | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
@@ -135,6 +144,13 @@ export function fromJsQuery(
   jsQuery: OpaqueDatasetQuery | DatasetQuery,
 ): Query {
   return ML.from_js_query(metadataProvider, jsQuery);
+}
+
+export function fromJsQueryAndMetadata(
+  metadata: Metadata,
+  jsQuery: OpaqueDatasetQuery | DatasetQuery,
+): Query {
+  return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);
 }
 
 export function toJsQuery(query: Query): OpaqueDatasetQuery {

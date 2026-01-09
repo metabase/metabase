@@ -16,9 +16,8 @@
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
-;; This is similar to the function in src/metabase/warehouses/api.clj, but we want to
-;; allow filtering the DBs in case of audit database, we don't want to allow users to modify
-;; its queries.
+;; This is similar to the function in [[metabase.warehouses-rest.api]], but we want to allow filtering the DBs in case
+;; of audit database, we don't want to allow users to modify its queries.
 (mu/defn- get-native-perms-info :- [:enum :write :none]
   "Calculate `:native_permissions` field for the passed database describing the current user's permissions for running
   native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,

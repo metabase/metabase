@@ -1,8 +1,12 @@
 import userEvent from "@testing-library/user-event";
 import { Route } from "react-router";
 
-import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import type { IconName } from "metabase/ui";
+import {
+  renderWithProviders,
+  screen,
+  getIcon as testGetIcon,
+} from "__support__/ui";
+import { getIcon } from "metabase/lib/icon";
 import type { CollectionItem, CollectionItemModel } from "metabase-types/api";
 import {
   createMockCollection,
@@ -44,8 +48,6 @@ const getCollectionItem = ({
   name = "My Item",
   description = "description foo foo foo",
   collection_position = 1,
-  icon = "dashboard",
-  url = "/dashboard/1",
   setArchived = jest.fn(),
   setPinned = jest.fn(),
   ...rest
@@ -55,8 +57,6 @@ const getCollectionItem = ({
   name?: string;
   description?: string;
   collection_position?: number;
-  icon?: IconName;
-  url?: string;
   setArchived?: (isArchived: boolean) => Promise<void>;
   setPinned?: (isPinned: boolean) => void;
 } = {}): CollectionItem & { description: string } => {
@@ -67,8 +67,6 @@ const getCollectionItem = ({
     name,
     description,
     collection_position,
-    getIcon: () => ({ name: icon }),
-    getUrl: () => url,
     setArchived,
     setPinned,
   }) as CollectionItem & { description: string };
@@ -101,7 +99,7 @@ function setup({ item = defaultItem, collection = defaultCollection } = {}) {
 describe("PinnedItemCard", () => {
   it("should show the item's icon", () => {
     setup();
-    expect(getIcon(defaultItem.getIcon().name)).toBeInTheDocument();
+    expect(testGetIcon(getIcon(defaultItem).name)).toBeInTheDocument();
   });
 
   it("should show the item's name", () => {
@@ -121,7 +119,7 @@ describe("PinnedItemCard", () => {
 
   it("should show an action menu when user clicks on the menu icon in the card", async () => {
     setup();
-    await userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(testGetIcon("ellipsis"));
     expect(await screen.findByText("Unpin")).toBeInTheDocument();
   });
 

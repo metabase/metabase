@@ -1,15 +1,17 @@
 ---
-title: "Embedded analytics SDK - AI chat"
+title: "Modular embedding SDK - AI chat"
 summary: Embed an AI chat component in your app that can create queries from natural language questions.
 ---
 
-# Embedded analytics SDK - AI chat
+# Modular embedding SDK - AI chat
 
 ![Embedded AI chat](../images/ai-chat.png)
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
-You can embed an AI chat in your application similar to [Metabot](../embedded-analytics-js.md) in Metabase.
+You can embed an AI chat in your application similar to [Metabot](../modular-embedding.md) in Metabase.
+
+Embedded Metabot is a more focused version of [Metabot](../../ai/metabot.md) designed to work well in an embedded context. Embedded Metabot can only display ad-hoc questions and metrics; it doesn't know about dashboards.
 
 To help embedded Metabot more easily find and focus on the data you care about most, select the collection containing the models and metrics it should be able to use to create queries.
 
