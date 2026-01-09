@@ -52,9 +52,9 @@ export function ResizableArea(props: {
       return;
     }
     if (height >= maxHeight) {
-      resize(maxHeight);
+      resize(Math.max(minHeight, maxHeight));
     }
-  }, [height, maxHeight, resize]);
+  }, [height, minHeight, maxHeight, resize]);
 
   const dragHandle = resizable ? (
     <div className={S.dragHandleContainer} data-testid="drag-handle">
