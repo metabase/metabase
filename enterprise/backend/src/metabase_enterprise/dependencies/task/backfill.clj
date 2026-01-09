@@ -33,6 +33,10 @@
   (t/to-millis-from-epoch (t/instant)))
 
 (def ^:private entities
+  "The list of models to backfill.
+
+  This is not the same as deps.dependency-types/models, because tables shouldn't be backfilled.  Instead, links
+  involving tables are found via analysis of the other side of the relation."
   [:model/Card
    :model/Transform
    :model/NativeQuerySnippet
@@ -87,7 +91,7 @@
                :model/Card (backfill-card! id target-version)
                (t2/update! model-kw id :dependency_analysis_version [:< target-version]
                            {:dependency_analysis_version target-version})))
-    (log/debug "Backfilled " (name model-kw) id)))
+           (log/debug "Backfilled " (name model-kw) id)))
 
 (defn- backfill-entity-batch!
   [model-kw batch-size]

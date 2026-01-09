@@ -1472,7 +1472,7 @@
                                                            :moderator_id        (mt/user->id :rasta)
                                                            :most_recent         true
                                                            :status              "verified"
-                                                           :text                "lookin good"}]
+                                                           :text                "lookin' good"}]
               (is (= [(clean (assoc review :user {:id true}))]
                      (->> (mt/user-http-request :rasta :get 200 (str "card/" (u/the-id card)))
                           mt/boolean-ids-and-timestamps
@@ -2724,7 +2724,7 @@
                                      :moderator_id        (mt/user->id :crowberto)
                                      :most_recent         true
                                      :status              "verified"
-                                     :text                "lookin good"}]))
+                                     :text                "lookin' good"}]))
          ~@body))]
     (letfn [(verified? [card]
               (-> card (t2/hydrate [:moderation_reviews :moderator_details])
@@ -4344,7 +4344,7 @@
                                                       :moderator_id        (mt/user->id :rasta)
                                                       :most_recent         true
                                                       :status              "verified"
-                                                      :text                "lookin good"}]
+                                                      :text                "lookin' good"}]
     (is (= {:name "My Dashboard"
             :id dash-id
             :moderation_status "verified"}
