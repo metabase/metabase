@@ -16,7 +16,7 @@
   (testing "updating a transform correctly sets the source-database-id column"
     (mt/with-temp [:model/Transform transform
                    {:name   "Test Transform"
-                    :source_database_id 1
+                    :source_database_id (mt/id)
                     :source {:type  "query"
                              :query {:database (mt/id)
                                      :type     "native"

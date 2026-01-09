@@ -130,7 +130,7 @@
         false)
 
       :python
-      (let [source-tables (get-in source [:source-tables])]
+      (let [source-tables (:source-tables source)]
         (if (empty? source-tables)
           true
           (let [table-ids (into []
