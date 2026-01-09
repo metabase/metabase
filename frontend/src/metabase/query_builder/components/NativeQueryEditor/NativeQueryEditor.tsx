@@ -236,22 +236,17 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
       editorRef.current?.focus();
     }, [readOnly]);
 
-    const closeEditor = useCallback(() => {
-      setIsNativeEditorOpen?.(false);
-      setHeight(getInitialEditorHeight({ query, availableHeight }));
-    }, [setIsNativeEditorOpen, query, availableHeight]);
-
     const resizeEditor = useCallback(
       (height: number) => {
         // If the height is lower than the threshold for auto-closing,
         // close the editor
         if (height <= THRESHOLD_FOR_AUTO_CLOSE) {
-          closeEditor();
+          setIsNativeEditorOpen?.(false);
           return;
         }
         setHeight(height);
       },
-      [closeEditor],
+      [setIsNativeEditorOpen],
     );
 
     useMount(() => {
