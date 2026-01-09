@@ -27,13 +27,16 @@ export const VirtualizedGrid = <T,>({
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Use Mantine's useMatches to get the current column count based on breakpoint
-  const currentColumns = useMatches({
-    base: columnsPerRow.xs,
-    sm: columnsPerRow.sm,
-    md: columnsPerRow.md,
-    lg: columnsPerRow.lg,
-    xl: columnsPerRow.xl,
-  });
+  const currentColumns = useMatches(
+    {
+      base: columnsPerRow.xs,
+      sm: columnsPerRow.sm,
+      md: columnsPerRow.md,
+      lg: columnsPerRow.lg,
+      xl: columnsPerRow.xl,
+    },
+    { getInitialValueInEffect: false },
+  );
 
   // Group items into rows based on current columns
   const rows = useMemo(
