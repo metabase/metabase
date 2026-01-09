@@ -457,7 +457,7 @@ function ModelHint() {
   return (
     <Box mt="lg" p="md" className={S.info}>
       <Flex gap="md" align="center">
-        <Icon name="info" color="text-dark" className={S.icon} />
+        <Icon name="info" c="text-primary" className={S.icon} />
         <div>
           {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
         </div>

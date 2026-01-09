@@ -411,6 +411,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                       this.props.nativeEditorSelectedText
                     }
                     runQuery={this.props.runQuery}
+                    questionErrors={Lib.validateTemplateTags(question.query())}
                   />
                 )}
               </Stack>
