@@ -939,13 +939,14 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
 export const WorkspacePage = ({ params }: WorkspacePageProps) => {
   const workspaceId = Number(params.workspaceId);
   const { search } = useLocation();
+  const transformId = new URLSearchParams(search).get("transformId");
 
   return (
     <WorkspaceProvider workspaceId={workspaceId}>
       <WorkspacePageContent
         key={workspaceId}
         params={params}
-        transformId={new URLSearchParams(search).get("transformId")}
+        transformId={transformId ?? undefined}
       />
     </WorkspaceProvider>
   );
