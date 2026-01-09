@@ -2,6 +2,7 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import { useInitDataInternal } from "embedding-sdk-bundle/hooks/private/use-init-data";
 import { useNormalizeComponentProviderProps } from "embedding-sdk-bundle/hooks/private/use-normalize-component-provider-props";
@@ -138,6 +139,8 @@ export const ComponentProviderInternal = (
                     allowConsoleLog={allowConsoleLog}
                     isLocalHost={isLocalHost}
                   />
+
+                  <ContentTranslationsProvider />
 
                   <PortalContainer />
                 </>
