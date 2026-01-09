@@ -26,18 +26,17 @@ describe("VirtualizedGrid", () => {
       />,
     );
 
-    // With 10 items and 4 columns per row, we should have 3 rows
     // Need to use container to test actual DOM structure/chunking behavior
     // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
     const rows = container.querySelectorAll('[style*="translateY"]');
 
-    // With virtualization + overscan, we should see at least some rows rendered
-    expect(rows.length).toBeGreaterThan(0);
+    // With 10 items and 4 columns per row, we should have 3 rows
+    expect(rows.length).toBe(3);
 
     // Each item should be wrapped in a Grid.Col (has class starting with m_)
     // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
     const gridCols = container.querySelectorAll('[class*="m_"]');
-    expect(gridCols.length).toBeGreaterThan(0);
+    expect(gridCols.length).toBe(16);
   });
 
   it("should not render children outside the bounding client rect", () => {
