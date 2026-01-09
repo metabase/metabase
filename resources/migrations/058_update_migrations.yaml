@@ -3393,52 +3393,6 @@ databaseChangeLog:
             columnName: stale
 
   - changeSet:
-      id: v58.2025-01-08T10:00:00
-      author: christruter
-      comment: Drop stale column from workspace_transform and add execution_stale to both tables
-      changes:
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: stale
-        - addColumn:
-            tableName: transform
-            columns:
-              - column:
-                  name: execution_stale
-                  type: ${boolean.type}
-                  defaultValueBoolean: true
-                  remarks: Indicates if the transform definition has changed and needs re-execution
-                  constraints:
-                    nullable: false
-        - addColumn:
-            tableName: workspace_transform
-            columns:
-              - column:
-                  name: execution_stale
-                  type: ${boolean.type}
-                  defaultValueBoolean: true
-                  remarks: Indicates if the transform definition has changed and needs re-execution
-                  constraints:
-                    nullable: false
-      rollback:
-        - dropColumn:
-            tableName: transform
-            columnName: execution_stale
-        - dropColumn:
-            tableName: workspace_transform
-            columnName: execution_stale
-        - addColumn:
-            tableName: workspace_transform
-            columns:
-              - column:
-                  name: stale
-                  type: ${boolean.type}
-                  defaultValueBoolean: true
-                  remarks: Indicates if the target configuration needs to be refreshed
-                  constraints:
-                    nullable: false
-
-  - changeSet:
       id: v58.2025-12-12T10:00:00
       author: piranha
       comment: Add last_run_at column to workspace_transform
@@ -4915,6 +4869,66 @@ databaseChangeLog:
         - dropColumn:
             tableName: transform
             columnName: target_db_id
+
+  - changeSet:
+      id: v58.2026-01-09T10:00:00
+      author: qnkhuat
+      comment: Drop stale column from workspace_transform
+      changes:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: stale
+      rollback:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Indicates if the target configuration needs to be refreshed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v58.2026-01-09T10:00:01
+      author: qnkhuat
+      comment: Add execution_stale column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: execution_stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Indicates if the transform definition has changed and needs re-execution
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: execution_stale
+
+  - changeSet:
+      id: v58.2026-01-09T10:00:02
+      author: qnkhuat
+      comment: Add execution_stale column to workspace_transform table
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: execution_stale
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Indicates if the transform definition has changed and needs re-execution
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: execution_stale
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
