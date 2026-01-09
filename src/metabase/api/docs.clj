@@ -119,7 +119,8 @@
   [root-handler]
   (fn handler*
     ([_request]
-     (let [spec (or (read-openapi-spec-from-file)
+     (let [spec (or (when (config/config-bool :mb-enable-openapi-auto-regen)
+                      (read-openapi-spec-from-file))
                     (do
                       (log/warn "OpenAPI spec file not found, generating on-the-fly")
                       (merge
