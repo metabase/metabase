@@ -9,7 +9,27 @@ summary: Upload a translation dictionary to translate questions and dashboards i
 
 For now, translations are only available for [guest embeds](./guest-embedding.md). Translations aren't available for SSO-based modular embedding or full app embedding.
 
-You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
+## Set a locale to translate UI, and upload a dictionary to translate content
+
+To translate an embed's user interface, set the locale in the config:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    // Sets the language. If you've uploaded a translation dictionary,
+    // Metabase will translate strings for this locale from that dictionary
+    locale: "es"
+  };
+</script>
+
+<metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
+```
+
+Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
+
+If you also want to translate content---item titles, headings, filter labels, etc---you'll need to add a translation dictionary.
 
 ## Add a translation dictionary
 
@@ -29,21 +49,6 @@ To add a translation dictionary:
 Uploading a new dictionary will replace the existing dictionary.
 
 To remove a translation dictionary, upload a blank dictionary.
-
-## Translate content in guest embeds
-
-To translate content in a guest embed using the uploaded dictionary, add the [`locale` parameter](./components.md).
-```
- <metabase-dashboard
-    dashboard-id="1"
-    with-title="false"
-    with-subscriptions="true"
-    drills="true"
-    locale="es"
- </metabase-dashboard>
-```
-
-Metabase UI elements (like button labels) will be translated automatically - you don't need to add translations for them to your dictionary.
 
 ## Example translation dictionary
 
