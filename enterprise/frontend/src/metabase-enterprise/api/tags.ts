@@ -33,7 +33,6 @@ import {
   type TransformTag,
   type Workspace,
   type WorkspaceItem,
-  type WorkspaceTransformItem,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -103,12 +102,6 @@ export function provideWorkspaceTags(
   workspace: Workspace | WorkspaceItem,
 ): TagDescription<EnterpriseTagType>[] {
   return [idTag("workspace", workspace.id)];
-}
-
-export function provideWorkspaceTransformItemsTags(
-  items: WorkspaceTransformItem[],
-): TagDescription<EnterpriseTagType>[] {
-  return items.flatMap((transform) => idTag("transform", transform.ref_id));
 }
 
 export function provideTransformTags(

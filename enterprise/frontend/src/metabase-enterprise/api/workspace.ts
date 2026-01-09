@@ -4,9 +4,7 @@ import type {
   CreateWorkspaceTransformResponse,
   ExternalTransformsRequest,
   ExternalTransformsResponse,
-  TransformDownstreamMapping,
   TransformId,
-  TransformUpstreamMapping,
   UpdateWorkspaceTransformRequest,
   ValidateTableNameRequest,
   ValidateTableNameResponse,
@@ -36,7 +34,6 @@ import {
   invalidateTags,
   listTag,
   provideWorkspaceTags,
-  provideWorkspaceTransformItemsTags,
   provideWorkspacesTags,
   tag,
 } from "./tags";
@@ -100,30 +97,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
           ...(global_id != null ? [idTag("transform", global_id)] : []),
         ]),
       transformResponse: (t: WorkspaceTransform) => ({ ...t, id: t.ref_id }),
-    }),
-    getTransformUpstreamMapping: builder.query<
-      TransformUpstreamMapping,
-      TransformId
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/mapping/transform/${id}/upstream`,
-      }),
-      providesTags: (mapping) =>
-        mapping?.transform
-          ? provideWorkspaceTransformItemsTags([mapping.transform])
-          : [],
-    }),
-    getTransformDownstreamMapping: builder.query<
-      TransformDownstreamMapping,
-      TransformId
-    >({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/mapping/transform/${id}/downstream`,
-      }),
-      providesTags: (mapping) =>
-        mapping ? provideWorkspaceTransformItemsTags(mapping.transforms) : [],
     }),
     getWorkspaceCheckout: builder.query<WorkspaceCheckoutResponse, TransformId>(
       {
@@ -381,8 +354,6 @@ export const {
   useArchiveWorkspaceTransformMutation,
   useUnarchiveWorkspaceTransformMutation,
   useDeleteWorkspaceTransformMutation,
-  useGetTransformUpstreamMappingQuery,
-  useGetTransformDownstreamMappingQuery,
   useGetWorkspaceCheckoutQuery,
   useMergeWorkspaceMutation,
   useMergeWorkspaceTransformMutation,
