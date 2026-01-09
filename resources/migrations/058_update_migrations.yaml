@@ -4684,26 +4684,6 @@ databaseChangeLog:
                   name: workspace_id
       rollback: # will be removed along the table
 
-  - changeSet:
-      id: v58.2025-12-18T16:14:03
-      author: winlost
-      comment: Add disable_links column to pulse table
-      changes:
-        - addColumn:
-            tableName: pulse
-            columns:
-              - column:
-                  name: disable_links
-                  type: ${boolean.type}
-                  remarks: "Whether to disable email subscription links"
-                  defaultValueBoolean: false
-                  constraints:
-                    nullable: true
-      rollback:
-        - dropColumn:
-            tableName: pulse
-            columnName: disable_links
-
   # Denormalize workspace_dependency into workspace_input by adding ref_id column
   # This allows direct lookup of inputs per transform without a join table
 
