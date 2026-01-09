@@ -31,7 +31,7 @@ export function NewSegmentHeader({
           initialValue=""
           isOptional
           maxLength={SEGMENT_NAME_MAX_LENGTH}
-          onChange={onNameChange}
+          onContentChange={onNameChange}
           placeholder={t`New segment`}
         />
       }
