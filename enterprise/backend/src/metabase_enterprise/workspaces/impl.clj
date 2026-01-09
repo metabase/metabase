@@ -7,7 +7,6 @@
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
-   [metabase.app-db.core :as app-db]
    [metabase.driver.sql :as driver.sql]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -324,6 +323,29 @@
                              :table_id       (:table_id (get new-inputs [db_id schema table]))
                              :access_granted false})))))))))
 
+;;;; ---------------------------------------- Epochal Versioning ----------------------------------------
+;; Two-level versioning for thread-safe graph calculation:
+;; - Transform level: analysis_version on workspace_transform, transform_version on workspace_input/workspace_output
+;; - Graph level: graph_version on workspace, workspace_graph, workspace_input_external, workspace_output_external
+
+(defn increment-graph-version!
+  "Atomically increment graph_version for a workspace. Returns the new version."
+  [workspace-id]
+  (:graph_version
+   (first (t2/query {:update :workspace
+                     :set {:graph_version [:+ :graph_version 1]}
+                     :where [:= :id workspace-id]
+                     :returning [:graph_version]}))))
+
+(defn increment-analysis-version!
+  "Atomically increment analysis_version for a transform. Returns the new version."
+  [ref-id]
+  (:analysis_version
+   (first (t2/query {:update :workspace_transform
+                     :set {:analysis_version [:+ :analysis_version 1]}
+                     :where [:= :ref_id ref-id]
+                     :returning [:analysis_version]}))))
+
 ;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
 
 (defn- calculate-graph!
@@ -334,67 +356,233 @@
                                                         [:model/WorkspaceTransform :ref_id]
                                                         :workspace_id ws-id)))
 
-(defn analyze-transform-if-stale!
-  "Re-analyze dependencies for a given transform, if necessary. Marks it as not stale after analysis."
-  [{ws-id :id, isolated-schema :schema :as workspace} transform]
-  (when (:analysis_stale transform)
-    (let [analysis (ws.deps/analyze-entity :transform transform)]
-      (ws.deps/write-dependencies! ws-id isolated-schema :transform (:ref_id transform) analysis))
-    (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false})
-    (sync-grant-accesses! workspace)))
+(defn- cleanup-old-transform-versions!
+  "Delete workspace_input and workspace_output rows for old transform versions."
+  [ws-id ref-id current-version]
+  (t2/delete! :model/WorkspaceOutput
+              :workspace_id ws-id
+              :ref_id ref-id
+              :transform_version [:< current-version])
+  (t2/delete! :model/WorkspaceInput
+              :workspace_id ws-id
+              :ref_id ref-id
+              :transform_version [:< current-version]))
+
+(defn- cleanup-old-graph-versions!
+  "Delete graph-level rows for old versions."
+  [ws-id current-version]
+  (doseq [model [:model/WorkspaceGraph
+                 :model/WorkspaceInputExternal
+                 :model/WorkspaceOutputExternal]]
+    (t2/delete! model
+                :workspace_id ws-id
+                :graph_version [:< current-version])))
+
+(defn- analyze-transform-for-version!
+  "Analyze a transform and write its outputs/inputs with the given transform_version.
+   Called when the transform's output doesn't exist for current analysis_version."
+  [{ws-id :id, isolated-schema :schema :as _workspace}
+   {:keys [ref_id analysis_version] :as transform}]
+  (let [analysis (ws.deps/analyze-entity :transform transform)]
+    ;; Write dependencies with transform_version
+    (ws.deps/write-dependencies! ws-id isolated-schema :transform ref_id analysis analysis_version)
+    ;; Cleanup old versions for this transform
+    (cleanup-old-transform-versions! ws-id ref_id analysis_version)))
 
 (defn analyze-stale-transforms!
-  "Re-analyze dependencies for any workspace transforms that are stale.
-   Marks them as not stale after analysis. Returns true if any transforms were analyzed."
-  [{ws-id :id, isolated-schema :schema :as workspace}]
+  "Analyze transforms where workspace_output doesn't exist for current analysis_version.
+   Skips transforms that haven't changed since last analysis.
+   Returns true if any transforms were analyzed."
+  [{ws-id :id :as workspace}]
+  ;; Find transforms needing analysis: those without output at current analysis_version
   (let [stale-transforms (t2/select :model/WorkspaceTransform
-                                    :workspace_id ws-id
-                                    :analysis_stale true)]
+                                    ;; Ordering is only for determinism in tests.
+                                    {:order-by [:updated_at]
+                                     :where    [:and
+                                                [:= :workspace_transform.workspace_id ws-id]
+                                                [:not [:exists
+                                                       {:select [1]
+                                                        :from   [[:workspace_output :wo]]
+                                                        :where  [:and
+                                                                 [:= :wo.workspace_id ws-id]
+                                                                 [:= :wo.ref_id :workspace_transform.ref_id]
+                                                                 [:= :wo.transform_version :workspace_transform.analysis_version]]}]]]})]
+    ;; Analyze each stale transform
     (doseq [transform stale-transforms]
-      (let [analysis (ws.deps/analyze-entity :transform transform)]
-        (ws.deps/write-dependencies! ws-id isolated-schema :transform (:ref_id transform) analysis))
-      (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false}))
+      (analyze-transform-for-version! workspace transform))
     ;; Grant read access to any new external inputs
     (when (seq stale-transforms)
       (sync-grant-accesses! workspace))
     (boolean (seq stale-transforms))))
 
-(defn- upsert-workspace-graph!
-  "Insert or update the cached graph for a workspace."
-  [ws-id graph]
-  (app-db/update-or-insert! :model/WorkspaceGraph {:workspace_id ws-id} (fn [_] {:workspace_id ws-id, :graph graph})))
+(defn- transform-output-exists-for-version?
+  "Check if workspace_output exists for a transform at its current analysis_version."
+  [ws-id ref-id analysis-version]
+  (t2/exists? :model/WorkspaceOutput
+              :workspace_id ws-id
+              :ref_id ref-id
+              :transform_version analysis-version))
 
-(defn- calculate-and-cache-graph!
-  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
-  [{ws-id :id, isolated-schema :schema :as workspace}]
-  (t2/with-transaction [_conn]
-    ;; First, re-analyze any stale transforms
-    (analyze-stale-transforms! workspace)
+(defn analyze-transform-if-stale!
+  "Analyze a single transform if its workspace_output doesn't exist for current analysis_version.
+   Used before running a transform to ensure grants are up-to-date."
+  [{ws-id :id :as workspace} {:keys [ref_id analysis_version] :as transform}]
+  (when-not (transform-output-exists-for-version? ws-id ref_id analysis_version)
+    (analyze-transform-for-version! workspace transform)
+    (sync-grant-accesses! workspace)))
+
+(defn- insert-workspace-graph!
+  "Insert a new graph for the given version. Silently ignores constraint violations
+   from concurrent inserts (another process already inserted this version)."
+  [ws-id graph-version graph]
+  (ws.u/ignore-constraint-violation
+   (t2/insert! :model/WorkspaceGraph
+               {:workspace_id ws-id
+                :graph_version graph-version
+                :graph graph})))
+
+(defn- get-cached-graph
+  "Get the cached graph for a specific version, or nil if not found."
+  [ws-id graph-version]
+  (when-let [cached (t2/select-one :model/WorkspaceGraph
+                                   :workspace_id ws-id
+                                   :graph_version graph-version)]
+    (:graph cached)))
+
+(defn- graph-exists-for-version?
+  "Check if a graph exists for the given version or newer."
+  [ws-id target-version]
+  (t2/exists? :model/WorkspaceGraph
+              :workspace_id ws-id
+              :graph_version [:>= target-version]))
+
+(defn- external-outputs-exist-for-version?
+  "Check if external outputs exist for the given version or newer."
+  [ws-id target-version]
+  (t2/exists? :model/WorkspaceOutputExternal
+              :workspace_id ws-id
+              :graph_version [:>= target-version]))
+
+(defn- external-inputs-exist-for-version?
+  "Check if external inputs exist for the given version or newer."
+  [ws-id target-version]
+  (t2/exists? :model/WorkspaceInputExternal
+              :workspace_id ws-id
+              :graph_version [:>= target-version]))
+
+(defn- sync-external-outputs-for-version!
+  "Sync workspace_output_external for a specific graph version.
+   Creates new rows with graph_version set. Silently ignores constraint violations."
+  [workspace-id isolated-schema entities graph-version]
+  (let [external-tx-ids (extract-external-transform-ids entities)]
+    (when (seq external-tx-ids)
+      (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
+            rows (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
+                   (let [isolated-table (ws.u/isolated-table-name schema name)
+                         global-table-id (t2/select-one-fn :id [:model/Table :id]
+                                                           :db_id database :schema schema :name name)
+                         isolated-table-id (t2/select-one-fn :id [:model/Table :id]
+                                                             :db_id database :schema isolated-schema :name isolated-table)]
+                     {:workspace_id      workspace-id
+                      :transform_id      tx-id
+                      :graph_version     graph-version
+                      :db_id             database
+                      :global_schema     schema
+                      :global_table      name
+                      :global_table_id   global-table-id
+                      :isolated_schema   isolated-schema
+                      :isolated_table    isolated-table
+                      :isolated_table_id isolated-table-id}))]
+        (when (seq rows)
+          (ws.u/ignore-constraint-violation
+           (t2/insert! :model/WorkspaceOutputExternal rows)))))))
+
+(defn- sync-external-inputs-for-version!
+  "Sync workspace_input_external for a specific graph version.
+   Creates new rows with graph_version set. Silently ignores constraint violations."
+  [workspace-id entities graph-version]
+  (let [external-tx-ids (extract-external-transform-ids entities)]
+    (when (seq external-tx-ids)
+      (let [input-tables (t2/select [:model/Dependency :to_entity_id]
+                                    :from_entity_type :transform
+                                    :from_entity_id [:in external-tx-ids]
+                                    :to_entity_type :table)
+            input-table-ids (into #{} (map :to_entity_id) input-tables)
+            ;; Get workspace output table IDs (both workspace and external outputs)
+            workspace-output-ids (t2/select-fn-set :global_table_id
+                                                   [:model/WorkspaceOutput :global_table_id]
+                                                   :workspace_id workspace-id
+                                                   {:where [:not= :global_table_id nil]})
+            external-output-ids (t2/select-fn-set :global_table_id
+                                                  [:model/WorkspaceOutputExternal :global_table_id]
+                                                  :workspace_id workspace-id
+                                                  :graph_version graph-version
+                                                  {:where [:not= :global_table_id nil]})
+            all-output-ids (set/union workspace-output-ids external-output-ids)
+            external-input-ids (set/difference input-table-ids all-output-ids)]
+        (when (seq external-input-ids)
+          (let [tables (t2/select [:model/Table :id :db_id :schema :name] :id [:in external-input-ids])
+                db-ids (into #{} (map :db_id) tables)
+                db-id->default-schema (when (seq db-ids)
+                                        (into {}
+                                              (map (fn [{:keys [id engine]}]
+                                                     [id (driver.sql/default-schema engine)]))
+                                              (t2/select [:model/Database :id :engine] :id [:in db-ids])))
+                normalized-tables (map (partial normalize-table-schema db-id->default-schema) tables)]
+            (when (seq normalized-tables)
+              (ws.u/ignore-constraint-violation
+               (t2/insert! :model/WorkspaceInputExternal
+                           (for [{:keys [id db_id schema name]} normalized-tables]
+                             {:workspace_id   workspace-id
+                              :graph_version  graph-version
+                              :db_id          db_id
+                              :schema         schema
+                              :table          name
+                              :table_id       id
+                              :access_granted false}))))))))))
+
+(defn- calculate-graph-for-version!
+  "Calculate the graph for target-version. Thread-safe implementation.
+   - Analyzes transforms that need it (transform-level versioning)
+   - Calculates and caches graph (graph-level versioning)
+   - Syncs external outputs/inputs
+   - Cleans up old versions"
+  [{ws-id :id, isolated-schema :schema :as workspace} target-graph-version]
+  ;; Step 1: Analyze transforms that need it (transform-level versioning)
+  (analyze-stale-transforms! workspace)
+
+  ;; Step 2: Calculate and cache graph if needed
+  (when-not (graph-exists-for-version? ws-id target-graph-version)
     (let [graph (calculate-graph! ws-id)]
-      ;; Persist our work
-      (sync-external-outputs! ws-id isolated-schema (:entities graph))
-      (sync-external-inputs! ws-id (:entities graph))
-      (upsert-workspace-graph! ws-id graph)
-      ;; Mark workspace as not stale
-      (t2/update! :model/Workspace ws-id {:analysis_stale false})
-      graph)))
+      (insert-workspace-graph! ws-id target-graph-version graph)))
+
+  (let [graph (get-cached-graph ws-id target-graph-version)]
+    ;; Step 3: Sync external outputs if needed
+    (when-not (external-outputs-exist-for-version? ws-id target-graph-version)
+      (sync-external-outputs-for-version! ws-id isolated-schema (:entities graph) target-graph-version))
+
+    ;; Step 4: Sync external inputs if needed
+    (when-not (external-inputs-exist-for-version? ws-id target-graph-version)
+      (sync-external-inputs-for-version! ws-id (:entities graph) target-graph-version))
+
+    ;; Step 5: Cleanup old versions
+    (cleanup-old-graph-versions! ws-id target-graph-version)
+
+    graph))
 
 (defn get-or-calculate-graph
-  "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
-   otherwise recalculates it.
+  "Return the dependency graph for a workspace. Uses cached graph if version matches,
+   otherwise recalculates it. Thread-safe via epochal versioning.
    Also syncs workspace_output_external and workspace_input_external tables when recalculating."
-  [{ws-id :id, analysis-stale :analysis_stale :as workspace}]
-  (if-not analysis-stale
-    ;; Return cached graph from workspace_graph table
-    (when-let [cached (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
-      (:graph cached))
-    ;; Recalculate and cache
-    (calculate-and-cache-graph! workspace)))
+  [{ws-id :id, graph-version :graph_version :as workspace}]
+  (if-let [cached (get-cached-graph ws-id graph-version)]
+    ;; Return cached graph for current version
+    cached
+    ;; Recalculate
+    (calculate-graph-for-version! workspace graph-version)))
 
-(defn mark-workspace-stale!
-  "Mark a workspace as needing graph recalculation."
-  [workspace-id]
-  (t2/update! :model/Workspace workspace-id {:analysis_stale true}))
+;; Legacy alias for compatibility during transition
+(def mark-workspace-stale! increment-graph-version!)
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."

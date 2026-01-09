@@ -54,11 +54,12 @@
     ;; Mark all inputs as un-granted since the user *may* have been dropped (even if there were some failures)
     (t2/update! :model/WorkspaceInput {:workspace_id workspace-id}
                 {:access_granted false})
-    ;; Mark all analysis as stale, as we will need to recreate grants.
-    (t2/update! :model/WorkspaceTransform {:workspace_id workspace-id} {:analysis_stale true})
-    (t2/update! :model/Workspace workspace-id {:base_status    :archived
-                                               :db_status      (if cleaned? :uninitialized :broken)
-                                               :analysis_stale true})))
+    ;; Update workspace status and increment graph_version (will need recalculation on unarchive)
+    (t2/query {:update :workspace
+               :set    {:base_status   "archived"
+                        :db_status     (if cleaned? "uninitialized" "broken")
+                        :graph_version [:+ :graph_version 1]}
+               :where  [:= :id workspace-id]})))
 
 (defn unarchive!
   "Unarchive a workspace. If workspace has transforms, re-initializes database isolation resources,
@@ -67,16 +68,20 @@
   [workspace]
   (let [workspace-id (:id workspace)
         has-transforms? (t2/exists? :model/WorkspaceTransform :workspace_id workspace-id)]
+    ;; Delete old graph data - will be recalculated
     (t2/delete! :model/WorkspaceGraph :workspace_id workspace-id)
     (if has-transforms?
       ;; Workspace has transforms - re-initialize database isolation
       (let [database         (t2/select-one :model/Database (:database_id workspace))
             isolation-result (ws.isolation/ensure-database-isolation! workspace database)
-            _                (t2/update! :model/Workspace workspace-id
-                                         (merge {:base_status    :active
-                                                 :db_status      :ready
-                                                 :analysis_stale true}
-                                                (select-keys isolation-result [:schema :database_details])))
+            ;; Update workspace status and increment graph_version for recalculation
+            _                (t2/query {:update :workspace
+                                        :set    (merge {:base_status   "active"
+                                                        :db_status     "ready"
+                                                        :graph_version [:+ :graph_version 1]}
+                                                       (-> (select-keys isolation-result [:schema :database_details])
+                                                           (update :database_details mi/encrypted-json-in)))
+                                        :where  [:= :id workspace-id]})
             ;; Re-fetch workspace to get updated database_details and schema for granting permissions
             updated-ws       (t2/select-one :model/Workspace workspace-id)]
         ;; Re-grant read access to source tables (inputs were marked un-granted during archive)

@@ -792,14 +792,12 @@
             [:target {:optional true} ::transform-target]]]
   (t2/with-transaction [_tx]
     (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))
-    ;; If source or target changed, mark as stale in the same update
-    (let [source-or-target-changed? (or (:source body) (:target body))
-          update-body (cond-> body
-                        source-or-target-changed? (assoc :analysis_stale true))]
-      (t2/update! :model/WorkspaceTransform tx-id update-body)
-      ;; Mark workspace as stale too if source/target changed
+    (let [source-or-target-changed? (or (:source body) (:target body))]
+      (t2/update! :model/WorkspaceTransform tx-id body)
+      ;; If source or target changed, increment versions for re-analysis
       (when source-or-target-changed?
-        (ws.impl/mark-workspace-stale! ws-id)))
+        (ws.impl/increment-analysis-version! tx-id)
+        (ws.impl/increment-graph-version! ws-id)))
     (fetch-ws-transform ws-id tx-id)))
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/archive" :- :nil
@@ -807,7 +805,8 @@
    For provisional transforms we will skip even creating it in the first place."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform {:ref_id tx-id :workspace_id id} {:archived_at [:now]})))
-  (ws.impl/mark-workspace-stale! id)
+  ;; Increment graph version since transform is leaving the graph
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :post "/:id/transform/:tx-id/unarchive" :- :nil
@@ -815,8 +814,10 @@
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/update! :model/WorkspaceTransform
                                    {:ref_id tx-id :workspace_id id}
-                                   {:archived_at nil, :analysis_stale true})))
-  (ws.impl/mark-workspace-stale! id)
+                                   {:archived_at nil})))
+  ;; Increment both versions - transform re-enters graph and needs re-analysis
+  (ws.impl/increment-analysis-version! tx-id)
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :delete "/:id/transform/:tx-id" :- :nil
@@ -824,8 +825,8 @@
    Equivalent to resetting a checked-out transform to its global definition, or deleting a provisional transform."
   [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
   (api/check-404 (pos? (t2/delete! :model/WorkspaceTransform :ref_id tx-id :workspace_id id)))
-  ;; Mark workspace as stale since the graph has changed
-  (ws.impl/mark-workspace-stale! id)
+  ;; Increment graph version since transform is leaving the graph
+  (ws.impl/increment-graph-version! id)
   nil)
 
 (api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
