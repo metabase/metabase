@@ -194,10 +194,12 @@
                                      :isolated_schema :isolated_table :isolated_table_id :transform_id]
                                     :workspace_id id order-by)
         all-outputs      (concat outputs external-outputs)
-        raw-inputs       (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
-                                    :workspace_id id {:order-by [:db_id :schema :table]})
-        external-inputs  (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
-                                    :workspace_id id {:order-by [:db_id :schema :table]})
+        raw-inputs       (distinct
+                          (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
+                                     :workspace_id id {:order-by [:db_id :schema :table]}))
+        external-inputs  (distinct
+                          (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
+                                     :workspace_id id {:order-by [:db_id :schema :table]}))
         all-raw-inputs   (concat raw-inputs external-inputs)
         ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
         shadowed?        (into #{} (map (juxt :db_id :global_schema :global_table)) all-outputs)
@@ -528,11 +530,10 @@
                        :data             (node-data e)
                        :dependents_count (dep-count e)}))
      :edges (for [[child parents] dependencies, parent parents]
-              ;; Yeah, this graph points to dependents, not dependencies
-              {:from_entity_type (name (node-type parent))
-               :from_entity_id   (node-id parent)
-               :to_entity_type   (name (node-type child))
-               :to_entity_id     (node-id child)})}))
+              {:to_entity_type   (name (node-type parent))
+               :to_entity_id     (node-id parent)
+               :from_entity_type (name (node-type child))
+               :from_entity_id   (node-id child)})}))
 
 ;;; ---------------------------------------- Problems/Validation ----------------------------------------
 

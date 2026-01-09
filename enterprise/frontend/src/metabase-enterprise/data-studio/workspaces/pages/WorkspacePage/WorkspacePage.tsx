@@ -51,6 +51,7 @@ import {
 } from "metabase-enterprise/api";
 import { PaneHeaderInput } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { MergeWorkspaceModal } from "metabase-enterprise/data-studio/workspaces/components/MergeWorkspaceModal/MergeWorkspaceModal";
+import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/components/RunWorkspaceMenu/RunWorkspaceMenu";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import type {
@@ -121,6 +122,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     addOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
+    setIsWorkspaceExecuting,
     unsavedTransforms,
   } = useWorkspace();
 
@@ -504,7 +506,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
       setTab(tableTab.id);
     },
     [addOpenedTab],
-
   );
 
   const handleRunTransformAndShowPreview = useCallback(
@@ -522,19 +523,19 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           return;
         }
 
-          const { data: updatedTables } = await refetchWorkspaceTables();
-          const updatedOutput = updatedTables?.outputs.find(
-            (t) => t.isolated.transform_id === transform.ref_id,
-          );
+        const { data: updatedTables } = await refetchWorkspaceTables();
+        const updatedOutput = updatedTables?.outputs.find(
+          (t) => t.isolated.transform_id === transform.ref_id,
+        );
 
-          if (updatedOutput?.isolated.table_id) {
-            handleTableSelect({
-              tableId: updatedOutput.isolated.table_id,
-              name: updatedOutput.global.table,
-              schema: updatedOutput.global.schema,
-              transformId: transform.ref_id,
-            });
-          }
+        if (updatedOutput?.isolated.table_id) {
+          handleTableSelect({
+            tableId: updatedOutput.isolated.table_id,
+            name: updatedOutput.global.table,
+            schema: updatedOutput.global.schema,
+            transformId: transform.ref_id,
+          });
+        }
       } catch (error) {
         sendErrorToast(t`Failed to run transform`);
       } finally {
@@ -545,7 +546,13 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
         });
       }
     },
-    [id, runTransform, refetchWorkspaceTables, handleTableSelect, sendErrorToast],
+    [
+      id,
+      runTransform,
+      refetchWorkspaceTables,
+      handleTableSelect,
+      sendErrorToast,
+    ],
   );
 
   const handleTabDragEnd = useCallback(
@@ -599,6 +606,15 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           />
         </Flex>
         <Flex gap="sm">
+          <RunWorkspaceMenu
+            workspaceId={id}
+            disabled={
+              isArchived ||
+              hasUnsavedChanges() ||
+              workspaceTransforms.length === 0
+            }
+            onExecute={() => setIsWorkspaceExecuting(true)}
+          />
           <Button
             variant="filled"
             onClick={() => setIsMergeModalOpen(true)}
@@ -711,6 +727,12 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                           onClick={() => {
                             setActiveTab(tab);
                           }}
+                          onMouseDown={(event) => {
+                            // close tab on middle-click (mouse wheel)
+                            if (event.button === 1) {
+                              handleTabClose(event, tab, index);
+                            }
+                          }}
                         >
                           <Group gap="xs" wrap="nowrap">
                             <Icon
@@ -788,8 +810,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                 style={{ overflow: "auto" }}
               >
                 {openedTabs.length === 0 ||
-                  !activeTransform ||
-                  !activeEditedTransform ? (
+                !activeTransform ||
+                !activeEditedTransform ? (
                   <Text c="text-medium">
                     {t`Select a transform on the right.`}
                   </Text>

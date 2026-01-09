@@ -93,12 +93,9 @@
 
 (defn get-transforms
   "Get a list of transforms."
-  [& {:keys [last_run_start_time last_run_statuses tag_ids database_id type]}]
+  [& {:keys [last_run_start_time last_run_statuses tag_ids type]}]
   (api/check-superuser)
-  (let [type       (when type (map #(if (= % "query") "mbql" %) type))
-        where      (cond-> [:and]
-                     type        (conj [:in :source_type type])
-                     database_id (conj [:= :target_db_id database_id]))
+  (let [where      (when type [:in :source_type (map #(if (= % "query") "mbql" %) type)])
         transforms (t2/select :model/Transform {:where where :order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)

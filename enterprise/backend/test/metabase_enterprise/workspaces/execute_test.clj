@@ -27,6 +27,8 @@
                                    :schema   nil
                                    :name     output-table}}
             ws-transform (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace :transform nil body)
+            ;; get initialized fields
+            workspace    (t2/select-one :model/Workspace (:id workspace))
             ws-schema    (t2/select-one-fn :schema :model/Workspace (:id workspace))
             before       {:xf    (t2/count :model/Transform)
                           :xfrun (t2/count :model/TransformRun)}]
@@ -41,6 +43,9 @@
                     (ws.impl/run-transform! workspace ws-transform))))
           (is (=? {:last_run_at some?}
                   (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform))))
+
+          ;; Not sure why this is here, but we're testing the analysis metadata, which is lazy
+          (ws.impl/get-or-calculate-graph workspace)
           (is (=? [{:workspace_id      (:id workspace)
                     :global_table      output-table
                     :global_schema     nil
@@ -49,7 +54,7 @@
                     :isolated_table    string?
                     ;; TODO I think this is broken because of normalization breaking case equality
                     #_#_:isolated_table_id number?}]
-                  (t2/select :model/WorkspaceOutput :ref_id (:ref_id ws-transform)))))
+                  (t2/select :model/WorkspaceOutput :workspace_id (:id workspace)))))
 
         (testing "app DB records are rolled back"
           (is (= before

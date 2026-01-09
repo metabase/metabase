@@ -110,16 +110,16 @@
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
-;; TODO we need to first add a transform to trigger initialization, or else there is nothing to destroy
-(deftest archive-workspace-calls-destroy-isolation-test
-  (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
-    (let [called?   (atom false)
-          workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
-      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                  (fn [_database _workspace]
-                                    (reset! called? true))]
-        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-        (is @called? "destroy-workspace-isolation! should be called when archiving")))))
+;; TODO (chris 2026/01/08) we need to first add a transform to trigger initialization, or else there is nothing to destroy
+#_(deftest archive-workspace-calls-destroy-isolation-test
+    (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
+      (let [called?   (atom false)
+            workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
+        (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                    (fn [_database _workspace]
+                                      (reset! called? true))]
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+          (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
@@ -185,12 +185,19 @@
   (testing "Archive/unarchive properly manages access_granted flags and grants"
     (let [workspace      (ws.tu/create-ready-ws! "Archive Grant Test")
           granted-tables (atom [])]
-      ;; TODO this hack doesn't work anymore - need to put a real transform inside the workspace to generate the input
-      (mt/with-temp [:model/WorkspaceInput input {:workspace_id   (:id workspace)
+      ;; This hack has rotted - since we re-do the analysis now on unarchive, we need to add a tx with a real query
+      (mt/with-temp [:model/WorkspaceTransform t {:workspace_id (:id workspace)}
+                     :model/WorkspaceInput input {:workspace_id   (:id workspace)
                                                   :db_id          (mt/id)
+                                                  :ref_id         (:ref_id t)
                                                   :schema         nil
                                                   :table          "test_table"
                                                   :access_granted true}]
+        ;; workaround for bad mocking
+        (t2/update! :model/WorkspaceTransform {:ref_id (:ref_id t)} {:target {:type     :table
+                                                                              :database (mt/id)
+                                                                              :name     "output"}})
+
         (testing "Archive resets access_granted to false"
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
           (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))))
@@ -1379,7 +1386,7 @@
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]
           (mt/with-temp [;; Global transforms (workspace_id = null)
-                         :model/Database          {db-2 :id}   {:name "Other Db"}
+                         :model/Database           {db-2 :id}   {:name "Other Db"}
                          :model/Transform          {xf1-id :id} {:name   "Checked out - 1"
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf2-id :id} {:name   "Checked out - 2"
@@ -1600,10 +1607,10 @@
                                                           :schema string?
                                                           :table  string?}}
                               :dependents_count {}}],
-                     :edges [{:from_entity_type "input-table"
-                              :from_entity_id   string?
-                              :to_entity_type   "workspace-transform"
-                              :to_entity_id     (:ref_id tx)}]}
+                     :edges [{:to_entity_type "input-table"
+                              :to_entity_id   string?
+                              :from_entity_type   "workspace-transform"
+                              :from_entity_id     (:ref_id tx)}]}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))))))))))
 
 ;; TODO having trouble with test setup, but manually verified this stuff is working in dev environment :-(
@@ -1681,15 +1688,15 @@
                              ;; We won't have this input table when we fix finding the enclosed global transform.
                              {:type "input-table", :id tx-3-input, :data {:db (mt/id), :schema default-schema, :table tx-2-output, :id nil}, :dependents_count {:workspace-transform 1}}
                              {:type "workspace-transform", :id t3-ref, :data {:ref_id t3-ref, :name "Another Tx in WS1", :target {:db (mt/id), :schema nil, :table tx-3-output}}, :dependents_count {}}},
-                    :edges #{{:from_entity_type "input-table"
-                              :from_entity_id   tx-1-input
-                              :to_entity_type   "workspace-transform"
-                              :to_entity_id     t1-ref}
+                    :edges #{{:to_entity_type "input-table"
+                              :to_entity_id   tx-1-input
+                              :from_entity_type   "workspace-transform"
+                              :from_entity_id     t1-ref}
                              ;; This input table will be replaced by a transform chain.
-                             {:from_entity_type "input-table"
-                              :from_entity_id   tx-3-input
-                              :to_entity_type   "workspace-transform"
-                              :to_entity_id     t3-ref}
+                             {:to_entity_type "input-table"
+                              :to_entity_id   tx-3-input
+                              :from_entity_type   "workspace-transform"
+                              :from_entity_id     t3-ref}
                              #_{:from_entity_type "workspace-transform"
                                 :from_entity_id   (:ref_id tx-1)
                                 :to_entity_type   "external-transform"

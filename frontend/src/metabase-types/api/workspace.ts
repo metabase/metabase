@@ -85,20 +85,6 @@ export type WorkspaceTransform = Omit<Transform, "id"> & {
   last_run_message: string | null;
 };
 
-export type TransformUpstreamMapping = {
-  transform: WorkspaceTransformItem | null;
-};
-
-export type DownstreamTransformInfo = {
-  id: TransformId;
-  name: string;
-  workspace: WorkspaceItem;
-};
-
-export type TransformDownstreamMapping = {
-  transforms: DownstreamTransformInfo[];
-};
-
 export type WorkspaceCheckoutItem = {
   id: string;
   name: string;

@@ -33,6 +33,8 @@
                                         :target {:database (mt/id)
                                                  :schema   "analytics"
                                                  :name     "table_a"}})
+          ;; Trigger analysis
+          (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace (:id workspace)))
           (testing "creates output and input records"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace))))
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace)))))
@@ -68,7 +70,7 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
           ws    (ws.tu/create-ready-ws! "Test Workspace")]
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
-        (let [wt (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
+        (let [_  (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
                                               :transform nil
                                               {:name         "Transform"
                                                :source       {:type "query" :query query}
@@ -309,44 +311,6 @@
       (is (nil? (:execution_stale (entity-map g1))) "g1 should not be marked")
       (is (nil? (:execution_stale (entity-map g2))) "g2 should not be marked")
       (is (true? (:execution_stale (entity-map ws))) "ws should be marked (depends on stale g1)"))))
-
-#_(deftest full-staleness-workflow
-    (testing "Full workflow from stale marking to filtered execution"
-      (let [workspace (ws.tu/create-ready-ws! "Staleness Workflow Test")
-            t1-ref (str (random-uuid))
-            t2-ref (str (random-uuid))
-
-            ;; Create initial transforms
-            t1 (t2/insert! :model/WorkspaceTransform
-                           {:workspace_id (:id workspace)
-                            :ref_id t1-ref
-                            :name "upstream-transform"
-                            :source {:type :native :query "SELECT 1"}
-                            :target {:database (mt/id) :schema "public" :name "table1"}
-                            :execution_stale false})
-            t2 (t2/insert! :model/WorkspaceTransform
-                           {:workspace_id (:id workspace)
-                            :ref_id t2-ref
-                            :name "downstream-transform"
-                            :source {:type :native :query "SELECT * FROM table1"}
-                            :target {:database (mt/id) :schema "public" :name "table2"}
-                            :execution_stale false})]
-
-        ;; Step 1: Update upstream transform - should mark it as stale
-        (t2/update! :model/WorkspaceTransform t1-ref
-                    {:source {:type :native :query "SELECT 2"}})
-        (let [updated-t1 (t2/select-one :model/WorkspaceTransform :ref_id t1-ref)]
-          (is (true? (:stale updated-t1)) "Upstream transform should be marked stale after update"))
-
-        ;; Step 2: Simulate graph recalculation with staleness computation
-        (let [graph {:entities [{:node-type :workspace-transform :id t1-ref :execution_stale true :parents []}
-                                {:node-type :workspace-transform :id t2-ref :execution_stale false :parents [t1-ref]}]}
-              stale-ids {:workspace #{t1-ref} :global #{}}
-              graph-with-staleness (#'ws.impl/mark-execution-stale graph stale-ids)]
-          ;; Verify both transforms are marked for execution
-          (let [entities (:entities graph-with-staleness)]
-            (is (= 2 (count (filter #(or (:execution_stale %) (:execution_stale %)) entities)))
-                "Both transforms should need execution"))))))
 
 (deftest mark-execution-stale-deep-chain
   (testing "marks all descendants in a deep chain (5 levels)"
