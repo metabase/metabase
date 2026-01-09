@@ -205,7 +205,7 @@ export const metabot = createSlice({
       },
     ),
     // REACTIONS REDUCERS
-    setNavigateToPath: (state, action: PayloadAction<string>) => {
+    setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
     addSuggestedTransform: (
