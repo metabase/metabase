@@ -407,7 +407,7 @@
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
 
-;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
+;; Not all tables in the Data Catalog are guaranteed to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
 
 (defn- table-has-nested-fields? [columns]
@@ -447,10 +447,10 @@
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
+        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
         (throw e)))))
 
-;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
+;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog dbname]} :details, :as database} table]
