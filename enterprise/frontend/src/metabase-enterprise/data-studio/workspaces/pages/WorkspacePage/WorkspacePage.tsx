@@ -55,8 +55,9 @@ import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/com
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import type {
+  MetabotConverstationState,
   MetabotState,
-  MetabotStoreState,
+  MetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
@@ -90,15 +91,14 @@ type WorkspacePageProps = {
 };
 
 type MetabotConversationSnapshot = Pick<
-  MetabotStoreState,
+  MetabotConverstationState,
   | "messages"
   | "history"
   | "state"
-  | "reactions"
   | "activeToolCalls"
   | "errorMessages"
   | "conversationId"
->;
+> & { suggestedTransforms: MetabotSuggestedTransform[] };
 
 function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const dispatch = useDispatch();
@@ -356,15 +356,19 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     }
 
     return () => {
-      snapshots.set(id, {
-        messages: metabotStateRef.current.messages,
-        history: metabotStateRef.current.history,
-        state: metabotStateRef.current.state,
-        reactions: metabotStateRef.current.reactions,
-        activeToolCalls: metabotStateRef.current.activeToolCalls,
-        errorMessages: metabotStateRef.current.errorMessages,
-        conversationId: metabotStateRef.current.conversationId,
-      });
+      const convo = metabotStateRef.current.conversations["omnibot"];
+      if (convo) {
+        snapshots.set(id, {
+          messages: convo.messages,
+          history: convo.history,
+          state: convo.state,
+          activeToolCalls: convo.activeToolCalls,
+          errorMessages: convo.errorMessages,
+          conversationId: convo.conversationId,
+          suggestedTransforms:
+            metabotStateRef.current.reactions.suggestedTransforms,
+        });
+      }
       resetMetabotConversation();
     };
   }, [id, dispatch, resetMetabotConversation]);
@@ -788,6 +792,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   <MetabotTab
                     transform={metabotContextTransform}
                     source={metabotContextSource}
+                    workspaceId={workspace?.id}
                   />
                 </Tabs.Panel>
               )}
