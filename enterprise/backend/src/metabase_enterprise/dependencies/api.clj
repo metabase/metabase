@@ -579,14 +579,15 @@
                      :dashboard :report_dashboard
                      :document :document
                      :sandbox :sandboxes
-                     :segment :segment)
+                     :segment :segment
+                     :measure :measure)
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                       :entity.name)
         archived-filter (when (= include-archived-items :exclude)
                           (case entity-type
-                            (:card :dashboard :document :snippet :segment)
+                            (:card :dashboard :document :snippet :segment :measure)
                             [:= :entity.archived false]
                             :table
                             [:and
@@ -671,14 +672,15 @@
                      :dashboard :report_dashboard
                      :document :document
                      :sandbox :sandboxes
-                     :segment :segment)
+                     :segment :segment
+                     :measure :measure)
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
                       :entity.name)
         archived-filter (when (= include-archived-items :exclude)
                           (case entity-type
-                            (:card :dashboard :document :snippet :segment)
+                            (:card :dashboard :document :snippet :segment :measure)
                             [:= :entity.archived false]
                             :table
                             [:and

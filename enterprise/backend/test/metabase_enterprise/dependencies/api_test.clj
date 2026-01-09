@@ -1458,3 +1458,29 @@
                 segment-ids (set (map :id response))]
             (is (contains? segment-ids broken-segment-id))
             (is (contains? segment-ids archived-broken-segment-id))))))))
+
+(deftest ^:sequential unreferenced-archived-measure-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
+    (mt/with-premium-features #{:dependencies}
+      (let [products-id (mt/id :products)
+            price-field-id (mt/id :products :price)]
+        (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition {:aggregation [[:sum [:field price-field-id nil]]]}}
+                       :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition {:aggregation [[:sum [:field price-field-id nil]]]}
+                                                                                      :archived true}]
+          (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/measure-create {:object archived-measure :user-id (mt/user->id :crowberto)})
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "archived=false (default) excludes archived measure"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest")
+                  measure-ids (set (map :id response))]
+              (is (contains? measure-ids unreffed-measure-id))
+              (is (not (contains? measure-ids archived-measure-id)))))
+          (testing "archived=true includes archived measure"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest&archived=true")
+                  measure-ids (set (map :id response))]
+              (is (contains? measure-ids unreffed-measure-id))
+              (is (contains? measure-ids archived-measure-id)))))))))
