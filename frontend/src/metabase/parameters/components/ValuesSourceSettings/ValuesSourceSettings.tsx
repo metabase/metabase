@@ -68,7 +68,7 @@ export function ValuesSourceSettings({
       <Modal
         opened={isModalOpened}
         onClose={closeModal}
-        size="lg"
+        size="65%"
         padding={0}
         withCloseButton={false}
       >
