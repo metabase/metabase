@@ -194,10 +194,12 @@
                                      :isolated_schema :isolated_table :isolated_table_id :transform_id]
                                     :workspace_id id order-by)
         all-outputs      (concat outputs external-outputs)
-        raw-inputs       (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
-                                    :workspace_id id {:order-by [:db_id :schema :table]})
-        external-inputs  (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
-                                    :workspace_id id {:order-by [:db_id :schema :table]})
+        raw-inputs       (distinct
+                          (t2/select [:model/WorkspaceInput :db_id :schema :table :table_id]
+                                     :workspace_id id {:order-by [:db_id :schema :table]}))
+        external-inputs  (distinct
+                          (t2/select [:model/WorkspaceInputExternal :db_id :schema :table :table_id]
+                                     :workspace_id id {:order-by [:db_id :schema :table]}))
         all-raw-inputs   (concat raw-inputs external-inputs)
         ;; Some of our inputs may be shadowed by the outputs of other transforms. We only want external inputs.
         shadowed?        (into #{} (map (juxt :db_id :global_schema :global_table)) all-outputs)
