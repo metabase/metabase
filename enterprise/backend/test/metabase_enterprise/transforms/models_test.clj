@@ -2,6 +2,8 @@
   "Tests for transform jobs and tags database tables and basic CRUD operations."
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
+   [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.transforms.models.transform :as transform.model]
    [metabase-enterprise.transforms.models.transform-job :as transform-job]
    [metabase-enterprise.transforms.models.transform-tag :as transform-tag]
@@ -367,3 +369,29 @@
           (t2/update! :model/Transform transform-id {:name "New Name"})
           (let [updated (t2/select-one :model/Transform :id transform-id)]
             (is (false? (:execution_stale updated)))))))))
+
+(deftest transform-stale-lifecycle
+  (testing "Transform stale lifecycle: create -> run (not stale) -> update (stale)"
+    (mt/with-premium-features #{:transforms}
+      (let [query1 (query-util/make-query :source-table "ORDERS")
+            query2 (query-util/make-query :source-table "PRODUCTS")]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform"
+                                                            :source {:type "query" :query query1}
+                                                            :target {:database (mt/id) :schema "public" :name "test_table"}}]
+
+          (testing "Sanity check that it's stale to begin with"
+            (is (true? (t2/select-one-fn :execution_stale :model/Transform :id transform-id))))
+
+          (testing "Run: should mark execution_stale as false"
+            (mt/with-current-user (mt/user->id :crowberto)
+              #_{:clj-kondo/ignore [:discouraged-var]}
+              (mt/with-dynamic-fn-redefs [transforms.i/execute!
+                                          (fn [_transform _opts]
+                                            {:status :succeeded
+                                             :message "Mocked execution"})]
+                (transforms.execute/execute! (t2/select-one :model/Transform :id transform-id))))
+            (is (false? (t2/select-one-fn :execution_stale :model/Transform :id transform-id))))
+
+          (testing "Update source: should mark execution_stale as true"
+            (t2/update! :model/Transform transform-id {:source {:type "query" :query query2}})
+            (is (true? (t2/select-one-fn :execution_stale :model/Transform :id transform-id)))))))))

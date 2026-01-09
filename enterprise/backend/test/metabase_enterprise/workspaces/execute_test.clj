@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms.query-test-util :as query-util]
    [metabase-enterprise.transforms.test-util :as transforms.tu]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
@@ -223,3 +224,36 @@
 
         ;; Check that it's marked as not stale
         (is (false? (:stale (t2/select-one :model/WorkspaceTransform :ref_id (:ref_id ws-transform)))))))))
+
+(deftest transform-stale-lifecycle
+  (testing "Transform stale lifecycle: create -> run (not stale) -> update (stale)"
+    (let [query1 (mt/native-query {:query "SELECT 1 as id, 'hello' as name"})
+          query2 (mt/native-query {:query "SELECT 2 as id, 'world' as name"})]
+      (mt/with-temp [:model/Workspace {workspace-id :id}     {:name "Lifecycle Test Workspace"}
+                     :model/WorkspaceTransform {ref-id :ref_id} {:workspace_id workspace-id
+                                                                 :ref_id (str (random-uuid))
+                                                                 :name "Test Transform"
+                                                                 :source {:type "query" :query query1}
+                                                                 :target {:type     "table"
+                                                                          :database (mt/id)
+                                                                          :schema   nil
+                                                                          :name     "test_table"}
+                                                                 :execution_stale true}]
+        (let [workspace (t2/select-one :model/Workspace :id workspace-id)]
+          (testing "sanity check that it's staled to start with"
+            (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id ref-id))))
+
+          (testing "Run (mocked): should mark execution_stale as false"
+            (mt/with-dynamic-fn-redefs [ws.execute/run-transform-with-remapping
+                                        (fn [_transform _remapping]
+                                          {:status :succeeded
+                                           :end_time (java.time.Instant/now)
+                                           :message "Mocked execution"})]
+              (let [ws-transform (t2/select-one :model/WorkspaceTransform :ref_id ref-id)]
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (ws.impl/run-transform! workspace ws-transform))))
+            (is (false? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id ref-id))))
+
+          (testing "Update source: should mark execution_stale as true"
+            (t2/update! :model/WorkspaceTransform ref-id {:source {:type "query" :query query2}})
+            (is (true? (t2/select-one-fn :execution_stale :model/WorkspaceTransform :ref_id ref-id)))))))))

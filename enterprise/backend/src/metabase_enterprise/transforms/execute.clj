@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms.execute
   (:require
-   [metabase-enterprise.transforms.interface :as transforms.i]))
+   [metabase-enterprise.transforms.interface :as transforms.i]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -14,4 +15,6 @@
    (execute! transform nil))
   ([transform opts]
    #_{:clj-kondo/ignore [:discouraged-var]}
-   (transforms.i/execute! transform opts)))
+   (let [result (transforms.i/execute! transform opts)]
+     (t2/update! :model/Transform (:id transform) {:execution_stale false})
+     result)))
