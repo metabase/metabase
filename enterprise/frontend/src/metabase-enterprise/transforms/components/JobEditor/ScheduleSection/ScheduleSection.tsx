@@ -1,20 +1,11 @@
-import { useMemo } from "react";
 import { c, t } from "ttag";
 
-import { skipToken } from "metabase/api";
 import { Schedule } from "metabase/common/components/Schedule";
 import { useSetting } from "metabase/common/hooks";
 import { getScheduleExplanation } from "metabase/lib/cron";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Divider, Group, Tooltip } from "metabase/ui";
-import {
-  useListTransformJobTransformsQuery,
-  useRunTransformJobMutation,
-} from "metabase-enterprise/api";
-import {
-  canEditTransform,
-  useTransformPermissions,
-} from "metabase-enterprise/transforms/hooks/use-transform-permissions";
+import { useRunTransformJobMutation } from "metabase-enterprise/api";
 import type {
   ScheduleDisplayType,
   ScheduleSettings,
@@ -57,7 +48,7 @@ export function ScheduleSection({
           run={job?.last_run ?? null}
           neverRunMessage={t`This job hasn’t been run before.`}
         />
-        <RunButtonSection job={job} />
+        <RunButtonSection job={job} readOnly={readOnly} />
       </Group>
     </TitleSection>
   );
@@ -122,19 +113,10 @@ function ScheduleWidget({ job, onChangeSchedule }: ScheduleWidgetProps) {
 
 type RunButtonSectionProps = {
   job: TransformJobInfo;
+  readOnly?: boolean;
 };
 
-function RunButtonSection({ job }: RunButtonSectionProps) {
-  const { transformsDatabases, isLoadingDatabases } = useTransformPermissions();
-  const { data: transforms, isLoading: isLoadingTransforms } =
-    useListTransformJobTransformsQuery(job.id || skipToken);
-  const canRunAllTransforms = useMemo(() => {
-    if (!transformsDatabases || !transforms) {
-      return;
-    }
-    return transforms.every((t) => canEditTransform(t, transformsDatabases));
-  }, [transforms, transformsDatabases]);
-
+function RunButtonSection({ job, readOnly }: RunButtonSectionProps) {
   const [runJob] = useRunTransformJobMutation();
   const { sendErrorToast } = useMetadataToasts();
   const isSaved = job.id != null;
@@ -144,7 +126,7 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
     if (!hasTags) {
       return t`This job doesn't have tags to run.`;
     }
-    if (!canRunAllTransforms) {
+    if (readOnly) {
       return t`Sorry, you don't have permission to run one or more of this job's transforms.`;
     }
   })();
@@ -168,9 +150,8 @@ function RunButtonSection({ job }: RunButtonSectionProps) {
       <RunButton
         id={job.id}
         run={job.last_run}
-        isDisabled={!isSaved || !hasTags || !canRunAllTransforms}
+        isDisabled={!isSaved || !hasTags || readOnly}
         onRun={handleRun}
-        loading={isLoadingDatabases || isLoadingTransforms}
       />
     </Tooltip>
   );
