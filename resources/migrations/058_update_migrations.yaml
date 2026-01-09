@@ -4695,8 +4695,7 @@ databaseChangeLog:
         - sql:
             sql: DELETE FROM workspace_input
       rollback:
-        - sql:
-            sql: SELECT 1  # No rollback needed, data will be regenerated
+        - empty
 
   - changeSet:
       id: v58.2026-01-09T07:51:01
@@ -4798,8 +4797,7 @@ databaseChangeLog:
         - sql:
             sql: UPDATE workspace_transform SET stale = true
       rollback:
-        - sql:
-            sql: SELECT 1  # No rollback needed
+        - empty
 
   - changeSet:
       id: v58.2026-01-09T07:51:07
@@ -5057,8 +5055,7 @@ databaseChangeLog:
         - delete:
             tableName: workspace_graph
       rollback:
-        - sql:
-            sql: SELECT 1  # Data will be recalculated
+        - empty
 
   - changeSet:
       id: v58.2026-01-09T09:58:11
@@ -5068,8 +5065,7 @@ databaseChangeLog:
         - delete:
             tableName: workspace_input
       rollback:
-        - sql:
-            sql: SELECT 1  # Data will be recalculated
+        - empty
 
   - changeSet:
       id: v58.2026-01-09T09:58:12
@@ -5079,8 +5075,7 @@ databaseChangeLog:
         - delete:
             tableName: workspace_output
       rollback:
-        - sql:
-            sql: SELECT 1  # Data will be recalculated
+        - empty
 
   - changeSet:
       id: v58.2026-01-09T09:58:13
@@ -5090,8 +5085,7 @@ databaseChangeLog:
         - delete:
             tableName: workspace_input_external
       rollback:
-        - sql:
-            sql: SELECT 1  # Data will be recalculated
+        - empty
 
   - changeSet:
       id: v58.2026-01-09T09:58:14
@@ -5101,8 +5095,7 @@ databaseChangeLog:
         - delete:
             tableName: workspace_output_external
       rollback:
-        - sql:
-            sql: SELECT 1  # Data will be recalculated
+        - empty
 
   # Update unique constraints to include version columns
   - changeSet:

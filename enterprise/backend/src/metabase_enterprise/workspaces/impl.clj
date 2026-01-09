@@ -417,9 +417,9 @@
     ;; Analyze each stale transform
     (doseq [transform stale-transforms]
       (analyze-transform! workspace transform))
-    ;; Grant read access to any new external inputs
-    (when (seq stale-transforms)
-      (sync-grant-accesses! workspace))
+    ;; Grant any missing read access. Do this even if no transforms were stale, as we may have been unable to grant
+    ;; some permissions previously (insufficient permissions, table didn't exist yet, etc.)
+    (sync-grant-accesses! workspace)
     (boolean (seq stale-transforms))))
 
 (defn- transform-output-exists-for-version?
