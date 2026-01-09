@@ -62,62 +62,51 @@ import {
 } from "./utils";
 
 type OwnProps = {
-  question: Question;
-  query: NativeQuery;
-
-  proposedQuestion?: Question | undefined;
-  onRejectProposed?: () => void;
-  onAcceptProposed?: (query: DatasetQuery) => void;
-
-  nativeEditorSelectedText?: string;
-  modalSnippet?: NativeQuerySnippet;
-  placeholder?: string;
-  highlightedLineNumbers?: number;
-
-  isInitiallyOpen?: boolean;
-  isNativeEditorOpen: boolean;
-  isRunnable: boolean;
-  isRunning: boolean;
-  isResultDirty: boolean;
-
-  isShowingDataReference: boolean;
-  isShowingTemplateTagsEditor: boolean;
-  isShowingSnippetSidebar: boolean;
-
-  readOnly?: boolean;
+  availableHeight?: number;
   canChangeDatabase?: boolean;
-  hasTopBar?: boolean;
-  hasParametersList?: boolean;
-  hasEditingSidebar?: boolean;
-  hasRunButton?: boolean;
-  sidebarFeatures?: SidebarFeatures;
-  resizable?: boolean;
-
-  editorContext?: "question";
-
-  handleResize?: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
-  runQuery?: () => void;
-  runQuestionQuery: (opts?: {
-    overrideWithQuestion?: Question;
-    shouldUpdateUrl?: boolean;
-  }) => void;
-  setNativeEditorSelectedRange?: (range: SelectionRange[]) => void;
-  openDataReferenceAtQuestion?: (id: CardId) => void;
-  openSnippetModalWithSelectedText?: () => void;
-  insertSnippet?: (snippet: NativeQuerySnippet) => void;
-  setIsNativeEditorOpen?: (isOpen: boolean) => void;
-  setParameterValue?: (parameterId: ParameterId, value: string) => void;
-  onOpenModal?: (modalType: QueryModalType) => void;
-  toggleDataReference: () => void;
-  toggleTemplateTagsEditor: () => void;
-  toggleSnippetSidebar?: () => void;
   cancelQuery?: () => void;
   closeSnippetModal?: () => void;
-  onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
+  editorContext?: "question";
+  handleResize?: () => void;
+  hasEditingSidebar?: boolean;
+  hasParametersList?: boolean;
+  hasRunButton?: boolean;
+  hasTopBar?: boolean;
+  highlightedLineNumbers?: number;
+  insertSnippet?: (snippet: NativeQuerySnippet) => void;
+  isInitiallyOpen?: boolean;
+  isNativeEditorOpen: boolean;
+  isResultDirty: boolean;
+  isRunnable: boolean;
+  isRunning: boolean;
+  isShowingDataReference: boolean;
+  isShowingSnippetSidebar: boolean;
+  isShowingTemplateTagsEditor: boolean;
+  modalSnippet?: NativeQuerySnippet;
+  nativeEditorSelectedText?: string;
+  onAcceptProposed?: (query: DatasetQuery) => void;
+  onOpenModal?: (modalType: QueryModalType) => void;
+  onRejectProposed?: () => void;
+  onSetDatabaseId?: (id: DatabaseId) => void;
+  openDataReferenceAtQuestion?: (id: CardId) => void;
+  openSnippetModalWithSelectedText?: () => void;
+  placeholder?: string;
+  proposedQuestion?: Question | undefined;
+  query: NativeQuery;
+  question: Question;
+  readOnly?: boolean;
+  resizable?: boolean;
+  runQuery?: () => void;
+  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setIsNativeEditorOpen?: (isOpen: boolean) => void;
+  setNativeEditorSelectedRange?: (range: SelectionRange[]) => void;
+  setParameterValue?: (parameterId: ParameterId, value: string) => void;
+  sidebarFeatures?: SidebarFeatures;
+  toggleDataReference: () => void;
+  toggleSnippetSidebar?: () => void;
+  toggleTemplateTagsEditor: () => void;
   topBarInnerContent?: ReactNode;
-  availableHeight?: number;
 };
 
 interface ExplicitSizeProps {
