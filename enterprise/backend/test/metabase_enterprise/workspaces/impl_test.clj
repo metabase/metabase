@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase.lib.core :as lib]
@@ -32,6 +33,8 @@
                                         :target {:database (mt/id)
                                                  :schema   "analytics"
                                                  :name     "table_a"}})
+          ;; Trigger analysis
+          (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace (:id workspace)))
           (testing "creates output and input records"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace))))
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace)))))
