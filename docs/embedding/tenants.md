@@ -7,7 +7,7 @@ summary: Tenants let you serve multiple customers from a single Metabase while k
 
 {% include plans-blockquote.html feature="Tenants" is_plural=true %}
 
-A Tenant is a named set of attributes you can assign to a user to isolate them from other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants.
+Tenants give you a way to group users and keep them isolated from users in other tenants. If you're building a SaaS app with embedded Metabase dashboards, you can assign the customers of your SaaS to tenants.
 
 The big advantage of grouping users into tenants is that you can use the same content and group permissions for all tenants, so you don't have to create all new stuff for each tenant, and each tenant only ever sees their own data.
 
@@ -410,7 +410,7 @@ If you disable multi-tenant strategy, _all your tenant users will be deactivated
 
 - **Tenant users can't change tenants.** Once an external user is assigned to a tenant, they cannot switch to another tenant.
 
-- **If you disable multi-tenant strategy, deactivated tenant users will not show up in 'Deactivated users**, but Metabase will still keep track of them and won't allow creating new users with the same email. If you want to
+- **If you disable multi-tenant strategy, deactivated tenant users will not show up in "Deactivated users"**, but Metabase will still keep track of them and won't allow creating new users with the same email. If you want to
 
 - **There are no tenant-specific groups**. Tenant groups are are shared between all tenants. If you need a special group for just some of your tenants, create a tenant group but don't add any members from the tenants that the group isn't applicable to.
 
