@@ -7,9 +7,8 @@ import {
   useUpdateNotificationMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
-import { addUndo } from "metabase/redux/undo";
 import type { Notification } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";
@@ -29,7 +28,7 @@ export const DeleteAlertModal = ({
 }: DeleteAlertModalProps) => {
   const id = getAlertId(params?.alertId);
 
-  const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const hasUnsubscribed = location.query?.unsubscribed;
 
@@ -47,17 +46,15 @@ export const DeleteAlertModal = ({
     });
 
     if (result.error) {
-      dispatch(
-        addUndo({
-          icon: "warning",
-          toastColor: "error",
-          message: t`An error occurred`,
-        }),
-      );
+      sendToast({
+        icon: "warning",
+        toastColor: "error",
+        message: t`An error occurred`,
+      });
       return;
     }
 
-    dispatch(addUndo({ message: t`The alert was successfully deleted.` }));
+    sendToast({ message: t`The alert was successfully deleted.` });
     onClose();
   };
 

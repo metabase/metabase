@@ -85,7 +85,7 @@ export function MetabotAdminPage() {
                 .t`${metabot.name} is Metabase's AI agent. To help ${metabot.name} more easily find and focus on the data you care about most, configure what content it should be able to access or use to create queries.`}
             />
             {isEmbedMetabot && (
-              <Text c="text-medium" maw="40rem">
+              <Text c="text-secondary" maw="40rem">
                 {t`If you're embedding the Metabot component in an app, you can specify a different collection that embedded Metabot is allowed to use for creating queries.`}
               </Text>
             )}
@@ -287,11 +287,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-light" mb="sm">
+    <Flex align="center" gap="sm" c="text-tertiary" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-light" fw="bold">
+          <Text c="text-tertiary" fw="bold">
             /
           </Text>
         </>
@@ -310,7 +310,7 @@ const CollectionDisplay = ({
   return (
     <Flex align="center" gap="sm">
       <Icon {...icon} c={icon.color ?? "brand"} />
-      <Text c="text-medium" fw="bold">
+      <Text c="text-secondary" fw="bold">
         {collection.name}
       </Text>
     </Flex>

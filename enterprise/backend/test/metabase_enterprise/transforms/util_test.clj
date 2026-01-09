@@ -108,3 +108,107 @@
                 (catch Exception _e
                   ;; Ignore cleanup errors
                   nil)))))))))
+
+;;; ------------------------------------------------- Source Table Resolution Tests ----------------------------------
+
+(deftest batch-lookup-table-ids-test
+  (testing "batch-lookup-table-ids looks up table IDs from ref maps"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
+                   :model/Table    t2 {:db_id (:id db) :name "table_two" :schema "my_schema"}]
+      (testing "returns nil for empty input"
+        (is (nil? (transforms.util/batch-lookup-table-ids [])))
+        (is (nil? (transforms.util/batch-lookup-table-ids nil))))
+
+      (testing "looks up table without schema"
+        (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
+              result (transforms.util/batch-lookup-table-ids refs)]
+          (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
+
+      (testing "looks up table with schema"
+        (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
+              result (transforms.util/batch-lookup-table-ids refs)]
+          (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
+
+      (testing "handles mixed refs with and without schema"
+        (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
+                    {:database_id (:id db) :schema "my_schema" :table "table_two"}]
+              result (transforms.util/batch-lookup-table-ids refs)]
+          (is (= {[(:id db) nil "table_one"] (:id t1)
+                  [(:id db) "my_schema" "table_two"] (:id t2)}
+                 result))))
+
+      (testing "returns empty for non-existent table"
+        (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
+              result (transforms.util/batch-lookup-table-ids refs)]
+          (is (= {} result)))))))
+
+(deftest normalize-source-tables-test
+  (testing "normalize-source-tables converts all entries to map format"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    t1 {:db_id (:id db) :name "existing_table" :schema nil}]
+      (testing "converts integer table ID to map format"
+        (let [result (transforms.util/normalize-source-tables {"t" (:id t1)})]
+          (is (map? (get result "t")))
+          (is (= (:id db) (get-in result ["t" :database_id])))
+          (is (= "existing_table" (get-in result ["t" :table])))
+          (is (= (:id t1) (get-in result ["t" :table_id])))))
+
+      (testing "throws for non-existent integer table ID"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
+                              (transforms.util/normalize-source-tables {"t" 999999}))))
+
+      (testing "populates table_id for existing table"
+        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
+              result (transforms.util/normalize-source-tables source-tables)]
+          (is (= (:id t1) (get-in result ["t" :table_id])))))
+
+      (testing "preserves existing table_id"
+        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table" :table_id 999}}
+              result (transforms.util/normalize-source-tables source-tables)]
+          (is (= 999 (get-in result ["t" :table_id])))))
+
+      (testing "leaves table_id nil for non-existent table ref"
+        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
+              result (transforms.util/normalize-source-tables source-tables)]
+          (is (nil? (get-in result ["t" :table_id])))))
+
+      (testing "handles mixed int and map entries"
+        (let [source-tables {"t1" (:id t1)
+                             "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
+              result (transforms.util/normalize-source-tables source-tables)]
+          (is (map? (get result "t1")))
+          (is (= (:id t1) (get-in result ["t1" :table_id])))
+          (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
+
+(deftest resolve-source-tables-test
+  (testing "resolve-source-tables returns {alias -> table_id} map"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
+                   :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
+      (testing "passes through integer entries (old format)"
+        (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
+
+      (testing "resolves map with table_id"
+        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
+          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+
+      (testing "looks up table_id for map without it"
+        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one"}}]
+          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+
+      (testing "throws for non-existent table"
+        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
+                                (transforms.util/resolve-source-tables source-tables)))))
+
+      (testing "throws with schema in error message"
+        (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
+                                (transforms.util/resolve-source-tables source-tables)))))
+
+      (testing "handles mixed entries (old and new format)"
+        (let [source-tables {"t1" (:id t1)
+                             "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
+          (is (= {"t1" (:id t1) "t2" (:id t2)}
+                 (transforms.util/resolve-source-tables source-tables))))))))

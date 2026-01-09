@@ -3,10 +3,7 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { alpha } from "metabase/lib/colors";
-
 interface ButtonRootProps {
-  purple?: boolean;
   onlyText?: boolean;
   light?: boolean;
 }
@@ -21,20 +18,6 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       transition: none;
     }
   }
-
-  ${({ purple, theme }) =>
-    purple &&
-    css`
-      color: var(--mb-color-text-white);
-      background-color: var(--mb-color-filter);
-      border: 1px solid var(--mb-color-filter);
-
-      &:hover {
-        color: var(--mb-color-text-white);
-        background-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
-        border-color: ${alpha(theme.fn.themeColor("filter"), 0.88)};
-      }
-    `}
 
   ${({ onlyText }) =>
     onlyText &&
@@ -58,7 +41,7 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       color: var(--mb-color-brand);
 
       &:hover {
-        background-color: var(--mb-color-bg-light);
+        background-color: var(--mb-color-background-secondary);
       }
     `}
 `;

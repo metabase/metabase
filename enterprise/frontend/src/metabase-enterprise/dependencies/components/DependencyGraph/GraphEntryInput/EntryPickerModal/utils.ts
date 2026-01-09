@@ -13,7 +13,7 @@ import type {
   SearchResponse,
 } from "metabase-types/api";
 
-import { getDependencyType } from "../../utils";
+import { getDependencyType } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
 import type { EntryPickerItem } from "./types";

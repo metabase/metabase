@@ -40,6 +40,7 @@ import {
   createMockFieldValues,
   createMockSegment,
   createMockTable,
+  createMockUser,
   createMockUserListResult,
 } from "metabase-types/api/mocks";
 import {
@@ -280,6 +281,9 @@ async function setup({
     {
       withRouter: true,
       initialRoute: initialRoute ?? Urls.dataStudioData(params),
+      storeInitialState: {
+        currentUser: createMockUser({ is_superuser: true }),
+      },
     },
   );
 
@@ -431,12 +435,7 @@ describe("DataModel", () => {
       const disabledTable = await findTablePickerTable(
         ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name,
       );
-      expect(disabledTable).toHaveStyle({ pointerEvents: "none" });
-
-      // This click should not cause a change, as the table should be disabled
-      await expect(userEvent.click(disabledTable)).rejects.toThrow(
-        /pointer-events: none/,
-      );
+      expect(disabledTable).toHaveAttribute("data-disabled", "true");
 
       expect(screen.queryByTestId("table-section")).not.toBeInTheDocument();
     });

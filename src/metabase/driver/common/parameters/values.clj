@@ -484,7 +484,7 @@
                    :let    [v (value-for-tag tag params)]]
                (do
                  (log/tracef "Value for tag %s\n%s\n->\n%s" (pr-str k) (u/pprint-to-str tag) (u/pprint-to-str v))
-                 [k v])))
+                 [(or (lib/match-and-normalize-tag-name k) k) v])))
     (catch Throwable e
       (throw (ex-info (tru "Error building query parameter map: {0}" (ex-message e))
                       {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
