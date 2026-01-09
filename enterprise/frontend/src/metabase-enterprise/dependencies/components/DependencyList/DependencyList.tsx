@@ -3,7 +3,10 @@ import { useState } from "react";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type * as Urls from "metabase/lib/urls";
 import { Center, Flex, Stack } from "metabase/ui";
-import { useListUnreferencedGraphNodesQuery } from "metabase-enterprise/api";
+import {
+  useListBrokenGraphNodesQuery,
+  useListUnreferencedGraphNodesQuery,
+} from "metabase-enterprise/api";
 import type { DependencyEntry } from "metabase-types/api";
 
 import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
@@ -28,8 +31,12 @@ export function DependencyList({
   onParamsChange,
 }: DependencyListProps) {
   const [selectedEntry, setSelectedEntry] = useState<DependencyEntry>();
+
+  const useListGraphNodesQuery =
+    mode === "broken"
+      ? useListBrokenGraphNodesQuery
+      : useListUnreferencedGraphNodesQuery;
   const availableGroupTypes = getAvailableGroupTypes(mode);
-  const useListGraphNodesQuery = useListUnreferencedGraphNodesQuery;
 
   const {
     data: nodes = [],
