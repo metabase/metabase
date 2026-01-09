@@ -56,9 +56,9 @@ import {
 } from "./constants";
 import type { SelectionRange, SidebarFeatures } from "./types";
 import {
-  calcInitialEditorHeight,
   canFormatForEngine,
   formatQuery,
+  getInitialEditorHeight,
 } from "./utils";
 
 type OwnProps = {
@@ -201,7 +201,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
 
     const [height, setHeight] = useState(
-      calcInitialEditorHeight({ query, availableHeight }),
+      getInitialEditorHeight({ query, availableHeight }),
     );
     const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
       useState(false);
@@ -240,7 +240,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
 
     const closeEditor = useCallback(() => {
       setIsNativeEditorOpen?.(false);
-      setHeight(calcInitialEditorHeight({ query, availableHeight }));
+      setHeight(getInitialEditorHeight({ query, availableHeight }));
     }, [setIsNativeEditorOpen, query, availableHeight]);
 
     const resizeEditor = useCallback(
@@ -285,7 +285,7 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     useEffect(() => {
       // Recalculate height when opening native editor
       if (isNativeEditorOpen && !wasNativeEditorOpen) {
-        const newHeight = calcInitialEditorHeight({ query, availableHeight });
+        const newHeight = getInitialEditorHeight({ query, availableHeight });
         setHeight(newHeight);
       }
     }, [query, availableHeight, isNativeEditorOpen, wasNativeEditorOpen]);

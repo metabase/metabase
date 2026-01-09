@@ -47,7 +47,7 @@ function getVisibleLinesCount({
   return Math.max(Math.min(queryLineCount, maxAutoSizeLines), MIN_HEIGHT_LINES);
 }
 
-export function calcInitialEditorHeight({
+export function getInitialEditorHeight({
   query,
   availableHeight = 0,
 }: GetVisibleLinesCountParams) {
