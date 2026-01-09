@@ -135,7 +135,7 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
-        minWidth: 400,
+        minWidth: 200,
         cell: ({ row }) => (
           <EntityNameCell
             data-testid={`${row.original.model}-name`}
