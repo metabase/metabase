@@ -15,8 +15,6 @@ import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type { EntityToken } from "metabase-types/api/entity";
 
-import { parseInitialSqlParameters } from "./parse-initial-sql-parameters";
-
 type LoadQuestionSdkParams = LoadSdkQuestionParams & {
   token: EntityToken | null | undefined;
 };
@@ -76,15 +74,10 @@ export const loadQuestionSdk =
       question = question.applyTemplateTagParameters();
     }
 
-    const queryParams = parseInitialSqlParameters({
-      initialSqlParameters,
-      card,
-    });
-
     const parameterValues = getParameterValuesForQuestion({
       card,
       metadata,
-      queryParams,
+      queryParams: initialSqlParameters,
     });
 
     if (parameterValues) {
