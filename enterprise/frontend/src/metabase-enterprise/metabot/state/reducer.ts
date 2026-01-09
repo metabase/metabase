@@ -292,7 +292,7 @@ export const metabot = createSlice({
         conversationId,
       } = action.payload;
 
-      convo.messages = messages ?? [];
+      convo.messages = castDraft(messages ?? []);
       convo.history = history ?? [];
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
