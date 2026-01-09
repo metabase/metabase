@@ -39,7 +39,7 @@ export interface EditedTransform {
 export interface Tab {
   id: string;
   name: string;
-  type: "transform" | "table" | "preview";
+  type: "transform" | "table";
 }
 
 export interface TransformTab extends Tab {

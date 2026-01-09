@@ -743,9 +743,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                               name={
                                 tab.type === "transform"
                                   ? "pivot_table"
-                                  : tab.type === "preview"
-                                    ? "eye"
-                                    : "table"
+                                  : "table"
                               }
                               aria-hidden
                             />
