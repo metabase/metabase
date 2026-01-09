@@ -20,6 +20,9 @@ export function TypeFilterPicker({
   onParamsChange,
 }: TypeFilterPickerProps) {
   const availableGroupTypes = getAvailableGroupTypes(mode);
+
+  // preserve selected options in state to allow to deselect all types
+  // until the popover is closed
   const [groupTypes, setGroupTypes] = useState(
     params.groupTypes ?? availableGroupTypes,
   );
