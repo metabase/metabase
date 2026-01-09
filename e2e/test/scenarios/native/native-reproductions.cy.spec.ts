@@ -682,8 +682,7 @@ describe("issue 59110", () => {
 
     H.NativeEditor.get().then((editor) => {
       const { height } = editor[0].getBoundingClientRect();
-      const SLOPPY_CLICK_THRESHOLD = 30;
-      const diff = height - SLOPPY_CLICK_THRESHOLD;
+      const diff = height + 20;
 
       cy.log("drag the border to hide the editor");
 
@@ -698,12 +697,11 @@ describe("issue 59110", () => {
           .trigger("mousemove", {
             clientX: coordsDrag.x,
             clientY: coordsDrag.y - diff,
-          })
-          .trigger("mouseup");
+          });
       });
     });
 
-    H.NativeEditor.get().should("not.be.visible");
+    H.NativeEditor.get().should("not.exist");
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)
       .should("be.visible")
