@@ -166,8 +166,8 @@ const defaultConfig = {
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
-  viewportHeight: 800,
-  viewportWidth: 1280,
+  viewportHeight: 1080,
+  viewportWidth: 1920,
   // enable video recording in run mode
   video: true,
   videoCompression: true,
