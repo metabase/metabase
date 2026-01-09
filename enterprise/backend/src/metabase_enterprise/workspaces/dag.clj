@@ -217,17 +217,18 @@
           outputs    (when (seq tx-nodes)
                        (->latest
                         (t2/select-fn-vec (fn [row]
-                                            ;; We use workspace_output.id (i.e. analysis write order) as a proxy for
-                                            ;; the order in which the corresponding transforms were updated.
                                             {:node-type :table
                                              :id        (t2.realize/realize row)
-                                             :version   (:id row)})
+                                             :version   (:version row)})
+                                          ;; We use workspace_output.id (i.e. analysis write order) as a proxy for
+                                          ;; the order in which the corresponding transforms were updated.
                                           [:model/WorkspaceOutput
-                                           :id
+                                           [:id :version]
                                            [:db_id :db]
                                            [:global_schema :schema]
                                            [:global_table :table]
                                            [:global_table_id :id]]
+                                          :workspace_id ws-id
                                           :ref_id [:in (map :id tx-nodes)])))
           init-nodes (concat tx-nodes outputs)
           fns        {:node-parents (partial node-parents ws-id)
