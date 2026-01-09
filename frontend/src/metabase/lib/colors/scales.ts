@@ -19,28 +19,49 @@ export const getColorScale = (
   }
 };
 
+// Matches RGBA color strings with integers, decimals, and scientific notation
+// Handles: rgba(136, 191, 77, 0.75), rgba(136.7, 191.3, 77.2, 0.75), rgba(136, 191, 77, 7.5e-7)
 const RGBA_REGEX =
-  /rgba\((\d+\.\d+),\s*(\d+\.\d+),\s*(\d+\.\d+),\s*(\d+\.\d+)\)/;
+  /rgba\(\s*(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*,\s*(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*,\s*(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*,\s*(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*\)/i;
 
 /**
  * Normalizes RGBA color strings by rounding RGB components to integers
- * while preserving the alpha channel. This ensures colors are in standard
+ * and clamping alpha values to [0, 1]. This ensures colors are in standard
  * CSS format where RGB values are integers (0-255) and alpha is a decimal (0-1).
  *
- * @param color - A color string that may contain RGBA values with decimal RGB components
- * @returns A normalized color string with integer RGB values and preserved alpha channel
+ * Handles edge cases including:
+ * - Integer RGB values: `rgba(136, 191, 77, 0.75)`
+ * - Decimal RGB values: `rgba(136.7, 191.3, 77.2, 0.75)`
+ * - Scientific notation: `rgba(136, 191, 77, 7.5e-7)`
+ * - Out-of-range alpha values (clamped to [0, 1])
+ *
+ * @param color - A color string that may contain RGBA values with various numeric formats
+ * @returns A normalized color string with integer RGB values and clamped alpha channel
  *
  * @example
  * ```ts
  * getSafeColor("rgba(123.456, 78.9, 255.1, 0.5)")
- * // Returns: "rgba(123,79,255,0.5)"
+ * // Returns: "rgba(123, 79, 255, 0.5)"
  *
- * getSafeColor("rgba(100.7, 200.3, 50.9, 0.75)")
- * // Returns: "rgba(101,200,51,0.75)"
+ * getSafeColor("rgba(136, 191, 77, 7.5e-7)")
+ * // Returns: "rgba(136, 191, 77, 0.000001)"
+ *
+ * getSafeColor("rgba(100, 200, 50, 1.5)")
+ * // Returns: "rgba(100, 200, 50, 1)"
  * ```
  */
-export const getSafeColor = (color: string) => {
+export const getSafeColor = (color: string): string => {
   return color.replace(RGBA_REGEX, (_, r, g, b, a) => {
-    return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
+    const rNum = parseFloat(r);
+    const gNum = parseFloat(g);
+    const bNum = parseFloat(b);
+    const aNum = parseFloat(a);
+
+    // Round RGB to integers, clamp alpha to [0, 1], round to 6 decimals
+    const clampedAlpha = Math.min(
+      1,
+      Math.max(0, Math.round(aNum * 1000000) / 1000000),
+    );
+    return `rgba(${Math.round(rNum)}, ${Math.round(gNum)}, ${Math.round(bNum)}, ${clampedAlpha})`;
   });
 };
