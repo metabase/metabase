@@ -46,9 +46,9 @@ import S from "./MergeWorkspaceModal.module.css";
 import type { ProblemCheckCategory } from "./problemUtils";
 import {
   formatProblemDetails,
-  getCheckName,
   getCheckStatus,
   getCheckStatusWithUnused,
+  getCheckTitle,
   groupProblemsByCategory,
 } from "./problemUtils";
 
@@ -170,7 +170,7 @@ const QualityChecksSection = ({
                 style={{ cursor: hasProblems ? "pointer" : "default" }}
                 onClick={() => hasProblems && toggleCheck(category)}
               >
-                <Text>{getCheckName(category)}</Text>
+                <Text>{getCheckTitle(category)}</Text>
                 {isLoading ? (
                   <Loader size="xs" />
                 ) : (

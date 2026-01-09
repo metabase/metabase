@@ -1,3 +1,6 @@
+import { match } from "ts-pattern";
+import { t } from "ttag";
+
 import type { WorkspaceProblem } from "metabase-types/api";
 
 export type ProblemCheckCategory =
@@ -26,26 +29,20 @@ export function groupProblemsByCategory(
   problems: WorkspaceProblem[],
 ): GroupedProblems {
   const grouped: GroupedProblems = {
-    "external-dependencies": [],
-    "internal-dependencies": [],
-    "structural-issues": [],
-    "unused-outputs": [],
+    "external-dependencies": problems.filter(
+      (problem) => problem.category === "external-downstream",
+    ),
+    "internal-dependencies": problems.filter(
+      (problem) => problem.category === "internal-downstream",
+    ),
+    "structural-issues": problems.filter(
+      (problem) =>
+        problem.category === "internal" || problem.category === "external",
+    ),
+    "unused-outputs": problems.filter(
+      (problem) => problem.category === "unused",
+    ),
   };
-
-  for (const problem of problems) {
-    if (problem.category === "external-downstream") {
-      grouped["external-dependencies"].push(problem);
-    } else if (problem.category === "internal-downstream") {
-      grouped["internal-dependencies"].push(problem);
-    } else if (
-      problem.category === "internal" ||
-      problem.category === "external"
-    ) {
-      grouped["structural-issues"].push(problem);
-    } else if (problem.category === "unused") {
-      grouped["unused-outputs"].push(problem);
-    }
-  }
 
   return grouped;
 }
@@ -56,7 +53,9 @@ export function groupProblemsByCategory(
  */
 export function getCheckStatus(problems: WorkspaceProblem[]): CheckStatus {
   // Filter out unused problems for status calculation - they're informational only
-  const relevantProblems = problems.filter((p) => p.category !== "unused");
+  const relevantProblems = problems.filter(
+    (problem) => problem.category !== "unused",
+  );
 
   // If all problems are unused, return passed with empty array
   // If there are any non-unused problems, return failed with those problems
@@ -74,7 +73,7 @@ export function getCheckStatusWithUnused(
   problems: WorkspaceProblem[],
 ): CheckStatus {
   return {
-    status: problems.length === 0 ? "passed" : "passed", // Unused is always passed (informational)
+    status: "passed", // Unused is always passed (informational)
     count: problems.length,
     problems: problems, // Include all problems for display
   };
@@ -150,14 +149,11 @@ export function formatProblemDetails(problem: WorkspaceProblem): string {
     : problem.description;
 }
 
-/**
- * Gets user-friendly check name for a category
- */
-export function getCheckName(category: ProblemCheckCategory): string {
-  return category
-    .split("-")
-    .map((word, index) =>
-      index === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word,
-    )
-    .join(" ");
+export function getCheckTitle(category: ProblemCheckCategory): string {
+  return match(category)
+    .with("external-dependencies", () => t`External dependencies`)
+    .with("internal-dependencies", () => t`Internal dependencies`)
+    .with("structural-issues", () => t`Structural issues`)
+    .with("unused-outputs", () => t`Unused outputs`)
+    .exhaustive();
 }
