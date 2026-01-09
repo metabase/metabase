@@ -18,8 +18,10 @@ To translate an embed's user interface, set the locale in the config:
   window.metabaseConfig = {
     isGuest: true,
     instanceUrl: "YOUR_METABASE_URL",
-    // Sets the language. If you've uploaded a translation dictionary,
-    // Metabase will translate strings for this locale from that dictionary
+    // Translates UI elements to the locale's language.
+    // If you've uploaded a translation dictionary,
+    // Metabase will also translate content strings
+    // to this locale from that dictionary.
     locale: "es"
   };
 </script>
