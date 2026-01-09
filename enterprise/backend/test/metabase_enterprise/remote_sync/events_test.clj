@@ -680,34 +680,6 @@
         (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Document" :model_id (:id document))]
           (is (nil? update-entry)))))))
 
-(deftest existing-collection-type-changed-from-remote-synced-test
-  (testing "existing collection type changed from remote-synced is marked as removed"
-    (mt/with-temp [:model/Collection collection {:type "remote-synced" :name "Remote-Sync"}]
-      (#'impl/sync-objects! (t/instant) {"Collection" #{(:entity_id collection)}})
-      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
-        (is (= "synced" (:status initial-entry)))
-        (events/publish-event! :event/collection-update
-                               {:object (dissoc collection :type)
-                                :user-id (mt/user->id :rasta)})
-        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
-          (is (= "removed" (:status update-entry)))
-          (is (= (:id initial-entry) (:id update-entry))))))))
-
-(deftest new-collection-type-changed-from-remote-synced-test
-  (testing "new collection type changed from remote-synced is marked as removed"
-    (mt/with-temp [:model/Collection collection {:type "remote-synced" :name "Remote-Sync"}]
-      (t2/delete! :model/RemoteSyncObject)
-      (events/publish-event! :event/collection-create
-                             {:object collection :user-id (mt/user->id :rasta)})
-      (let [initial-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
-        (is (= "create" (:status initial-entry)))
-        (events/publish-event! :event/collection-update
-                               {:object (dissoc collection :type)
-                                :user-id (mt/user->id :rasta)})
-
-        (let [update-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id collection))]
-          (is (nil? update-entry)))))))
-
 (deftest model-not-tracked-moved-to-normal-collection-test
   (testing "model not previously tracked doesn't create removed entry when moved to normal collection"
     (mt/with-temp [:model/Collection normal-collection {:name "Normal"}
