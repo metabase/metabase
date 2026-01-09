@@ -22,7 +22,11 @@ export const ListBody = memo(function ListBody({
   onSelect,
 }: ListBodyProps) {
   const columns = useMemo(
-    () => getColumns({ withErrorsColumn, withDependentsCountColumn }),
+    () =>
+      getColumns({
+        withErrorsColumn,
+        withDependentsCountColumn,
+      }),
     [withErrorsColumn, withDependentsCountColumn],
   );
 

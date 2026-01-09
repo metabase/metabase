@@ -1,3 +1,4 @@
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { FixedSizeIcon, Flex } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
@@ -12,9 +13,9 @@ export function NameCell({ node }: NameCellProps) {
   const icon = getNodeIcon(node);
 
   return (
-    <Flex align="center" gap="sm">
+    <Flex align="center" gap="sm" miw={0}>
       {icon && <FixedSizeIcon name={icon} />}
-      {label}
+      <Ellipsified>{label}</Ellipsified>
     </Flex>
   );
 }
