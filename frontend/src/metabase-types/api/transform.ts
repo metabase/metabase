@@ -20,6 +20,7 @@ export type Transform = {
   collection_id: number | null;
   created_at: string;
   updated_at: string;
+  source_readable: boolean;
 
   // hydrated fields
   tag_ids?: TransformTagId[];

@@ -5,6 +5,7 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { skipToken } from "metabase/api";
+import EmptyState from "metabase/common/components/EmptyState/EmptyState";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -15,7 +16,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { Box } from "metabase/ui";
+import { Box, Center, Icon } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
@@ -190,7 +191,14 @@ function TransformQueryPageBody({
             overflow: "hidden",
           }}
         >
-          {source.type === "python" ? (
+          {!transform.source_readable ? (
+            <Center h="100%">
+              <EmptyState
+                title={t`Sorry, you don't have permission to view this transform.`}
+                illustrationElement={<Icon name="key" size={100} />}
+              />
+            </Center>
+          ) : source.type === "python" ? (
             <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
               source={source}
               proposedSource={
