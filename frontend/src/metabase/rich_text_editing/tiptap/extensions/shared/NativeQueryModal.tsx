@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
@@ -37,10 +38,6 @@ interface NativeQueryModalProps {
   onSave: (result: { card_id: number }) => void;
   initialDataset?: Dataset;
 }
-
-const EDITOR_HEIGHT_RATIO = 0.4;
-const EDITOR_MIN_HEIGHT = 200;
-const EDITOR_HEIGHT_OFFSET = 80;
 
 const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
@@ -138,6 +135,8 @@ export const NativeQueryModal = ({
   const [currentQueryPromise, setCurrentQueryPromise] = useState<ReturnType<
     typeof triggerQuery
   > | null>(null);
+
+  const { ref: mainRef, height: totalHeight } = useElementSize();
 
   const isQueryRunning = isLoading || isFetching;
 
@@ -322,6 +321,7 @@ export const NativeQueryModal = ({
             mih={0}
             miw={0}
             className={S.mainContent}
+            ref={mainRef}
           >
             <Box pos="relative" className={S.editorContainer}>
               {(modifiedQuestion?.legacyNativeQuery() ||
@@ -339,7 +339,7 @@ export const NativeQueryModal = ({
                   hasEditingSidebar
                   hasParametersList={false}
                   sidebarFeatures={MODAL_SIDEBAR_FEATURES}
-                  viewHeight={400}
+                  availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
                   isResultDirty={false}
@@ -380,13 +380,6 @@ export const NativeQueryModal = ({
                   }}
                   resizable
                   resizableBoxProps={{
-                    height: Math.max(
-                      EDITOR_MIN_HEIGHT,
-                      Math.floor(
-                        window.innerHeight * EDITOR_HEIGHT_RATIO -
-                          EDITOR_HEIGHT_OFFSET,
-                      ),
-                    ),
                     style: {
                       border: "none",
                       width: "100%",
