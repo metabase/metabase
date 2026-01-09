@@ -91,9 +91,12 @@ export const setIsShowingSnippetSidebar = (
   isShowingSnippetSidebar,
 });
 
-export const setIsNativeEditorOpen = (isNativeEditorOpen: boolean) => ({
+export const setIsNativeEditorOpen = (
+  isNativeEditorOpen: boolean,
+  openDataReference: boolean = true,
+) => ({
   type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen, isShowingDataReference: isNativeEditorOpen },
+  payload: { isNativeEditorOpen, isShowingDataReference: openDataReference },
 });
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =

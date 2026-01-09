@@ -19,10 +19,7 @@ import { Databases } from "metabase/entities/databases";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
-import {
-  runOrCancelQuestionOrSelectedQuery,
-  setUIControls,
-} from "metabase/query_builder/actions";
+import { runOrCancelQuestionOrSelectedQuery } from "metabase/query_builder/actions";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
@@ -99,7 +96,10 @@ type OwnProps = {
   resizable?: boolean;
   runQuery?: () => void;
   setDatasetQuery: (query: NativeQuery) => Promise<Question>;
-  setIsNativeEditorOpen?: (isOpen: boolean) => void;
+  setIsNativeEditorOpen?: (
+    isOpen: boolean,
+    shouldOpenDataReference?: boolean,
+  ) => void;
   setNativeEditorSelectedRange?: (range: SelectionRange[]) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   sidebarFeatures?: SidebarFeatures;
@@ -292,18 +292,13 @@ const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
     const engine = Lib.engine(question.query());
     const canFormatQuery = engine != null && canFormatForEngine(engine);
 
+    // do not show reference sidebar on small screens automatically
     const screenSize = useNotebookScreenSize();
+    const shouldOpenDataReference = screenSize !== "small";
 
-    /**
-     * do not show reference sidebar on small screens automatically
-     */
     const toggleEditor = useCallback(() => {
-      if (screenSize === "small") {
-        dispatch(setUIControls({ isNativeEditorOpen: !isNativeEditorOpen }));
-      } else {
-        setIsNativeEditorOpen?.(!isNativeEditorOpen);
-      }
-    }, [dispatch, isNativeEditorOpen, setIsNativeEditorOpen, screenSize]);
+      setIsNativeEditorOpen?.(!isNativeEditorOpen, shouldOpenDataReference);
+    }, [isNativeEditorOpen, setIsNativeEditorOpen, shouldOpenDataReference]);
 
     const handleFormatQuery = useCallback(async () => {
       if (!canFormatQuery) {
