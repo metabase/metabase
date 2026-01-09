@@ -51,9 +51,9 @@
 
 (deftest create-transform-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [query (make-query "Gadget")
                   schema (get-test-schema)
@@ -77,10 +77,10 @@
 
 (deftest transform-type-detection-test
   (testing "Transform type is automatically detected and set based on source"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms :transforms-python}
-          (mt/dataset transforms-dataset/transforms-test
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms :transforms-python}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (testing "MBQL query transforms are detected as :mbql"
               (with-transform-cleanup! [table-name "mbql_transform"]
                 (let [mbql-query (mt/mbql-query transforms_products)
@@ -122,10 +122,10 @@
 
 (deftest transform-type-updates-test
   (testing "Transform type is automatically updated when source changes"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "type_update_transform"]
               (let [native-query (lib/native-query (mt/metadata-provider) "SELECT 1")
                     mbql-query (mt/mbql-query transforms_products)
@@ -147,11 +147,11 @@
                     (is (= "mbql" (:source_type updated)))))))))))))
 
 (deftest create-transform-feature-flag-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Creating a query transform without :transforms feature returns 403"
-        (mt/with-premium-features #{}
-          (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Creating a query transform without :transforms feature returns 403"
+      (mt/with-premium-features #{}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (let [query  (make-query "Gadget")
                   schema (get-test-schema)
                   response (mt/user-http-request :lucky :post 402 "ee/transform"
@@ -161,11 +161,12 @@
                                                   :target {:type   "table"
                                                            :schema schema
                                                            :name   "test_transform"}})]
-              (is (= "error-premium-feature-not-available" (:status response)))))))
+              (is (= "error-premium-feature-not-available" (:status response))))))))
 
-      (testing "Creating a query transform with :transforms feature succeeds"
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
+    (testing "Creating a query transform with :transforms feature succeeds"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "test_query_transform"]
               (let [query  (make-query "Gadget")
                     schema (get-test-schema)
@@ -180,10 +181,10 @@
 
 (deftest update-transform-feature-flag-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-      (testing "Updating a query transform requires :transforms feature"
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+          (testing "Updating a query transform requires :transforms feature"
             (with-transform-cleanup! [table-name "test_update"]
               (let [query  (make-query "Gadget")
                     schema (get-test-schema)
@@ -202,11 +203,11 @@
                     (is (= "error-premium-feature-not-available" (:status response)))))))))))))
 
 (deftest run-transform-feature-flag-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (testing "Running a query transform requires :transforms feature"
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (testing "Running a query transform requires :transforms feature"
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "test_run"]
               (let [query  (make-query "Gadget")
                     schema (get-test-schema)
@@ -224,14 +225,14 @@
                     (is (= "error-premium-feature-not-available" (:status response)))))))))))))
 
 (deftest list-transforms-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
       (testing "Can list without query parameters"
-        (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/user-http-request :lucky :get 200 "ee/transform")))
       (testing "Can list with query parameters"
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (with-transform-cleanup! [table-name "gadget_products"]
               (let [body         {:name        "Gadget Products"
                                   :description "Desc"
@@ -254,9 +255,9 @@
 
 (deftest filter-transforms-test
   (testing "should be able to filter transforms"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-temp [:model/Transform               {t1-id :id} {}
                          :model/Transform               {t2-id :id} {}
                          :model/TransformTag            {tag1-id :id} {:name "tag1"}
@@ -283,10 +284,10 @@
                       (mt/user-http-request :lucky :get 200 "ee/transform" :tag_ids [tag2-id]))))))))))
 
 (deftest get-transforms-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [body         {:name        "Gadget Products"
                                 :description "Desc"
@@ -318,7 +319,7 @@
                                       :schema (get-test-schema)
                                       :name   table-name}}]
               (testing "Users with transforms permission can see source_readable field"
-                (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+                (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
                   (let [created (mt/user-http-request :lucky :post 200 "ee/transform" body)]
                     (testing "in POST /ee/transform response"
                       (is (contains? created :source_readable))
@@ -340,7 +341,7 @@
                             "User with transforms permission should be able to read the source database"))))))
 
               (testing "source_readable field is present even without database permissions"
-                (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+                (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
                   ;; Create transform as lucky
                   (let [created (mt/user-http-request :lucky :post 200 "ee/transform" body)
                         transform-id (:id created)]
@@ -385,10 +386,10 @@
               (is (every? #(map? (:creator %)) deps-resp)))))))))
 
 (deftest put-transforms-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [query2       (make-query "None")
                   resp         (mt/user-http-request :lucky :post 200 "ee/transform"
@@ -415,10 +416,10 @@
                 (is (= lucky-id (get-in put-resp [:creator :id])))))))))))
 
 (deftest change-target-table-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table1-name "dookey_products"
                                     table2-name "doohickey_products"]
             (let [query2   (make-query "Doohickey")
@@ -444,10 +445,10 @@
               (is (false? (transforms.util/target-table-exists? original))))))))))
 
 (deftest delete-transforms-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [resp (mt/user-http-request :lucky :post 200 "ee/transform"
                                              {:name   "Gadget Products"
@@ -460,10 +461,10 @@
               (mt/user-http-request :lucky :get 404 (format "ee/transform/%s" (:id resp))))))))))
 
 (deftest delete-table-transforms-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
-        (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [resp (mt/user-http-request :lucky :post 200 "ee/transform"
                                              {:name   "Gadget Products"
@@ -476,7 +477,7 @@
 
 (defn- test-run!
   [transform-id]
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
+  (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
     (let [resp      (mt/user-http-request :lucky :post 202 (format "ee/transform/%s/run" transform-id))
           timeout-s 10 ; 10 seconds is our timeout to finish execution and sync
           limit     (+ (System/currentTimeMillis) (* timeout-s 1000))]
@@ -546,10 +547,10 @@
 
 (deftest execute-transform-test
   (testing "transform execution with :transforms/table target"
-    (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-        (mt/with-premium-features #{:transforms}
-          (mt/dataset transforms-dataset/transforms-test
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms}
+        (mt/dataset transforms-dataset/transforms-test
+          (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
               (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                          :schema schema
@@ -910,10 +911,10 @@
             (assert-transform-ids response #{(:id transform1)})))))))
 
 (deftest create-transform-with-routing-fails-test
-  (mt/with-perm-for-group! (perms-group/all-users) :perms/transforms :yes
-    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms :database-routing}
-        (mt/dataset transforms-dataset/transforms-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+    (mt/with-premium-features #{:transforms :database-routing}
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (with-transform-cleanup! [table-name "gadget_products"]
             (let [query  (make-query "Gadget")
                   schema (get-test-schema)]
