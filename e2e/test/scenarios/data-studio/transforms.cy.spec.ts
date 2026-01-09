@@ -7,6 +7,7 @@ import type {
   CardType,
   CollectionId,
   PythonTransformTableAliases,
+  TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -425,12 +426,6 @@ LIMIT
 
       H.NativeEditor.value().should("eq", EXPECTED_QUERY);
       getQueryEditor().button("Save").click();
-
-      cy.log("dismiss the complexity warning modal");
-      H.modal().within(() => {
-        cy.findByText("Query complexity warning").should("be.visible");
-        cy.button("Save anyway").click();
-      });
 
       cy.log("run the transform and make sure its table can be queried");
       H.DataStudio.Transforms.runTab().click();
@@ -1547,6 +1542,7 @@ LIMIT
       createSqlTransform({
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         visitTransform: true,
+        sourceCheckpointStrategy: { type: "checkpoint" },
       });
 
       cy.log("visit edit mode and change to a complex query with LIMIT");
@@ -1576,6 +1572,7 @@ LIMIT
       createSqlTransform({
         sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
         visitTransform: true,
+        sourceCheckpointStrategy: { type: "checkpoint" },
       });
 
       cy.log("visit edit mode and change to a complex query with LIMIT");
@@ -3404,13 +3401,13 @@ function createMbqlTransform(
     ...opts,
   });
 }
-
 function createSqlTransform(opts: {
   sourceQuery: string;
   targetTable?: string;
   targetSchema?: string;
   tagIds?: TransformTagId[];
   visitTransform?: boolean;
+  sourceCheckpointStrategy?: TransformSourceCheckpointStrategy;
 }) {
   return H.createSqlTransform({
     targetTable: TARGET_TABLE,
