@@ -71,7 +71,11 @@ export function JobEditor({
           readOnly={readOnly}
           onScheduleChange={onScheduleChange}
         />
-        <TagSection job={job} onTagsChange={onTagListChange} />
+        <TagSection
+          job={job}
+          readOnly={readOnly}
+          onTagsChange={onTagListChange}
+        />
         {job.id != null && <DependenciesSection jobId={job.id} />}
       </Stack>
     </PageContainer>
