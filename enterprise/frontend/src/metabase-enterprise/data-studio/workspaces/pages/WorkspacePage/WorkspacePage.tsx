@@ -791,7 +791,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                   <MetabotTab
                     transform={metabotContextTransform}
                     source={metabotContextSource}
-                    workspaceId={workspace?.id}
                   />
                 </Tabs.Panel>
               )}

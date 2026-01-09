@@ -8,20 +8,12 @@ type MetabotTabProps = {
   workspaceId?: number;
 };
 
-const MetabotContextRegistration = ({
-  transform,
-  source,
-  workspaceId,
-}: MetabotTabProps) => {
-  useRegisterMetabotTransformContext(transform, source, workspaceId);
+const MetabotContextRegistration = ({ transform, source }: MetabotTabProps) => {
+  useRegisterMetabotTransformContext(transform, source);
   return null;
 };
 
-export const MetabotTab = ({
-  transform,
-  source,
-  workspaceId,
-}: MetabotTabProps) => {
+export const MetabotTab = ({ transform, source }: MetabotTabProps) => {
   const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
   const MetabotChat = PLUGIN_METABOT.MetabotChat;
   const metabotConfig = {
@@ -31,11 +23,7 @@ export const MetabotTab = ({
 
   return (
     <MetabotProvider>
-      <MetabotContextRegistration
-        transform={transform}
-        source={source}
-        workspaceId={workspaceId}
-      />
+      <MetabotContextRegistration transform={transform} source={source} />
       <MetabotChat config={metabotConfig} />
     </MetabotProvider>
   );
