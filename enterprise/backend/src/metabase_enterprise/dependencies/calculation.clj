@@ -46,8 +46,8 @@
 (mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
   [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:map-of :string :int]]]]
-  {:table (set (vals tables))})
+   :- [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]
+  {:table (into #{} (keep (fn [v] (if (map? v) (:table_id v) v))) (vals tables))})
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
