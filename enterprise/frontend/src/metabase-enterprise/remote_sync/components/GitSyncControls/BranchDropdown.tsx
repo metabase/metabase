@@ -122,7 +122,7 @@ export const BranchDropdown = ({
           <>
             {filteredBranches.length === 0 && !showCreateOption ? (
               <Box p="md">
-                <Text size="sm" c="text-light" ta="center">
+                <Text size="sm" c="text-tertiary" ta="center">
                   {searchValue
                     ? t`No branches found`
                     : t`No branches available`}
@@ -134,7 +134,12 @@ export const BranchDropdown = ({
                   <>
                     <Combobox.Options>
                       <Box px="sm" py="sm">
-                        <Text size="xs" c="text-light" tt="uppercase" fw="bold">
+                        <Text
+                          size="xs"
+                          c="text-tertiary"
+                          tt="uppercase"
+                          fw="bold"
+                        >
                           {t`Branches`}
                         </Text>
                       </Box>
@@ -168,7 +173,7 @@ export const BranchDropdown = ({
                         <Icon name="add" size={16} />
                         <Box>
                           <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
-                          <Text size="xs" c="text-light">
+                          <Text size="xs" c="text-tertiary">
                             {t`from ${baseBranch || value}`}
                           </Text>
                         </Box>

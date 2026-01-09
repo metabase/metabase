@@ -16,7 +16,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
     H.publishTables({ table_ids: [ORDERS_ID] });
 
     cy.intercept("POST", "/api/segment").as("createSegment");
-    cy.intercept("DELETE", "/api/segment/*").as("deleteSegment");
+    cy.intercept("PUT", "/api/segment/*").as("updateSegment");
   });
 
   describe("Segment list", () => {
@@ -126,7 +126,7 @@ describe("scenarios > data studio > library > published tables > segments", () =
       SegmentEditor.getActionsButton().click();
       H.popover().findByText("Remove segment").click();
       H.modal().button("Remove").click();
-      cy.wait("@deleteSegment");
+      cy.wait("@updateSegment");
 
       H.undoToast().should("contain.text", "Segment removed");
       cy.url().should(

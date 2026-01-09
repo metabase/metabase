@@ -257,7 +257,7 @@ export const PeopleList = ({
           >
             <Box my="lg">
               <Icon name="search" mb="sm" size={32} />
-              <Text c="text-light" fz="lg" fw={700}>
+              <Text c="text-tertiary" fz="lg" fw={700}>
                 {noResultsMessage}
               </Text>
             </Box>

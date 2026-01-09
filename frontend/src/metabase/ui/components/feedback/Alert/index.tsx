@@ -5,7 +5,7 @@ import {
 export { alertOverrides } from "./Alert.config";
 
 export type AlertProps = MantineAlertProps & {
-  color?: "brand" | "warning" | "error" | "info";
+  color?: "brand" | "warning" | "error" | "info" | "success";
 };
 
 export const Alert = (props: AlertProps) => <MantineAlert {...props} />;

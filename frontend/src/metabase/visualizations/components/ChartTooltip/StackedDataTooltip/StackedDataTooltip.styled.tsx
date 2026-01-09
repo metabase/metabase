@@ -35,7 +35,8 @@ export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
 `;
 
 export const getTooltipSeparatorStyle = (theme: Theme) => css`
-  border-top: 1px solid ${darken(theme.fn.themeColor("bg-dark"), 0.55)};
+  border-top: 1px solid
+    ${darken(theme.fn.themeColor("background-tertiary-inverse"), 0.55)};
 `;
 
 export const DataPointTableBody = styled.tbody`

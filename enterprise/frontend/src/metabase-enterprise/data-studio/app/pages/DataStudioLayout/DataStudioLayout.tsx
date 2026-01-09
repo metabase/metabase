@@ -146,6 +146,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <DataStudioTab
+            label={t`Dependency diagnostics`}
+            icon="list"
+            to={Urls.dataStudioDependencyDiagnostics()}
+            isSelected={currentTab === "dependency-diagnostics"}
+            showLabel={isNavbarOpened}
+          />
+        )}
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Transforms`}

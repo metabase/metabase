@@ -65,7 +65,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to send comment`,
       });
     }
@@ -77,7 +77,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to delete comment`,
       });
     }
@@ -92,7 +92,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to resolve comment`,
       });
     }
@@ -107,7 +107,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to unresolve comment`,
       });
     }
@@ -125,7 +125,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to update comment`,
       });
     }
@@ -149,7 +149,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to add reaction`,
       });
     }
@@ -161,7 +161,7 @@ export const Discussion = ({
     if (error) {
       sendToast({
         icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
+        iconColor: "warning",
         message: t`Failed to remove reaction`,
       });
     }

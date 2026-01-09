@@ -15,8 +15,8 @@ type EntityListProps<T> = {
   items: T[];
   title: string;
   emptyState: EntityListEmptyState;
-  newButtonLabel: string;
-  newButtonUrl: string;
+  newButtonLabel?: string;
+  newButtonUrl?: string;
   renderItem: (item: T) => ReactNode;
 };
 
@@ -32,9 +32,11 @@ export function EntityList<T>({
     <Stack gap="md">
       <Group justify="space-between" wrap="nowrap">
         <Title order={4}>{title}</Title>
-        <Button component={ForwardRefLink} to={newButtonUrl} variant="filled">
-          {newButtonLabel}
-        </Button>
+        {newButtonLabel && newButtonUrl && (
+          <Button component={ForwardRefLink} to={newButtonUrl} variant="filled">
+            {newButtonLabel}
+          </Button>
+        )}
       </Group>
 
       {items.length === 0 ? (

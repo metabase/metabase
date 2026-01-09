@@ -8,7 +8,9 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.actions.models :as action]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.test :as mt]
@@ -350,6 +352,89 @@
                                    :filters      [[:< {} [:field {} (:id @field1d)] 18]]}]
                        :database (:id @db1d)}
                       (:definition @seg1d))))))))))
+
+(defn- pmbql-measure-definition
+  "Create an MBQL5 measure definition with a sum aggregation."
+  [db-id table-id field-id]
+  (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+        table (lib.metadata/table metadata-provider table-id)
+        query (lib/query metadata-provider table)
+        field (lib.metadata/field metadata-provider field-id)]
+    (lib/aggregate query (lib/sum field))))
+
+(deftest measure-test
+  ;; Measure.definition is a JSON-encoded MBQL query, which contains database, table, and field IDs - these need to be
+  ;; converted to a portable form and read back in.
+  ;; This test has a database, table and fields, that exist on both sides with different IDs, and expects a measure that
+  ;; references those fields to be correctly loaded with the dest IDs.
+  (testing "embedded MBQL in Measure :definition is portable"
+    (let [serialized (atom nil)
+          db1s       (atom nil)
+          table1s    (atom nil)
+          field1s    (atom nil)
+          msr1s      (atom nil)
+          user1s     (atom nil)
+          db1d       (atom nil)
+          table1d    (atom nil)
+          field1d    (atom nil)
+          user1d     (atom nil)
+          msr1d      (atom nil)
+          db2d       (atom nil)
+          table2d    (atom nil)
+          field2d    (atom nil)]
+
+      (ts/with-dbs [source-db dest-db]
+        (testing "serializing the original database, table, field and measure"
+          (ts/with-db source-db
+            (reset! db1s    (ts/create! :model/Database :name "my-db"))
+            (reset! table1s (ts/create! :model/Table :name "sales" :db_id (:id @db1s)))
+            (reset! field1s (ts/create! :model/Field :name "amount" :table_id (:id @table1s)))
+            (reset! user1s  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+            (reset! msr1s   (ts/create! :model/Measure :table_id (:id @table1s) :name "Total Sales"
+                                        :definition (pmbql-measure-definition (:id @db1s) (:id @table1s) (:id @field1s))
+                                        :creator_id (:id @user1s)))
+            (reset! serialized (into [] (serdes.extract/extract {})))))
+
+        (testing "exported form is properly converted"
+          (is (=? {:database "my-db"
+                   :query    {:aggregation  [[:sum [:field ["my-db" nil "sales" "amount"] map?]]]
+                              :source-table ["my-db" nil "sales"]}
+                   :type     :query}
+                  (-> @serialized
+                      (by-model "Measure")
+                      first
+                      :definition))))
+
+        (testing "deserializing adjusts the IDs properly"
+          (ts/with-db dest-db
+            ;; A different database and tables, so the IDs don't match.
+            (reset! db2d    (ts/create! :model/Database :name "other-db"))
+            (reset! table2d (ts/create! :model/Table    :name "orders" :db_id (:id @db2d)))
+            (reset! field2d (ts/create! :model/Field    :name "subtotal" :table_id (:id @table2d)))
+            (reset! user1d  (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
+
+            ;; Load the serialized content.
+            (serdes.load/load-metabase! (ingestion-in-memory @serialized))
+
+            ;; Fetch the relevant bits
+            (reset! db1d    (t2/select-one :model/Database :name "my-db"))
+            (reset! table1d (t2/select-one :model/Table :name "sales"))
+            (reset! field1d (t2/select-one :model/Field :table_id (:id @table1d) :name "amount"))
+            (reset! msr1d   (t2/select-one :model/Measure :name "Total Sales"))
+
+            (testing "the main Database, Table, and Field have different IDs now"
+              (is (not= (:id @db1s) (:id @db1d)))
+              (is (not= (:id @table1s) (:id @table1d)))
+              (is (not= (:id @field1s) (:id @field1d))))
+
+            (is (not= (:definition @msr1s)
+                      (:definition @msr1d)))
+            (testing "the Measure's definition is based on the new Database, Table, and Field IDs"
+              (is (=? {:lib/type :mbql/query
+                       :stages   [{:source-table (:id @table1d)
+                                   :aggregation  [[:sum map? [:field map? (:id @field1d)]]]}]
+                       :database (:id @db1d)}
+                      (:definition @msr1d))))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-card-test

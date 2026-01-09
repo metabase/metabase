@@ -73,6 +73,30 @@ const getValuesToMeasure = (min: number, max: number): number[] => {
   return [...middleValues, min, max];
 };
 
+/**
+ * For log scales, ECharts places ticks at regular intervals in transformed space.
+ * These intervals can be at integer positions (giving 1, 10, 100...) or half-integer
+ * positions (giving 3.16, 31.6...). This function generates both to ensure we
+ * measure the widest possible tick label.
+ */
+const getLogScaleTickValues = (
+  transformedMin: number,
+  transformedMax: number,
+  fromEChartsAxisValue: (value: number) => number,
+): number[] => {
+  const tickValues: number[] = [];
+
+  const step = 0.5;
+  const startTick = Math.floor(transformedMin * 2) / 2;
+  const endTick = Math.ceil(transformedMax * 2) / 2;
+
+  for (let tick = startTick; tick <= endTick; tick += step) {
+    tickValues.push(fromEChartsAxisValue(tick));
+  }
+
+  return tickValues;
+};
+
 const getYAxisTicksWidth = (
   axisModel: YAxisModel,
   yAxisScaleTransforms: NumericAxisScaleTransforms,
@@ -99,6 +123,17 @@ const getYAxisTicksWidth = (
   const valuesToMeasure = isFormattingAutoOrCompact
     ? getValuesToMeasure(min, max)
     : [min, max];
+
+  if (settings["graph.y_axis.scale"] === "log") {
+    const [transformedMin, transformedMax] = axisModel.extent;
+    valuesToMeasure.push(
+      ...getLogScaleTickValues(
+        transformedMin,
+        transformedMax,
+        yAxisScaleTransforms.fromEChartsAxisValue,
+      ),
+    );
+  }
 
   if (!settings["graph.y_axis.auto_range"]) {
     const customRangeValues = [

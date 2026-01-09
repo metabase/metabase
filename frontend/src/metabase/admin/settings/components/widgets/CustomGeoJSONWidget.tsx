@@ -136,7 +136,7 @@ export const CustomGeoJSONWidget = () => {
       {!hasCustomMaps && (
         <Stack p="xl" align="center" gap="md">
           <Image w={120} h={120} src={noResultsSource} />
-          <Text fw="700" c="text-light">{t`No custom maps yet`}</Text>
+          <Text fw="700" c="text-tertiary">{t`No custom maps yet`}</Text>
         </Stack>
       )}
 
