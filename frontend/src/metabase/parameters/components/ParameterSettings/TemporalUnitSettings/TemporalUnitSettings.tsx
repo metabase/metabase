@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -7,7 +6,6 @@ import {
   Checkbox,
   Divider,
   Icon,
-  type MantineStyleProps,
   Popover,
   Stack,
   Text,
@@ -33,24 +31,16 @@ export function TemporalUnitSettings({
   const selectedUnits = parameter.temporal_units ?? availableUnits;
   const isAll = selectedUnits.length === availableUnits.length;
   const isNone = selectedUnits.length === 0;
-  const [isTouched, setIsTouched] = useState(false);
-  const showError = isTouched && isNone;
-  const errorButtonStyles: MantineStyleProps | undefined = showError
-    ? { c: "error", bd: "1px solid error" }
-    : undefined;
-
   return (
     <Stack gap="xs">
-      <Popover onClose={() => setIsTouched(true)} width="target">
+      <Popover width="target">
         <Popover.Target>
           <Button
             fw="normal"
-            rightSection={<Icon name="chevrondown" c={errorButtonStyles?.c} />}
+            rightSection={<Icon name="chevrondown" />}
             fullWidth
             px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
             justify="space-between"
-            c={errorButtonStyles?.c}
-            bd={errorButtonStyles?.bd}
           >
             {getSelectedText(selectedUnits, isAll, isNone)}
           </Button>
@@ -65,11 +55,6 @@ export function TemporalUnitSettings({
           />
         </Popover.Dropdown>
       </Popover>
-      {showError && (
-        <Text c="error" size="sm">
-          {t`Select at least one option`}
-        </Text>
-      )}
     </Stack>
   );
 }

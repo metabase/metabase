@@ -116,41 +116,4 @@ describe("TemporalUnitSettings", () => {
     await userEvent.click(await screen.findByLabelText("Select all"));
     expect(onChangeTemporalUnits).toHaveBeenCalledWith([]);
   });
-
-  it("should show an error message when no options are selected after closing the popover", async () => {
-    setup({
-      parameter: createMockParameter({
-        type: "temporal-unit",
-        temporal_units: [],
-      }),
-    });
-    // Error should not be visible initially
-    expect(
-      screen.queryByText("Select at least one option"),
-    ).not.toBeInTheDocument();
-
-    // Open and close the popover to trigger "touched" state
-    await userEvent.click(await screen.findByText("None"));
-    await userEvent.click(document.body); // Close the popover
-
-    expect(
-      await screen.findByText("Select at least one option"),
-    ).toBeInTheDocument();
-  });
-
-  it("should not show an error message when options are selected after closing the popover", async () => {
-    setup({
-      parameter: createMockParameter({
-        type: "temporal-unit",
-        temporal_units: ["day"],
-      }),
-    });
-    // Open and close the popover
-    await userEvent.click(await screen.findByText("Day"));
-    await userEvent.click(document.body); // Close the popover
-
-    expect(
-      screen.queryByText("Select at least one option"),
-    ).not.toBeInTheDocument();
-  });
 });
