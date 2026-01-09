@@ -7,6 +7,7 @@
    [compojure.core :refer [GET]]
    [metabase.api.open-api :as open-api]
    [metabase.api.util.handlers :as handlers]
+   [metabase.config.core :as config]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [ring.middleware.content-type :as content-type]
