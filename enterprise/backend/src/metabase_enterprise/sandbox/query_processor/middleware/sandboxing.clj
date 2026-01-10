@@ -164,7 +164,7 @@
     ;; log the query at this point, it's useful for some purposes
     (log/debugf "Fetched query from Card %s:\n%s" card-id (u/cprint-to-str (select-keys query [:stages :parameters])))
     (cond-> query
-      ;; This will be applied, if still appropriate, by the peristence middleware
+      ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
       (assoc :persisted-info/native
              (qp.persisted/persisted-info-native-query
