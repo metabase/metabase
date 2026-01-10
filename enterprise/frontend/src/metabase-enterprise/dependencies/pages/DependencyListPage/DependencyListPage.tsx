@@ -13,6 +13,25 @@ type DependencyListPageProps = {
   location: Location<DependencyListQueryParams>;
 };
 
+export function BrokenDependencyListPage({
+  location,
+}: DependencyListPageProps) {
+  const params = parseParams(location.query);
+  const dispatch = useDispatch();
+
+  const handleParamsChange = (params: Urls.DependencyListParams) => {
+    dispatch(replace(Urls.brokenDependencies(params)));
+  };
+
+  return (
+    <DependencyList
+      mode="broken"
+      params={params}
+      onParamsChange={handleParamsChange}
+    />
+  );
+}
+
 export function UnreferencedDependencyListPage({
   location,
 }: DependencyListPageProps) {

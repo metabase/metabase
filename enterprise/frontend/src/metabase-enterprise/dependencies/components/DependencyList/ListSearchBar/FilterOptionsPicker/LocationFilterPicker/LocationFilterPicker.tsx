@@ -16,9 +16,10 @@ export function LocationFilterPicker({
   const handleIncludeInPersonalCollectionsChange = (
     event: ChangeEvent<HTMLInputElement>,
   ) => {
+    const newValue = event.target.checked;
     onParamsChange({
       ...params,
-      includePersonalCollections: event.target.checked,
+      includePersonalCollections: newValue || undefined,
     });
   };
 

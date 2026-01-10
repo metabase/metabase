@@ -29,7 +29,12 @@ export function SidebarDependentsInfo({ node }: SidebarDependentsInfoProps) {
       <Card shadow="none" withBorder>
         <Stack gap="sm" lh="1rem">
           {groups.map((group, groupIndex) => (
-            <Anchor key={groupIndex} component={ForwardRefLink} to={link}>
+            <Anchor
+              key={groupIndex}
+              component={ForwardRefLink}
+              to={link}
+              target="_blank"
+            >
               <Group gap="sm" wrap="nowrap">
                 <Icon name={getDependencyGroupIcon(group.type)} />
                 {getDependentGroupLabel(group)}

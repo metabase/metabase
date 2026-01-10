@@ -37,7 +37,13 @@ export function TypeFilterPicker({
       newValue.includes(groupType),
     );
     setGroupTypes(newGroupTypes);
-    onParamsChange({ ...params, groupTypes: newGroupTypes });
+    onParamsChange({
+      ...params,
+      groupTypes:
+        newGroupTypes.length === availableGroupTypes.length
+          ? undefined
+          : newGroupTypes,
+    });
   };
 
   return (
