@@ -306,7 +306,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (api/check-403 (mi/can-write? (:source_database_id transform)))
+    (api/check-403 (mi/can-write? transform))
     (transforms.util/delete-target-table-by-id! id))
   nil)
 

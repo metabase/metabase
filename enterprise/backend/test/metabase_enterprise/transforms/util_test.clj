@@ -252,20 +252,22 @@
                                       :query {:database db-id}}}]
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
-                (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
-                  (binding [api/*current-user-id* (:id user)]
-                    (is (false? (transforms.util/source-tables-readable? transform))
-                        "User with blocked database access should not be able to read source database"))))))
+                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
+                  (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
+                    (binding [api/*current-user-id* (:id user)]
+                      (is (false? (transforms.util/source-tables-readable? transform))
+                          "User with blocked database access should not be able to read source database")))))))
 
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type :python
                                       :source-tables {"t1" table1-id}}}]
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
-                (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
-                  (binding [api/*current-user-id* (:id user)]
-                    (is (false? (transforms.util/source-tables-readable? transform))
-                        "User with blocked database access should not be able to read source tables"))))))
+                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
+                  (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
+                    (binding [api/*current-user-id* (:id user)]
+                      (is (false? (transforms.util/source-tables-readable? transform))
+                          "User with blocked database access should not be able to read source tables")))))))
 
           (testing "Python transforms - granular access to all tables"
             (let [transform {:source {:type :python
@@ -273,8 +275,7 @@
                                                       "t2" table2-id}}}]
               (mt/with-user-in-groups [group {:name "Granular All Tables Group"}
                                        user [group]]
-                ;; Grant unrestricted access to the database
-                (mt/with-db-perm-for-group! group db-id :perms/view-data :unrestricted
+                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :unrestricted
                   (binding [api/*current-user-id* (:id user)]
                     (is (true? (transforms.util/source-tables-readable? transform))
                         "User with granular access to all source tables should have source_readable=true"))))))
@@ -285,14 +286,11 @@
                                                       "t2" table2-id}}}]
               (mt/with-user-in-groups [group {:name "Limited Granular Group"}
                                        user [group]]
-                ;; Grant access to database but block access to table2
-                (mt/with-db-perm-for-group! group db-id :perms/view-data :unrestricted
+                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :unrestricted
                   (try
-                    ;; Block access to table2 for this group
-                    (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
+                    (data-perms/set-table-permission! (:id (perms-group/all-users)) table2-id :perms/view-data :blocked)
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.util/source-tables-readable? transform))
                           "User who cannot read all source tables should have source_readable=false"))
                     (finally
-                      ;; Reset table permission
-                      (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :unrestricted))))))))))))
+                      (data-perms/set-table-permission! (:id (perms-group/all-users)) table2-id :perms/view-data :unrestricted))))))))))))
