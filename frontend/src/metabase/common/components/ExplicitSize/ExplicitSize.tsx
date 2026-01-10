@@ -209,7 +209,9 @@ function ExplicitSize<T>({
       __updateSize = () => {
         const element = this._getElement();
         if (element) {
-          const { width, height } = element.getBoundingClientRect();
+          const rect = element.getBoundingClientRect();
+          const width = Math.round(rect.width);
+          const height = Math.round(rect.height);
 
           if (!width && !height) {
             // cypress raises lots of errors in timeline trying to call setState
