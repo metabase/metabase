@@ -301,6 +301,11 @@ export const NativeQueryModal = ({
     );
   }
 
+  const nativeQuery =
+    modifiedQuestion?.legacyNativeQuery() ??
+    question?.legacyNativeQuery() ??
+    null;
+
   return (
     <Modal
       opened={isOpen}
@@ -324,15 +329,10 @@ export const NativeQueryModal = ({
             ref={mainRef}
           >
             <Box pos="relative" className={S.editorContainer}>
-              {(modifiedQuestion?.legacyNativeQuery() ||
-                question?.legacyNativeQuery()) && (
+              {nativeQuery && (
                 <NativeQueryEditor
                   question={modifiedQuestion}
-                  query={
-                    modifiedQuestion?.legacyNativeQuery() ??
-                    question?.legacyNativeQuery() ??
-                    {}
-                  }
+                  query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
                   hasTopBar
@@ -347,7 +347,6 @@ export const NativeQueryModal = ({
                   isShowingTemplateTagsEditor={isShowingTemplateTagsEditor}
                   isShowingSnippetSidebar={false}
                   setDatasetQuery={setDatasetQuery}
-                  runQuestionQuery={handleRunQuery}
                   runQuery={handleRunQuery}
                   cancelQuery={handleCancelQuery}
                   toggleTemplateTagsEditor={() =>

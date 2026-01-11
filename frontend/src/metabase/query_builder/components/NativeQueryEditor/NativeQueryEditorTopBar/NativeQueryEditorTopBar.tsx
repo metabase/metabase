@@ -38,7 +38,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   readOnly?: boolean;
 
   snippets?: NativeQuerySnippet[];
-  editorContext?: "question";
+  editorContext?: "question" | "action";
   snippetCollections?: Collection[];
   sidebarFeatures: SidebarFeatures;
 
@@ -51,7 +51,7 @@ interface NativeQueryEditorTopBarProps extends PropsWithChildren {
   onOpenModal?: (modalType: QueryModalType) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   focus: () => void;
-  setDatasetQuery: (query: NativeQuery) => Promise<Question>;
+  setDatasetQuery: (query: NativeQuery) => void;
   databaseIsDisabled?: (database: Database) => boolean;
 }
 

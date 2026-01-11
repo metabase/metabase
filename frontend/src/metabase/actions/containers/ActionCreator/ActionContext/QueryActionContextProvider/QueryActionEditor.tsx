@@ -17,9 +17,7 @@ function QueryActionEditor({
     <NativeQueryEditor
       query={query}
       question={question}
-      viewHeight="full"
       setDatasetQuery={onChangeQuestionQuery}
-      enableRun={true}
       hasEditingSidebar={false}
       isNativeEditorOpen
       hasParametersList={false}

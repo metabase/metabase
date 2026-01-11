@@ -1,6 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
 import {
-  type ForwardedRef,
   type ReactNode,
   forwardRef,
   useCallback,
@@ -56,8 +55,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   cancelQuery?: () => void;
   closeSnippetModal?: () => void;
   databaseIsDisabled?: (database: Database) => boolean;
-  editorContext?: "question";
-  forwardedRef?: ForwardedRef<HTMLDivElement>;
+  editorContext?: "question" | "action";
   handleResize?: () => void;
   hasEditingSidebar?: boolean;
   hasParametersList?: boolean;
@@ -67,14 +65,17 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
-  isResultDirty: boolean;
-  isRunnable: boolean;
-  isRunning: boolean;
-  isShowingDataReference: boolean;
-  isShowingSnippetSidebar: boolean;
-  isShowingTemplateTagsEditor: boolean;
-  modalSnippet?: NativeQuerySnippet;
-  nativeEditorSelectedText?: string;
+  isResultDirty?: boolean;
+  isRunnable?: boolean;
+  isRunning?: boolean;
+  isShowingDataReference?: boolean;
+  isShowingSnippetSidebar?: boolean;
+  isShowingTemplateTagsEditor?: boolean;
+  modalSnippet?:
+    | NativeQuerySnippet
+    | Partial<Omit<NativeQuerySnippet, "id">>
+    | null;
+  nativeEditorSelectedText?: string | null;
   onAcceptProposed?: (query: DatasetQuery) => void;
   onOpenModal?: (modalType: QueryModalType) => void;
   onRejectProposed?: () => void;
@@ -88,7 +89,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   readOnly?: boolean;
   resizable?: boolean;
   runQuery: () => void;
-  setDatasetQuery: (query: NativeQuery) => Question | Promise<Question>;
+  setDatasetQuery: (query: NativeQuery) => void;
   setIsNativeEditorOpen?: (
     isOpen: boolean,
     shouldOpenDataReference?: boolean,
@@ -96,16 +97,16 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   setNativeEditorSelectedRange?: (range: SelectionRange[]) => void;
   setParameterValue?: (parameterId: ParameterId, value: string) => void;
   sidebarFeatures?: SidebarFeatures;
-  toggleDataReference: () => void;
+  toggleDataReference?: () => void;
   toggleSnippetSidebar?: () => void;
-  toggleTemplateTagsEditor: () => void;
+  toggleTemplateTagsEditor?: () => void;
   topBarInnerContent?: ReactNode;
 };
 
 export const NativeQueryEditor = forwardRef<
   HTMLDivElement,
   NativeQueryEditorProps
->(function NativeQueryEditorInner(props) {
+>(function NativeQueryEditorInner(props, ref) {
   const {
     availableHeight = Infinity,
     canChangeDatabase = true,
@@ -114,7 +115,6 @@ export const NativeQueryEditor = forwardRef<
     databaseIsDisabled,
     editorContext,
     extensions,
-    forwardedRef,
     handleResize: handleResizeFromProps,
     hasEditingSidebar = true,
     hasParametersList,
@@ -124,12 +124,12 @@ export const NativeQueryEditor = forwardRef<
     insertSnippet,
     isNativeEditorOpen,
     isInitiallyOpen,
-    isResultDirty,
-    isRunnable,
-    isRunning,
-    isShowingDataReference,
-    isShowingSnippetSidebar,
-    isShowingTemplateTagsEditor,
+    isResultDirty = false,
+    isRunnable = false,
+    isRunning = false,
+    isShowingDataReference = false,
+    isShowingSnippetSidebar = false,
+    isShowingTemplateTagsEditor = false,
     modalSnippet,
     nativeEditorSelectedText,
     onAcceptProposed,
@@ -260,7 +260,7 @@ export const NativeQueryEditor = forwardRef<
     <div
       className={S.queryEditor}
       data-testid="native-query-editor-container"
-      ref={forwardedRef}
+      ref={ref}
     >
       {hasTopBar && (
         <NativeQueryEditorTopBar

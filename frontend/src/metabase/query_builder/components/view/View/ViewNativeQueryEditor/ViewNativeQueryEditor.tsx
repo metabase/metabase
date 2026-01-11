@@ -81,7 +81,7 @@ interface ViewNativeQueryEditorProps {
 }
 
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
-  const { question, height, isNativeEditorOpen, card, onSetDatabaseId } = props;
+  const { question, height, isNativeEditorOpen, onSetDatabaseId } = props;
 
   const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
@@ -98,7 +98,7 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
   // This check makes it hide the editor in this particular case
   // More details: https://github.com/metabase/metabase/pull/20161
   const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (question.type() === "model" && !isEditable) {
+  if ((question.type() === "model" && !isEditable) || !legacyNativeQuery) {
     return null;
   }
 
@@ -107,10 +107,9 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
       <NativeQueryEditor
         {...props}
         query={legacyNativeQuery}
-        viewHeight={height}
+        availableHeight={height}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
-        datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
         extensions={inlineSQLPrompt?.extensions}
         proposedQuestion={inlineSQLPrompt?.proposedQuestion}

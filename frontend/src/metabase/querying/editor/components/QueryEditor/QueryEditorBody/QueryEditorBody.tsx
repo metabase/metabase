@@ -131,43 +131,52 @@ export function QueryEditorBody({
     onChange(newNativeQuery.question());
   };
 
-  return isNative ? (
-    <NativeQueryEditor
-      availableHeight={availableHeight}
-      question={question}
-      proposedQuestion={proposedQuestion}
-      query={question.legacyNativeQuery()}
-      resizableBoxProps={resizableBoxProps}
-      placeholder="SELECT * FROM TABLE_NAME"
-      hasTopBar
-      hasRunButton={!readOnly}
-      isInitiallyOpen
-      isNativeEditorOpen
-      readOnly={readOnly}
-      hasParametersList={false}
-      isRunnable={isRunnable}
-      isRunning={isRunning}
-      isResultDirty={isResultDirty}
-      isShowingDataReference={isShowingDataReference}
-      isShowingSnippetSidebar={isShowingSnippetSidebar}
-      runQuery={onRunQuery}
-      cancelQuery={onCancelQuery}
-      databaseIsDisabled={shouldDisableDatabase}
-      setDatasetQuery={handleNativeQueryChange}
-      sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
-      toggleDataReference={onToggleDataReference}
-      toggleSnippetSidebar={onToggleSnippetSidebar}
-      modalSnippet={modalSnippet}
-      insertSnippet={onInsertSnippet}
-      closeSnippetModal={() => onChangeModalSnippet(null)}
-      setNativeEditorSelectedRange={onChangeNativeEditorSelection}
-      nativeEditorSelectedText={nativeEditorSelectedText}
-      onOpenModal={onOpenModal}
-      onAcceptProposed={onAcceptProposed}
-      onRejectProposed={onRejectProposed}
-      topBarInnerContent={topBarInnerContent}
-    />
-  ) : (
+  if (isNative) {
+    const query = question.legacyNativeQuery();
+    if (!query) {
+      return null;
+    }
+
+    return (
+      <NativeQueryEditor
+        availableHeight={availableHeight}
+        question={question}
+        proposedQuestion={proposedQuestion}
+        query={query}
+        resizableBoxProps={resizableBoxProps}
+        placeholder="SELECT * FROM TABLE_NAME"
+        hasTopBar
+        hasRunButton={!readOnly}
+        isInitiallyOpen
+        isNativeEditorOpen
+        readOnly={readOnly}
+        hasParametersList={false}
+        isRunnable={isRunnable}
+        isRunning={isRunning}
+        isResultDirty={isResultDirty}
+        isShowingDataReference={isShowingDataReference}
+        isShowingSnippetSidebar={isShowingSnippetSidebar}
+        runQuery={onRunQuery}
+        cancelQuery={onCancelQuery}
+        databaseIsDisabled={shouldDisableDatabase}
+        setDatasetQuery={handleNativeQueryChange}
+        sidebarFeatures={NATIVE_EDITOR_SIDEBAR_FEATURES}
+        toggleDataReference={onToggleDataReference}
+        toggleSnippetSidebar={onToggleSnippetSidebar}
+        modalSnippet={modalSnippet}
+        insertSnippet={onInsertSnippet}
+        closeSnippetModal={() => onChangeModalSnippet(null)}
+        setNativeEditorSelectedRange={onChangeNativeEditorSelection}
+        nativeEditorSelectedText={nativeEditorSelectedText}
+        onOpenModal={onOpenModal}
+        onAcceptProposed={onAcceptProposed}
+        onRejectProposed={onRejectProposed}
+        topBarInnerContent={topBarInnerContent}
+      />
+    );
+  }
+
+  return (
     <ResizableBox
       axis="y"
       className={S.queryResizableBox}
