@@ -13,7 +13,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import { Databases } from "metabase/entities/databases";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -418,7 +417,6 @@ const NativeQueryEditorInner = forwardRef<HTMLDivElement, Props>(
 );
 
 export const NativeQueryEditor = _.compose(
-  Databases.loadList({ loadingAndErrorWrapper: false }),
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   ExplicitSize(),
