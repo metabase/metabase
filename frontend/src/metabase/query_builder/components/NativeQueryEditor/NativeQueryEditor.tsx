@@ -422,4 +422,4 @@ export const NativeQueryEditor = _.compose(
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
   ExplicitSize(),
-)(NativeQueryEditorInner);
+)(NativeQueryEditorInner) as (props: OwnProps) => ReactNode;
