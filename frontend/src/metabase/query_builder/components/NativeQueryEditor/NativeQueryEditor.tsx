@@ -12,7 +12,6 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/common/components/ExplicitSize";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
 import { Snippets } from "metabase/entities/snippets";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -105,18 +104,12 @@ type OwnProps = {
   topBarInnerContent?: ReactNode;
 };
 
-interface ExplicitSizeProps {
-  width: number;
-  height: number;
-}
-
 interface EntityLoaderProps {
   snippets?: NativeQuerySnippet[];
   snippetCollections?: Collection[];
 }
 
 type Props = OwnProps &
-  ExplicitSizeProps &
   EntityLoaderProps &
   Omit<CodeMirrorEditorProps, "query"> & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
@@ -419,5 +412,4 @@ const NativeQueryEditorInner = forwardRef<HTMLDivElement, Props>(
 export const NativeQueryEditor = _.compose(
   Snippets.loadList({ loadingAndErrorWrapper: false }),
   SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-  ExplicitSize(),
 )(NativeQueryEditorInner) as (props: OwnProps) => ReactNode;
