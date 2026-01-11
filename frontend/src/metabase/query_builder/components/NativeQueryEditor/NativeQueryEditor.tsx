@@ -10,10 +10,8 @@ import {
 } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { SnippetCollections } from "metabase/entities/snippet-collections";
-import { Snippets } from "metabase/entities/snippets";
+import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
@@ -24,7 +22,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
-  Collection,
   DatabaseId,
   DatasetQuery,
   NativeQuerySnippet,
@@ -104,18 +101,12 @@ type OwnProps = {
   topBarInnerContent?: ReactNode;
 };
 
-interface EntityLoaderProps {
-  snippets?: NativeQuerySnippet[];
-  snippetCollections?: Collection[];
-}
-
 type Props = OwnProps &
-  EntityLoaderProps &
   Omit<CodeMirrorEditorProps, "query"> & {
     forwardedRef?: ForwardedRef<HTMLDivElement>;
   };
 
-const NativeQueryEditorInner = forwardRef<HTMLDivElement, Props>(
+export const NativeQueryEditor = forwardRef<HTMLDivElement, Props>(
   function NativeQueryEditorInner(props) {
     const {
       availableHeight = Infinity,
@@ -167,12 +158,15 @@ const NativeQueryEditorInner = forwardRef<HTMLDivElement, Props>(
         promptInput: true,
         formatQuery: true,
       },
-      snippetCollections = [],
-      snippets,
       toggleDataReference,
       toggleSnippetSidebar,
       topBarInnerContent,
     } = props;
+
+    const { data: snippets = [] } = useListSnippetsQuery();
+    const { data: snippetCollections = [] } = useListCollectionsQuery({
+      namespace: "snippets",
+    });
 
     const editorRef = useRef<CodeMirrorEditorRef>(null);
     const { ref: topBarRef, height: topBarHeight } = useElementSize();
@@ -408,8 +402,3 @@ const NativeQueryEditorInner = forwardRef<HTMLDivElement, Props>(
     );
   },
 );
-
-export const NativeQueryEditor = _.compose(
-  Snippets.loadList({ loadingAndErrorWrapper: false }),
-  SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
-)(NativeQueryEditorInner) as (props: OwnProps) => ReactNode;
