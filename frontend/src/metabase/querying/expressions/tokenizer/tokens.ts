@@ -26,7 +26,7 @@ const EOF = -1;
 const FIELD_PUNCTUATORS = new Set([char(","), char(" "), char("("), char(")")]);
 
 /**
- * Reference (or bracket idenfiers) like `[User Id]` are parsed differently
+ * Reference (or bracket identifiers) like `[User Id]` are parsed differently
  * based on whether they are well-formed or not.
  *
  * We allow malformed field tokens (ie. tokens without proper quoting) to be parsed as well.

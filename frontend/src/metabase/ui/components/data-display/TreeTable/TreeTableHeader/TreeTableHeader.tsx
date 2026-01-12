@@ -35,7 +35,7 @@ function TreeTableHeaderInner<TData extends TreeNodeData>({
       {headerGroups.map((headerGroup) => (
         <Flex
           key={headerGroup.id}
-          className={classNames?.headerRow}
+          className={cx(S.headerRow, classNames?.headerRow)}
           w="100%"
           style={{ minWidth: totalContentWidth, ...styles?.headerRow }}
         >

@@ -78,7 +78,6 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   warning?: boolean;
   cancel?: boolean;
   white?: boolean;
-  purple?: boolean;
 
   disabled?: boolean;
   round?: boolean;
@@ -128,7 +127,6 @@ const BaseButton = forwardRef(function BaseButton(
         },
         className,
       )}
-      purple={props.purple}
     >
       <ButtonContent iconVertical={iconVertical}>
         {icon && typeof icon === "string" ? (

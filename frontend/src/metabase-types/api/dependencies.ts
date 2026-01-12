@@ -283,10 +283,12 @@ export type ListBrokenGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
+  include_personal_collections?: boolean;
 };
 
 export type ListUnreferencedGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
+  include_personal_collections?: boolean;
 };
