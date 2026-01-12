@@ -14,6 +14,7 @@ const esmPackages = [
   "delaunator",
   "devlop",
   "echarts",
+  "escape-string-regexp",
   "estree.*",
   "fetch-mock",
   "hast.*",

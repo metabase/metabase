@@ -570,6 +570,13 @@
   "browserslist": [
     "defaults"
   ],
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "@swc/core",
+    "cypress",
+    "deasync",
+    "esbuild"
+  ],
   "patchedDependencies": {
     "@loki/browser@0.35.0": "patches/@loki__browser@0.35.0.patch",
     "@mantine/core@8.3.5": "patches/@mantine__core@8.3.5.patch",
