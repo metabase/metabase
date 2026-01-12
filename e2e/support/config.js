@@ -25,7 +25,7 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
-const isCI = process.env["CYPRESS_CI"] === "true";
+const isCI = !!process.env.CI;
 
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
@@ -88,6 +88,7 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+        launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
@@ -155,6 +156,9 @@ const defaultConfig = {
   },
   baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
   defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
+  env: {
+    CI: isCI,
+  },
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,

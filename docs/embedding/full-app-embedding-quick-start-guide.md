@@ -2,6 +2,8 @@
 title: "Full app embedding quickstart"
 redirect_from:
   - /docs/latest/embedding/interactive-embedding-quickstart
+  - /docs/latest/embedding/interactive-embedding-quickstart-guide
+  - /docs/latest/embedding/interactive-embedding-quick-start-guide
 ---
 
 # Full app embedding quickstart
@@ -13,6 +15,8 @@ You'll embed the full Metabase application in your app. Once logged in, people c
 {% include shared/in-page-promo-embedding-workshop.html %}
 
 ## Prerequisites
+
+{% include plans-blockquote.html feature="Full app embedding" convert_pro_link_to_embbedding=true%}
 
 - You have an app that you can embed Metabase in.
 - You have a Pro or Enterprise subscription of Metabase. If you're unsure where to start, sign up for a free trial for [Pro On-Prem](https://store.metabase.com/checkout/embedding). If you have Docker Desktop installed, you can just search for "metabase-enterprise" to find the Docker image and run it. Alternatively, you can follow [these instructions](../installation-and-operation/running-metabase-on-docker.md#pro-or-enterprise-quick-start).

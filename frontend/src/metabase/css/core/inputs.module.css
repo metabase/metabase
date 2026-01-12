@@ -4,8 +4,8 @@
 }
 
 .input {
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-background);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-primary);
   font-size: 1.12em;
   padding: 0.75rem 0.75rem;
   border: 1px solid var(--input-border-color);
@@ -24,7 +24,7 @@
   outline: none;
   border: 1px solid var(--mb-color-brand);
   transition: border 0.3s linear;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .inputBorderless,

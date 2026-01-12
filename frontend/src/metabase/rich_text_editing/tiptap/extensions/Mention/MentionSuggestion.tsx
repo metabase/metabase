@@ -109,6 +109,7 @@ const MentionSuggestionComponent = forwardRef<
         query={query}
         searchResults={searchResults}
         modal={modal}
+        viewMode="linkTo"
         onModalSelect={handlers.handleModalSelect}
         onModalClose={handlers.handleModalClose}
         onItemHover={handlers.hoverHandler}

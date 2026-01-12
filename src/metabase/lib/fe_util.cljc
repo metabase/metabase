@@ -129,6 +129,7 @@
                         :dispatch-type/keyword
                         :dispatch-type/nil
                         :metadata/column
+                        :metadata/measure
                         :metadata/segment
                         :metadata/metric]]
   (defmethod expression-parts-method dispatch-value
@@ -153,6 +154,14 @@
    {:lib/type :metadata/segment
     :id (last segment-ref)
     :display-name (i18n/tru "Unknown Segment")}))
+
+(defmethod expression-parts-method :measure
+  [query _stage-number measure-ref]
+  (or
+   (lib.metadata/measure query (last measure-ref))
+   {:lib/type :metadata/measure
+    :id (last measure-ref)
+    :display-name (i18n/tru "Unknown Measure")}))
 
 (defmethod expression-parts-method :metric
   [query _stage-number metric-ref]
@@ -226,6 +235,7 @@
   value)
 
 (doseq [dispatch-value [:metadata/column
+                        :metadata/measure
                         :metadata/segment
                         :metadata/metric]]
   (defmethod expression-clause-method dispatch-value

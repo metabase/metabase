@@ -1,9 +1,11 @@
 import { Fragment } from "react";
+import { t } from "ttag";
 
 import { Badge } from "metabase/common/components/Badge";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
+import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
 import type {
   Collection,
   CollectionEssentials,
@@ -11,11 +13,6 @@ import type {
   Dashboard,
 } from "metabase-types/api";
 
-import {
-  BreadcrumbsPathSeparator,
-  ExpandButton,
-  PathContainer,
-} from "./CollectionBreadcrumbs.styled";
 import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
@@ -42,7 +39,17 @@ export const CollectionBreadcrumbs = ({
     collection,
   });
 
-  const separator = <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>;
+  const separator = (
+    <Box
+      c="text-tertiary"
+      fz="0.8em"
+      fw="bold"
+      mx="0.5rem"
+      style={{ userSelect: "none" }}
+    >
+      /
+    </Box>
+  );
 
   const content =
     parts.length > 1 && !isExpanded ? (
@@ -53,13 +60,12 @@ export const CollectionBreadcrumbs = ({
           onClick={onClick ? () => onClick(collection) : undefined}
         />
         {separator}
-        <ExpandButton
-          small
-          borderless
-          icon="ellipsis"
-          onlyIcon
+        <ActionIcon
           onClick={toggle}
-        />
+          aria-label={isExpanded ? t`Collapse` : t`Expand`}
+        >
+          <Icon name="ellipsis" />
+        </ActionIcon>
         {separator}
       </>
     ) : (
@@ -77,20 +83,20 @@ export const CollectionBreadcrumbs = ({
 
   return (
     <>
-      <PathContainer>
+      <Flex align="center" miw="0">
         {content}
         <CollectionBadge
           collectionId={collection.id}
           isSingleLine
           onClick={onClick ? () => onClick(collection) : undefined}
         />
-      </PathContainer>
+      </Flex>
       {dashboard && (
         <>
           {separator}
           <Badge
             icon={{ name: "dashboard" }}
-            inactiveColor="text-light"
+            inactiveColor="text-tertiary"
             isSingleLine
             to={Urls.dashboard(dashboard)}
           >
