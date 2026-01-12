@@ -94,12 +94,13 @@
 
 (defn scalar-style
   "Style for a scalar display-type 'chart' in a Pulse."
-  [color]
-  (merge
-   (font-style)
-   {:font-size   :24px
-    :font-weight 700
-    :color       (or color color-text-dark)}))
+  ([] (scalar-style nil))
+  ([color]
+   (merge
+    (font-style)
+    {:font-size   :24px
+     :font-weight 700
+     :color       (or color color-text-dark)})))
 
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]
