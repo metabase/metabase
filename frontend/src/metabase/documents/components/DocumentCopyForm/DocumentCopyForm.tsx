@@ -56,7 +56,7 @@ export const DocumentCopyForm = ({
             <FormTextInput
               name="name"
               label={t`Name`}
-              placeholder={t`What is the name of your dashboard?`}
+              placeholder={t`What is the name of your document?`}
               autoFocus
             />
             <div>

@@ -20,6 +20,7 @@ import _ from "underscore";
 
 import {
   skipToken,
+  useCopyDocumentMutation,
   useCreateBookmarkMutation,
   useCreateDocumentMutation,
   useDeleteBookmarkMutation,
@@ -36,9 +37,11 @@ import {
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
+import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { extractEntityId } from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
 import { Box } from "metabase/ui";
 import type {
@@ -50,6 +53,7 @@ import type {
 import {
   trackDocumentBookmark,
   trackDocumentCreated,
+  trackDocumentDuplicated,
   trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
@@ -112,9 +116,11 @@ export const DocumentPage = ({
     useCreateDocumentMutation();
   const [updateDocument, { isLoading: isUpdating }] =
     useUpdateDocumentMutation();
+  const [copyDocument] = useCopyDocumentMutation();
   const [collectionPickerMode, setCollectionPickerMode] = useState<
     "save" | "move" | null
   >(null);
+  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
   const [sendToast] = useToast();
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
@@ -328,7 +334,7 @@ export const DocumentPage = ({
                   const _document = response.data;
                   trackDocumentUpdated(_document);
                   scheduleNavigation(() => {
-                    dispatch(push(`/document/${_document.id}`));
+                    dispatch(push(Urls.document(_document)));
                   });
                 }
                 return response;
@@ -342,7 +348,7 @@ export const DocumentPage = ({
                 const _document = response.data;
                 trackDocumentCreated(_document);
                 scheduleNavigation(() => {
-                  dispatch(replace(`/document/${_document.id}`));
+                  dispatch(replace(Urls.document(_document)));
                 });
               }
               return response;
@@ -472,6 +478,7 @@ export const DocumentPage = ({
                 }
               }}
               onMove={() => setCollectionPickerMode("move")}
+              onDuplicate={() => setIsDuplicateModalOpen(true)}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
               onShowHistory={handleShowHistory}
@@ -519,6 +526,35 @@ export const DocumentPage = ({
                   collection_id: canonicalCollectionId(collection.id),
                 });
               }
+            }}
+          />
+        )}
+
+        {isDuplicateModalOpen && (
+          <EntityCopyModal
+            entityType="documents"
+            onClose={() => setIsDuplicateModalOpen(false)}
+            onSaved={(document) => {
+              scheduleNavigation(() => {
+                dispatch(push(Urls.document(document)));
+              });
+            }}
+            entityObject={documentData}
+            title={t`Duplicate "${documentData?.name}"`}
+            overwriteOnInitialValuesChange
+            copy={async (object) => {
+              const newDocumentData = await copyDocument({
+                ...object,
+                id: documentData?.id,
+              }).then((response) => {
+                if (response.data) {
+                  const _document = response.data;
+                  trackDocumentDuplicated(_document);
+                  return _document;
+                }
+                return null;
+              });
+              return newDocumentData;
             }}
           />
         )}
