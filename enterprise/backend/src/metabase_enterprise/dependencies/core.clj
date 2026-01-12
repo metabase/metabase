@@ -3,6 +3,8 @@
 
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
+   [clojure.set :as set]
+   [medley.core :as m]
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
@@ -20,6 +22,10 @@
 
 (mr/def ::entity-type
   [:enum :card :transform :snippet :table])
+
+(mr/def ::errors-map
+  "A map of entity-type -> entity-id -> set of validation errors."
+  [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]])
 
 (mr/def ::updates-map
   ;; TODO: Make this more specific.
@@ -42,7 +48,7 @@
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
      (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
-(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
+(mu/defn- check-query-soundness :- ::errors-map
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -86,11 +92,39 @@
 
     @by-db))
 
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
+(mu/defn- diff-with-baseline :- ::errors-map
+  "Given proposed errors and a base metadata provider, computes which errors are NEW.
+
+  For each entity with proposed errors, checks what errors existed in the baseline (unmodified) state.
+  Returns only errors that are new (not present in baseline)."
+  [base-provider   :- ::lib.schema.metadata/metadata-provider
+   proposed-errors :- ::errors-map]
+  (reduce-kv
+   (fn [result entity-type entity-errors]
+     (let [new-entity-errors
+           (reduce-kv
+            (fn [acc entity-id errors]
+              (let [baseline (deps.analysis/check-entity base-provider entity-type entity-id)
+                    new-errors (set/difference errors baseline)]
+                (if (seq new-errors)
+                  (assoc acc entity-id new-errors)
+                  acc)))
+            {}
+            entity-errors)]
+       (if (seq new-entity-errors)
+         (assoc result entity-type new-entity-errors)
+         result)))
+   {}
+   proposed-errors))
+
+(mu/defn errors-from-proposed-edits :- ::errors-map
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 
   The 1-arity groups all the dependents by which Database they are part of, and runs the analysis for each of them.
+
+  Only NEW errors are returned - errors that existed before the proposed edits are filtered out by diffing
+  against the baseline state.
 
   The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
   detected."
@@ -98,10 +132,12 @@
    (let [all-deps (deps.graph/transitive-dependents edits)
          by-db    (group-by-db all-deps)]
      (reduce (fn [errors [db-id deps]]
-               (-> (lib-be/application-database-metadata-provider db-id)
-                   (metadata-provider edits :dependents deps)
-                   check-query-soundness
-                   (merge errors)))
+               (let [base-provider (lib-be/application-database-metadata-provider db-id)
+                     proposed-errors (-> base-provider
+                                         (metadata-provider edits :dependents deps)
+                                         check-query-soundness)
+                     new-errors (diff-with-baseline base-provider proposed-errors)]
+                 (merge errors new-errors)))
              {} by-db)))
 
   ([base-provider :- ::lib.schema.metadata/metadata-provider
@@ -111,9 +147,23 @@
   ([base-provider :- ::lib.schema.metadata/metadata-provider
     graph         :- [:maybe ::graph/graph]
     edits         :- ::updates-map]
-   (-> base-provider
-       (metadata-provider edits :graph graph)
-       check-query-soundness)))
+   (let [proposed-errors (-> base-provider
+                             (metadata-provider edits :graph graph)
+                             check-query-soundness)]
+     (diff-with-baseline base-provider proposed-errors))))
+
+(mu/defn downstream-errors-from-proposed-edits :- ::errors-map
+  "Like [[errors-from-proposed-edits]], but excludes errors for the entity being edited.
+
+  This is the appropriate function to call when checking proposed edits from a user interface,
+  where we don't want to show users errors about the entity they're currently editing."
+  [base-provider :- ::lib.schema.metadata/metadata-provider
+   graph         :- [:maybe ::graph/graph]
+   entity-type   :- ::entity-type
+   entity-id     :- :int
+   edits         :- ::updates-map]
+  (-> (errors-from-proposed-edits base-provider graph edits)
+      (m/dissoc-in [entity-type entity-id])))
 
 #_{:clj-kondo/ignore [:unresolved-namespace]}
 (comment
