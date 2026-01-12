@@ -1257,6 +1257,21 @@ databaseChangeLog:
             tableName: pulse
             columnName: disable_links
 
+  - changeSet:
+      id: v58.2026-01-12T22:43:43
+      author: galdre
+      comment: "Clear source_card_id for native queries to prevent cascade deletion (#68080)"
+      changes:
+        - update:
+            tableName: report_card
+            columns:
+              - column:
+                  name: source_card_id
+                  value: null
+            where: query_type = 'native' AND source_card_id IS NOT NULL
+      rollback:
+        # No rollback - we can't know what the original source_card_id values were
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

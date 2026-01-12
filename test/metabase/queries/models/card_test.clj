@@ -1057,6 +1057,45 @@
           (is (= (mt/id :venues) (:table_id updated-card)))
           (is (= :query (:query_type updated-card))))))))
 
+(deftest source-card-id-cleared-on-conversion-to-native-test
+  (testing "source_card_id should be set to nil when a model-based question is converted to native SQL (#68080)"
+    (mt/with-temp [:model/Card model {:name          "Test Model"
+                                      :type          :model
+                                      :dataset_query (mt/mbql-query venues)}
+                   :model/Card question {:name          "Test Question"
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (str "card__" (:id model))}}}]
+      (let [question-id (:id question)
+            model-id    (:id model)]
+        (testing "source_card_id is initially set to the model's ID"
+          (is (= model-id (:source_card_id (t2/select-one :model/Card :id question-id)))))
+        (testing "source_card_id is cleared when converting to native SQL"
+          (t2/update! :model/Card question-id
+                      {:dataset_query {:database (mt/id)
+                                       :type     :native
+                                       :native   {:query "SELECT * FROM venues"}}})
+          (is (nil? (:source_card_id (t2/select-one :model/Card :id question-id))))))))
+  (testing "deleting a model should not cascade delete questions that were converted to native SQL"
+    (mt/with-temp [:model/Card model {:name          "Test Model"
+                                      :type          :model
+                                      :dataset_query (mt/mbql-query venues)}
+                   :model/Card question {:name          "Test Question"
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :query
+                                                         :query    {:source-table (str "card__" (:id model))}}}]
+      (let [question-id (:id question)
+            model-id    (:id model)]
+        (t2/update! :model/Card question-id
+                    {:dataset_query {:database (mt/id)
+                                     :type     :native
+                                     :native   {:query "SELECT * FROM venues"}}})
+        (t2/delete! :model/Card model-id)
+        (testing "model should be deleted"
+          (is (not (t2/exists? :model/Card :id model-id))))
+        (testing "converted question should survive"
+          (is (t2/exists? :model/Card :id question-id)))))))
+
 (deftest before-update-embedding-timestamp-test
   (testing "maybe-populate-initially-published-at is called"
     (mt/with-temp [:model/Card {card-id :id} {:enable_embedding false}]
