@@ -134,6 +134,7 @@
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                       [[:block 1]]
   metabase.driver.sql.query-processor/apply-top-level-clause                                  [[:default]]
   metabase.driver/with-driver                                                                 [[:block 1]]
+  metabase.driver/with-swapped-connection-details                                             [[:block 2]]
   metabase.embedding-rest.api.embed-test/do-response-formats                                  [[:block 1]]
   metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-new-secret-key            [[:block 0]]
   metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing     [[:block 3]]
