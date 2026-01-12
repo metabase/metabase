@@ -261,7 +261,7 @@ export type CheckQueryComplexityRawResponse = {
   reason: string;
 };
 
-export type CheckQueryComplexityResponse = {
+export type QueryComplexity = {
   isSimple: boolean;
   reason: string;
 };

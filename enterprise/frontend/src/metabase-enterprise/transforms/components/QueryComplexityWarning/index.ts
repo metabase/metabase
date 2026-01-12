@@ -1,2 +1,2 @@
 export { QueryComplexityWarning } from "./QueryComplexityWarning";
-export { useQueryComplexityCheck } from "./use-query-complexity-check";
+export { useQueryComplexityChecks } from "./use-query-complexity-checks";

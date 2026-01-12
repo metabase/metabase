@@ -7,8 +7,7 @@ import { t } from "ttag";
 import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
@@ -16,20 +15,15 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
-import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import {
   useGetTransformQuery,
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
-import * as Lib from "metabase-lib";
 import type { Database, Transform } from "metabase-types/api";
 
-import {
-  QueryComplexityWarning,
-  useQueryComplexityCheck,
-} from "../../components/QueryComplexityWarning";
+import { useQueryComplexityChecks } from "../../components/QueryComplexityWarning";
 import { TransformEditor } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
 import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
@@ -109,32 +103,8 @@ function TransformQueryPageBody({
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const isEditMode = !!route.path?.includes("/edit");
   useRegisterMetabotTransformContext(transform, source);
-  const metadata = useSelector(getMetadata);
 
-  const { checkIsQueryComplex } = useQueryComplexityCheck();
-  const { modalContent: confirmationModal, show: showConfirmation } =
-    useConfirmation();
-
-  const confirmIfQueryComplex = async () => {
-    if (source.type !== "query" || !("source-incremental-strategy" in source)) {
-      return true;
-    }
-    const libQuery = Lib.fromJsQueryAndMetadata(metadata, source.query);
-    const complexity = await checkIsQueryComplex(Lib.rawNativeQuery(libQuery));
-    if (complexity.isSimple) {
-      return true;
-    }
-    return new Promise<boolean>((resolve) => {
-      showConfirmation({
-        title: t`Query complexity warning`,
-        message: <QueryComplexityWarning complexity={complexity} />,
-        onConfirm: () => resolve(true),
-        onCancel: () => resolve(false),
-        confirmButtonText: t`Save anyway`,
-        confirmButtonProps: { color: "brand", variant: "filled" },
-      });
-    });
-  };
+  const { confirmIfQueryIsComplex, modal } = useQueryComplexityChecks();
 
   const {
     checkData,
@@ -173,14 +143,13 @@ function TransformQueryPageBody({
     if (!isNotDraftSource(source)) {
       return;
     }
-    const confirmed = await confirmIfQueryComplex();
-    if (!confirmed) {
-      return;
+    if ("source-incremental-strategy" in source) {
+      const confirmed = await confirmIfQueryIsComplex(source);
+      if (!confirmed) {
+        return;
+      }
     }
-    await handleInitialSave({
-      id: transform.id,
-      source,
-    });
+    await handleInitialSave({ id: transform.id, source });
 
     if (isEditMode) {
       dispatch(push(Urls.transform(transform.id)));
@@ -266,7 +235,7 @@ function TransformQueryPageBody({
         isEnabled={isDirty && !isSaving && !isCheckingDependencies}
         onConfirm={rejectProposed}
       />
-      {confirmationModal}
+      {modal}
     </>
   );
 }
