@@ -1,4 +1,6 @@
 import { useHotkeys } from "@mantine/hooks";
+import { useEffect } from "react";
+import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
@@ -24,9 +26,12 @@ export function PythonTransformEditor({
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
+  onRunTransform,
 }: PythonTransformEditorProps) {
   const { isRunning, cancel, run, executionResult } =
     useTestPythonTransform(source);
+
+  const wasRunning = usePrevious(isRunning);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -56,11 +61,34 @@ export function PythonTransformEditor({
     onChangeSource(newSource);
   };
 
+  const handleRun = () => {
+    run();
+  };
+
+  // Notify workspace when test-run completes in workspace context
+  useEffect(() => {
+    const runJustCompleted = wasRunning && !isRunning;
+    if (
+      runJustCompleted &&
+      executionResult &&
+      onRunTransform &&
+      uiOptions?.hidePreview
+    ) {
+      onRunTransform(executionResult);
+    }
+  }, [
+    wasRunning,
+    isRunning,
+    executionResult,
+    onRunTransform,
+    uiOptions?.hidePreview,
+  ]);
+
   const handleCmdEnter = () => {
     if (isRunning) {
       cancel();
     } else if (isPythonTransformSource(source)) {
-      run();
+      handleRun();
     }
   };
 
@@ -81,7 +109,7 @@ export function PythonTransformEditor({
           isRunnable={isPythonTransformSource(source)}
           isRunning={isRunning}
           isDirty={isDirty}
-          onRun={run}
+          onRun={handleRun}
           onCancel={cancel}
           source={source.body}
           proposedSource={proposedSource?.body}

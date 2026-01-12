@@ -25,6 +25,7 @@ export interface OpenTable {
   schema?: string | null;
   transformId?: string;
   query?: DatasetQuery;
+  pythonPreviewResult?: any;
 }
 
 export interface EditedTransform {

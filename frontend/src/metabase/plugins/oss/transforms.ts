@@ -56,6 +56,7 @@ export type PythonTransformEditorProps = {
   onChangeSource: (source: PythonTransformSourceDraft) => void;
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
+  onRunTransform?: (result: any) => void;
 };
 
 export type PythonTransformSourceSectionProps = {

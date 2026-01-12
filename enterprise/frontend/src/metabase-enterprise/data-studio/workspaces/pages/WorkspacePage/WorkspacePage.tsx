@@ -786,6 +786,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     tableId={activeTable.tableId}
                     transformId={activeTable.transformId}
                     query={activeTable.query}
+                    pythonPreviewResult={activeTable.pythonPreviewResult}
                   />
                 )}
               </Tabs.Panel>
