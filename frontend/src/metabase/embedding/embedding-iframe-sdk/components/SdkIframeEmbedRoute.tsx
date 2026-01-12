@@ -31,6 +31,7 @@ import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-b
 import type { SdkIframeEmbedSettings } from "../types/embed";
 
 import { MetabaseBrowser } from "./MetabaseBrowser";
+import SdkIframeEmbedRouteS from "./SdkIframeEmbedRoute.module.css";
 import {
   SdkIframeApiKeyInProductionError,
   SdkIframeExistingUserSessionInProductionError,
@@ -99,11 +100,8 @@ export const SdkIframeEmbedRoute = () => {
     >
       <Stack
         mih="100vh"
+        className={SdkIframeEmbedRouteS.Container}
         style={{
-          display: "grid",
-          width: "100%",
-          gridTemplateColumns: "1fr",
-          gridTemplateRows: "1fr auto",
           backgroundColor: adjustedTheme?.colors?.background,
         }}
       >
@@ -285,7 +283,9 @@ const EmbedBrandingFooter = () => {
   }
 
   return (
-    <PublicComponentStylesWrapper>
+    <PublicComponentStylesWrapper
+      className={SdkIframeEmbedRouteS.BrandingFooter}
+    >
       <EmbeddingFooter variant="default" hasEmbedBranding />
     </PublicComponentStylesWrapper>
   );

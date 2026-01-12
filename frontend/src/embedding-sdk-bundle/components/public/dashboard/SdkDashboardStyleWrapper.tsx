@@ -18,7 +18,7 @@ export const SdkDashboardStyledWrapper = forwardRef(
         align="stretch"
         className={cx(className, CS.overflowAuto)}
         style={{
-          minHeight: "100vh",
+          height: "100%",
           backgroundColor: "var(--mb-color-bg-dashboard)",
           ...style,
         }}
