@@ -313,13 +313,28 @@
                 [k (into (sorted-set) (map :namespace) v)]))
          (group-by :depends-on-namespace (external-usages deps module-symb)))))
 
-(defn externally-used-namespaces
-  "All namespaces from a module that are used outside that module."
-  ([module-symb]
-   (externally-used-namespaces (dependencies) module-symb))
+(defn module-friends
+  "`:friends` of the module from the Kondo config -- these are allowed to freely use all namespaces in the module, not
+  just `:api` ones.
 
-  ([deps module-symb]
-   (into (sorted-set) (map :depends-on-namespace) (external-usages deps module-symb))))
+    (module-friends (kondo-config) 'lib)
+    ;; => #{query-processor}"
+  [kondo-config module-symb]
+  (get-in kondo-config [module-symb :friends]))
+
+(declare kondo-config)
+
+(defn externally-used-namespaces-ignoring-friends
+  "All namespaces from a module that are used outside that module, excluding usages by `:friends` of the module."
+  ([module-symb]
+   (externally-used-namespaces-ignoring-friends (dependencies) (kondo-config) module-symb))
+
+  ([deps kondo-config module-symb]
+   (let [friends (module-friends kondo-config module-symb)]
+     (into (sorted-set)
+           (comp (remove #(contains? friends (:module %)))
+                 (map :depends-on-namespace))
+           (external-usages deps module-symb)))))
 
 (defn module-dependencies
   "Build a graph of module => set of modules it directly depends on."
@@ -412,12 +427,12 @@
 (defn generate-config
   "Generate the Kondo config that should go in `.clj-kondo/config/modules/config.edn`."
   ([]
-   (generate-config (dependencies)))
+   (generate-config (dependencies) (kondo-config)))
 
-  ([deps]
+  ([deps kondo-config]
    (into (sorted-map)
          (map (fn [[module uses]]
-                [module {:api  (externally-used-namespaces deps module)
+                [module {:api  (externally-used-namespaces-ignoring-friends deps kondo-config module)
                          :uses uses}]))
          (module-dependencies deps))))
 
@@ -447,12 +462,13 @@
    (kondo-config-diff (dependencies)))
 
   ([deps]
-   (-> (ddiff/diff
-        (update-vals (kondo-config) #(dissoc % :team))
-        (generate-config deps))
-       ddiff/minimize
-       kondo-config-diff-ignore-any
-       ddiff/minimize)))
+   (let [kondo-config (kondo-config)]
+     (-> (ddiff/diff
+          (update-vals kondo-config #(dissoc % :team :friends))
+          (generate-config deps kondo-config))
+         ddiff/minimize
+         kondo-config-diff-ignore-any
+         ddiff/minimize))))
 
 (defn print-kondo-config-diff
   "Print the diff between how the config would look if regenerated with [[generate-config]] versus how it looks in

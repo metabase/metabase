@@ -258,7 +258,7 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [field (api/read-check (t2/select-one :model/Field :id id))]
+  (let [field (api/query-check (t2/select-one :model/Field :id id))]
     (parameters.field/field->values field)))
 
 (defn- validate-human-readable-pairs
