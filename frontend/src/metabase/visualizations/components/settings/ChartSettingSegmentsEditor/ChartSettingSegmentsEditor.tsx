@@ -1,33 +1,28 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-// import Button from "metabase/common/components/Button";
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import type { Segment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
 
-export type Segment = {
-  min: number;
-  max: number;
-  color: string;
-  label?: string;
-};
+export interface ChartSettingSegmentsEditorProps {
+  value: Segment[];
+  onChange: (value: Segment[]) => void;
+  canRemoveAll?: boolean;
+}
 
 export const ChartSettingSegmentsEditor = ({
   value: segments,
   onChange,
   canRemoveAll = false,
-}: {
-  value: Segment[];
-  onChange: (value: Segment[]) => void;
-  canRemoveAll?: boolean;
-}) => {
+}: ChartSettingSegmentsEditorProps) => {
   const onChangeProperty = (
     index: number,
     property: keyof Segment,
@@ -103,7 +98,7 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
                     <Button
-                      leftSection={<Icon name="trash" c="text-light" />}
+                      leftSection={<Icon name="trash" c="text-tertiary" />}
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
@@ -117,7 +112,7 @@ export const ChartSettingSegmentsEditor = ({
       ) : (
         <Text
           ta="center"
-          c="text-medium"
+          c="text-secondary"
           mt="2.5rem"
           mb="3rem"
           lh="1.25rem"
