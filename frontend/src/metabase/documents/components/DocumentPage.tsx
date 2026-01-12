@@ -35,6 +35,7 @@ import {
   LeaveRouteConfirmModal,
 } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { SaveConfirmModal } from "metabase/common/components/SaveConfirmModal/SaveConfirmModal";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
@@ -120,7 +121,9 @@ export const DocumentPage = ({
   const [collectionPickerMode, setCollectionPickerMode] = useState<
     "save" | "move" | null
   >(null);
-  const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
+  const [duplicateModalMode, setDuplicateModalMode] = useState<
+    "duplicate" | "leave" | null
+  >(null);
   const [sendToast] = useToast();
 
   const documentId = entityId === "new" ? "new" : extractEntityId(entityId);
@@ -171,6 +174,7 @@ export const DocumentPage = ({
     documentContent,
     setDocumentContent,
     updateCardEmbeds,
+    revertToOriginalDocument,
   } = useDocumentState(documentData);
 
   // This is important as it will affect collection breadcrumbs in the appbar
@@ -275,6 +279,14 @@ export const DocumentPage = ({
     [dispatch, editorInstance, documentContent, isNewDocument],
   );
 
+  const handleDuplicate = useCallback(() => {
+    if (hasUnsavedChanges()) {
+      setDuplicateModalMode("leave");
+      return;
+    }
+    setDuplicateModalMode("duplicate");
+  }, [hasUnsavedChanges]);
+
   const handleToggleBookmark = useCallback(() => {
     if (!documentId) {
       return;
@@ -361,12 +373,18 @@ export const DocumentPage = ({
           dispatch(clearDraftCards());
           // Mark document as clean
           dispatch(setHasUnsavedChanges(false));
+          return {
+            document: result.data,
+          };
         } else if (result.error) {
           throw result.error;
         }
       } catch (error) {
         console.error("Failed to save document:", error);
         sendToast({ message: t`Error saving document`, icon: "warning" });
+        return {
+          error: error,
+        };
       }
     },
     [
@@ -478,7 +496,7 @@ export const DocumentPage = ({
                 }
               }}
               onMove={() => setCollectionPickerMode("move")}
-              onDuplicate={() => setIsDuplicateModalOpen(true)}
+              onDuplicate={handleDuplicate}
               onToggleBookmark={handleToggleBookmark}
               onArchive={() => handleUpdate({ archived: true })}
               onShowHistory={handleShowHistory}
@@ -517,7 +535,7 @@ export const DocumentPage = ({
               showRootCollection: true,
             }}
             entityType="document"
-            onChange={async (collection) => {
+            onChange={(collection) => {
               if (collectionPickerMode === "save") {
                 handleSave(canonicalCollectionId(collection.id));
                 setCollectionPickerMode(null);
@@ -530,11 +548,12 @@ export const DocumentPage = ({
           />
         )}
 
-        {isDuplicateModalOpen && (
+        {duplicateModalMode === "duplicate" && (
           <EntityCopyModal
             entityType="documents"
-            onClose={() => setIsDuplicateModalOpen(false)}
+            onClose={() => setDuplicateModalMode(null)}
             onSaved={(document) => {
+              setDuplicateModalMode(null);
               scheduleNavigation(() => {
                 dispatch(push(Urls.document(document)));
               });
@@ -543,18 +562,24 @@ export const DocumentPage = ({
             title={t`Duplicate "${documentData?.name}"`}
             overwriteOnInitialValuesChange
             copy={async (object) => {
-              const newDocumentData = await copyDocument({
+              if (!documentData?.id) {
+                throw new Error(
+                  "Cannot duplicate document that has not been saved",
+                );
+              }
+
+              return await copyDocument({
                 ...object,
-                id: documentData?.id,
+                id: documentData.id,
               }).then((response) => {
                 if (response.data) {
                   const _document = response.data;
                   trackDocumentDuplicated(_document);
                   return _document;
+                } else if (response.error) {
+                  throw response.error;
                 }
-                return null;
               });
-              return newDocumentData;
             }}
           />
         )}
@@ -579,6 +604,22 @@ export const DocumentPage = ({
           opened={isLeaveConfirmModalOpen}
           onConfirm={resetDocument}
           onClose={() => forceUpdate()}
+        />
+
+        <SaveConfirmModal
+          // only applies when trying to duplicate a document that has unsaved changes
+          opened={duplicateModalMode === "leave"}
+          onConfirm={async () => {
+            if ((await handleSave())?.error) {
+              throw new Error("Failed to save document");
+            }
+            setDuplicateModalMode("duplicate");
+          }}
+          onDiscard={() => {
+            revertToOriginalDocument();
+            setDuplicateModalMode("duplicate");
+          }}
+          onClose={() => setDuplicateModalMode(null)}
         />
       </Box>
       {isHistorySidebarOpen && documentData && (
