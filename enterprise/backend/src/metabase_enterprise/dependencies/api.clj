@@ -579,7 +579,28 @@
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
 
-(defn- unreferenced-query [entity-type card-types query]
+(defn- personal-collection-filter
+  "Returns a HoneySQL WHERE clause to exclude items in personal collections.
+   Only applies to collection-based entities (card, dashboard, document, snippet).
+   Returns nil for non-collection entities or when include-personal-collections is true."
+  [entity-type include-personal-collections]
+  (when-not include-personal-collections
+    (case entity-type
+      (:card :dashboard :document :snippet)
+      (let [personal-ids (t2/select-pks-vec :model/Collection
+                                            :personal_owner_id [:not= nil]
+                                            :location "/")]
+        (when (seq personal-ids)
+          [:or
+           [:= :entity.collection_id nil]
+           [:and
+            [:= :collection.personal_owner_id nil]
+            (into [:and]
+                  (for [pid personal-ids]
+                    [:not-like :collection.location (str "/" pid "/%")]))]]))
+      nil)))
+
+(defn- unreferenced-query [entity-type card-types query include-archived-items include-personal-collections]
   (let [table-name (case entity-type
                      :card :report_card
                      :table :metabase_table
@@ -588,22 +609,46 @@
                      :dashboard :report_dashboard
                      :document :document
                      :sandbox :sandboxes
-                     :segment :segment)
+                     :segment :segment
+                     :measure :measure)
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                      :entity.name)]
+                      :entity.name)
+        archived-filter (when (= include-archived-items :exclude)
+                          (case entity-type
+                            (:card :dashboard :document :snippet :segment :measure)
+                            [:= :entity.archived false]
+                            :table
+                            [:and
+                             [:= :entity.active true]
+                             [:= :entity.visibility_type nil]]
+                            nil))
+        personal-filter (personal-collection-filter entity-type include-personal-collections)
+        needs-collection-join? (and (not include-personal-collections)
+                                    (#{:card :dashboard :document :snippet} entity-type))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
               [name-column :sort_key]]
      :from [[table-name :entity]]
-     :left-join [:dependency [:and
-                              [:= :dependency.to_entity_id :entity.id]
-                              [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+     :left-join (cond-> [:dependency [:and
+                                      [:= :dependency.to_entity_id :entity.id]
+                                      [:= :dependency.to_entity_type [:inline (name entity-type)]]]]
+                  needs-collection-join?
+                  (conj :collection [:= :entity.collection_id :collection.id]))
      :where (cond->> [:= :dependency.id nil]
               (and (= entity-type :card)
-                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
-              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
+                   (seq card-types))
+              (conj [:and [:in :entity.type (mapv name card-types)]])
+
+              (and query (not= entity-type :sandbox))
+              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+
+              archived-filter
+              (conj [:and archived-filter])
+
+              personal-filter
+              (conj [:and personal-filter]))}))
 
 (def ^:private unreferenced-items-args
   [:map
@@ -613,7 +658,9 @@
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:query {:optional true} :string]])
+   [:query {:optional true} :string]
+   [:archived {:optional true} :boolean]
+   [:include_personal_collections {:optional true} :boolean]])
 
 (api.macros/defendpoint :get "/graph/unreferenced" :- [:sequential ::entity]
   "Returns a list of all unreferenced items in the instance.
@@ -623,22 +670,28 @@
    - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
    - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
    - query: Search string to filter by name or location
+   - archived: Controls whether archived entities are included
+   - include_personal_collections: Controls whether items in personal collections are included (default: false)
 
    Returns a list of unreferenced items, each with :id, :type, and :data fields."
   [_route-params
-   {:keys [types card_types query]
+   {:keys [types card_types query archived include_personal_collections]
     :or {types (vec deps.dependency-types/dependency-types)
-         card_types (vec lib.schema.metadata/card-types)}} :- unreferenced-items-args]
-  (let [selected-types (cond->> (if (sequential? types) types [types])
+         card_types (vec lib.schema.metadata/card-types)
+         include_personal_collections false}} :- unreferenced-items-args]
+  (let [include-archived-items (if archived :all :exclude)
+        graph-opts {:include-archived-items include-archived-items}
+        selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(unreferenced-query % card-types query) selected-types)
+        union-queries (map #(unreferenced-query % card-types query include-archived-items include_personal_collections)
+                           selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
     (expanded-nodes downstream-graph all-ids {:include-errors? false})))
 
 (def ^:private broken-items-args
@@ -649,9 +702,11 @@
    [:card_types {:optional true} [:or
                                   (ms/enum-decode-keyword lib.schema.metadata/card-types)
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:query {:optional true} :string]])
+   [:query {:optional true} :string]
+   [:archived {:optional true} :boolean]
+   [:include_personal_collections {:optional true} :boolean]])
 
-(defn- broken-query [entity-type card-types query]
+(defn- broken-query [entity-type card-types query include-archived-items include-personal-collections]
   (let [table-name (case entity-type
                      :card :report_card
                      :table :metabase_table
@@ -660,22 +715,46 @@
                      :dashboard :report_dashboard
                      :document :document
                      :sandbox :sandboxes
-                     :segment :segment)
+                     :segment :segment
+                     :measure :measure)
         name-column (case entity-type
                       :table :entity.display_name
                       :sandbox [:cast :entity.id (if (= :mysql (mdb/db-type)) :char :text)]
-                      :entity.name)]
+                      :entity.name)
+        archived-filter (when (= include-archived-items :exclude)
+                          (case entity-type
+                            (:card :dashboard :document :snippet :segment :measure)
+                            [:= :entity.archived false]
+                            :table
+                            [:and
+                             [:= :entity.active true]
+                             [:= :entity.visibility_type nil]]
+                            nil))
+        personal-filter (personal-collection-filter entity-type include-personal-collections)
+        needs-collection-join? (and (not include-personal-collections)
+                                    (#{:card :dashboard :document :snippet} entity-type))]
     {:select [[[:inline (name entity-type)] :entity_type]
               [:entity.id :entity_id]
               [name-column :sort_key]]
      :from [[table-name :entity]]
-     :left-join [:analysis_finding [:and
-                                    [:= :analysis_finding.analyzed_entity_id :entity.id]
-                                    [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+     :left-join (cond-> [:analysis_finding [:and
+                                            [:= :analysis_finding.analyzed_entity_id :entity.id]
+                                            [:= :analysis_finding.analyzed_entity_type (name entity-type)]]]
+                  needs-collection-join?
+                  (conj :collection [:= :entity.collection_id :collection.id]))
      :where (cond->> [:= :analysis_finding.result false]
               (and (= entity-type :card)
-                   (seq card-types)) (conj [:and [:in :entity.type (mapv name card-types)]])
-              (and query (not= entity-type :sandbox)) (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]]))}))
+                   (seq card-types))
+              (conj [:and [:in :entity.type (mapv name card-types)]])
+
+              (and query (not= entity-type :sandbox))
+              (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+
+              archived-filter
+              (conj [:and archived-filter])
+
+              personal-filter
+              (conj [:and personal-filter]))}))
 
 (api.macros/defendpoint :get "/graph/broken" :- [:sequential ::entity]
   "Returns a list of all items with broken queries.
@@ -684,22 +763,28 @@
    - `types`: List of entity types to include (e.g., `[:card :transform :snippet :dashboard]`)
    - `card_types`: List of card types to include when filtering cards (e.g., `[:question :model :metric]`)
    - `query`: Search string to filter by name or location
+   - `archived`: Controls whether archived entities are included
+   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
 
    Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields."
   [_route-params
-   {:keys [types card_types query]
+   {:keys [types card_types query archived include_personal_collections]
     :or {types (vec deps.dependency-types/dependency-types)
-         card_types (vec lib.schema.metadata/card-types)}} :- broken-items-args]
-  (let [selected-types (cond->> (if (sequential? types) types [types])
+         card_types (vec lib.schema.metadata/card-types)
+         include_personal_collections false}} :- broken-items-args]
+  (let [include-archived-items (if archived :all :exclude)
+        graph-opts {:include-archived-items include-archived-items}
+        selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(broken-query % card-types query) selected-types)
+        union-queries (map #(broken-query % card-types query include-archived-items include_personal_collections)
+                           selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents))]
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
     (expanded-nodes downstream-graph all-ids {:include-errors? true})))
 
 (def ^{:arglists '([request respond raise])} routes

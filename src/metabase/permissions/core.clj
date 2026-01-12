@@ -126,6 +126,7 @@
   graph
   update-graph!]
  [metabase.permissions.published-tables
+  can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
   user-has-published-table-permission-for-database?])

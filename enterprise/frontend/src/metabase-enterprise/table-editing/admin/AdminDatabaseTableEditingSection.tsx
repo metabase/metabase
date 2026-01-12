@@ -77,7 +77,6 @@ export function AdminDatabaseTableEditingSection({
 
   const dataEditingSetting =
     settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
-
   const isSettingDisabled =
     !dataEditingSetting || dataEditingSetting.enabled === false;
 

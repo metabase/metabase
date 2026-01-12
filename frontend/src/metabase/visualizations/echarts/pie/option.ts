@@ -279,7 +279,7 @@ function getSeriesDataFromSlices(
         blur: {
           itemStyle: {
             // We have to fade the slices through `color` rather than `opacity`
-            // becuase echarts' will apply the opacity to the white border,
+            // because echarts' will apply the opacity to the white border,
             // causing the underlying color to leak. It is safe to use non-hex
             // values here, since this value will never be used in batik
             // (there's no emphasis/blur for static viz).

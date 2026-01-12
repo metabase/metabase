@@ -15,7 +15,7 @@ export function NameCell({ node }: NameCellProps) {
   return (
     <Flex align="center" gap="sm" miw={0}>
       {icon && <FixedSizeIcon name={icon} />}
-      <Ellipsified>{label}</Ellipsified>
+      <Ellipsified tooltipProps={{ openDelay: 300 }}>{label}</Ellipsified>
     </Flex>
   );
 }

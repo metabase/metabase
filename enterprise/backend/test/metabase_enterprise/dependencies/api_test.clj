@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1203,6 +1204,139 @@
                                :type "metric"}}]
                       response)))))))))
 
+(deftest ^:sequential unreferenced-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products (lib.metadata/table mp (mt/id :products))]
+        (mt/with-temp [:model/Card {unreffed-card-id :id} {:name "Unreferenced Card - archivedtest"
+                                                           :type :question
+                                                           :dataset_query (lib/query mp products)}
+                       :model/Card {archived-card-id :id} {:name "Archived Unreferenced Card - archivedtest"
+                                                           :type :question
+                                                           :archived true
+                                                           :dataset_query (lib/query mp products)}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "archived=false (default) excludes archived card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids unreffed-card-id))
+              (is (not (contains? card-ids archived-card-id)))))
+          (testing "archived=true includes archived card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest&archived=true")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids unreffed-card-id))
+              (is (contains? card-ids archived-card-id)))))))))
+
+(deftest ^:sequential unreferenced-archived-dashboard-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for dashboards"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - archivedtest"}
+                     :model/Dashboard {archived-dashboard-id :id} {:name "Archived Unreferenced Dashboard - archivedtest"
+                                                                   :archived true}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (testing "archived=false (default) excludes archived dashboard"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=archivedtest")
+                dashboard-ids (set (map :id response))]
+            (is (contains? dashboard-ids unreffed-dashboard-id))
+            (is (not (contains? dashboard-ids archived-dashboard-id)))))
+        (testing "archived=true includes archived dashboard"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=archivedtest&archived=true")
+                dashboard-ids (set (map :id response))]
+            (is (contains? dashboard-ids unreffed-dashboard-id))
+            (is (contains? dashboard-ids archived-dashboard-id))))))))
+
+(deftest ^:sequential unreferenced-archived-document-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for documents"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Document {unreffed-document-id :id} {:name "Unreferenced Document - archivedtest"}
+                     :model/Document {archived-document-id :id} {:name "Archived Unreferenced Document - archivedtest"
+                                                                 :archived true}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (testing "archived=false (default) excludes archived document"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=archivedtest")
+                document-ids (set (map :id response))]
+            (is (contains? document-ids unreffed-document-id))
+            (is (not (contains? document-ids archived-document-id)))))
+        (testing "archived=true includes archived document"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=archivedtest&archived=true")
+                document-ids (set (map :id response))]
+            (is (contains? document-ids unreffed-document-id))
+            (is (contains? document-ids archived-document-id))))))))
+
+(deftest ^:sequential unreferenced-archived-snippet-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for snippets"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/NativeQuerySnippet {unreffed-snippet-id :id} {:name "Unreferenced Snippet - archivedtest"
+                                                                          :content "WHERE ID > 10"}
+                     :model/NativeQuerySnippet {archived-snippet-id :id} {:name "Archived Unreferenced Snippet - archivedtest"
+                                                                          :content "WHERE ID > 20"
+                                                                          :archived true}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (testing "archived=false (default) excludes archived snippet"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=archivedtest")
+                snippet-ids (set (map :id response))]
+            (is (contains? snippet-ids unreffed-snippet-id))
+            (is (not (contains? snippet-ids archived-snippet-id)))))
+        (testing "archived=true includes archived snippet"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=archivedtest&archived=true")
+                snippet-ids (set (map :id response))]
+            (is (contains? snippet-ids unreffed-snippet-id))
+            (is (contains? snippet-ids archived-snippet-id))))))))
+
+(deftest ^:sequential unreferenced-archived-segment-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
+    (mt/with-premium-features #{:dependencies}
+      (let [products-id (mt/id :products)
+            price-field-id (mt/id :products :price)]
+        (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                       :model/Segment {archived-segment-id :id :as archived-segment} {:name "Archived Unreferenced Segment - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition {:filter [:> [:field price-field-id nil] 100]}
+                                                                                      :archived true}]
+          (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "archived=false (default) excludes archived segment"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
+                  segment-ids (set (map :id response))]
+              (is (contains? segment-ids unreffed-segment-id))
+              (is (not (contains? segment-ids archived-segment-id)))))
+          (testing "archived=true includes archived segment"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest&archived=true")
+                  segment-ids (set (map :id response))]
+              (is (contains? segment-ids unreffed-segment-id))
+              (is (contains? segment-ids archived-segment-id)))))))))
+
+(deftest ^:sequential unreferenced-archived-table-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for tables"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Table {active-table-id :id} {:name "Active Unreferenced Table - archivedtest"
+                                                         :db_id (mt/id)
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:name "Inactive Unreferenced Table - archivedtest"
+                                                           :db_id (mt/id)
+                                                           :active false}
+                     :model/Table {hidden-table-id :id} {:name "Hidden Unreferenced Table - archivedtest"
+                                                         :db_id (mt/id)
+                                                         :active true
+                                                         :visibility_type "hidden"}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (testing "archived=false (default) excludes inactive and hidden tables"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest")
+                table-ids (set (map :id response))]
+            (is (contains? table-ids active-table-id))
+            (is (not (contains? table-ids inactive-table-id)))
+            (is (not (contains? table-ids hidden-table-id)))))
+        (testing "archived=true includes inactive and hidden tables"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest&archived=true")
+                table-ids (set (map :id response))]
+            (is (contains? table-ids active-table-id))
+            (is (contains? table-ids inactive-table-id))
+            (is (contains? table-ids hidden-table-id))))))))
+
 (deftest ^:sequential broken-questions-test
   (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
     (mt/with-premium-features #{:dependencies}
@@ -1279,3 +1413,164 @@
                         :data {:name "B - Broken Metric - cardtype"
                                :type "metric"}}]
                       response)))))))))
+
+(deftest ^:sequential broken-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/broken with archived parameter"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {broken-card-id :id} {:name "Broken Card - archivedbrokentestcard"
+                                                         :type :question
+                                                         :dataset_query (lib/native-query mp "not a query")}
+                       :model/Card {archived-broken-card-id :id} {:name "Archived Broken Card - archivedbrokentestcard"
+                                                                  :type :question
+                                                                  :archived true
+                                                                  :dataset_query (lib/native-query mp "not a query")}]
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+          (testing "archived=false (default) excludes archived broken card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids broken-card-id))
+              (is (not (contains? card-ids archived-broken-card-id)))))
+          (testing "archived=true includes archived broken card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard&archived=true")
+                  card-ids (set (map :id response))]
+              (is (contains? card-ids broken-card-id))
+              (is (contains? card-ids archived-broken-card-id)))))))))
+
+(deftest ^:sequential broken-archived-segment-test
+  (testing "GET /api/ee/dependencies/graph/broken with archived parameter for segments"
+    (mt/with-premium-features #{:dependencies}
+      ;; Use a filter referencing a non-existent field ID (999999) to create a "broken" segment
+      (mt/with-temp [:model/Segment {broken-segment-id :id} {:name "Broken Segment - archivedbrokentest"
+                                                             :table_id (mt/id :products)
+                                                             :definition {:filter [:> [:field 999999 nil] 50]}}
+                     :model/Segment {archived-broken-segment-id :id} {:name "Archived Broken Segment - archivedbrokentest"
+                                                                      :table_id (mt/id :products)
+                                                                      :definition {:filter [:> [:field 999999 nil] 50]}
+                                                                      :archived true}]
+        (while (> (dependencies.findings/analyze-batch! :segment 50) 0))
+        (testing "archived=false (default) excludes archived broken segment"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest")
+                segment-ids (set (map :id response))]
+            (is (contains? segment-ids broken-segment-id))
+            (is (not (contains? segment-ids archived-broken-segment-id)))))
+        (testing "archived=true includes archived broken segment"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest&archived=true")
+                segment-ids (set (map :id response))]
+            (is (contains? segment-ids broken-segment-id))
+            (is (contains? segment-ids archived-broken-segment-id))))))))
+
+(deftest ^:sequential unreferenced-archived-measure-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)
+            products-id (mt/id :products)
+            products (lib.metadata/table mp products-id)
+            price (lib.metadata/field mp (mt/id :products :price))
+            measure-definition (-> (lib/query mp products)
+                                   (lib/aggregate (lib/sum price)))]
+        (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition measure-definition}
+                       :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition measure-definition
+                                                                                      :archived true}]
+          (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/measure-create {:object archived-measure :user-id (mt/user->id :crowberto)})
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "archived=false (default) excludes archived measure"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest")
+                  measure-ids (set (map :id response))]
+              (is (contains? measure-ids unreffed-measure-id))
+              (is (not (contains? measure-ids archived-measure-id)))))
+          (testing "archived=true includes archived measure"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest&archived=true")
+                  measure-ids (set (map :id response))]
+              (is (contains? measure-ids unreffed-measure-id))
+              (is (contains? measure-ids archived-measure-id)))))))))
+
+(deftest ^:sequential unreferenced-personal-collection-card-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with include_personal_collections parameter for cards"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (let [mp (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))]
+          (mt/with-temp [:model/User {user-id :id} {}
+                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                   :name "Test Personal Collection"}
+                         :model/Collection {sub-personal-coll-id :id} {:name "Sub Personal Collection"
+                                                                       :location (format "/%d/" personal-coll-id)}
+                         :model/Card {card-in-personal :id} {:name "Card in Personal - personalcolltest"
+                                                             :type :question
+                                                             :collection_id personal-coll-id
+                                                             :dataset_query (lib/query mp products)}
+                         :model/Card {card-in-sub-personal :id} {:name "Card in Sub Personal - personalcolltest"
+                                                                 :type :question
+                                                                 :collection_id sub-personal-coll-id
+                                                                 :dataset_query (lib/query mp products)}
+                         :model/Card {card-regular :id} {:name "Card Regular - personalcolltest"
+                                                         :type :question
+                                                         :dataset_query (lib/query mp products)}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (testing "include_personal_collections=false (default) excludes cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest")
+                    card-ids (set (map :id response))]
+                (is (not (contains? card-ids card-in-personal)))
+                (is (not (contains? card-ids card-in-sub-personal)))
+                (is (contains? card-ids card-regular))))
+            (testing "include_personal_collections=true includes cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest&include_personal_collections=true")
+                    card-ids (set (map :id response))]
+                (is (contains? card-ids card-in-personal))
+                (is (contains? card-ids card-in-sub-personal))
+                (is (contains? card-ids card-regular))))))))))
+
+(deftest ^:sequential unreferenced-personal-collection-dashboard-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with include_personal_collections parameter for dashboards"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                 :name "Test Personal Collection"}
+                       :model/Dashboard {dash-in-personal :id} {:name "Dashboard in Personal - personalcolltest"
+                                                                :collection_id personal-coll-id}
+                       :model/Dashboard {dash-regular :id} {:name "Dashboard Regular - personalcolltest"}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "include_personal_collections=false (default) excludes dashboards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest")
+                  dashboard-ids (set (map :id response))]
+              (is (not (contains? dashboard-ids dash-in-personal)))
+              (is (contains? dashboard-ids dash-regular))))
+          (testing "include_personal_collections=true includes dashboards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest&include_personal_collections=true")
+                  dashboard-ids (set (map :id response))]
+              (is (contains? dashboard-ids dash-in-personal))
+              (is (contains? dashboard-ids dash-regular)))))))))
+
+(deftest ^:sequential broken-personal-collection-card-test
+  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/User {user-id :id} {}
+                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                   :name "Test Personal Collection"}
+                         :model/Card {broken-in-personal :id} {:name "Broken Card in Personal - personalcollbrokentest"
+                                                               :type :question
+                                                               :collection_id personal-coll-id
+                                                               :dataset_query (lib/native-query mp "not a query")}
+                         :model/Card {broken-regular :id} {:name "Broken Card Regular - personalcollbrokentest"
+                                                           :type :question
+                                                           :dataset_query (lib/native-query mp "not a query")}]
+            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+            (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
+                    card-ids (set (map :id response))]
+                (is (not (contains? card-ids broken-in-personal)))
+                (is (contains? card-ids broken-regular))))
+            (testing "include_personal_collections=true includes broken cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest&include_personal_collections=true")
+                    card-ids (set (map :id response))]
+                (is (contains? card-ids broken-in-personal))
+                (is (contains? card-ids broken-regular))))))))))

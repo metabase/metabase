@@ -1075,17 +1075,17 @@ const DataSelector = _.compose(
       databases:
         ownProps.databases ||
         Databases.selectors.getList(state, {
-          entityQuery: ownProps.databaseQuery,
+          entityQuery: { ...ownProps.databaseQuery, "can-query": true },
         }) ||
         [],
       hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true },
+        entityQuery: { include: "tables", saved: true, "can-query": true },
       }),
       hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true },
+        entityQuery: { saved: true, "can-query": true },
       }),
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables" },
+        entityQuery: { include: "tables", "can-query": true },
       }),
       hasDataAccess: canUserCreateQueries(state),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
@@ -1095,10 +1095,11 @@ const DataSelector = _.compose(
     }),
     {
       fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList(databaseQuery),
+        Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
       fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId }),
-      fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
+        Schemas.actions.fetchList({ dbId: databaseId, "can-query": true }),
+      fetchSchemaTables: (schemaId) =>
+        Schemas.actions.fetch({ id: schemaId, "can-query": true }),
       fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
       fetchQuestion: (id) =>
         Questions.actions.fetch({
