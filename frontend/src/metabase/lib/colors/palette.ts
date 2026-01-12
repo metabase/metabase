@@ -1,4 +1,3 @@
-import type { ColorInstance } from "color";
 import Color from "color";
 
 import type { ColorGetter } from "metabase/visualizations/types";
@@ -46,22 +45,6 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
 };
 
 /**
- * Safely parse a color string using the Color library.
- * Returns null if parsing fails, preventing crashes from malformed color strings.
- *
- * @param colorString - The color string to parse
- * @returns Color object if successful, null if parsing fails
- */
-export function safeColorParse(colorString: string): ColorInstance | null {
-  try {
-    return Color(colorString);
-  } catch (e) {
-    console.warn("Failed to parse color string:", colorString, e);
-    return null;
-  }
-}
-
-/**
  * @deprecated use CSS variables instead where possible,
  * i.e. `var(--mb-color-text-tertiary)`.
  *
@@ -95,11 +78,7 @@ export function color(color: any, palette: ColorPalette = colors) {
  * from Mantine's theme, i.e. `alpha(theme.fn.themeColor("text-tertiary"), 0.1)`
  */
 export const alpha = (c: string, a: number) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    return c;
-  }
-  return colorObj.alpha(a).string();
+  return Color(color(c)).alpha(a).string();
 };
 
 /**
@@ -110,11 +89,7 @@ export const alpha = (c: string, a: number) => {
  * from Mantine's theme, i.e. `lighten(theme.fn.themeColor("text-tertiary"), 0.1)`
  */
 export const lighten = (c: string, f: number = 0.5) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    return c;
-  }
-  return colorObj.lighten(f).string();
+  return Color(color(c)).lighten(f).string();
 };
 
 /**
@@ -125,45 +100,25 @@ export const lighten = (c: string, f: number = 0.5) => {
  * from Mantine's theme, i.e. `darken(theme.fn.themeColor("text-tertiary"), 0.1)`
  */
 export const darken = (c: string, f: number = 0.25) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    return c;
-  }
-  return colorObj.darken(f).string();
+  return Color(color(c)).darken(f).string();
 };
 
 export const tint = (c: string, f: number = 0.125) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    return c;
-  }
-  return colorObj.lightness(colorObj.lightness() + f * 100).hex();
+  const value = Color(color(c));
+  return value.lightness(value.lightness() + f * 100).hex();
 };
 
 export const shade = (c: string, f: number = 0.125) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    return c;
-  }
-  return colorObj.lightness(colorObj.lightness() - f * 100).hex();
+  const value = Color(color(c));
+  return value.lightness(value.lightness() - f * 100).hex();
 };
 
 export const isLight = (c: string) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    // Default to true for unparseable colors
-    return true;
-  }
-  return colorObj.isLight();
+  return Color(color(c)).isLight();
 };
 
 export const isDark = (c: string) => {
-  const colorObj = safeColorParse(color(c));
-  if (!colorObj) {
-    // Default to false (light) for unparseable colors (safer for text contrast)
-    return false;
-  }
-  return colorObj.isDark();
+  return Color(color(c)).isDark();
 };
 
 /**
@@ -191,18 +146,13 @@ export const getTextColorForBackground = (
   backgroundColor: string,
   getColor: ColorGetter = color,
 ) => {
-  const bgColor = safeColorParse(getColor(backgroundColor));
-  const whiteColor = safeColorParse(getColor("text-primary-inverse"));
-  const darkColor = safeColorParse(getColor("text-primary"));
-
-  // If any color parsing fails, default to dark text
-  if (!bgColor || !whiteColor || !darkColor) {
-    return getColor("text-primary");
-  }
-
   const whiteTextContrast =
-    bgColor.contrast(whiteColor) * whiteTextColorPriorityFactor;
-  const darkTextContrast = bgColor.contrast(darkColor);
+    Color(getColor(backgroundColor)).contrast(
+      Color(getColor("text-primary-inverse")),
+    ) * whiteTextColorPriorityFactor;
+  const darkTextContrast = Color(getColor(backgroundColor)).contrast(
+    Color(getColor("text-primary")),
+  );
 
   return whiteTextContrast > darkTextContrast
     ? getColor("text-primary-inverse")
