@@ -983,9 +983,10 @@ describe("issue 29517 - nested question based on native model with remapped valu
     cy.signInAsAdmin();
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1093,9 +1094,10 @@ describe("issue 53556 - nested question based on native model with remapped valu
     cy.signInAsAdmin();
 
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
@@ -1292,9 +1294,10 @@ FROM
 
   it("Create model, set metadata, distinct", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
-        "schema",
-      );
+      cy.intercept(
+        "GET",
+        `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC?can-query=true`,
+      ).as("schema");
       cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
