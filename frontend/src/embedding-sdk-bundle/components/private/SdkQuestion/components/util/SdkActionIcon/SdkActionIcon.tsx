@@ -49,6 +49,10 @@ export const SdkActionIcon = forwardRef<
         ref={ref}
         data-testid={dataTestId}
         data-active={active}
+        aria-label={
+          tooltipAriaLabel ??
+          (typeof tooltip === "string" ? tooltip : undefined)
+        }
         size="lg"
         className={cx(S.sdkActionIcon, className)}
         variant="default"

@@ -67,6 +67,7 @@ interface SetupOpts {
   collectionType?: CollectionType;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  children?: React.ReactNode;
 }
 
 const setup = async ({
@@ -81,6 +82,7 @@ const setup = async ({
   collectionType,
   tokenFeatures,
   enterprisePlugins,
+  children,
 }: SetupOpts = {}) => {
   setupNotificationChannelsEndpoints({
     email: { configured: isEmailSetup },
@@ -150,7 +152,9 @@ const setup = async ({
       withChartTypeSelector={withChartTypeSelector}
       withDownloads={withDownloads}
       withAlerts={withAlerts}
-    />,
+    >
+      {children}
+    </StaticQuestion>,
     {
       componentProviderProps: {
         authConfig: createMockSdkConfig(),
@@ -257,7 +261,9 @@ describe("StaticQuestion", () => {
             isModel: false,
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
       });
 
@@ -272,7 +278,9 @@ describe("StaticQuestion", () => {
             tokenFeatures: {}, // No embedding_sdk feature
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
       });
 
@@ -286,7 +294,30 @@ describe("StaticQuestion", () => {
             enterprisePlugins: ["sdk_notifications"],
           });
 
-          expect(screen.getByLabelText("alert icon")).toBeInTheDocument();
+          expect(
+            screen.getByRole("button", { name: "Alerts" }),
+          ).toBeInTheDocument();
+        });
+
+        it("should show the alert button for custom layouts", async () => {
+          await setup({
+            withAlerts: true,
+            isEmailSetup: true,
+            canManageSubscriptions: true,
+            isModel: false,
+            enterprisePlugins: ["sdk_notifications"],
+            children: (
+              <div>
+                <span>Custom Layout</span>
+                <StaticQuestion.AlertsButton />
+              </div>
+            ),
+          });
+
+          expect(screen.getByText("Custom Layout")).toBeInTheDocument();
+          expect(
+            screen.getByRole("button", { name: "Alerts" }),
+          ).toBeInTheDocument();
         });
 
         it("should not show the alert button when withAlerts is false", async () => {
@@ -297,7 +328,9 @@ describe("StaticQuestion", () => {
             enterprisePlugins: ["sdk_notifications"],
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
 
         it("should not show the alert button when email is not configured", async () => {
@@ -308,7 +341,9 @@ describe("StaticQuestion", () => {
             enterprisePlugins: ["sdk_notifications"],
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
 
         it("should not show the alert button when user cannot manage subscriptions and is not admin", async () => {
@@ -321,7 +356,9 @@ describe("StaticQuestion", () => {
             tokenFeatures: { embedding_sdk: true, advanced_permissions: true },
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
 
         it("should not show the alert button for models", async () => {
@@ -333,7 +370,9 @@ describe("StaticQuestion", () => {
             enterprisePlugins: ["sdk_notifications"],
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
 
         it("should not show the alert button for analytics collection", async () => {
@@ -345,7 +384,9 @@ describe("StaticQuestion", () => {
             enterprisePlugins: ["sdk_notifications"],
           });
 
-          expect(screen.queryByLabelText("alert icon")).not.toBeInTheDocument();
+          expect(
+            screen.queryByRole("button", { name: "Alerts" }),
+          ).not.toBeInTheDocument();
         });
       });
     });
