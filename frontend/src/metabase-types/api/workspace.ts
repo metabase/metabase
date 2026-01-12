@@ -73,10 +73,12 @@ export type WorkspaceOutputTableRef = {
   table_id: number | null;
 };
 
+export type WorkspaceTransformId = string;
+
 export type WorkspaceTransform = Omit<Transform, "id"> & {
   // Local identifier used by the UI; equal to `ref_id`
-  id: string;
-  ref_id: string;
+  id: WorkspaceTransformId;
+  ref_id: WorkspaceTransformId;
   workspace_id: WorkspaceId;
   global_id: TransformId | null;
   target_stale: boolean;
