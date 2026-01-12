@@ -21,7 +21,10 @@ import type {
 import type { AdminPath, State } from "metabase-types/store";
 
 export type PluginAiSqlFixer = {
-  FixSqlQueryButton: ComponentType<Record<string, never>>;
+  FixSqlQueryButton: ComponentType<{
+    rawSql?: string | null;
+    errorMessage?: string | null;
+  }>;
 };
 
 export interface AIDashboardAnalysisSidebarProps {

@@ -58,7 +58,7 @@ export function TransformEditor({
   );
 }
 
-function getInitialUiStateForTransform() {
+function getInitialUiStateForTransform(): TransformQueryPageEditorUiState {
   return {
     lastRunResult: null,
     lastRunQuery: null,
@@ -66,5 +66,5 @@ function getInitialUiStateForTransform() {
     modalSnippet: null,
     sidebarType: null,
     modalType: null,
-  } as TransformQueryPageEditorUiState;
+  };
 }

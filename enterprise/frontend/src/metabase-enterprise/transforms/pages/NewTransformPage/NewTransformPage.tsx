@@ -104,7 +104,6 @@ function NewTransformPageBody({
   useRegisterMetabotTransformContext(undefined, source);
 
   const validationResult = useMemo(() => {
-    return { isValid: true };
     return source.type === "query"
       ? getValidationResult(Lib.fromJsQueryAndMetadata(metadata, source.query))
       : PLUGIN_TRANSFORMS_PYTHON.getPythonSourceValidationResult(source);
@@ -151,7 +150,7 @@ function NewTransformPageBody({
         />
         <Box
           w="100%"
-          bg="bg-white"
+          bg="background-primary"
           bdrs="md"
           bd="1px solid var(--mb-color-border)"
           flex={1}

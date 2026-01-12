@@ -48,6 +48,19 @@
     (is (driver/available? "metabase.driver-test/test-driver")
         "`driver/available?` should work for if `driver` is a string -- see #10135")))
 
+(defn- flatten-connection-properties
+  "Recursively flatten connection properties, extracting all properties from groups.
+  Groups have :type :group and contain a :fields array with nested properties."
+  [props]
+  (mapcat (fn [prop]
+            (if (and (= (:type prop) :group)
+                     (seq (:fields prop)))
+              ;; If it's a group, recursively flatten its fields
+              (flatten-connection-properties (:fields prop))
+              ;; Otherwise, return the property as-is
+              [prop]))
+          props))
+
 (deftest ^:parallel unique-connection-property-test
   ;; abnormal usage here; we are not using the regular mt/test-driver or mt/test-drivers, because those involve
   ;; initializing the driver and test data namespaces, which don't necessarily exist for all drivers (ex:
@@ -58,8 +71,9 @@
   (doseq [d (tx.env/test-drivers)]
     (testing (str d " has entirely unique connection property names")
       (let [props         (driver/connection-properties d)
-            props-by-name (group-by :name props)]
-        (is (= (count props) (count props-by-name))
+            flattened-props (flatten-connection-properties props)
+            props-by-name (group-by :name flattened-props)]
+        (is (= (count flattened-props) (count props-by-name))
             (format "Property(s) with duplicate name: %s" (-> (filter (fn [[_ props]]
                                                                         (> (count props) 1))
                                                                       props-by-name)

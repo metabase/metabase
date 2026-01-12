@@ -74,8 +74,9 @@
    :upload-management          (deferred-tru "Upload Management")
    :database-routing           (deferred-tru "Database Routing")
    :cloud-custom-smtp          (deferred-tru "Custom SMTP")
-   :support-users (deferred-tru "Support Users")
-   :transforms-python          (deferred-tru "Transforms Python")})
+   :support-users              (deferred-tru "Support Users")
+   :transforms-python          (deferred-tru "Transforms Python")
+   :workspaces                 (deferred-tru "Workspaces")})
 
 (defn- premium-handler [handler required-feature]
   (let [handler (cond-> handler
@@ -136,7 +137,7 @@
    "/transform-tag"                (premium-handler metabase-enterprise.transforms.api/transform-tag-routes :transforms)
    "/tenant"                       (premium-handler metabase-enterprise.tenants.api/routes :tenants)
    "/upload-management"            (premium-handler metabase-enterprise.upload-management.api/routes :upload-management)
-   "/workspace"                    metabase-enterprise.workspaces.api/routes})
+   "/workspace"                    (premium-handler metabase-enterprise.workspaces.api/routes :workspaces)})
 ;;; ↑↑↑ KEEP THIS SORTED OR ELSE ↑↑↑
 
 (def ^:private routes-map

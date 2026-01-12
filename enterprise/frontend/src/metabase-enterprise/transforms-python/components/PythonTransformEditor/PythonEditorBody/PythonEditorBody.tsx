@@ -57,7 +57,7 @@ export function PythonEditorBody({
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
-      <Flex h="100%" align="end" bg="bg-light" pos="relative">
+      <Flex h="100%" align="end" bg="background-secondary" pos="relative">
         <PythonEditor
           readOnly={disabled}
           value={source}
@@ -189,7 +189,7 @@ function SharedLibraryImportButton({
         disabled={disabled}
         onClick={handleToggleSharedLib}
       >
-        <Icon name="reference" c="text-dark" />
+        <Icon name="reference" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );
@@ -206,7 +206,7 @@ function SharedLibraryEditLink() {
         aria-label={label}
         to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       >
-        <Icon name="pencil" c="text-dark" />
+        <Icon name="pencil" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );

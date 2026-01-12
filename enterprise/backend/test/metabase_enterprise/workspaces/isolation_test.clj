@@ -64,7 +64,7 @@
                              [(format "SHOW USERS LIKE '%s'" username)])
                  seq boolean)
      :role   (-> (jdbc/query conn-spec
-                             [(format "SHOW ROLES LIKE '%s'" role-name)])
+                             [(format "SHOW ROLES IN ACCOUNT LIKE '%s'" role-name)])
                  seq boolean)}))
 
 (defmethod workspace-isolation-resources-exist? :sqlserver

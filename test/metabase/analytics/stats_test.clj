@@ -639,3 +639,9 @@
         (is (=? {:documents {:total 2
                              :archived 1}}
                 (#'stats/document-metrics)))))))
+
+(deftest transform-metrics-test
+  (testing "ee-transform-metrics should return zeros for OSS"
+    (mt/with-empty-h2-app-db!
+      (is (= {:transforms 0, :transform_runs_last_24h 0}
+             (stats/ee-transform-metrics))))))

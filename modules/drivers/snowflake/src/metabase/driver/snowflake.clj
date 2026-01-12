@@ -97,6 +97,10 @@
   [_]
   :sunday)
 
+(defmethod driver.sql/default-schema :snowflake
+  [_]
+  "PUBLIC")
+
 (defn- start-of-week-setting->snowflake-offset
   "Value to use for the `WEEK_START` connection parameter -- see
   https://docs.snowflake.com/en/sql-reference/parameters.html#label-week-start -- based on

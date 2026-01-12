@@ -117,8 +117,9 @@ export const CodeTab = ({
             const isEdited = hasTransformEdits(transform);
             const isActive =
               (typeof activeTransformId === "string" &&
-              activeTransformId === transform.ref_id) ||
-                (typeof activeTransformId === "number" && activeTransformId === transform.global_id);
+                activeTransformId === transform.ref_id) ||
+              (typeof activeTransformId === "number" &&
+                activeTransformId === transform.global_id);
 
             return (
               <TransformListItem

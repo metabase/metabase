@@ -37,7 +37,6 @@ export const SetupTab = ({ databaseId, workspace }: SetupTabProps) => {
           }).unwrap();
           sendSuccessToast(t`Successfully updated workspace database`);
         } catch (error) {
-          console.error("Failed to update workspace database:", error);
           sendErrorToast(t`Failed to update workspace database`);
         }
       }

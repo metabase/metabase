@@ -59,6 +59,7 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              :transforms/index-ddl                   true
                               :jdbc/statements                        false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
@@ -1072,6 +1073,13 @@
   ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
   128)
 
+(defmethod sql-jdbc/drop-index-sql :sqlserver [_ schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :sqlserver)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name))
+            (if schema
+              (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
+              (quote-identifier (name table-name))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Workspace Isolation                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1120,6 +1128,12 @@
                  ;; Drop database user
                  (format "IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '%s') DROP USER [%s]"
                          username username)
+                 ;; Kill all sessions using this login before dropping it
+                 (format (str "DECLARE @sql NVARCHAR(MAX) = ''; "
+                              "SELECT @sql += 'KILL ' + CAST(session_id AS VARCHAR(10)) + '; ' "
+                              "FROM sys.dm_exec_sessions WHERE login_name = '%s'; "
+                              "EXEC sp_executesql @sql")
+                         login-name)
                  ;; Drop server login
                  (format "IF EXISTS (SELECT * FROM master.sys.server_principals WHERE name = '%s') DROP LOGIN [%s]"
                          login-name login-name)]]

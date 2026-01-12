@@ -14,10 +14,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
-    - merge:
-        - port
-        - placeholder: 5433
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - host
+          - merge:
+              - port
+              - placeholder: 5433
     - dbname
     - user
     - password

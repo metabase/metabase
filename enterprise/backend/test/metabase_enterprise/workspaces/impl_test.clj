@@ -33,6 +33,8 @@
                                         :target {:database (mt/id)
                                                  :schema   "analytics"
                                                  :name     "table_a"}})
+          ;; Trigger analysis
+          (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace (:id workspace)))
           (testing "creates output and input records"
             (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace))))
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace)))))
@@ -64,21 +66,23 @@
 
 (deftest sync-transform-dependencies-idempotent-test
   (testing "sync-transform-dependencies! is idempotent"
-    (let [mp        (mt/metadata-provider)
-          query     (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-          workspace (ws.tu/create-ready-ws! "Test Workspace")]
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+          ws    (ws.tu/create-ready-ws! "Test Workspace")]
       (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables! (constantly nil)]
-        (let [wt (ws.common/add-to-changeset! (mt/user->id :crowberto) workspace
+        (let [_  (ws.common/add-to-changeset! (mt/user->id :crowberto) ws
                                               :transform nil
                                               {:name         "Transform"
                                                :source       {:type "query" :query query}
                                                :target       {:database (mt/id)
                                                               :schema   "analytics"
-                                                              :name     "output_table"}})]
-          ;; Call sync again to test idempotency
-          (ws.impl/sync-transform-dependencies! workspace wt)
-          (ws.impl/sync-transform-dependencies! workspace wt)
+                                                              :name     "output_table"}})
+              ws (t2/select-one :model/Workspace (:id ws))]
+          ;; Trigger analysis again to test idempotency
+          (t2/update! :model/Workspace (:id ws) {:analysis_stale true})
+          (ws.tu/analyze-workspace! (:id ws))
+          (t2/update! :model/Workspace (:id ws) {:analysis_stale true})
+          (ws.tu/analyze-workspace! (:id ws))
           (testing "still has exactly one of each after multiple syncs"
-            (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id workspace))))
-            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id workspace))))
-            (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id workspace))))))))))
+            (is (= 1 (t2/count :model/WorkspaceOutput :workspace_id (:id ws))))
+            (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))))))))

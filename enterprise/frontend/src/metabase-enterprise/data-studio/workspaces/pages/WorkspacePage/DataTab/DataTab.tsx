@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
-import type { DatabaseId, TableId } from "metabase-types/api";
+import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
 
 import { useTablePreview } from "./useTablePreview";
 
@@ -17,6 +17,7 @@ interface DataTabProps {
   databaseId: DatabaseId | null;
   tableId: TableId | null;
   transformId?: string;
+  query?: DatasetQuery;
 }
 
 export function DataTab({
@@ -24,13 +25,16 @@ export function DataTab({
   databaseId,
   tableId,
   transformId,
+  query,
 }: DataTabProps) {
   const { data: table } = useGetTableQuery(
-    tableId ? { id: tableId } : skipToken,
+    tableId && !query ? { id: tableId } : skipToken,
   );
   const { data: transform } = useGetWorkspaceTransformQuery(
     transformId ? { workspaceId, transformId } : skipToken,
   );
+
+  // Use existing table preview logic when no query
   const metadata = useMemo(
     () =>
       createMockMetadata({
@@ -46,14 +50,16 @@ export function DataTab({
     [table],
   );
 
-  const { rawSeries, isFetching, error } = useTablePreview({
+  const tablePreviewResult = useTablePreview({
     databaseId,
     tableId,
     metadata,
     last_transform_run_time: transform?.last_run_at,
+    query,
   });
+  const { rawSeries, isFetching, error } = tablePreviewResult;
 
-  if (!databaseId || !tableId) {
+  if (!databaseId || (!tableId && !query)) {
     return (
       <Stack h="100%" align="center" justify="center">
         <Text c="text-medium">{t`Select a table to view its data`}</Text>

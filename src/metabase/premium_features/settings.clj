@@ -316,8 +316,12 @@
   :data-studio)
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
-  "Is this a development instance that should have watermarks?"
+  "Should the multi-tenant feature be enabled?"
   :tenants)
+
+(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
+  "Should we allow users to use workspaces?"
+  :workspaces)
 
 (defn- -token-features []
   {:advanced_permissions           (enable-advanced-permissions?)
@@ -371,11 +375,20 @@
    :transforms                     (enable-transforms?)
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
-   :whitelabel                     (enable-whitelabeling?)})
+   :whitelabel                     (enable-whitelabeling?)
+   :workspaces                     (enable-workspaces?)})
 
 (defsetting token-features
   "Features registered for this instance's token"
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

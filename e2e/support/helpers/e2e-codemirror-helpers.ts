@@ -193,9 +193,6 @@ export function codeMirrorHelpers<T extends object>(testId: string, extra: T) {
         el[0].dispatchEvent(pasteEvent);
       });
     },
-    runButton() {
-      return cy.findByTestId("run-button");
-    },
     ...extra,
   };
 

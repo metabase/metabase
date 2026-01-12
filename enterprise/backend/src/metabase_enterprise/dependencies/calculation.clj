@@ -14,6 +14,7 @@
 (mu/defn- upstream-deps:mbql-query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
   {:card (or (lib/all-source-card-ids query) #{})
+   :measure (or (lib/all-measure-ids query) #{})
    :segment (or (lib/all-segment-ids query) #{})
    :table (-> #{}
               (into (lib/all-source-table-ids query))
@@ -45,8 +46,8 @@
 (mu/defn upstream-deps:python-transform :- ::deps.schema/upstream-deps
   "Given a Toucan `:model/Transform`, return its upstream dependencies as a map from the kind to a set of IDs."
   [{{tables :source-tables} :source :as _py-transform}
-   :- [:map [:source-tables {:optional true} [:map-of :string :int]]]]
-  {:table (set (vals tables))})
+   :- [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]
+  {:table (into #{} (keep (fn [v] (if (map? v) (:table_id v) v))) (vals tables))})
 
 (mu/defn upstream-deps:transform :- ::deps.schema/upstream-deps
   "Given a Transform (in Toucan form), return its upstream dependencies."
@@ -120,7 +121,7 @@
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
                                          (cond
                                            (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table"} (:model attrs)))
+                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
                                            [(keyword (:model attrs)) (:entityId attrs)]
 
                                            (= prose-mirror/card-embed-type type)
@@ -148,5 +149,13 @@
   "Given a segment, return its upstream dependencies (the table it filters and any segments it references)"
   [{:keys [table_id definition] :as _segment}]
   {:segment (or (lib/all-segment-ids definition) #{})
+   :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
+            table_id (conj table_id))})
+
+(mu/defn upstream-deps:measure :- ::deps.schema/upstream-deps
+  "Given a measure, return its upstream dependencies (the table it aggregates, any measures it references, and any segments it references)"
+  [{:keys [table_id definition] :as _measure}]
+  {:measure (or (lib/all-measure-ids definition) #{})
+   :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})

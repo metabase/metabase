@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -15,13 +16,16 @@
 
 (defn drop-target!
   "Drop transform target `target` and clean up its metadata.
-   `target` can be a string or a map. If `target` is a string, type :table is assumed."
+   `target` can be a string or a map. If `target` is a string, type :table is assumed.
+   If no schema is provided, uses the driver's default schema."
   [target]
-  (let [target (if (map? target)
-                 target
-                 ;; assume this is just a plain table name
-                 {:type :table, :name target})
-        driver driver/*driver*]
+  (let [driver driver/*driver*
+        target (cond-> (if (map? target)
+                         target
+                         ;; assume this is just a plain table name
+                         {:type :table, :name target})
+                 (nil? (:schema target))
+                 (assoc :schema (driver.sql/default-schema driver)))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
@@ -37,7 +41,11 @@
   (if (map? table-name-prefix)
     ;; table-name-prefix is a whole target, randomize the name
     (update table-name-prefix :name gen-table-name)
-    (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))))
+    (let [table-name (str table-name-prefix \_ (str/replace (str (random-uuid)) \- \_))]
+      ;; this caught me out when testing, was annoying to debug - hence assert
+      (assert (< (count table-name) (driver/table-name-length-limit driver/*driver*))
+              "chosen identifier prefix should not cause identifiers longer than the driver/table-name-length-limit")
+      table-name)))
 
 (defmacro with-transform-cleanup!
   "Execute `body`, then delete any new :model/Transform instances and drop tables generated from `table-gens`."

@@ -82,7 +82,7 @@ export const TableListItem = ({
       onClick={isClickable ? handleTableClick : undefined}
     >
       {isRunning ? (
-        <Loader size="sm" />
+        <Loader size="xs" />
       ) : (
         <Icon
           name={icon}
@@ -107,7 +107,7 @@ export const TableListItem = ({
           {displayName}
         </Text>
       </Tooltip>
-      {hasChanges && <StatusDot status="changed" />}
+      {hasChanges && <StatusDot />}
       {type === "output" && transform && (
         <Tooltip label={t`Open transform`} position="top">
           <ActionIcon

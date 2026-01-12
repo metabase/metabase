@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [metabase-enterprise.transforms.interface :as transforms.i]
    [metabase-enterprise.workspaces.dag :as ws.dag]
-   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -121,7 +120,10 @@
                            :actual-db-id    new-db-id})))))
     (let [ws (t2/select-one :model/Workspace (:id workspace))]
       ;; TODO allow this to be fully async as part of BOT-746
-      @(quick-task/submit-task! #(run-workspace-setup! ws database))
+      (try
+        @(quick-task/submit-task! #(run-workspace-setup! ws database))
+        (catch Exception e
+          (log/error e "Failed to initialize workspace")))
       ;; Querying again to get the database_details
       (t2/select-one :model/Workspace (:id workspace)))))
 
@@ -172,8 +174,9 @@
                                     :creator_id creator-id
                                     :global_id global-id
                                     :workspace_id workspace-id))]
-        ;; Transition base_status from :empty to :active when first transform is added
-        (when (= :empty (:base_status workspace))
-          (t2/update! :model/Workspace workspace-id {:base_status :active}))
-        (ws.impl/sync-transform-dependencies! workspace (select-keys transform [:ref_id :source_type :source :target]))
+        ;; Transition base_status from :empty to :active when first transform is added,
+        ;; and mark workspace as stale (new transform = graph needs recalculation)
+        (t2/update! :model/Workspace workspace-id
+                    (cond-> {:analysis_stale true}
+                      (= :empty (:base_status workspace)) (assoc :base_status :active)))
         transform))))

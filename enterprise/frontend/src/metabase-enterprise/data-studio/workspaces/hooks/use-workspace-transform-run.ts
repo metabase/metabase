@@ -11,6 +11,9 @@ import {
   workspaceApi,
 } from "metabase-enterprise/api";
 import type {
+  DatabaseId,
+  SchemaName,
+  TableId,
   TransformRun,
   WorkspaceId,
   WorkspaceTransform,
@@ -19,6 +22,13 @@ import type {
 type UseWorkspaceTransformRunOptions = {
   workspaceId: WorkspaceId;
   transform: WorkspaceTransform;
+};
+
+type OutputTableInfo = {
+  db_id: DatabaseId;
+  table_id: TableId | null;
+  table_name: string;
+  schema: SchemaName;
 };
 
 type UseWorkspaceTransformRunResult = {
@@ -32,13 +42,7 @@ type UseWorkspaceTransformRunResult = {
   isRunning: boolean;
   /** Trigger a transform run */
   handleRun: () => Promise<void>;
-  /** Output table info */
-  output: {
-    db_id: number;
-    table_id: number;
-    table_name: string;
-    schema: string;
-  } | null;
+  output: OutputTableInfo | null;
 };
 
 export function useWorkspaceTransformRun({
@@ -99,7 +103,7 @@ export function useWorkspaceTransformRun({
     [lastRunResult, lastRunAt, lastRunMessage, lastRunStatus],
   );
 
-  const output = useMemo(() => {
+  const output = useMemo<OutputTableInfo | null>(() => {
     const table = workspaceTables.outputs.find(
       (table) => table.isolated.transform_id === transform.ref_id,
     );
@@ -107,10 +111,10 @@ export function useWorkspaceTransformRun({
       return null;
     }
     return {
-      db_id: table?.db_id,
-      table_id: table?.isolated.table_id,
-      table_name: table?.isolated.table,
-      schema: table?.isolated.schema,
+      db_id: table.db_id,
+      table_id: table.isolated.table_id,
+      table_name: table.isolated.table,
+      schema: table.isolated.schema,
     };
   }, [workspaceTables, transform.ref_id, statusRun]);
 
@@ -170,7 +174,6 @@ export function useWorkspaceTransformRun({
       setIsRunTriggered(false);
       setLastRunResult(null);
       sendErrorToast(t`Failed to run transform`);
-      console.error("Failed to run transform", error);
     }
   };
 

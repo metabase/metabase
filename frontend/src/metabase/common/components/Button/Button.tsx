@@ -8,6 +8,7 @@ import _ from "underscore";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import SpacingS from "metabase/css/core/spacing.module.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import { isNotNull } from "metabase/lib/types";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -61,7 +62,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
   icon?: IconName | ReactNode;
   iconSize?: number;
-  iconColor?: string;
+  iconColor?: ColorName;
   iconRight?: IconName;
   iconVertical?: boolean;
   labelBreakpoint?: "sm";
@@ -133,7 +134,7 @@ const BaseButton = forwardRef(function BaseButton(
         {icon && typeof icon === "string" ? (
           <Icon
             className={classNames.icon}
-            color={iconColor}
+            c={iconColor}
             name={icon as unknown as IconName}
             size={iconSize ? iconSize : 16}
           />
@@ -155,7 +156,7 @@ const BaseButton = forwardRef(function BaseButton(
         {iconRight && (
           <Icon
             className={classNames.icon}
-            color={iconColor}
+            c={iconColor}
             name={iconRight}
             size={iconSize ? iconSize : 16}
           />

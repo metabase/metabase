@@ -21,6 +21,7 @@ import {
   useUpdateTransformMutation,
 } from "metabase-enterprise/api";
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   Database,
   DatasetQuery,
@@ -178,7 +179,7 @@ function TransformQueryPageBody({
           transform={transform}
           actions={
             <Group gap="sm">
-              {showEditWorkspaceMenu && (
+              {showEditWorkspaceMenu && hasPremiumFeature("workspaces") && (
                 <EditTransformMenu transform={transform} />
               )}
               <TransformPaneHeaderActions
@@ -197,7 +198,7 @@ function TransformQueryPageBody({
         />
         <Box
           w="100%"
-          bg="bg-white"
+          bg="background-primary"
           bdrs="md"
           bd="1px solid var(--mb-color-border)"
           flex={1}

@@ -41,7 +41,7 @@ export function useQueryEditor({
     isResultDirty,
     runQuery,
     cancelQuery,
-  } = useQueryResults(question, uiState, onChangeUiState, { onRunQueryStart });
+  } = useQueryResults(question, uiState, onChangeUiState, onRunQueryStart);
   const {
     selectedText,
     openModal,

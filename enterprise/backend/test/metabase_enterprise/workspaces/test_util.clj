@@ -29,8 +29,7 @@
                                                 :model/Workspace
                                                 :model/WorkspaceTransform
                                                 :model/WorkspaceInput
-                                                :model/WorkspaceOutput
-                                                :model/WorkspaceDependency]
+                                                :model/WorkspaceOutput]
                           (tests)))))
 
 (derive :model/Workspace :model/WorkspaceCleanUpInTest)
@@ -66,6 +65,7 @@
     (mt/with-current-user creator-id
       (ws.common/create-workspace! creator-id props))))
 
+;; TODO (chris 2026/01/06) this needs a transform added for it to really be ready
 (defn create-ready-ws!
   "Create a workspace and wait for it to be ready."
   [name]
@@ -114,3 +114,8 @@
       [~@props-list]
       (fn [[~@syms]]
         ~@body))))
+
+(defn analyze-workspace!
+  "Trigger the reconstruction and persistence of the workspace graph."
+  [id]
+  (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/graph")))
