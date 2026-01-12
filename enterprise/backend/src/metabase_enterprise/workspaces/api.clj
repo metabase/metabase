@@ -566,8 +566,7 @@
         all-transforms (concat (vals (:external transforms-map))
                                (vals (:workspace transforms-map)))
         table-id-map   (table-ids-by-target db-id driver all-transforms)
-        ;; TODO Graph analysis doesn't return this currently, we need to invert the deps graph
-        ;;      It could be cheaper to build it as we go.
+        ;; We may want to cache this inverted graph in the database JSON to avoid recalculating it each time.
         inverted       (reduce
                         (fn [inv [c parents]]
                           (reduce (fn [inv p] (update inv p (fnil conj #{}) c)) inv parents))
