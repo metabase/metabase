@@ -503,12 +503,12 @@ describe("scenarios > data studio > workspaces", () => {
 
       // Open the transform table tab
       Workspaces.openDataTab().then(() => {
-        cy.findByText("Schema A.transform_table").should("be.visible").click();
+        cy.findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).should("be.visible").click();
       });
 
       // Verify both tabs are open
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe("transform_table", [
+        H.tabsShouldBe(TARGET_TABLE_SQL, [
           "Setup",
           "Agent Chat",
           "SQL transform",
