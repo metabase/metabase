@@ -40,7 +40,7 @@ jobs:
             .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Run frontend type-check
-        run: bun run --dir release type-check
+        run: bun run --cwd release type-check
 
   release-tests-unit:
     needs: files-changed
@@ -55,7 +55,7 @@ jobs:
             .github/actions/prepare-release-scripts
       - uses: ./.github/actions/prepare-release-scripts
       - name: Run release unit tests
-        run: bun run --dir release test:unit
+        run: bun run --cwd release test:unit
 
   release-test-build:
     needs: files-changed
