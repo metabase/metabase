@@ -210,8 +210,7 @@
                        nil)
         ;; compute metadata edits based on the pre-update state of the world
         edits (card-list-metadata-edits pre-update-mp cards)
-        updated-mp (fresh-mp db-id)
-        editable-keys (editable-model-keys)]
+        updated-mp (fresh-mp db-id)]
     (do-for-card-children
      (fn [card-id]
        ;; use original-mp to fetch the current card here because we haven't updated it
