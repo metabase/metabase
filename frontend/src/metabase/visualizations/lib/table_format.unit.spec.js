@@ -1,3 +1,5 @@
+import Color from "color";
+
 import { ALL_OPERATOR_NAMES } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   OPERATOR_FORMATTER_FACTORIES,
@@ -181,7 +183,7 @@ describe("compileFormatter with extreme ranges", () => {
       expect(color).not.toBeNull();
 
       // Ensure the color can be parsed by Color library (no scientific notation issues)
-      expect(() => require("color")(color)).not.toThrow();
+      expect(() => Color(color)).not.toThrow();
     });
   });
 
@@ -235,7 +237,7 @@ describe("compileFormatter with extreme ranges", () => {
     expect(color).not.toMatch(/e[+-]\d+/i);
 
     // Should be parseable
-    expect(() => require("color")(color)).not.toThrow();
+    expect(() => Color(color)).not.toThrow();
   });
 
   it("should handle very small numeric differences", () => {
@@ -256,7 +258,7 @@ describe("compileFormatter with extreme ranges", () => {
     [0, 0.0001, 0.0005, 0.001].forEach((val) => {
       const color = formatter(val);
       expect(color).not.toBeNull();
-      expect(() => require("color")(color)).not.toThrow();
+      expect(() => Color(color)).not.toThrow();
     });
   });
 });
