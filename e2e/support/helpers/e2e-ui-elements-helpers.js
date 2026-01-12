@@ -383,7 +383,7 @@ export const moveDnDKitElementByAlias = (
     })
     .wait(200);
 
-  onBeforeDragEnd?.();
+  onBeforeDragEnd();
 
   cy.document()
     .trigger("pointerup", {
