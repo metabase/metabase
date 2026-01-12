@@ -33,7 +33,7 @@ jobs:
             pom.xml
             modules/drivers/*/pom.xml
 
-  # Yarn/NPM projects that don't need pom files
+  # Bun/NPM projects that don't need pom files
   frontend-projects:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: ${{ matrix.project.name }}
@@ -41,10 +41,10 @@ jobs:
     strategy:
       matrix:
         project:
-          - name: Main Frontend (yarn)
-            file: yarn.lock
-            package-manager: yarn
-            category: main-frontend-yarn
+          - name: Main Frontend (bun)
+            file: bun.lock
+            package-manager: bun
+            category: main-frontend-bun
           - name: Embedding SDK Template
             file: bin/embedding-sdk/templates/yarn.lock
             package-manager: yarn
