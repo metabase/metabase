@@ -314,7 +314,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getMergeWorkspaceButton().should("be.disabled");
       Workspaces.getTransformTargetButton().should("not.exist");
       Workspaces.getRunTransformButton().should("not.exist");
-      Workspaces.getSaveTransformButton().should("be.disabled");
+      Workspaces.getSaveTransformButton().should("be.enabled");
 
       H.NativeEditor.type(" LIMIT 2");
 
