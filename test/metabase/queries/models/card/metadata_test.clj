@@ -1,7 +1,10 @@
 (ns metabase.queries.models.card.metadata-test
   (:require
    [clojure.test :refer :all]
-   [metabase.queries.models.card.metadata :as card.metadata]))
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.queries.models.card.metadata :as card.metadata]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel populate-result-metadata-normalize-output-test
   (testing "populate-result-metadata should normalize output"
@@ -42,3 +45,18 @@
                                   :display_name              "EDITED DISPLAY"
                                   :base_type                 :type/BigInteger}]}
               (card.metadata/populate-result-metadata card))))))
+
+(deftest ^:parallel infer-metadata-no-remaps
+  (testing "infer-metadata should not include remapped columns (#67128)"
+    (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
+                                       :name                    "User ID"
+                                       :human_readable_field_id (mt/id :people :name)
+                                       :type                    :external}
+                   :model/Dimension _ {:field_id                (mt/id :orders :product_id)
+                                       :name                    "Product ID"
+                                       :human_readable_field_id (mt/id :products :title)
+                                       :type                    :external}]
+      (let [mp (mt/metadata-provider)
+            query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+        (is (= 9 ;; there are two remaps, giving 11 if included
+               (count (card.metadata/infer-metadata query))))))))

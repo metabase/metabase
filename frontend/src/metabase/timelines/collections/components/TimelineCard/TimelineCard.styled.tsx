@@ -8,7 +8,7 @@ import Markdown from "metabase/common/components/Markdown";
 import { Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   width: 1.375rem;
   height: 1.375rem;
 `;
@@ -22,7 +22,7 @@ export const CardBody = styled.span`
 
 export const CardTitle = styled.span`
   display: block;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: bold;
   margin-bottom: 0.125rem;
   word-wrap: break-word;
@@ -30,7 +30,7 @@ export const CardTitle = styled.span`
 
 export const CardDescription = styled(Markdown)`
   display: block;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   word-wrap: break-word;
 `;
 
@@ -41,7 +41,7 @@ interface CardCountProps {
 export const CardCount = styled.span<CardCountProps>`
   display: block;
   flex: 0 0 auto;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   align-self: ${(props) => (props.isTopAligned ? "flex-start" : "")};
 `;
 

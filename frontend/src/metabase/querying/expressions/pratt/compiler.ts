@@ -86,9 +86,10 @@ function compileRoot(
 ):
   | Lib.ExpressionParts
   | Lib.ExpressionArg
-  | Lib.SegmentMetadata
+  | Lib.ColumnMetadata
+  | Lib.MeasureMetadata
   | Lib.MetricMetadata
-  | Lib.ColumnMetadata {
+  | Lib.SegmentMetadata {
   assert(node.type === ROOT, t`Must be root node`);
   assert(node.children.length === 1, t`Root must have one child`);
 
@@ -425,7 +426,7 @@ function compileInfixOp(
   ctx: Context,
 ): Lib.ExpressionParts {
   check(node.children.length > 0, t`Expected expression`, node);
-  check(node.children.length < 3, t`Unxpected expression`, node.children[2]);
+  check(node.children.length < 3, t`Unexpected expression`, node.children[2]);
 
   assert(isDefinedClause(operator), t`Unknown operator ${operator}`);
 

@@ -659,7 +659,7 @@
          (t/zone-offset 0))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          SQL Statment Operations                                               |
+;;; |                                          SQL Statement Operations                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ; Metabase tests require a specific error when an invalid number of parameters are passed

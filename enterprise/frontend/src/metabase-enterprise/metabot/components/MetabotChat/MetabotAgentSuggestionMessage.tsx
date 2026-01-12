@@ -140,7 +140,7 @@ export const AgentSuggestionMessage = ({
     <Paper
       shadow="none"
       radius="md"
-      bg="bg-white"
+      bg="background-primary"
       className={S.container}
       data-testid="metabot-chat-suggestion"
     >
@@ -156,10 +156,7 @@ export const AgentSuggestionMessage = ({
           <Text size="sm">{suggestedTransform.name}</Text>
         </Flex>
         <Flex align="center" gap="sm">
-          <Text
-            size="sm"
-            c={isNew ? "var(--mb-color-saturated-blue)" : "text-secondary"}
-          >
+          <Text size="sm" c={isNew ? "saturated-blue" : "text-secondary"}>
             {isNew ? t`New` : t`Revision`}
           </Text>
           <Flex align="center" justify="center" h="md" w="md">
@@ -175,13 +172,25 @@ export const AgentSuggestionMessage = ({
       >
         {match({ isLoading, error })
           .with({ error: P.not(P.nullish) }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
               <Text mb="1px" c="danger">{t`Failed to load preview`}</Text>
             </Flex>
           ))
           .with({ isLoading: true }, () => (
-            <Flex p="md" bg="bg-light" justify="center" align="center" gap="sm">
-              <Loader size="xs" color="text-secondary" type="dots" />
+            <Flex
+              p="md"
+              bg="background-secondary"
+              justify="center"
+              align="center"
+              gap="sm"
+            >
+              <Loader size="xs" c="text-secondary" type="dots" />
               <Text mb="1px" c="text-secondary">{t`Loading preview`}</Text>
             </Flex>
           ))
@@ -211,7 +220,7 @@ export const AgentSuggestionMessage = ({
               variant="subtle"
               fw="normal"
               fz="sm"
-              c={canApply ? "success" : "text-light"}
+              c={canApply ? "success" : "text-tertiary"}
               disabled={!canApply}
               onClick={handleApply}
             >

@@ -1,0 +1,20 @@
+<svg width="96" height="96" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g clip-path="url(#a)">
+    <circle cx="48" cy="48" r="48" fill="#4C5773" fill-opacity=".05"/>
+    <path d="M24 35a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v26a4 4 0 0 1-4 4H28a4 4 0 0 1-4-4V35Z" fill="#fff"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M23.375 35A4.625 4.625 0 0 1 28 30.375h40A4.625 4.625 0 0 1 72.625 35v26A4.625 4.625 0 0 1 68 65.625H28A4.625 4.625 0 0 1 23.375 61V35ZM28 31.625A3.375 3.375 0 0 0 24.625 35v26A3.375 3.375 0 0 0 28 64.375h40A3.375 3.375 0 0 0 71.375 61V35A3.375 3.375 0 0 0 68 31.625H28Z" fill="#949AAB"/>
+    <path d="M29.5 38a1.5 1.5 0 0 1 1.5-1.5h34a1.5 1.5 0 0 1 1.5 1.5v17a1.5 1.5 0 0 1-1.5 1.5H31a1.5 1.5 0 0 1-1.5-1.5V38Z" fill="#fff"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M28.875 38c0-1.174.951-2.125 2.125-2.125h34c1.174 0 2.125.951 2.125 2.125v17A2.125 2.125 0 0 1 65 57.125H31A2.125 2.125 0 0 1 28.875 55V38ZM31 37.125a.875.875 0 0 0-.875.875v17c0 .483.392.875.875.875h34a.875.875 0 0 0 .875-.875V38a.875.875 0 0 0-.875-.875H31ZM61.071 61.179a.464.464 0 1 0 0-.93.464.464 0 0 0 0 .93Zm0 1.25a1.714 1.714 0 1 0 0-3.429 1.714 1.714 0 0 0 0 3.429ZM65.571 61.179a.464.464 0 1 0 0-.93.464.464 0 0 0 0 .93Zm0 1.25a1.714 1.714 0 1 0 0-3.429 1.714 1.714 0 0 0 0 3.429Z" fill="#949AAB"/>
+    <!-- Left X eye -->
+    <path d="M39.5 42 L42.5 45 M42.5 42 L39.5 45" stroke="#949AAB" stroke-width="1.25" stroke-linecap="round"/>
+    <!-- Right X eye -->
+    <path d="M53.5 42 L56.5 45 M56.5 42 L53.5 45" stroke="#949AAB" stroke-width="1.25" stroke-linecap="round"/>
+    <!-- Squiggly mouth -->
+    <path d="M44 49 Q45.5 47.5 47 49 T50 49 T53 49" stroke="#949AAB" stroke-width="1.25" stroke-linecap="round" fill="none"/>
+  </g>
+  <defs>
+    <clipPath id="a">
+      <path fill="#fff" d="M0 0h96v96H0z"/>
+    </clipPath>
+  </defs>
+</svg>
