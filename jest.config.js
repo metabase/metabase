@@ -6,6 +6,8 @@ const esmPackages = [
   "character-entities.*",
   "character-reference-invalid",
   "comma-separated-tokens",
+  "color",
+  "color-string",
   "csv-parse",
   "d3-*",
   "d3",

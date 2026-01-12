@@ -74,6 +74,7 @@ export const getSafeColor = (color: string): string => {
       1,
       Math.max(0, Math.round(aNum * 1000000) / 1000000),
     );
+
     return `rgba(${Math.round(rNum)}, ${Math.round(gNum)}, ${Math.round(bNum)}, ${clampedAlpha})`;
   });
 };

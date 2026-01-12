@@ -1,3 +1,4 @@
+import type { ColorInstance } from "color";
 import Color from "color";
 
 import type { ColorGetter } from "metabase/visualizations/types";
@@ -51,14 +52,14 @@ export const aliases: Record<string, (palette: ColorPalette) => string> = {
  * @param colorString - The color string to parse
  * @returns Color object if successful, null if parsing fails
  */
-const safeColorParse = (colorString: string): Color | null => {
+export function safeColorParse(colorString: string): ColorInstance | null {
   try {
     return Color(colorString);
   } catch (e) {
     console.warn("Failed to parse color string:", colorString, e);
     return null;
   }
-};
+}
 
 /**
  * @deprecated use CSS variables instead where possible,
