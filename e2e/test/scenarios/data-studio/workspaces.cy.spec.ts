@@ -5,6 +5,7 @@ import { NativeEditor } from "e2e/support/helpers";
 import type {
   PythonTransformTableAliases,
   TransformTagId,
+  WorkspaceRunResponse,
 } from "metabase-types/api";
 
 const { H } = cy;
@@ -47,6 +48,7 @@ describe("scenarios > data studio > workspaces", () => {
     cy.intercept("POST", "/api/ee/workspace/*/transform/*/run").as(
       "runTransform",
     );
+    cy.intercept("POST", "/api/ee/workspace/*/run").as("runTransforms");
     cy.intercept("POST", "/api/dataset").as("dataset");
     // cy.intercept("PUT", "/api/field/*").as("updateField");
     // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
@@ -503,7 +505,10 @@ describe("scenarios > data studio > workspaces", () => {
 
       // Open the transform table tab
       Workspaces.openDataTab();
-      Workspaces.getWorkspaceSidebar().findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).should("be.visible").click();
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
+        .should("be.visible")
+        .click();
 
       // Verify both tabs are open
       Workspaces.getWorkspaceContent().within(() => {
@@ -531,7 +536,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
       });
-    })
+    });
   });
 
   describe("setup tab", () => {
@@ -1043,6 +1048,67 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getWorkspaceSidebar()
         .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_PYTHON}`)
+        .realHover();
+      H.tooltip().should("not.exist");
+    });
+
+    it("should run all stale transforms", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.openCodeTab();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      Workspaces.getSaveTransformButton().click();
+
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
+      Workspaces.getSaveTransformButton().click();
+
+      Workspaces.getRunTransformButton().click();
+      Workspaces.getWorkspaceContent()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
+
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_PYTHON}`)
+        .realHover();
+      H.tooltip().should("not.exist");
+
+      Workspaces.getRunAllTransformsButton().should("be.enabled").click();
+
+      H.popover().within(() => {
+        cy.findByText("Run all transforms").should("be.visible");
+        cy.findByText("Run stale transforms").should("be.visible").click();
+      });
+
+      cy.wait<WorkspaceRunResponse, WorkspaceRunResponse>(
+        "@runTransforms",
+      ).then(({ response }) => {
+        cy.log("only 1 stale transform has been executed");
+        expect(response?.body.succeeded).to.be.an("array").with.length(1);
+      });
+
+      Workspaces.getRunAllTransformsButton().should(
+        "have.attr",
+        "data-loading",
+        "true",
+      );
+
+      Workspaces.getRunAllTransformsButton().should(
+        "not.have.attr",
+        "data-loading",
+      );
+
+      cy.findByRole("tab", { name: "SQL transform" }).click();
+
+      Workspaces.getWorkspaceContent()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
+
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
         .realHover();
       H.tooltip().should("not.exist");
     });
