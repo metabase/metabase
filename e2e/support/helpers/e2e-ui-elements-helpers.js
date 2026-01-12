@@ -368,8 +368,8 @@ export const moveDnDKitElementByAlias = (
       button: 0,
     })
     .wait(200);
-  cy.get(alias)
-    .trigger("pointerup", horizontal, vertical, {
+  cy.document()
+    .trigger("pointerup", {
       force: true,
       isPrimary: true,
       button: 0,
