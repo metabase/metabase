@@ -201,19 +201,23 @@ export const SaveTransformButton = ({
       return;
     }
 
-    const savedTransform = await createWorkspaceTransform({
-      id: workspaceId,
-      global_id: transform.id,
-      name: editedTransform.name,
-      description: transform.description,
-      source: editedTransform.source as DraftTransformSource,
-      target: transform.target,
-      tag_ids: transform.tag_ids,
-    }).unwrap();
+    try {
+      const savedTransform = await createWorkspaceTransform({
+        id: workspaceId,
+        global_id: transform.id,
+        name: editedTransform.name,
+        description: transform.description,
+        source: editedTransform.source as DraftTransformSource,
+        target: transform.target,
+        tag_ids: transform.tag_ids,
+      }).unwrap();
 
-    removeEditedTransform(transform.id);
-    removeOpenedTransform(transform.id);
-    onSaveTransform(savedTransform);
+      removeEditedTransform(transform.id);
+      removeOpenedTransform(transform.id);
+      onSaveTransform(savedTransform);
+    } catch (error) {
+      sendErrorToast(t`Failed to save transform`);
+    }
   };
 
   // Determine button props based on scenario
