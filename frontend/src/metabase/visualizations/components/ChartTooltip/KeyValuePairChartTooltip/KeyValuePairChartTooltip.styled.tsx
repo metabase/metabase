@@ -32,7 +32,7 @@ export const TableCell = styled.td`
 `;
 
 export const TableFooter = styled.tfoot`
-  ${({ theme }) => getTooltipSeparatorStyle(theme)}
+  ${() => getTooltipSeparatorStyle()}
 
   &:before {
     ${tableRowSpacingStyle}

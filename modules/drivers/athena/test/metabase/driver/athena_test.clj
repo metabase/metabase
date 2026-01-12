@@ -252,7 +252,7 @@
                             :limit        1}
                  :info     {:executed-by 1000
                             :query-hash  (byte-array [1 2 3 4])}}]
-      (testing "Baseline: Query strarts with remark"
+      (testing "Baseline: Query starts with remark"
         (mt/with-metadata-provider (mock-provider true)
           (let [result (query->native! query)]
             (is (string? result))

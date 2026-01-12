@@ -95,6 +95,8 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              ;; currently disabled as :describe-indexes is not supported
+                              :transforms/index-ddl                   false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true}]
@@ -230,8 +232,10 @@
 (defmethod driver/connection-properties :mysql
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 3306)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 3306)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options #{:aws-iam})
@@ -1159,6 +1163,10 @@
   ;; ok to hardcode driver name here because this function only supports app DB types
   (driver-api/query-canceled-exception? :mysql e))
 
+(defmethod sql-jdbc/drop-index-sql :mysql [_ _schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :mysql)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name)) (quote-identifier (name table-name)))))
+
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
 (defmethod driver.sql/default-database-role :mysql
@@ -1195,3 +1203,7 @@
              tiny-int-1-is-bit?)
       "BIT"
       db-type-name)))
+
+(defmethod driver/extra-info :mysql
+  [_driver]
+  nil)

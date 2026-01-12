@@ -87,6 +87,7 @@ export interface Dashboard {
   param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
+  view_count?: number;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;

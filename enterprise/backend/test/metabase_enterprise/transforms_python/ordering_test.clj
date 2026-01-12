@@ -9,18 +9,16 @@
    [toucan2.core :as t2]))
 
 (defn- make-transform [query & [name schema]]
-  (let [name           (or name (mt/random-name))
+  (let [name (or name (mt/random-name))
         default-schema (when (get-method driver.sql/default-schema driver/*driver*)
                          (driver.sql/default-schema driver/*driver*))
-        schema         (or schema default-schema "public")]
-    {:source       {:type  :query
-                    :query query}
-     :name         (str "transform_" name)
-     :target       {:schema schema
-                    :name   name
-                    :type   :table}
-     :target_db_id (or (:database query)
-                       (mt/id))}))
+        schema (or schema default-schema "public")]
+    {:source {:type :query
+              :query query}
+     :name (str "transform_" name)
+     :target {:schema schema
+              :name name
+              :type :table}}))
 
 (defn- make-python-transform [source-tables & [name schema target-db]]
   (let [name (or name (mt/random-name))
@@ -35,8 +33,7 @@
      :target {:database target-db
               :schema schema
               :name name
-              :type "table"}
-     :target_db_id target-db}))
+              :type "table"}}))
 
 (defn- transform-deps-for-db [transform]
   (mt/with-metadata-provider (mt/id)

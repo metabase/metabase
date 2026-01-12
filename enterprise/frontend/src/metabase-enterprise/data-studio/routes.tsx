@@ -14,10 +14,12 @@ import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
 import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout";
 import { LibrarySectionLayout } from "./app/pages/LibrarySectionLayout";
+import { TasksSectionLayout } from "./app/pages/TasksSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { getDataStudioMetricRoutes } from "./metrics/routes";
+import { getDataStudioSegmentRoutes } from "./segments/routes";
 import { getDataStudioSnippetRoutes } from "./snippets/routes";
 import { getDataStudioTableRoutes } from "./tables/routes";
 
@@ -52,8 +54,14 @@ export function getDataStudioRoutes(
           <IndexRoute component={LibrarySectionLayout} />
           {getDataStudioTableRoutes()}
           {getDataStudioMetricRoutes()}
+          {getDataStudioSegmentRoutes()}
           {getDataStudioSnippetRoutes()}
         </Route>
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <Route path="tasks" component={TasksSectionLayout}>
+            {PLUGIN_DEPENDENCIES.getDataStudioTasksRoutes()}
+          </Route>
+        )}
         {PLUGIN_DEPENDENCIES.isEnabled && (
           <Route path="dependencies" component={DependenciesSectionLayout}>
             {PLUGIN_DEPENDENCIES.getDataStudioDependencyRoutes()}

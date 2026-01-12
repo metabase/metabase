@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import DateTime from "metabase/common/components/DateTime";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useDispatch } from "metabase/lib/redux";
@@ -16,6 +17,7 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { useListTransformJobsQuery } from "metabase-enterprise/api";
@@ -23,7 +25,6 @@ import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/co
 import { PageContainer } from "metabase-enterprise/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {
@@ -45,20 +46,22 @@ export const JobListPage = () => {
         id: "name",
         accessorKey: "name",
         header: t`Name`,
+        minWidth: 120,
+        cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
       },
       {
         id: "last_run",
         accessorFn: (job) => job.last_run?.start_time,
         header: t`Last Run`,
-        minWidth: "auto",
+        minWidth: 120,
         cell: ({ row }) =>
           row.original.last_run ? (
-            <>
+            <Ellipsified>
               {row.original.last_run.status === "failed"
                 ? t`Failed`
                 : t`Last run`}{" "}
               <DateTime value={row.original.last_run.start_time} />
-            </>
+            </Ellipsified>
           ) : null,
       },
     ],
@@ -110,10 +113,10 @@ export const JobListPage = () => {
         </Flex>
 
         <Flex direction="column" flex={1} mih={0}>
-          {isLoading ? (
-            <ListLoadingState />
-          ) : (
-            <Card withBorder p={0}>
+          <Card withBorder p={0}>
+            {isLoading ? (
+              <TreeTableSkeleton columnWidths={[0.6, 0.3]} />
+            ) : (
               <TreeTable
                 instance={treeTableInstance}
                 emptyState={
@@ -121,8 +124,8 @@ export const JobListPage = () => {
                 }
                 onRowClick={handleRowActivate}
               />
-            </Card>
-          )}
+            )}
+          </Card>
         </Flex>
       </Stack>
     </PageContainer>

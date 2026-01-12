@@ -37,6 +37,24 @@ export interface TreeTableColumnSizingDef {
   minWidth?: number | "auto";
   /** Maximum width in pixels. Only applies to stretching columns. */
   maxWidth?: number;
+  /**
+   * Maximum width for auto-measured content. Caps the measured content width,
+   * not the final rendered width. Only applies when `width` or `minWidth` is 'auto'.
+   *
+   * Use this to prevent extremely long content from creating oversized columns,
+   * while still allowing the column to stretch if the table has extra space.
+   *
+   * @example
+   * // Stretchable column with capped minimum (recommended pattern)
+   * { minWidth: "auto", maxAutoWidth: 480 }
+   * // → Minimum is min(content, 480px), stretches to fill available space
+   *
+   * @example
+   * // With absolute maximum
+   * { minWidth: "auto", maxAutoWidth: 480, maxWidth: 800 }
+   * // → Stretches between min(content, 480px) and 800px
+   */
+  maxAutoWidth?: number;
   /** Extra pixels added to measured width. Only applies when width or minWidth is 'auto'. */
   widthPadding?: number;
 }
@@ -97,6 +115,12 @@ export interface UseTreeTableInstanceOptions<TData extends TreeNodeData> {
    * Use this to navigate to the item or perform the primary action.
    */
   onRowActivate?: (row: Row<TData>) => void;
+
+  /**
+   * ID of the currently selected row.
+   * Independent from keyboard navigation focus.
+   */
+  selectedRowId?: string | null;
 }
 
 /**
@@ -134,6 +158,8 @@ export interface TreeTableInstance<TData extends TreeNodeData> {
   activeRowId: string | null;
   setActiveRowId: (id: string | null) => void;
   handleKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
+
+  selectedRowId: string | null;
 }
 
 export type TreeTableStylesNames =
@@ -198,6 +224,18 @@ export interface TreeTableProps<TData extends TreeNodeData>
    */
   isChildrenLoading?: (row: Row<TData>) => boolean;
 
+  /**
+   * Callback to determine if a row is disabled.
+   * Disabled rows have pointer-events: none and reduced opacity.
+   */
+  isRowDisabled?: (row: Row<TData>) => boolean;
+
+  /**
+   * Callback to get additional props for each row element.
+   * Useful for adding test IDs or custom data attributes.
+   */
+  getRowProps?: (row: Row<TData>) => Record<string, unknown>;
+
   ariaLabel?: string;
   ariaLabelledBy?: string;
 }
@@ -216,6 +254,9 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
   showExpandButtons: boolean;
   indentWidth: number;
   activeRowId: string | null;
+  selectedRowId?: string | null;
+  isExpanded: boolean;
+  canExpand: boolean;
   measureElement: (element: HTMLElement | null) => void;
   onRowClick?: (row: Row<TData>, event: MouseEvent) => void;
   onRowDoubleClick?: (row: Row<TData>, event: MouseEvent) => void;
@@ -223,6 +264,7 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
   isChildrenLoading?: boolean;
   getSelectionState?: (row: Row<TData>) => SelectionState;
   onCheckboxClick?: (row: Row<TData>, index: number, event: MouseEvent) => void;
+  getRowProps?: (row: Row<TData>) => Record<string, unknown>;
 }
 
 /**
