@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useRouter } from "metabase/router";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -27,6 +30,7 @@ import {
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -44,12 +48,27 @@ import { getWritableCollection } from "./utils";
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
   const dispatch = useDispatch();
+  const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
   );
   const [permissionsCollectionId, setPermissionsCollectionId] =
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const expandedIdsFromUrl = useMemo(() => {
+    const rawIds = location.query?.expandedId;
+    if (!rawIds) {
+      return null;
+    }
+
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    const expanded = _.object(
+      ids.map((id) => [`collection:${id}`, true]),
+    ) as ExpandedState;
+
+    return expanded;
+  }, [location.query?.expandedId]);
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
@@ -116,7 +135,7 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
-        minWidth: 600,
+        minWidth: 200,
         cell: ({ row }) => (
           <EntityNameCell
             data-testid={`${row.original.model}-name`}
@@ -187,7 +206,7 @@ export function LibrarySectionLayout() {
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
     isFilterable: (node) => node.model !== "collection",
-    defaultExpanded: true,
+    defaultExpanded: expandedIdsFromUrl ?? true,
     onRowActivate: handleRowActivate,
   });
 
@@ -209,7 +228,7 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          bg="background-light"
+          bg="background-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
@@ -275,13 +294,19 @@ const RootSnippetsCollectionMenu = ({
 }: {
   setPermissionsCollectionId: (id: CollectionId) => void;
 }) => {
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <Menu position="bottom-end">
       <Menu.Target>
         <Button
           w={24}
           h={24}
-          c="text-medium"
+          c="text-secondary"
           size="compact-xs"
           variant="subtle"
           leftSection={<FixedSizeIcon name="ellipsis" size={16} />}

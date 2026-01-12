@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
+import { useSelector } from "metabase/lib/redux";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -8,6 +9,7 @@ import {
   UserInput,
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Group, Icon, Stack, Title } from "metabase/ui";
 import { useEditTablesMutation } from "metabase-enterprise/api";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
@@ -36,6 +38,7 @@ export function TableAttributesEditBulk({
   hasLibrary,
   onUpdate,
 }: TableAttributesEditBulkProps) {
+  const isAdmin = useSelector(getUserIsAdmin);
   const {
     selectedDatabases,
     selectedSchemas,
@@ -131,7 +134,7 @@ export function TableAttributesEditBulk({
       <Stack gap="md">
         <Group
           align="center"
-          c="text-light"
+          c="text-tertiary"
           gap={10}
           flex="1"
           fs="lg"
@@ -143,7 +146,7 @@ export function TableAttributesEditBulk({
         >
           <Title
             order={4}
-            c="text-dark"
+            c="text-primary"
             style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
           >
             <Icon name="collection2" size={20} />
@@ -155,15 +158,17 @@ export function TableAttributesEditBulk({
 
         <Box px="lg">
           <Group gap="sm">
-            <Button
-              flex={1}
-              p="sm"
-              leftSection={<Icon name="publish" />}
-              onClick={() => setModalType(hasLibrary ? "publish" : "library")}
-            >
-              {t`Publish`}
-            </Button>
-            {hasLibrary && (
+            {isAdmin && (
+              <Button
+                flex={1}
+                p="sm"
+                leftSection={<Icon name="publish" />}
+                onClick={() => setModalType(hasLibrary ? "publish" : "library")}
+              >
+                {t`Publish`}
+              </Button>
+            )}
+            {isAdmin && hasLibrary && (
               <Button
                 flex={1}
                 p="sm"

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, DefaultSelectItem } from "metabase/ui";
+import { Box, DefaultSelectItem, Text } from "metabase/ui";
 import type { TemporalUnit } from "metabase-types/api";
 
 const MIN_WIDTH = 180;
@@ -36,6 +36,9 @@ export function TemporalUnitPicker({
 
   return (
     <Box p="sm" miw={MIN_WIDTH}>
+      {availableItems.length === 0 && (
+        <Text px="sm" c="text-tertiary">{t`No options`}</Text>
+      )}
       {visibleItems.map((item) => (
         <DefaultSelectItem
           key={item.value}

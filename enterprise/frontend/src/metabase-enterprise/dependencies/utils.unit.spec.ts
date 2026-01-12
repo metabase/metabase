@@ -1,0 +1,211 @@
+import type { IconName } from "metabase/ui";
+import registerVisualizations from "metabase/visualizations/register";
+import type { DependencyNode } from "metabase-types/api";
+import {
+  createMockCardDependencyNode,
+  createMockCardDependencyNodeData,
+  createMockSegmentDependencyNode,
+  createMockSegmentDependencyNodeData,
+  createMockSnippetDependencyNode,
+  createMockTable,
+  createMockTableDependencyNode,
+  createMockTableDependencyNodeData,
+  createMockTransformDependencyNode,
+} from "metabase-types/api/mocks";
+
+import type { DependencyGroupTypeInfo, NodeLink } from "./types";
+import { getNodeIcon, getNodeLink, getNodeTypeInfo } from "./utils";
+
+registerVisualizations();
+
+describe("getNodeIcon", () => {
+  it.each<{
+    node: DependencyNode;
+    expectedIcon: IconName;
+  }>([
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          display: "pie",
+          query_type: "query",
+        }),
+      }),
+      expectedIcon: "pie",
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          display: "table",
+          query_type: "native",
+        }),
+      }),
+      expectedIcon: "sql",
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "model",
+          display: "table",
+        }),
+      }),
+      expectedIcon: "model",
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "metric",
+          display: "scalar",
+        }),
+      }),
+      expectedIcon: "metric",
+    },
+    {
+      node: createMockTableDependencyNode(),
+      expectedIcon: "table",
+    },
+    {
+      node: createMockTransformDependencyNode(),
+      expectedIcon: "transform",
+    },
+    {
+      node: createMockSnippetDependencyNode(),
+      expectedIcon: "snippet",
+    },
+  ])("should get the $node.type node icon", ({ node, expectedIcon }) => {
+    expect(getNodeIcon(node)).toBe(expectedIcon);
+  });
+});
+
+describe("getNodeLink", () => {
+  it.each<{
+    node: DependencyNode;
+    expectedLink: NodeLink;
+  }>([
+    {
+      node: createMockCardDependencyNode({
+        id: 1,
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          name: "My question",
+        }),
+      }),
+      expectedLink: {
+        label: "View this question",
+        url: "/question/1-my-question",
+      },
+    },
+    {
+      node: createMockCardDependencyNode({
+        id: 1,
+        data: createMockCardDependencyNodeData({
+          type: "model",
+          name: "My model",
+        }),
+      }),
+      expectedLink: {
+        label: "View this model",
+        url: "/model/1-my-model",
+      },
+    },
+    {
+      node: createMockCardDependencyNode({
+        id: 1,
+        data: createMockCardDependencyNodeData({
+          type: "metric",
+          name: "My metric",
+        }),
+      }),
+      expectedLink: {
+        label: "View this metric",
+        url: "/metric/1-my-metric",
+      },
+    },
+    {
+      node: createMockTableDependencyNode({
+        id: 1,
+        data: createMockTableDependencyNodeData({
+          db_id: 2,
+          schema: "not public",
+        }),
+      }),
+      expectedLink: {
+        label: "View metadata",
+        url: "/data-studio/data/database/2/schema/2:not%20public/table/1",
+      },
+    },
+    {
+      node: createMockSegmentDependencyNode({
+        id: 1,
+        data: createMockSegmentDependencyNodeData({
+          table: createMockTable({
+            id: 1,
+            name: "My table",
+          }),
+        }),
+      }),
+      expectedLink: {
+        label: "View this segment",
+        url: "/data-studio/data/database/1/schema/1:public/table/1/segments/1",
+      },
+    },
+  ])("should get the $node.type node link", ({ node, expectedLink }) => {
+    expect(getNodeLink(node)).toEqual(expectedLink);
+  });
+});
+
+describe("getNodeTypeInfo", () => {
+  it.each<{
+    node: DependencyNode;
+    expectedTypeInfo: DependencyGroupTypeInfo;
+  }>([
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          query_type: "native",
+        }),
+      }),
+      expectedTypeInfo: { label: "SQL question", color: "text-secondary" },
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "question",
+          query_type: "query",
+        }),
+      }),
+      expectedTypeInfo: { label: "Question", color: "text-secondary" },
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "model",
+        }),
+      }),
+      expectedTypeInfo: { label: "Model", color: "brand" },
+    },
+    {
+      node: createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type: "metric",
+        }),
+      }),
+      expectedTypeInfo: { label: "Metric", color: "summarize" },
+    },
+    {
+      node: createMockTableDependencyNode(),
+      expectedTypeInfo: { label: "Table", color: "brand" },
+    },
+    {
+      node: createMockSnippetDependencyNode(),
+      expectedTypeInfo: { label: "Snippet", color: "text-secondary" },
+    },
+  ])(
+    "should get the $node.type node type info",
+    ({ node, expectedTypeInfo }) => {
+      expect(getNodeTypeInfo(node)).toEqual(expectedTypeInfo);
+    },
+  );
+});

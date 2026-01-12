@@ -120,8 +120,8 @@ function CssVariables() {
       Theming-specific CSS variables.
       These CSS variables are not part of the core design system colors.
     **/
-        --mb-color-bg-dashboard: var(--mb-color-bg-white);
-        --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
+        --mb-color-bg-dashboard: var(--mb-color-background-primary);
+        --mb-color-bg-dashboard-card: var(--mb-color-background-primary);
       }
 
       /* For Embed frame questions to render properly */

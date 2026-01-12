@@ -367,7 +367,8 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api}
+   :api  #{metabase.collections-rest.api
+           metabase.collections-rest.init}
    :uses #{api
            app-db
            collections
@@ -382,6 +383,7 @@
            queries
            request
            revisions
+           settings
            upload
            util}}
 
@@ -498,7 +500,8 @@
    :api  #{metabase.documents.api
            metabase.documents.core
            metabase.documents.init
-           metabase.documents.prose-mirror}
+           metabase.documents.prose-mirror
+           metabase.documents.schema}
    :uses #{activity-feed
            api
            app-db
@@ -737,6 +740,7 @@
            metabase.lib.schema.join
            metabase.lib.schema.literal
            metabase.lib.schema.mbql-clause
+           metabase.lib.schema.measure
            metabase.lib.schema.metadata
            metabase.lib.schema.metadata.fingerprint
            metabase.lib.schema.middleware-options
@@ -747,12 +751,14 @@
            metabase.lib.schema.template-tag
            metabase.lib.schema.temporal-bucketing
            metabase.lib.schema.util
+           metabase.lib.schema.validate
            metabase.lib.temporal-bucket
            metabase.lib.types.isa
            metabase.lib.util
            metabase.lib.util.match
            metabase.lib.walk}
    :uses #{config
+           graph
            legacy-mbql
            types
            util}}
@@ -788,6 +794,18 @@
            channel
            request
            settings
+           util}}
+
+  measures
+  {:team "Querying"
+   :api  #{metabase.measures.api}
+   :uses #{api
+           events
+           lib
+           lib-be
+           models
+           permissions
+           search
            util}}
 
   model-persistence
@@ -951,6 +969,7 @@
            app-db
            classloader
            config
+           events
            internal-stats
            settings
            task
@@ -1042,6 +1061,7 @@
            config
            content-verification
            dashboards
+           documents
            events
            lib
            lib-be
@@ -1254,7 +1274,6 @@
            metabase.segments.schema}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models
@@ -1948,7 +1967,9 @@
            metabase-enterprise.dependencies.init}
    :uses #{analyze
            api
+           app-db
            collections
+           config
            documents
            driver
            events
@@ -1964,7 +1985,8 @@
            revisions
            settings
            task
-           util}}
+           util
+           enterprise/transforms}}
 
   enterprise/email
   {:team "UX West"
@@ -2198,6 +2220,7 @@
            appearance
            collections
            config
+           events
            logger
            models
            plugins
@@ -2283,6 +2306,7 @@
            metabase-enterprise.transforms.init
            metabase-enterprise.transforms.instrumentation
            metabase-enterprise.transforms.interface
+           metabase-enterprise.transforms.schema
            metabase-enterprise.transforms.util}
    :uses #{analytics
            api

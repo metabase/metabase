@@ -120,7 +120,7 @@ export const GroupDetail = ({
         title={
           <Fragment>
             {getGroupNameLocalized(group ?? {})}
-            <Box component="span" c="text-light" ms="sm">
+            <Box component="span" c="text-tertiary" ms="sm">
               {ngettext(
                 msgid`${group.members.length} member`,
                 `${group.members.length} members`,
