@@ -15,7 +15,6 @@ describe("VirtualizedGrid", () => {
   it("should chunk items into grid rows based on columnsPerRow", () => {
     const items = Array.from({ length: 10 }, (_, i) => ({ id: i }));
 
-    // eslint-disable-next-line testing-library/no-container
     const { container } = render(
       <VirtualizedGrid
         items={items}
@@ -27,14 +26,14 @@ describe("VirtualizedGrid", () => {
     );
 
     // Need to use container to test actual DOM structure/chunking behavior
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    // eslint-disable-next-line testing-library/no-container
     const rows = container.querySelectorAll('[style*="translateY"]');
 
     // With 10 items and 4 columns per row, we should have 3 rows
     expect(rows.length).toBe(3);
 
     // Each item should be wrapped in a Grid.Col (has class starting with m_)
-    // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+    // eslint-disable-next-line testing-library/no-container
     const gridCols = container.querySelectorAll('[class*="m_"]');
     expect(gridCols.length).toBe(16);
   });
