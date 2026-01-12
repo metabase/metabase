@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo, useState } from "react";
-import { ResizableBox, type ResizableBoxProps } from "react-resizable";
+import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
 import type { CollectionPickerItem } from "metabase/common/components/Pickers/CollectionPicker";
@@ -110,18 +110,6 @@ export function QueryEditorBody({
     [shouldDisableItem, shouldDisableDatabase, shouldShowLibrary],
   );
 
-  const resizableBoxProps: Partial<ResizableBoxProps> = useMemo(
-    () => ({
-      className: S.nativeResizableBox,
-      height: editorHeight,
-      resizeHandles: ["s"],
-      style: isResizing ? undefined : { transition: "height 0.25s" },
-      onResizeStart: () => setIsResizing(true),
-      onResizeStop: () => setIsResizing(false),
-    }),
-    [isResizing, editorHeight],
-  );
-
   const setQuestion = (newQuestion: Question) => {
     onChange(newQuestion);
     return Promise.resolve();
@@ -139,11 +127,11 @@ export function QueryEditorBody({
 
     return (
       <NativeQueryEditor
+        className={S.nativeQueryEditor}
         availableHeight={availableHeight}
         question={question}
         proposedQuestion={proposedQuestion}
         query={query}
-        resizableBoxProps={resizableBoxProps}
         placeholder="SELECT * FROM TABLE_NAME"
         hasTopBar
         hasRunButton={!readOnly}

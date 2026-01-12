@@ -1,4 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
+import cx from "classnames";
 import {
   type ReactNode,
   forwardRef,
@@ -53,6 +54,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   availableHeight?: number;
   canChangeDatabase?: boolean;
   cancelQuery?: () => void;
+  className?: string;
   closeSnippetModal?: () => void;
   databaseIsDisabled?: (database: Database) => boolean;
   editorContext?: "question" | "action";
@@ -111,6 +113,7 @@ export const NativeQueryEditor = forwardRef<
     availableHeight = Infinity,
     canChangeDatabase = true,
     cancelQuery,
+    className,
     closeSnippetModal,
     databaseIsDisabled,
     editorContext,
@@ -258,7 +261,7 @@ export const NativeQueryEditor = forwardRef<
 
   return (
     <div
-      className={S.queryEditor}
+      className={cx(S.queryEditor, className)}
       data-testid="native-query-editor-container"
       ref={ref}
     >
