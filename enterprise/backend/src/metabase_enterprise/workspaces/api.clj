@@ -643,6 +643,7 @@
    [:created_at :any]
    [:updated_at :any]
    [:last_run_at :any]
+   [:last_run_status [:maybe :string]]
    [:last_run_message [:maybe :string]]])
 
 (def ^:private workspace-transform-alias {:target_stale :stale})
