@@ -760,7 +760,9 @@ describe("issue 60719", () => {
 
 describe("issue 59356", () => {
   function typeRunShortcut() {
-    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+    const isMac = Cypress.platform === "darwin";
+    const metaKey = isMac ? "Meta" : "Control";
+    cy.realPress([metaKey, "Enter"]);
   }
 
   function getLoader() {
