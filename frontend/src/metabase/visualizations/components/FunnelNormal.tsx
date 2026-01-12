@@ -30,13 +30,14 @@ import type {
   HoveredObject,
   VisualizationProps,
 } from "metabase/visualizations/types";
+import type { RowValue } from "metabase-types/api";
 
 import { computeChange } from "../lib/numeric";
 
 type FunnelStepInfo = {
   value: number;
   percent: number;
-  dimension: unknown;
+  dimension: RowValue;
   graph: {
     startBottom: number;
     startTop: number;
@@ -83,7 +84,7 @@ export function FunnelNormal({
   const isShort = Boolean(gridSize && gridSize.height <= 5);
   const isSmall = isShort || isNarrow;
 
-  const formatDimension = (dimension: unknown, jsx = true) =>
+  const formatDimension = (dimension: RowValue, jsx = true) =>
     formatValue(dimension, {
       ...settings.column?.(cols[dimensionIndex]),
       jsx,
@@ -161,7 +162,7 @@ export function FunnelNormal({
         column: cols[metricIndex],
         dimensions: [
           {
-            value: dimensions[i],
+            value: dimension,
             column: cols[dimensionIndex],
           },
         ],
