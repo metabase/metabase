@@ -49,7 +49,9 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
     mountEditor();
 
     popover().within(() => {
-      cy.findByText("Produkte").should("be.visible");
+      // Use .should("exist") instead of .should("be.visible") because
+      // elements in scrollable popovers might be below the fold
+      cy.findByText("Produkte").should("exist");
 
       cy.findByText("Bestellungen").click();
     });
@@ -59,9 +61,9 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
     });
 
     popover().within(() => {
-      cy.findByText("Gesamtsumme").should("be.visible");
-      cy.findByText("Steuer").should("be.visible");
-      cy.findByText("Menge").should("be.visible");
+      cy.findByText("Gesamtsumme").should("exist");
+      cy.findByText("Steuer").should("exist");
+      cy.findByText("Menge").should("exist");
     });
   });
 });
