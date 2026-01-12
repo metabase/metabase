@@ -76,7 +76,7 @@ export function useSdkIframeEmbedServerSnippet() {
             resourceType,
             resourceId: resource.id,
             params: previewParameterValuesBySlug,
-            // We don't need an iframe snippet, because we use EmbedJS snippet for frontent snippet
+            // We don't need an iframe snippet, because we use EmbedJS snippet for frontend snippet
             withIframeSnippet: false,
           })
         : [],

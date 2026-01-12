@@ -1273,9 +1273,9 @@ function(bin) {
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
-         (reduce (fn [[ges as] arg]
+         (reduce (fn [[ges as] arg] ; codespell:ignore
                    (let [[ge as] (extract-aggregations arg parent-name as)]
-                     [(conj ges ge) as]))
+                     [(conj ges ge) as])) ; codespell:ignore
                  [[op] aggregations-seen]
                  args)))
      [aggr-expr aggregations-seen])))

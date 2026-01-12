@@ -20,7 +20,7 @@ export function ErrorsCell({ node }: ErrorsCellProps) {
     : errorsInfo.label;
 
   return (
-    <Ellipsified tooltip={fullText}>
+    <Ellipsified tooltip={fullText} tooltipProps={{ openDelay: 300 }}>
       <span>{errorsInfo.label}</span>{" "}
       {errorsInfo.detail && <strong>{errorsInfo.detail}</strong>}
     </Ellipsified>

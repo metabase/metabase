@@ -99,12 +99,12 @@ export const SdkIframeEmbedRoute = () => {
     >
       <Stack
         mih="100vh"
-        bg={adjustedTheme?.colors?.background}
         style={{
           display: "grid",
           width: "100%",
           gridTemplateColumns: "1fr",
           gridTemplateRows: "1fr auto",
+          backgroundColor: adjustedTheme?.colors?.background,
         }}
       >
         <SdkIframeEmbedView settings={embedSettings} />

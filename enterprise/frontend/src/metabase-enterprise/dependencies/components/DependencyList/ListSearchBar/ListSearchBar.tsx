@@ -1,33 +1,44 @@
-import { type ChangeEvent, memo } from "react";
+import { useDebouncedCallback } from "@mantine/hooks";
+import { type ChangeEvent, memo, useState } from "react";
 import { t } from "ttag";
 
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import type * as Urls from "metabase/lib/urls";
 import { Flex, Icon, Loader, TextInput } from "metabase/ui";
-import type { DependencyGroupType } from "metabase-types/api";
 
-import type { DependencyFilterOptions } from "../../../types";
+import { getSearchQuery } from "../../../utils";
+import type { DependencyListMode } from "../types";
 
 import { FilterOptionsPicker } from "./FilterOptionsPicker";
 
 type ListSearchBarProps = {
-  searchValue: string;
-  filterOptions: DependencyFilterOptions;
-  availableGroupTypes: DependencyGroupType[];
+  mode: DependencyListMode;
+  params: Urls.DependencyListParams;
   hasLoader: boolean;
-  onSearchValueChange: (searchValue: string) => void;
-  onFilterOptionsChange: (filterOptions: DependencyFilterOptions) => void;
+  onParamsChange: (params: Urls.DependencyListParams) => void;
 };
 
 export const ListSearchBar = memo(function ListSearchBar({
-  searchValue,
-  filterOptions,
-  availableGroupTypes,
+  mode,
+  params,
   hasLoader,
-  onSearchValueChange,
-  onFilterOptionsChange,
+  onParamsChange,
 }: ListSearchBarProps) {
+  const [searchValue, setSearchValue] = useState(params.query ?? "");
+
   const handleSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onSearchValueChange(event.target.value);
+    const newSearchValue = event.target.value;
+    setSearchValue(newSearchValue);
+    handleSearchDebounce(newSearchValue);
   };
+
+  const handleSearchDebounce = useDebouncedCallback(
+    (newSearchValue: string) => {
+      const newQuery = getSearchQuery(newSearchValue);
+      onParamsChange({ ...params, query: newQuery });
+    },
+    SEARCH_DEBOUNCE_DURATION,
+  );
 
   return (
     <Flex gap="md" align="center">
@@ -41,9 +52,9 @@ export const ListSearchBar = memo(function ListSearchBar({
         onChange={handleSearchChange}
       />
       <FilterOptionsPicker
-        filterOptions={filterOptions}
-        availableGroupTypes={availableGroupTypes}
-        onFilterOptionsChange={onFilterOptionsChange}
+        mode={mode}
+        params={params}
+        onParamsChange={onParamsChange}
       />
     </Flex>
   );

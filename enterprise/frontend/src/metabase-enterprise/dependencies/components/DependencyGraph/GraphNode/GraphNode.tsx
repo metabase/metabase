@@ -19,7 +19,11 @@ import {
 } from "metabase/ui";
 import type { DependencyNode } from "metabase-types/api";
 
+import type { DependentGroup } from "../../../types";
 import {
+  getDependencyGroupTitle,
+  getDependentGroupLabel,
+  getDependentGroups,
   getNodeIcon,
   getNodeLabel,
   getNodeTypeInfo,
@@ -29,12 +33,6 @@ import { GraphContext } from "../GraphContext";
 import type { GraphSelection, NodeType } from "../types";
 
 import S from "./GraphNode.module.css";
-import type { DependentGroup } from "./types";
-import {
-  getDependencyGroupTitle,
-  getDependentGroupLabel,
-  getDependentGroups,
-} from "./utils";
 
 type GraphNodeProps = NodeProps<NodeType>;
 

@@ -18,3 +18,4 @@ jobs:
           path: >-
             docs
             enterprise
+            modules/drivers
