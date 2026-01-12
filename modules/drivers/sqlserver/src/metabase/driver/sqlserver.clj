@@ -1144,6 +1144,9 @@
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         username  (-> workspace :database_details :user)
         schemas   (distinct (map :schema tables))]
+    (when-not username
+      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+                      {:workspace-id (:id workspace) :step :grant})))
     (doseq [schema schemas]
       (jdbc/execute! conn-spec [(format "GRANT SELECT ON SCHEMA::[%s] TO [%s]" schema username)]))
     (doseq [table tables]

@@ -983,6 +983,12 @@
         read-user   {:user     (driver.u/workspace-isolation-user-name workspace)
                      :password (driver.u/random-workspace-password)}
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (when-not db-name
+      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+                      {:database-id (:id database) :step :init})))
+    (when-not warehouse
+      (throw (ex-info "Snowflake database configuration is missing required 'warehouse' setting"
+                      {:database-id (:id database) :step :init})))
     ;; Snowflake RBAC: create schema -> create role -> grant privileges to role -> create user -> grant role to user
     (doseq [sql [(format "CREATE SCHEMA IF NOT EXISTS \"%s\".\"%s\"" db-name schema-name)
                  (format "CREATE ROLE IF NOT EXISTS \"%s\"" role-name)
@@ -1005,6 +1011,9 @@
         role-name   (isolation-role-name workspace)
         username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+    (when-not db-name
+      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+                      {:database-id (:id database) :step :destroy})))
     ;; Drop in reverse order of creation: schema (CASCADE handles tables) -> user -> role
     (doseq [sql [(format "DROP SCHEMA IF EXISTS \"%s\".\"%s\" CASCADE" db-name schema-name)
                  (format "DROP USER IF EXISTS \"%s\"" username)
@@ -1017,6 +1026,12 @@
         db-name   (-> database :details :db)
         role-name (-> workspace :database_details :role)
         schemas   (distinct (map :schema tables))]
+    (when-not db-name
+      (throw (ex-info "Snowflake database configuration is missing required 'db' (database name) setting"
+                      {:database-id (:id database) :step :grant})))
+    (when-not role-name
+      (throw (ex-info "Workspace isolation is not properly initialized - missing role name"
+                      {:workspace-id (:id workspace) :step :grant})))
     (doseq [schema schemas]
       (jdbc/execute! conn-spec [(format "GRANT USAGE ON SCHEMA \"%s\".\"%s\" TO ROLE \"%s\"" db-name schema role-name)]))
     (doseq [table tables]

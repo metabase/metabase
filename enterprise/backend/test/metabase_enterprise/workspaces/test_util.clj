@@ -39,7 +39,8 @@
   (try
     (log/infof "Cleaningup workspace %d in tests" (:id workspace))
     (when (:database_details workspace)
-      (ws.isolation/destroy-workspace-isolation! (t2/select-one :model/Database (:database_id workspace)) workspace))
+      (let [database (t2/select-one :model/Database (:database_id workspace))]
+        (ws.isolation/destroy-workspace-isolation! database workspace)))
     (catch Exception e
       (log/warn e "Failed to destroy isolation" {:workspace workspace})))
   workspace)

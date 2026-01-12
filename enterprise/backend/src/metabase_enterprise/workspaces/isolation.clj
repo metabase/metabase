@@ -50,7 +50,7 @@
   "Impl of* with-workspace-isolation*."
   [workspace thunk]
   (driver/with-swapped-connection-details (:database_id workspace)
-    (:database_details workspace)
+                                          (:database_details workspace)
     (thunk)))
 
 (defmacro with-workspace-isolation

@@ -67,7 +67,8 @@ export const SaveTransformButton = ({
   const isSaved = workspaceTransforms.some(
     (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
-  const isNewTransform = !isSaved && transform.id < 0;
+  const isNewTransform =
+    !isSaved && typeof transform.id === "number" && transform.id < 0;
   const isCheckoutDisabled =
     isExternalTransform(transform) &&
     typeof transform.checkout_disabled === "string";
@@ -110,6 +111,10 @@ export const SaveTransformButton = ({
 
   // Handler for updating existing workspace transform (scenario 1)
   const handleUpdateTransform = async () => {
+    if (typeof transform.id !== "string") {
+      throw new Error(t`This is not a workspace transform`);
+    }
+
     const updated = await updateTransform({
       workspaceId,
       transformId: transform.id,
@@ -134,35 +139,34 @@ export const SaveTransformButton = ({
     values: NewTransformValues,
   ): Promise<Transform> => {
     try {
-      const request: CreateWorkspaceTransformRequest & { id: WorkspaceId } =
-        values.incremental
-          ? {
-              id: workspaceId,
-              name: values.name,
-              description: null,
-              source: editedTransform.source,
-              target: {
-                type: "table-incremental" as const,
-                name: values.targetName,
-                schema: values.targetSchema,
-                database: databaseId,
-                "target-incremental-strategy": {
-                  type: "append" as const,
-                },
+      const request: CreateWorkspaceTransformRequest = values.incremental
+        ? {
+            id: workspaceId,
+            name: values.name,
+            description: null,
+            source: editedTransform.source,
+            target: {
+              type: "table-incremental" as const,
+              name: values.targetName,
+              schema: values.targetSchema,
+              database: databaseId,
+              "target-incremental-strategy": {
+                type: "append" as const,
               },
-            }
-          : {
-              id: workspaceId,
-              name: values.name,
-              description: null,
-              source: editedTransform.source,
-              target: {
-                type: "table" as const,
-                name: values.targetName,
-                schema: values.targetSchema,
-                database: databaseId,
-              },
-            };
+            },
+          }
+        : {
+            id: workspaceId,
+            name: values.name,
+            description: null,
+            source: editedTransform.source,
+            target: {
+              type: "table" as const,
+              name: values.targetName,
+              schema: values.targetSchema,
+              database: databaseId,
+            },
+          };
 
       const savedTransform = await createWorkspaceTransform(request).unwrap();
 

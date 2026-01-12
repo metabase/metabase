@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
+import { t } from "ttag";
 import * as Yup from "yup";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -10,7 +11,7 @@ import type {
 } from "metabase-types/api";
 
 type UseTransformValidationParams = {
-  databaseId: DatabaseId;
+  databaseId: DatabaseId | null;
   target?: TransformTarget;
   workspaceId: WorkspaceId;
 };
@@ -40,6 +41,10 @@ export const useTransformValidation = ({
 
       debounceState.pending?.resolve("OK");
       debounceState.pending = undefined;
+
+      if (databaseId == null) {
+        return t`Database ID is missing`;
+      }
 
       return new Promise<string>((resolve) => {
         const pending = { resolve };

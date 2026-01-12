@@ -1424,3 +1424,38 @@
     (doseq [{:keys [schema name]} tables]
       (let [table-id (TableId/of project-id schema name)]
         (ws-grant-table-read-access! client table-id ws-sa-email)))))
+
+(def ^:private perm-check-workspace-id "00000000-0000-0000-0000-000000000000")
+
+(defmethod driver/check-isolation-permissions :bigquery-cloud-sdk
+  [driver database test-table]
+  ;; BigQuery uses GCP IAM APIs instead of SQL, so we can't use transaction rollback.
+  ;; We run the actual init/grant/destroy operations and clean up immediately.
+  (let [test-workspace {:id   perm-check-workspace-id
+                        :name "_mb_perm_check_"}]
+    (try
+      (let [init-result (try
+                          (driver/init-workspace-isolation! driver database test-workspace)
+                          (catch Exception e
+                            (throw (ex-info (format "Failed to initialize workspace isolation: %s" (ex-message e))
+                                            {:step :init} e))))
+            workspace-with-details (merge test-workspace init-result)]
+        (when test-table
+          (try
+            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
+            (catch Exception e
+              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
+                                      (:schema test-table) (:name test-table) (ex-message e))
+                              {:step :grant :table test-table} e)))))
+        (try
+          (driver/destroy-workspace-isolation! driver database workspace-with-details)
+          (catch Exception e
+            (throw (ex-info (format "Failed to destroy workspace isolation: %s" (ex-message e))
+                            {:step :destroy} e)))))
+      nil
+      (catch Exception e
+        (ex-message e))
+      (finally
+        (try
+          (driver/destroy-workspace-isolation! driver database test-workspace)
+          (catch Exception _ nil))))))

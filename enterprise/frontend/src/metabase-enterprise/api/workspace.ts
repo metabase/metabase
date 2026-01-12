@@ -80,7 +80,7 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     }),
     createWorkspaceTransform: builder.mutation<
       CreateWorkspaceTransformResponse,
-      { id: WorkspaceId } & CreateWorkspaceTransformRequest
+      CreateWorkspaceTransformRequest
     >({
       query: ({ id, ...body }) => ({
         method: "POST",
