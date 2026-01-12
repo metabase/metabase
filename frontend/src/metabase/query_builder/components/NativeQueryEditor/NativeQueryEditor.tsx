@@ -90,7 +90,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   question: Question;
   readOnly?: boolean;
   resizable?: boolean;
-  runQuery: () => void;
+  runQuery?: () => void;
   setDatasetQuery: (query: NativeQuery) => void;
   setIsNativeEditorOpen?: (
     isOpen: boolean,
