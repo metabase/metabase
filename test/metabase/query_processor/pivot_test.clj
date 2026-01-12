@@ -477,12 +477,16 @@
             (qp.pivot/run-pivot-query (qp.pivot.test-util/parameters-query))))))
 
 (defn- clean-pivot-results [results]
-  (let [no-uuid #(dissoc % :lib/source_uuid)]
+  (let [clean-col #(-> %
+                       (dissoc :lib/source_uuid)
+                       (m/update-existing-in [:lib/column-key :column.breakout/uuid] (constantly "breakout-uuid"))
+                       (m/update-existing-in [:lib/column-key :column.aggregation/uuid] (constantly "breakout-uuid")))]
     (-> results
         (dissoc :running_time :started_at :json_query)
         (m/dissoc-in [:data :results_metadata :checksum])
         (m/dissoc-in [:data :native_form])
-        (update-in [:data :cols] #(mapv no-uuid %)))))
+        (update-in [:data :cols] #(mapv clean-col %))
+        (update-in [:data :results_metadata :columns] #(mapv clean-col %)))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test
   (mt/dataset test-data

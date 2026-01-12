@@ -5,6 +5,7 @@
        ([metabase.util.regex :as u.regex]))
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
+   [metabase.lib.schema.column-key :as lib.schema.column-key]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
@@ -315,7 +316,12 @@
   [:and
    [:map
     {:error/message    "Valid column metadata"
-     :decode/normalize normalize-column}
+     :decode/normalize normalize-column
+     :decode/mock      (fn [col]
+                         (cond-> col
+                           (and (:id col) (not (:lib/column-key col)))
+                           (assoc :lib/column-key {:lib/type :column/key
+                                                   :column.field/id (:id col)})))}
     [:lib/type  [:= {:decode/normalize lib.schema.common/normalize-keyword, :default :metadata/column} :metadata/column]]
     ;;
     ;; TODO (Cam 6/19/25) -- change all these comments to proper `:description`s like we have
@@ -329,6 +335,12 @@
     [:name      :string]
     ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
     [:base-type {:default :type/*} ::lib.schema.common/base-type]
+
+    ;; Include column keys everywhere because they need to be built up by construction, which mirrors how metadata is
+    ;; calculated. These are required, to make sure they are not missed on any path that constructs metadata.
+
+    [:lib/column-key {:optional true} [:ref ::lib.schema.column-key/column-key]]
+
     ;; This is nillable because internal remap columns have `:id nil`.
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]

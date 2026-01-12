@@ -48,6 +48,8 @@
                     :semantic-type                              :type/CreationTimestamp
                     :lib/breakout?                              true
                     :lib/card-id                                1
+                    :lib/column-key                             {:lib/type :column/key
+                                                                 :column.native/unique-name "CREATED_AT_2"}
                     :lib/deduplicated-name                      "CREATED_AT_2"
                     :lib/desired-column-alias                   "CREATED_AT_2"
                     :lib/original-name                          "CREATED_AT"
@@ -1300,40 +1302,6 @@
         (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Only source columns"
                               (lib/remove-field query -1 (second columns))))))))
 
-(deftest ^:parallel find-visible-column-for-ref-test
-  (testing "precise references"
-    (doseq [query-var [#'lib.tu/query-with-expression
-                       #'lib.tu/query-with-join-with-explicit-fields
-                       #'lib.tu/query-with-source-card]
-            :let [query (@query-var)]
-            col (lib/visible-columns query)
-            :let [col-ref (lib/ref col)]]
-      (testing (str "ref " col-ref " of " (symbol query-var))
-        (is (= (-> col
-                   (dissoc :lib/source-uuid))
-               (-> (lib/find-visible-column-for-ref query col-ref)
-                   (dissoc :lib/source-uuid))))))))
-
-(deftest ^:parallel find-visible-column-for-ref-test-2
-  (testing "reference by ID instead of name"
-    (let [query (lib.tu/query-with-source-card)
-          col-ref [:field
-                   {:lib/uuid "ae24a9b0-cbb5-40b6-bace-c8a5ac6a7e42"
-                    :base-type :type/Integer
-                    :effective-type :type/Integer}
-                   (meta/id :checkins :user-id)]]
-      (is (=? {:lib/type :metadata/column
-               :base-type :type/Integer
-               :semantic-type :type/FK
-               :name "USER_ID"
-               :lib/card-id 1
-               :lib/source :source/card
-               :lib/source-column-alias "USER_ID"
-               :effective-type :type/Integer
-               :id (meta/id :checkins :user-id)
-               :display-name "User ID"}
-              (lib/find-visible-column-for-ref query col-ref))))))
-
 (deftest ^:parallel self-join-ambiguity-test
   (testing "Even when doing a tree-like self join, fields are matched correctly"
     (let [base         (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -1473,6 +1441,21 @@
                                       (lib.metadata.calculation/visible-columns query)
                                       (lib.metadata.calculation/returned-columns query)))
 
+(defn- column-key-from-card [inner-column-key card-id]
+  {:lib/type                 :column/key
+   :column.card/card-id      card-id
+   :column.card/inner-column inner-column-key})
+
+(defn- column-key-as-joined [inner-column-key join-clause]
+  {:lib/type                   :column/key
+   :column.joined/join-uuid    (lib.options/uuid join-clause)
+   :column.joined/inner-column inner-column-key})
+
+(defn- column-key-as-implicitly-joined [target-column-key fk-column-key]
+  {:lib/type                   :column/key
+   :column.implicit/fk-column     fk-column-key
+   :column.implicit/target-column target-column-key})
+
 (deftest ^:parallel nested-query-join-with-fields-test
   (testing "a nested query which has an explicit join with :fields"
     (let [base           (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -1481,21 +1464,28 @@
                              (lib/with-join-conditions [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
                                                                (lib/ref (meta/field-metadata :products :id)))])
                              (lib/with-join-fields [(meta/field-metadata :products :category)]))
-          provider       (lib.tu/metadata-provider-with-cards-for-queries
-                          meta/metadata-provider
-                          [(lib/join base -1 join)])
-          query          (lib/query provider (lib.metadata/card provider 1))
+          card-query     (lib/join base -1 join)
+          provider       (lib.tu/metadata-provider-with-cards-for-queries meta/metadata-provider [card-query])
+          card-id        1
+          query          (lib/query provider (lib.metadata/card provider card-id))
           order-cols     (for [col (meta/fields :orders)]
                            (-> (meta/field-metadata :orders col)
                                (assoc :lib/source :source/card)
+                               (update :lib/column-key column-key-from-card card-id)
                                (dissoc :id :table-id)))
           join-cols      [(-> (meta/field-metadata :products :category)
-                              (assoc :lib/source :source/card
+                              (assoc :lib/source   :source/card
                                      :source-alias "Products")
+                              (update :lib/column-key column-key-as-joined (first (lib/joins card-query)))
+                              (update :lib/column-key column-key-from-card card-id)
                               (dissoc :id :table-id))]
+          user-id-key    (-> (meta/field-metadata :orders :user-id)
+                             :lib/column-key
+                             (column-key-from-card card-id))
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
-                               (assoc :lib/source :source/implicitly-joinable)))
+                               (assoc :lib/source :source/implicitly-joinable)
+                               (update :lib/column-key column-key-as-implicitly-joined user-id-key)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
       (is (=? (sorted (concat order-cols join-cols))
               (sorted (lib.metadata.calculation/returned-columns query))))
@@ -1550,6 +1540,147 @@
                :display-name    "Unknown Field"}
               (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
                                                  [:field {:lib/uuid (str (random-uuid))} 12345]))))))
+
+(deftest ^:parallel column-key-test-1-plain-field-by-id
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+    (doseq [table-key (meta/tables)
+            field-key (meta/fields table-key)
+            :let [id (meta/id table-key field-key)]]
+      (is (=? {:id             id
+               :lib/column-key {:lib/type :column/key, :column.field/id id}}
+              (lib/metadata query (lib/ref (meta/field-metadata table-key field-key))))))))
+
+(deftest ^:parallel column-key-test-2a-expression-same-stage
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "tax rate" (lib// (meta/field-metadata :orders :tax)
+                                                    (meta/field-metadata :orders :subtotal))))
+        expr  (first (lib/expressions query))]
+    (is (=? {:name           "tax rate"
+             :lib/column-key {:lib/type :column/key, :column.expression/uuid (lib.options/uuid expr)}}
+            (lib/metadata query (lib/expression-ref query "tax rate"))))))
+
+(deftest ^:parallel column-key-test-2b-expression-previous-stage
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/expression "tax rate" (lib// (meta/field-metadata :orders :tax)
+                                                    (meta/field-metadata :orders :subtotal)))
+                  lib/append-stage)
+        expr  (first (lib/expressions query 0))]
+    (is (=? {:name           "tax rate"
+             :lib/column-key {:lib/type :column/key, :column.expression/uuid (lib.options/uuid expr)}}
+            (lib/metadata query [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "tax rate"])))))
+
+(deftest ^:parallel column-key-test-3a-aggregation-same-stage
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+        agg   (first (lib/aggregations query))]
+    (is (=? {:name           "sum"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid agg)}}
+            (lib/metadata query (lib/aggregation-ref query -1 0))))))
+
+(deftest ^:parallel column-key-test-3b-aggregation-nested
+  (let [base  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity))))
+        query (lib/aggregate base (lib// (lib/aggregation-ref base -1 0)
+                                         (lib/aggregation-ref base -1 1)))
+        [sum-subtotal sum-quantity ratio] (lib/aggregations query)]
+    (is (=? {:display-name   "Sum of Subtotal"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid sum-subtotal)}}
+            (lib/metadata query (lib/aggregation-ref query -1 0))))
+    (is (=? {:display-name   "Sum of Quantity"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid sum-quantity)}}
+            (lib/metadata query (lib/aggregation-ref query -1 1))))
+    (is (=? {:display-name   "Sum of Subtotal ÷ Sum of Quantity"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid ratio)}}
+            (lib/metadata query (lib/aggregation-ref query -1 2))))))
+
+(deftest ^:parallel column-key-test-3c-aggregation-previous-stage
+  (let [base  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :quantity))))
+        query (-> base
+                  (lib/aggregate (lib// (lib/aggregation-ref base -1 0)
+                                        (lib/aggregation-ref base -1 1)))
+                  lib/append-stage)
+        [sum-subtotal sum-quantity ratio] (lib/aggregations query 0)]
+    (is (=? {:display-name   "Sum of Subtotal"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid sum-subtotal)}}
+            (lib/metadata query [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "sum"])))
+    (is (=? {:display-name   "Sum of Quantity"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid sum-quantity)}}
+            (lib/metadata query [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "sum_2"])))
+    (is (=? {:display-name   "Sum of Subtotal ÷ Sum of Quantity"
+             :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid ratio)}}
+            (lib/metadata query [:field {:lib/uuid (str (random-uuid)), :base-type :type/Float} "expression"])))))
+
+(deftest ^:parallel column-key-test-4a-breakout-same-stage
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal))))
+        [agg] (lib/aggregations query)
+        [brk] (lib/breakouts query)]
+    (is (=? [{:display-name    "Created At: Month"
+              :lib/column-key  {:lib/type :column/key, :column.breakout/uuid (lib.options/uuid brk)}}
+             {:name           "sum"
+              :lib/column-key {:lib/type :column/key, :column.aggregation/uuid (lib.options/uuid agg)}}]
+            (lib/orderable-columns query)))))
+
+(deftest ^:parallel column-key-test-4b-breakout-next-stage
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                  (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                  lib/append-stage)
+        [brk] (lib/breakouts query 0)]
+    (is (=? {:display-name   "Created At: Month"
+             :lib/column-key {:lib/type :column/key, :column.breakout/uuid (lib.options/uuid brk)}}
+            (lib/metadata query [:field {:lib/uuid (str (random-uuid)), :base-type :type/Date} "CREATED_AT"])))))
+
+(deftest ^:parallel column-key-test-5a-explicit-join-same-stage
+  (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/join (meta/table-metadata :products)))
+        [join] (lib/joins query)]
+    (is (=? {:id             (meta/id :products :category)
+             :lib/column-key {:lib/type                   :column/key
+                              :column.joined/join-uuid    (lib.options/uuid join)
+                              :column.joined/inner-column {:lib/type        :column/key
+                                                           :column.field/id (meta/id :products :category)}}}
+            (lib/metadata query [:field {:lib/uuid   (str (random-uuid))
+                                         :base-type  :type/Text
+                                         :join-alias "Products"}
+                                 (meta/id :products :category)])))))
+
+(deftest ^:parallel column-key-test-5b-explicit-join-previous-stage
+  (let [query  (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                   (lib/join (meta/table-metadata :products))
+                   lib/append-stage)
+        [join] (lib/joins query 0)]
+    (is (=? {:id             (meta/id :products :category)
+             :lib/column-key {:lib/type                   :column/key
+                              :column.joined/join-uuid    (lib.options/uuid join)
+                              :column.joined/inner-column {:lib/type        :column/key
+                                                           :column.field/id (meta/id :products :category)}}}
+            (lib/metadata query [:field {:lib/uuid   (str (random-uuid))
+                                         :base-type  :type/Text}
+                                 "Products__CATEGORY"])))))
+
+(deftest ^:parallel column-key-test-6a-implicit-join-same-stage
+  (let [query       (lib/query meta/metadata-provider (meta/table-metadata :orders))
+        cols        (lib/filterable-columns query)
+        source      (m/find-first #(= (:id %) (meta/id :people :source)) cols)
+        user-id-key {:lib/type        :column/key
+                     :column.field/id (meta/id :orders :user-id)}
+        source-key  {:lib/type        :column/key
+                     :column.field/id (meta/id :people :source)}]
+    (is (=? {:id             (meta/id :people :source)
+             :lib/column-key {:lib/type                      :column/key
+                              :column.implicit/fk-column     user-id-key
+                              :column.implicit/target-column source-key}}
+            (lib/metadata query (lib/ref source))))
+    (is (=? {:id             (meta/id :people :source)
+             :lib/column-key {:lib/type                      :column/key
+                              :column.implicit/fk-column     user-id-key
+                              :column.implicit/target-column source-key}}
+            (lib/metadata query source)))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
@@ -1675,7 +1806,9 @@
                              :id 1
                              :name "search"
                              :display-name "Search"
-                             :base-type :type/Text})
+                             :base-type :type/Text
+                             :lib/column-key {:lib/type                  :column/key
+                                              :column.native/unique-name "search"}})
                  lib/visible-columns
                  last))))
     (is (= {:field-id 1
@@ -1689,7 +1822,9 @@
                             :id 1
                             :name "num"
                             :display-name "Random number"
-                            :base-type :type/Integer})
+                            :base-type :type/Integer
+                            :lib/column-key {:lib/type                  :column/key
+                                             :column.native/unique-name "search"}})
                 lib/visible-columns
                 last))))))
 

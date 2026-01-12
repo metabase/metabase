@@ -2,6 +2,7 @@
   "Schemas for things related to joins."
   (:refer-clojure :exclude [mapv every? empty? not-empty])
   (:require
+   [metabase.lib.options :as lib.options]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.util :as lib.schema.util]
@@ -72,6 +73,11 @@
    :inner-join
    :full-join])
 
+(defn- normalize-join-options [join-opts]
+  (let [join-opts (common/normalize-map join-opts)]
+    (cond-> join-opts
+      (not (:lib/uuid join-opts)) (assoc :lib/uuid (str (random-uuid))))))
+
 (defn- normalize-join [join]
   (when join
     (let [{:keys [fields], :as join} (common/normalize-map join)]
@@ -83,6 +89,8 @@
         (-> (assoc-in [:stages (dec (count (:stages join))) :lib/stage-metadata] {:lib/type :metadata/results
                                                                                   :columns  (:source-metadata join)})
             (dissoc :source-metadata))
+
+        true (lib.options/update-options normalize-join-options)
 
         ;; automatically fix :condition => :conditions if we run into it. Kinda overlapping responsibility
         ;; with [[metabase.lib.convert]] but this lets us write busted stuff in tests more easily
@@ -121,7 +129,11 @@
     [:conditions  ::conditions]
     [:alias       ::alias]
     [:fields   {:optional true} ::fields]
-    [:strategy {:optional true} ::strategy]]
+    [:strategy {:optional true} ::strategy]
+    [:lib/options {:optional         true
+                   :decode/normalize normalize-join-options}
+     [:map
+      [:lib/uuid {:optional true} ::common/uuid]]]]
    (common/disallowed-keys
     {:lib/stage-metadata "joins should not have metadata attached directly to them; attach metadata to their last stage instead"
      :source-metadata    "joins should not have metadata attached directly to them; attach metadata to their last stage instead"

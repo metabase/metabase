@@ -7,7 +7,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
-   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.resolution :as lib.field.resolution]
@@ -712,24 +711,6 @@
             query))
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))
-
-;; TODO: Refactor this away? The special handling for aggregations is strange.
-(mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
-  "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
-  last stage is used. This is currently only meant for use with `:field` clauses."
-  ([query field-ref]
-   (find-visible-column-for-ref query -1 field-ref))
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    field-ref    :- some?]
-   (let [;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
-         ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
-         columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
-                    lib.metadata.calculation/returned-columns
-                    lib.metadata.calculation/visible-columns)
-                  query stage-number)]
-     (lib.equality/find-matching-column query stage-number field-ref columns))))
 
 (mu/defn find-column-for-name :- [:maybe ::lib.schema.metadata/column]
   "Find the first column in `columns` whose `:name` matches `column-name`.

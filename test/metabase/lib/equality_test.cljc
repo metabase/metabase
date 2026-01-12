@@ -6,6 +6,7 @@
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
@@ -355,10 +356,12 @@
 (deftest ^:parallel find-matching-column-self-join-test
   (testing "find-matching-column with a self join"
     (let [query     (lib.tu/query-with-self-join)
+          [join]    (lib/joins query)
           cols      (for [col (meta/fields :orders)]
                       (meta/field-metadata :orders col))
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
+                         (update :lib/column-key lib.column-key/explicitly-joined join)
                          (merge {:lib/source                   :source/joins
                                  :metabase.lib.join/join-alias "Orders"}))
           sorted    #(sort-by (juxt :position :source-alias) %)

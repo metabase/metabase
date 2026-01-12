@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase-enterprise.dependencies.metadata-provider :as deps.mp]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -20,8 +21,10 @@
                                           (lib.tu.macros/$ids orders
                                             [$subtotal $created-at]))
                                 (dissoc :result-metadata)))
-      (is (=? [(meta/field-metadata :orders :subtotal)
-               (meta/field-metadata :orders :created-at)]
+      (is (=? [(-> (meta/field-metadata :orders :subtotal)
+                   (update :lib/column-key lib.column-key/from-card (:id card)))
+               (-> (meta/field-metadata :orders :created-at)
+                   (update :lib/column-key lib.column-key/from-card (:id card)))]
               (->> (lib.metadata/card mp (:id card))
                    (lib/query mp)
                    lib/returned-columns))))))

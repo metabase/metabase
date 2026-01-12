@@ -9,6 +9,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.join :as lib.join]
@@ -417,9 +418,10 @@
   (when-some [col (or (field-metadata query nil id-or-name)
                       (resolve-name-in-implicit-join-this-stage query source-field-id id-or-name))]
     ;; if we managed to resolve it then update metadata appropriately.
-    (assoc col
-           :lib/source :source/implicitly-joinable
-           :fk-field-id source-field-id)))
+    (-> col
+        (assoc :lib/source :source/implicitly-joinable
+               :fk-field-id source-field-id)
+        (update :lib/column-key lib.column-key/implicitly-joined-via (lib.column-key/field-key source-field-id)))))
 
 ;;; See for
 ;;; example [[metabase.query-processor.field-ref-repro-test/model-with-implicit-join-and-external-remapping-test]],

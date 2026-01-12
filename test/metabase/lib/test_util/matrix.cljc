@@ -37,7 +37,9 @@
                      :position 1
                      :has-field-values nil
                      :preview-display true
-                     :database-position 1}]
+                     :database-position 1
+                     :lib/column-key {:lib/type        :column/key
+                                      :column.field/id 2}}]
     (assoc (assoc (dissoc meta/metadata :tables) :id 1)
            :tables
            [{:description nil,
@@ -82,7 +84,9 @@
                        :target nil,
                        :preview-display true,
                        :database-position 0,
-                       :fingerprint nil}
+                       :fingerprint nil
+                       :lib/column-key {:lib/type        :column/key
+                                        :column.field/id 1}}
                       test-column]}
             {:description nil,
              :schema "PUBLIC",
@@ -126,7 +130,9 @@
                        :target nil,
                        :preview-display true,
                        :database-position 0,
-                       :fingerprint nil}
+                       :fingerprint nil
+                       :lib/column-key {:lib/type        :column/key
+                                        :column.field/id 10}}
                       {:description nil
                        :lib/type :metadata/column
                        :database-is-auto-increment false
@@ -154,6 +160,8 @@
                        :has-field-values nil
                        :preview-display true
                        :database-position 1
+                       :lib/column-key {:lib/type        :column/key
+                                        :column.field/id 20}
                        :fingerprint {:global {:distinct-count 200
                                               :nil% 0.0}}}]}])))
 

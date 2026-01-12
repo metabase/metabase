@@ -6,6 +6,7 @@
    [metabase.lib.breakout-test]
    [metabase.lib.card :as lib.card]
    [metabase.lib.card-test]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.core :as lib]
    [metabase.lib.field-test]
    [metabase.lib.field.resolution :as lib.field.resolution]
@@ -371,6 +372,10 @@
                 :lib/original-display-name                         "Name"
                 :lib/original-name                                 "NAME"
                 :lib/source-uuid                                   string?
+                :lib/column-key                                    (-> (meta/id :categories :name)
+                                                                       lib.column-key/field-key
+                                                                       (lib.column-key/explicitly-joined
+                                                                        (first (lib/joins query))))
                 :metabase.lib.join/join-alias                      "Categories"
                 :metabase.lib.query/transformation-added-base-type true})
               (lib.field.resolution/resolve-field-ref query -1 (first (lib/fields query -1))))))))

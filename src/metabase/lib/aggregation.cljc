@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [count distinct max min var select-keys mapv empty? not-empty #?(:clj doseq) #?(:clj for)])
   (:require
    [medley.core :as m]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.common :as lib.common]
    [metabase.lib.computed :as lib.computed]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -93,7 +94,8 @@
         (merge
          (lib.metadata.calculation/metadata query stage-number aggregation)
          {:lib/source :source/aggregations
-          :lib/source-uuid (:lib/uuid (second aggregation))}
+          :lib/source-uuid (:lib/uuid (second aggregation))
+          :lib/column-key  (lib.column-key/aggregation-key aggregation)}
 
          (when base-type
            {:base-type base-type})
@@ -270,7 +272,8 @@
      ;; This might be an inner aggregation expression without an ident of its own, but that's fine since we're only
      ;; here for its type!
      (select-keys (lib.metadata.calculation/metadata query stage-number first-arg) [:settings :semantic-type]))
-   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)))
+   ((get-method lib.metadata.calculation/metadata-method :default) query stage-number clause)
+   {:lib/column-key (lib.column-key/aggregation-key clause)}))
 
 (lib.common/defop count       [] [x])
 (lib.common/defop cum-count   [] [x])
@@ -336,7 +339,8 @@
                               (-> metadata
                                   (u/assoc-default :effective-type (or (:base-type metadata) :type/*))
                                   (assoc :lib/source      :source/aggregations
-                                         :lib/source-uuid (lib.options/uuid aggregation))))))))))
+                                         :lib/source-uuid (lib.options/uuid aggregation)
+                                         :lib/column-key  (lib.column-key/aggregation-key aggregation))))))))))
 
 (def ^:private OperatorWithColumns
   [:merge
