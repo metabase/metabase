@@ -34,8 +34,7 @@ const RGBA_REGEX = new RegExp(
 );
 /**
  * Normalizes RGBA color strings by rounding RGB components to integers
- * and clamping alpha values to [0, 1]. This ensures colors are in standard
- * CSS format where RGB values are integers (0-255) and alpha is a decimal (0-1).
+ * and clamping alpha values to [0, 1]
  *
  * After color library supports fully scientific notation we might remove this function
  * https://github.com/Qix-/color-string/pull/89
