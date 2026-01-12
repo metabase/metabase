@@ -44,7 +44,7 @@ describe("scenarios > embedding-sdk > content-translations-rerender-reproduction
     getSdkRoot().contains("Wähle deine Start-Daten");
   };
 
-  it("should translate content", () => {
+  it("should rerender content after a content-translation plugin is loaded", () => {
     setupEditor();
     mountEditor();
 
