@@ -182,12 +182,6 @@
                            (map-indexed #(metabot-v3.tools.u/->result-column query %2 %1 query-field-id-prefix))
                            returned-cols)}))
 
-(comment
-  (binding [api/*current-user-permissions-set* (delay #{"/"})]
-    (let [id 135]
-      (query-metric* {:metric-id id})))
-  -)
-
 (defn query-metric
   "Create a query based on a metric."
   [{:keys [metric-id] :as arguments}]
@@ -433,22 +427,3 @@
                               (lib/returned-columns query))}})
     (catch Exception ex
       (metabot-v3.tools.u/handle-agent-error ex))))
-
-(comment
-  (require '[metabase.query-processor :as qp]
-           '[toucan2.core :as t2])
-  (t2/select :model/Field)
-  (binding [api/*current-user-permissions-set* (delay #{"/"})
-            api/*current-user-id* 2
-            api/*is-superuser?* true]
-    (-> (filter-records #_{:data-source {:tabl-id 3}
-                           :filters [{:operation "number-greater-than"
-                                      :field-id "t3-6"
-                                      :value 50}]}
-         {:data-source {:table-id 1}
-          :filters [{:operation "greater-than"
-                     :bucket "month-of-year"
-                     :field-id "t1-3"
-                     :value #_"2020-01-01" 1}]})
-        :structured-output :query qp/process-query :data :native_form :query))
-  -)
