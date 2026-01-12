@@ -67,7 +67,8 @@ export const SaveTransformButton = ({
   const isSaved = workspaceTransforms.some(
     (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
-  const isNewTransform = !isSaved && transform.id < 0;
+  const isNewTransform =
+    !isSaved && typeof transform.id === "number" && transform.id < 0;
   const isCheckoutDisabled =
     isExternalTransform(transform) &&
     typeof transform.checkout_disabled === "string";
