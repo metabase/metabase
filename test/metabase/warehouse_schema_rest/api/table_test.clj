@@ -68,6 +68,7 @@
      :entity_type "entity/GenericTable"
      :field_order "database"
      :view_count  0
+     :measures    []
      :metrics     []
      :segments    []
      :is_writable (or (= driver :h2) nil)})))
@@ -159,7 +160,7 @@
 (deftest ^:parallel get-table-test
   (testing "GET /api/table/:id"
     (is (= (merge
-            (dissoc (table-defaults :h2) :segments :field_values :metrics)
+            (dissoc (table-defaults :h2) :segments :field_values :metrics :measures)
             (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
@@ -180,7 +181,7 @@
                                                         :entity_type  "entity/GenericTable"
                                                         :schema       nil}]
         (is (= (merge
-                (dissoc (table-defaults) :segments :field_values :metrics :db)
+                (dissoc (table-defaults) :segments :field_values :metrics :measures :db)
                 (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
@@ -422,7 +423,7 @@
                              :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
               (-> (table-defaults)
-                  (dissoc :segments :field_values :metrics :updated_at)
+                  (dissoc :segments :field_values :metrics :measures :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
@@ -611,7 +612,7 @@
                                             ;; Index sync is turned off across the application as it is not used ATM.
                                             #_#_:database_indexed  true
                                             :table         (merge
-                                                            (dissoc (table-defaults) :segments :field_values :metrics)
+                                                            (dissoc (table-defaults) :segments :field_values :metrics :measures)
                                                             (t2/select-one [:model/Table
                                                                             :id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
@@ -632,7 +633,7 @@
                                             ;; Index sync is turned off across the application as it is not used ATM.
                                             #_#_:database_indexed true
                                             :table            (merge
-                                                               (dissoc (table-defaults :h2) :db :segments :field_values :metrics)
+                                                               (dissoc (table-defaults :h2) :db :segments :field_values :metrics :measures)
                                                                (t2/select-one [:model/Table
                                                                                :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]

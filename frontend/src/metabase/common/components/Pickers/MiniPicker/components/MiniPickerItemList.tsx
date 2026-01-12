@@ -315,7 +315,7 @@ function SearchItemList({ query }: { query: string }) {
       <Box>
         {isLoading && <MiniPickerListLoader />}
         {!isLoading && searchResults.length === 0 && (
-          <Text px="md" py="sm" c="text-medium">{t`No search results`}</Text>
+          <Text px="md" py="sm" c="text-secondary">{t`No search results`}</Text>
         )}
       </Box>
       {searchResults.map((item) => {
@@ -378,7 +378,7 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
   return (
     <Flex gap="xs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
-      <Text size="sm" c="text-medium">
+      <Text size="sm" c="text-secondary">
         <Ellipsified maw="18rem">{itemText}</Ellipsified>
       </Text>
     </Flex>

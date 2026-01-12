@@ -14,6 +14,7 @@
    [environ.core :refer [env]]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.internal-stats.core :as internal-stats]
    [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -35,7 +36,7 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private RemoteCheckedToken
+(def RemoteCheckedToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
   #"^(mb_dev_[0-9a-f]{57}|[0-9a-f]{64})$")
 
@@ -48,7 +49,7 @@
    [:re RemoteCheckedToken]
    [:re AirgapToken]])
 
-(def ^:private ^String token-check-url
+(def ^String token-check-url
   "Base URL to use for token checks. Hardcoded by default but for development purposes you can use a local server.
   Specify the env var `METASTORE_DEV_SERVER_URL`. If no server is defined, it uses the staging token check url."
   (let [dev-server-url          (some-> (env :metastore-dev-server-url) (str/replace #"/$" ""))
@@ -103,6 +104,12 @@
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false})
 
+(defn- yesterday []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      (t/minus (t/days 1))
+      t/local-date
+      str))
+
 (defenterprise metabot-stats
   "Stats for Metabot"
   metabase-enterprise.metabot-v3.core
@@ -110,12 +117,18 @@
   {:metabot-tokens     0
    :metabot-queries    0
    :metabot-users      0
-   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
-                           (t/minus (t/days 1))
-                           t/local-date
-                           str)})
+   :metabot-usage-date (yesterday)})
 
-(defn- stats-for-token-request
+(defenterprise transform-stats
+  "Stats for Transforms"
+  metabase-enterprise.transforms.core
+  []
+  {:transform-native-runs    0
+   :transform-python-runs    0
+   :transform-usage-date     (yesterday)})
+
+(defn metering-stats
+  "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
   ;; NOTE: beware, if you use `defenterprise` here which uses any other `:feature` other than `:none`, it will
   ;; recursively trigger token check and will die
@@ -126,6 +139,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (metabot-stats)
+                                         (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
                                           :embedding-question-count  embedding-question-count
@@ -158,10 +172,9 @@
 (defn- http-fetch
   [base-url token site-uuid]
   (some-> (token-status-url token base-url)
-          (http/get {:query-params     (merge (stats-for-token-request)
-                                              {:site-uuid  site-uuid
-                                               :mb-version (:tag config/mb-version-info)})
-                     :throw-exceptions   false
+          (http/get {:query-params {:site-uuid site-uuid
+                                    :mb-version (:tag config/mb-version-info)}
+                     :throw-exceptions false
                      ;; socket is data transfer, connection is handshake and create connection timeout
                      :socket-timeout     5000     ;; in milliseconds
                      :connection-timeout 2000     ;; in milliseconds
@@ -181,6 +194,29 @@
       ;; exceptions are not cached.
       :else (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                 :body body})))))
+
+(defn- metering-url
+  [token base-url]
+  (format "%s/api/%s/v2/metering" base-url token))
+
+(defn send-metering-events!
+  "Send metering events for billing purposes"
+  []
+  (when-let [token (premium-features.settings/premium-embedding-token)]
+    (when (mr/validate [:re RemoteCheckedToken] token)
+      (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
+            stats (-> (metering-stats)
+                      ;; for backwards compatibility, we send values as strings
+                      (update-vals str))]
+        (try
+          (http/post (metering-url token token-check-url)
+                     {:body (json/encode (merge stats
+                                                {:site-uuid site-uuid
+                                                 :mb-version (:tag config/mb-version-info)}))
+                      :content-type :json
+                      :throw-exceptions false})
+          (catch Throwable e
+            (log/error e "Error sending metering events")))))))
 
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 
@@ -435,6 +471,8 @@
   ([checker token]
    (-check-token checker token)))
 
+(derive :event/set-premium-embedding-token :metabase/event)
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
@@ -452,6 +490,7 @@
           (throw (ex-info "Invalid token" {:token (u.str/mask new-value)}))))
       (log/info "Token is valid."))
     (setting/set-value-of-type! :string :premium-embedding-token new-value)
+    (events/publish-event! :event/set-premium-embedding-token {})
     (catch Throwable e
       (log/error e "Error setting premium features token")
       ;; merge in error-details if present

@@ -77,6 +77,57 @@
       acc
       new-deps))))
 
+(def driver-affecting-overrides
+  "These modules affect drivers when computing, but we want to override and not consider them to affect drivers."
+  '#{analytics
+     api
+     api-keys
+     appearance
+     audit-app
+     auth-identity
+     auth-provider
+     batch-processing
+     channel
+     classloader
+     collections
+     config
+     content-verification
+     dashboards
+     eid-translation
+     embedding
+     enterprise/api
+     enterprise/scim
+     enterprise/serialization
+     enterprise/sso
+     events
+     formatter
+     initialization-status
+     internal-stats
+     login-history
+     notification
+     permissions
+     public-sharing
+     pulse
+     remote-sync
+     request
+     search
+     secrets
+     server
+     session
+     settings
+     setup
+     sso
+     startup
+     system
+     task
+     task-history
+     timeline
+     types
+     users
+     util
+     version
+     view-log})
+
 (defn- affected-modules
   "Set of modules that are direct or indirect dependents of `modules`, and thus are affected by changes to them."
   [deps modules]
@@ -155,7 +206,7 @@
   ([modules]
    (driver-deps-affected? (dependencies) modules))
   ([deps modules]
-   (let [unaffected (unaffected-modules deps modules)]
+   (let [unaffected (unaffected-modules deps (remove driver-affecting-overrides modules))]
      (not (contains? unaffected 'driver)))))
 
 (defn cli-can-skip-driver-tests

@@ -22,7 +22,7 @@ export const Sidebar = styled.aside<{
   position: relative;
   flex-shrink: 0;
   align-items: center;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   z-index: 4;
   width: ${(props) => props.width ?? NAV_SIDEBAR_WIDTH};
   ${(props) =>
@@ -79,7 +79,7 @@ export const TrashSidebarSection = styled(SidebarSection)`
 ` as unknown as typeof Box;
 
 export const SidebarHeading = styled.h4`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   font-weight: 700;
   font-size: 11px;
   text-transform: uppercase;

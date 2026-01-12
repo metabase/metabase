@@ -47,8 +47,7 @@ export const FilterFieldSet = forwardRef(function FilterWidget(
       pl="md"
       pr="xs"
       py="xs"
-      bd="2px solid border"
-      bg="bg-white"
+      bg="background-primary"
       aria-label={label}
     >
       {hasValue && (

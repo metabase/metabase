@@ -12,7 +12,7 @@ const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
  * every 10 seconds until it gets a payload that doesn't have the refresh token feature.
  */
 export function useTokenRefresh() {
-  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the patten in many components */
+  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
   const res = useGetSettingsQuery();
   const dispatch = useDispatch();
 
@@ -44,7 +44,7 @@ export function useTokenRefreshUntil(
     skip = false,
   }: { intervalMs?: number; skip?: boolean },
 ) {
-  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the patten in many components */
+  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
   const res = useGetSettingsQuery();
   const dispatch = useDispatch();
 

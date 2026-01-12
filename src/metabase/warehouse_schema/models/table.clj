@@ -434,6 +434,15 @@
       (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
+(mi/define-batched-hydration-method with-measures
+  :measures
+  "Efficiently hydrate the Measures for a collection of `tables`."
+  [tables]
+  (with-objects :measures
+    (fn [table-ids]
+      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+    tables))
+
 (mi/define-batched-hydration-method with-metrics
   :metrics
   "Efficiently hydrate the Metrics for a collection of `tables`."
