@@ -33,7 +33,6 @@ import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embeddi
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
-import CS from "metabase/css/core/index.css";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
@@ -163,7 +162,7 @@ const StaticQuestionInner = (
               <ResultToolbar data-hide-empty>
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                 {/* This container is always shown on the right */}
-                <Group className={CS.mlAuto} data-hide-empty>
+                <Group gap="sm" ml="auto" data-hide-empty>
                   <SdkQuestion.DownloadWidgetDropdown />
                   <QuestionAlertsButton />
                 </Group>
