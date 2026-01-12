@@ -7,6 +7,7 @@
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.util :as ws.u]
+   [metabase.app-db.core :as app-db]
    [metabase.driver.sql :as driver.sql]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -59,14 +60,6 @@
                         {:access_granted true})
             (catch Exception e
               (log/warn e "Error granting RO table permissions"))))))))
-
-(defn sync-transform-dependencies!
-  "Analyze and persist dependencies for a workspace transform, then grant
-   read access to external input tables."
-  [{workspace-id :id, isolated-schema :schema :as workspace} transform]
-  (let [analysis (ws.deps/analyze-entity :transform transform)]
-    (ws.deps/write-dependencies! workspace-id isolated-schema :transform (:ref_id transform) analysis)
-    (sync-grant-accesses! workspace)))
 
 (defn- build-remapping [workspace]
   ;; Build table remapping from stored WorkspaceOutput and WorkspaceOutputExternal data.
@@ -300,16 +293,77 @@
                              :table_id       (:table_id (get new-inputs [db_id schema table]))
                              :access_granted false})))))))))
 
-;; TODO save graph with invalidation hooks
+;;;; ---------------------------------------- Lazy Graph Calculation ----------------------------------------
+
+(defn- calculate-graph!
+  "Calculate the dependency graph for a workspace.
+   Returns the graph without caching - caller is responsible for caching."
+  [ws-id]
+  (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
+                                                        [:model/WorkspaceTransform :ref_id]
+                                                        :workspace_id ws-id)))
+
+(defn analyze-transform-if-stale!
+  "Re-analyze dependencies for a given transform, if necessary. Marks it as not stale after analysis."
+  [{ws-id :id, isolated-schema :schema :as workspace} transform]
+  (when (:analysis_stale transform)
+    (let [analysis (ws.deps/analyze-entity :transform transform)]
+      (ws.deps/write-dependencies! ws-id isolated-schema :transform (:ref_id transform) analysis))
+    (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false})
+    (sync-grant-accesses! workspace)))
+
+(defn analyze-stale-transforms!
+  "Re-analyze dependencies for any workspace transforms that are stale.
+   Marks them as not stale after analysis. Returns true if any transforms were analyzed."
+  [{ws-id :id, isolated-schema :schema :as workspace}]
+  (let [stale-transforms (t2/select :model/WorkspaceTransform
+                                    :workspace_id ws-id
+                                    :analysis_stale true)]
+    (doseq [transform stale-transforms]
+      (let [analysis (ws.deps/analyze-entity :transform transform)]
+        (ws.deps/write-dependencies! ws-id isolated-schema :transform (:ref_id transform) analysis))
+      (t2/update! :model/WorkspaceTransform (:ref_id transform) {:analysis_stale false}))
+    ;; Grant read access to any new external inputs
+    (when (seq stale-transforms)
+      (sync-grant-accesses! workspace))
+    (boolean (seq stale-transforms))))
+
+(defn- upsert-workspace-graph!
+  "Insert or update the cached graph for a workspace."
+  [ws-id graph]
+  (app-db/update-or-insert! :model/WorkspaceGraph {:workspace_id ws-id} (fn [_] {:workspace_id ws-id, :graph graph})))
+
+(defn- calculate-and-cache-graph!
+  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
+  [{ws-id :id, isolated-schema :schema :as workspace}]
+  (t2/with-transaction [_conn]
+    ;; First, re-analyze any stale transforms
+    (analyze-stale-transforms! workspace)
+    (let [graph (calculate-graph! ws-id)]
+      ;; Persist our work
+      (sync-external-outputs! ws-id isolated-schema (:entities graph))
+      (sync-external-inputs! ws-id (:entities graph))
+      (upsert-workspace-graph! ws-id graph)
+      ;; Mark workspace as not stale
+      (t2/update! :model/Workspace ws-id {:analysis_stale false})
+      graph)))
+
 (defn get-or-calculate-graph
-  "Return the graph. Also syncs workspace_output_external and workspace_input_external tables."
-  [{ws-id :id, isolated-schema :schema :as _workspace}]
-  (let [graph (ws.dag/path-induced-subgraph ws-id (t2/select-fn-vec (fn [{:keys [ref_id]}] {:entity-type :transform :id ref_id})
-                                                                    [:model/WorkspaceTransform :ref_id]
-                                                                    :workspace_id ws-id))]
-    (sync-external-outputs! ws-id isolated-schema (:entities graph))
-    (sync-external-inputs! ws-id (:entities graph))
-    graph))
+  "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
+   otherwise recalculates it.
+   Also syncs workspace_output_external and workspace_input_external tables when recalculating."
+  [{ws-id :id, analysis-stale :analysis_stale :as workspace}]
+  (if-not analysis-stale
+    ;; Return cached graph from workspace_graph table
+    (when-let [cached (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
+      (:graph cached))
+    ;; Recalculate and cache
+    (calculate-and-cache-graph! workspace)))
+
+(defn mark-workspace-stale!
+  "Mark a workspace as needing graph recalculation."
+  [workspace-id]
+  (t2/update! :model/Workspace workspace-id {:analysis_stale true}))
 
 (defn- transforms-to-execute
   "Given a workspace and an optional filter, return the global and workspace definitions to run, in the correct order."

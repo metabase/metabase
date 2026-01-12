@@ -6,9 +6,10 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import type { TreeTableColumnDef } from "metabase/ui";
 import {
   Button,
@@ -21,13 +22,13 @@ import {
   Stack,
   TextInput,
   TreeTable,
+  TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { SectionLayout } from "../../components/SectionLayout";
@@ -116,6 +117,7 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
+        minWidth: 600,
         cell: ({ row }) => (
           <EntityNameCell
             data-testid={`${row.original.model}-name`}
@@ -208,7 +210,7 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          bg="background-light"
+          bg="background-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
@@ -227,7 +229,7 @@ export function LibrarySectionLayout() {
           </Flex>
           <Card withBorder p={0}>
             {isLoading ? (
-              <ListLoadingState />
+              <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
             ) : (
               <TreeTable
                 instance={treeTableInstance}
@@ -274,13 +276,19 @@ const RootSnippetsCollectionMenu = ({
 }: {
   setPermissionsCollectionId: (id: CollectionId) => void;
 }) => {
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <Menu position="bottom-end">
       <Menu.Target>
         <Button
           w={24}
           h={24}
-          c="text-medium"
+          c="text-secondary"
           size="compact-xs"
           variant="subtle"
           leftSection={<FixedSizeIcon name="ellipsis" size={16} />}

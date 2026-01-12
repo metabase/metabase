@@ -47,7 +47,6 @@ export function TransformListItemMenu({ transform, workspaceId }: Props) {
       removeEditedTransform(transform.ref_id);
       removeOpenedTransform(transform.ref_id);
     } catch (error) {
-      console.error("Failed to remove transform:", error);
       sendErrorToast(t`Failed to remove transform from the workspace`);
     }
   };

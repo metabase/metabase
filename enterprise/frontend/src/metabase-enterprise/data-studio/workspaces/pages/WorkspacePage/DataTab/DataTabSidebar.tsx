@@ -48,7 +48,7 @@ export const DataTabSidebar = ({
         <Stack gap={0}>
           {tables.outputs.map((table, index: number) => {
             const workspaceTransform = workspaceTransforms.find(
-              (t) => t["ref_id"] === table.isolated.transform_id,
+              (t) => t.ref_id === table.isolated.transform_id,
             );
             const originalTransform = workspaceTransform?.global_id
               ? dbTransforms.find((t) => t.id === workspaceTransform.global_id)

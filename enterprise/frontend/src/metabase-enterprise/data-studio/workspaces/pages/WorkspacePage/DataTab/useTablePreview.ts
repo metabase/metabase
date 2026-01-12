@@ -5,7 +5,12 @@ import { skipToken, useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { DatabaseId, RawSeries, TableId } from "metabase-types/api";
+import type {
+  DatabaseId,
+  DatasetQuery,
+  RawSeries,
+  TableId,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 interface UseTableQuestionProps {
@@ -13,6 +18,7 @@ interface UseTableQuestionProps {
   tableId: TableId | null;
   metadata: Metadata;
   last_transform_run_time?: string | null;
+  query?: DatasetQuery;
 }
 
 interface UseTablePreviewResult {
@@ -28,6 +34,7 @@ export function useTablePreview({
   tableId,
   metadata,
   last_transform_run_time,
+  query,
 }: UseTableQuestionProps): UseTablePreviewResult {
   const metadataProvider =
     Object.keys(metadata.tables).length > 0
@@ -39,51 +46,56 @@ export function useTablePreview({
       ? Lib.tableOrCardMetadata(metadataProvider, tableId)
       : null;
 
-  const query =
+  const tableBasedQuery =
     table && metadataProvider
       ? Lib.queryFromTableOrCardMetadata(metadataProvider, table)
       : null;
+  const queryToFetch = query || tableBasedQuery;
 
   const { data, ...rest } = useGetAdhocQueryQuery(
-    query == null
+    queryToFetch == null
       ? skipToken
-      : {
-          ...Lib.toJsQuery(query),
-          ignore_error: true,
-          _refetchDeps: last_transform_run_time,
-        },
+      : query
+        ? query
+        : tableBasedQuery
+          ? {
+              ...Lib.toJsQuery(tableBasedQuery),
+              ignore_error: true,
+              _refetchDeps: last_transform_run_time,
+            }
+          : skipToken,
   );
+
   const base = {
     ...rest,
     error: rest.error ? getErrorMessage(rest.error) : undefined,
     rawSeries: undefined,
   };
 
-  const rawSeries = useMemo(
+  const rawSeries = useMemo<RawSeries>(
     () =>
-      query
+      queryToFetch != null && data
         ? [
             {
               card: createMockCard({
-                dataset_query: Lib.toJsQuery(query),
                 display: "table",
                 visualization_settings: {},
               }),
               data: {
-                ...data?.data,
-                rows: _.uniq(data?.data?.rows ?? []),
+                ...data.data,
+                rows: _.uniq(data.data.rows ?? []),
               },
             },
           ]
-        : ([] as RawSeries),
-    [data?.data, query],
+        : [],
+    [data, queryToFetch],
   );
 
   if (data?.status === "failed") {
     return { ...base, isError: true, error: getErrorMessage(data) };
   }
 
-  if (query == null || !data?.data || data.data.cols.length === 0) {
+  if (queryToFetch == null || !data?.data || data.data.cols.length === 0) {
     return base;
   }
 

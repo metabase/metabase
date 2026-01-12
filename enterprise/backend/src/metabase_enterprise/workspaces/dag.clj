@@ -25,6 +25,11 @@
 (defn- table-id->coord [id]
   (t2/select-one [:model/Table :id :schema [:name :table] [:db_id :db]] id))
 
+(defn- target->coord [{:keys [database schema name] :as _target}]
+  {:db     database
+   :schema schema
+   :table  name})
+
 (defn- global-parents
   "Dependencies analyzed by global hooks - may be incomplete. For example, excluding transforms that have not been run."
   [ws-id node-type id]
@@ -47,18 +52,32 @@
                                                       [:= :wt.workspace_id ws-id]
                                                       [:= :wt.global_id :to_entity_id]]}]]]}))
 
+;; Workaround for change in how Dependencies table works (inlining of transform dependencies)
+(defn- global-tx-parents
+  "Dependencies analyzed by global hooks - may be incomplete. For example, excluding transforms that have not been run."
+  [id]
+  ;; Note: from_entity_type is transformed to a keyword by the Dependency model
+  (mapv
+   (fn [{:keys [node-type id] :as node}]
+     (if (= :external-transform node-type)
+       {:node-type :table, :id (target->coord (t2/select-one-fn :target [:model/Transform :target] id))}
+       node))
+   (t2/select-fn-vec (fn [{id :to_entity_id entity-type :to_entity_type}]
+                       (case entity-type
+                         :card {:node-type :external-card, :id id}
+                         :table {:node-type :table, :id (table-id->coord id)}
+                         :transform {:node-type :external-transform, :id id}))
+                     [:model/Dependency :to_entity_type :to_entity_id]
+                     :from_entity_type "transform"
+                     :from_entity_id id)))
+
 (defn- ws-transform-parents [ws-id ref-id]
   ;; We assume there are no card dependencies yet
   (t2/select-fn-vec (fn [table-coord]
                       {:node-type :table, :id (t2.realize/realize table-coord)})
                     [:model/WorkspaceInput [:db_id :db] :schema :table [:table_id :id]]
                     :workspace_id ws-id
-                    :id [:in {:select [:to_entity_id]
-                              :from   [:workspace_dependency]
-                              :where  [:and
-                                       [:= "transform" :from_entity_type]
-                                       [:= ref-id :from_entity_id]
-                                       [:= "input" :to_entity_type]]}]))
+                    :ref_id ref-id))
 
 (defn- table-producers [ws-id id-or-coord]
   ;; Work with either logical co-ords or an id
@@ -83,7 +102,7 @@
 (defn- node-parents [ws-id {:keys [node-type id]}]
   (case node-type
     :workspace-transform (ws-transform-parents ws-id id)
-    :external-transform  (global-parents ws-id "transform" id)
+    :external-transform  (global-tx-parents id)
     :external-card       (global-parents ws-id "card" id)
     :table               (table-producers ws-id id)))
 
@@ -138,13 +157,13 @@
       ;; Finished walking all paths, render the result.
       (render-graph members cache deps fns)
       ;; Look-up from cache first
-      (let [_        (when (some #(not= 1 (val %)) (frequencies path))
-                       (throw (ex-info "Cycle detected" {:path path})))
-            head     (peek path)
-            node-parents* (:node-parents fns)
-            parents  (cache head (node-parents* head))
-            cache    (assoc cache head parents)
-            continue (when parents (remove members parents))]
+      (let [_          (when (some #(not= 1 (val %)) (frequencies path))
+                         (throw (ex-info "Cycle detected" {:path path})))
+            head       (peek path)
+            parents-fn (:node-parents fns)
+            parents    (cache head (parents-fn head))
+            cache      (assoc cache head parents)
+            continue   (when parents (remove members parents))]
         (if (not= parents continue)
           ;; At least one parent is in the enclosed subgraph, so this entire path is as well.
           (let [add-dep    (fn [deps [child parent]]

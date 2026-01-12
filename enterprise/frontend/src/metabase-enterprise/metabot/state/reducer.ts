@@ -4,7 +4,11 @@ import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
 import { uuid } from "metabase/lib/uuid";
-import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
+import type {
+  MetabotCodeEdit,
+  MetabotHistory,
+  SuggestedTransform,
+} from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
@@ -19,8 +23,10 @@ import {
 } from "./reducer-utils";
 import type {
   MetabotAgentChatMessage,
+  MetabotChatMessage,
   MetabotErrorMessage,
   MetabotSuggestedTransform,
+  MetabotToolCall,
   MetabotUserChatMessage,
 } from "./types";
 import { createMessageId } from "./utils";
@@ -205,7 +211,7 @@ export const metabot = createSlice({
       },
     ),
     // REACTIONS REDUCERS
-    setNavigateToPath: (state, action: PayloadAction<string>) => {
+    setNavigateToPath: (state, action: PayloadAction<string | null>) => {
       state.reactions.navigateToPath = action.payload;
     },
     addSuggestedTransform: (
@@ -259,38 +265,42 @@ export const metabot = createSlice({
     ) => {
       delete state.reactions.suggestedCodeEdits[action.payload];
     },
-    // TODO (Uladzimir 2025-12-19) -- check this makes sense (and merge went well)
     setConversationSnapshot: (
       state,
       action: PayloadAction<{
         messages: MetabotChatMessage[];
         history: MetabotHistory;
         state: any;
-        reactions: MetabotReactionsState;
+        suggestedTransforms: MetabotSuggestedTransform[];
         activeToolCalls: MetabotToolCall[];
         errorMessages: MetabotErrorMessage[];
         conversationId: string;
       }>,
     ) => {
+      const convo = state.conversations["omnibot"];
+      if (!convo) {
+        return;
+      }
+
       const {
         messages,
         history,
         state: snapshotState,
-        reactions,
+        suggestedTransforms,
         activeToolCalls,
         errorMessages,
         conversationId,
       } = action.payload;
 
-      state.messages = messages ?? [];
-      state.history = history ?? [];
-      state.state = snapshotState ?? {};
-      state.reactions =
-        reactions ?? ({ navigateToPath: null, suggestedTransforms: [] } as any);
-      state.activeToolCalls = activeToolCalls ?? [];
-      state.errorMessages = errorMessages ?? [];
-      state.conversationId = conversationId ?? uuid();
-      state.isProcessing = false;
+      convo.messages = castDraft(messages ?? []);
+      convo.history = history ?? [];
+      convo.state = snapshotState ?? {};
+      convo.activeToolCalls = activeToolCalls ?? [];
+      convo.errorMessages = errorMessages ?? [];
+      convo.conversationId = conversationId ?? uuid();
+      convo.isProcessing = false;
+
+      state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;
     },
   },
   extraReducers: (builder) => {

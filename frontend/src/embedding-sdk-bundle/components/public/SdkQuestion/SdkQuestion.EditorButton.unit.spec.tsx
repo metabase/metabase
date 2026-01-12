@@ -5,6 +5,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
@@ -16,6 +17,7 @@ import { QuestionNotebookButton } from "metabase/query_builder/components/view/V
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockColumn,
   createMockDatabase,
   createMockDataset,
@@ -74,6 +76,20 @@ const setup = ({
   setupTableEndpoints(TEST_TABLE);
 
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
+
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
+  });
 
   const clickSpy = jest.fn();
 

@@ -25,7 +25,8 @@ import type {
   UpdateWorkspaceTransformRequest,
   WorkspaceTransform,
 } from "metabase-types/api";
-import { useTransformValidation } from "../TransformTab";
+
+import { useTransformValidation } from "../useTransformValidation";
 
 type UpdateTargetModalProps = {
   transform: WorkspaceTransform;
@@ -90,11 +91,11 @@ function UpdateTargetForm({
     target: transform.target,
     workspaceId: transform.workspace_id,
   });
-  // console.log(transform);
 
-  const validationSchema = useMemo(() => EDIT_TRANSFORM_SCHEMA.shape(
-    validationSchemaExtension,
-  ), [validationSchemaExtension]);
+  const validationSchema = useMemo(
+    () => EDIT_TRANSFORM_SCHEMA.shape(validationSchemaExtension),
+    [validationSchemaExtension],
+  );
 
   const {
     data: database,

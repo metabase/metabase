@@ -1,54 +1,34 @@
 import { useDisclosure } from "@mantine/hooks";
-import { skipToken } from "@reduxjs/toolkit/query";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 
-import {
-  useLazyGetAdhocQueryQuery,
-  useListDatabaseSchemasQuery,
-} from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
-import {
-  useCreateWorkspaceTransformMutation,
-  useValidateTableNameMutation,
-  workspaceApi,
-} from "metabase-enterprise/api";
-import { idTag, listTag } from "metabase-enterprise/api/tags";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { RunStatus } from "metabase-enterprise/transforms/components/RunStatus";
-import {
-  CreateTransformModal,
-  type NewTransformValues,
-} from "metabase-enterprise/transforms/pages/NewTransformPage/CreateTransformModal/CreateTransformModal";
 import { isSameSource } from "metabase-enterprise/transforms/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
-  CreateWorkspaceTransformRequest,
   DatabaseId,
   DatasetQuery,
   DraftTransformSource,
-  ExternalTransform,
   Transform,
-  TransformTarget,
   WorkspaceId,
   WorkspaceTransform,
   WorkspaceTransformItem,
 } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
-import { SaveTransformButton } from "../SaveTransformButton";
+import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
-import type { EditedTransform, PreviewTab } from "../WorkspaceProvider";
+import type { EditedTransform, TableTab } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -61,7 +41,7 @@ interface Props {
   workspaceTransforms: WorkspaceTransformItem[];
   isDisabled: boolean;
   onChange: (patch: Partial<EditedTransform>) => void;
-  onOpenTransform: (transform: Transform | WorkspaceTransform) => void;
+  onSaveTransform: (transform: Transform | WorkspaceTransform) => void;
 }
 
 export const TransformTab = ({
@@ -72,16 +52,9 @@ export const TransformTab = ({
   workspaceTransforms,
   isDisabled,
   onChange,
-  onOpenTransform,
+  onSaveTransform,
 }: Props) => {
-  const {
-    updateTransformState,
-    removeUnsavedTransform,
-    removeOpenedTransform,
-    removeEditedTransform,
-    addOpenedTab,
-    updatePreviewTab,
-  } = useWorkspace();
+  const { updateTransformState, addOpenedTab } = useWorkspace();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const [
     isChangeTargetModalOpen,
@@ -103,43 +76,23 @@ export const TransformTab = ({
       transform: wsTransform,
     });
 
-  const [runAdhocQuery] = useLazyGetAdhocQueryQuery();
-  const abortRef = useRef<(() => void) | undefined>();
-
   const handleRunQueryStart = useCallback(
     async (query: DatasetQuery) => {
-      // abort previous query
-      abortRef.current?.();
+      const tableTabId = `table-${transform.id}`;
 
-      const previewTabId = `preview-${transform.id}`;
-
-      const previewTab: PreviewTab = {
-        id: previewTabId,
+      const tableTab: TableTab = {
+        id: tableTabId,
         name: t`Preview (${transform.name})`,
-        type: "preview",
-        dataset: null,
-        transformId: transform.id,
-        isLoading: true,
+        type: "table",
+        table: {
+          tableId: transform.id,
+          name: t`Preview (${transform.name})`,
+          query,
+        },
       };
-      addOpenedTab(previewTab, false);
-
-      const action = runAdhocQuery(query);
-      abortRef.current = action.abort;
-
-      const { data: dataset } = await action;
-      abortRef.current = undefined;
-
-      if (dataset) {
-        updatePreviewTab(previewTabId, dataset);
-      }
+      addOpenedTab(tableTab);
     },
-    [
-      transform.id,
-      transform.name,
-      addOpenedTab,
-      updatePreviewTab,
-      runAdhocQuery,
-    ],
+    [transform.id, transform.name, addOpenedTab],
   );
 
   const normalizeSource = useCallback(
@@ -182,118 +135,6 @@ export const TransformTab = ({
     (t) => "ref_id" in transform && t.ref_id === transform.ref_id,
   );
   const isEditable = !isDisabled;
-
-  const isCheckoutDisabled =
-    isExternalTransform(transform) &&
-    typeof transform.checkout_disabled === "string";
-
-  const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
-  const [_validateTableName] = useValidateTableNameMutation();
-  const [saveModalOpen, setSaveModalOpen] = useState(false);
-
-  const { data: fetchedSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId ? { id: databaseId, include_hidden: false } : skipToken,
-  );
-  const allowedSchemas = useMemo(
-    () =>
-      fetchedSchemas.filter((schema) => !schema.startsWith("mb__isolation")),
-    [fetchedSchemas],
-  );
-
-  const handleSave = async (values: NewTransformValues): Promise<Transform> => {
-    try {
-      const request: CreateWorkspaceTransformRequest & { id: WorkspaceId } =
-        values.incremental
-          ? {
-              id: workspaceId,
-              name: values.name,
-              description: null,
-              source: editedTransform.source,
-              target: {
-                type: "table-incremental" as const,
-                name: values.targetName,
-                schema: values.targetSchema,
-                database: databaseId,
-                "target-incremental-strategy": {
-                  type: "append" as const,
-                },
-              },
-            }
-          : {
-              id: workspaceId,
-              name: values.name,
-              description: null,
-              source: editedTransform.source,
-              target: {
-                type: "table" as const,
-                name: values.targetName,
-                schema: values.targetSchema,
-                database: databaseId,
-              },
-            };
-
-      const savedTransform = await createWorkspaceTransform(request).unwrap();
-
-      // Remove from unsaved transforms and refresh workspace
-      if ("id" in editedTransform && typeof editedTransform.id === "number") {
-        removeUnsavedTransform(editedTransform.id);
-      }
-
-      // Invalidate workspace transforms after creating new one
-      dispatch(
-        workspaceApi.util.invalidateTags([
-          idTag("workspace-transforms", workspaceId),
-          listTag("external-transforms"),
-        ]),
-      );
-
-      // Open the newly saved transform
-      onOpenTransform(savedTransform);
-
-      sendSuccessToast(t`Transform saved successfully`);
-      setSaveModalOpen(false);
-
-      return savedTransform;
-    } catch (error) {
-      sendErrorToast(t`Failed to save transform`);
-      throw error;
-    }
-  };
-
-  const handleSaveExternalTransform = async () => {
-    // Only applicable for global transforms (numeric IDs) that are not yet
-    // saved into the workspace.
-    if (typeof transform.id !== "number") {
-      return;
-    }
-
-    const savedTransform = await createWorkspaceTransform({
-      id: workspaceId,
-      global_id: transform.id,
-      name: editedTransform.name,
-      description: transform.description,
-      // Cast to TransformSource to satisfy the createWorkspaceTransform request.
-      source: editedTransform.source as DraftTransformSource,
-      target: transform.target,
-      tag_ids: transform.tag_ids,
-    }).unwrap();
-
-    removeEditedTransform(transform.id);
-    removeOpenedTransform(transform.id);
-    onOpenTransform(savedTransform);
-  };
-
-  const validationSchemaExtension = useTransformValidation({
-    databaseId,
-    target: transform.target,
-    workspaceId,
-  });
-  const initialCreateTransformValues = useMemo(
-    () => ({
-      name: transform.name,
-    }),
-    [transform.name],
-  );
 
   const handleSourceChange = (source: DraftTransformSource) => {
     onChange({ source });
@@ -370,35 +211,15 @@ export const TransformTab = ({
               />
             )}
 
-            {isSaved && (
-              <SaveTransformButton
-                databaseId={databaseId}
-                workspaceId={workspaceId}
-                editedTransform={editedTransform}
-                transform={transform}
-                isArchived={isDisabled}
-              />
-            )}
-
-            {!isSaved && transform.id < 0 && (
-              <Button
-                leftSection={<Icon name="check" />}
-                size="sm"
-                variant="filled"
-                disabled={isDisabled || !hasChanges}
-                onClick={() => setSaveModalOpen(true)}
-              >{t`Save`}</Button>
-            )}
-
-            {!isSaved && transform.id >= 0 && (
-              <Button
-                leftSection={<Icon name="check" />}
-                size="sm"
-                variant={hasChanges ? "filled" : "default"}
-                disabled={isDisabled || isCheckoutDisabled || !hasChanges}
-                onClick={handleSaveExternalTransform}
-              >{t`Save`}</Button>
-            )}
+            <SaveTransformButton
+              databaseId={databaseId}
+              workspaceId={workspaceId}
+              editedTransform={editedTransform}
+              transform={transform}
+              workspaceTransforms={workspaceTransforms}
+              isDisabled={isDisabled}
+              onSaveTransform={onSaveTransform}
+            />
           </Group>
         </Group>
 
@@ -440,114 +261,6 @@ export const TransformTab = ({
           onClose={closeChangeTargetModal}
         />
       )}
-      {saveModalOpen && (
-        <CreateTransformModal
-          source={editedTransform.source}
-          defaultValues={initialCreateTransformValues}
-          onClose={() => setSaveModalOpen(false)}
-          schemas={allowedSchemas}
-          showIncrementalSettings={true}
-          validationSchemaExtension={validationSchemaExtension}
-          validateOnMount
-          handleSubmit={handleSave}
-          targetDescription={t`This is the main table this transform owns. Runs from this workspace write to an isolated workspace copy, so the original table isn't changed until you merge the workspace.`}
-        />
-      )}
     </Stack>
   );
 };
-
-export const useTransformValidation = ({
-  databaseId,
-  target,
-  workspaceId,
-}: {
-  databaseId: DatabaseId;
-  target?: TransformTarget;
-  workspaceId: WorkspaceId;
-}) => {
-  const [validateTableName] = useValidateTableNameMutation();
-
-  const validateTableNameDebounceRef = useRef<{
-    timeoutId?: ReturnType<typeof setTimeout>;
-    pending?: { resolve: (message: string) => void };
-  }>({});
-
-  // I wasn't able to simplify this logic any further, but maybe a review would be nice.
-  // We wrap debounced validation call in a promise to properly set form state,
-  // and we need to handle pending state to prevent multiple validation calls.
-  const debouncedValidateTableName = useCallback(
-    ({ name, schema }: { name: string; schema?: string }) => {
-      const debounceState = validateTableNameDebounceRef.current;
-
-      if (debounceState.timeoutId) {
-        clearTimeout(debounceState.timeoutId);
-      }
-
-      debounceState.pending?.resolve("OK");
-      debounceState.pending = undefined;
-
-      return new Promise<string>((resolve) => {
-        const pending = { resolve };
-        debounceState.pending = pending;
-
-        debounceState.timeoutId = setTimeout(async () => {
-          debounceState.timeoutId = undefined;
-
-          let message: string;
-          try {
-            message = await validateTableName({
-              id: workspaceId,
-              db_id: databaseId,
-              target: { type: "table", name, schema: schema ?? null },
-            }).unwrap();
-          } catch (error) {
-            message = getErrorMessage(error);
-          }
-
-          if (debounceState.pending === pending) {
-            debounceState.pending = undefined;
-            resolve(message);
-          }
-        }, 300);
-      });
-    },
-    [databaseId, validateTableName, workspaceId],
-  );
-
-  const yupSchema = useMemo(
-    () => ({
-      targetName: Yup.string()
-        .required("Target table name is required")
-        .test(async (value, context) => {
-          if (!value) {
-            return context.createError({
-              message: "Target table name is required",
-            });
-          }
-
-          const schema = context.parent.targetSchema;
-
-          if (target && target.name === value && target.schema === schema) {
-            return true;
-          }
-
-          const message = await debouncedValidateTableName({
-            name: value,
-            schema,
-          });
-
-          return message === "OK" ? true : context.createError({ message });
-        }),
-    }),
-    [debouncedValidateTableName, target],
-  );
-
-  return yupSchema;
-};
-
-function isExternalTransform(
-  transform: Transform | ExternalTransform | WorkspaceTransform,
-): transform is ExternalTransform {
-  return "checkout_disabled" in transform;
-}

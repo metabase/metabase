@@ -579,6 +579,7 @@
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
+   "measure"           {:db-model :model/Measure            :alias :measure}
    "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
    "table"             {:db-model :model/Table              :alias :table}
    "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}

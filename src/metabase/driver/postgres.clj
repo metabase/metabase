@@ -90,6 +90,7 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
+                              :transforms/index-ddl     true
                               :metadata/table-existence-check true
                               :workspace                true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
@@ -160,8 +161,10 @@
 (defmethod driver/connection-properties :postgres
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 5432)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 5432)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options)
@@ -1289,7 +1292,9 @@
                {:name "Render" :pattern "\\.render\\.com$"}
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
-               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]
+   :field-groups [{:id "host-and-port"
+                   :container-style "host-and-port-section"}]})
 
 ;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
 
@@ -1355,13 +1360,20 @@
 
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
-  (let [username (-> workspace :database_details :user)
-        sqls     (cons
-                  (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" (:schema workspace) username)
-                  (for [{s :schema, t :name} tables]
-                    (if (str/blank? s)
-                      (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
-                      (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
+  (let [username       (-> workspace :database_details :user)
+        ;; Collect all unique source schemas that contain the tables we need to grant access to
+        source-schemas (into #{} (keep :schema) tables)
+        ;; Grant USAGE on source schemas, then SELECT on each table
+        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
+        sqls           (concat
+                        ;; USAGE on each source schema containing tables we're granting access to
+                        (for [s source-schemas]
+                          (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\"" s username))
+                        ;; SELECT on each table
+                        (for [{s :schema, t :name} tables]
+                          (if (str/blank? s)
+                            (format "GRANT SELECT ON TABLE \"%s\" TO \"%s\"" t username)
+                            (format "GRANT SELECT ON TABLE \"%s\".\"%s\" TO \"%s\"" s t username))))]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]

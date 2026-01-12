@@ -234,7 +234,7 @@ function EntityItemMenu({
         action: onDeletePermanently,
         color: "danger",
         hoverColor: "danger",
-        hoverBgColor: "bg-error",
+        hoverBgColor: "background-error",
       });
     }
 

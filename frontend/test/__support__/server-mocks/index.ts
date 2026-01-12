@@ -27,6 +27,7 @@ export * from "./group";
 export * from "./impersonation";
 export * from "./library";
 export * from "./logger";
+export * from "./measure";
 export * from "./model-indexes";
 export * from "./native-query-snippet";
 export * from "./performance";

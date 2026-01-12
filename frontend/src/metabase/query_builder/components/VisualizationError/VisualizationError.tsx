@@ -114,7 +114,7 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = String(error);
+    let processedError = typeof error === "string" ? error : error.data;
     const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
     if (typeof origSql === "string") {
       processedError = adjustPositions(error, origSql);
@@ -146,8 +146,8 @@ export function VisualizationError({
             )}
             {!isResultDirty && (
               <PLUGIN_AI_SQL_FIXER.FixSqlQueryButton
-                rawSql={rawSql ?? undefined}
-                errorMessage={processedError ?? undefined}
+                rawSql={rawSql}
+                errorMessage={processedError}
               />
             )}
           </Flex>

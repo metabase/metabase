@@ -101,8 +101,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
           <Route component={DataModelV1}>
             <Route path="segments" component={SegmentListApp} />
-            <Route path="segment/create" component={SegmentApp} />
-            <Route path="segment/:id" component={SegmentApp} />
+            <Route path="segment/create" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
+            <Route path="segment/:id" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
             <Route
               path="segment/:id/revisions"
               component={RevisionHistoryApp}
@@ -127,6 +131,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           <Route path="groups" title={t`Groups`}>
             <IndexRoute component={GroupsListingApp} />
             <Route path=":groupId" component={GroupDetailApp} />
+          </Route>
+
+          {/* Tenants */}
+          <Route path="tenants" component={createTenantsRouteGuard()}>
+            {PLUGIN_TENANTS.tenantsRoutes}
           </Route>
 
           <Route path="" component={PeopleListingApp}>
@@ -213,11 +222,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
-      </Route>
-
-      {/* Tenants */}
-      <Route path="tenants" component={createTenantsRouteGuard()}>
-        {PLUGIN_TENANTS.tenantsRoutes}
       </Route>
 
       {/* PERFORMANCE */}

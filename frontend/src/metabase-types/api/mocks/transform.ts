@@ -67,14 +67,14 @@ export function createMockTransformTarget(
 export function createMockTransform(opts?: Partial<Transform>): Transform {
   const source = opts?.source ?? createMockTransformSource();
 
-  // Determine source_type based on source
-  let sourceType: "native" | "python" | "mbql";
-  if (source.type === "python") {
-    sourceType = "python";
-  } else if (source.type === "query" && "query" in source) {
-    sourceType = "native";
-  } else {
-    sourceType = "mbql";
+  function getSourceType() {
+    if (source.type === "python") {
+      return "python";
+    } else if (source.type === "query" && "query" in source) {
+      return "native";
+    }
+
+    return "mbql";
   }
 
   return {
@@ -82,7 +82,7 @@ export function createMockTransform(opts?: Partial<Transform>): Transform {
     name: "Transform",
     description: null,
     source: createMockTransformSource(),
-    source_type: opts?.source_type ?? sourceType,
+    source_type: opts?.source_type ?? getSourceType(),
     target: opts?.target ?? createMockTransformTarget(),
     collection_id: null,
     created_at: "2000-01-01T00:00:00Z",

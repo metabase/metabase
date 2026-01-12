@@ -53,6 +53,7 @@
                               :test/jvm-timezone-setting        false
                               :transforms/python                true
                               :transforms/table                 true
+                              :transforms/index-ddl             false
                               :uuid-type                        false
                               :workspace                        true}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))

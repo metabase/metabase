@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { useSetting } from "metabase/common/hooks";
 import { ParameterFieldWidgetValue } from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -22,14 +23,12 @@ import type {
   ParameterValue,
   RowValue,
 } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 
 export type FormattedParameterValueProps = {
   parameter: UiParameter;
   value: string | number | number[] | ParameterValue;
   cardId?: CardId;
   dashboardId?: DashboardId;
-  token?: EntityToken | null;
   placeholder?: string;
   isPopoverOpen?: boolean;
   dataTestId?: string;
@@ -40,10 +39,11 @@ function FormattedParameterValue({
   value,
   cardId,
   dashboardId,
-  token,
   placeholder,
   isPopoverOpen = false,
 }: FormattedParameterValueProps) {
+  const formattingSettings = useSetting("custom-formatting");
+
   if (parameterHasNoDisplayValue(value)) {
     return placeholder;
   }
@@ -72,17 +72,22 @@ function FormattedParameterValue({
           parameter={parameter}
           cardId={cardId}
           dashboardId={dashboardId}
-          token={token}
           displayValue={label}
         />
       );
     }
 
     if (label) {
-      return <span>{formatParameterValue(label, parameter)}</span>;
+      return (
+        <span>
+          {formatParameterValue(label, parameter, formattingSettings)}
+        </span>
+      );
     }
 
-    return <span>{formatParameterValue(value, parameter)}</span>;
+    return (
+      <span>{formatParameterValue(value, parameter, formattingSettings)}</span>
+    );
   };
 
   if (isStringParameter(parameter)) {

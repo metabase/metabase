@@ -77,7 +77,6 @@ import type {
   TimelineEvent,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { EntityToken } from "metabase-types/api/entity";
 import type { Dispatch, State } from "metabase-types/store";
 
 import { EmptyVizState } from "../EmptyVizState";
@@ -164,8 +163,6 @@ type VisualizationOwnProps = {
   style?: CSSProperties;
   timelineEvents?: TimelineEvent[];
   tc?: ContentTranslationFunction;
-  uuid?: string;
-  token?: EntityToken;
   zoomedRowIndex?: number;
   onOpenChartSettings?: (data: {
     initialChartSettings: { section: string };
@@ -687,9 +684,7 @@ class Visualization extends PureComponent<
       style,
       tableHeaderHeight,
       timelineEvents,
-      token,
       totalNumGridCols,
-      uuid,
       width: rawWidth,
       onDeselectTimelineEvents,
       onOpenChartSettings,
@@ -949,8 +944,6 @@ class Visualization extends PureComponent<
                     totalNumGridCols={totalNumGridCols}
                     visualizationIsClickable={this.visualizationIsClickable}
                     width={rawWidth}
-                    uuid={uuid}
-                    token={token}
                     zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={
