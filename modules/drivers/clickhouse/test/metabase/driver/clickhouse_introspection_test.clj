@@ -448,7 +448,6 @@
                                 :database-type "Int32",
                                 :base-type :type/Integer,
                                 :database-required true
-                                :pk? true
                                 :database-position 0})
                         (merge base-field
                                {:name "idx"

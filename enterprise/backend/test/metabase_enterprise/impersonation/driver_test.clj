@@ -806,7 +806,7 @@
 
 (deftest clickhouse-double-hyphen-test
   (testing "can use impersonation on clickhouse with role containing a double hyphen (#57016)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+    (mt/test-driver :clickhouse
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a "role--with--double--hyphens"]
