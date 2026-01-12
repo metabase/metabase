@@ -182,11 +182,16 @@ export const NativeQueryEditor = forwardRef<
   const [isSelectedTextPopoverOpen, setSelectedTextPopoverOpen] =
     useState(false);
 
+  // do not show reference sidebar on small screens automatically
+  const screenSize = useNotebookScreenSize();
+  const shouldOpenDataReference = screenSize !== "small";
+
   useMount(() => {
     setIsNativeEditorOpen?.(
       typeof isInitiallyOpen !== "undefined"
         ? isInitiallyOpen
         : question?.isSaved(),
+      shouldOpenDataReference,
     );
   });
 
@@ -226,10 +231,6 @@ export const NativeQueryEditor = forwardRef<
     }
     editorRef.current?.focus();
   }, [readOnly]);
-
-  // do not show reference sidebar on small screens automatically
-  const screenSize = useNotebookScreenSize();
-  const shouldOpenDataReference = screenSize !== "small";
 
   const toggleEditor = useCallback(() => {
     setIsNativeEditorOpen?.(!isNativeEditorOpen, shouldOpenDataReference);

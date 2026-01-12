@@ -20,7 +20,6 @@ import {
   getNativeEditorSelectedText,
   getQuestion,
   getSnippetCollectionId,
-  getUiControls,
 } from "../selectors";
 
 import { updateQuestion } from "./core/updateQuestion";
@@ -96,15 +95,18 @@ export const SET_IS_NATIVE_EDITOR_OPEN =
   "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN";
 export const setIsNativeEditorOpen = createThunkAction(
   SET_IS_NATIVE_EDITOR_OPEN,
-  (isNativeEditorOpen: boolean, openDataReference?: boolean) =>
-    (dispatch, getState) => {
-      const uiControls = getUiControls(getState());
-      const isShowingDataReference =
-        typeof openDataReference === "undefined"
-          ? uiControls.isShowingDataReference
-          : openDataReference;
-
-      dispatch(setUIControls({ isNativeEditorOpen, isShowingDataReference }));
+  (isNativeEditorOpen: boolean, toggleDataReference?: boolean) =>
+    (dispatch) => {
+      if (toggleDataReference) {
+        dispatch(
+          setUIControls({
+            isNativeEditorOpen,
+            isShowingDataReference: isNativeEditorOpen,
+          }),
+        );
+      } else {
+        dispatch(setUIControls({ isNativeEditorOpen }));
+      }
     },
 );
 
