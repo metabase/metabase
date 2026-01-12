@@ -423,10 +423,7 @@
   [ws-id min-version]
   (t2/select-one [:model/WorkspaceGraph :graph [:graph_version :version]]
                  :workspace_id ws-id
-                 {:where    [:in :workspace_graph.graph_version
-                             {:select [:woe.graph_version]
-                              :from   [[:workspace_output_external :woe]]
-                              :where  [:>= :woe.graph_version min-version]}]
+                 {:where    [:>= :workspace_graph.graph_version min-version]
                   :order-by [[:workspace_graph.graph_version :desc]]
                   :limit    1}))
 
