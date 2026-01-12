@@ -152,6 +152,26 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "DELETE",
         url: `/api/ee/workspace/${id}`,
       }),
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          workspaceApi.util.updateQueryData(
+            "getWorkspaces",
+            undefined,
+            (draft) => {
+              const idx = draft.items.findIndex((w) => w.id === id);
+              if (idx !== -1) {
+                draft.items.splice(idx, 1);
+              }
+            },
+          ),
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("workspace"), tag("transform")]),
     }),
