@@ -298,9 +298,8 @@
   "Returns all transforms associated with the given tag IDs."
   [tag-ids]
   (when (seq tag-ids)
-    (t2/select [:model/TransformTransformTag :transform_id :tag_id :position]
-               :tag_id [:in tag-ids]
-               {:order-by [[:position :asc]]})))
+    (t2/select :model/Transform :id [:in (t2/select-fn-set :transform_id [:model/TransformTransformTag :transform_id]
+                                                           :tag_id [:in  tag-ids])])))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 
