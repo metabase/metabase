@@ -4,6 +4,7 @@ import { type PropsWithChildren, forwardRef } from "react";
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { Flex } from "metabase/ui";
 
 export const SdkDashboardStyledWrapper = forwardRef(
@@ -18,7 +19,9 @@ export const SdkDashboardStyledWrapper = forwardRef(
         align="stretch"
         className={cx(className, CS.overflowAuto)}
         style={{
-          minHeight: "100%",
+          minHeight: isEmbeddingEajs()
+            ? "100%" // to respect grid-template-columns styles in SdkIframeEmbedRoute
+            : "100vh",
           backgroundColor: "var(--mb-color-bg-dashboard)",
           ...style,
         }}
