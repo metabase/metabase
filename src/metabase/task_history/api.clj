@@ -6,8 +6,11 @@
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
    [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -57,3 +60,139 @@
   [] :- [:vector string?]
   (perms/check-has-application-permission :monitoring)
   (task-history/unique-tasks))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Task Runs endpoints                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(mr/def ::RunFilterParams
+  [:map
+   [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
+   [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
+   [:entity-id   {:optional true} ms/PositiveInt]
+   [:status      {:optional true} [:enum "started" "success" "failed"]]])
+
+(mr/def ::TaskRun
+  [:map
+   [:id          ms/PositiveInt]
+   [:run_type    (into [:enum] (map name task-run/run-types))]
+   [:entity_type (into [:enum] (map name task-run/entity-types))]
+   [:entity_id   ms/PositiveInt]
+   [:started_at  :any]
+   [:ended_at    [:maybe :any]]
+   [:status      [:enum "started" "success" "failed"]]
+   [:entity_name {:optional true} [:maybe :string]]
+   [:task_count  {:optional true} :int]
+   [:success_count {:optional true} :int]
+   [:failed_count {:optional true} :int]])
+
+(mr/def ::TaskRunsResponse
+  [:map
+   [:total  ms/IntGreaterThanOrEqualToZero]
+   [:limit  ms/PositiveInt]
+   [:offset ms/IntGreaterThanOrEqualToZero]
+   [:data   [:sequential ::TaskRun]]])
+
+(mr/def ::TaskHistory
+  [:map
+   [:id           ms/PositiveInt]
+   [:task         :string]
+   [:started_at   :any]
+   [:ended_at     [:maybe :any]]
+   [:duration     [:maybe :int]]
+   [:status       [:enum "started" "success" "failed" "unknown"]]
+   [:task_details {:optional true} [:maybe :map]]
+   [:run_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:logs         {:optional true} [:maybe :any]]])
+
+(mr/def ::TaskRunWithTasks
+  [:merge ::TaskRun
+   [:map
+    [:tasks [:sequential ::TaskHistory]]]])
+
+(mr/def ::RunEntity
+  [:map
+   [:entity_type (into [:enum] (map name task-run/entity-types))]
+   [:entity_id   ms/PositiveInt]
+   [:entity_name {:optional true} [:maybe :string]]])
+
+(defn- hydrate-entity-names
+  "Hydrate entity names based on entity_type and entity_id."
+  [runs]
+  (let [grouped (group-by :entity_type runs)]
+    (concat
+     (when-let [db-runs (seq (grouped :database))]
+       (let [ids   (map :entity_id db-runs)
+             names (t2/select-pk->fn :name :model/Database :id [:in ids])]
+         (map #(assoc % :entity_name (get names (:entity_id %))) db-runs)))
+     (when-let [card-runs (seq (grouped :card))]
+       (let [ids   (map :entity_id card-runs)
+             names (t2/select-pk->fn :name :model/Card :id [:in ids])]
+         (map #(assoc % :entity_name (get names (:entity_id %))) card-runs)))
+     (when-let [dash-runs (seq (grouped :dashboard))]
+       (let [ids   (map :entity_id dash-runs)
+             names (t2/select-pk->fn :name :model/Dashboard :id [:in ids])]
+         (map #(assoc % :entity_name (get names (:entity_id %))) dash-runs))))))
+
+(defn- hydrate-task-counts
+  "Add task_count, success_count, failed_count to runs."
+  [runs]
+  (if (empty? runs)
+    runs
+    (let [run-ids      (map :id runs)
+          counts       (t2/query {:select   [:run_id
+                                             [[:count :id] :task_count]
+                                             [[:raw "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END)"] :success_count]
+                                             [[:raw "SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)"] :failed_count]]
+                                  :from     :task_history
+                                  :where    [:in :run_id run-ids]
+                                  :group-by [:run_id]})
+          counts-by-id (into {} (map (juxt :run_id identity) counts))]
+      (map #(merge {:task_count 0 :success_count 0 :failed_count 0}
+                   %
+                   (get counts-by-id (:id %)))
+           runs))))
+
+(defn- build-run-where-clause
+  [{:keys [run-type entity-type entity-id status]}]
+  (cond-> {}
+    run-type    (assoc :run_type run-type)
+    entity-type (assoc :entity_type entity-type)
+    entity-id   (assoc :entity_id entity-id)
+    status      (assoc :status status)))
+
+(api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
+  "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
+  [_
+   params :- [:maybe ::RunFilterParams]]
+  (perms/check-has-application-permission :monitoring)
+  (let [where-clause (build-run-where-clause params)
+        runs         (t2/select :model/TaskRun (merge where-clause
+                                                      {:order-by [[:started_at :desc]]
+                                                       :limit    (request/limit)
+                                                       :offset   (request/offset)}))]
+    {:total  (t2/count :model/TaskRun where-clause)
+     :limit  (request/limit)
+     :offset (request/offset)
+     :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
+
+(api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
+  "Get a single task run with all its child tasks."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (perms/check-has-application-permission :monitoring)
+  (let [run   (api/check-404 (t2/select-one :model/TaskRun :id id))
+        tasks (t2/select :model/TaskHistory :run_id id {:order-by [[:started_at :asc]]})]
+    (-> [run]
+        hydrate-entity-names
+        first
+        (assoc :tasks tasks))))
+
+(api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
+  "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
+  [_
+   params :- [:map [:run-type (into [:enum] (map name task-run/run-types))]]]
+  (perms/check-has-application-permission :monitoring)
+  (-> (t2/query {:select-distinct [:entity_type :entity_id]
+                 :from            :task_run
+                 :where           [:= :run_type (:run-type params)]})
+      hydrate-entity-names))
