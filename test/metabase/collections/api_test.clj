@@ -7,6 +7,7 @@
    [metabase.collections.api :as api.collection]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
+   [metabase.collections.settings :as collections.settings]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -1108,6 +1109,65 @@
                   collection-item (first (filter #(= (:id %) subcoll-id) items))]
               (is (not (contains? dashboard-item :can_run_adhoc_query)))
               (is (not (contains? collection-item :can_run_adhoc_query))))))))))
+
+(deftest can-run-adhoc-query-threshold-exceeded-test
+  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
+    (testing "When card count exceeds threshold, can_run_adhoc_query returns true (skips permission check)"
+      (let [card-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
+            (mt/with-temporary-setting-values [collections.settings/can-run-adhoc-query-check-threshold 2]
+              (let [items (:data (mt/user-http-request :rasta :get 200
+                                                       (str "collection/" collection-id "/items")
+                                                       :include_can_run_adhoc_query true))]
+                ;; With 3 cards and threshold of 2, all cards should have can_run_adhoc_query=true
+                ;; even though user doesn't have data permissions (computation was skipped)
+                (is (= 3 (count items)))
+                (is (every? #(true? (:can_run_adhoc_query %)) items))))))))))
+
+(deftest can-run-adhoc-query-threshold-not-exceeded-test
+  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
+    (testing "When card count is at or below threshold, normal hydration occurs (returns false without perms)"
+      (let [card-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
+            (mt/with-temporary-setting-values [collections.settings/can-run-adhoc-query-check-threshold 5]
+              (let [items (:data (mt/user-http-request :rasta :get 200
+                                                       (str "collection/" collection-id "/items")
+                                                       :include_can_run_adhoc_query true))]
+                ;; With 2 cards and threshold of 5, actual permission check occurs
+                ;; User doesn't have data permissions, so all should be false
+                (is (= 2 (count items)))
+                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
+
+(deftest can-run-adhoc-query-threshold-disabled-test
+  (testing "GET /api/collection/:id/items with include_can_run_adhoc_query=true"
+    (testing "When threshold is 0, always compute permissions regardless of card count"
+      (let [card-query {:database (mt/id)
+                        :type     :query
+                        :query    {:source-table (mt/id :venues)}}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}
+                         :model/Card _ {:collection_id collection-id :dataset_query card-query}]
+            (mt/with-temporary-setting-values [collections.settings/can-run-adhoc-query-check-threshold 0]
+              (let [items (:data (mt/user-http-request :rasta :get 200
+                                                       (str "collection/" collection-id "/items")
+                                                       :include_can_run_adhoc_query true))]
+                ;; With threshold of 0, hydration should always occur
+                ;; User doesn't have data permissions, so all should be false
+                (is (= 3 (count items)))
+                (is (every? #(false? (:can_run_adhoc_query %)) items))))))))))
 
 (deftest collection-items-include-datasets-test
   (testing "GET /api/collection/:id/items"
