@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type MouseEvent, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
@@ -35,12 +36,14 @@ type TagMultiSelectProps = {
   tagIds: TransformTagId[];
   onChange: (tagIds: TransformTagId[], undoable?: boolean) => void;
   disabled?: boolean;
+  requireTransformWriteAccess?: boolean;
 };
 
 export function TagMultiSelect({
   tagIds,
   onChange,
   disabled,
+  requireTransformWriteAccess,
 }: TagMultiSelectProps) {
   const { transformsDatabases } = useTransformPermissions();
   const { data: transforms = [] } = useListTransformsQuery({});
@@ -124,7 +127,11 @@ export function TagMultiSelect({
       <MultiSelect
         classNames={{ option: S.option }}
         value={tagIds.map(getValue)}
-        data={getOptions(tags, tagReadOnlyMap, trimmedSearchValue)}
+        data={getOptions(
+          tags,
+          requireTransformWriteAccess ? tagReadOnlyMap : {},
+          trimmedSearchValue,
+        )}
         disabled={disabled}
         placeholder={t`Add tags`}
         searchValue={searchValue}
@@ -150,7 +157,11 @@ export function TagMultiSelect({
               selected={item.checked}
               onUpdateClick={handleUpdateClick}
               onDeleteClick={handleDeleteClick}
-              readOnly={tagReadOnlyMap[+item.option.value]}
+              editable={!tagReadOnlyMap[getTagId(item.option.value)]}
+              selectable={
+                !requireTransformWriteAccess ||
+                !tagReadOnlyMap[getTagId(item.option.value)]
+              }
             />
           )
         }
@@ -203,15 +214,17 @@ function NewTagSelectItem({
 
 type ExistingTagSelectItemProps = SelectItemProps & {
   tag: TransformTag;
-  readOnly?: boolean;
+  editable?: boolean;
+  selectable?: boolean;
   onUpdateClick: (tag: TransformTag) => void;
   onDeleteClick: (tag: TransformTag) => void;
 };
 
 function ExistingTagSelectItem({
   tag,
+  editable,
+  selectable,
   selected,
-  readOnly,
   onUpdateClick,
   onDeleteClick,
 }: ExistingTagSelectItemProps) {
@@ -228,11 +241,17 @@ function ExistingTagSelectItem({
   };
 
   return (
-    <SelectItem className={S.selectItem} selected={selected} py="xs">
+    <SelectItem
+      className={cx(S.selectItem, { [S.editable]: editable })}
+      selected={selected}
+      py="xs"
+    >
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
-        {readOnly && (
-          <Tooltip label={t`You don't have permission to run this tag`}>
+        {!selectable && (
+          <Tooltip
+            label={t`This tag contains a transform you don't have permission to run.`}
+          >
             <Icon name="lock_filled" size={14} ml="xs" />
           </Tooltip>
         )}

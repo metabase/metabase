@@ -23,6 +23,7 @@ export function TagSection({ job, readOnly, onTagsChange }: TagSectionProps) {
         <TagMultiSelect
           tagIds={job.tag_ids ?? []}
           disabled={readOnly}
+          requireTransformWriteAccess
           onChange={onTagsChange}
         />
       </Box>

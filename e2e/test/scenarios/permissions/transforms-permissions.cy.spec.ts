@@ -1,5 +1,9 @@
 const { H } = cy;
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -167,6 +171,74 @@ describe(
           H.DataStudio.Transforms.header()
             .findByDisplayValue("Admin Created Transform")
             .should("be.visible");
+        });
+      });
+    });
+
+    describe("transforms with partial access", () => {
+      beforeEach(() => {
+        cy.log(
+          "Grant transforms permission only on Sample Database, not on Writable Postgres",
+        );
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": DataPermissionValue.UNRESTRICTED,
+              "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+              transforms: DataPermissionValue.YES,
+            },
+            [WRITABLE_DB_ID]: {
+              "view-data": DataPermissionValue.UNRESTRICTED,
+              "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
+              transforms: DataPermissionValue.NO,
+            },
+          },
+        });
+      });
+
+      it("should prevent users from selecting sources in mini picker and entity picker that they lack the transform permission for", () => {
+        cy.signInAsNormalUser();
+        cy.visit("/data-studio/transforms");
+
+        cy.button("Create a transform").click();
+        H.popover().findByText("Query builder").click();
+
+        cy.log(
+          "Writable Postgres should not be present in mini-picker when user lacks transform permission for it",
+        );
+        H.miniPicker()
+          .findByText(/Writable Postgres/)
+          .should("not.exist");
+        H.miniPickerBrowseAll().click();
+
+        cy.log(
+          "Writable Postgres should be disabled in full data picker when user lacks transform permission for it",
+        );
+        H.entityPickerModalItem(0, "Databases").click();
+        cy.findAllByTestId("picker-item")
+          .contains(/Writable Postgres/)
+          .should("have.attr", "data-disabled", "true");
+      });
+
+      it("should display transform in read-only mode when user lacks transform permission for its data source", () => {
+        cy.signInAsAdmin();
+        H.createAndRunMbqlTransform({
+          sourceTable: SOURCE_TABLE,
+          targetTable: TARGET_TABLE,
+          targetSchema: TARGET_SCHEMA,
+          name: "Read Only Transform",
+        }).then(({ transformId }) => {
+          cy.signInAsNormalUser();
+          H.visitTransform(transformId);
+
+          cy.log(
+            "User can view the transform but cannot edit it because they lack transform permission for Writable Postgres",
+          );
+          cy.findByTestId("data-step-cell").contains("Animals");
+          H.DataStudio.Transforms.header()
+            .findByDisplayValue("Read Only Transform")
+            .should("be.disabled");
+          H.DataStudio.Transforms.editDefinition().should("not.exist");
         });
       });
     });
