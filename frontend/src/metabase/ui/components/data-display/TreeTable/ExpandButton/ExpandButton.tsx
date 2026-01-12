@@ -45,7 +45,6 @@ export const ExpandButton = memo(function ExpandButton({
       tabIndex={-1}
     >
       <Icon
-        c="text-dark"
         className={cx(S.icon, { [S.iconExpanded]: isExpanded })}
         name="chevronright"
         size={10}

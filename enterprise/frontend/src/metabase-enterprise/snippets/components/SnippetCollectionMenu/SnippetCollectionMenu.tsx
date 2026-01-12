@@ -70,7 +70,7 @@ export function SnippetCollectionMenu({
             openDelay={1000}
           >
             <ActionIcon aria-label={optionsLabel} size="md">
-              <FixedSizeIcon name="ellipsis" size={16} c="text-medium" />
+              <FixedSizeIcon name="ellipsis" size={16} />
             </ActionIcon>
           </Tooltip>
         </Menu.Target>
