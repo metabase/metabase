@@ -1,4 +1,3 @@
-import Color from "color";
 import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
@@ -66,11 +65,18 @@ export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   if (dimensionValue == null) {
     return NULL_DISPLAY_VALUE;
+  } else if (typeof dimensionValue === "object") {
+    return JSON.stringify(dimensionValue);
   }
   return String(dimensionValue);
 }
 
 export function getValueFromDimensionKey(key: string) {
+  // try {
+  //   return JSON.parse(key);
+  // } catch (error) {
+  //   return key === NULL_DISPLAY_VALUE ? null : key;
+  // }
   return key === NULL_DISPLAY_VALUE ? null : key;
 }
 
@@ -83,7 +89,7 @@ export function getAggregatedRows(
 ) {
   const dimensionToMetricValues = new Map<string, number>();
   rows.forEach((row) => {
-    const dimensionValue = String(row[dimensionIndex]);
+    const dimensionValue = getKeyFromDimensionValue(row[dimensionIndex]);
     const metricValue = getNumberOr(row[metricIndex], 0);
 
     const existingMetricValue =
@@ -99,7 +105,7 @@ export function getAggregatedRows(
   const seenDimensionValues = new Set<string>();
 
   rows.forEach((row) => {
-    const dimensionValue = String(row[dimensionIndex]);
+    const dimensionValue = getKeyFromDimensionValue(row[dimensionIndex]);
     if (seenDimensionValues.has(dimensionValue)) {
       return;
     }
@@ -166,17 +172,28 @@ export function getColors(
     metricIndex,
   );
 
-  const dimensionValues = sortedRows.map((r) => String(r[dimensionIndex]));
-
-  // Sometimes viz settings are malformed and "pie.colors" does not
-  // contain a key for the current dimension value, so we need to compute
-  // defaults to ensure every key has a color.
-  const defaultColors = getColorsForValues(
-    dimensionValues,
-    currentSettings["pie.colors"],
+  const dimensionValues = sortedRows.map((r) =>
+    getKeyFromDimensionValue(r[dimensionIndex]),
   );
 
-  return { ...defaultColors, ...currentSettings["pie.colors"] };
+  // `pie.colors` is a legacy setting used by old questions for their
+  // colors. We'll still read it to preserve those color selections, but
+  // will no longer write values to it, instead storing colors in `pie.rows`.
+
+  // Historically we used String(dimensionValue) in the `pie.colors` setting instead of `getKeyFromDimensionValue`
+  // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DISPLAY_VALUE
+
+  let existingColorMapping;
+  if (currentSettings["pie.colors"]) {
+    existingColorMapping = Object.fromEntries(
+      Object.entries(currentSettings["pie.colors"]).map(([key, value]) => [
+        key === "null" || key === "undefined" ? NULL_DISPLAY_VALUE : key,
+        value,
+      ]),
+    );
+  }
+
+  return getColorsForValues(dimensionValues, existingColorMapping);
 }
 
 export function getPieRows(
@@ -190,31 +207,6 @@ export function getPieRows(
     },
   ] = rawSeries;
 
-  const untranslatedKeysToTranslatedKeys = new Map<string, string>();
-  if (untranslatedRows) {
-    untranslatedRows.forEach((row, i) => {
-      const untranslatedValue = row[0];
-      const translatedValue = dataRows[i][0];
-
-      if (
-        typeof untranslatedValue === "string" &&
-        typeof translatedValue === "string"
-      ) {
-        untranslatedKeysToTranslatedKeys.set(
-          untranslatedValue,
-          translatedValue,
-        );
-      }
-    });
-  } else {
-    dataRows.forEach((row) => {
-      if (typeof row[0] !== "string") {
-        return;
-      }
-      untranslatedKeysToTranslatedKeys.set(row[0], row[0]);
-    });
-  }
-
   if (!settings["pie.metric"] || !settings["pie.dimension"]) {
     return [];
   }
@@ -224,6 +216,16 @@ export function getPieRows(
     settings["pie.sort_rows_dimension"] !== settings["pie.dimension"];
 
   const { metricDesc, dimensionDesc } = getPieColumns(rawSeries, settings);
+
+  const untranslatedKeysToTranslatedKeys = new Map<string, string>();
+  if (untranslatedRows) {
+    untranslatedRows.forEach((row, i) => {
+      untranslatedKeysToTranslatedKeys.set(
+        getKeyFromDimensionValue(row[dimensionDesc.index]),
+        getKeyFromDimensionValue(dataRows[i][dimensionDesc.index]),
+      );
+    });
+  }
 
   const getColumnSettings = settings["column"];
   if (!getColumnSettings) {
@@ -240,14 +242,7 @@ export function getPieRows(
     return formatter(value, dimensionColSettings);
   };
 
-  let colors = getColors(rawSeries, settings);
-  // `pie.colors` is a legacy setting used by old questions for their
-  // colors. We'll still read it to preserve those color selections, but
-  // will no longer write values to it, instead storing colors here in
-  // `pie.rows`.
-  if (settings["pie.colors"] != null) {
-    colors = { ...colors, ...settings["pie.colors"] };
-  }
+  const colors = getColors(rawSeries, settings);
 
   const currentDataRows = getAggregatedRows(
     dataRows,
@@ -291,10 +286,7 @@ export function getPieRows(
     newPieRows = sortedCurrentDataRows.map((dataRow) => {
       const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
-      // Historically we have used the dimension value in the `pie.colors`
-      // setting instead of the key computed above. For compatibility with
-      // existing questions we will continue to use the dimension value.
-      const color = getHexColor(colors[String(dimensionValue)]);
+      const color = getHexColor(colors[key]);
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
@@ -351,8 +343,8 @@ export function getPieRows(
       ...sortedAddedRows.map((addedDataRow) => {
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
-        const color = Color(colors[String(dimensionValue)]).hex();
         const key = getKeyFromDimensionValue(dimensionValue);
+        const color = getHexColor(colors[key]);
         const name = formatDimensionValue(dimensionValue);
 
         return {
