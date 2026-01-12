@@ -144,6 +144,7 @@
          result (ws.isolation/with-workspace-isolation workspace (ws.execute/run-transform-with-remapping transform remapping))]
      (when ref-id
        (t2/update! :model/WorkspaceTransform ref-id {:last_run_at      (:end_time result)
+                                                     :last_run_status  (name (:status result))
                                                      :last_run_message (:message result)
                                                      :execution_stale  false}))
      (when (= :succeeded (:status result))

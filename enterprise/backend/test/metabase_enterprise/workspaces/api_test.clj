@@ -10,6 +10,7 @@
    [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup!]]
    [metabase-enterprise.workspaces.dag :as ws.dag]
    [metabase-enterprise.workspaces.execute :as ws.execute]
+   [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
@@ -110,16 +111,15 @@
         ;; todo: check the schema / tables and user are gone
         (is (false? (t2/exists? :model/Workspace workspace-id)))))))
 
-;; TODO (chris 2026/01/08) we need to first add a transform to trigger initialization, or else there is nothing to destroy
-#_(deftest archive-workspace-calls-destroy-isolation-test
-    (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
-      (let [called?   (atom false)
-            workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
-        (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                    (fn [_database _workspace]
-                                      (reset! called? true))]
-          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-          (is @called? "destroy-workspace-isolation! should be called when archiving")))))
+(deftest archive-workspace-calls-destroy-isolation-test
+  (testing "POST /api/ee/workspace/:id/archive calls destroy-workspace-isolation!"
+    (let [called?   (atom false)
+          workspace (ws.tu/create-ready-ws! "Archive Isolation Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+        (is @called? "destroy-workspace-isolation! should be called when archiving")))))
 
 (deftest archive-workspace-succeeds-when-cleanup-fails-test
   (testing "POST /api/ee/workspace/:id/archive succeeds even when destroy-workspace-isolation! fails"
@@ -142,78 +142,60 @@
         (mt/user-http-request :crowberto :delete 200 (ws-url (:id workspace)))
         (is @called? "destroy-workspace-isolation! should be called when deleting")))))
 
-;; TODO we need to first add a transform to trigger initialization, or else there is nothing to destroy
-#_(deftest ^:synchronized merge-workspace-calls-destroy-isolation-test
-    (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
-      (let [called?   (atom false)
-            workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
-        (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
-                                    (fn [_database _workspace]
-                                      (reset! called? true))]
-          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
-          (is @called? "destroy-workspace-isolation! should be called when merging")))))
+(deftest ^:synchronized merge-workspace-calls-destroy-isolation-test
+  (testing "POST /api/ee/workspace/:id/merge calls destroy-workspace-isolation!"
+    (let [called?   (atom false)
+          workspace (ws.tu/create-ready-ws! "Merge Isolation Test")]
+      (mt/with-dynamic-fn-redefs [ws.isolation/destroy-workspace-isolation!
+                                  (fn [_database _workspace]
+                                    (reset! called? true))]
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/merge"))
+        (is @called? "destroy-workspace-isolation! should be called when merging")))))
 
-;; TODO update this test to have a transform in the workspace. only non-empty workspaces will ensure isolation
-#_(deftest unarchive-workspace-calls-ensure-isolation-test
-    (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
-      (let [called?   (atom false)
-            workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
-        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-        (testing "ensure-database-isolation! should be called when unarchiving"
-          (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
-                                      (fn [_workspace _database]
-                                        (reset! called? true)
-                                        {:schema "test_schema" :database_details {}})]
-            (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
-            (is @called?))))))
-
-;; TODO update this test to have a transform in the workspace. only non-empty workspaces will grant accesses
-#_(deftest unarchive-workspace-calls-sync-grant-accesses-test
-    (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
-      (let [called?   (atom false)
-            workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
-        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-        (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
-                                    (fn [_workspace]
+(deftest unarchive-workspace-calls-ensure-isolation-test
+  (testing "POST /api/ee/workspace/:id/unarchive calls ensure-database-isolation!"
+    (let [called?   (atom false)
+          workspace (ws.tu/create-ready-ws! "Unarchive Isolation Test")]
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+      (testing "ensure-database-isolation! should be called when unarchiving"
+        (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                    (fn [_workspace _database]
                                       (reset! called? true)
-                                      nil)]
+                                      {:schema "test_schema" :database_details {}})]
           (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
-          (is @called? "sync-grant-accesses! should be called when unarchiving")))))
+          (is @called?))))))
 
-;; TODO rework this test
+(deftest unarchive-workspace-calls-sync-grant-accesses-test
+  (testing "POST /api/ee/workspace/:id/unarchive calls sync-grant-accesses!"
+    (let [called?   (atom false)
+          workspace (ws.tu/create-ready-ws! "Unarchive Grant Test")]
+      (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+      (mt/with-dynamic-fn-redefs [ws.impl/sync-grant-accesses!
+                                  (fn [_workspace]
+                                    (reset! called? true)
+                                    nil)]
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
+        (is @called? "sync-grant-accesses! should be called when unarchiving")))))
+
 (deftest archive-unarchive-access-granted-test
   (testing "Archive/unarchive properly manages access_granted flags and grants"
     (let [workspace      (ws.tu/create-ready-ws! "Archive Grant Test")
           granted-tables (atom [])]
-      ;; This hack has rotted - since we re-do the analysis now on unarchive, we need to add a tx with a real query
-      (mt/with-temp [:model/WorkspaceTransform t {:workspace_id (:id workspace)}
-                     :model/WorkspaceInput input {:workspace_id   (:id workspace)
-                                                  :db_id          (mt/id)
-                                                  :ref_id         (:ref_id t)
-                                                  :schema         nil
-                                                  :table          "test_table"
-                                                  :access_granted true}]
-        ;; workaround for bad mocking
-        (t2/update! :model/WorkspaceTransform {:ref_id (:ref_id t)} {:target {:type     :table
-                                                                              :database (mt/id)
-                                                                              :name     "output"}})
+      (testing "Archive resets access_granted to false"
+        (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
+        (ws.tu/analyze-workspace! (:id workspace))
+        (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :workspace_id (:id workspace)))))
 
-        (testing "Archive resets access_granted to false"
-          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/archive"))
-          (is (false? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))))
-
-        (testing "Unarchive re-grants access and sets access_granted to true"
-          (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
-                                      (fn [_database _workspace tables]
-                                        (reset! granted-tables tables))]
-            (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
-            ;; TODO since analysis is now lazy, we have to call this api to force it to happen.
-            ;;      really we should restructure our tests.
-            (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "graph"))
-            #_(is (= [{:schema nil :name "test_table"}] @granted-tables)
-                  "grant-read-access-to-tables! should be called with the input tables")
-            #_(is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :id (:id input)))
-                  "access_granted should be true after unarchive")))))))
+      (testing "Unarchive re-grants access and sets access_granted to true"
+        (mt/with-dynamic-fn-redefs [ws.isolation/grant-read-access-to-tables!
+                                    (fn [_database _workspace tables]
+                                      (reset! granted-tables tables))]
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/unarchive"))
+          (ws.tu/analyze-workspace! (:id workspace))
+          (is (=? [{:schema string? :name "test_table_1"}] @granted-tables)
+              "grant-read-access-to-tables! should be called with the input tables")
+          (is (true? (t2/select-one-fn :access_granted :model/WorkspaceInput :workspace_id (:id workspace)))
+              "access_granted should be true after unarchive"))))))
 
 (deftest merge-workspace-test
   (testing "POST /api/ee/workspace/:id/promote requires superuser"
@@ -1079,7 +1061,6 @@
 
 ;;;; Async workspace creation tests
 
-;; TODO need to add a transform to trigger initialization
 #_(deftest create-workspace-returns-updating-status-test
     (testing "Creating workspace returns status :pending immediately"
       (let [res (mt/user-http-request :crowberto :post 200 "ee/workspace"
@@ -1089,51 +1070,43 @@
         (testing "and then it becomes ready"
           (is (=? {:status :ready} (ws.tu/ws-ready res)))))))
 
-;; TODO need to add a transform to trigger initialization
-#_(deftest workspace-log-endpoint-test
-    (testing "GET /api/ee/workspace/:id/log returns status and log entries"
-      (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                              {:name "log-test" :database_id (mt/id)}))]
-        (is (=? {:workspace_id      ws-id
-                 :status            "ready"
-                 :updated_at        some?
-                 :last_completed_at some?
-                 :logs              [{:task   "database-isolation"
-                                      :status "success"}
-                                     {:task "workspace-setup"}]}
-                (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/log")))))))
+(deftest workspace-log-endpoint-test
+  (testing "GET /api/ee/workspace/:id/log returns status and log entries"
+    (let [{ws-id :id} (ws.tu/create-ready-ws! "Log tester")]
+      (is (=? {:workspace_id      ws-id
+               :status            "ready"
+               :updated_at        some?
+               :last_completed_at some?
+               :logs              [{:task   "database-isolation"
+                                    :status "success"}
+                                   {:task "workspace-setup"}]}
+              (mt/user-http-request :crowberto :get 200 (ws-url ws-id "/log")))))))
 
 (deftest workspace-log-endpoint-404-test
   (testing "GET /api/ee/workspace/:id/log returns 404 for non-existent workspace"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 "ee/workspace/999999/log")))))
 
-;; TODO need to add a transform to trigger initialization
-#_(deftest workspace-log-entries-created-test
-    (testing "WorkspaceLog entries are created during setup"
-      (let [{ws-id :id} (ws.tu/ws-ready (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                              {:name "log-entries-test" :database_id (mt/id)}))]
-        (is (=? [{:task   :database-isolation
-                  :status :success}
-                 {:task   :workspace-setup
-                  :status :success}]
-                (t2/select :model/WorkspaceLog :workspace_id ws-id {:order-by [[:started_at :desc]]}))))))
+(deftest workspace-log-entries-created-test
+  (testing "WorkspaceLog entries are created during setup"
+    (let [{ws-id :id} (ws.tu/create-ready-ws! "Log tester #2")]
+      (is (=? [{:task   :database-isolation
+                :status :success}
+               {:task   :workspace-setup
+                :status :success}]
+              (t2/select :model/WorkspaceLog :workspace_id ws-id {:order-by [[:started_at :desc]]}))))))
 
-;; TODO this test doesn't work yet, because we need to add a transform before it'll do the initialization
-#_(deftest workspace-setup-failure-logs-error-test
-    (testing "Failed workspace setup logs error message"
-      (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
-                                  (fn [& _] (throw (ex-info "Test isolation error" {})))]
-        (let [{ws-id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                                {:name "fail-test" :database_id (mt/id)})
-              _           (try (ws.tu/ws-ready ws-id) (catch Exception _))]
-          (Thread/sleep 500)
-          (is (=? [{:task    :database-isolation
-                    :status  :failure
-                    :message "Test isolation error"}
-                   {:task   :workspace-setup
-                    :status :failure}]
-                  (t2/select :model/WorkspaceLog :workspace_id ws-id {:order-by [[:started_at :desc]]})))))))
+(deftest workspace-setup-failure-logs-error-test
+  (testing "Failed workspace setup logs error message"
+    (mt/with-dynamic-fn-redefs [ws.isolation/ensure-database-isolation!
+                                (fn [& _] (throw (ex-info "Test isolation error" {})))]
+      (let [{ws-id :id} (ws.tu/create-ready-ws! "Log tester #3")]
+        (is (=? [{:task    :database-isolation
+                  :status  :failure
+                  :message "Test isolation error"}
+                 {:task   :workspace-setup
+                  :status :failure}]
+                (t2/select :model/WorkspaceLog :workspace_id ws-id {:order-by [[:started_at :desc]]})))))))
 
 ;;; ---------------------------------------- Uninitialized Workspace Tests ----------------------------------------
 
@@ -1303,8 +1276,9 @@
               (testing "and we don't get any excessive transforms in the db"
                 (is (= (:id x1)
                        (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]})))))
-            (testing "transform has last_run_at after that"
-              (is (=? {:last_run_at some?}
+            (testing "transform has last_run_at and last_run_status after that"
+              (is (=? {:last_run_at     some?
+                       :last_run_status "succeeded"}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id)))))))))
     (testing "failed execution returns status and message"
       (transforms.tu/with-transform-cleanup! [output-table "ws_api_fail"]
@@ -1331,8 +1305,9 @@
                          :table      {:schema (:schema ws)
                                       :name   isolated-name}}
                         result))))
-            (testing "transform has last_run_at and last_run_message after failure"
+            (testing "transform has last_run_at, last_run_status, and last_run_message after failure"
               (is (=? {:last_run_at      some?
+                       :last_run_status  "failed"
                        :last_run_message #"(?s).*nocolumn.*"}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id)))))))))))
 
@@ -1407,7 +1382,6 @@
                                                                   :database_id   db-1
                                                                   :dataset_query (mt/mbql-query venues)}
                          :model/Transform          {xf6-id :id} {:name        "Not checked out - native with card dep"
-                                                                 :source_type :native
                                                                  :source      {:type  "query"
                                                                                :query (my-native-query
                                                                                        db-1
@@ -1415,6 +1389,7 @@
                                                                                        {"card" card-id})}
                                                                  :target      (random-target db-1)}
                          :model/Transform          {xf7-id :id} {:name   "Using another database"
+                                                                 :source {:type "python"}
                                                                  :target (random-target db-2)}
                          ;; Workspace transforms (mirrored from global1 and global2)
                          :model/WorkspaceTransform _            {:global_id    xf1-id
