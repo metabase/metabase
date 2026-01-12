@@ -3,15 +3,15 @@ name: "Snyk"
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
     paths:
-      - '**/deps.edn'
-      - '**/package.json'
-      - '.github/workflows/snyk.yml'
-      - '.github/scripts/write-poms.sh'
+      - "**/deps.edn"
+      - "**/package.json"
+      - ".github/workflows/snyk.yml"
+      - ".github/scripts/write-poms.sh"
   schedule:
-    - cron: '0 5 * * *'
+    - cron: "0 5 * * *"
 
 jobs:
   # Generate pom.xml files for all Maven projects
@@ -42,11 +42,11 @@ jobs:
       matrix:
         project:
           - name: Main Frontend (bun)
-            file: bun.lockb
+            file: bun.lock
             package-manager: npm
             category: main-frontend-bun
           - name: Embedding SDK Template
-            file: bin/embedding-sdk/templates/bun.lockb
+            file: bin/embedding-sdk/templates/bun.lock
             package-manager: npm
             category: embedding-sdk-template
           - name: E2E Angular 20 Host App
@@ -66,7 +66,7 @@ jobs:
             package-manager: npm
             category: e2e-vite-host
           - name: Release Helper
-            file: release/bun.lockb
+            file: release/bun.lock
             package-manager: npm
             category: release-helper
     steps:

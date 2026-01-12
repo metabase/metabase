@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function restore_package_files() {
-  git checkout -- bun.lockb package.json
+  git checkout -- bun.lock package.json
 }
 
 function install_packages() {
