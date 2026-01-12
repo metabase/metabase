@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { HoveredObject } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
 import type { Series } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
@@ -23,11 +22,10 @@ const getDefaultPluginContentTranslation = () => ({
     _tc: ContentTranslationFunction,
   ) => obj,
   getTranslatedFilterDisplayName: (
-    query: Lib.Query,
-    stageIndex: number,
-    filter: Lib.FilterClause,
+    displayName: string,
     _tc: ContentTranslationFunction,
-  ): string => Lib.displayInfo(query, stageIndex, filter).longDisplayName ?? "",
+    _columnDisplayName: string | undefined,
+  ): string => displayName,
   useTranslateFieldValuesInHoveredObject: (obj?: HoveredObject | null) => obj,
   useTranslateSeries: (obj: Series) => obj,
   useSortByContentTranslation: () => (a: string, b: string) =>

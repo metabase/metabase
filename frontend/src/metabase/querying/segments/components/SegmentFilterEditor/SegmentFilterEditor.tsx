@@ -25,13 +25,19 @@ export function SegmentFilterEditor({
   const filters = useMemo(() => Lib.filters(query, STAGE_INDEX), [query]);
 
   const renderFilterName = useCallback(
-    (filter: Lib.FilterClause) =>
-      PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
-        query,
-        STAGE_INDEX,
-        filter,
+    (filter: Lib.FilterClause) => {
+      const displayInfo = Lib.displayInfo(query, STAGE_INDEX, filter);
+      const parts = Lib.filterParts(query, STAGE_INDEX, filter);
+      const columnDisplayName = parts?.column
+        ? Lib.displayInfo(query, STAGE_INDEX, parts.column).displayName
+        : undefined;
+
+      return PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
+        displayInfo.longDisplayName ?? "",
         tc,
-      ),
+        columnDisplayName,
+      );
+    },
     [query, tc],
   );
 

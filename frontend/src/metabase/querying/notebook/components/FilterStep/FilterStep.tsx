@@ -27,13 +27,19 @@ export function FilterStep({
   );
 
   const renderFilterName = useCallback(
-    (filter: Lib.FilterClause) =>
-      PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
-        query,
-        stageIndex,
-        filter,
+    (filter: Lib.FilterClause) => {
+      const displayInfo = Lib.displayInfo(query, stageIndex, filter);
+      const parts = Lib.filterParts(query, stageIndex, filter);
+      const columnDisplayName = parts?.column
+        ? Lib.displayInfo(query, stageIndex, parts.column).displayName
+        : undefined;
+
+      return PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
+        displayInfo.longDisplayName ?? "",
         tc,
-      ),
+        columnDisplayName,
+      );
+    },
     [query, stageIndex, tc],
   );
 

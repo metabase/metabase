@@ -6,7 +6,6 @@ import _ from "underscore";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { isCartesianChart } from "metabase/visualizations";
 import type { HoveredObject } from "metabase/visualizations/types";
-import * as Lib from "metabase-lib";
 import type {
   DictionaryArray,
   MaybeTranslatedSeries,
@@ -250,40 +249,31 @@ export const useSortByContentTranslation = () => {
 };
 
 /**
- * Translates a filter's display name by extracting and translating the column name.
- * The longDisplayName from metabase-lib is a pre-formatted string like "Plan is Business"
- * where individual parts (column names) need to be translated separately.
+ * Translates a filter's display name by translating the column name part.
+ * The longDisplayName is a pre-formatted string like "Plan is Business"
+ * where the column name part needs to be translated.
  */
 export const getTranslatedFilterDisplayName = (
-  query: Lib.Query,
-  stageIndex: number,
-  filter: Lib.FilterClause,
+  displayName: string,
   tc: ContentTranslationFunction,
+  columnDisplayName?: string,
 ): string => {
-  const displayInfo = Lib.displayInfo(query, stageIndex, filter);
-  const longDisplayName = displayInfo.longDisplayName;
-
-  if (!longDisplayName) {
-    return longDisplayName ?? "";
+  if (!displayName) {
+    return displayName ?? "";
   }
 
   if (!hasTranslations(tc)) {
-    return longDisplayName;
+    return displayName;
   }
-
-  const parts = Lib.filterParts(query, stageIndex, filter);
-  const columnDisplayName = parts?.column
-    ? Lib.displayInfo(query, stageIndex, parts.column).displayName
-    : undefined;
 
   if (columnDisplayName) {
     const translatedColumnName = tc(columnDisplayName);
 
     if (translatedColumnName !== columnDisplayName) {
-      return longDisplayName.replace(columnDisplayName, translatedColumnName);
+      return displayName.replace(columnDisplayName, translatedColumnName);
     }
   }
 
   // Fallback to translate the whole string
-  return tc(longDisplayName);
+  return tc(displayName);
 };
