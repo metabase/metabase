@@ -403,7 +403,8 @@
     (assoc graph :entities updated-entities)))
 
 (defn- calculate-and-cache-graph!
-  "Calculate the graph, cache it, sync external inputs/outputs, compute staleness, and mark workspace as not stale."
+  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale.
+   Note: Does NOT compute staleness - that's done at read time via hydrate-staleness."
   [{ws-id :id, isolated-schema :schema :as workspace}]
   (t2/with-transaction [_conn]
     ;; First, re-analyze any stale transforms
@@ -412,23 +413,31 @@
       ;; Persist our work
       (sync-external-outputs! ws-id isolated-schema (:entities graph))
       (sync-external-inputs! ws-id (:entities graph))
-      (let [stale-entities       (collect-stale-entities ws-id (:entities graph))
-            graph-with-staleness (mark-execution-stale graph stale-entities)]
-        (upsert-workspace-graph! ws-id graph-with-staleness)
-        (t2/update! :model/Workspace ws-id {:analysis_stale false})
-        graph-with-staleness))))
+      (upsert-workspace-graph! ws-id graph)
+      (t2/update! :model/Workspace ws-id {:analysis_stale false})
+      graph)))
+
+(defn- hydrate-staleness
+  "Hydrate execution_stale on graph entities by querying current DB state.
+   Computes transitive staleness - workspace-transforms are stale if they
+   or any ancestor is stale."
+  [ws-id graph]
+  (let [stale-entities (collect-stale-entities ws-id (:entities graph))]
+    (mark-execution-stale graph stale-entities)))
 
 (defn get-or-calculate-graph
   "Return the dependency graph for a workspace. Uses cached graph if workspace is not stale,
-   otherwise recalculates it.
+   otherwise recalculates it. Always hydrates current staleness state from DB.
    Also syncs workspace_output_external and workspace_input_external tables when recalculating."
   [{ws-id :id, analysis-stale :analysis_stale :as workspace}]
-  (if-not analysis-stale
-    ;; Return cached graph from workspace_graph table
-    (when-let [cached (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
-      (:graph cached))
-    ;; Recalculate and cache
-    (calculate-and-cache-graph! workspace)))
+  (let [graph (if-not analysis-stale
+                ;; Return cached graph from workspace_graph table
+                (when-let [cached (t2/select-one :model/WorkspaceGraph :workspace_id ws-id)]
+                  (:graph cached))
+                ;; Recalculate and cache
+                (calculate-and-cache-graph! workspace))]
+    (when graph
+      (hydrate-staleness ws-id graph))))
 
 (defn mark-workspace-stale!
   "Mark a workspace as needing graph recalculation."

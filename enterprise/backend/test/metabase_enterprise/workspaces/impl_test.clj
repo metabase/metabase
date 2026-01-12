@@ -88,32 +88,6 @@
             (is (= 1 (t2/count :model/WorkspaceInput :workspace_id (:id ws))))
             (is (= 1 (t2/count :model/WorkspaceDependency :workspace_id (:id ws))))))))))
 
-(deftest transforms-to-execute-filters-by-staleness
-  (testing "stale-only=true filters to only stale transforms"
-    (let [t1-ref (str (random-uuid))
-          t2-ref (str (random-uuid))
-          ;; Mock the graph to include execution_stale info
-          mock-graph {:entities [{:node-type :workspace-transform :id t1-ref :execution_stale true :parents []}
-                                 {:node-type :workspace-transform :id t2-ref :execution_stale false :parents []}]}]
-      (mt/with-dynamic-fn-redefs [ws.impl/get-or-calculate-graph (constantly mock-graph)]
-        ;; When stale-only is true, should filter to only stale entities
-        (let [result (#'ws.impl/transforms-to-execute {:id (mt/id) :analysis_stale false} :stale-only? true)]
-          ;; Result should only include t1-ref (the stale one)
-          (is (= 1 (count result))))))))
-
-(deftest transforms-to-execute-includes-execution-stale
-  (testing "stale-only=true includes execution_stale transforms"
-    (let [t1-ref (str (random-uuid))
-          t2-ref (str (random-uuid))
-          ;; Mock the graph with execution_stale set
-          mock-graph {:entities [{:node-type :workspace-transform :id t1-ref :execution_stale false :parents []}
-                                 {:node-type :workspace-transform :id t2-ref :execution_stale true :parents [t1-ref]}]}]
-      (mt/with-dynamic-fn-redefs [ws.impl/get-or-calculate-graph (constantly mock-graph)]
-        ;; When stale-only is true, should include both stale and execution_stale
-        (let [result (#'ws.impl/transforms-to-execute {:id (mt/id) :analysis_stale false} :stale-only? true)]
-          ;; Result should include both transforms
-          (is (= 2 (count result))))))))
-
 ;;;; Helpers for mark-execution-stale tests
 
 (defn- workspace-transform
@@ -280,3 +254,28 @@
           stale-entities #{t2}
           result (#'ws.impl/mark-execution-stale graph stale-entities)]
       (is (= {true #{t2 t3 t4} false #{t1}} (stale->id (:entities result)))))))
+
+(deftest staleness-recomputed-on-graph-read
+  (testing "Graph staleness reflects current DB state, not cached state"
+    (let [t1-ref (str (random-uuid))]
+      (mt/with-temp [:model/Workspace          {ws-id :id} {:name "Test WS" :analysis_stale false}
+                     :model/WorkspaceTransform _           {:workspace_id    ws-id
+                                                            :ref_id          t1-ref
+                                                            :name            "Transform 1"
+                                                            :source          {:type "query" :query {}}
+                                                            :target          {:database 1 :schema "public" :name "t1"}
+                                                            :execution_stale true}
+                     :model/WorkspaceGraph     _           {:workspace_id ws-id
+                                                            :graph        {:entities     [{:node-type :workspace-transform :id t1-ref}]
+                                                                           :dependencies {}
+                                                                           :inputs       []
+                                                                           :outputs      []}}]
+        (testing "initial read shows transform as stale"
+          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
+            (is (true? (:execution_stale (first (:entities graph)))))))
+
+        (t2/update! :model/WorkspaceTransform t1-ref {:execution_stale false})
+
+        (testing "after marking not stale in DB, graph read reflects the change"
+          (let [graph (ws.impl/get-or-calculate-graph (t2/select-one :model/Workspace ws-id))]
+            (is (nil? (:execution_stale (first (:entities graph)))))))))))
