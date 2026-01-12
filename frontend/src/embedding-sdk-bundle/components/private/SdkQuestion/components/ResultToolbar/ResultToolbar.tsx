@@ -9,12 +9,10 @@ type Props = HTMLAttributes<HTMLDivElement> & {
 
 export const ResultToolbar = ({
   children,
-  className,
   "data-testid": dataTestId,
   ...divProps
 }: PropsWithChildren<Props>) => (
   <Group
-    className={className}
     p="sm"
     style={{
       borderRadius: "0.5rem",
