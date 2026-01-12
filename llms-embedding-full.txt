@@ -1,16 +1,7 @@
 # Metabase Embedding - Complete Reference for AI agents
 
-> Table of contents: https://raw.githubusercontent.com/metabase/metabase/refs/heads/master/llms.txt
+> Table of contents: https://raw.githubusercontent.com/metabase/metabase/refs/heads/fix-llms-generation-workflow/llms.txt
 
-> **Important Version Notes**
->
-> Watch out for these deprecated props and gotchas for Metabase 57 onwards, for modular embedding:
->
-> 1. `config` prop on MetabaseProvider no longer exist - it is replaced by `authConfig`.
-> 2. `authProviderUri` field no longer exist.
-> 3. `jwtProviderUri` optional field only exists in v58+. This is used to make JWT auth faster by skipping the `GET /auth/sso` discovery request. Not needed for initial implementation.
-> 4. `fetchRequestToken` is not needed by default. This is only used to customize how the SDK fetches the request token.
-> 5. Numeric IDs must be integers not strings, e.g. `dashboardId={1}`. When the ID is retrieved from the URL and it is numeric, convert it to an integer via `parseInt` before passing it to the SDK. IDs can also be strings for entity ids, so you should not parse all IDs as numbers if entity ids are also to be expected.
 
 # Customizing the appearance of modular embeds
 
@@ -2562,16 +2553,6 @@ Start with one of the quickstarts, then see these pages for more info on compone
 ## Modular embedding SDK source code
 
 You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
-
-## Changelog
-
-View the SDK's changelog:
-
-- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 ## Modular embedding SDK on npm
 
