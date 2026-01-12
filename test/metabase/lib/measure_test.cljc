@@ -1,9 +1,13 @@
 (ns metabase.lib.measure-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [metabase.lib.core :as lib]
+   [metabase.lib.measure :as lib.measure]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- measure-definition-with-aggregation
   "Create an MBQL5 measure definition with the given aggregation clause and metadata provider."
@@ -39,12 +43,12 @@
       (is (nil? (lib/check-measure-overwrite 1 measure-1-def))))))
 
 (deftest ^:parallel check-measure-overwrite-self-reference-not-in-mp-test
-  (testing "Measure referencing itself - should throw (reported as does not exist since measure being saved isn't in mp)"
-    (let [mp            (lib.tu/mock-metadata-provider meta/metadata-provider {})
+  (testing "Measure referencing itself - should throw cycle (even if measure is not in mp)"
+    (let [mp            meta/metadata-provider
           measure-1-def (measure-definition-referencing mp 1)]
       (is (thrown-with-msg?
            #?(:clj Exception :cljs js/Error)
-           #"does not exist"
+           #"[Cc]ycle"
            (lib/check-measure-overwrite 1 measure-1-def))))))
 
 (deftest ^:parallel check-measure-overwrite-self-reference-in-mp-test
@@ -213,3 +217,94 @@
           query (lib/query mp (meta/table-metadata :venues))]
       (is (= :type/*
              (lib/type-of query [:measure {} 999]))))))
+
+(def ^:private measure-id 100)
+
+(def ^:private measure-definition
+  (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))))
+
+(def ^:private measures-db
+  {:measures [{:id          measure-id
+               :name        "Sum of Prices"
+               :table-id    (meta/id :venues)
+               :definition  measure-definition
+               :description "Sum of all venue prices"}]})
+
+(def ^:private measure-metadata-provider
+  (lib.tu/mock-metadata-provider meta/metadata-provider measures-db))
+
+(def ^:private measure-clause
+  [:measure {:lib/uuid (str (random-uuid))} measure-id])
+
+(def ^:private query-with-measure
+  (-> (lib/query measure-metadata-provider (meta/table-metadata :venues))
+      (lib/aggregate measure-clause)))
+
+(deftest ^:parallel available-measures-test
+  (let [expected-measure-metadata {:lib/type    :metadata/measure
+                                   :id          measure-id
+                                   :name        "Sum of Prices"
+                                   :table-id    (meta/id :venues)
+                                   :definition  measure-definition
+                                   :description "Sum of all venue prices"}]
+    (testing "Should return Measures with the same Table ID as query's `:source-table`"
+      (is (=? [expected-measure-metadata]
+              (lib.measure/available-measures (lib/query measure-metadata-provider (meta/table-metadata :venues))))))
+    (testing "Shouldn't return archived Measures"
+      (is (nil? (lib.measure/available-measures
+                 (lib/query (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             (assoc-in measures-db [:measures 0 :archived] true))
+                            (meta/table-metadata :venues))))))
+    (testing "Should return the positions in the list of aggregations"
+      (let [measures (lib.measure/available-measures query-with-measure)]
+        (is (=? [(assoc expected-measure-metadata :aggregation-positions [0])]
+                measures))
+        (testing "Display info should contain aggregation-positions"
+          (is (=? [{:name                  "sum_of_prices"
+                    :display-name          "Sum of Prices"
+                    :long-display-name     "Sum of Prices"
+                    :description           "Sum of all venue prices"
+                    :aggregation-positions [0]}]
+                  (map #(lib/display-info query-with-measure %)
+                       measures))))))))
+
+(deftest ^:parallel available-measures-different-table-test
+  (testing "query with different Table -- don't return Measures"
+    (is (nil? (lib.measure/available-measures (lib/query measure-metadata-provider (meta/table-metadata :orders)))))))
+
+(deftest ^:parallel available-measures-subsequent-stages-test
+  (testing "for subsequent stages -- don't return Measures"
+    (let [query (lib/append-stage (lib/query measure-metadata-provider (meta/table-metadata :venues)))]
+      (is (nil? (lib.measure/available-measures query)))
+      (is (nil? (lib.measure/available-measures query 1)))
+      (is (nil? (lib.measure/available-measures query -1))))))
+
+(deftest ^:parallel available-measures-aggregation-positions-with-join-alias-test
+  (testing "aggregation-positions should use join-alias to distinguish measure applications"
+    (let [;; Add the same measure twice with different join-aliases
+          query (-> (lib/query measure-metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate [:measure {:lib/uuid (str (random-uuid))} measure-id])
+                    (lib/aggregate [:measure {:lib/uuid (str (random-uuid))
+                                              :join-alias "J1"} measure-id]))
+          measures (lib.measure/available-measures query)]
+      ;; The measure without join-alias should have aggregation-positions [0]
+      ;; The measure with join-alias "J1" is at position 1 but won't be returned
+      ;; since available-measures only returns measures for the source table (no join-alias)
+      (is (=? [{:id measure-id
+                :aggregation-positions [0]}]
+              measures)))))
+
+(deftest ^:parallel available-measures-multiple-aggregation-positions-test
+  (testing "aggregation-positions should contain all positions when same measure is used multiple times"
+    (let [;; Add the same measure twice without join-alias
+          query (-> (lib/query measure-metadata-provider (meta/table-metadata :venues))
+                    (lib/aggregate [:measure {:lib/uuid (str (random-uuid))} measure-id])
+                    (lib/aggregate (lib/count))
+                    (lib/aggregate [:measure {:lib/uuid (str (random-uuid))} measure-id]))
+          measures (lib.measure/available-measures query)]
+      ;; The measure appears at positions 0 and 2
+      (is (=? [{:id measure-id
+                :aggregation-positions [0 2]}]
+              measures)))))
