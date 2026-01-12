@@ -65,6 +65,7 @@ const DataSelectorTablePicker = ({
   hasInitialFocus,
 }: DataSelectorTablePickerProps) => {
   const tc = useTranslateContent();
+
   // In case DataSelector props get reset
   if (!selectedDatabase) {
     if (onBack) {
@@ -188,6 +189,7 @@ const Header = ({
   selectedSchema,
 }: HeaderProps) => {
   const tc = useTranslateContent();
+
   return (
     <Flex align="center" wrap="wrap">
       <Flex align="center" style={{ cursor: "pointer" }} onClick={onBack}>
