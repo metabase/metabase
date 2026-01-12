@@ -184,7 +184,7 @@ export const ChartSettingSeriesOrder = ({
           <Flex justify="space-between" px={4}>
             <Group p={4} gap="sm">
               <ColorSelector
-                value={otherColor ?? color("text-light")}
+                value={otherColor ?? color("text-tertiary")}
                 colors={getAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
@@ -193,7 +193,7 @@ export const ChartSettingSeriesOrder = ({
             </Group>
             <Button
               size="compact-md"
-              color="text-medium"
+              color="text-secondary"
               variant="subtle"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
@@ -263,7 +263,7 @@ export const ChartSettingSeriesOrder = ({
                   borderRadius: "8px",
                   fontWeight: "bold",
                   "::placeholder": {
-                    color: "var(--mb-color-text-medium)",
+                    color: "var(--mb-color-text-secondary)",
                   },
                 },
               }}

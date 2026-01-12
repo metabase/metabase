@@ -1,15 +1,49 @@
 ---
 title: Translate embedded dashboards and questions
-summary: Upload a translation dictionary to translate questions and dashboards into different languages. Only available for guest embeds.
+summary: Upload a translation dictionary to translate questions and dashboards into different languages. Translation dictionaries are only available for guest embeds.
 ---
 
 # Translate embedded dashboards and questions
 
 {% include plans-blockquote.html feature="Translation of embedded content" convert_pro_link_to_embbedding=true %}
 
-For now, translations are only available for [guest embeds](./guest-embedding.md). Translations aren't available for SSO-based modular embedding or full app embedding.
+You can set a locale on all modular embeds (guest and SSO) to translate Metabase's UI. Translation dictionaries, however, are only available for [guest embeds](./guest-embedding.md).
 
-You can upload a translation dictionary to translate strings both in Metabase content (like dashboard titles) and in the data itself (like column names and values).
+## Set a locale to translate UI, and upload a dictionary to translate content
+
+To translate an embed's user interface, set the locale in the config. The `locale` setting works for all modular embeds (guest and SSO). Metabase UI elements (like menus) will be translated automatically - you don't need to add translations for them to your dictionary.
+
+For guest and SSO embeds (not the SDK), set the `locale` in `window.metabaseConfig`:
+
+```html
+<script>
+  window.metabaseConfig = {
+    isGuest: true,
+    instanceUrl: "YOUR_METABASE_URL",
+    // Translates UI elements to the locale's language.
+    // For guest embeds, if you've uploaded a translation dictionary,
+    // Metabase will also translate content strings
+    // to this locale from that dictionary.
+    locale: "es"
+  };
+</script>
+
+<metabase-dashboard token="YOUR_JWT_TOKEN"></metabase-dashboard>
+```
+
+For guest embeds (and only guest embeds), if you also want to translate content (like item titles, headings, filter labels---even data), you'll need to add a translation dictionary.
+
+### SDK translations
+
+For the SDK, set the `locale` prop on the `MetabaseProvider` component:
+
+```tsx
+<MetabaseProvider
+  authConfig={authConfig}
+  locale="es"
+>
+</MetabaseProvider>
+```
 
 ## Add a translation dictionary
 
@@ -29,21 +63,6 @@ To add a translation dictionary:
 Uploading a new dictionary will replace the existing dictionary.
 
 To remove a translation dictionary, upload a blank dictionary.
-
-## Translate content in guest embeds
-
-To translate content in a guest embed using the uploaded dictionary, add the [`locale` parameter](./components.md).
-```
- <metabase-dashboard
-    dashboard-id="1"
-    with-title="false"
-    with-subscriptions="true"
-    drills="true"
-    locale="es"
- </metabase-dashboard>
-```
-
-Metabase UI elements (like button labels) will be translated automatically - you don't need to add translations for them to your dictionary.
 
 ## Example translation dictionary
 

@@ -293,6 +293,13 @@ When using the default binning strategy for a field of type Coordinate (such as 
 
 When using the default binning strategy and a number of bins is not provided, this number will be used as the default.
 
+### `MB_CAN_RUN_ADHOC_QUERY_CHECK_THRESHOLD`
+
+- Type: integer
+- Default: `250`
+
+Maximum number of cards to compute can_run_adhoc_query for. When the number of cards exceeds this threshold, can_run_adhoc_query will return true for all cards without computing actual permissions. Set to 0 to always compute permissions. This only affects how cards are displayed in the query builder and does not affect actual permission enforcement.
+
 ### `MB_CHECK_FOR_UPDATES`
 
 - Type: boolean
@@ -340,6 +347,7 @@ Whether or not the use of custom GeoJSON is enabled.
 
 - Type: boolean
 - Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage`.
 - [Configuration file name](./config-file.md): `custom-homepage`
 
 Pick one of your dashboards to serve as homepage. Users without dashboard access will be directed to the default homepage.
@@ -348,6 +356,7 @@ Pick one of your dashboards to serve as homepage. Users without dashboard access
 
 - Type: integer
 - Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `custom-homepage-dashboard`.
 - [Configuration file name](./config-file.md): `custom-homepage-dashboard`
 
 ID of dashboard to use as a homepage.
@@ -809,6 +818,17 @@ Change this to a higher value if you notice that regular usage consumes all or c
 
   For setting the maximum,
   see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).
+
+### `MB_JDBC_NETWORK_TIMEOUT_MS`
+
+- Type: integer
+- Default: `1800000`
+
+By default, this is 30 minutes.
+
+Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-
 
 ### `MB_JWT_ATTRIBUTE_EMAIL`
 

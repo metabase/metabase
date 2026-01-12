@@ -425,14 +425,23 @@ describe("command palette", () => {
     });
   });
 
-  it("should show the 'Report an issue' command palette item", () => {
+  it("should show the 'Download diagnostics' command palette item", () => {
     cy.visit("/");
     cy.findByRole("button", { name: /search/i }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Issue");
-      cy.findByText("Report an issue").should("be.visible");
+      cy.findByText("Download diagnostics").should("be.visible");
     });
+  });
+
+  it("should allow searching personal collections if no results and user is admin", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+    cy.realType("asdf");
+    H.commandPalette()
+      .get("#search-results-metadata")
+      .should("contain", "Search everything");
   });
 
   describe("ee", () => {

@@ -127,7 +127,7 @@ export const MetabotChat = ({
                 data-testid="metabot-empty-chat-info"
               >
                 <Box component={EmptyDashboardBot} w="6rem" />
-                <Text c="text-light" maw="12rem" ta="center">
+                <Text c="text-tertiary" maw="12rem" ta="center">
                   {config.emptyText ??
                     t`I can help you explore your metrics and models.`}
                 </Text>

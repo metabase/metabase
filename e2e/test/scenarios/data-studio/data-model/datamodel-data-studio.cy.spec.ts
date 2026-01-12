@@ -84,25 +84,33 @@ describe("scenarios > data studio > datamodel", () => {
       );
     });
 
-    it("should show 404 if field does not exist", () => {
-      H.DataModel.visitDataStudio({
-        databaseId: SAMPLE_DB_ID,
-        schemaId: SAMPLE_DB_SCHEMA_ID,
-        tableId: ORDERS_ID,
-        fieldId: 12345,
-        skipWaiting: true,
-      });
-      cy.wait("@databases");
-      cy.wait(100); // wait with assertions for React effects to kick in
+    it(
+      "should show 404 if field does not exist",
+      // We eliminate the flakiness by removing the need to scroll horizontally
+      { viewportWidth: 1600 },
+      () => {
+        H.DataModel.visitDataStudio({
+          databaseId: SAMPLE_DB_ID,
+          schemaId: SAMPLE_DB_SCHEMA_ID,
+          tableId: ORDERS_ID,
+          fieldId: 12345, // we're force navigating to a fake field id
+          skipWaiting: true,
+        });
+        cy.wait(["@datamodel/visit/databases", "@datamodel/visit/metadata"]);
 
-      TablePicker.getDatabases().should("have.length", 1);
-      TablePicker.getTables().should("have.length", 8);
-      H.DataModel.get().findByText("Not found.").should("be.visible");
-      cy.location("pathname").should(
-        "eq",
-        `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
-      );
-    });
+        TablePicker.getDatabases().should("have.length", 1);
+        TablePicker.getTables().should("have.length", 8);
+        cy.location("pathname").should(
+          "eq",
+          `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/field/12345`,
+        );
+
+        H.DataModel.get().within(() => {
+          cy.findByText("Field details").should("be.visible");
+          cy.findByText("Not found.").should("be.visible");
+        });
+      },
+    );
 
     it(
       "should not show 404 error if database is not selected",
@@ -394,31 +402,6 @@ describe("scenarios > data studio > datamodel", () => {
               `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic/table/`,
             );
           });
-
-          cy.log("databases, schemas, and tables should be links");
-          TablePicker.getDatabase("Sample Database").click();
-          TablePicker.getDatabase("Writable Postgres12").click();
-          TablePicker.getDatabase("Writable Postgres12")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}`,
-            );
-          TablePicker.getSchema("Domestic")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${WRITABLE_DB_ID}/schema/${WRITABLE_DB_ID}:Domestic`,
-            );
-          TablePicker.getTable("Orders")
-            .should("have.prop", "tagName", "A")
-            .and(
-              "have.attr",
-              "href",
-              `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}`,
-            );
         });
 
         it("should allow to search for tables", () => {
@@ -458,6 +441,7 @@ describe("scenarios > data studio > datamodel", () => {
             "aria-selected",
             "true",
           );
+
           TablePicker.getTable("Birds").find('input[type="checkbox"]').check();
           TablePicker.getTable("Birds").should(
             "not.have.attr",
@@ -763,30 +747,20 @@ describe("scenarios > data studio > datamodel", () => {
       const getSchemaCheckbox = (schemaName: string) =>
         TablePicker.getSchema(schemaName).find('input[type="checkbox"]');
       const getWpTableCheckbox = (schemaName: string, tableName: string) =>
-        getTableCheckbox(
-          WRITABLE_DB_ID,
-          `${WRITABLE_DB_ID}:${schemaName}`,
-          tableName,
-        );
+        getTableCheckbox(WRITABLE_DB_ID, schemaName, tableName);
       const getSampleTableCheckbox = (tableName: string) =>
-        getTableCheckbox(SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID, tableName);
+        getTableCheckbox(SAMPLE_DB_ID, "PUBLIC", tableName);
 
       function getTableCheckbox(
         databaseId: number,
-        schemaFragment: string,
+        schemaName: string,
         tableName: string,
       ) {
         return TablePicker.getTables()
-          .filter((_, element) => {
-            const href = element.getAttribute("href") ?? "";
-            const text = element.textContent ?? "";
-
-            return (
-              href.includes(`/database/${databaseId}/`) &&
-              href.includes(`/schema/${schemaFragment}`) &&
-              text.toLowerCase().includes(tableName.toLowerCase())
-            );
-          })
+          .filter(
+            `[data-database-id="${databaseId}"][data-schema-name="${schemaName}"]`,
+          )
+          .filter(`:contains("${tableName}")`)
           .find('input[type="checkbox"]');
       }
 
@@ -803,6 +777,7 @@ describe("scenarios > data studio > datamodel", () => {
       for (const tableName of domesticTables) {
         getWpTableCheckbox(domesticSchema, tableName).should("be.checked");
       }
+
       for (const tableName of wildTables) {
         getWpTableCheckbox(wildSchema, tableName).should("be.checked");
       }
@@ -864,8 +839,7 @@ describe("scenarios > data studio > datamodel", () => {
       getSchemaCheckbox(wildSchema).should("not.be.checked");
       // partially selected now, so clicking twice to make it unchecked
       getDatabaseCheckbox().should("not.be.checked");
-
-      getDatabaseCheckbox().uncheck();
+      getDatabaseCheckbox().check();
       getDatabaseCheckbox().uncheck();
       for (const { schema, table } of tablesInDatabase) {
         getWpTableCheckbox(schema, table).should("not.be.checked");
@@ -1090,10 +1064,7 @@ describe("scenarios > data studio > datamodel", () => {
         cy.findByText("New description").should("be.visible");
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the table name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
+      it("should allow changing the table name with data model permissions only", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
 
         cy.signIn("none");
@@ -1168,10 +1139,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
+      it("should allow changing the field name with data model permissions only", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
         H.DataModel.visitDataStudio({
@@ -1563,10 +1531,7 @@ describe("scenarios > data studio > datamodel", () => {
         );
       });
 
-      // Skipped because data studio is not available with data model permissions only.
-      // Unskip once the new datamodel page is available in that case.
-      it.skip("should allow changing the field name with data model permissions only", () => {
-        H.activateToken("pro-self-hosted");
+      it("should allow changing the field name with data model permissions only", () => {
         setDataModelPermissions({ tableIds: [ORDERS_ID] });
         cy.signIn("none");
         H.DataModel.visitDataStudio({
@@ -2013,10 +1978,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.findByLabelText("Left column").should("contain.text", "User ID");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should allow to change the field foreign key target with no permissions to Reviews table", () => {
-          H.activateToken("pro-self-hosted");
+        it("should allow to change the field foreign key target with no permissions to Reviews table", () => {
           setDataModelPermissions({
             tableIds: [ORDERS_ID, PRODUCTS_ID, PEOPLE_ID],
           });
@@ -2072,10 +2034,7 @@ describe("scenarios > data studio > datamodel", () => {
           cy.findByLabelText("Left column").should("contain.text", "User ID");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should not allow setting foreign key target for inaccessible tables", () => {
-          H.activateToken("pro-self-hosted");
+        it("should not allow setting foreign key target for inaccessible tables", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
@@ -2691,10 +2650,7 @@ describe("scenarios > data studio > datamodel", () => {
             .and("have.value", "Title");
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should allow to change foreign key target for accessible tables", () => {
-          H.activateToken("pro-self-hosted");
+        it("should allow to change foreign key target for accessible tables", () => {
           setDataModelPermissions({
             tableIds: [ORDERS_ID, REVIEWS_ID, PRODUCTS_ID],
           });
@@ -2833,9 +2789,9 @@ describe("scenarios > data studio > datamodel", () => {
 
           cy.log("Name of the product should be displayed instead of its ID");
           H.openOrdersTable();
-          cy.findByRole("gridcell", { name: "Awesome Concrete Shoes" }).should(
-            "be.visible",
-          );
+          cy.findByRole("gridcell", {
+            name: "Awesome Concrete Shoes",
+          }).should("be.visible");
         });
 
         it("should correctly apply and display custom remapping for numeric values", () => {
@@ -2909,10 +2865,7 @@ describe("scenarios > data studio > datamodel", () => {
           });
         });
 
-        // Skipped because data studio is not available with data model permissions only.
-        // Unskip once the new datamodel page is available in that case.
-        it.skip("should show a proper error message when using custom mapping", () => {
-          H.activateToken("pro-self-hosted");
+        it("should show a proper error message when using custom mapping", () => {
           setDataModelPermissions({ tableIds: [REVIEWS_ID] });
 
           cy.signIn("none");
@@ -3537,6 +3490,37 @@ describe("scenarios > data studio > datamodel", () => {
     });
   });
 
+  it("should allow you to close table and field details", () => {
+    H.DataModel.visitDataStudio({
+      databaseId: SAMPLE_DB_ID,
+      schemaId: SAMPLE_DB_SCHEMA_ID,
+      tableId: ORDERS_ID,
+      fieldId: ORDERS.PRODUCT_ID,
+    });
+
+    FieldSection.getPreviewButton().click({ scrollBehavior: "center" });
+
+    PreviewSection.get().should("exist");
+
+    FieldSection.getCloseButton().click();
+
+    PreviewSection.get().should("not.exist");
+    FieldSection.get().should("not.exist");
+    TableSection.get().should("exist");
+
+    TableSection.getCloseButton().click();
+    TableSection.get().should("not.exist");
+
+    cy.log(
+      "ensure that preview opened state was cleared and does not re-appear",
+    );
+    TablePicker.getTable("Orders").click();
+    TableSection.clickField("Subtotal");
+    PreviewSection.get().should("not.exist");
+    FieldSection.get().should("exist");
+    TableSection.get().should("exist");
+  });
+
   describe("Error handling", { tags: "@external" }, () => {
     beforeEach(() => {
       H.restore("postgres-writable");
@@ -3956,11 +3940,7 @@ function expectTableNotVisible(tableId: TableId) {
 }
 
 function findSearchResultByTableId(tableId: TableId) {
-  return cy.findAllByTestId("tree-item").filter((_, element) => {
-    const href = element.getAttribute("href") ?? "";
-    const pattern = new RegExp(`/table/${tableId}(?:/|$)`);
-    return pattern.test(href);
-  });
+  return cy.findAllByTestId("tree-item").filter(`[data-table-id="${tableId}"]`);
 }
 
 function openWritableDomesticSchema(databaseName: string, schemaName: string) {

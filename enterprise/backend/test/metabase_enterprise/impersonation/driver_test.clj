@@ -50,11 +50,11 @@
              (impersonation.driver/connection-impersonation-role (mt/db))))))))
 
 (deftest connection-impersonation-role-test-4
-  (testing "Returns nil if the permissions in another group supercede the impersonation"
+  (testing "Returns nil if the permissions in another group supersede the impersonation"
     (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                    :attributes     {"impersonation_attr" "impersonation_role"}}
       ;; `with-impersonations!` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
-      ;; for all users, it should supercede the impersonation policy in the new group
+      ;; for all users, it should supersede the impersonation policy in the new group
       (mt/with-full-data-perms-for-all-users!
         (is (nil? (impersonation.driver/connection-impersonation-role (mt/db))))))))
 
@@ -398,7 +398,7 @@
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             role-a (u/lower-case-en (mt/random-name))
-            ;; todo: this relies on the impersonation user being the login credential. This is not necessarilly true
+            ;; todo: this relies on the impersonation user being the login credential. This is not necessarily true
             ;; on sqlserver. see #60672
             impersonation-user (impersonation-default-user driver/*driver*)
             details (:details (mt/db))]
@@ -615,7 +615,7 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count]]})))
 
-          ;; Non-impersonated user should stil be able to query the table
+          ;; Non-impersonated user should still be able to query the table
           (request/as-admin
             (is (= [100]
                    (mt/first-row

@@ -64,6 +64,10 @@ Options:
 - `-e, --continue-on-error` - Do not break execution on errors.
 - `--full-stacktrace` - Output full stacktraces on errors.
 
+## `generate-openapi-spec`
+
+Generate OpenAPI specification file from Malli schema definitions. This is written to `resources/openapi/openapi.json`.
+
 ## `help command-name | help`
 
 Show this help message listing valid Metabase commands.

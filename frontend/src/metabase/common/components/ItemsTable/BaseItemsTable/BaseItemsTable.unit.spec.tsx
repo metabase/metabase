@@ -24,8 +24,6 @@ function getCollectionItem({
   id = 1,
   model = "dashboard",
   name = "My Item",
-  icon = "dashboard",
-  url = "/dashboard/1",
   description = "A description",
   ...rest
 }: Partial<CollectionItem> & {
@@ -47,10 +45,6 @@ function getCollectionItem({
     description,
     name,
     collection: createMockCollection({ can_write: true }),
-    getIcon: () => ({
-      name: icon,
-    }),
-    getUrl: () => url,
     archived: false,
   };
 }

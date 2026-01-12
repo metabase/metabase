@@ -22,6 +22,7 @@ const isApiKeyGroupMember = (member: Member) =>
 const canEditMembership = (group: Group) =>
   !isDefaultGroup(group) &&
   !PLUGIN_TENANTS.isExternalUsersGroup(group) &&
+  !PLUGIN_TENANTS.isTenantGroup(group) &&
   PLUGIN_GROUP_MANAGERS.UserTypeCell;
 
 interface GroupMembersTableProps {
@@ -143,7 +144,7 @@ const UserMemberRow = ({
       {canRemove ? (
         <Box component="td" ta="right">
           <UnstyledButton onClick={() => onMembershipRemove(member)}>
-            <Icon name="close" c="text-light" size={16} />
+            <Icon name="close" c="text-tertiary" size={16} />
           </UnstyledButton>
         </Box>
       ) : null}
@@ -157,13 +158,13 @@ const ApiKeyMemberRow = ({ member }: { member: Member }) => (
       <Text fw="bold">{member.first_name}</Text>
     </td>
     <td>
-      <Text fw="bold" c="text-medium">{t`API Key`}</Text>
+      <Text fw="bold" c="text-secondary">{t`API Key`}</Text>
     </td>
     <td>{/* api keys don't have real emails */}</td>
     <Box component="td" ta="right">
       <Link to="/admin/settings/authentication/api-keys">
         <Tooltip label={t`API keys`} position="left">
-          <Icon name="link" c="text-light" size={16} />
+          <Icon name="link" c="text-tertiary" size={16} />
         </Tooltip>
       </Link>
     </Box>

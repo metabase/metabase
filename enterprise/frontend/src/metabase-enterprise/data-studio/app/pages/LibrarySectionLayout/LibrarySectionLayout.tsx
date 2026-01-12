@@ -1,7 +1,7 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
@@ -10,29 +10,30 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { useRouter } from "metabase/router";
 import {
-  Button,
   Card,
-  FixedSizeIcon,
+  EntityNameCell,
   Flex,
-  Group,
   Icon,
-  Menu,
   Stack,
   TextInput,
+  TreeTable,
+  type TreeTableColumnDef,
+  TreeTableSkeleton,
+  useTreeTableInstance,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
-import { Table } from "metabase-enterprise/data-studio/common/components/Table";
-import { useTreeFilter } from "metabase-enterprise/data-studio/common/components/Table/useTreeFilter";
+import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
-import { ListLoadingState } from "metabase-enterprise/transforms/components/ListLoadingState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
+import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 import {
   useBuildSnippetTree,
   useBuildTreeForCollection,
@@ -44,12 +45,25 @@ import { getWritableCollection } from "./utils";
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
   const dispatch = useDispatch();
+  const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
   );
   const [permissionsCollectionId, setPermissionsCollectionId] =
     useState<CollectionId | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const expandedIdsFromUrl = useMemo(() => {
+    const rawIds = location.query?.expandedId;
+    if (!rawIds) {
+      return null;
+    }
+
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    return _.object(
+      ids.map((id) => [`collection:${id}`, true]),
+    ) as ExpandedState;
+  }, [location.query?.expandedId]);
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
@@ -70,14 +84,13 @@ export function LibrarySectionLayout() {
 
   const handleItemSelect = useCallback(
     (item: TreeItem) => {
-      // Casting because these should not be collections, but collection items with
-      // numbers for IDs
+      const entityId = item.data.id as number;
       if (item.model === "metric") {
-        dispatch(push(Urls.dataStudioMetric(item.id as number)));
+        dispatch(push(Urls.dataStudioMetric(entityId)));
       } else if (item.model === "snippet") {
-        dispatch(push(Urls.dataStudioSnippet(item.id as number)));
+        dispatch(push(Urls.dataStudioSnippet(entityId)));
       } else if (item.model === "table") {
-        dispatch(push(Urls.dataStudioTable(item.id as number)));
+        dispatch(push(Urls.dataStudioTable(entityId)));
       }
     },
     [dispatch],
@@ -98,47 +111,52 @@ export function LibrarySectionLayout() {
     error: snippetsError,
   } = useBuildSnippetTree();
 
-  const filteredTree = useTreeFilter({
-    data: [...tablesTree, ...metricsTree, ...snippetTree],
-    searchQuery,
-    searchProps: ["name"],
-  });
+  const combinedTree = useMemo(
+    () => [...tablesTree, ...metricsTree, ...snippetTree],
+    [tablesTree, metricsTree, snippetTree],
+  );
 
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);
-  const filterReturnedEmpty = !!searchQuery && filteredTree.length === 0;
-  const showEmptyState = !isLoading && filterReturnedEmpty;
 
-  const libraryColumnDef = useMemo<ColumnDef<TreeItem, ReactNode>[]>(
+  const libraryHasContent = combinedTree.some(
+    (node) => node.children && node.children.length > 0,
+  );
+
+  const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(
     () => [
       {
-        accessorKey: "name",
+        id: "name",
         header: t`Name`,
-        meta: { width: "auto" },
-        cell: ({ getValue, row }) => {
-          const data = row.original;
-          return (
-            <Group data-testid={`${data.model}-name`} gap="sm">
-              {data.icon && <Icon name={data.icon} c="brand" />}
-              {getValue()}
-            </Group>
-          );
-        },
+        enableSorting: true,
+        accessorKey: "name",
+        minWidth: 200,
+        cell: ({ row }) => (
+          <EntityNameCell
+            data-testid={`${row.original.model}-name`}
+            icon={row.original.icon}
+            name={row.original.name}
+          />
+        ),
       },
       {
-        accessorKey: "updatedAt",
+        id: "updatedAt",
         header: t`Updated At`,
+        accessorKey: "updatedAt",
+        enableSorting: true,
+        sortingFn: "datetime",
+        width: "auto",
+        widthPadding: 20,
         cell: ({ getValue }) => {
-          const value = getValue() as string;
-          return value && <DateTime value={value} />;
+          const dateValue = getValue() as string | undefined;
+          return dateValue ? <DateTime value={dateValue} /> : null;
         },
       },
       {
         id: "actions",
-        header: "",
-        size: 24,
-        cell: ({ row: { original } }) => {
-          const { data } = original;
+        width: 48,
+        cell: ({ row }) => {
+          const { data } = row.original;
           if (
             isCollection(data) &&
             data.model === "collection" &&
@@ -168,6 +186,32 @@ export function LibrarySectionLayout() {
     [],
   );
 
+  const handleRowActivate = useCallback(
+    (row: { original: TreeItem }) => {
+      handleItemSelect(row.original);
+    },
+    [handleItemSelect],
+  );
+
+  const treeTableInstance = useTreeTableInstance({
+    data: combinedTree,
+    columns: libraryColumnDef,
+    getSubRows: (node) => node.children,
+    getNodeId: (node) => node.id,
+    globalFilter: searchQuery,
+    onGlobalFilterChange: setSearchQuery,
+    isFilterable: (node) => node.model !== "collection",
+    defaultExpanded: expandedIdsFromUrl ?? true,
+    onRowActivate: handleRowActivate,
+  });
+
+  let emptyMessage = null;
+  if (!libraryHasContent) {
+    emptyMessage = t`No tables, metrics, or snippets yet`;
+  } else if (searchQuery) {
+    emptyMessage = t`No results for "${searchQuery}"`;
+  }
+
   return (
     <>
       <SectionLayout>
@@ -179,7 +223,7 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          bg="background-light"
+          bg="background-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
@@ -197,21 +241,21 @@ export function LibrarySectionLayout() {
             <CreateMenu metricCollectionId={metricCollection?.id} />
           </Flex>
           <Card withBorder p={0}>
-            {isLoading && <ListLoadingState />}
-            {showEmptyState && (
-              <ListEmptyState
-                label={
-                  filterReturnedEmpty
-                    ? t`No results for "${searchQuery}"`
-                    : t`No tables, metrics, or snippets yet`
+            {isLoading ? (
+              <TreeTableSkeleton columnWidths={[0.6, 0.2, 0.05]} />
+            ) : (
+              <TreeTable
+                instance={treeTableInstance}
+                emptyState={
+                  emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
                 }
-              />
-            )}
-            {!isLoading && !showEmptyState && (
-              <Table
-                data={filteredTree}
-                columns={libraryColumnDef}
-                onSelect={handleItemSelect}
+                onRowClick={(row) => {
+                  if (row.getCanExpand()) {
+                    row.toggleExpanded();
+                  } else {
+                    handleRowActivate(row);
+                  }
+                }}
               />
             )}
           </Card>
@@ -239,37 +283,3 @@ export function LibrarySectionLayout() {
     </>
   );
 }
-
-const RootSnippetsCollectionMenu = ({
-  setPermissionsCollectionId,
-}: {
-  setPermissionsCollectionId: (id: CollectionId) => void;
-}) => {
-  return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <Button
-          w={24}
-          h={24}
-          c="text-medium"
-          size="compact-xs"
-          variant="subtle"
-          leftSection={<FixedSizeIcon name="ellipsis" size={16} />}
-          aria-label={t`Snippet collection options`}
-          onClick={(e) => e.stopPropagation()}
-        />
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<FixedSizeIcon name="lock" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setPermissionsCollectionId("root");
-          }}
-        >
-          {t`Change permissions`}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  );
-};

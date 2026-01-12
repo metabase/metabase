@@ -9,25 +9,27 @@ import {
   provideTableTags,
   provideUserTags,
 } from "metabase/api/tags";
-import type {
-  BulkTableInfo,
-  BulkTableSelectionInfo,
-  CardDependencyNode,
-  DashboardDependencyNode,
-  DependencyGraph,
-  DependencyNode,
-  DocumentDependencyNode,
-  PythonLibrary,
-  SandboxDependencyNode,
-  SegmentDependencyNode,
-  SnippetDependencyNode,
-  SupportAccessGrant,
-  TableDependencyNode,
-  Transform,
-  TransformDependencyNode,
-  TransformJob,
-  TransformRun,
-  TransformTag,
+import {
+  type BulkTableInfo,
+  type BulkTableSelectionInfo,
+  type CardDependencyNode,
+  DEPENDENCY_TYPES,
+  type DashboardDependencyNode,
+  type DependencyGraph,
+  type DependencyNode,
+  type DocumentDependencyNode,
+  type MeasureDependencyNode,
+  type PythonLibrary,
+  type SandboxDependencyNode,
+  type SegmentDependencyNode,
+  type SnippetDependencyNode,
+  type SupportAccessGrant,
+  type TableDependencyNode,
+  type Transform,
+  type TransformDependencyNode,
+  type TransformJob,
+  type TransformRun,
+  type TransformTag,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -235,6 +237,16 @@ function provideSegmentDependencyNodeTags(
   ];
 }
 
+function provideMeasureDependencyNodeTags(
+  node: MeasureDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    idTag("measure", node.id),
+    ...(node.data.creator != null ? provideUserTags(node.data.creator) : []),
+    ...(node.data.table ? provideTableTags(node.data.table) : []),
+  ];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -255,15 +267,14 @@ export function provideDependencyNodeTags(
       return provideSandboxDependencyNodeTags(node);
     case "segment":
       return provideSegmentDependencyNodeTags(node);
+    case "measure":
+      return provideMeasureDependencyNodeTags(node);
   }
 }
 
 export function provideDependencyNodeListTags(nodes: DependencyNode[]) {
   return [
-    listTag("card"),
-    listTag("table"),
-    listTag("transform"),
-    listTag("snippet"),
+    ...DEPENDENCY_TYPES.map(listTag),
     ...nodes.flatMap(provideDependencyNodeTags),
   ];
 }

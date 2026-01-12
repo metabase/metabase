@@ -598,7 +598,7 @@ describe("scenarios > visualizations > table > dashboards context", () => {
     H.editDashboard();
 
     // Ensure resizing change page size
-    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 600 });
+    H.resizeDashboardCard({ card: cy.get("@tableDashcard"), x: 600, y: 700 });
     H.saveDashboard();
     cy.get("@tableDashcard")
       .findByText(rowsRegex)

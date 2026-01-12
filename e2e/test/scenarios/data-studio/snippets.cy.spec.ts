@@ -255,4 +255,155 @@ describe("scenarios > data studio > snippets", () => {
         .should("not.exist");
     });
   });
+
+  describe("breadcrumb folder expansion", () => {
+    it("should only expand the relevant folder path when navigating back via breadcrumbs", () => {
+      // Create nested folder structure: Parent Folder > Child Folder
+      H.createSnippetFolder({
+        name: "Parent Folder",
+      }).then(({ body: parentFolder }) => {
+        H.createSnippetFolder({
+          name: "Child Folder",
+          parent_id: Number(parentFolder.id),
+        }).then(({ body: childFolder }) => {
+          // Create a snippet in the child folder
+          H.createSnippet({
+            name: "Nested Snippet",
+            content: "SELECT * FROM orders",
+            collection_id: childFolder.id,
+          });
+        });
+      });
+
+      // Create a sibling folder with its own nested content
+      // This folder should be visible but NOT expanded (its children hidden)
+      H.createSnippetFolder({
+        name: "Sibling Folder",
+      }).then(({ body: siblingFolder }) => {
+        H.createSnippet({
+          name: "Sibling Snippet",
+          content: "SELECT 2",
+          collection_id: siblingFolder.id,
+        });
+      });
+
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify all folders and their contents are initially expanded");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Parent Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Child Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Nested Snippet")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Snippet")
+        .should("be.visible");
+
+      cy.log("Navigate to the nested snippet");
+      H.DataStudio.Library.libraryPage().findByText("Nested Snippet").click();
+      H.DataStudio.Snippets.editPage().should("be.visible");
+
+      cy.log("Click the Child Folder breadcrumb to go back to the library");
+      H.DataStudio.breadcrumbs()
+        .findByRole("link", { name: "Child Folder" })
+        .click();
+
+      cy.log(
+        "Verify the path to Child Folder is expanded, but sibling folder is collapsed",
+      );
+      H.DataStudio.Library.libraryPage()
+        .findByText("Parent Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Child Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Nested Snippet")
+        .should("be.visible");
+      // Sibling Folder is visible (it's a child of root which is expanded)
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Folder")
+        .should("be.visible");
+      // But Sibling Folder's contents should NOT be visible (folder is collapsed)
+      H.DataStudio.Library.libraryPage()
+        .findByText("Sibling Snippet")
+        .should("not.exist");
+    });
+
+    it("should expand all folders when navigating directly to library without expandedId params", () => {
+      // Create nested folder structure
+      H.createSnippetFolder({
+        name: "Folder A",
+      });
+      H.createSnippetFolder({
+        name: "Folder B",
+      });
+
+      cy.log("Navigate directly to library (no expandedId params)");
+      H.DataStudio.Library.visit();
+
+      cy.log("Verify all folders are expanded by default");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Folder A")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Folder B")
+        .should("be.visible");
+    });
+
+    it("should expand parent folders when clicking a nested folder in breadcrumbs", () => {
+      // Create deeply nested structure: GrandParent > Parent > Child
+      H.createSnippetFolder({
+        name: "GrandParent Folder",
+      }).then(({ body: grandParentFolder }) => {
+        H.createSnippetFolder({
+          name: "Parent Folder",
+          parent_id: Number(grandParentFolder.id),
+        }).then(({ body: parentFolder }) => {
+          H.createSnippetFolder({
+            name: "Child Folder",
+            parent_id: Number(parentFolder.id),
+          }).then(({ body: childFolder }) => {
+            H.createSnippet({
+              name: "Deep Snippet",
+              content: "SELECT 1",
+              collection_id: childFolder.id,
+            });
+          });
+        });
+      });
+
+      H.DataStudio.Library.visit();
+
+      cy.log("Navigate to the deeply nested snippet");
+      H.DataStudio.Library.libraryPage().findByText("Deep Snippet").click();
+      H.DataStudio.Snippets.editPage().should("be.visible");
+
+      cy.log(
+        "Click the Parent Folder breadcrumb (middle of the path) to go back",
+      );
+      H.DataStudio.breadcrumbs()
+        .findByRole("link", { name: "Parent Folder" })
+        .click();
+
+      cy.log("Verify the path up to Parent Folder is expanded");
+      H.DataStudio.Library.libraryPage()
+        .findByText("GrandParent Folder")
+        .should("be.visible");
+      H.DataStudio.Library.libraryPage()
+        .findByText("Parent Folder")
+        .should("be.visible");
+      // Child Folder should still be visible since it's inside Parent Folder
+      H.DataStudio.Library.libraryPage()
+        .findByText("Child Folder")
+        .should("be.visible");
+    });
+  });
 });

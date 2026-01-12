@@ -1,18 +1,21 @@
+import { memo } from "react";
+
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Text } from "metabase/ui";
 
 interface EntityNameCellProps {
   icon?: IconName;
   name: string;
-  iconColor?: string;
+  iconColor?: ColorName;
   wrap?: boolean;
   tooltipOpenDelay?: number;
   "data-testid"?: string;
 }
 
-export function EntityNameCell({
+export const EntityNameCell = memo(function EntityNameCell({
   icon,
   name,
   iconColor = "brand",
@@ -38,4 +41,4 @@ export function EntityNameCell({
       )}
     </Group>
   );
-}
+});

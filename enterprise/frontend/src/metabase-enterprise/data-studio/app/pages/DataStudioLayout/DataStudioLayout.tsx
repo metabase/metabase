@@ -1,12 +1,14 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import DataStudioLogo from "assets/img/data-studio-logo.svg";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
+import { isMac } from "metabase/lib/browser";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
@@ -15,16 +17,17 @@ import {
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
+  ActionIcon,
   Box,
   Center,
   FixedSizeIcon,
   Flex,
+  Group,
   type IconName,
   Loader,
   Stack,
   Text,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 
 import S from "./DataStudioLayout.module.css";
@@ -44,6 +47,16 @@ export function DataStudioLayout({ children }: DataStudioLayoutProps) {
     key: "isNavbarOpened",
   });
   const isNavbarOpened = _isNavbarOpened !== false;
+
+  useRegisterShortcut(
+    [
+      {
+        id: "toggle-navbar",
+        perform: () => setIsNavbarOpened(!isNavbarOpened),
+      },
+    ],
+    [isNavbarOpened],
+  );
 
   return isLoading ? (
     <Center h="100%">
@@ -76,6 +89,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_TRANSFORMS.canAccessTransforms,
   );
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
+  const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const currentTab = getCurrentTab(pathname);
 
@@ -92,9 +106,6 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           isNavbarOpened={isNavbarOpened}
           onNavbarToggle={onNavbarToggle}
         />
-        {isNavbarOpened && (
-          <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls fullWidth />
-        )}
         <DataStudioTab
           label={t`Library`}
           icon="repository"
@@ -135,6 +146,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             showLabel={isNavbarOpened}
           />
         )}
+        {PLUGIN_DEPENDENCIES.isEnabled && (
+          <DataStudioTab
+            label={t`Dependency diagnostics`}
+            icon="list"
+            to={Urls.dependencyTasks()}
+            isSelected={currentTab === "tasks"}
+            showLabel={isNavbarOpened}
+          />
+        )}
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Transforms`}
@@ -146,6 +166,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
         )}
       </Stack>
       <Stack gap="0.75rem">
+        <PLUGIN_REMOTE_SYNC.GitSyncSetupMenuItem
+          isNavbarOpened={isNavbarOpened}
+          onClick={() => setIsGitSettingsOpen(true)}
+        />
         {canAccessTransforms && (
           <DataStudioTab
             label={t`Jobs`}
@@ -171,6 +195,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
           showLabel={isNavbarOpened}
         />
       </Stack>
+      <PLUGIN_REMOTE_SYNC.GitSettingsModal
+        isOpen={isGitSettingsOpen}
+        onClose={() => setIsGitSettingsOpen(false)}
+      />
     </Stack>
   );
 }
@@ -224,6 +252,12 @@ function DataStudioTab({
   );
 }
 
+const getSidebarTooltipLabel = (isNavbarOpened: boolean) => {
+  const message = isNavbarOpened ? t`Close sidebar` : t`Open sidebar`;
+  const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
+  return `${message} ${shortcut}`;
+};
+
 type DataStudioNavbarToggleProps = {
   isNavbarOpened: boolean;
   onNavbarToggle: (isOpened: boolean) => void;
@@ -234,33 +268,58 @@ function DataStudioNavbarToggle({
   onNavbarToggle,
 }: DataStudioNavbarToggleProps) {
   return (
-    <Flex justify="space-between" mb={2}>
-      <UnstyledButton
-        className={cx(S.toggle, {
-          [S.hoverButton]: !isNavbarOpened,
-          [S.disablePointer]: isNavbarOpened,
-        })}
-        p="0.5rem"
-        bdrs="md"
-        onClick={() => !isNavbarOpened && onNavbarToggle(true)}
-      >
-        <img src={DataStudioLogo} className={cx(S.hideOnHover, S.logo)} />
-        <FixedSizeIcon
-          name="sidebar_open"
-          className={S.showOnHover}
-          c="text-secondary"
-        />
-      </UnstyledButton>
-      {isNavbarOpened && (
-        <UnstyledButton
-          className={S.toggle}
-          p="0.5rem"
-          bdrs="md"
-          onClick={() => onNavbarToggle(false)}
+    <Flex
+      align="center"
+      justify="space-between"
+      mb="0.75rem"
+      mt="sm"
+      mr="0.125rem"
+    >
+      <Group gap="sm">
+        <Box
+          className={cx(S.logoWrapper, { [S.navbarClosed]: !isNavbarOpened })}
         >
-          <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
-        </UnstyledButton>
+          <img
+            alt={t`Data Studio Logo`}
+            className={S.logo}
+            src={DataStudioLogo}
+          />
+          {!isNavbarOpened && (
+            <ToggleActionIcon
+              isNavbarOpened={isNavbarOpened}
+              onNavbarToggle={onNavbarToggle}
+            />
+          )}
+        </Box>
+        {isNavbarOpened && <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
+      </Group>
+      {isNavbarOpened && (
+        <ToggleActionIcon isNavbarOpened onNavbarToggle={onNavbarToggle} />
       )}
     </Flex>
+  );
+}
+
+type ToggleActionIconProps = DataStudioNavbarToggleProps & {
+  className?: string;
+};
+
+function ToggleActionIcon(props: ToggleActionIconProps) {
+  const { isNavbarOpened, onNavbarToggle } = props;
+  const label = getSidebarTooltipLabel(isNavbarOpened);
+
+  return (
+    <Tooltip label={label} openDelay={1000}>
+      <ActionIcon
+        aria-label={label}
+        className={S.toggle}
+        onClick={() => onNavbarToggle(!isNavbarOpened)}
+      >
+        <FixedSizeIcon
+          name={isNavbarOpened ? "sidebar_closed" : "sidebar_open"}
+          c="text-secondary"
+        />
+      </ActionIcon>
+    </Tooltip>
   );
 }

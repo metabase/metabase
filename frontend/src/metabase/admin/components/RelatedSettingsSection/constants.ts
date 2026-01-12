@@ -53,7 +53,7 @@ export const getModularEmbeddingRelatedSettingItems = ({
             icon: "globe" as const,
             name: t`Tenants`,
             to: isUsingTenants
-              ? "/admin/tenants"
+              ? "/admin/people/tenants"
               : "/admin/people/user-strategy",
           },
         ]

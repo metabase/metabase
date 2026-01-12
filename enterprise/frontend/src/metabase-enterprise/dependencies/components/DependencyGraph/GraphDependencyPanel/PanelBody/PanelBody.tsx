@@ -3,9 +3,6 @@ import { memo } from "react";
 import { Box, Group, Stack } from "metabase/ui";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
-import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
-import { GraphExternalLink } from "../../GraphExternalLink";
-import { GraphLink } from "../../GraphLink";
 import {
   getNodeIcon,
   getNodeId,
@@ -13,7 +10,10 @@ import {
   getNodeLink,
   getNodeLocationInfo,
   getNodeViewCount,
-} from "../../utils";
+} from "../../../../utils";
+import { GraphBreadcrumbs } from "../../GraphBreadcrumbs";
+import { GraphExternalLink } from "../../GraphExternalLink";
+import { GraphLink } from "../../GraphLink";
 
 import S from "./PanelBody.module.css";
 import { getNodeViewCountLabel } from "./utils";
@@ -73,7 +73,7 @@ function ListItem({ node, getGraphUrl }: ListItemProps) {
           wrap="nowrap"
         >
           {location != null && (
-            <GraphBreadcrumbs location={location} ml="1rem" pl="sm" />
+            <GraphBreadcrumbs links={location.links} ml="1rem" pl="sm" />
           )}
           {link != null && viewCount != null && (
             <GraphExternalLink label={link.label} url={link.url} />

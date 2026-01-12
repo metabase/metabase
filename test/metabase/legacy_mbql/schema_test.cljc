@@ -647,3 +647,14 @@
                  false]]
                normalized))
         (is (mr/validate schema normalized))))))
+
+(deftest ^:parallel allow-temporal-args-for-minus-test
+  (let [expr       ["-"
+                    ["date" ["now"]]
+                    ["expression" "Last_Date_Active" {"base-type" "type/DateTimeWithLocalTZ"}]]
+        normalized (lib/normalize ::mbql.s/- expr)]
+    (is (= [:-
+            [:date [:now]]
+            [:expression "Last_Date_Active" {:base-type :type/DateTimeWithLocalTZ}]]
+           normalized))
+    (is (mr/validate ::mbql.s/- normalized))))

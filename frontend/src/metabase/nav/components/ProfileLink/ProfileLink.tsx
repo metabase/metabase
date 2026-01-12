@@ -136,7 +136,7 @@ function ProfileLinkInner({
         action: () => dispatch(setOpenModal("help")),
       },
       {
-        title: t`Report an issue`,
+        title: t`Download diagnostics`,
         icon: null,
         action: () => {
           trackErrorDiagnosticModalOpened("profile-menu");
@@ -175,7 +175,7 @@ function ProfileLinkInner({
               size="2.25rem"
               p="sm"
               variant="outline"
-              color="text-dark"
+              color="text-primary"
               bd="1px solid var(--mb-color-border)"
               aria-label={t`Settings`}
             >
