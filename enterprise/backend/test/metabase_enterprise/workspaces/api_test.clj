@@ -1407,7 +1407,6 @@
                                                                   :database_id   db-1
                                                                   :dataset_query (mt/mbql-query venues)}
                          :model/Transform          {xf6-id :id} {:name        "Not checked out - native with card dep"
-                                                                 :source_type :native
                                                                  :source      {:type  "query"
                                                                                :query (my-native-query
                                                                                        db-1
@@ -1415,6 +1414,7 @@
                                                                                        {"card" card-id})}
                                                                  :target      (random-target db-1)}
                          :model/Transform          {xf7-id :id} {:name   "Using another database"
+                                                                 :source {:type "python"}
                                                                  :target (random-target db-2)}
                          ;; Workspace transforms (mirrored from global1 and global2)
                          :model/WorkspaceTransform _            {:global_id    xf1-id
