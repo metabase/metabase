@@ -12,6 +12,7 @@ title: Driver interface changelog
   - `init-workspace-isolation!` - Initialize database isolation for a workspace (create isolated schema/database and user credentials)
   - `destroy-workspace-isolation!` - Destroy all database resources created for workspace isolation
   - `grant-workspace-read-access!` - Grant read access on specified tables to a workspace's isolated user
+  - `check-isolation-permissions` - Check if database connection has sufficient permissions for workspace isolation by testing the actual operations
 
 ## Metabase 0.58.0
 
