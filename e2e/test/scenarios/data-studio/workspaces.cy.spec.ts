@@ -490,6 +490,49 @@ describe("scenarios > data studio > workspaces", () => {
         ]);
       });
     });
+
+    it.only('closes relevant tabs after ws transform is removed', () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 2");
+      Workspaces.getSaveTransformButton().click();
+      runTransformAndWaitForSuccess();
+
+      // Open the transform table tab
+      Workspaces.openDataTab().then(() => {
+        cy.findByText("Schema A.transform_table").should("be.visible").click();
+      });
+
+      // Verify both tabs are open
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("transform_table", [
+          "Setup",
+          "Agent Chat",
+          "SQL transform",
+          "transform_table",
+        ]);
+      });
+
+      Workspaces.openCodeTab();
+
+      // Remove the transform from the workspace
+      Workspaces.getWorkspaceTransforms()
+        .findByText("SQL transform")
+        .realHover();
+      Workspaces.getWorkspaceTransforms()
+        .findByLabelText("More actions")
+        .click();
+      H.popover().findByText("Remove").click();
+      verifyAndCloseToast("Transform removed from the workspace");
+
+      // Verify both transform tab and table tab have been closed
+      Workspaces.getWorkspaceContent().within(() => {
+        H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
+      });
+    })
   });
 
   describe("setup tab", () => {
