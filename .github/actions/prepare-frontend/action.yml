@@ -16,6 +16,9 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+
     - name: Get cache keys
       uses: ./.github/actions/get-cache-keys
       id: get-cache-keys
@@ -40,12 +43,10 @@ runs:
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
-    - name: Install Bun and dependencies
-      run: |
-        curl -fsSL https://bun.sh/install | bash
-        export PATH="$HOME/.bun/bin:$PATH"
-        bun install --frozen-lockfile
+    - name: Install dependencies
+      run: bun install --frozen-lockfile
       shell: bash
+
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'
       run: bun patch-package
