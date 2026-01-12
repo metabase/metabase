@@ -12,7 +12,7 @@ export const AddMorePrompt = styled.div<{ isVisible: boolean }>`
   text-align: center;
   font-size: 0.875rem;
   height: 1.25rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   transition: opacity 0.2s ease-in-out;
   opacity: ${(props) => (props.isVisible ? 1 : 0)};
 `;

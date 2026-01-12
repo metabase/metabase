@@ -285,7 +285,7 @@ function SectionTitle({ title, description, icon }: SectionTitleProps) {
         {icon && <Icon name={icon} c="brand" />}
         <h3>{title}</h3>
       </Group>
-      {description && <Box c="text-medium">{description}</Box>}
+      {description && <Box c="text-secondary">{description}</Box>}
     </Stack>
   );
 }

@@ -14,5 +14,6 @@ export const isExternalUser = (user?: Pick<User, "tenant_id">): boolean => {
   return Boolean(user && user.tenant_id !== null);
 };
 
-export const isTenantCollection = (collection: Collection) =>
-  collection.namespace === "shared-tenant-collection";
+export const isTenantCollection = (
+  collection: Partial<Pick<Collection, "namespace">>,
+) => collection.namespace === "shared-tenant-collection";

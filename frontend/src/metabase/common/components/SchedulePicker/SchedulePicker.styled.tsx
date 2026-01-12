@@ -20,5 +20,5 @@ export const PickerText = styled.span`
 
 export const ScheduleDescriptionContainer = styled.div`
   margin-top: 1rem;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;

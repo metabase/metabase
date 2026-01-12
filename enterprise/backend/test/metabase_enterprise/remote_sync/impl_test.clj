@@ -300,9 +300,9 @@
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
                        :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
           (t2/insert! :model/RemoteSyncObject
-                      [{:model_type "Collection" :model_id coll-id :status "created" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id card-id :status "updated" :status_changed_at (t/offset-date-time)}
-                       {:model_type "Card" :model_id 999 :status "deleted" :status_changed_at (t/offset-date-time)}])
+                      [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "created" :status_changed_at (t/offset-date-time)}
+                       {:model_type "Card" :model_id card-id :model_name "Test Card" :status "updated" :status_changed_at (t/offset-date-time)}
+                       {:model_type "Card" :model_id 999 :model_name "Test Card2" :status "deleted" :status_changed_at (t/offset-date-time)}])
           (is (= 3 (t2/count :model/RemoteSyncObject)))
           (let [test-files {"main" {"collections/test-collection-1xxxx-_/test-collection-1xxxx.yaml"
                                     (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection")
@@ -329,9 +329,9 @@
                          :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}
                          :model/Dashboard {dash-id :id} {:name "Test Dashboard" :collection_id coll-id :entity_id "test-dashboard-1xxxxx"}]
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id coll-id :status "updated" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Card" :model_id card-id :status "created" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Dashboard" :model_id dash-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id coll-id :model_name "Test Collection" :status "updated" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Card" :model_id card-id :model_name "Test Card" :status "created" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Dashboard" :model_id dash-id :model_name "Test Dashboard" :status "removed" :status_changed_at (t/offset-date-time)}])
             (is (= "updated" (:status (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id coll-id))))
             (is (= "created" (:status (t2/select-one :model/RemoteSyncObject :model_type "Card" :model_id card-id))))
             (is (= "removed" (:status (t2/select-one :model/RemoteSyncObject :model_type "Dashboard" :model_id dash-id))))
@@ -362,8 +362,8 @@
                                                                   :entity_id "removed-collection-xx"
                                                                   :location "/"}]
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id active-coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Collection" :model_id removed-coll-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id active-coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id removed-coll-id :model_name "Removed Collection" :status "removed" :status_changed_at (t/offset-date-time)}])
             (let [initial-files {"main" {"collections/active-collection-xxx_active_collection/active-collection-xxx.yaml"
                                          (test-helpers/generate-collection-yaml "active-collection-xxx" "Active Collection")
                                          "collections/active-collection-xxx_active_collection/cards/active-card.yaml"
@@ -397,8 +397,8 @@
                           :entity_id "nested-removed-collxx"
                           :location (format "/%d/" parent-coll-id)}]
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id parent-coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Collection" :model_id nested-coll-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id parent-coll-id :model_name "Parent Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id nested-coll-id :model_name "Nested Collection" :status "removed" :status_changed_at (t/offset-date-time)}])
             (let [initial-files {"main" {"collections/parent-collection-xx_parent_collection/parent-collection-xx.yaml"
                                          (test-helpers/generate-collection-yaml "parent-collection-xx" "Parent Collection")
                                          "collections/parent-collection-xx_parent_collection/nested-removed-collxx_nested_removed_collection/nested-removed-collxx.yaml"
@@ -435,9 +435,9 @@
                           :entity_id "removed-coll-2xxxxxxx" ;; 21 chars
                           :location "/"}]
             (t2/insert! :model/RemoteSyncObject
-                        [{:model_type "Collection" :model_id active-coll-id :status "synced" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Collection" :model_id removed-coll-1-id :status "removed" :status_changed_at (t/offset-date-time)}
-                         {:model_type "Collection" :model_id removed-coll-2-id :status "removed" :status_changed_at (t/offset-date-time)}])
+                        [{:model_type "Collection" :model_id active-coll-id :model_name "Active Collection" :status "synced" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id removed-coll-1-id :model_name "Removed Col 1" :status "removed" :status_changed_at (t/offset-date-time)}
+                         {:model_type "Collection" :model_id removed-coll-2-id :model_name "Removed Col 2" :status "removed" :status_changed_at (t/offset-date-time)}])
             (let [initial-files {"main" {"collections/removed-coll-1xxxxxxx_removed_collection_1/removed-coll-1xxxxxxx.yaml"
                                          (test-helpers/generate-collection-yaml "removed-coll-1xxxxxxx" "Removed Collection 1")
                                          "collections/removed-coll-1xxxxxxx_removed_collection_1/cards/card-1.yaml"

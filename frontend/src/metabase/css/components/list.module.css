@@ -1,6 +1,6 @@
 .ListSectionHeader :global(.Icon),
 .ListItem .ListItemArrow :global(.Icon) {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .ListSectionHeader:hover :global(.Icon) {
@@ -8,11 +8,11 @@
 }
 
 .ListItem :global(.Icon) {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .ListSectionHeader {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   border: 2px solid transparent;
 
   /* so that spacing matches [data-element-id=list-item] */
@@ -34,7 +34,7 @@
 }
 
 .ListSectionExpanded .ListSectionHeader .ListSectionTitle {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .ListSectionTitle {
@@ -61,28 +61,28 @@
 
 /* LIST ITEM TITLE */
 .ListItemTitle {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .ListItemDisabled .ListItemTitle {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemTitle,
 .ListItem:not(.ListItemDisabled):hover .ListItemTitle,
 .ListItemSelected:not(.ListItemDisabled) .ListItemTitle {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 /* LIST ITEM DESCRIPTION */
 .ListItemDescription {
   margin-top: 0.25em;
   margin-bottom: 0;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .ListItemDisabled .ListItemDescription {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .ListItemCursor:not(.ListItemDisabled) .ListItemDescription,
@@ -95,7 +95,7 @@
 .ListItemCursor:not(.ListItemDisabled) :global(.Icon),
 .ListItem:not(.ListItemDisabled):hover :global(.Icon),
 .ListItemSelected:not(.ListItemDisabled) :global(.Icon) {
-  color: var(--mb-color-text-white) !important;
+  color: var(--mb-color-text-primary-inverse) !important;
 }
 
 /* Moved from `query_builder.module.css` to make migration easier */

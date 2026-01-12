@@ -7,7 +7,7 @@ import { query, stageIndex } from "./test/shared";
 
 /*
  * TODO: This is set to a very low value because the memory
- * blows up in CI. We should figure out why and increase it againt.
+ * blows up in CI. We should figure out why and increase it again.
  */
 const MAX_SEED = 5;
 
@@ -38,7 +38,7 @@ beforeAll(() => {
 
 describe("metabase/querying/expressions/compiler", () => {
   // quick sanity check before the real fuzzing
-  it("should parse custom expresssion", () => {
+  it("should parse custom expression", () => {
     expect(() => compile("CASE([Deal],[Price]*7e-1,[Price])")).not.toThrow();
   });
 });

@@ -119,6 +119,12 @@ describe("TemporalUnitPicker", () => {
     expect(onRemove).toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("should show 'No options' when availableItems is empty", () => {
+    setup({ availableItems: [] });
+    expect(screen.getByText("No options")).toBeInTheDocument();
+    expect(screen.queryAllByRole("option")).toHaveLength(0);
+  });
 });
 
 function getOption(name: string) {

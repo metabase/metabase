@@ -4,7 +4,6 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { ClauseStep } from "metabase/querying/notebook/components/ClauseStep";
-import { color } from "metabase/ui/utils/colors";
 import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
@@ -65,20 +64,21 @@ export function SegmentFilterEditor({
         items={filters}
         initialAddText={t`Add filters to narrow your answer`}
         readOnly={readOnly}
-        color={color("filter")}
+        color="filter"
         isLastOpened={false}
         renderName={renderFilterName}
-        renderPopover={({ item: filter, index, onClose }) => (
-          <FilterPicker
-            query={query}
-            stageIndex={STAGE_INDEX}
-            filter={filter}
-            filterIndex={index}
-            onSelect={(newFilter) => handleSelectFilter(filter, newFilter)}
-            onClose={onClose}
-            readOnly={readOnly}
-          />
-        )}
+        renderPopover={({ item: filter, index, onClose }) =>
+          readOnly ? null : (
+            <FilterPicker
+              query={query}
+              stageIndex={STAGE_INDEX}
+              filter={filter}
+              filterIndex={index}
+              onSelect={(newFilter) => handleSelectFilter(filter, newFilter)}
+              onClose={onClose}
+            />
+          )
+        }
         onReorder={handleReorderFilter}
         onRemove={handleRemoveFilter}
       />

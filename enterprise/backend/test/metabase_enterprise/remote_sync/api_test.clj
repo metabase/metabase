@@ -149,6 +149,8 @@
                                          remote-sync-branch "main"]
         (t2/insert! :model/RemoteSyncObject {:model_type "Card"
                                              :model_id 1
+                                             :model_name "Test Card"
+                                             :model_collection_id 1
                                              :status "updated"
                                              :status_changed_at (java.time.OffsetDateTime/now)})
         (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -382,6 +384,8 @@
                                        :name "Test Card"}
                      :model/RemoteSyncObject _ {:model_type "Card"
                                                 :model_id (:id card)
+                                                :model_name "Test Card"
+                                                :model_collection_id (:id remote-col)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (is (= {:is_dirty true}
@@ -421,16 +425,22 @@
                                         :name "Card 2"}
                      :model/Dashboard dashboard {:collection_id (:id remote-col1)
                                                  :name "Dashboard 1"}
-                     :model/RemoteSyncObject _ {:model_type "Card"
+                     :model/RemoteSyncObject _ {:model_type "card"
                                                 :model_id (:id card1)
+                                                :model_name "Card 1"
+                                                :model_collection_id (:id remote-col1)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}
-                     :model/RemoteSyncObject _ {:model_type "Card"
+                     :model/RemoteSyncObject _ {:model_type "card"
                                                 :model_id (:id card2)
+                                                :model_name "Card 2"
+                                                :model_collection_id (:id remote-col2)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}
-                     :model/RemoteSyncObject _ {:model_type "Dashboard"
+                     :model/RemoteSyncObject _ {:model_type "dashboard"
                                                 :model_id (:id dashboard)
+                                                :model_name "Dashboard 1"
+                                                :model_collection_id (:id remote-col1)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
@@ -453,7 +463,9 @@
                                                    :location (str "/" (:id remote-col) "/")}
                      :model/Card nested-card {:collection_id (:id nested-col)
                                               :name "Nested Card"}
-                     :model/RemoteSyncObject _ {:model_type "Card"
+                     :model/RemoteSyncObject _ {:model_type "card"
+                                                :model_name "Nested Card"
+                                                :model_collection_id (:id nested-col)
                                                 :model_id (:id nested-card)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
@@ -473,6 +485,8 @@
                                        :name "Test Card"}
                      :model/RemoteSyncObject _ {:model_type "Card"
                                                 :model_id (:id card)
+                                                :model_name "Test Card"
+                                                :model_collection_id (:id remote-col)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
@@ -529,7 +543,7 @@
       (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
-  (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
+  (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
     (with-redefs [remote-sync.object/dirty-global? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -751,6 +765,8 @@
                                        remote-sync-type :read-write]
       (mt/with-temp [:model/RemoteSyncObject remote-sync {:model_type "Card"
                                                           :model_id 1
+                                                          :model_name "Test Card"
+                                                          :model_collection_id 1
                                                           :status "updated"
                                                           :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)

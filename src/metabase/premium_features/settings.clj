@@ -316,7 +316,7 @@
   :data-studio)
 
 (define-premium-feature ^{:added "0.58.0"} enable-tenants?
-  "Is this a development instance that should have watermarks?"
+  "Should the multi-tenant feature be enabled?"
   :tenants)
 
 (defn- -token-features []
@@ -378,4 +378,12 @@
   :visibility :public
   :setter     :none
   :getter     -token-features
+  :doc        false)
+
+(defsetting send-metering-interval-ms
+  "Interval in milliseconds between metering event sends."
+  :type       :integer
+  :default    nil
+  :visibility :internal
+  :export?    false
   :doc        false)

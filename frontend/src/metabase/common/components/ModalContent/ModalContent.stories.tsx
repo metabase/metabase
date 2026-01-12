@@ -32,7 +32,7 @@ const Template: StoryFn<ModalContentProps> = (args) => {
     <div
       style={{
         width: 1200,
-        background: color("bg-white"),
+        background: color("background-primary"),
         border: "1px solid black",
       }}
     >
