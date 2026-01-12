@@ -403,8 +403,7 @@
     (assoc graph :entities updated-entities)))
 
 (defn- calculate-and-cache-graph!
-  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale.
-   Note: Does NOT compute staleness - that's done at read time via hydrate-staleness."
+  "Calculate the graph, cache it, sync external inputs/outputs, and mark workspace as not stale."
   [{ws-id :id, isolated-schema :schema :as workspace}]
   (t2/with-transaction [_conn]
     ;; First, re-analyze any stale transforms
