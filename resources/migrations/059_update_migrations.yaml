@@ -240,6 +240,68 @@ databaseChangeLog:
               - column:
                   name: result
 
+  - changeSet:
+      id: v59.2026-01-10T21:49:48
+      author: nvoxland
+      comment: Create the table backing the message queue
+      changes:
+        - createTable:
+            tableName: queue_message
+            remarks: Lightweight message queue for cross-cluster communication
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: queue_name
+                  type: varchar(254)
+                  remarks: The name of queue this message is in
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the message was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The status of the message
+                  name: status
+                  type: varchar(10)
+                  defaultValue: 'pending'
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Heartbeat to ensure status is not stuck
+                  name: status_heartbeat
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Number of failures processing this message
+                  name: failures
+                  type: int
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Current owner of the message
+                  name: owner
+                  type: varchar(36)
+              - column:
+                  remarks: The content of the message
+                  name: payload
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
