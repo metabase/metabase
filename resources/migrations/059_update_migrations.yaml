@@ -277,12 +277,14 @@ databaseChangeLog:
               - column:
                   name: started_at
                   type: ${timestamp_type}
+                  remarks: When the run started
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
                   name: ended_at
                   type: ${timestamp_type}
+                  remarks: When the run completed (null if still running)
                   constraints:
                     nullable: true
               - column:
