@@ -201,6 +201,14 @@
   [metadata-providerable query]
   (query-method metadata-providerable (assoc (lib.convert/->pMBQL query) :lib/type :mbql/query)))
 
+#?(:clj
+   (defn- track-lib-query-stage!
+     "Track query data at a stage within lib/query processing. Only active on JVM when tracker is bound."
+     [stage query]
+     (when (some-> (requiring-resolve 'metabase.models.interface/*query-uuid-tracker*) deref)
+       (let [record-fn (requiring-resolve 'metabase.models.interface/record-stage-data!)]
+         (record-fn stage query)))))
+
 ;;; this should already be a query in the shape we want but:
 ;; - let's make sure it has the database metadata that was passed in
 ;; - fill in field refs with metadata (#33680)
@@ -208,10 +216,12 @@
 (defmethod query-method :mbql/query
   [metadata-providerable {converted? :lib.convert/converted? :as query}]
   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+        _ #?(:clj (track-lib-query-stage! :before-lib-normalize query) :cljs nil)
         query (-> query
                   (assoc :lib/metadata metadata-provider)
                   (dissoc :lib.convert/converted?)
                   lib.normalize/normalize)
+        _ #?(:clj (track-lib-query-stage! :after-lib-normalize query) :cljs nil)
         stages (:stages query)]
     (cond-> query
       converted?

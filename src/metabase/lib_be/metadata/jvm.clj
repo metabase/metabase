@@ -433,5 +433,14 @@
   if you need to."
   [database-id :- ::lib.schema.id/database]
   (if-let [cache-atom *metadata-provider-cache*]
-    (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)
+    (let [cached? (cache/has? @cache-atom database-id)
+          result (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)]
+      ;; Track metadata provider cache behavior when query tracker is active
+      (when-let [tracker (some-> (requiring-resolve 'metabase.models.interface/*query-uuid-tracker*) deref)]
+        (when tracker
+          (swap! tracker update :events (fnil conj [])
+                 {:stage :metadata-provider-cache
+                  :database-id database-id
+                  :cache-hit cached?})))
+      result)
     (application-database-metadata-provider-factory database-id)))
