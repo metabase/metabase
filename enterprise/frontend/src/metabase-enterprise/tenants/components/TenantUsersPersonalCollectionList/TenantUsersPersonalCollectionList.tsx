@@ -46,10 +46,13 @@ export const TenantUsersPersonalCollectionList = ({
   const items = users
     .filter((user) => user.personal_collection_id)
     .map((user) => ({
-      key: user.personal_collection_id,
+      key: user.id,
       name: user.common_name,
       icon: "person" as const satisfies IconName,
-      link: `/collection/${user.personal_collection_id}`,
+      link: Urls.collection({
+        id: user.personal_collection_id,
+        name: user.common_name,
+      }),
     }));
 
   return (
@@ -61,7 +64,7 @@ export const TenantUsersPersonalCollectionList = ({
         page,
         pageSize: PAGE_SIZE,
         total,
-        itemsLength: PAGE_SIZE,
+        itemsLength: items.length,
         onNextPage: handleNextPage,
         onPreviousPage: handlePreviousPage,
       }}

@@ -23,7 +23,7 @@ export const TenantUsersList = () => {
     key: tenant.id,
     name: tenant.name,
     icon: "group" as const satisfies IconName,
-    link: `/collection/tenant-users/${tenant.id}`,
+    link: Urls.tenantUsersPersonalCollectionsForTenant(tenant.id),
   }));
 
   return (

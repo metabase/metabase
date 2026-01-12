@@ -17,6 +17,9 @@ export const tenantSpecificCollections = () => "/collection/tenant-specific";
 
 export const tenantUsersPersonalCollections = () => "/collection/tenant-users";
 
+export const tenantUsersPersonalCollectionsForTenant = (tenantId: number) =>
+  `/collection/tenant-users/${tenantId}`;
+
 type Collection = Pick<
   BaseCollection,
   "id" | "name" | "originalName" | "personal_owner_id" | "type"
