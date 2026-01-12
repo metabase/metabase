@@ -672,9 +672,7 @@ describe("scenarios > data studio > workspaces", () => {
       createWorkspace();
 
       cy.log("Click Add Transform button");
-      Workspaces.getWorkspaceSidebar().within(() => {
-        cy.findByLabelText("Add transform").click();
-      });
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
 
       cy.log("Check that SQL and Python options are provided");
       H.popover()
@@ -742,9 +740,10 @@ describe("scenarios > data studio > workspaces", () => {
         .findByText("New transform")
         .should("be.visible");
 
-      Workspaces.openDataTab().then(() => {
-        cy.findByText("Schema B.test_table").should("be.visible");
-      });
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar()
+        .findByText("Schema B.test_table")
+        .should("be.visible");
 
       Workspaces.getTransformTargetButton().click();
       H.modal().within(() => {
@@ -756,14 +755,13 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByRole("button", { name: /Change target/ }).click();
       });
 
-      Workspaces.getWorkspaceSidebar().within(() => {
-        cy.findByText("Schema B.new_table").should("be.visible");
-      });
+      Workspaces.getWorkspaceSidebar()
+        .findByText("Schema B.new_table")
+        .should("be.visible");
 
-      Workspaces.openCodeTab().then(() => {
-        Workspaces.getWorkspaceTransforms().within(() => {
-          Workspaces.getTransformStatusDot("New transform").should("not.exist");
-        });
+      Workspaces.openCodeTab();
+      Workspaces.getWorkspaceTransforms().within(() => {
+        Workspaces.getTransformStatusDot("New transform").should("not.exist");
       });
     });
 
@@ -773,9 +771,7 @@ describe("scenarios > data studio > workspaces", () => {
       createWorkspace();
 
       cy.log("Click Add Transform button");
-      Workspaces.getWorkspaceSidebar().within(() => {
-        cy.findByLabelText("Add transform").click();
-      });
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
 
       cy.log("Check that Python and SQL options are provided");
       H.popover()
@@ -851,7 +847,8 @@ describe("scenarios > data studio > workspaces", () => {
         .findByText("New transform")
         .should("be.visible");
 
-      Workspaces.openDataTab().then(() => {
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar().within(() => {
         cy.findByText("Schema B.test_table").should("be.visible");
         cy.findByText("Schema A.Animals").should("be.visible");
       });
@@ -865,9 +862,10 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getSaveTransformButton().click();
 
-      Workspaces.openDataTab().then(() => {
-        cy.findByText("Schema B.Animals").should("be.visible");
-      });
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar()
+        .findByText("Schema B.Animals")
+        .should("be.visible");
 
       Workspaces.getTransformTargetButton().click();
       H.modal().within(() => {
@@ -879,14 +877,13 @@ describe("scenarios > data studio > workspaces", () => {
         cy.findByRole("button", { name: /Change target/ }).click();
       });
 
-      Workspaces.getWorkspaceSidebar().within(() => {
-        cy.findByText("Schema B.new_table").should("be.visible");
-      });
+      Workspaces.getWorkspaceSidebar()
+        .findByText("Schema B.new_table")
+        .should("be.visible");
 
-      Workspaces.openCodeTab().then(() => {
-        Workspaces.getWorkspaceTransforms().within(() => {
-          Workspaces.getTransformStatusDot("New transform").should("not.exist");
-        });
+      Workspaces.openCodeTab();
+      Workspaces.getWorkspaceTransforms().within(() => {
+        Workspaces.getTransformStatusDot("New transform").should("not.exist");
       });
     });
 
@@ -908,9 +905,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getSaveTransformButton().click();
 
       cy.log("Create new transform");
-      Workspaces.getWorkspaceSidebar().within(() => {
-        cy.findByLabelText("Add transform").click();
-      });
+      Workspaces.getWorkspaceSidebar().findByLabelText("Add transform").click();
 
       H.popover()
         .findByRole("menuitem", { name: /SQL Transform/ })

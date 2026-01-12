@@ -38,15 +38,11 @@ export const Workspaces = {
   },
 
   openCodeTab() {
-    return this.getWorkspaceSidebar().within(() => {
-      return cy.findByRole("tab", { name: "Code" }).click();
-    });
+    this.getWorkspaceSidebar().findByRole("tab", { name: "Code" }).click();
   },
 
   openDataTab() {
-    return this.getWorkspaceSidebar().within(() => {
-      return cy.findByRole("tab", { name: "Data" }).click();
-    });
+    this.getWorkspaceSidebar().findByRole("tab", { name: "Data" }).click();
   },
 
   getWorkspacesSection() {
