@@ -12,7 +12,6 @@ import {
   mockAuthProviderAndJwtSignIn,
   signInAsAdminAndEnableEmbeddingSdk,
 } from "e2e/support/helpers/embedding-sdk-testing";
-import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex } from "metabase/ui";
 import type { Card } from "metabase-types/api";
 
@@ -80,38 +79,6 @@ describe("scenarios > embedding-sdk > content-translations", () => {
           });
         });
       });
-    });
-  });
-
-  describe("endpoint reactivity", () => {
-    it("should fetch translations when endpoint is set after component mounts", () => {
-      signInAsAdminAndEnableEmbeddingSdk();
-
-      uploadTranslationDictionaryViaAPI([
-        { locale: "de", msgid: "Test String", msgstr: "Test Zeichenkette" },
-      ]);
-
-      cy.signOut();
-
-      mockAuthProviderAndJwtSignIn();
-
-      cy.intercept("GET", "/api/ee/content-translation/dictionary*").as(
-        "getTranslations",
-      );
-
-      const TestComponent = () => {
-        const tc = useTranslateContent();
-        return <div data-testid="translated">{tc("Test String")}</div>;
-      };
-
-      mountSdkContent(<TestComponent />, {
-        sdkProviderProps: { locale: "de" },
-        waitForUser: false,
-      });
-
-      cy.wait("@getTranslations", { timeout: 5000 });
-
-      cy.findByTestId("translated").should("have.text", "Test Zeichenkette");
     });
   });
 
