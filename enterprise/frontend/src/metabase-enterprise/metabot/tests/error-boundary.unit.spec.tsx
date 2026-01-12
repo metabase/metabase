@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChatSidebar } from "../components/MetabotChatSidebar";
 
 let mockShouldThrow = false;
 
@@ -53,7 +53,7 @@ function setup() {
 
   renderWithProviders(
     <MetabotProvider>
-      <Metabot />
+      <MetabotChatSidebar />
     </MetabotProvider>,
     {
       storeInitialState: createMockState({

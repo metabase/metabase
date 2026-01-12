@@ -19,7 +19,7 @@ import { useGetSuggestedMetabotPromptsQuery } from "metabase-enterprise/api";
 import { MetabotResetLongChatButton } from "metabase-enterprise/metabot/components/MetabotChat/MetabotResetLongChatButton";
 
 import { useMetabotAgent } from "../../hooks";
-import type { MetabotConfig } from "../Metabot";
+import type { MetabotConfig } from "../MetabotChatSidebar";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";

@@ -33,7 +33,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChatSidebar } from "../components/MetabotChatSidebar";
 
 export { createMockReadableStream, createPauses };
 
@@ -150,7 +150,7 @@ export function setup(
   );
 
   const {
-    ui = <Metabot />,
+    ui = <MetabotChatSidebar />,
     currentUser = createMockUser(),
     metabotPluginInitialState = metabotState,
     promptSuggestions = [],

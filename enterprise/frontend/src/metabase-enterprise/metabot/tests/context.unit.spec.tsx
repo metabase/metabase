@@ -10,7 +10,7 @@ import {
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChatSidebar } from "../components/MetabotChatSidebar";
 
 import {
   enterChatMessage,
@@ -83,7 +83,7 @@ describe("metabot > context", () => {
     setup({
       ui: (
         <>
-          <Metabot />
+          <MetabotChatSidebar />
           <TestComponent />
         </>
       ),

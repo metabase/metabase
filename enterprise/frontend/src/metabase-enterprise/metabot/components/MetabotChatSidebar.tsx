@@ -99,7 +99,7 @@ export const MetabotAuthenticated = ({ hide, config }: MetabotProps) => {
   );
 };
 
-export const Metabot = (props: MetabotProps) => {
+export const MetabotChatSidebar = (props: MetabotProps) => {
   const currentUser = useSelector(getUser);
 
   // NOTE: do not render Metabot if the user is not authenticated.

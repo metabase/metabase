@@ -9,11 +9,11 @@ import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/Meta
 import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { Metabot } from "./components/Metabot";
 import { MetabotAdminPage } from "./components/MetabotAdmin/MetabotAdminPage";
 import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
+import { MetabotChatSidebar } from "./components/MetabotChatSidebar";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
 import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
@@ -26,7 +26,7 @@ import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExplorati
 export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
     PLUGIN_METABOT.isOmnibotEnabled = () => true;
-    PLUGIN_METABOT.Metabot = Metabot;
+    PLUGIN_METABOT.MetabotChatSidebar = MetabotChatSidebar;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
     PLUGIN_METABOT.getAdminRoutes = () => (

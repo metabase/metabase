@@ -4,14 +4,14 @@ import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { getLocation } from "metabase/selectors/routing";
 
-import { Metabot } from "./Metabot";
+import { MetabotChatSidebar } from "./MetabotChatSidebar";
 
 export function MetabotDataStudioSidebar() {
   const location = useSelector(getLocation);
   const disabled = !location.pathname?.startsWith(Urls.transformList());
 
   return (
-    <Metabot
+    <MetabotChatSidebar
       hide={disabled}
       config={{
         preventRetryMessage: true,

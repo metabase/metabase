@@ -9,7 +9,7 @@ import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 
-import { Metabot } from "../components/Metabot";
+import { MetabotChatSidebar } from "../components/MetabotChatSidebar";
 
 import {
   assertNotVisible,
@@ -77,7 +77,7 @@ describe("metabot > ui", () => {
     const { rerender } = setup();
     await assertVisible();
 
-    rerender(<Metabot hide={true} />);
+    rerender(<MetabotChatSidebar hide={true} />);
     await assertNotVisible();
   });
 
@@ -244,7 +244,7 @@ describe("metabot > ui", () => {
       ui: (
         <div>
           <AnotherComponent />
-          <Metabot />
+          <MetabotChatSidebar />
         </div>
       ),
     });

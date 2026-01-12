@@ -56,7 +56,7 @@ type PluginMetabotConfig = {
 
 type PluginMetabotType = {
   isOmnibotEnabled: () => boolean;
-  Metabot: (props: {
+  MetabotChatSidebar: (props: {
     hide?: boolean;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
@@ -111,8 +111,10 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
 
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
   isOmnibotEnabled: () => false,
-  Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
-    null as React.ReactElement | null,
+  MetabotChatSidebar: (_props: {
+    hide?: boolean;
+    config?: PluginMetabotConfig;
+  }) => null as React.ReactElement | null,
   getAdminPaths: () => [],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null,

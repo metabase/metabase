@@ -129,7 +129,9 @@ function App({
               <UndoListing />
               <StatusListing />
               <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp || isDataStudioApp} />
+              <PLUGIN_METABOT.MetabotChatSidebar
+                hide={isAdminApp || isDataStudioApp}
+              />
             </AppContentContainer>
           </AppContainer>
           <Palette />
