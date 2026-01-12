@@ -44,11 +44,11 @@ describe("ListField - utils", () => {
 
   describe("removeDiacritics", () => {
     it("should remove diacritics from a string", () => {
-      expect(removeDiacritics("Gerät")).toBe("Gerat");
+      expect(removeDiacritics("Gerät")).toBe("Gerat"); // codespell:ignore
     });
 
     it("should handle strings without diacritics", () => {
-      expect(removeDiacritics("Gerat")).toBe("Gerat");
+      expect(removeDiacritics("Gerat")).toBe("Gerat"); // codespell:ignore
     });
 
     it("should return an empty string given an empty string", () => {

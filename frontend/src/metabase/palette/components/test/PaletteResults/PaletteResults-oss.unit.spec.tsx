@@ -33,7 +33,7 @@ describe("PaletteResults", () => {
 
   //For some reason, New Question isn't showing up without searching. My guess is virtualization weirdness
   it("should allow you to create a new question", async () => {
-    setup({ query: "ques" });
+    setup({ query: "ques" }); // codespell:ignore
     expect(await screen.findByText("New question")).toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe("PaletteResults", () => {
 
   it("should display collections that search results are from", async () => {
     setup({
-      query: "ques",
+      query: "ques", // codespell:ignore
     });
     expect(
       await screen.findByRole("option", { name: "Foo Question" }),
@@ -132,7 +132,7 @@ describe("PaletteResults", () => {
   });
 
   it("should provide links to settings pages for admins", async () => {
-    setup({ query: "emai", isAdmin: true });
+    setup({ query: "emai", isAdmin: true }); // codespell:ignore
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(await screen.findByText("Settings - Email")).toBeInTheDocument();
   });
@@ -162,7 +162,7 @@ describe("PaletteResults", () => {
   });
 
   it("should not compute search results if 'search-typeahead-enabled' is disabled", async () => {
-    setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
+    setup({ query: "ques", settings: { "search-typeahead-enabled": false } }); // codespell:ignore
     expect(
       await screen.findByRole("option", { name: /View search results/ }),
     ).toBeInTheDocument();
