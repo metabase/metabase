@@ -27,6 +27,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
@@ -1461,13 +1462,17 @@
         (let [mp (mt/metadata-provider)
               table (lib.metadata/table mp (mt/id :event_times))
               event-time (lib.metadata/field mp (mt/id :event_times :event_time))
-              ;; Create a query with an expression to force nesting
+              ;; Create a query with an expression that we actually USE to force nesting.
+              ;; The bug occurs when there's a nested query (subselect) and the outer query
+              ;; references a TIME column from the inner query by name (not by ID).
               query (-> (lib/query mp table)
                         (lib/expression "test_expr" (lib/+ 1 1))
                         (lib/breakout (lib/with-temporal-bucket event-time :hour))
+                        ;; Breaking out on the expression forces the query to nest
+                        (as-> q (lib/breakout q (lib/expression-ref q "test_expr")))
                         (lib/aggregate (lib/count)))]
           ;; Get the native SQL without executing
-          (let [native-sql (-> (qp/compile query) :query)]
+          (let [native-sql (-> (qp.compile/compile query) :query)]
             (testing "Generated SQL should not contain CAST to timestampntz for TIME column"
               (is (not (str/includes? (str/lower-case native-sql) "as timestampntz"))
                   (str "SQL should not cast TIME column to timestampntz, but got: " native-sql)))
