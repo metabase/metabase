@@ -130,7 +130,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       mountEditor();
 
       popover().within(() => {
-        cy.findByText("Produkte").should("be.visible");
+        // Use .should("exist") instead of .should("be.visible") because
+        // elements in scrollable popovers might be below the fold
+        cy.findByText("Produkte").should("exist");
 
         cy.findByText("Bestellungen").click();
       });
@@ -142,9 +144,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Gesamtsumme").should("be.visible");
-        cy.findByText("Steuer").should("be.visible");
-        cy.findByText("Menge").should("be.visible");
+        cy.findByText("Gesamtsumme").should("exist");
+        cy.findByText("Steuer").should("exist");
+        cy.findByText("Menge").should("exist");
       });
     });
 
@@ -199,8 +201,8 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       popover().within(() => {
         cy.findByText("Summe von...").click();
 
-        cy.findByText("Bestellungen").should("be.visible");
-        cy.findByText("Rabatt").should("be.visible");
+        cy.findByText("Bestellungen").should("exist");
+        cy.findByText("Rabatt").should("exist");
       });
 
       popover().within(() => {
@@ -212,8 +214,8 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Bestellungen").should("be.visible");
-        cy.findByText("Produkt ID").should("be.visible");
+        cy.findByText("Bestellungen").should("exist");
+        cy.findByText("Produkt ID").should("exist");
 
         cy.findByText("Gesamtsumme").click();
       });
@@ -232,7 +234,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Benutzer ID").should("be.visible");
+        cy.findByText("Benutzer ID").should("exist");
 
         cy.findByText("Gesamtsumme").click();
       });
@@ -267,7 +269,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Bestellungen").should("be.visible");
+        cy.findByText("Bestellungen").should("exist");
 
         cy.findByText("Produkt ID").click();
       });
@@ -277,7 +279,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Personen").should("be.visible");
+        cy.findByText("Personen").should("exist");
         cy.findByText("Adresse").click();
       });
 
