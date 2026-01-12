@@ -1301,6 +1301,27 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v58.2026-01-09T12:00:00
+      author: johnswanson
+      comment: Create data-analyst magic permissions group
+      changes:
+        - sql:
+            sql: INSERT INTO permissions_group (name, magic_group_type) VALUES ('Data Analysts', 'data-analyst')
+
+  - changeSet:
+      id: v58.2026-01-09T12:00:01
+      author: johnswanson
+      comment: Grant read permissions on existing Library collections to Data Analysts group
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT pg.id, '/collection/' || c.id || '/write/'
+              FROM permissions_group pg, collection c
+              WHERE pg.magic_group_type = 'data-analyst'
+                AND c.type IN ('library', 'library-data', 'library-metrics')
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

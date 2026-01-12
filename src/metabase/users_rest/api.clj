@@ -546,7 +546,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [email first_name last_name user_group_memberships is_superuser] :as body}
+   {:keys [email first_name last_name user_group_memberships is_superuser is_data_analyst] :as body}
    :- [:map
        [:email                  {:optional true} [:maybe ms/Email]]
        [:first_name             {:optional true} [:maybe ms/NonBlankString]]
@@ -589,7 +589,7 @@
                                                 :present (cond-> #{:first_name :last_name :locale}
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
-                                                           api/*is-superuser?* (conj :is_superuser :is_data_analyst))))]
+                                                           api/*is-superuser?* (conj :is_superuser))))]
           (t2/update! :model/User id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
@@ -598,7 +598,13 @@
           (events/publish-event! :event/user-update {:object (t2/select-one :model/User :id id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
-        (maybe-update-user-personal-collection-name! user-before-update body))
+        (maybe-update-user-personal-collection-name! user-before-update body)
+        ;; Handle is_data_analyst by updating Data Analysts group membership
+        (when (and api/*is-superuser?* (contains? body :is_data_analyst))
+          (let [data-analyst-group-id (:id (perms/data-analyst-group))]
+            (if is_data_analyst
+              (perms/add-user-to-group! id data-analyst-group-id)
+              (perms/remove-user-from-group! id data-analyst-group-id)))))
       (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (t2/hydrate :user_group_memberships)))

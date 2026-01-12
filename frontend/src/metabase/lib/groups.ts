@@ -11,6 +11,8 @@ const SPECIAL_GROUP_NAMES = new Map([
   ["Administrators", t`Administrators`],
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   ["All tenant users", t`All tenant users`],
+  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
+  ["Data Analysts", t`Data Analysts`],
 ]);
 
 export function isDefaultGroup(group: Pick<GroupInfo, "magic_group_type">) {
@@ -21,8 +23,12 @@ export function isAdminGroup(group: Pick<GroupInfo, "magic_group_type">) {
   return group.magic_group_type === "admin";
 }
 
+export function isDataAnalystGroup(group: Pick<GroupInfo, "magic_group_type">) {
+  return group.magic_group_type === "data-analyst";
+}
+
 export function canEditPermissions(group: Pick<GroupInfo, "magic_group_type">) {
-  return !isAdminGroup(group);
+  return !isAdminGroup(group) && !isDataAnalystGroup(group);
 }
 
 export function canEditMembership(group: Pick<GroupInfo, "magic_group_type">) {

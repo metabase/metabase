@@ -303,6 +303,9 @@
   ([collection-namespace :- [:maybe ms/KeywordOrString]
     new-graph :- PermissionsGraph
     force? :- [:maybe boolean?]]
+   ;; Check that we're not trying to modify permissions for locked groups (like Data Analysts)
+   (doseq [group-id (keys (:groups new-graph))]
+     (perms-group/check-permissions-not-locked {:id group-id}))
    (let [new-group-ids (-> new-graph :groups keys set)
          new-collection-ids (->> new-graph :groups vals (mapcat keys) set)
          filtered-new-graph (-> (remove-personal-collections-from-graph new-graph new-collection-ids)

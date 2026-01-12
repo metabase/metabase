@@ -65,7 +65,12 @@
   "Part of the impl for `with-current-user` -- don't use this directly."
   [current-user-id]
   (when current-user-id
-    (t2/select-one [:model/User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:is_data_analyst :is-data-analyst?] [:locale :user-locale] :settings]
+    (t2/select-one [:model/User
+                    [:id :metabase-user-id]
+                    [:is_superuser :is-superuser?]
+                    [:is_data_analyst :is-data-analyst?]
+                    [:locale :user-locale]
+                    :settings]
                    :id current-user-id)))
 
 (defn do-as-admin

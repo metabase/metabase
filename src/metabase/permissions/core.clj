@@ -135,6 +135,8 @@
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
 (p/import-def metabase.permissions.models.permissions-group/admin                        admin-group)
+(p/import-def metabase.permissions.models.permissions-group/data-analyst                 data-analyst-group)
+(p/import-def metabase.permissions.models.permissions-group/check-permissions-not-locked check-permissions-not-locked)
 (p/import-def metabase.permissions.models.application-permissions-revision/latest-id     latest-application-permissions-revision-id)
 (p/import-def metabase.permissions.models.collection-permission-graph-revision/latest-id latest-collection-permissions-revision-id)
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)

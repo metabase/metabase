@@ -13,6 +13,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.permissions.schema :as permissions.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -395,6 +396,12 @@
           (throw (ee-permissions-exception :blocked)))
         (perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
 
+(defn- check-locked-group-permissions
+  "Check that we're not trying to modify permissions for the Data Analysts group, which has locked permissions."
+  [group-updates]
+  (doseq [group-id (keys group-updates)]
+    (perms-group/check-permissions-not-locked {:id group-id})))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
@@ -435,6 +442,7 @@
    (when (seq graph-updates)
      (cluster-lock/with-cluster-lock ::update-data-perms-graph
        (let [group-updates (:groups graph-updates)]
+         (check-locked-group-permissions group-updates)
          (check-audit-db-permissions group-updates)
          (t2/with-transaction [_conn]
            (update-data-perms-graph!* group-updates)

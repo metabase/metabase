@@ -71,6 +71,14 @@
   "Fetch the `Administrators` permissions group"
   (magic-group admin-magic-group-type))
 
+(def data-analyst-magic-group-type
+  "The magic-group type of the \"Data Analysts\" magic group."
+  "data-analyst")
+
+(def ^{:arglists '([])} data-analyst
+  "Fetch the `Data Analysts` permissions group"
+  (magic-group data-analyst-magic-group-type))
+
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (defn exists-with-name?
@@ -91,10 +99,19 @@
   {:pre [(integer? id)]}
   (doseq [magic-group [(all-users)
                        (all-external-users)
-                       (admin)]]
+                       (admin)
+                       (data-analyst)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
                       {:status-code 400})))))
+
+(defn check-permissions-not-locked
+  "Check that we're allowed to modify permissions for this group. The Data Analysts group has locked permissions."
+  [{id :id}]
+  {:pre [(integer? id)]}
+  (when (= id (:id (data-analyst)))
+    (throw (ex-info (tru "You cannot modify permissions for the ''{0}'' group!" (:name (data-analyst)))
+                    {:status-code 400}))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
