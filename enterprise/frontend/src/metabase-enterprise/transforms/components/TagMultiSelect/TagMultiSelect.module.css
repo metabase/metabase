@@ -9,10 +9,6 @@
   .selectItem {
     color: inherit;
     background-color: inherit;
-
-    &:hover .actionIcon {
-      visibility: hidden;
-    }
   }
 }
 
@@ -20,6 +16,6 @@
   visibility: hidden;
 }
 
-.selectItem:hover .actionIcon {
+.selectItem.editable:hover .actionIcon {
   visibility: visible;
 }
