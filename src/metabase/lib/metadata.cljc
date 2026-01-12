@@ -72,12 +72,13 @@
 
 (mu/defn metadatas-for-table :- [:maybe [:sequential [:or
                                                       ::lib.schema.metadata/column
+                                                      ::lib.schema.metadata/measure
                                                       ::lib.schema.metadata/metric
                                                       ::lib.schema.metadata/segment]]]
-  "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
-  Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, `:metadata/segment`."
+  "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, Measures, or
+  Segments -- `metadata-type` must be one of `:metadata/column`, `:metadata/measure`, `:metadata/metric`, `:metadata/segment`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   metadata-type         :- [:enum :metadata/column :metadata/metric :metadata/segment]
+   metadata-type         :- [:enum :metadata/column :metadata/measure :metadata/metric :metadata/segment]
    table-id              :- ::lib.schema.id/table]
   (case metadata-type
     :metadata/column (fields metadata-providerable table-id)
@@ -157,6 +158,12 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    segment-id            :- ::lib.schema.id/segment]
   (lib.metadata.protocols/segment (->metadata-provider metadata-providerable) segment-id))
+
+(mu/defn measure :- [:maybe ::lib.schema.metadata/measure]
+  "Get metadata for the Measure with `measure-id`, if it can be found."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   measure-id            :- ::lib.schema.id/measure]
+  (lib.metadata.protocols/measure (->metadata-provider metadata-providerable) measure-id))
 
 (mu/defn metric :- [:maybe ::lib.schema.metadata/metric]
   "Get metadata for the Metric with `card-id`, if it can be found."

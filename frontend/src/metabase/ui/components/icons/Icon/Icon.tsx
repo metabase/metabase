@@ -5,6 +5,8 @@ import cx from "classnames";
 import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
+import type { ColorName } from "metabase/lib/colors/types";
+
 import { Tooltip } from "../../overlays/Tooltip";
 
 import type { IconName } from "./icons";
@@ -12,7 +14,7 @@ import { Icons } from "./icons";
 
 const defaultSize = 16;
 
-export type IconProps = SVGAttributes<SVGSVGElement> &
+export type IconProps = Omit<SVGAttributes<SVGSVGElement>, "color"> &
   BoxProps & {
     name: IconName;
     size?: string | number;
@@ -20,6 +22,7 @@ export type IconProps = SVGAttributes<SVGSVGElement> &
     tooltipPosition?: FloatingPosition;
     onClick?: (event: MouseEvent<HTMLImageElement | SVGElement>) => void;
     className?: string;
+    color?: ColorName;
   };
 
 export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(

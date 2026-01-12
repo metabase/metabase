@@ -23,6 +23,7 @@ import {
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { useSelector } from "metabase/lib/redux";
 import { getBrowseAllItemIndex } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
+import type { SuggestionPickerViewMode } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   Box,
   Divider,
@@ -77,7 +78,7 @@ const CommandMenuItem = forwardRef<
     >
       <Group gap="sm" wrap="nowrap" align="center">
         {option.icon ? (
-          <Icon name={option.icon} size={16} color="inherit" />
+          <Icon name={option.icon} size={16} c="inherit" />
         ) : option.text ? (
           <Box w={16} h={16} className={CommandS.iconContainer}>
             <Text size="xs" fw={700} c="inherit">
@@ -102,9 +103,7 @@ export const CommandSuggestion = forwardRef<
   const document = useSelector(getCurrentDocument);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const [viewMode, setViewMode] = useState<
-    "linkTo" | "embedQuestion" | "newQuestionType" | null
-  >(null);
+  const [viewMode, setViewMode] = useState<SuggestionPickerViewMode>(null);
   const [newQuestionType, setNewQuestionType] = useState<
     "notebook" | "native" | null
   >(null);
@@ -378,6 +377,7 @@ export const CommandSuggestion = forwardRef<
           query={query}
           searchResults={searchResults}
           modal={entityModal}
+          viewMode={viewMode}
           onModalSelect={entityHandlers.handleModalSelect}
           onModalClose={entityHandlers.handleModalClose}
           canBrowseAll
@@ -481,7 +481,7 @@ export const CommandSuggestion = forwardRef<
           ) : (
             <>
               <Box p="sm" ta="center">
-                <Text size="md" c="text-medium">{t`No results found`}</Text>
+                <Text size="md" c="text-secondary">{t`No results found`}</Text>
               </Box>
               {query && (
                 <>
