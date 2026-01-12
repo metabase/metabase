@@ -1,6 +1,10 @@
 import dedent from "ts-dedent";
 
-import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
@@ -3455,7 +3459,7 @@ function getRowNames(): Cypress.Chainable<string[]> {
     .then(($rows) => $rows.get().map((row) => row.textContent.trim()));
 }
 
-describe("scenarios > data studio >transforms > permissions", () => {
+describe("scenarios > data studio > transforms > permissions", () => {
   beforeEach(() => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
@@ -3469,14 +3473,10 @@ describe("scenarios > data studio >transforms > permissions", () => {
   it("should allow non-admin users with data-studio permission to create transforms", () => {
     cy.log("grant data-studio permission to All Users");
     cy.visit("/admin/permissions/application");
-    H.modifyPermission("All Users", 3, "Yes");
-    cy.button("Save changes").click();
-    H.modal().button("Yes").click();
-
-    cy.log("grant database permissions to DATA_GROUP for writable database");
     cy.updatePermissionsGraph({
       [USER_GROUPS.DATA_GROUP]: {
         [WRITABLE_DB_ID]: {
+          transforms: DataPermissionValue.YES,
           "view-data": DataPermissionValue.UNRESTRICTED,
           "create-queries": DataPermissionValue.QUERY_BUILDER_AND_NATIVE,
         },
@@ -3486,7 +3486,7 @@ describe("scenarios > data studio >transforms > permissions", () => {
     cy.log("sign in as normal user and create a transform");
     cy.signInAsNormalUser();
     visitTransformListPage();
-    getTransformsSidebar().button("Create a transform").click();
+    cy.button("Create a transform").click();
     H.popover().findByText("Query builder").click();
 
     H.miniPicker().within(() => {
@@ -3502,7 +3502,9 @@ describe("scenarios > data studio >transforms > permissions", () => {
       cy.wait("@createTransform");
     });
 
-    getTransformsSidebar()
+    cy.log("Verify transform was created");
+    getTransformsNavLink().click();
+    H.DataStudio.Transforms.list()
       .findByText("Non-admin transform")
       .should("be.visible");
   });
