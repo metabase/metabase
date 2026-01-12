@@ -178,27 +178,27 @@
   (when-let [{:keys [checkpoint-filter checkpoint-filter-unique-key] strategy-type :type}
              (:source-incremental-strategy source)]
     (when (= "checkpoint" strategy-type)
-      (let [{:keys [query]} source]
-        (let [database-id (:database query)
-              database    (api/check-404 (t2/select-one :model/Database :id database-id))
-              driver-name (driver/the-initialized-driver (:engine database))]
-          (cond
-            ;; For MBQL/Python with unique key, resolve column from query metadata
-            checkpoint-filter-unique-key
-            (let [column (lib/column-with-unique-key query checkpoint-filter-unique-key)]
-              (api/check-400 column (deferred-tru "Checkpoint column not found in query."))
-              (api/check-400 (transforms.util/supported-incremental-filter-type? (:base-type column))
-                             (deferred-tru "Checkpoint column type {0} is not supported. Only numeric and temporal types are supported for incremental filtering."
-                                           (pr-str (:base-type column)))))
+      (let [{:keys [query]} source
+            database-id (:database query)
+            database    (api/check-404 (t2/select-one :model/Database :id database-id))
+            driver-name (driver/the-initialized-driver (:engine database))]
+        (cond
+          ;; For MBQL/Python with unique key, resolve column from query metadata
+          checkpoint-filter-unique-key
+          (let [column (lib/column-with-unique-key query checkpoint-filter-unique-key)]
+            (api/check-400 column (deferred-tru "Checkpoint column not found in query."))
+            (api/check-400 (transforms.util/supported-incremental-filter-type? (:base-type column))
+                           (deferred-tru "Checkpoint column type {0} is not supported. Only numeric and temporal types are supported for incremental filtering."
+                                         (pr-str (:base-type column)))))
 
-            ;; For native query with checkpoint-filter, validate type if we can extract the column metadata
-            checkpoint-filter
-            (when-some [column-metadata (seq (extract-all-columns-from-query driver-name database-id query))]
-              (when-some [column (first (filter #(= checkpoint-filter (:name %)) column-metadata))]
-                (api/check-400 (transforms.util/supported-incremental-filter-type? (:base_type column))
-                               (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
-                                             checkpoint-filter
-                                             (pr-str (:base_type column))))))))))))
+          ;; For native query with checkpoint-filter, validate type if we can extract the column metadata
+          checkpoint-filter
+          (when-some [column-metadata (seq (extract-all-columns-from-query driver-name database-id query))]
+            (when-some [column (first (filter #(= checkpoint-filter (:name %)) column-metadata))]
+              (api/check-400 (transforms.util/supported-incremental-filter-type? (:base_type column))
+                             (deferred-tru "Checkpoint column ''{0}'' has unsupported type {1}. Only numeric and temporal columns are supported for incremental filtering."
+                                           checkpoint-filter
+                                           (pr-str (:base_type column)))))))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
