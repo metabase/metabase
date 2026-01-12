@@ -1276,8 +1276,9 @@
               (testing "and we don't get any excessive transforms in the db"
                 (is (= (:id x1)
                        (t2/select-one-fn :id [:model/Transform :id] {:order-by [[:id :desc]]})))))
-            (testing "transform has last_run_at after that"
-              (is (=? {:last_run_at some?}
+            (testing "transform has last_run_at and last_run_status after that"
+              (is (=? {:last_run_at     some?
+                       :last_run_status "succeeded"}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id ws1) "transform" ref-id)))))))))
     (testing "failed execution returns status and message"
       (transforms.tu/with-transform-cleanup! [output-table "ws_api_fail"]
@@ -1304,8 +1305,9 @@
                          :table      {:schema (:schema ws)
                                       :name   isolated-name}}
                         result))))
-            (testing "transform has last_run_at and last_run_message after failure"
+            (testing "transform has last_run_at, last_run_status, and last_run_message after failure"
               (is (=? {:last_run_at      some?
+                       :last_run_status  "failed"
                        :last_run_message #"(?s).*nocolumn.*"}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id)))))))))))
 

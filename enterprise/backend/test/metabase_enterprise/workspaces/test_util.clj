@@ -274,6 +274,11 @@
                  :timeout-ms (if config/is-dev? 10000 60000)})
         (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
+(defn create-empty-ws!
+  "Create a simple workspace and wait for it to be ready."
+  [name]
+  (t2/select-one :model/Workspace (:workspace-id (create-resources! {:workspace {:name name}}))))
+
 (defn create-ready-ws!
   "Create a simple workspace and wait for it to be ready."
   [name]

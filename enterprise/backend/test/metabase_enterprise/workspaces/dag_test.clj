@@ -49,57 +49,43 @@
 
 (deftest path-induced-subgraph-shorthand-test
   (testing "graph built from shorthand matches abstract solver"
-    (let [shorthand   {:x2 [:t1]}
-          id-map      (ws.tu/create-global-resources! shorthand)
-          gtx         (t2/select-one :model/Transform (id-map :x2))]
-      ;; TODO make this nice and declarative too
-      (mt/with-temp [:model/Workspace          ws  {:name "Test Workspace", :database_id (mt/id)}
-                     :model/WorkspaceTransform wtx (merge
-                                                    (select-keys gtx [:name :source :target])
-                                                    {:workspace_id (:id ws)
-                                                     :global_id    (:id gtx)})]
-        (ws.tu/analyze-workspace! (:id ws))
-        (let [entity     {:entity-type :transform, :id (:ref_id wtx)}
-              result     (ws.dag/path-induced-subgraph (:id ws) [entity])
-              translated (translate-result result id-map)]
-          (is (=? {:inputs       #{:t1}
-                   :outputs      #{:t2}
-                   :entities     #{:x2}
-                   :dependencies {:x2 #{:t1}}}
-                  translated)))))))
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x2 [:t1]}
+            :workspace {:checkouts [:x2]}})]
+      (ws.tu/analyze-workspace! workspace-id)
+      (let [entity     {:entity-type :transform, :id (workspace-map :x2)}
+            result     (ws.dag/path-induced-subgraph workspace-id [entity])
+            translated (translate-result result global-map)]
+        (is (=? {:inputs       #{:t1}
+                 :outputs      #{:t2}
+                 :entities     #{:x2}
+                 :dependencies {:x2 #{:t1}}}
+                translated))))))
 
 (deftest path-induced-subgraph-larger-test
   (testing "graph built from shorthand matches abstract solver"
     ;; check-outs x2, x4
-    (let [shorthand   {:x1 [:t0]
-                       :x2 [:x1, :t10]
-                       :x3 [:x2, :t8]
-                       :x4 [:x3]
-                       :x5 [:x2, :x4, :t9]}
-          id-map     (ws.tu/create-global-resources! shorthand)
-          gtx-2       (t2/select-one :model/Transform (id-map :x2))
-          gtx-4       (t2/select-one :model/Transform (id-map :x4))
-          fork        (fn [ws gtx]
-                        (merge
-                         (select-keys gtx [:name :source :target])
-                         {:workspace_id (:id ws)
-                          :global_id    (:id gtx)}))]
-      ;; TODO make a convenience method / method for doing these checkouts too
-      (mt/with-temp [:model/Workspace          ws    {:name "Test Workspace", :database_id (mt/id)}
-                     :model/WorkspaceTransform wtx-2 (fork ws gtx-2)
-                     :model/WorkspaceTransform wtx-4 (fork ws gtx-4)]
-        (ws.tu/analyze-workspace! (:id ws))
-        (let [entities   (for [wtx [wtx-2 wtx-4]]
-                           {:entity-type :transform, :id (:ref_id wtx)})
-              result     (ws.dag/path-induced-subgraph (:id ws) entities)
-              translated (translate-result result id-map)]
-          (is (=? {:inputs       #{:t1 :t8 :t10}
-                   :outputs      #{:t2 :t3 :t4}
-                   :entities     #{:x2 :x3 :x4}
-                   :dependencies {:x2 #{:t1 :t10}
-                                  :x3 #{:x2 :t8}
-                                  :x4 #{:x3}}}
-                  translated)))))))
+    (let [{:keys [workspace-id global-map workspace-map]}
+          (ws.tu/create-resources!
+           {:global    {:x1 [:t0]
+                        :x2 [:x1 :t10]
+                        :x3 [:x2 :t8]
+                        :x4 [:x3]
+                        :x5 [:x2 :x4 :t9]}
+            :workspace {:checkouts [:x2 :x4]}})]
+      (ws.tu/analyze-workspace! workspace-id)
+      (let [entities   (for [tx [:x2 :x4]]
+                         {:entity-type :transform, :id (workspace-map tx)})
+            result     (ws.dag/path-induced-subgraph workspace-id entities)
+            translated (translate-result result global-map)]
+        (is (=? {:inputs       #{:t1 :t8 :t10}
+                 :outputs      #{:t2 :t3 :t4}
+                 :entities     #{:x2 :x3 :x4}
+                 :dependencies {:x2 #{:t1 :t10}
+                                :x3 #{:x2 :t8}
+                                :x4 #{:x3}}}
+                translated))))))
 
 (deftest expand-solver-test
   (testing "expand-shorthand inserts interstitial nodes for transform output tables"
