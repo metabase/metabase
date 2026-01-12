@@ -1,7 +1,9 @@
 (ns metabase-enterprise.analytics.stats
   (:require
+   [java-time.api :as t]
    [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.scim.core :as scim]
+   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.driver :as driver]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -24,7 +26,19 @@
    {:name      :sandboxes
     :available (and (premium-features/enable-official-collections?)
                     (t2/exists? :model/Database :engine [:in (descendants driver/hierarchy :sql)]))
-    :enabled   (t2/exists? :model/GroupTableAccessPolicy)}
+    :enabled   (t2/exists? :model/Sandbox)}
    {:name      :email-allow-list
     :available (premium-features/enable-email-allow-list?)
-    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}])
+    :enabled   (boolean (some? (advanced-config.settings/subscription-allowed-domains)))}
+   {:name      :semantic-search
+    :available (premium-features/enable-semantic-search?)
+    :enabled   (semantic-search/supported?)}])
+
+(defenterprise ee-transform-metrics
+  "Returns transform usage metrics for the Snowplow stats ping."
+  :feature :none
+  []
+  (let [one-day-ago (t/minus (t/offset-date-time) (t/days 1))]
+    {:transforms               (t2/count :model/Transform)
+     :transform_runs_last_24h  (t2/count :model/TransformRun
+                                         :start_time [:>= one-day-ago])}))

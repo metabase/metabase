@@ -1,47 +1,24 @@
-import fetchMock, {
-  type MockOptionsMethodGet,
-  type MockOptionsMethodPost,
-} from "fetch-mock";
+import fetchMock, { type UserRouteConfig } from "fetch-mock";
 
 import type {
-  MetabotApiEntity,
   MetabotId,
   MetabotInfo,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
 } from "metabase-types/api";
 
-export function setupMetabotsEndpoint(
+export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
   statusCode?: number,
 ) {
   fetchMock.get(
     "path:/api/ee/metabot-v3/metabot",
     statusCode ? { status: statusCode } : { items: metabots },
-    { overwriteRoutes: true },
   );
-}
-
-export function setupMetabotEntitiesEndpoint(
-  metabotId: MetabotId,
-  entities: MetabotApiEntity[],
-) {
-  fetchMock.get(
-    `path:/api/ee/metabot-v3/metabot/${metabotId}/entities`,
-    { items: entities },
-    { overwriteRoutes: true },
-  );
-}
-
-export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
-  fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
-    status: 204,
-  });
-}
-
-export function setupMetabotDeleteEntitiesEndpoint() {
-  fetchMock.delete(/api\/ee\/metabot-v3\/metabot\/\d+\/entities/, {
-    status: 204,
+  metabots.forEach((metabot) => {
+    fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabot.id}`, (call) => {
+      return { ...metabot, ...JSON.parse(call.options?.body as string) };
+    });
   });
 }
 
@@ -54,28 +31,44 @@ export function setupMetabotPromptSuggestionsEndpointError(
   );
 }
 
-export function setupMetabotPromptSuggestionsEndpoint(
-  metabotId: MetabotId,
-  prompts: SuggestedMetabotPromptsResponse["prompts"],
+export function setupMetabotAddEntitiesEndpoint(metabotId: MetabotId) {
+  fetchMock.put(`path:/api/ee/metabot-v3/metabot/${metabotId}/entities`, {
+    status: 204,
+  });
+}
+
+type SuggestionsEndpointOptions = {
+  metabotId: MetabotId;
+  prompts: SuggestedMetabotPromptsResponse["prompts"];
   paginationContext: {
     offset: number;
     limit: number;
     total: number;
-  },
-  options?: MockOptionsMethodGet,
-) {
+  };
+  delay?: UserRouteConfig["delay"];
+};
+
+export function setupMetabotPromptSuggestionsEndpoint({
+  metabotId,
+  prompts,
+  paginationContext,
+  delay,
+}: SuggestionsEndpointOptions) {
   const { total, limit, offset } = paginationContext;
 
   const page = prompts.slice(offset, offset + limit);
   const body = { prompts: page, limit, offset, total };
-  fetchMock.get(
-    {
-      url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
-      query: { limit, offset },
+  fetchMock.removeRoute(`metabot-${metabotId}-prompt-suggestions-get`);
+  fetchMock.get({
+    url: `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions`,
+    query: { limit, offset },
+    response: {
+      status: 200,
+      body,
     },
-    { status: 200, body },
-    { overwriteRoutes: true, ...(options || {}) },
-  );
+    name: `metabot-${metabotId}-prompt-suggestions-get`,
+    delay,
+  });
 
   return {
     ...paginationContext,
@@ -95,7 +88,7 @@ export function setupRemoveMetabotPromptSuggestionEndpoint(
 
 export function setupRegenerateMetabotPromptSuggestionsEndpoint(
   metabotId: MetabotId,
-  options?: MockOptionsMethodPost,
+  options?: UserRouteConfig,
 ) {
   fetchMock.post(
     `path:/api/ee/metabot-v3/metabot/${metabotId}/prompt-suggestions/regenerate`,

@@ -13,6 +13,16 @@
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
 
+(defn start-timer
+  "Return a relative timestamp for tracking durations. Treat this as opaque, it does not correspond to wallclock time."
+  []
+  (System/nanoTime))
+
+(defn since-ms
+  "Return how many milliseconds have elapsed since the given timer was started."
+  [timer]
+  (quot (- (System/nanoTime) timer) 1000000))
+
 (defn parse-as-keyword
   "Like [[clojure.core/keyword]], but with a couple of tweaks to make it better for parsing command-line args:
 

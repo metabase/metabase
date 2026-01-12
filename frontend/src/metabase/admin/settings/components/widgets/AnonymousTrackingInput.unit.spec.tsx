@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
@@ -19,7 +19,13 @@ import { AnonymousTrackingInput } from "./AnonymousTrackingInput";
 
 const trackingFN = jest.spyOn(analytics, "trackTrackingPermissionChanged");
 
-const setup = ({ value }: { value: boolean }) => {
+const setup = ({
+  value,
+  isEnvSetting,
+}: {
+  value: boolean;
+  isEnvSetting?: boolean;
+}) => {
   const settings = createMockSettings({
     "anon-tracking-enabled": value,
   });
@@ -31,6 +37,8 @@ const setup = ({ value }: { value: boolean }) => {
       key: "anon-tracking-enabled",
       description: "Enable the collection of anonymous usage data",
       value: false,
+      is_env_setting: isEnvSetting,
+      env_name: isEnvSetting ? "MB_ANON_TRACKING_ENABLED" : undefined,
     }),
   ]);
 
@@ -57,9 +65,9 @@ describe("AnonymousTrackingInput", () => {
     await userEvent.click(screen.getByRole("switch"));
     expect(trackingFN).toHaveBeenCalledWith(false);
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/anon-tracking-enabled/);
-    expect(putDetails).toEqual({ value: false });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/anon-tracking-enabled/);
+    expect(body).toEqual({ value: false });
 
     expect(await screen.findByRole("switch")).not.toBeChecked();
   });
@@ -68,21 +76,34 @@ describe("AnonymousTrackingInput", () => {
     setup({ value: false });
     await userEvent.click(screen.getByRole("switch"));
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/anon-tracking-enabled/);
-    expect(putDetails).toEqual({ value: true });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/anon-tracking-enabled/);
+    expect(body).toEqual({ value: true });
     expect(trackingFN).toHaveBeenCalledWith(true);
 
     expect(await screen.findByRole("switch")).toBeChecked();
   });
+
+  it("should show environment variable message when anonymous tracking is set via env var", async () => {
+    setup({ value: true, isEnvSetting: true });
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("MB_ANON_TRACKING_ENABLED"),
+    ).toBeInTheDocument();
+  });
+
+  it("should not show the switch when anonymous tracking is set via env var", async () => {
+    setup({ value: true, isEnvSetting: true });
+    await screen.findByText(/This has been set by the/);
+
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+  });
+
+  it("should show the switch when anonymous tracking is not set via env var", async () => {
+    setup({ value: true, isEnvSetting: false });
+
+    expect(await screen.findByRole("switch")).toBeInTheDocument();
+  });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

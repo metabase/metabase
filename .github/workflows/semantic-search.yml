@@ -1,0 +1,348 @@
+name: Semantic Search Tests
+
+on:
+  workflow_call:
+    inputs:
+      skip:
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-semantic-search
+  cancel-in-progress: true
+
+jobs:
+  semantic-search-tests-h2:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: H2 with pgvector pg17
+            junit-name: semantic-search-tests-h2-pgvector-17
+            pgvector-image: pgvector/pgvector:pg17
+        job:
+          - name: Semantic Search Tests
+            build-static-viz: false
+            test-args: >-
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+            exclude-tag: ':mb/driver-tests'
+
+    services:
+      pgvector:
+        image: ${{ matrix.version.pgvector-image }}
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_DB: mb_semantic_search
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+    env:
+      MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
+      CI: 'true'
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }}
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  semantic-search-tests-mariadb:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MariaDB 10.2 with pgvector pg17
+            junit-name: semantic-search-tests-mariadb-10-2
+            mariadb-image: circleci/mariadb:10.2.23
+            pgvector-image: pgvector/pgvector:pg17
+          - name: MariaDB Latest with pgvector pg17
+            junit-name: semantic-search-tests-mariadb-latest
+            mariadb-image: circleci/mariadb:latest
+            pgvector-image: pgvector/pgvector:pg17
+        job:
+          - name: Semantic Search Tests
+            build-static-viz: false
+            test-args: >-
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+            exclude-tag: ':mb/driver-tests'
+
+    services:
+      pgvector:
+        image: ${{ matrix.version.pgvector-image }}
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_DB: mb_semantic_search
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+      mysql:
+        image: ${{ matrix.version.mariadb-image }}
+        ports:
+          - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: circle_test
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+      MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }}
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  semantic-search-tests-mysql:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: MySQL 8.0 with pgvector pg17
+            junit-name: semantic-search-tests-mysql-8-0
+            mysql-image: cimg/mysql:8.0
+            pgvector-image: pgvector/pgvector:pg17
+          - name: MySQL Latest with pgvector pg17
+            junit-name: semantic-search-tests-mysql-latest
+            mysql-image: mysql:latest
+            pgvector-image: pgvector/pgvector:pg17
+        job:
+          - name: Semantic Search Tests
+            build-static-viz: false
+            test-args: >-
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+            exclude-tag: ':mb/driver-tests'
+
+    services:
+      pgvector:
+        image: ${{ matrix.version.pgvector-image }}
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_DB: mb_semantic_search
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+      mysql:
+        image: ${{ matrix.version.mysql-image }}
+        ports:
+          - "3306:3306"
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: circle_test
+    env:
+      CI: 'true'
+      DRIVERS: mysql
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+      MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }}
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  semantic-search-tests-postgres:
+    if: ${{ !inputs.skip }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - name: Postgres 12.x with pgvector pg17
+            junit-name: semantic-search-tests-postgres-12
+            postgres-image: postgres:12-alpine
+            pgvector-image: pgvector/pgvector:pg17
+          - name: Postgres Latest with pgvector pg17
+            junit-name: semantic-search-tests-postgres-latest
+            postgres-image: postgres:latest
+            pgvector-image: pgvector/pgvector:pg17
+        job:
+          - name: Semantic Search Tests
+            build-static-viz: false
+            test-args: >-
+              :only '["enterprise/backend/test/metabase_enterprise/semantic_search" "enterprise/backend/test/metabase_enterprise/metabot_v3/tools/semantic_search_test.clj"]'
+            exclude-tag: ':mb/driver-tests'
+
+    services:
+      pgvector:
+        image: ${{ matrix.version.pgvector-image }}
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_DB: mb_semantic_search
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+      postgres:
+        image: ${{ matrix.version.postgres-image }}
+        ports:
+          - "5433:5432"
+        env:
+          POSTGRES_USER: mb_test
+          POSTGRES_DB: mb_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+    env:
+      CI: 'true'
+      DRIVERS: postgres
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5433
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: mb_test
+      MB_DB_USER: mb_test
+      MB_POSTGRESQL_TEST_USER: mb_test
+      MB_PGVECTOR_DB_URL: 'jdbc:postgres://localhost:5432/mb_semantic_search?user=postgres&password=postgres'
+    name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test ${{ matrix.version.name }}
+        uses: ./.github/actions/test-driver
+        with:
+          build-static-viz: ${{ matrix.job.build-static-viz }}
+          junit-name: ${{ matrix.version.junit-name }}
+          test-args: >-
+            ${{ matrix.job.test-args }}
+            :exclude-tags '[${{ matrix.job.exclude-tag }}]'
+      - name: Upload Test Results
+        uses: ./.github/actions/upload-test-results
+        if: always()
+        with:
+          input-path: ./target/junit/
+          output-name: ${{ github.job }}
+          bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION }}
+          trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  semantic-search-tests-result:
+    needs:
+      - semantic-search-tests-h2
+      - semantic-search-tests-mariadb
+      - semantic-search-tests-mysql
+      - semantic-search-tests-postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    name: semantic-search-tests-result
+    if: always() && !cancelled()
+    steps:
+      - name: Check job status
+        uses: actions/github-script@v7
+        env:
+          needs: ${{ toJson(needs) }}
+        with:
+          script: | # js
+            const needs = JSON.parse(process.env.needs);
+
+            const jobs = Object.entries(needs).map(
+              ([jobName, jobValues]) => ({
+                name: jobName,
+                result: jobValues.result
+              }));
+
+            // are all jobs skipped or successful?
+            if (jobs.every(job => (job.result === 'skipped' || job.result === 'success'))) {
+                console.log("");
+                console.log("        _------.        ");
+                console.log("       /  ,     \_      ");
+                console.log("     /   /  /{}\ |o\_   ");
+                console.log("    /    \  `--' /-' \  ");
+                console.log("   |      \      \    | ");
+                console.log("  |              |`-, | ");
+                console.log("  /              /__/)/ ");
+                console.log(" |              |       ");
+                console.log("");
+                console.log("All semantic search tests have passed (or have been skipped). Cam is very proud of you.");
+              process.exit(0);
+            }
+
+            // otherwise, something failed
+            console.log("");
+            console.log("       .::::::::::.                          .::::::::::.       ");
+            console.log("     .::::''''''::::.                      .::::''''''::::.     ");
+            console.log("   .:::'          `::::....          ....::::'          `:::.   ");
+            console.log("  .::'             `:::::::|        |:::::::'             `::.  ");
+            console.log(" .::|               |::::::|_ ___ __|::::::|               |::. ");
+            console.log(" `--'               |::::::|_()__()_|::::::|               `--' ");
+            console.log("  :::               |::-o::|        |::o-::|               :::  ");
+            console.log("  `::.             .|::::::|        |::::::|.             .::'  ");
+            console.log("   `:::.          .::\-----'        `-----/::.          .:::'   ");
+            console.log("     `::::......::::'                      `::::......::::'     ");
+            console.log("       `::::::::::'                          `::::::::::'       ");
+            console.log("");
+            console.log("Semantic search tests have failed. You have been sentenced to MetaJail.");
+
+            jobs.forEach((job) => {
+              if (job.result !== 'success') {
+                console.log(`${job.name} - ${job.result}`);
+              }
+            });
+
+            process.exit(1);

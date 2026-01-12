@@ -21,7 +21,8 @@
   []
   {:database (mt/id)
    :type     :native
-   :native   {:template-tags {"date" {:name         "date"
+   :native   {:template-tags {"date" {:id           "04ae45bd-f8fd-4e8d-9bc6-a9737f231a50"
+                                      :name         "date"
                                       :display-name "Check-In Date"
                                       :type         :text}}
               :query "SELECT count(*) FROM CHECKINS [[WHERE date = {{date}}]]"}})
@@ -84,9 +85,9 @@
 (deftest schedule-cache-config->card-ids-test
   (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
                  :model/Card {card-id-1 :id} {:name "Cached card 1"
-                                              :dataset_query {:database 1}}
+                                              :dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}}
                  :model/Card {card-id-2 :id} {:name "Cached card 2"
-                                              :dataset_query {:database 1}}
+                                              :dataset_query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}}
                  :model/DashboardCard {} {:dashboard_id dashboard-id
                                           :card_id      card-id-1}
                  :model/DashboardCard {} {:dashboard_id dashboard-id
@@ -97,7 +98,6 @@
                                           :card_id      card-id-2}]
     (testing "Returns the card ID directly for a question cache config"
       (is (= [card-id-1] (@#'task.cache/schedule-cache-config->card-ids {:model_id card-id-1 :model "question"}))))
-
     (testing "Fetches card IDs associated with a dashboard cache config"
       (is (= [card-id-1 card-id-2] (@#'task.cache/schedule-cache-config->card-ids {:model_id dashboard-id :model "dashboard"}))))))
 
@@ -106,16 +106,18 @@
     (testing "Given a card, we rerun a limited number of variations of the card's query"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
                                                   :dataset_query (parameterized-native-query)}]
           (let [param-val-1 "2024-12-01"
-                params-1    [{:type  :text
+                params-1    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-1}]
+                              :value  param-val-1}]
                 param-val-2 "2024-12-02"
-                params-2    [{:type  :text
+                params-2    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-2}]
+                              :value  param-val-2}]
                 to-rerun    #(@#'task.cache/scheduled-queries-to-rerun card-id (t/minus (t/offset-date-time) (t/minutes 10)))
                 param-vals  #(-> % :parameters first :value)]
             ;; Sanity check that the query actually runs
@@ -137,7 +139,7 @@
                 (is (= [nil param-val-2] (map param-vals (to-rerun))))))))))))
 
 (deftest scheduled-base-query-to-rerun-edge-cases-test
-  (let [query {:database 1}]
+  (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query query}
                    :model/Query {} {:query_hash (qp.util/query-hash query)
@@ -170,7 +172,7 @@
           (is (= [] (t2/select :model/Query (@#'task.cache/scheduled-base-query-to-rerun-honeysql card-id)))))))))
 
 (deftest scheduled-parameterized-queries-to-rerun-edge-cases-test
-  (let [query {:database 1}]
+  (let [query {:database (mt/id), :type :native, :native {:query "SELECT 1;"}}]
     (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
                                               :dataset_query query}
                    :model/Query {} {:query_hash (qp.util/query-hash query)
@@ -240,21 +242,23 @@
     (testing "We refresh expired :duration caches for queries that were run at least once in the last caching duration"
       (binding [qp.util/*execute-async?*             false
                 task.cache/*run-cache-refresh-async* false]
-        (mt/with-temp [:model/Card {card-id :id} {:name "Cached card"
+        (mt/with-temp [:model/Card {card-id :id} {:name          "Cached card"
                                                   :dataset_query (parameterized-native-query)}
-                       :model/CacheConfig _ {:model "question"
-                                             :model_id card-id
-                                             :strategy :duration
+                       :model/CacheConfig _ {:model                 "question"
+                                             :model_id              card-id
+                                             :strategy              :duration
                                              :refresh_automatically true
-                                             :config {:unit "hours" :duration 1}}]
+                                             :config                {:unit "hours" :duration 1}}]
           (let [param-val-1 "2024-12-01"
-                params-1    [{:type  :text
+                params-1    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-1}]
+                              :value  param-val-1}]
                 param-val-2 "2024-12-02"
-                params-2    [{:type  :text
+                params-2    [{:id     "_DATE_"
+                              :type   :text
                               :target [:variable [:template-tag "date"]]
-                              :value param-val-2}]
+                              :value  param-val-2}]
                 to-rerun    (fn [card-id]
                               (let [queries (@#'task.cache/duration-queries-to-rerun)]
                                 (filter #(= (:card-id %) card-id) queries)))
@@ -299,8 +303,8 @@
                 (is (= [nil param-val-2] (map param-vals (to-rerun card-id))))))))))))
 
 (deftest duration-base-queries-to-rerun-edge-cases-test
-  (let [query-1            {:database 1}
-        query-2            {:database 2}
+  (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
+        query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}
         query-1-cache-hash (qp.util/query-hash query-1)
         query-2-cache-hash (qp.util/query-hash query-2)]
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
@@ -390,8 +394,8 @@
                                                [question-cache-config-1] false))))))))))
 
 (deftest duration-parameterized-queries-to-rerun-edge-cases-test
-  (let [query-1            {:database 1}
-        query-2            {:database 2}
+  (let [query-1            {:database (mt/id), :type "native", :native {:query "SELECT * FROM x"}}
+        query-2            {:database (mt/id), :type "native", :native {:query "SELECT * FROM y"}}
         query-1-cache-hash (qp.util/query-hash query-1)
         query-2-cache-hash (qp.util/query-hash query-2)]
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Dashboard"}
@@ -499,7 +503,7 @@
   "Compares a normal query result with a query result generated after a preemptive caching job runs, and asserts
   that all relevant fields are the same."
   [original-result cached-result]
-  (let [clean-col    #(dissoc % :ident :lib/source-uuid :lib/source_uuid)
+  (let [clean-col    #(dissoc % :lib/source-uuid :lib/source_uuid)
         clean-result (fn [result]
                        (-> result
                            (dissoc :running_time :average_execution_time :started_at :cached)
@@ -518,7 +522,8 @@
     :result [[1000]]}
    {:label "parameterized native query"
     :query (parameterized-native-query)
-    :parameters [{:type  :text
+    :parameters [{:id "_DATE_"
+                  :type  :text
                   :target [:variable [:template-tag "date"]]
                   :value  "2014-05-31"}]
     :result [[2]]}

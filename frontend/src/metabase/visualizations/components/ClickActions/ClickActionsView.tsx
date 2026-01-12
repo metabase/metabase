@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from "react";
 
+import { trackClickActionPerformed } from "metabase/visualizations/analytics";
 import type { RegularClickAction } from "metabase/visualizations/types";
 
 import { ClickActionControl } from "./ClickActionControl";
@@ -52,7 +53,10 @@ export const ClickActionsView = ({
                 key={action.name}
                 action={action}
                 close={close}
-                onClick={() => onClick(action)}
+                onClick={() => {
+                  trackClickActionPerformed(action);
+                  onClick(action);
+                }}
               />
             ))}
             {withBottomDivider && <Divider />}

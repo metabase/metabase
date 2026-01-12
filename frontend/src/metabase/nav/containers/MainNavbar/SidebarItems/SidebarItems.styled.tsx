@@ -7,10 +7,12 @@ import { forwardRef } from "react";
 
 import Link from "metabase/common/components/Link";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
-import { alpha, color, darken } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import type { IconProps } from "metabase/ui";
 import { Icon, Tooltip } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 export const SidebarIcon = styled(
   forwardRef<SVGSVGElement, IconProps & { isSelected: boolean }>(
@@ -19,7 +21,7 @@ export const SidebarIcon = styled(
     },
   ),
 )<{
-  color?: string | null;
+  color?: ColorName | string;
   isSelected: boolean;
 }>`
   ${(props) =>
@@ -39,7 +41,7 @@ const activeColorCSS = css`
 `;
 
 function getTextColor(isSelected: boolean) {
-  return isSelected ? color("brand") : darken(color("text-medium"), 0.25);
+  return isSelected ? color("brand") : color("text-primary");
 }
 
 type NodeRootProps = ComponentProps<typeof TreeNode.Root> & {
@@ -52,6 +54,11 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
     props.isSelected ? alpha("brand", 0.2) : "unset"};
   padding-left: ${(props) => props.depth}rem;
   border-radius: 4px;
+
+  &:focus-within {
+    outline: 2px solid var(--mb-color-focus);
+    outline-offset: -2px;
+  }
 
   ${ExpandToggleButton} {
     ${(props) => props.isSelected && activeColorCSS}
@@ -77,7 +84,7 @@ export const NodeRoot = styled(TreeNode.Root)<NodeRootProps>`
 `;
 
 const collectionDragAndDropHoverStyle = css`
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-brand);
 `;
 
@@ -105,10 +112,20 @@ export const FullWidthButton = styled.button<{ isSelected: boolean }>`
       color: var(--mb-color-brand);
     }
   }
+
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
 `;
 
 export const FullWidthLink = styled(Link)`
   ${itemContentStyle}
+
+  &:focus,
+  &:focus-visible {
+    outline: none !important;
+  }
 `;
 
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;

@@ -2,9 +2,9 @@
 import styled from "@emotion/styled";
 
 import { focusOutlineStyle } from "metabase/common/style/input";
-import { alpha, color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { alpha } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 interface TabProps {
   isSelected?: boolean;
@@ -16,14 +16,15 @@ export const TabRoot = styled.button<TabProps>`
   width: 100%;
   flex: 1;
   text-align: left;
-  color: ${(props) => (props.isSelected ? color("brand") : color("text-dark"))};
+  color: ${(props) =>
+    props.isSelected ? color("brand") : color("text-primary")};
   background-color: ${(props) =>
     props.isSelected ? alpha("brand", 0.1) : "transparent"};
   cursor: pointer;
   margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
-  margin-right: ${space(1)};
-  border-radius: ${space(0)};
+  margin-right: var(--mantine-spacing-sm);
+  border-radius: var(--mantine-spacing-xs);
 
   &:hover {
     color: var(--mb-color-brand);

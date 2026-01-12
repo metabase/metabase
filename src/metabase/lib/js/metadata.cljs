@@ -1,16 +1,19 @@
 (ns metabase.lib.js.metadata
+  (:refer-clojure :exclude [keywordize-keys])
   (:require
    [clojure.core.protocols]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [goog]
    [goog.object :as gobject]
    [medley.core :as m]
    [metabase.lib.cache :as lib.cache]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.normalize :as lib.normalize]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
 ;;;
@@ -33,20 +36,23 @@
   "Convert a JS object of *any* class to a ClojureScript object."
   ([xform obj]
    (obj->clj xform obj {}))
-  ([xform obj {:keys [use-plain-object?] :or {use-plain-object? true}}]
+  ([xform obj {:keys [use-plain-object? skip-keys]
+               :or   {use-plain-object? true
+                      skip-keys         #{}}}]
    (if (map? obj)
      ;; already a ClojureScript object.
-     (into {} xform obj)
+     (into {} xform (m/remove-keys skip-keys obj))
      ;; has a plain-JavaScript `_plainObject` attached: apply `xform` to it and call it a day
      (if-let [plain-object (when use-plain-object?
                              (some-> (object-get obj "_plainObject")
                                      js->clj
                                      not-empty))]
-       (into {} xform plain-object)
+       (into {} xform (m/remove-keys skip-keys plain-object))
        ;; otherwise do things the hard way and convert an arbitrary object into a Cljs map. (`js->clj` doesn't work on
        ;; arbitrary classes other than `Object`)
        (into {}
              (comp
+              (remove (set skip-keys))
               (map (fn [k]
                      [k (object-get obj k)]))
               ;; ignore values that are functions
@@ -184,7 +190,7 @@
 
 (defmethod excluded-keys :table
   [_object-type]
-  #{:database :fields :segments :metrics :dimension-options})
+  #{:database :fields :segments :metrics})
 
 (defmethod parse-field-fn :table
   [_object-type]
@@ -213,8 +219,6 @@
   [_object-type]
   #{:_comesFromEndpoint
     :database
-    :default-dimension-option
-    :dimension-options
     :metrics
     :table})
 
@@ -283,7 +287,7 @@
       :coercion-strategy                (keyword v)
       :effective-type                   (keyword v)
       :fingerprint                      (if (map? v)
-                                          (walk/keywordize-keys v)
+                                          (perf/keywordize-keys v)
                                           (js->clj v :keywordize-keys true))
       :has-field-values                 (keyword v)
 
@@ -298,28 +302,43 @@
       ;; land, and avoid the issue.
       :field-ref                        (to-array v)
       :lib/source                       (case v
+                                          ;; These are the legacy values from the "source" key
                                           "aggregation" :source/aggregations
                                           ;; TODO (Cam 7/1/25) -- if we wanted to be smarter we could use `source =
                                           ;; breakout` to populate `:lib/breakout?` but I don't really think that's
                                           ;; super necessary.
                                           "breakout"    nil
                                           "fields"      nil
-                                          (keyword "source" v))
+                                          ;; For other values: if already prefixed with "source/" (from the modern
+                                          ;; "lib/source" key), just keywordize it directly. Otherwise add the prefix.
+                                          (if (str/starts-with? v "source/")
+                                            (keyword v)
+                                            (keyword "source" v)))
       :metabase.lib.field/temporal-unit (keyword v)
       :inherited-temporal-unit          (keyword v)
       :semantic-type                    (keyword v)
       :visibility-type                  (keyword v)
       :id                               (parse-field-id v)
       :metabase.lib.field/binning       (parse-binning-info v)
+      :lib/original-binning             (parse-binning-info v)
       ::field-values                    (parse-field-values v)
       ::dimension                       (parse-dimension v)
       v)))
 
 (defmethod parse-object-fn* :field
   [object-type opts]
-  (let [f ((get-method parse-object-fn* :default) object-type opts)]
+  (let [default-impl (get-method parse-object-fn* :default)]
     (fn [unparsed]
-      (let [{{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
+      (let [;; If the JS object has both "source" and "lib/source" keys, the default parsing would
+            ;; rename "source" -> :lib/source and process both, with last-one-wins semantics.
+            ;; Since the key ordering in the JS object is non-deterministic, this causes flaky behavior.
+            ;; When "lib/source" exists, we skip the legacy "source" key entirely.
+            ;; See issue #66721 for details. Will be resolved by QUE-1404.
+            opts (if (object-get unparsed "lib/source")
+                   (update opts :skip-keys (fnil conj #{}) "source")
+                   opts)
+            f (default-impl object-type opts)
+            {{dimension-type :lib/type, :as dimension} ::dimension, ::keys [field-values], :as parsed} (f unparsed)]
         (-> (case dimension-type
               :metadata.column.remapping/external
               (assoc parsed :lib/external-remap dimension)
@@ -355,7 +374,6 @@
   [_object-type]
   #{:database
     :db
-    :dimension-options
     :fks
     :metadata
     :metrics
@@ -455,6 +473,38 @@
   [_object-type]
   "segments")
 
+(defmethod lib-type :measure
+  [_object-type]
+  :metadata/measure)
+
+(defmethod excluded-keys :measure
+  [_object-type]
+  #{:database :table})
+
+(defmethod parse-field-fn :measure
+  [_object-type]
+  (fn [_k v]
+    v))
+
+(defmethod parse-objects-default-key :measure
+  [_object-type]
+  "measures")
+
+(defmethod lib-type :snippet
+  [_object-type]
+  :metadata/native-query-snippet)
+
+(defmethod parse-objects-default-key :snippet
+  [_object-type]
+  "snippets")
+
+(defmethod parse-field-fn :snippet
+  [_object-type]
+  (fn [k v]
+    (case k
+      :template-tags (lib.normalize/normalize :metabase.lib.schema.template-tag/template-tag-map (js->clj v))
+      v)))
+
 (defn- parse-objects-delay [object-type metadata]
   (delay
     (try
@@ -466,7 +516,7 @@
 (defn- card->metric-card
   [card]
   (-> card
-      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id])
+      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id :type])
       (assoc :lib/type :metadata/metric)))
 
 (defn- metric-cards
@@ -479,63 +529,44 @@
                       [id (-> card card->metric-card delay)]))))
           cards)))
 
+(defn- metadata-property [metadata-type]
+  (case metadata-type
+    :metadata/table                :tables
+    :metadata/column               :fields
+    :metadata/card                 :cards
+    :metadata/measure              :measures
+    :metadata/metric               :metrics
+    :metadata/segment              :segments
+    :metadata/native-query-snippet :snippets))
+
 (defn- parse-metadata [metadata]
   (let [delayed-cards (parse-objects-delay :card metadata)]
     {:databases (parse-objects-delay :database metadata)
      :tables    (parse-objects-delay :table    metadata)
      :fields    (parse-objects-delay :field    metadata)
+     :snippets  (parse-objects-delay :snippet  metadata)
      :cards     delayed-cards
+     :measures  (parse-objects-delay :measure  metadata)
      :metrics   (delay (metric-cards delayed-cards))
      :segments  (parse-objects-delay :segment  metadata)}))
 
 (defn- database [metadata database-id]
   (some-> metadata :databases deref (get database-id) deref))
 
-(defn- metadatas [metadata metadata-type ids]
-  (let [k          (case metadata-type
-                     :metadata/table         :tables
-                     :metadata/column        :fields
-                     :metadata/card          :cards
-                     :metadata/segment       :segments)
-        metadatas* (some-> metadata k deref)]
+(defn- metadatas [metadata database-id {metadata-type :lib/type, id-set :id, :as metadata-spec}]
+  (let [k      (metadata-property metadata-type)
+        delays (let [id->dlay (some-> metadata k deref)]
+                 (if id-set
+                   (keep id->dlay id-set)
+                   (vals id->dlay)))]
     (into []
-          (keep (fn [id]
-                  (some-> metadatas* (get id) deref)))
-          ids)))
-
-(defn- tables [metadata database-id]
-  (into []
-        (keep (fn [[_id dlay]]
-                (when-let [table (some-> dlay deref)]
-                  (when (= (:db-id table) database-id)
-                    table))))
-        (some-> metadata :tables deref)))
-
-(defn- metadatas-for-table
-  [metadata metadata-type table-id]
-  (let [k (case metadata-type
-            :metadata/column  :fields
-            :metadata/metric  :metrics
-            :metadata/segment :segments)]
-    (into []
-          (keep (fn [[_id dlay]]
-                  (when-let [object (some-> dlay deref)]
-                    (when (and (= (:table-id object) table-id)
-                               (or (not= metadata-type :metadata/metric)
-                                   (nil? (:source-card-id object))))
-                      object))))
-          (some-> metadata k deref))))
-
-(defn- metadatas-for-card
-  [metadata metadata-type card-id]
-  (let [k (case metadata-type
-            :metadata/metric :metrics)]
-    (into []
-          (keep (fn [[_id dlay]]
-                  (when-let [object (some-> dlay deref)]
-                    (when (= (:source-card-id object) card-id)
-                      object))))
-          (some-> metadata k deref))))
+          (comp (keep deref)
+                (if (= metadata-type :metadata/table)
+                  (filter #(= (:db-id %) database-id))
+                  identity)
+                (lib.metadata.protocols/default-spec-filter-xform metadata-spec)
+                (distinct))
+          delays)))
 
 (defn- setting [^js unparsed-metadata setting-key]
   (-> unparsed-metadata
@@ -545,32 +576,31 @@
 (defn- metadata-provider*
   "Inner implementation for [[metadata-provider]], which wraps this with a cache."
   [database-id unparsed-metadata]
+  ;; TODO (Cam 9/11/25) -- it should go without saying that database ID is required, but adding this ended up breaking
+  ;; a lot of evil FE unit tests that hand-roll MBQL queries with no `database`... Need to turn this back on and then
+  ;; hunt down and fix all the tests.
+  #_{:pre [(pos-int? database-id)]}
   (let [metadata (parse-metadata unparsed-metadata)]
     (log/debug "Created metadata provider for metadata")
-    (reify lib.metadata.protocols/MetadataProvider
-      (database [_this]
-        (database metadata database-id))
-      (metadatas [_this metadata-type ids]
-        (metadatas metadata metadata-type ids))
-      (tables [_this]
-        (tables metadata database-id))
-      (metadatas-for-table [_this metadata-type table-id]
-        (metadatas-for-table metadata metadata-type table-id))
-      (metadatas-for-card [_this metadata-type card-id]
-        (metadatas-for-card metadata metadata-type card-id))
-      (setting [_this setting-key]
-        (setting unparsed-metadata setting-key))
+    (lib.metadata.cached-provider/cached-metadata-provider
+     (reify lib.metadata.protocols/MetadataProvider
+       (database [_this]
+         (database metadata database-id))
+       (metadatas [_this metadata-spec]
+         (metadatas metadata database-id metadata-spec))
+       (setting [_this setting-key]
+         (setting unparsed-metadata setting-key))
 
       ;; for debugging: call [[clojure.datafy/datafy]] on one of these to parse all of our metadata and see the whole
       ;; thing at once.
-      clojure.core.protocols/Datafiable
-      (datafy [_this]
-        (walk/postwalk
-         (fn [form]
-           (if (delay? form)
-             (deref form)
-             form))
-         metadata)))))
+       clojure.core.protocols/Datafiable
+       (datafy [_this]
+         (perf/postwalk
+          (fn [form]
+            (if (delay? form)
+              (deref form)
+              form))
+          metadata))))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

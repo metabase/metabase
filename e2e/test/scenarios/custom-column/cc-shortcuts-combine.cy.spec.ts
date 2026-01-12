@@ -125,38 +125,35 @@ describe("scenarios > question > custom column > expression shortcuts > combine"
   });
 });
 
-H.describeWithSnowplow(
-  "scenarios > question > custom column > combine shortcuts",
-  () => {
-    beforeEach(() => {
-      H.restore();
-      H.resetSnowplow();
-      cy.signInAsNormalUser();
+describe("scenarios > question > custom column > combine shortcuts", () => {
+  beforeEach(() => {
+    H.restore();
+    H.resetSnowplow();
+    cy.signInAsNormalUser();
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
+  });
+
+  it("should send an event for combine columns", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.addCustomColumn();
+    selectCombineColumns();
+
+    selectColumn(0, "User", "Email");
+    selectColumn(1, "User", "Email");
+
+    H.expressionEditorWidget().button("Done").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "column_combine_via_shortcut",
+      custom_expressions_used: ["concat"],
+      database_id: SAMPLE_DB_ID,
+      question_id: 0,
     });
-
-    afterEach(() => {
-      H.expectNoBadSnowplowEvents();
-    });
-
-    it("should send an event for combine columns", () => {
-      H.openOrdersTable({ mode: "notebook" });
-      H.addCustomColumn();
-      selectCombineColumns();
-
-      selectColumn(0, "User", "Email");
-      selectColumn(1, "User", "Email");
-
-      H.expressionEditorWidget().button("Done").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "column_combine_via_shortcut",
-        custom_expressions_used: ["concat"],
-        database_id: SAMPLE_DB_ID,
-        question_id: 0,
-      });
-    });
-  },
-);
+  });
+});
 
 function selectCombineColumns() {
   H.popover().findByText("Combine columns").click();

@@ -49,7 +49,7 @@ From the Azure Management console homepage, create a new resource. This time sea
 
 ![Azure PostgreSQL](images/AZDatabase.png)
 
-In the next page you will have to select the way you will use the service. Choose **Single server** for now, which is a good starting point, but take into account that this will create just one instance of PostgreSQL that will be your single point of failure.
+In the next page you will have to select the way you will use the service. Choose **Single server** for now, which is a good starting point, but consider that this will create just one instance of PostgreSQL that will be your single point of failure.
 
 On the next screen, select or enter the following:
 
@@ -104,7 +104,7 @@ Now go to the next step where you will select:
 - **Options**: Single container.
 - **Image source**: DockerHub.
 - **Access Type**: Public.
-- **Image and tag**: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition). To find the latest version, check our [Community Edition Dockerhub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Dockerhub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated).
+- **Image and tag**: metabase/metabase:latest (or choose any other docker image tag of your preference, like our Enterprise Edition). To find the latest version, check our [Community Edition Docker Hub repository](https://hub.docker.com/r/metabase/metabase/tags?page=1&ordering=last_updated) and also our [Enterprise Edition Docker Hub Repository](https://hub.docker.com/r/metabase/metabase-enterprise/tags?page=1&ordering=last_updated).
 - **Startup command**: Leave this field empty.
 
 Click **Next** until you get to the last section, then click **Create**, and wait while your application initializes.
@@ -121,7 +121,7 @@ Return to the application configuration page and click on **Settings** -> **Conf
 
 You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
-Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
+Also, consider that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
 
 ```
 postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_database_engine&password=configuredpassword&ssl=true&sslmode=required
@@ -165,7 +165,7 @@ Change the version of the container to the new version in the **Full Image Name 
 
 Visit your web app in Azure, and navigate to **Monitoring -> Log stream**.
 
-You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Troubleshooting -> Logs.
+You should be able to see the logs as well inside Metabase by going to Settings -> Admin -> Tools -> Logs.
 
 ### Performance tuning
 
@@ -182,7 +182,7 @@ In your Azure web app, visit **Settings** -> **Custom domains** to use a custom 
 
 Azure provides an easy way to increase the server's capacity by doing a Scale-up. Simply choose a pricing tier with more RAM and CPU count and restart the instance. This approach is easier than scaling out and you should choose this option first before scaling out.
 
-For a highly-available Metabase deployment, you can tell your web app to scale-out (more servers serving the application in parallel). Simply go to Scale-out and use the slider to ask for more instances, or use a custom autoscaling policy (like using more servers during your work hours and fewer during off hours).
+For a highly available Metabase deployment, you can tell your web app to scale-out (more servers serving the application in parallel). Simply go to Scale-out and use the slider to ask for more instances, or use a custom autoscaling policy (like using more servers during your work hours and fewer during off hours).
 
 ### CORS
 

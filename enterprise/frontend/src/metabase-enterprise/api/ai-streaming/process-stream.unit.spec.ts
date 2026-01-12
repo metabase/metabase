@@ -83,7 +83,7 @@ describe("processChatResponse", () => {
     ).rejects.toBeTruthy();
   });
 
-  it("should error if a tool result is returned without a preceeding tool call", async () => {
+  it("should error if a tool result is returned without a preceding tool call", async () => {
     const mockStream = createMockReadableStream([
       `a:{"toolCallId":"x","result":""}`,
       `d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
@@ -108,5 +108,46 @@ describe("processChatResponse", () => {
     expect(result.history).toEqual([
       { content: "You, but don't tell anyone.", role: "assistant" },
     ]);
+  });
+
+  it("should resolve with partial response for aborted requests", async () => {
+    const mockStream = createMockReadableStream(
+      [
+        `0:"Partial response"`,
+        `2:{"type":"state","version":1,"value":{"testing":123}}`,
+      ],
+      {
+        streamOptions: {
+          pull() {
+            throw new DOMException("Stream aborted", "AbortError");
+          },
+        },
+      },
+    );
+    const config = getMockedCallbacks();
+
+    const result = await processChatResponse(mockStream, config);
+
+    expect(result).toMatchSnapshot();
+    expect(config.onTextPart).toHaveBeenCalled();
+    expect(config.onDataPart).toHaveBeenCalled();
+    expect(config.onError).not.toHaveBeenCalled();
+  });
+
+  it("should throw error if stream errors for another reason", async () => {
+    const error = new Error("some non-abort related error");
+
+    await expect(
+      processChatResponse(
+        createMockReadableStream([`0:"Starting response"`], {
+          streamOptions: {
+            async start() {
+              throw error;
+            },
+          },
+        }),
+        expectNoStreamedError,
+      ),
+    ).rejects.toThrow(error);
   });
 });

@@ -3,13 +3,18 @@ import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
 
+import { ColorSchemeSelect } from "metabase/common/components/ColorScheme";
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
-import FormErrorMessage from "metabase/common/components/FormErrorMessage";
-import FormInput from "metabase/common/components/FormInput";
-import FormSelect from "metabase/common/components/FormSelect";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
-import { Form, FormProvider } from "metabase/forms";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSelect,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
+import { Box, Text } from "metabase/ui";
 import type { LocaleData, User } from "metabase-types/api";
 
 import type { UserProfileData } from "../../types";
@@ -40,7 +45,12 @@ const UserProfileForm = ({
   const schema = isSsoUser ? SSO_PROFILE_SCHEMA : LOCAL_PROFILE_SCHEMA;
 
   const initialValues = useMemo(() => {
-    return schema.cast(user, { stripUnknown: true });
+    const values = schema.cast(user, { stripUnknown: true });
+
+    if (values.locale === null) {
+      values.locale = "";
+    }
+    return values;
   }, [user, schema]);
 
   const localeOptions = useMemo(() => {
@@ -48,64 +58,93 @@ const UserProfileForm = ({
   }, [locales]);
 
   const handleSubmit = useCallback(
-    (values: UserProfileData) => onSubmit(user, values),
+    (values: UserProfileData) =>
+      onSubmit(user, {
+        ...values,
+        locale: values.locale === "" ? null : values.locale,
+      }),
     [user, onSubmit],
   );
 
   return (
-    <FormProvider
-      initialValues={initialValues}
-      validationSchema={schema}
-      enableReinitialize
-      onSubmit={handleSubmit}
-    >
-      {({ dirty }) => (
-        <Form disabled={!dirty}>
-          {!isSsoUser && (
-            <>
-              <FormInput
-                name="first_name"
-                title={t`First name`}
-                placeholder={t`Johnny`}
-                nullable
+    <Box>
+      <ColorSchemeSwitcher />
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={schema}
+        enableReinitialize
+        onSubmit={handleSubmit}
+      >
+        {({ dirty }) => (
+          <Form disabled={!dirty}>
+            {!isSsoUser && (
+              <>
+                <FormTextInput
+                  name="first_name"
+                  label={t`First name`}
+                  placeholder={t`Johnny`}
+                  nullable
+                  mb="md"
+                />
+                <FormTextInput
+                  name="last_name"
+                  label={t`Last name`}
+                  placeholder={t`Appleseed`}
+                  nullable
+                  mb="md"
+                />
+                <FormTextInput
+                  name="email"
+                  type="email"
+                  label={t`Email`}
+                  placeholder="nicetoseeyou@email.com"
+                  mb="md"
+                />
+              </>
+            )}
+            <div data-testid="user-locale-select">
+              <FormSelect
+                name="locale"
+                label={t`Language`}
+                data={localeOptions}
+                description={
+                  <CommunityLocalizationNotice isAdminView={false} />
+                }
+                mb="md"
               />
-              <FormInput
-                name="last_name"
-                title={t`Last name`}
-                placeholder={t`Appleseed`}
-                nullable
-              />
-              <FormInput
-                name="email"
-                type="email"
-                title={t`Email`}
-                placeholder="nicetoseeyou@email.com"
-              />
-            </>
-          )}
-          <div data-testid="user-locale-select">
-            <FormSelect
-              name="locale"
-              title={t`Language`}
-              options={localeOptions}
-              description={<CommunityLocalizationNotice isAdminView={false} />}
+            </div>
+            <FormSubmitButton
+              label={t`Update`}
+              disabled={!dirty}
+              variant="primary"
             />
-          </div>
-          <FormSubmitButton title={t`Update`} disabled={!dirty} primary />
-          <FormErrorMessage />
-        </Form>
-      )}
-    </FormProvider>
+            <FormErrorMessage />
+          </Form>
+        )}
+      </FormProvider>
+    </Box>
   );
 };
 
 const getLocaleOptions = (locales: LocaleData[] | null) => {
   const options = _.chain(locales ?? [["en", "English"]])
-    .map(([value, name]) => ({ name, value }))
-    .sortBy(({ name }) => name)
+    .map(([value, label]) => ({ label, value }))
+    .sortBy(({ label }) => label)
     .value();
 
-  return [{ name: t`Use site default`, value: null }, ...options];
+  return [{ label: t`Use site default`, value: "" }, ...options];
+};
+
+const ColorSchemeSwitcher = () => {
+  return (
+    <Box mb="md">
+      <Text mt="xs" fw="bold">
+        {t`Theme`}
+      </Text>
+
+      <ColorSchemeSelect />
+    </Box>
+  );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

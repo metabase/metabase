@@ -66,7 +66,7 @@ Each text card has two modes: writing and previewing. When you click to focus on
 
 ![Markdown](images/markdown.png)
 
-You can use [Markdown](http://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
+You can use [Markdown](https://commonmark.org/help/) to format the text in your text card, create inline tables or code snippets, or even embed linked images (easy on the GIFs, friends). To preview the rendered card, just click away from the card.
 
 ![Result](images/result.png)
 
@@ -229,7 +229,7 @@ You can change the width of a dashboard by going into the three dots menu in the
 - **Fixed width** (default). Metabase will restrict the layout to a fixed width in the center of the screen. This fixed width can keep dashboard layouts consistent between smaller laptop screens and larger desktop screens.
 - **Full width**. The layout and cards will expand to take up the full width of the screen.
 
-## Editing dashboard cards 
+## Editing dashboard cards
 
 To edit a card's:
 
@@ -267,7 +267,7 @@ If you want to revert a dashboard card to its original visualization settings (i
 
 1. Go to your dashboard and click the **pencil icon** to go into edit mode.
 2. Hover over the card (question) that you want to edit.
-3. Click the **palette icon** to bring up the visualization settings for that card. 
+3. Click the **palette icon** to bring up the visualization settings for that card.
 4. Click **Reset to defaults** (bottom right).
 5. Click **Done** to save the card's visualization settings.
 6. Click **Save** to save the dashboard.
@@ -283,9 +283,7 @@ If you don't see the palette icon, you'll need to:
 
 After you've made your ideal dashboard, you may want to put the dashboard on a TV to help keep your team up to date throughout the day.
 
-To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions). Once you've entered fullscreen mode, you can also switch the dashboard into "Night mode" for higher contrast.
-
-![Night mode](images/dark-mode.png)
+To enter fullscreen mode, click the **fullscreen** icon in the top right of the dashboard (the icon with the arrows pointing in opposite directions).
 
 ## Auto refresh
 
@@ -311,7 +309,7 @@ If your Metabase administrator has enabled [public sharing](../embedding/public-
 
 ![Share icon](./images/share-icon.png)
 
-Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and data sandboxing to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+Public links can be viewed by anyone, even if they don't have access to Metabase. You can also use the public embedding code to embed your question or dashboard in a simple web page or blog post. Check out examples of simple apps with embedded dashboards in our [embedding-reference-apps repository](https://github.com/metabase/embedding-reference-apps). To learn more about [embedding](../embedding/introduction.md), check out our article on [How to use Metabase to deliver analytics to your customers](https://www.metabase.com/learn/metabase-basics/embedding/overview), as well as an article on how to combine branding, Single Sign-On, full app embedding, and row and column security to deliver [multi-tenant, self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
 
 ## Exporting results from a dashboard
 

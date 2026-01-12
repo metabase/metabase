@@ -20,22 +20,8 @@ function formatJsonQuery(query: JSONQuery) {
   return JSON.stringify(query, null, 2);
 }
 
-export function formatNativeQuery(query?: string | JSONQuery, engine?: string) {
-  if (!query || !engine) {
-    return undefined;
-  }
-
-  const engineType = getEngineNativeType(engine);
-
-  if (typeof query === "string" && engineType === "sql") {
-    return formatSQL(query);
-  }
-
-  if (engineType === "json") {
-    return typeof query === "object" ? formatJsonQuery(query) : query;
-  }
-
-  return undefined;
+export function formatNativeQuery(query: string | JSONQuery): string {
+  return typeof query === "string" ? query : formatJsonQuery(query);
 }
 
 export function isDeprecatedEngine(
@@ -43,19 +29,4 @@ export function isDeprecatedEngine(
   engine: string,
 ) {
   return engines[engine] != null && engines[engine]["superseded-by"] != null;
-}
-
-function formatSQL(sql: string) {
-  if (typeof sql === "string") {
-    sql = sql.replace(/\sFROM/, "\nFROM");
-    sql = sql.replace(/\sLEFT JOIN/, "\nLEFT JOIN");
-    sql = sql.replace(/\sWHERE/, "\nWHERE");
-    sql = sql.replace(/\sGROUP BY/, "\nGROUP BY");
-    sql = sql.replace(/\sORDER BY/, "\nORDER BY");
-    sql = sql.replace(/\sLIMIT/, "\nLIMIT");
-    sql = sql.replace(/\sAND\s/, "\n   AND ");
-    sql = sql.replace(/\sOR\s/, "\n    OR ");
-
-    return sql;
-  }
 }

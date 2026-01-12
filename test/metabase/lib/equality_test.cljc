@@ -10,11 +10,11 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
@@ -320,6 +320,8 @@
                [:field {} "Cat__NAME"]]  ; 7
               refs))
       (testing (str "\n" (with-out-str
+                           ;; usage is ok since we're wrapping it in `with-out-str`
+                           #_{:clj-kondo/ignore [:discouraged-var]}
                            (pprint/print-table
                             [:name :lib/original-join-alias :lib/original-name :lib/deduplicated-name :lib/source-column-alias :lib/desired-column-alias]
                             cols)))
@@ -353,20 +355,17 @@
 (deftest ^:parallel find-matching-column-self-join-test
   (testing "find-matching-column with a self join"
     (let [query     (lib.tu/query-with-self-join)
-          [join]    (lib/joins query)
           cols      (for [col (meta/fields :orders)]
                       (meta/field-metadata :orders col))
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(-> %
                          (merge {:lib/source                   :source/joins
-                                 :metabase.lib.join/join-alias "Orders"
-                                 :lib/desired-column-alias     (str "Orders__" (:name %))})
-                         (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join)))
+                                 :metabase.lib.join/join-alias "Orders"}))
           sorted    #(sort-by (juxt :position :source-alias) %)
           visible   (lib/visible-columns query)]
       (is (=? (->> (sorted (concat (map table-col cols)
                                    (map join-col  cols)))
-                   (map #(dissoc % :ident :name)))
+                   (map #(dissoc % :name)))
               (sorted (lib/returned-columns query))))
       (testing "matches the defaults by ID"
         (doseq [col-key (meta/fields :orders)]
@@ -412,7 +411,7 @@
                {:lib/desired-column-alias "Orders__ID"}]
               (lib/returned-columns just-3)))
       (testing "matching the four fields against"
-        (let [hr-own-id   {:lib/type :metadata/column
+        (let [hr-own-id   {:lib/type           :metadata/column
                            :description        "Own ID"
                            :base-type          :type/BigInteger
                            :semantic-type      :type/PK
@@ -425,7 +424,7 @@
                            :parent-id          nil
                            :display-name       "ID"
                            :position           0}
-              hr-own-tax  {:lib/type :metadata/column
+              hr-own-tax  {:lib/type           :metadata/column
                            :description        "Own Tax"
                            :base-type          :type/Float
                            :semantic-type      nil
@@ -438,49 +437,49 @@
                            :parent-id          nil
                            :display-name       "Tax"
                            :position           4}
-              hr-join-id  {:lib/type :metadata/column
-                           :description        "Join ID"
-                           :base-type          :type/BigInteger
-                           :semantic-type      :type/PK
-                           :effective-type     :type/BigInteger
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :id)
-                           :name               "ID_2"
-                           :source-alias       "Orders"
-                           :lib/source         :source/joins
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Orders → ID"
-                           :position           0}
-              hr-join-tax {:lib/type :metadata/column
-                           :description        "Join Tax"
-                           :base-type          :type/Float
-                           :semantic-type      nil
-                           :effective-type     :type/Float
-                           :table-id           (meta/id :orders)
-                           :id                 (meta/id :orders :tax)
-                           :name               "TAX_2"
-                           :source-alias       "Orders"
-                           :lib/source         :source/joins
-                           :fk-target-field-id nil
-                           :parent-id          nil
-                           :display-name       "Orders → Tax"
-                           :position           4}
-              ret-4 [hr-own-id hr-own-tax hr-join-id hr-join-tax]
-              ret-3 [hr-own-id hr-own-tax hr-join-id]
-              refs  (for [join-alias       [nil "Orders"]
-                          [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
-                      [:field (merge {:lib/uuid       (str (random-uuid))
-                                      :base-type      coltype
-                                      :effective-type coltype}
-                                     (when join-alias
-                                       {:join-alias join-alias}))
-                       (meta/id :orders column)])
-              exp-4 [{:display-name "ID"}
-                     {:display-name "Tax"}
-                     {:display-name "Orders → ID"}
-                     {:display-name "Orders → Tax"}]
-              exp-3 (update exp-4 3 (constantly nil))]
+              hr-join-id  {:lib/type                     :metadata/column
+                           :description                  "Join ID"
+                           :base-type                    :type/BigInteger
+                           :semantic-type                :type/PK
+                           :effective-type               :type/BigInteger
+                           :table-id                     (meta/id :orders)
+                           :id                           (meta/id :orders :id)
+                           :name                         "ID_2"
+                           :metabase.lib.join/join-alias "Orders"
+                           :lib/source                   :source/joins
+                           :fk-target-field-id           nil
+                           :parent-id                    nil
+                           :display-name                 "Orders → ID"
+                           :position                     0}
+              hr-join-tax {:lib/type                     :metadata/column
+                           :description                  "Join Tax"
+                           :base-type                    :type/Float
+                           :semantic-type                nil
+                           :effective-type               :type/Float
+                           :table-id                     (meta/id :orders)
+                           :id                           (meta/id :orders :tax)
+                           :name                         "TAX_2"
+                           :metabase.lib.join/join-alias "Orders"
+                           :lib/source                   :source/joins
+                           :fk-target-field-id           nil
+                           :parent-id                    nil
+                           :display-name                 "Orders → Tax"
+                           :position                     4}
+              ret-4       [hr-own-id hr-own-tax hr-join-id hr-join-tax]
+              ret-3       [hr-own-id hr-own-tax hr-join-id]
+              refs        (for [join-alias       [nil "Orders"]
+                                [column coltype] [[:id :type/Integer] [:tax :type/Float]]]
+                            [:field (merge {:lib/uuid       (str (random-uuid))
+                                            :base-type      coltype
+                                            :effective-type coltype}
+                                           (when join-alias
+                                             {:join-alias join-alias}))
+                             (meta/id :orders column)])
+              exp-4       [{:display-name "ID"}
+                           {:display-name "Tax"}
+                           {:display-name "Orders → ID"}
+                           {:display-name "Orders → Tax"}]
+              exp-3       (update exp-4 3 (constantly nil))]
           (testing "all-4 matches everything"
             (is (=? exp-4
                     (->> refs
@@ -696,6 +695,16 @@
                           (lib/append-stage))
           columns     (lib/fieldable-columns query)
           column-refs (mapv lib.ref/ref columns)]
+      (is (=? [{:lib/source-column-alias "CREATED_AT"
+                :inherited-temporal-unit :year}
+               {:lib/source-column-alias "CREATED_AT_2"
+                :inherited-temporal-unit :month}
+               {:lib/source-column-alias "count"}]
+              columns))
+      (is (=? [[:field {:inherited-temporal-unit :year} "CREATED_AT"]
+               [:field {:inherited-temporal-unit :month} "CREATED_AT_2"]
+               [:field {} "count"]]
+              column-refs))
       (is (=? [:field {} "CREATED_AT"]
               (lib.equality/find-matching-ref (first columns) column-refs)))
       (is (=? [:field {} "CREATED_AT_2"]
@@ -741,7 +750,7 @@
                                        {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000001"}
                                        "Products__ID"]]))
           cols  (lib/visible-columns query)]
-      (is (=? {:name "ID_2", :lib/desired-column-alias "Products__ID"}
+      (is (=? {:name "ID_2", :lib/source-column-alias "Products__ID"}
               (lib.equality/find-matching-column
                [:field
                 {:base-type :type/BigInteger, :lib/uuid "00000000-0000-0000-0000-000000000002"}
@@ -763,10 +772,8 @@
                     :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
                     :lib/deduplicated-name     "CREATED_AT"
                     :lib/desired-column-alias  "CREATED_AT"
-                    :lib/hack-original-name    "CREATED_AT"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
-                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :year, :lib/uuid "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af", :effective-type :type/DateTime} 39]
                     :lib/source                :source/previous-stage
                     :lib/source-column-alias   "CREATED_AT"
                     :lib/source-uuid           "aa4324c7-12d2-46fe-ba8d-8f1fe54b61af"
@@ -785,10 +792,8 @@
                     :last-analyzed             "2025-06-24T20:58:41.088313-07:00"
                     :lib/deduplicated-name     "CREATED_AT_2"
                     :lib/desired-column-alias  "CREATED_AT_2"
-                    :lib/hack-original-name    "CREATED_AT"
                     :lib/original-display-name "Created At"
                     :lib/original-name         "CREATED_AT"
-                    :lib/original-ref          [:field {:base-type :type/DateTime, :temporal-unit :month, :lib/uuid "1f16a57a-2afd-4c92-8d6c-b41062235a49", :effective-type :type/DateTime} 39]
                     :lib/source                :source/previous-stage
                     :lib/source-column-alias   "CREATED_AT_2"
                     :lib/source-uuid           "1f16a57a-2afd-4c92-8d6c-b41062235a49"
@@ -944,15 +949,14 @@
                :base-type      :type/Text
                :join-alias     "question b - Product"}
               "TITLE"]
-             (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage}))))))
+             (lib.equality/find-matching-ref col refs))))))
 
 (deftest ^:parallel same-stage-matching-do-not-barf-when-trying-to-find-a-match-for-an-expression-ref-test
   (let [[col] (lib/returned-columns (lib/query meta/metadata-provider (meta/table-metadata :venues)))]
     ;; just make sure this doesn't barf.
     (is (nil? (lib.equality/find-matching-ref
                col
-               [[:expression {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "bad_expression"]]
-               {:match-type ::lib.equality/match-type.same-stage})))))
+               [[:expression {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "bad_expression"]])))))
 
 (deftest ^:parallel pick-correct-column-when-one-is-from-join-and-on-is-not-test
   (testing "If we have two cols and one has a join alias and one doesn't, and our ref has no alias, then pick the col with no alias"
@@ -1022,7 +1026,7 @@
                 :join-alias     "Orders"}
                55603]]]
     (is (= (first refs)
-           (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
+           (lib.equality/find-matching-ref col refs)))))
 
 (deftest ^:parallel match-by-source-field-test
   (let [col  {:base-type                :type/BigInteger
@@ -1043,4 +1047,354 @@
         refs [[:field {:base-type :type/BigInteger, :lib/uuid "b10907ef-d71b-4ddc-b3b9-ff0fda706b6d"} "ID"]
               [:field {:base-type :type/BigInteger, :source-field 35, :source-field-name "USER_ID", :lib/uuid "1cb6708d-754d-48b9-b44f-660a7c91561d", :effective-type :type/BigInteger} 24]]]
     (is (= (second refs)
-           (lib.equality/find-matching-ref col refs {:match-type ::lib.equality/match-type.same-stage})))))
+           (lib.equality/find-matching-ref col refs)))))
+
+(deftest ^:parallel find-matching-column-prefer-exact-matches-test
+  (testing `lib.equality/find-matching-column
+    (testing "For field name refs, prefer matches that have the same [lack of] join alias and same source-column-alias"
+      (let [a-ref [:field
+                   {:lib/uuid       "00000000-0000-0000-0000-000000000000"
+                    :effective-type :type/Text
+                    :base-type      :type/Text}
+                   "Cat__NAME"]
+            ;; here we have TWO potential matches with `:lib/source-uuid` -- this happens
+            ;; in [[metabase.query-processor.util.add-alias-info]] when we search thru the concatenation of
+            ;; `returned-columns` and `visible-columns`. The first potential match has the wrong join alias and source
+            ;; column alias; the second is an exact match. We should return the second.
+            col-1 (merge
+                   (meta/field-metadata :categories :name)
+                   {:lib/deduplicated-name        "NAME"
+                    :lib/desired-column-alias     "Cat__NAME"
+                    :lib/original-join-alias      "Cat"
+                    :lib/original-name            "NAME"
+                    :lib/source                   :source/joins
+                    :lib/source-column-alias      "NAME"
+                    :lib/source-uuid              "00000000-0000-0000-0000-000000000000"
+                    :metabase.lib.join/join-alias "Cat"
+                    :name                         "NAME"})
+            col-2 (merge
+                   (meta/field-metadata :categories :name)
+                   {:lib/deduplicated-name     "NAME"
+                    :lib/desired-column-alias  "Cat__NAME"
+                    :lib/original-display-name "Name"
+                    :lib/original-join-alias   "Cat"
+                    :lib/original-name         "NAME"
+                    :lib/source                :source/previous-stage
+                    :lib/source-column-alias   "Cat__NAME"
+                    :lib/source-uuid           "00000000-0000-0000-0000-000000000000"
+                    :lib/type                  :metadata/column
+                    :name                      "NAME"})]
+        (doseq [cols [[col-1 col-2]
+                      [col-2 col-1]]]
+          (is (= col-2
+                 (lib.equality/find-matching-column a-ref cols))))))))
+
+(deftest ^:parallel never-return-match-with-different-id-test
+  (testing "find-matching-ref should never return a match with a different :id"
+    (let [field-refs (mapv #(lib/normalize :mbql.clause/field %)
+                           [[:field {} 10]
+                            [:field {} 8]
+                            [:field {} 7]
+                            [:field {} 1]
+                            [:field {} 3]
+                            [:field {} 2]
+                            [:field {} 4]
+                            [:field {} 6]
+                            [:field {} 5]
+                            [:field {:source-field 8} 20]])
+          col        {:base-type                :type/Text
+                      :display-name             "Address"
+                      :effective-type           :type/Text
+                      :fk-field-id              8
+                      :fk-target-field-id       nil
+                      :id                       23
+                      :name                     "ADDRESS"
+                      :position                 1
+                      :preview-display          true
+                      :table-id                 10
+                      :visibility-type          :normal
+                      :lib/deduplicated-name    "ADDRESS"
+                      :lib/desired-column-alias "ADDRESS"
+                      :lib/original-name        "ADDRESS"
+                      :lib/source               :source/implicitly-joinable
+                      :lib/source-column-alias  "ADDRESS"
+                      :lib/type                 :metadata/column}]
+      (is (nil? (lib.equality/find-matching-ref col field-refs))))))
+
+(deftest ^:parallel column-equality-binning-test
+  (testing "Two columns with the same binning should be equal; different binning should make them unequal"
+    (let [col               (assoc (meta/field-metadata :orders :total)
+                                   :metabase.lib.field/binning {:bin-width 20.0
+                                                                :max-value 160.0
+                                                                :min-value 0.0
+                                                                :num-bins  10
+                                                                :strategy  :num-bins})
+          same-binning      (assoc col :metabase.lib.field/binning {:bin-width 20.0
+                                                                    :max-value 160.0
+                                                                    :min-value 0.0
+                                                                    :num-bins  10
+                                                                    :strategy  :num-bins})
+          different-binning (assoc col :metabase.lib.field/binning {:bin-width 5.0
+                                                                    :max-value 160.0
+                                                                    :min-value 5.0
+                                                                    :num-bins  50
+                                                                    :strategy  :num-bins})]
+      (is (lib.equality/= col same-binning))
+      (is (not (lib.equality/= col different-binning))))))
+
+(deftest ^:parallel duplicate-names-selection-test
+  (testing "Should be able to distinguish columns with the same name from a card with self join (#62383)"
+    (let [mp        (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:id            1
+                               :dataset-query (lib.tu.macros/mbql-query orders
+                                                {:joins  [{:source-table $$orders
+                                                           :alias        "o"
+                                                           :fields       [&o.orders.id]
+                                                           :condition    [:= $id &o.orders.id]}]
+                                                 :fields [$id
+                                                          &o.orders.id]})}]})
+          card-meta (lib.metadata/card mp 1)
+          id-col    (m/find-first (comp #{"ID"} :name)
+                                  (lib/returned-columns (lib/query mp card-meta)))
+          query     (-> (lib/query mp (lib.metadata/table mp (meta/id :reviews)))
+                        (lib/join (-> (lib/join-clause card-meta
+                                                       [(lib/= (lib.metadata/field mp (meta/id :reviews :id))
+                                                               id-col)])
+                                      (lib/with-join-fields :all))))
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
+          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
+      (is (=? [{:lib/source-column-alias "ID",         :display-name "ID"}
+               {:lib/source-column-alias "PRODUCT_ID", :display-name "Product ID"}
+               {:lib/source-column-alias "REVIEWER",   :display-name "Reviewer"}
+               {:lib/source-column-alias "RATING",     :display-name "Rating"}
+               {:lib/source-column-alias "BODY",       :display-name "Body"}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At"}
+               {:lib/source-column-alias "ID",         :display-name "Card 1 → ID"}
+               {:lib/source-column-alias "o__ID",      :display-name "Card 1 → ID"}
+               {:lib/source-column-alias "ID",         :display-name "ID"}
+               {:lib/source-column-alias "EAN",        :display-name "Ean"}
+               {:lib/source-column-alias "TITLE",      :display-name "Title"}
+               {:lib/source-column-alias "CATEGORY",   :display-name "Category"}
+               {:lib/source-column-alias "VENDOR",     :display-name "Vendor"}
+               {:lib/source-column-alias "PRICE",      :display-name "Price"}
+               {:lib/source-column-alias "RATING",     :display-name "Rating"}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At"}]
+              (map #(select-keys % [:lib/source-column-alias :display-name])
+                   visible)))
+      (is (=? [{:lib/source-column-alias "ID",         :lib/desired-column-alias "ID",            :display-name "ID"}
+               {:lib/source-column-alias "PRODUCT_ID", :lib/desired-column-alias "PRODUCT_ID"     :display-name "Product ID"}
+               {:lib/source-column-alias "REVIEWER",   :lib/desired-column-alias "REVIEWER",      :display-name "Reviewer"}
+               {:lib/source-column-alias "RATING",     :lib/desired-column-alias "RATING",        :display-name "Rating"}
+               {:lib/source-column-alias "BODY",       :lib/desired-column-alias "BODY",          :display-name "Body"}
+               {:lib/source-column-alias "CREATED_AT", :lib/desired-column-alias "CREATED_AT"     :display-name "Created At"}
+               {:lib/source-column-alias "ID",         :lib/desired-column-alias "Card 1__ID",    :display-name "Card 1 → ID"}
+               {:lib/source-column-alias "o__ID",      :lib/desired-column-alias "Card 1__o__ID", :display-name "Card 1 → ID"}]
+              (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias :display-name])
+                   returned)))
+      (is (=? [{:lib/source-column-alias "ID",         :display-name "ID",         :selected? true}
+               {:lib/source-column-alias "PRODUCT_ID", :display-name "Product ID", :selected? true}
+               {:lib/source-column-alias "REVIEWER",   :display-name "Reviewer",   :selected? true}
+               {:lib/source-column-alias "RATING",     :display-name "Rating",     :selected? true}
+               {:lib/source-column-alias "BODY",       :display-name "Body",       :selected? true}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? true}
+               ;; the following two Card 1 → ID should have :selected? true
+               {:lib/source-column-alias "ID",    :display-name "Card 1 → ID", :selected? true} ; FIXME - these should be true
+               {:lib/source-column-alias "o__ID", :display-name "Card 1 → ID", :selected? true}
+               ;; these are implicitly joinable fields, :selected? false is right
+               {:lib/source-column-alias "ID",         :display-name "ID",         :selected? false}
+               {:lib/source-column-alias "EAN",        :display-name "Ean",        :selected? false}
+               {:lib/source-column-alias "TITLE",      :display-name "Title",      :selected? false}
+               {:lib/source-column-alias "CATEGORY",   :display-name "Category",   :selected? false}
+               {:lib/source-column-alias "VENDOR",     :display-name "Vendor",     :selected? false}
+               {:lib/source-column-alias "PRICE",      :display-name "Price",      :selected? false}
+               {:lib/source-column-alias "RATING",     :display-name "Rating",     :selected? false}
+               {:lib/source-column-alias "CREATED_AT", :display-name "Created At", :selected? false}]
+              (map #(select-keys % [:lib/source-column-alias :display-name :selected?])
+                   marked))))))
+
+(deftest ^:parallel multiple-breakouts-of-a-field-selection-test
+  (testing "Should be able to distinguish columns from multiple breakouts of a field from a card (#47734)"
+    (let [mp        (lib.tu/mock-metadata-provider
+                     meta/metadata-provider
+                     {:cards [{:id            1
+                               :dataset-query (lib.tu.macros/mbql-query orders
+                                                {:aggregation [[:count]]
+                                                 :breakout    [!month.created-at !year.created-at]})}]})
+          card-meta (lib.metadata/card mp 1)
+          count-col (m/find-first (comp #{"count"} :name)
+                                  (lib/returned-columns (lib/query mp card-meta)))
+          query     (-> (lib/query mp (lib.metadata/table mp (meta/id :orders)))
+                        (lib/join (lib/join-clause card-meta
+                                                   [(lib/= (lib.metadata/field mp (meta/id :orders :id))
+                                                           count-col)])))
+          visible   (lib.metadata.calculation/visible-columns query -1)
+          returned  (lib.metadata.calculation/returned-columns query -1)
+          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
+      (is (=? [{:lib/source-column-alias "ID",           :display-name "ID"}
+               {:lib/source-column-alias "USER_ID",      :display-name "User ID"}
+               {:lib/source-column-alias "PRODUCT_ID",   :display-name "Product ID"}
+               {:lib/source-column-alias "SUBTOTAL",     :display-name "Subtotal"}
+               {:lib/source-column-alias "TAX",          :display-name "Tax"}
+               {:lib/source-column-alias "TOTAL",        :display-name "Total"}
+               {:lib/source-column-alias "DISCOUNT",     :display-name "Discount"}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Created At"}
+               {:lib/source-column-alias "QUANTITY",     :display-name "Quantity"}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Card 1 → Created At: Month"}
+               {:lib/source-column-alias "CREATED_AT_2", :display-name "Card 1 → Created At: Year"}
+               {:lib/source-column-alias "count",        :display-name "Card 1 → Count"}
+               {:lib/source-column-alias "ID",           :display-name "ID"}
+               {:lib/source-column-alias "ADDRESS",      :display-name "Address"}
+               {:lib/source-column-alias "EMAIL",        :display-name "Email"}
+               {:lib/source-column-alias "PASSWORD",     :display-name "Password"}
+               {:lib/source-column-alias "NAME",         :display-name "Name"}
+               {:lib/source-column-alias "CITY",         :display-name "City"}
+               {:lib/source-column-alias "LONGITUDE",    :display-name "Longitude"}
+               {:lib/source-column-alias "STATE",        :display-name "State"}
+               {:lib/source-column-alias "SOURCE",       :display-name "Source"}
+               {:lib/source-column-alias "BIRTH_DATE",   :display-name "Birth Date"}
+               {:lib/source-column-alias "ZIP",          :display-name "Zip"}
+               {:lib/source-column-alias "LATITUDE",     :display-name "Latitude"}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Created At"}
+               {:lib/source-column-alias "ID",           :display-name "ID"}
+               {:lib/source-column-alias "EAN",          :display-name "Ean"}
+               {:lib/source-column-alias "TITLE",        :display-name "Title"}
+               {:lib/source-column-alias "CATEGORY",     :display-name "Category"}
+               {:lib/source-column-alias "VENDOR",       :display-name "Vendor"}
+               {:lib/source-column-alias "PRICE",        :display-name "Price"}
+               {:lib/source-column-alias "RATING",       :display-name "Rating"}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Created At"}]
+              (map #(select-keys % [:lib/source-column-alias :display-name])
+                   visible)))
+      (is (=? [{:lib/desired-column-alias "ID",                   :display-name "ID"}
+               {:lib/desired-column-alias "USER_ID",              :display-name "User ID"}
+               {:lib/desired-column-alias "PRODUCT_ID",           :display-name "Product ID"}
+               {:lib/desired-column-alias "SUBTOTAL",             :display-name "Subtotal"}
+               {:lib/desired-column-alias "TAX",                  :display-name "Tax"}
+               {:lib/desired-column-alias "TOTAL",                :display-name "Total"}
+               {:lib/desired-column-alias "DISCOUNT",             :display-name "Discount"}
+               {:lib/desired-column-alias "CREATED_AT",           :display-name "Created At"}
+               {:lib/desired-column-alias "QUANTITY",             :display-name "Quantity"}
+               {:lib/desired-column-alias "Card 1__CREATED_AT",   :display-name "Card 1 → Created At: Month"}
+               {:lib/desired-column-alias "Card 1__CREATED_AT_2", :display-name "Card 1 → Created At: Year"}
+               {:lib/desired-column-alias "Card 1__count",        :display-name "Card 1 → Count"}]
+              (map #(select-keys % [:lib/desired-column-alias :display-name])
+                   returned)))
+      (is (=? [{:lib/source-column-alias "ID",           :display-name "ID",                         :selected? true}
+               {:lib/source-column-alias "USER_ID",      :display-name "User ID",                    :selected? true}
+               {:lib/source-column-alias "PRODUCT_ID",   :display-name "Product ID",                 :selected? true}
+               {:lib/source-column-alias "SUBTOTAL",     :display-name "Subtotal",                   :selected? true}
+               {:lib/source-column-alias "TAX",          :display-name "Tax",                        :selected? true}
+               {:lib/source-column-alias "TOTAL",        :display-name "Total",                      :selected? true}
+               {:lib/source-column-alias "DISCOUNT",     :display-name "Discount",                   :selected? true}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Created At",                 :selected? true}
+               {:lib/source-column-alias "QUANTITY",     :display-name "Quantity",                   :selected? true}
+               ;; the following two Card 1 → Created At: ... fields should have :selected? true
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Card 1 → Created At: Month", :selected? true}
+               {:lib/source-column-alias "CREATED_AT_2", :display-name "Card 1 → Created At: Year",  :selected? true}
+               {:lib/source-column-alias "count",        :display-name "Card 1 → Count",             :selected? true}
+               ;; these are implicitly joinable fields, :selected? false is right
+               {:lib/source-column-alias "ID",           :display-name "ID",                         :selected? false}
+               {:lib/source-column-alias "ADDRESS",      :display-name "Address",                    :selected? false}
+               {:lib/source-column-alias "EMAIL",        :display-name "Email",                      :selected? false}
+               {:lib/source-column-alias "PASSWORD",     :display-name "Password",                   :selected? false}
+               {:lib/source-column-alias "NAME",         :display-name "Name",                       :selected? false}
+               {:lib/source-column-alias "CITY",         :display-name "City",                       :selected? false}
+               {:lib/source-column-alias "LONGITUDE",    :display-name "Longitude",                  :selected? false}
+               {:lib/source-column-alias "STATE",        :display-name "State",                      :selected? false}
+               {:lib/source-column-alias "SOURCE",       :display-name "Source",                     :selected? false}
+               {:lib/source-column-alias "BIRTH_DATE",   :display-name "Birth Date",                 :selected? false}
+               {:lib/source-column-alias "ZIP",          :display-name "Zip",                        :selected? false}
+               {:lib/source-column-alias "LATITUDE",     :display-name "Latitude",                   :selected? false}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Created At",                 :selected? false}
+               {:lib/source-column-alias "ID",           :display-name "ID",                         :selected? false}
+               {:lib/source-column-alias "EAN",          :display-name "Ean",                        :selected? false}
+               {:lib/source-column-alias "TITLE",        :display-name "Title",                      :selected? false}
+               {:lib/source-column-alias "CATEGORY",     :display-name "Category",                   :selected? false}
+               {:lib/source-column-alias "VENDOR",       :display-name "Vendor",                     :selected? false}
+               {:lib/source-column-alias "PRICE",        :display-name "Price",                      :selected? false}
+               {:lib/source-column-alias "RATING",       :display-name "Rating",                     :selected? false}
+               {:lib/source-column-alias "CREATED_AT",   :display-name "Created At",                 :selected? false}]
+              (map #(select-keys % [:lib/source-column-alias :display-name :selected?])
+                   marked))))))
+
+(deftest ^:parallel self-join-in-card-test
+  (testing "Should handle self joins in cards (#44767)"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id 1
+                        :dataset-query (lib.tu.macros/mbql-query orders
+                                         {:joins [{:source-table $$orders
+                                                   :alias "j"
+                                                   :condition [:= $id &j.orders.id]
+                                                   :fields :all}]})}]})
+          card-meta (lib.metadata/card mp 1)
+          query     (lib/query mp card-meta)
+          visible   (binding [lib.metadata.calculation/*display-name-style* :long]
+                      (lib.metadata.calculation/visible-columns query -1))
+          returned  (lib.metadata.calculation/returned-columns query -1)
+          marked    (lib.equality/mark-selected-columns query -1 visible returned)]
+      (is (=? [{:lib/source-column-alias "ID",            :display-name "ID",              :selected? true}
+               {:lib/source-column-alias "USER_ID",       :display-name "User ID",         :selected? true}
+               {:lib/source-column-alias "PRODUCT_ID",    :display-name "Product ID",      :selected? true}
+               {:lib/source-column-alias "SUBTOTAL",      :display-name "Subtotal",        :selected? true}
+               {:lib/source-column-alias "TAX",           :display-name "Tax",             :selected? true}
+               {:lib/source-column-alias "TOTAL",         :display-name "Total",           :selected? true}
+               {:lib/source-column-alias "DISCOUNT",      :display-name "Discount",        :selected? true}
+               {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? true}
+               {:lib/source-column-alias "QUANTITY",      :display-name "Quantity",        :selected? true}
+               {:lib/source-column-alias "j__ID",         :display-name "j → ID",          :selected? true}
+               {:lib/source-column-alias "j__USER_ID",    :display-name "j → User ID",     :selected? true}
+               {:lib/source-column-alias "j__PRODUCT_ID", :display-name "j → Product ID",  :selected? true}
+               {:lib/source-column-alias "j__SUBTOTAL",   :display-name "j → Subtotal",    :selected? true}
+               {:lib/source-column-alias "j__TAX",        :display-name "j → Tax",         :selected? true}
+               {:lib/source-column-alias "j__TOTAL",      :display-name "j → Total",       :selected? true}
+               {:lib/source-column-alias "j__DISCOUNT",   :display-name "j → Discount",    :selected? true}
+               {:lib/source-column-alias "j__CREATED_AT", :display-name "j → Created At",  :selected? true}
+               {:lib/source-column-alias "j__QUANTITY",   :display-name "j → Quantity",    :selected? true}
+               ;; implicitly joinable fields from both Orders not selected
+               {:lib/source-column-alias "ID",            :display-name "ID",              :selected? false}
+               {:lib/source-column-alias "ADDRESS",       :display-name "Address",         :selected? false}
+               {:lib/source-column-alias "EMAIL",         :display-name "Email",           :selected? false}
+               {:lib/source-column-alias "PASSWORD",      :display-name "Password",        :selected? false}
+               {:lib/source-column-alias "NAME",          :display-name "Name",            :selected? false}
+               {:lib/source-column-alias "CITY",          :display-name "City",            :selected? false}
+               {:lib/source-column-alias "LONGITUDE",     :display-name "Longitude",       :selected? false}
+               {:lib/source-column-alias "STATE",         :display-name "State",           :selected? false}
+               {:lib/source-column-alias "SOURCE",        :display-name "Source",          :selected? false}
+               {:lib/source-column-alias "BIRTH_DATE",    :display-name "Birth Date",      :selected? false}
+               {:lib/source-column-alias "ZIP",           :display-name "Zip",             :selected? false}
+               {:lib/source-column-alias "LATITUDE",      :display-name "Latitude",        :selected? false}
+               {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? false}
+               {:lib/source-column-alias "ID",            :display-name "ID",              :selected? false}
+               {:lib/source-column-alias "EAN",           :display-name "Ean",             :selected? false}
+               {:lib/source-column-alias "TITLE",         :display-name "Title",           :selected? false}
+               {:lib/source-column-alias "CATEGORY",      :display-name "Category",        :selected? false}
+               {:lib/source-column-alias "VENDOR",        :display-name "Vendor",          :selected? false}
+               {:lib/source-column-alias "PRICE",         :display-name "Price",           :selected? false}
+               {:lib/source-column-alias "RATING",        :display-name "Rating",          :selected? false}
+               {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? false}
+               {:lib/source-column-alias "ID",            :display-name "ID",              :selected? false}
+               {:lib/source-column-alias "ADDRESS",       :display-name "Address",         :selected? false}
+               {:lib/source-column-alias "EMAIL",         :display-name "Email",           :selected? false}
+               {:lib/source-column-alias "PASSWORD",      :display-name "Password",        :selected? false}
+               {:lib/source-column-alias "NAME",          :display-name "Name",            :selected? false}
+               {:lib/source-column-alias "CITY",          :display-name "City",            :selected? false}
+               {:lib/source-column-alias "LONGITUDE",     :display-name "Longitude",       :selected? false}
+               {:lib/source-column-alias "STATE",         :display-name "State",           :selected? false}
+               {:lib/source-column-alias "SOURCE",        :display-name "Source",          :selected? false}
+               {:lib/source-column-alias "BIRTH_DATE",    :display-name "Birth Date",      :selected? false}
+               {:lib/source-column-alias "ZIP",           :display-name "Zip",             :selected? false}
+               {:lib/source-column-alias "LATITUDE",      :display-name "Latitude",        :selected? false}
+               {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? false}
+               {:lib/source-column-alias "ID",            :display-name "ID",              :selected? false}
+               {:lib/source-column-alias "EAN",           :display-name "Ean",             :selected? false}
+               {:lib/source-column-alias "TITLE",         :display-name "Title",           :selected? false}
+               {:lib/source-column-alias "CATEGORY",      :display-name "Category",        :selected? false}
+               {:lib/source-column-alias "VENDOR",        :display-name "Vendor",          :selected? false}
+               {:lib/source-column-alias "PRICE",         :display-name "Price",           :selected? false}
+               {:lib/source-column-alias "RATING",        :display-name "Rating",          :selected? false}
+               {:lib/source-column-alias "CREATED_AT",    :display-name "Created At",      :selected? false}]
+              (map #(select-keys % [:lib/source-column-alias :display-name :selected?])
+                   marked))))))

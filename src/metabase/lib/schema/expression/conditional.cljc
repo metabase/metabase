@@ -1,12 +1,14 @@
 (ns metabase.lib.schema.expression.conditional
   "Conditional expressions like `:case` and `:coalesce`."
+  (:refer-clojure :exclude [not-empty #?(:clj doseq)])
   (:require
    [clojure.set :as set]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.types.core :as types]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [not-empty #?(:clj doseq)]]))
 
 ;;; the logic for calculating the return type of a `:case` or similar statement is not optimal nor perfect. But it
 ;;; should be ok for now and errors on the side of being permissive. See this Slack thread for more info:
@@ -78,31 +80,14 @@
   (mbql-clause/define-mbql-clause
     tag
     [:schema
-     [:and
-      (mbql-clause/catn-clause-schema tag
-                                      [:pred-expr-pairs
-                                       [:sequential {:min 1}
-                                        [:tuple
-                                         {:error/message "Valid [pred expr] pair"}
-                                         #_pred [:ref ::expression/boolean]
-                                         #_expr [:ref ::expression/expression]]]]
-                                      [:default [:? [:schema [:ref ::expression/expression]]]])
-      [:fn
-       ;; Further constrain this so all of the exprs are of compatible type
-       ;; This check isn't perfect: it still allows types that have a common ancestor but aren't compatible.
-       ;; We currently don't have a good notion of type compatibility, so this is just a best-effort heuristic.
-       {:error/message "All clauses should have the same type"}
-       (fn
-         [[_tag _opts pred-expr-pairs default]]
-         (let [exprs (concat
-                      (map second pred-expr-pairs)
-                      (when (some? default)
-                        [default]))
-               types (map expression/type-of exprs)
-               return-type (case-coalesce-return-type types)]
-           (or
-            (not= return-type :type/*)
-            (some #{:expression/type.unknown} types))))]]])
+     (mbql-clause/catn-clause-schema tag
+                                     [:pred-expr-pairs
+                                      [:sequential {:min 1}
+                                       [:tuple
+                                        {:error/message "Valid [pred expr] pair"}
+                                        #_pred [:ref ::expression/boolean]
+                                        #_expr [:ref ::expression/expression]]]]
+                                     [:default [:? [:schema [:ref ::expression/expression]]]])])
 
   (defmethod expression/type-of-method tag
     [[_tag _opts pred-expr-pairs default]]
@@ -116,21 +101,8 @@
 (mbql-clause/define-mbql-clause
   :coalesce
   [:schema
-   [:and
-    (mbql-clause/catn-clause-schema :coalesce
-                                    [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])
-    [:fn
-       ;; Further constrain this so all of the exprs are of compatible type
-       ;; This check isn't perfect: it still allows types that have a common ancestor but aren't compatible.
-       ;; We currently don't have a good notion of type compatibility, so this is just a best-effort heuristic.
-     {:error/message "All clauses should have the same type"}
-     (fn
-       [[_coalesce _opts & exprs]]
-       (let [types (map expression/type-of exprs)
-             return-type (case-coalesce-return-type types)]
-         (or
-          (not= return-type :type/*)
-          (some #{:expression/type.unknown} types))))]]])
+   (mbql-clause/catn-clause-schema :coalesce
+                                   [:exprs [:repeat {:min 2} [:schema [:ref ::expression/expression]]]])])
 
 (defmethod expression/type-of-method :coalesce
   [[_coalesce _opts & exprs]]

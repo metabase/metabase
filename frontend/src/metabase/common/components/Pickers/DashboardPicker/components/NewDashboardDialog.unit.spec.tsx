@@ -37,11 +37,11 @@ describe("new collection dialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/dashboard");
+    const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
 
-    const [_url, options] = apiCalls[0];
-    const body = JSON.parse((await options?.body) as string);
+    const call = apiCalls[0];
+    const body = JSON.parse(call.options?.body as string);
     expect(body.collection_id).toBe(null);
   });
 
@@ -53,11 +53,11 @@ describe("new collection dialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/dashboard");
+    const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
 
-    const [_url, options] = apiCalls[0];
-    const body = JSON.parse((await options?.body) as string);
+    const call = apiCalls[0];
+    const body = JSON.parse(call.options?.body as string);
     expect(body.collection_id).toBe(12);
   });
 
@@ -69,11 +69,11 @@ describe("new collection dialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/dashboard");
+    const apiCalls = fetchMock.callHistory.calls("path:/api/dashboard");
     expect(apiCalls).toHaveLength(1);
 
-    const [_url, options] = apiCalls[0];
-    const body = JSON.parse((await options?.body) as string);
+    const call = apiCalls[0];
+    const body = JSON.parse(call.options?.body as string);
     expect(body.collection_id).toBe(null);
   });
 });

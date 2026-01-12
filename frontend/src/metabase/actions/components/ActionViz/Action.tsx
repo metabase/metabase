@@ -19,7 +19,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   Dashboard,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
@@ -38,7 +38,7 @@ import {
 interface OwnProps {
   dashcard: ActionDashboardCard;
   dashboard: Dashboard;
-  parameterValues: { [id: string]: ParameterValueOrArray };
+  parameterValues: ParameterValuesMap;
 }
 
 interface StateProps {

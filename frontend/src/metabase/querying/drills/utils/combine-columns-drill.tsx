@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import { CombineColumns } from "metabase/query_builder/components/expressions/CombineColumns/CombineColumns";
+import { CombineColumns } from "metabase/query_builder/components/expressions";
 import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
 import { Box, Title } from "metabase/ui";
 import type {

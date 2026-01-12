@@ -6,10 +6,17 @@ import type { DeepPartial } from "../types/utils";
 
 import type { MetabaseFontFamily } from "./fonts";
 
+export type MetabaseThemePreset = "light" | "dark";
+
 /**
  * Theme configuration for embedded Metabase components.
  */
 export interface MetabaseTheme {
+  /**
+   * Predefined theme preset to use as a base.
+   */
+  preset?: MetabaseThemePreset;
+
   /**
    * Base font size.
    * Supported units are px, em and rem.
@@ -64,6 +71,9 @@ export interface MetabaseColors {
   /** Muted background color used for disabled elements, such as disabled buttons and inputs. */
   "background-disabled"?: string;
 
+  /** Light background color used for some controls like a radiogroup. */
+  "background-light"?: string;
+
   /** Color used for borders */
   border?: string;
 
@@ -84,6 +94,21 @@ export interface MetabaseColors {
 
   /** Color used to indicate dangerous actions and negative values/trends */
   negative?: string;
+
+  /** Color used to outline elements in focus */
+  focus?: string;
+
+  /** Color used for white text */
+  "text-white"?: string;
+
+  /** Color used for error icons and borders. Defaults to red. */
+  error?: string;
+
+  /** Color used for error backgrounds. Defaults to light red. */
+  "background-error"?: string;
+
+  /** Color used for some button text on hover */
+  "text-hover"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

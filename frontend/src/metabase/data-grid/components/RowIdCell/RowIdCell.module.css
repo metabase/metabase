@@ -2,11 +2,11 @@
   height: 100%;
   padding: 0 0.5rem;
   text-align: right;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   display: flex;
   justify-content: flex-end;
   cursor: pointer;
-  border-bottom: 1px solid var(--mb-color-border-alpha-30);
+  border-bottom: 1px solid var(--mb-color-border-subtle);
 }
 
 .rowNumber {

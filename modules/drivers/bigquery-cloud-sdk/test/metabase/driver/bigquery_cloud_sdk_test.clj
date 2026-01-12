@@ -12,21 +12,21 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
-   [metabase.util.random :as u.random]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
-   (com.google.cloud.bigquery TableResult)))
+   (com.google.cloud.bigquery BigQuery TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -44,17 +44,13 @@
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
 
-(defn- drop-mv-if-exists!
-  [table-name]
-  (bigquery.tx/execute! (format "DROP MATERIALIZED VIEW IF EXISTS `%s`;" (fmt-table-name table-name))))
-
-(deftest sanity-check-test
+(deftest ^:parallel sanity-check-test
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
       test-data
       (is (seq (mt/rows
-                (mt/run-mbql-query orders)))))))
+                (mt/run-mbql-query orders {:limit 1})))))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -75,7 +71,7 @@
                               (driver/can-connect? :bigquery-cloud-sdk
                                                    (assoc db-details :dataset-filters-patterns fake-dataset-id))))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "without worrying about pagination"
       (is (= [[1 "Red Medicine"]
@@ -88,17 +84,18 @@
                                                         (t2/select-one :model/Field :id (mt/id :venues :name))]
                                                        (constantly conj))
                   (sort-by first)
-                  (take 5)))))
+                  (take 5)))))))
 
-   ;; the initial dataset isn't realized until it's used the first time. because of that,
-   ;; we don't care how many pages it took to load this dataset above. it will be a large
-   ;; number because we're just tracking the number of times `get-query-results` gets invoked.
-
+(deftest ^:parallel table-rows-sample-test-2
+  (mt/test-driver :bigquery-cloud-sdk
+    ;; the initial dataset isn't realized until it's used the first time. because of that,
+    ;; we don't care how many pages it took to load this dataset above. it will be a large
+    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
     (testing "with pagination"
       (let [pages-retrieved (atom 0)
             page-callback   (fn [] (swap! pages-retrieved inc))]
-        (with-bindings {#'bigquery/*page-size*     25
-                        #'bigquery/*page-callback* page-callback}
+        (binding [bigquery/*page-size*     25
+                  bigquery/*page-callback* page-callback]
           (let [results (->> (table-rows-sample/table-rows-sample (t2/select-one :model/Table :id (mt/id :venues))
                                                                   [(t2/select-one :model/Field :id (mt/id :venues :id))
                                                                    (t2/select-one :model/Field :id (mt/id :venues :name))]
@@ -113,14 +110,14 @@
                    (take 5 results)))
             (testing "results are not duplicated when pagination occurs (#45953)"
               (is (= (count results) (count (distinct results)))))
-           ;; the `(sort-by)` above will cause the entire resultset to be realized, so
-           ;; we want to make sure that it really did retrieve 25 rows per request
-           ;; this only works if the timeout has been temporarily set to 0 (see above)
+            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
+            ;; we want to make sure that it really did retrieve 25 rows per request
+            ;; this only works if the timeout has been temporarily set to 0 (see above)
 
-           ;; TODO Temporarily disabling due to flakiness (#33140)
+            ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
-;; These look like the macros from metabase.query-processor-test.expressions-test
+;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows
@@ -138,59 +135,77 @@
      (mt/$ids ~'bird-count
        (calculate-bird-scarcity* ~formula ~filter-clause))))
 
-(deftest nulls-and-zeroes-test
+(deftest ^:parallel nulls-and-zeroes-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing (str "hey... expressions should work if they are just a Field! (Also, this lets us take a peek at the "
                   "raw values being used to calculate the formulas below, so we can tell at a glance if they're right "
                   "without referring to the EDN def)")
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              #_:clj-kondo/ignore
-             (calculate-bird-scarcity $count))))
+             (calculate-bird-scarcity $count))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-2
+  (mt/test-driver :bigquery-cloud-sdk
     (testing (str "do expressions automatically handle division by zero? Should return `nil` in the results for places "
                   "where that was attempted")
       (is (= [[nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [9.09] [7.14]]
              (calculate-bird-scarcity [:/ 100.0 $count]
-                                      [:!= $count nil]))))
+                                      [:!= $count nil]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-3
+  (mt/test-driver :bigquery-cloud-sdk
     (testing (str "do expressions handle division by `nil`? Should return `nil` in the results for places where that "
                   "was attempted")
       (is (= [[nil] [10.0] [12.5] [20.0] [20.0] [nil] [9.09] [7.14] [12.5] [7.14]]
              (calculate-bird-scarcity [:/ 100.0 $count]
                                       [:or
                                        [:= $count nil]
-                                       [:!= $count 0]]))))
+                                       [:!= $count 0]]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-4
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can we handle BOTH NULLS AND ZEROES AT THE SAME TIME????"
       (is (= [[nil] [nil] [nil] [10.0] [12.5] [20.0] [20.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count]))))
+             (calculate-bird-scarcity [:/ 100.0 $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-5
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "ok, what if we use multiple args to divide, and more than one is zero?"
       (is (= [[nil] [nil] [nil] [1.0] [1.56] [4.0] [4.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:/ 100.0 $count $count]))))
+             (calculate-bird-scarcity [:/ 100.0 $count $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-6
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "are nulls/zeroes still handled appropriately when nested inside other expressions?"
       (is (= [[nil] [nil] [nil] [20.0] [25.0] [40.0] [40.0] [nil] [nil] [nil]]
-             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))
+             (calculate-bird-scarcity [:* [:/ 100.0 $count] 2]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-7
+  (mt/test-driver :bigquery-cloud-sdk
     (testing (str "if a zero is present in the NUMERATOR we should return ZERO and not NULL "
                   "(`0 / 10 = 0`; `10 / 0 = NULL`, at least as far as MBQL is concerned)")
       (is (= [[nil] [0.0] [0.0] [1.0] [0.8] [0.5] [0.5] [nil] [0.0] [0.0]]
-             (calculate-bird-scarcity [:/ $count 10]))))
+             (calculate-bird-scarcity [:/ $count 10]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-8
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can addition handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [20.0] [18.0] [15.0] [15.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:+ $count 10]))))
+             (calculate-bird-scarcity [:+ $count 10]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-9
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can subtraction handle nulls & zeroes?"
       (is (= [[nil] [10.0] [10.0] [0.0] [2.0] [5.0] [5.0] [nil] [10.0] [10.0]]
-             (calculate-bird-scarcity [:- 10 $count]))))
+             (calculate-bird-scarcity [:- 10 $count]))))))
 
+(deftest ^:parallel nulls-and-zeroes-test-10
+  (mt/test-driver :bigquery-cloud-sdk
     (testing "can multiplications handle nulls & zeros?"
       (is (= [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
              (calculate-bird-scarcity [:* 1 $count]))))))
 
-(deftest db-default-timezone-test
+(deftest ^:parallel db-default-timezone-test
   (mt/test-driver :bigquery-cloud-sdk
     (is (= "UTC"
            (driver/db-default-timezone :bigquery-cloud-sdk (mt/db))))))
@@ -234,34 +249,135 @@
                 (is (<= 22000 (count (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db))))))
                 (is (<= 20 @invocation-count))))))))))
 
+(def ^:private native-dataset
+  (tx/native-dataset-definition
+   "native-dataset"
+   [["categories"
+     [{:field-name "name" :base-type :type/Text}]
+     [["Asian"]
+      ["Burger"]]]
+    ["venues"
+     [{:field-name "name" :base-type :type/Text}
+      {:field-name "category_id" :base-type :type/Integer}]
+     [["Red Medicine" 1]
+      ["Stout Burgers & Beers" 2]
+      ["The Apple Pan" 2]]]]
+   [{:create-view [::sql.tx/table-identifier :category_view]
+     :select [:venues.id [:venues.name :venue_name] [:categories.name :category_name]]
+     :from [[[::sql.tx/table-identifier :venues] :venues]]
+     :join [[[::sql.tx/table-identifier :categories] :categories] [:= :venues.category_id :categories.id]]
+     :order-by [:venues.id]
+     :limit [:inline 3]}
+    {:create-table [::sql.tx/table-identifier :partition_by_range]
+     :with-columns [[:customer_id :int64]]
+     :raw ["PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0,100,10)) "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:create-table [::sql.tx/table-identifier :partition_by_time]
+     :with-columns [[:transaction_id :int64]
+                    [:transaction_time :timestamp]]
+     :raw ["PARTITION BY DATE(transaction_time) "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:create-table [::sql.tx/table-identifier :partition_by_ingestion_time]
+     :with-columns [[:transaction_id :int64]]
+     :raw ["PARTITION BY _PARTITIONDATE "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:create-table [::sql.tx/table-identifier :partition_by_ingestion_time_not_required]
+     :with-columns [[:transaction_id :int64]]
+     :raw ["PARTITION BY _PARTITIONDATE "
+           "OPTIONS (require_partition_filter = FALSE)"]}
+    {:create-table [::sql.tx/table-identifier :partition_by_range_not_required]
+     :with-columns [[:customer_id :int64]
+                    [:transaction_date :date]]
+     :raw ["PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0,100,10)) "
+           "OPTIONS (require_partition_filter = false)"]}
+    {:create-table [::sql.tx/table-identifier :not_partitioned]
+     :with-columns [[:transaction_id :int64]]}
+    {:insert-into [[::sql.tx/table-identifier :partition_by_range]]
+     :values [[[:inline 1]] [[:inline 2]] [[:inline 3]]]}
+    {:create-materialized-view [[::sql.tx/table-identifier :mv_partition_by_range]]
+     :select [[[:+ :customer_id [:inline 41]] :vip_customer]]
+     :from [[::sql.tx/table-identifier :partition_by_range]]
+     :where [:= :customer_id [:inline 1]]}
+    {:create-table [[::sql.tx/table-identifier :partition_by_datetime]]
+     :with-columns [[:company :string]
+                    [:founded :datetime]]
+     :raw ["PARTITION BY DATE(founded) "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:insert-into [[::sql.tx/table-identifier :partition_by_datetime]]
+     :columns [:company :founded]
+     :values [[[:inline "Metabase"] [:raw "DATETIME('2014-10-10 00:00:00')"]]
+              [[:inline "Tesla"] [:raw "DATETIME('2003-07-01 00:00:00')"]]
+              [[:inline "Apple"] [:raw "DATETIME('1976-04-01 00:00:00')"]]]}
+    {:create-materialized-view [[::sql.tx/table-identifier :mv_partition_by_datetime]]
+     :select [[:company :ev_company]]
+     :from [[::sql.tx/table-identifier :partition_by_datetime]]
+     :where [:= :founded [:raw "DATETIME('2003-07-01 00:00:00')"]]}
+    {:create-table [[::sql.tx/table-identifier :partition_by_time_2]]
+     :with-columns [[:name :string]
+                    [:birthday :timestamp]]
+     :raw ["PARTITION BY DATE(birthday) "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:insert-into [[::sql.tx/table-identifier :partition_by_time_2]]
+     :columns [:name :birthday]
+     :values [[[:inline "Ngoc"] [:raw "TIMESTAMP('1998-04-17 00:00:00+00:00')"]]
+              [[:inline "Quang"] [:raw "TIMESTAMP('1999-04-17 00:00:00+00:00')"]]
+              [[:inline "Khuat"] [:raw "TIMESTAMP('1997-04-17 00:00:00+00:00')"]]]}
+    {:create-table [[::sql.tx/table-identifier :partition_by_ingestion_time_2]]
+     :with-columns [[:is_awesome :bool]]
+     :raw ["PARTITION BY _PARTITIONDATE "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:insert-into [[::sql.tx/table-identifier :partition_by_ingestion_time_2]]
+     :columns [:is_awesome]
+     :values [[true] [false]]}
+    {:create-table [[::sql.tx/table-identifier :partition_by_ingestion_time_not_required_2]]
+     :with-columns [[:is_opensource :bool]]
+     :raw ["PARTITION BY _PARTITIONDATE"]}
+    {:insert-into [[::sql.tx/table-identifier :partition_by_ingestion_time_not_required_2]]
+     :columns [:is_opensource]
+     :values [[true] [false]]}
+    {:create-table [::sql.tx/table-identifier :fv_partitioned_table]
+     :with-columns [[:id :int64]
+                    [:category :string]]
+     :raw ["PARTITION BY _PARTITIONDATE "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:insert-into [::sql.tx/table-identifier :fv_partitioned_table]
+     :columns [:id :category]
+     :values [[[:inline 1] [:inline "coffee"]]
+              [[:inline 2] [:inline "tea"]]
+              [[:inline 3] [:inline "matcha"]]]}
+    {:create-table [::sql.tx/table-identifier :cf_category]
+     :with-columns [[:id :int64]
+                    [:category :string [:raw ", PRIMARY KEY(id) NOT ENFORCED"]]]
+     :raw ["PARTITION BY _PARTITIONDATE "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:insert-into [::sql.tx/table-identifier :cf_category]
+     :columns [:id :category]
+     :values [[[:inline 1] [:inline "coffee"]]
+              [[:inline 2] [:inline "tea"]]]}
+    {:create-table [::sql.tx/table-identifier :cf_product]
+     :with-columns [[:id :int64]
+                    [:category_id :int64]
+                    [:name :string]]
+     :raw ["PARTITION BY _PARTITIONDATE "
+           "OPTIONS (require_partition_filter = TRUE)"]}
+    {:alter-table [::sql.tx/table-identifier :cf_product]
+     :add-constraint [:fk_product_category_id
+                      :foreign-key [[:inline :category_id]]
+                      :references [:inline [::sql.tx/table-identifier :cf_category]] [:composite :id]
+                      [:raw "NOT ENFORCED"]]}
+    {:insert-into [::sql.tx/table-identifier :cf_product]
+     :columns [:id :category_id :name]
+     :values [[[:inline 1] [:inline 1] [:inline "Americano"]]
+              [[:inline 2] [:inline 1] [:inline "Cold brew"]]
+              [[:inline 3] [:inline 2] [:inline "Herbal"]]
+              [[:inline 4] [:inline 2] [:inline "Oolong"]]]}]))
+
 (deftest sync-views-test
   (mt/test-driver
     :bigquery-cloud-sdk
-    (mt/with-temp-test-data [["categories"
-                              [{:field-name "name" :base-type :type/Text}]
-                              [["Asian"]
-                               ["Burger"]]]
-                             ["venues"
-                              [{:field-name "name" :base-type :type/Text}
-                               {:field-name "category_id" :base-type :type/Integer}]
-                              [["Red Medicine" 1]
-                               ["Stout Burgers & Beers" 2]
-                               ["The Apple Pan" 2]]]]
-      (let [view-name (format "view_%s" (mt/random-name))]
-        (doseq [sql [(format (str "CREATE VIEW `%s.%s` AS "
-                                  "SELECT v.id AS id, v.name AS venue_name, c.name AS category_name "
-                                  "FROM `%s.%s.venues` v "
-                                  "LEFT JOIN `%s.%s.categories` c "
-                                  "ON v.category_id = c.id "
-                                  "ORDER BY v.id ASC "
-                                  "LIMIT 3")
-                             (get-test-data-name)
-                             view-name
-                             (bigquery.tx/project-id)
-                             (get-test-data-name)
-                             (bigquery.tx/project-id)
-                             (get-test-data-name))]]
-          (bigquery.tx/execute! sql))
+    (mt/dataset
+      native-dataset
+      (let [view-name "category_view"]
         (is (contains? (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db)))
                        {:schema (get-test-data-name) :name view-name :database_require_filter false})
             "`describe-database` should see the view")
@@ -270,8 +386,6 @@
                 {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :table-name view-name :table-schema (get-test-data-name)}]
                (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [view-name], :schema-names [(get-test-data-name)]})))
             "`describe-fields` should see the fields in the view")
-        (sync/sync-database! (mt/db) {:scan :schema})
-
         (testing "describe-database"
           (qp.store/with-metadata-provider (mt/id)
             (is (= #{{:schema (get-test-data-name)
@@ -294,37 +408,23 @@
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
-      (tx/transformed-dataset-definition
-       (str "mat-views-" (u.random/random-name))
-       (data.impl/resolve-dataset-definition *ns* 'attempted-murders))
-      (mt/db)
-      (mt/with-model-cleanup [:model/Table]
-        (let [view-name "mv_test_materialized_view"]
-          (try
-            (doseq [sql [(format "CREATE MATERIALIZED VIEW %s AS (
-                                  SELECT num_crows, COUNT(id) as cnt FROM %s GROUP BY num_crows);"
-                                 (fmt-table-name view-name)
-                                 (fmt-table-name "attempts"))]]
-              (bigquery.tx/execute! sql))
-            (sync/sync-database! (mt/db) {:scan :schema})
-            (testing "describe-database"
-              (qp.store/with-metadata-provider (mt/id)
-                (is (= #{{:schema (get-test-data-name)
-                          :name view-name
-                          :database_require_filter false}}
-                       (into #{}
-                             (filter (comp #{view-name} :name))
-                             (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+      native-dataset
+      (let [view-name "mv_partition_by_range"]
+        (testing "describe-database"
+          (qp.store/with-metadata-provider (mt/id)
+            (is (= #{{:schema (get-test-data-name)
+                      :name view-name
+                      :database_require_filter false}}
+                   (into #{}
+                         (filter (comp #{view-name} :name))
+                         (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
 
-            (testing "We should be able to run queries against the view (#3414)"
-              (is (= [[1 3] [2 1] [3 3]]
-                     (mt/rows
-                      (mt/run-mbql-query nil
-                        {:source-table (mt/id view-name)
-                         :order-by     [[:asc (mt/id view-name :num_crows)]]
-                         :limit        3})))))
-            (finally
-              (drop-mv-if-exists! view-name))))))))
+        (testing "We should be able to run queries against the view (#3414)"
+          (is (= [[42]]
+                 (mt/rows
+                  (mt/run-mbql-query nil
+                    {:source-table (mt/id view-name)
+                     :order-by     [[:asc (mt/id view-name :vip_customer)]]})))))))))
 
 (mt/defdataset nested-records
   [["records"
@@ -343,7 +443,13 @@
                                           :base-type :type/Integer}]}]}]
     [["foo" {"a" 1 "b" "a" "rr" {"aa" 10}}]
      ["bar" {"a" 2 "b" "b"}]
-     ["baz" {"a" 3 "b" "c"}]]]])
+     ["baz" {"a" 3 "b" "c"}]]]
+   ["records_o"
+    [{:field-name     "r"
+      :base-type      :type/Dictionary
+      :nested-fields  [{:field-name     "rr"
+                        :base-type      :type/Integer}]}]
+    [[{"rr" 1}]]]])
 
 (deftest sync-nested-fields-test
   (mt/test-driver
@@ -351,8 +457,8 @@
     (mt/dataset
       nested-records
       (let [database (driver/describe-database :bigquery-cloud-sdk (mt/db))
-            table (first (:tables database))]
-        (is (=? {:name "records"} table))
+            tables (sort-by :name (:tables database))]
+        (is (=? [{:name "records"} {:name "records_o"}] tables))
         (is (=? [{:name "id"}
                  {:name "name"}
                  {:name "r"
@@ -385,26 +491,40 @@
                    (if (set? n)
                      (sort-by :name n)
                      n))
-                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names [(:name table)]})))))))))
+                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records"]})))))
+        (is (=? [{:name "id"}
+                 {:name "r"
+                  :database-type "RECORD",
+                  :base-type :type/Dictionary,
+                  :nested-fields [{:name "rr",
+                                   :database-type "INTEGER",
+                                   :base-type :type/Integer,
+                                   :nfc-path ["r"]}]}]
+                (walk/postwalk
+                 (fn [n]
+                   (if (set? n)
+                     (sort-by :name n)
+                     n))
+                 (into [] (filter (fn [x] (= (:table-name x) "records_o"))
+                                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]}))))))))))
 
-(deftest query-nested-fields-test
-  (mt/test-driver
-    :bigquery-cloud-sdk
-    (mt/dataset
-      nested-records
-      (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
-              :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
-             (mt/rows+column-names
-              (mt/run-mbql-query records
-                {:fields [(mt/id :records :r :a)
-                          (mt/id :records :r :b)
-                          (mt/id :records :r :rr :aa)
-                          (mt/id :records :r :rr)]})))))))
+(deftest ^:parallel query-nested-fields-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/dataset nested-records
+      (let [query (mt/mbql-query records
+                    {:fields [(mt/id :records :r :a)
+                              (mt/id :records :r :b)
+                              (mt/id :records :r :rr :aa)
+                              (mt/id :records :r :rr)]})]
+        (mt/with-native-query-testing-context query
+          (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+                  :rows    [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
+                 (mt/rows+column-names (qp/process-query query)))))))))
 
 (deftest sync-table-with-required-filter-test
   (mt/test-driver
     :bigquery-cloud-sdk
-    (mt/with-temp-test-data []
+    (mt/dataset native-dataset
       (testing "tables that require a partition filters are synced correctly"
         (mt/with-model-cleanup [:model/Table]
           (let [table-name->is-filter-required? {"partition_by_range"              true
@@ -412,177 +532,103 @@
                                                  "partition_by_ingestion_time"     true
                                                  "partition_by_range_not_required" false
                                                  "not_partitioned"                 false}]
-            (try
-              (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
-                                    PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_range"))
-                           (format "CREATE TABLE %s (transaction_id INT64, transaction_time TIMESTAMP)
-                                    PARTITION BY DATE(transaction_time)
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_time"))
-                           (format "CREATE TABLE %s (transaction_id INT64)
-                                    PARTITION BY _PARTITIONDATE
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_ingestion_time"))
-                           (format "CREATE TABLE %s (customer_id INT64, transaction_date DATE)
-                                    PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
-                                    OPTIONS (require_partition_filter = FALSE);"
-                                   (fmt-table-name "partition_by_range_not_required"))
-                           (format "CREATE TABLE %s (transaction_id INT64);"
-                                   (fmt-table-name "not_partitioned"))]]
-                (bigquery.tx/execute! sql))
-              (sync/sync-database! (mt/db) {:scan :schema})
+            (testing "describe-database"
+              (qp.store/with-metadata-provider (mt/id)
+                (is (= #{{:schema (get-test-data-name)
+                          :name "partition_by_ingestion_time",
+                          :database_require_filter true}
+                         {:schema (get-test-data-name), :name "partition_by_time", :database_require_filter true}
+                         {:schema (get-test-data-name), :name "partition_by_range", :database_require_filter true}
+                         {:schema (get-test-data-name),
+                          :name "partition_by_range_not_required",
+                          :database_require_filter false}
+                         {:schema (get-test-data-name),
+                          :name "partition_by_ingestion_time_not_required",
+                          :database_require_filter false}}
+                       (into #{}
+                             (filter (comp #{"partition_by_range"
+                                             "partition_by_time"
+                                             "partition_by_ingestion_time"
+                                             "partition_by_range_not_required"
+                                             "partition_by_ingestion_time_not_required"} :name))
+                             (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
 
-              (testing "describe-database"
-                (qp.store/with-metadata-provider (mt/id)
-                  (is (= #{{:schema (get-test-data-name)
-                            :name "partition_by_ingestion_time",
-                            :database_require_filter true}
-                           {:schema (get-test-data-name), :name "partition_by_time", :database_require_filter true}
-                           {:schema (get-test-data-name), :name "partition_by_range", :database_require_filter true}
-                           {:schema (get-test-data-name),
-                            :name "partition_by_range_not_required",
-                            :database_require_filter false}}
-                         (into #{}
-                               (filter (comp #{"partition_by_range"
-                                               "partition_by_time"
-                                               "partition_by_ingestion_time"
-                                               "partition_by_range_not_required"
-                                               "partition_by_ingestion_time_not_required"} :name))
-                               (:tables (driver/describe-database :bigquery-cloud-sdk (mt/db))))))))
+            (testing "tables that require a filter are correctly identified"
+              (is (= table-name->is-filter-required?
+                     (t2/select-fn->fn :name :database_require_filter :model/Table
+                                       :name [:in (keys table-name->is-filter-required?)]))))
 
-              (testing "tables that require a filter are correctly identified"
-                (is (= table-name->is-filter-required?
-                       (t2/select-fn->fn :name :database_require_filter :model/Table
-                                         :name [:in (keys table-name->is-filter-required?)]))))
-
-              (testing "partitioned fields are correctly identified"
-                (is (= {["not_partitioned"                 "transaction_id"]   false
-                        ["partition_by_range_not_required" "customer_id"]      true
-                        ["partition_by_range_not_required" "transaction_date"] false
-                        ["partition_by_range"              "customer_id"]      true
-                        ["partition_by_ingestion_time"     "transaction_id"]   false
-                        ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
-                        ["partition_by_ingestion_time"     "_PARTITIONDATE"]   true
-                        ["partition_by_time"               "transaction_time"] true
-                        ["partition_by_time"               "transaction_id"]   false}
-                       (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
-                                       :from   [[:metabase_field :field]]
-                                       :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
-                                       :where  [:and [:= :table.db_id (mt/id)]
-                                                [:in :table.name (keys table-name->is-filter-required?)]]})
-                            (map (fn [{:keys [table_name field_name database_partitioned]}]
-                                   [[table_name field_name] database_partitioned]))
-                            (into {})))))
-
-              (finally
-                (doall (map drop-table-if-exists! (keys table-name->is-filter-required?)))
-                nil))))))))
+            (testing "partitioned fields are correctly identified"
+              (is (= {["not_partitioned"                 "transaction_id"]   false
+                      ["partition_by_range_not_required" "customer_id"]      true
+                      ["partition_by_range_not_required" "transaction_date"] false
+                      ["partition_by_range"              "customer_id"]      true
+                      ["partition_by_ingestion_time"     "transaction_id"]   false
+                      ["partition_by_ingestion_time"     "_PARTITIONTIME"]   true
+                      ["partition_by_ingestion_time"     "_PARTITIONDATE"]   true
+                      ["partition_by_time"               "transaction_time"] true
+                      ["partition_by_time"               "transaction_id"]   false}
+                     (->> (t2/query {:select [[:table.name :table_name] [:field.name :field_name] :field.database_partitioned]
+                                     :from   [[:metabase_field :field]]
+                                     :join   [[:metabase_table :table] [:= :field.table_id :table.id]]
+                                     :where  [:and [:= :table.db_id (mt/id)]
+                                              [:in :table.name (keys table-name->is-filter-required?)]]})
+                          (map (fn [{:keys [table_name field_name database_partitioned]}]
+                                 [[table_name field_name] database_partitioned]))
+                          (into {})))))))))))
 
 (deftest full-sync-partitioned-table-test
   (mt/test-driver
     :bigquery-cloud-sdk
-    (mt/with-temp-test-data []
+    (mt/dataset native-dataset
       (testing "Partitioned tables that require a partition filter can be synced"
-        (mt/with-model-cleanup [:model/Table]
-          (let [table-names  ["partition_by_range" "partition_by_time" "partition_by_datetime"
-                              "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]
-                mv-names     ["mv_partition_by_datetime" "mv_partition_by_range"]]
-            (try
-              (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
-                                    PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_range"))
-                           (format "INSERT INTO %s (customer_id)
-                                    VALUES (1), (2), (3);"
-                                   (fmt-table-name "partition_by_range"))
-                           (format "CREATE MATERIALIZED VIEW %s AS
-                                    SELECT customer_id + 41 as vip_customer FROM %s WHERE customer_id = 1;"
-                                   (fmt-table-name "mv_partition_by_range")
-                                   (fmt-table-name "partition_by_range"))
-                           (format "CREATE TABLE %s (company STRING, founded DATETIME)
-                                    PARTITION BY DATE(founded)
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_datetime"))
-                           (format "INSERT INTO %s (company, founded)
-                                    VALUES ('Metabase', DATETIME('2014-10-10 00:00:00')),
-                                    ('Tesla', DATETIME('2003-07-01 00:00:00')),
-                                    ('Apple', DATETIME('1976-04-01 00:00:00'));"
-                                   (fmt-table-name "partition_by_datetime"))
-                           (format "CREATE MATERIALIZED VIEW %s AS
-                                    SELECT company AS ev_company FROM %s WHERE founded = DATETIME('2003-07-01 00:00:00');"
-                                   (fmt-table-name "mv_partition_by_datetime")
-                                   (fmt-table-name "partition_by_datetime"))
-                           (format "CREATE TABLE %s (name STRING, birthday TIMESTAMP)
-                                    PARTITION BY DATE(birthday)
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_time"))
-                           (format "INSERT INTO %s (name, birthday)
-                                    VALUES ('Ngoc', TIMESTAMP('1998-04-17 00:00:00+00:00')),
-                                    ('Quang', TIMESTAMP('1999-04-17 00:00:00+00:00')),
-                                    ('Khuat', TIMESTAMP('1997-04-17 00:00:00+00:00'));"
-                                   (fmt-table-name "partition_by_time"))
-                           (format "CREATE TABLE %s (is_awesome BOOL)
-                                    PARTITION BY _PARTITIONDATE
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name "partition_by_ingestion_time"))
-                           (format "INSERT INTO %s (is_awesome)
-                                    VALUES (true), (false);"
-                                   (fmt-table-name "partition_by_ingestion_time"))
-                           (format "CREATE TABLE %s (is_opensource BOOL)
-                                    PARTITION BY _PARTITIONDATE;"
-                                   (fmt-table-name "partition_by_ingestion_time_not_required"))
-                           (format "INSERT INTO %s (is_opensource)
-                                    VALUES (true), (false);"
-                                   (fmt-table-name "partition_by_ingestion_time_not_required"))]]
-                (bigquery.tx/execute! sql))
-              (sync/sync-database! (mt/db))
-              (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
-                    all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
-                (testing "all fields are fingerprinted"
-                  (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
-                (testing "Field values are correctly synced"
-                  ;; Manually activate Field values since they are not created during sync (#53387)
-                  (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
-                    (field-values/get-or-create-full-field-values! field))
-                  (is (= {"customer_id"   #{1 2 3}
-                          "vip_customer"  #{42}
-                          "name"          #{"Khuat" "Quang" "Ngoc"}
-                          "company"       #{"Metabase" "Tesla" "Apple"}
-                          "ev_company"    #{"Tesla"}
-                          "is_awesome"    #{true false}
-                          "is_opensource" #{true false}}
-                         (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
-                                         :from   [[:metabase_field :field]]
-                                         :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
-                                         :where  [:and [:in :field.table_id table-ids]
-                                                  [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
-                              (map #(update % :values (comp set json/decode)))
-                              (map (juxt :field-name :values))
-                              (into {}))))))
+        (let [table-names   ["partition_by_range" "partition_by_time_2" "partition_by_datetime"
+                             "partition_by_ingestion_time_2" "partition_by_ingestion_time_not_required_2"]
+              mv-names      ["mv_partition_by_datetime" "mv_partition_by_range"]
+              table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
+              all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
+          (testing "Field values are correctly synced"
+            ;; Manually activate Field values since they are not created during sync (#53387)
+            (doseq [field (t2/select :model/Field :id [:in all-field-ids])]
+              (field-values/get-or-create-full-field-values! field))
+            (is (= {"customer_id"   #{1 2 3}
+                    "vip_customer"  #{42}
+                    "name"          #{"Khuat" "Quang" "Ngoc"}
+                    "company"       #{"Metabase" "Tesla" "Apple"}
+                    "ev_company"    #{"Tesla"}
+                    "is_awesome"    #{true false}
+                    "is_opensource" #{true false}}
+                   (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
+                                   :from   [[:metabase_field :field]]
+                                   :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
+                                   :where  [:and [:in :field.table_id table-ids]
+                                            [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
+                        (map #(update % :values (comp set json/decode)))
+                        (map (juxt :field-name :values))
+                        (into {}))))))))))
 
-              (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
-                (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
-                                                                            :name "partition_by_ingestion_time_not_required")]
-                  (is (=? [{:name           "_PARTITIONTIME"
-                            :database_type "TIMESTAMP"
-                            :base_type     :type/DateTimeWithLocalTZ
-                            :database_position 1}
-                           {:name           "_PARTITIONDATE"
-                            :database_type "DATE"
-                            :base_type     :type/Date
-                            :database_position 2}]
-                          (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
-                                     :database_partitioned true {:order-by [[:name :desc]]}))))
-                (testing "and query this table should return the column pseudocolumn as well"
-                  (is (malli=
-                       [:tuple :boolean ms/TemporalString ms/TemporalString]
-                       (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required {:limit 1})))))))
-              (finally
-                (doall (map drop-table-if-exists! table-names))
-                (doall (map drop-mv-if-exists! mv-names))
-                nil))))))))
+(deftest full-sync-partitioned-table-test-2
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset native-dataset
+      (testing "Partitioned tables that require a partition filter can be synced"
+        (testing "for ingestion time partitioned tables, we should sync the pseudocolumn _PARTITIONTIME and _PARTITIONDATE"
+          (let [ingestion-time-partitioned-table-id (t2/select-one-pk :model/Table :db_id (mt/id)
+                                                                      :name "partition_by_ingestion_time_not_required_2")]
+            (is (=? [{:name           "_PARTITIONTIME"
+                      :database_type "TIMESTAMP"
+                      :base_type     :type/DateTimeWithLocalTZ
+                      :database_position 1}
+                     {:name           "_PARTITIONDATE"
+                      :database_type "DATE"
+                      :base_type     :type/Date
+                      :database_position 2}]
+                    (t2/select :model/Field :table_id ingestion-time-partitioned-table-id
+                               :database_partitioned true {:order-by [[:name :desc]]}))))
+          (testing "and query this table should return the column pseudocolumn as well"
+            (is (malli=
+                 [:tuple :boolean ms/TemporalString ms/TemporalString]
+                 (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required_2 {:limit 1})))))))))))
 
 (deftest sync-update-require-partition-option-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -593,7 +639,7 @@
             (try
               (bigquery.tx/execute! (format "CREATE TABLE %s (customer_id INT64)
                                              PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10));"
-                                            (fmt-table-name table-name)))
+                                            (fmt-table-name "partitioned_table")))
               (testing "sanity check that it's not required at first"
                 (sync/sync-database! (mt/db) {:scan :schema})
                 (is (false? (t2/select-one-fn :database_require_filter :model/Table :name table-name))))
@@ -608,105 +654,71 @@
 
 (deftest search-field-from-table-requires-a-filter-test
   (testing "#40673"
-    (mt/test-driver :bigquery-cloud-sdk
-      (mt/with-temp-test-data []
-        (mt/with-model-cleanup [:model/Table]
-          (let [partitioned-table "fv_partitioned_table"]
-            (try
-              (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING)
-                                    PARTITION BY _PARTITIONDATE
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name partitioned-table))
-                           (format "INSERT INTO %s (id, category)
-                                    VALUES (1, \"coffee\"), (2, \"tea\"), (3, \"matcha\");"
-                                   (fmt-table-name partitioned-table))]]
-                (bigquery.tx/execute! sql))
-              (sync/sync-database! (mt/db) {:scan :schema})
-              (let [category-field-id (mt/id :fv_partitioned_table :category)]
-                (t2/update! :model/Field category-field-id {:has_field_values :search})
-                (t2/delete! :model/FieldValues :field_id category-field-id)
-                (= [["coffee"]]
-                   (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
-                                         :value "co")))
-              (finally
-                (drop-table-if-exists! partitioned-table)))))))))
+    (mt/test-driver
+      :bigquery-cloud-sdk
+      (mt/dataset
+        native-dataset
+        (let [category-field-id (u/auto-retry
+                                 1
+                                  (try
+                                    (mt/id :fv_partitioned_table :category)
+                                    (catch Exception e
+                                      (sync/sync-database! (mt/db) {:scan :schema})
+                                      (throw e))))]
+          (t2/update! :model/Field category-field-id {:has_field_values :search})
+          (t2/delete! :model/FieldValues :field_id category-field-id)
+          (= [["coffee"]]
+             (mt/user-http-request :crowberto :get 200 (format "/field/%d/search/%d" category-field-id category-field-id)
+                                   :value "co")))))))
 
 (deftest chain-filter-with-fields-from-table-requires-a-filter-test
   (testing "#40673"
     (mt/test-driver
       :bigquery-cloud-sdk
-      (mt/with-temp-test-data []
-        (mt/with-model-cleanup [:model/Table]
-          (let [category-table-name "cf_category"
-                product-table-name  "cf_product"]
-            (try
-              (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING, PRIMARY KEY(id) NOT ENFORCED)
-                                    PARTITION BY _PARTITIONDATE
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name category-table-name))
-                           (format "INSERT INTO %s (id, category)
-                                    VALUES (1, \"coffee\"), (2, \"tea\");"
-                                   (fmt-table-name category-table-name))
-                           (format "CREATE TABLE %s (id INT64, category_id INT64, name STRING)
-                                    PARTITION BY _PARTITIONDATE
-                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name product-table-name))
-                           (format "ALTER TABLE %1$s
-                                    ADD CONSTRAINT fk_product_category_id FOREIGN KEY (category_id)
-                                    REFERENCES %2$s(id) NOT ENFORCED;"
-                                   (fmt-table-name product-table-name)
-                                   (fmt-table-name category-table-name))
-                           (format "INSERT INTO %s (id, category_id, name)
-                                    VALUES (1, 1, \"Americano\"), (2, 1, \"Cold brew\"), (3, 2, \"Herbal\"), (4, 2, \"Oolong\");"
-                                   (fmt-table-name product-table-name))]]
-                (bigquery.tx/execute! sql))
-              (sync/sync-database! (mt/db) {:scan :schema})
-              ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
-              ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
-              (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
-              (mt/with-temp
-                [:model/Card          card-category {:database_id   (mt/id)
-                                                     :table_id      (mt/id :cf_category)
-                                                     :dataset_query (mt/mbql-query cf_category)}
-                 :model/Card          card-product  {:database_id   (mt/id)
-                                                     :table_id      (mt/id :cf_product)
-                                                     :dataset_query (mt/mbql-query cf_product)}
-                 :model/Dashboard     dashboard     {:parameters [{:name "Category"
-                                                                   :slug "category"
-                                                                   :id   "_CATEGORY_"
-                                                                   :type :string/=}
-                                                                  {:name "Product Name"
-                                                                   :slug "Product name"
-                                                                   :id   "_NAME_"
-                                                                   :type :string/=}]}
-                 :model/DashboardCard _dashcard     {:card_id            (:id card-category)
-                                                     :dashboard_id       (:id dashboard)
-                                                     :parameter_mappings [{:parameter_id "_CATEGORY_"
-                                                                           :card_id      (:id card-category)
-                                                                           :target       [:dimension (mt/$ids $cf_category.category)]}]}
-                 :model/DashboardCard _dashcard     {:card_id            (:id card-product)
-                                                     :dashboard_id       (:id dashboard)
-                                                     :parameter_mappings [{:parameter_id "_NAME_"
-                                                                           :card_id      (:id card-product)
-                                                                           :target       [:dimension (mt/$ids $cf_product.name)]}]}]
+      (mt/dataset
+        native-dataset
+        ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
+        ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
+        (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+        (mt/with-temp
+          [:model/Card          card-category {:database_id   (mt/id)
+                                               :table_id      (mt/id :cf_category)
+                                               :dataset_query (mt/mbql-query cf_category)}
+           :model/Card          card-product  {:database_id   (mt/id)
+                                               :table_id      (mt/id :cf_product)
+                                               :dataset_query (mt/mbql-query cf_product)}
+           :model/Dashboard     dashboard     {:parameters [{:name "Category"
+                                                             :slug "category"
+                                                             :id   "_CATEGORY_"
+                                                             :type :string/=}
+                                                            {:name "Product Name"
+                                                             :slug "Product name"
+                                                             :id   "_NAME_"
+                                                             :type :string/=}]}
+           :model/DashboardCard _dashcard     {:card_id            (:id card-category)
+                                               :dashboard_id       (:id dashboard)
+                                               :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                                     :card_id      (:id card-category)
+                                                                     :target       [:dimension (mt/$ids $cf_category.category)]}]}
+           :model/DashboardCard _dashcard     {:card_id            (:id card-product)
+                                               :dashboard_id       (:id dashboard)
+                                               :parameter_mappings [{:parameter_id "_NAME_"
+                                                                     :card_id      (:id card-product)
+                                                                     :target       [:dimension (mt/$ids $cf_product.name)]}]}]
 
-                (testing "chained filter works"
-                  (is (= {:has_more_values false
-                          :values          [["Americano"] ["Cold brew"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
-                                                                           (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
-                (testing "getting values works"
-                  (is (= {:has_more_values false
-                          :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
-                (testing "searching values works"
-                  (is (= {:has_more_values false
-                          :values          [["Oolong"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))
-
-              (finally
-                (doseq [table-name [product-table-name category-table-name]]
-                  (drop-table-if-exists! table-name))))))))))
+          (testing "chained filter works"
+            (is (= {:has_more_values false
+                    :values          [["Americano"] ["Cold brew"]]}
+                   (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
+                                                                     (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
+          (testing "getting values works"
+            (is (= {:has_more_values false
+                    :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
+                   (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
+          (testing "searching values works"
+            (is (= {:has_more_values false
+                    :values          [["Oolong"]]}
+                   (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -862,10 +874,10 @@
               "`describe-fields` should see the fields in the table")
           (sync/sync-database! (mt/db) {:scan :schema})
           (testing "We should be able to run queries against the table"
-            (doseq [[col-nm param-v] [[:numeric_col (bigdec numeric-val)]
-                                      [:decimal_col (bigdec decimal-val)]
-                                      [:bignumeric_col (bigdec bignumeric-val)]
-                                      [:bigdecimal_col (bigdec bigdecimal-val)]]]
+            (doseq [[col-nm param-v] {"numeric_col"    (bigdec numeric-val)
+                                      "decimal_col"    (bigdec decimal-val)
+                                      "bignumeric_col" (bigdec bignumeric-val)
+                                      "bigdecimal_col" (bigdec bigdecimal-val)}]
               (testing (format "filtering against %s" col-nm))
               (is (= 1
                      (-> (mt/first-row
@@ -1238,11 +1250,11 @@
     (mt/dataset
       (mt/dataset-definition
        "bigthings"
-       ["bigthings"
-        [{:field-name "bd" :base-type :type/Decimal}]
-        [[12345678901234567890.1234567890M]
-         [22345678901234567890.1234567890M]
-         [32345678901234567890.1234567890M]]])
+       [["bigthings"
+         [{:field-name "bd" :base-type :type/Decimal}]
+         [[12345678901234567890.1234567890M]
+          [22345678901234567890.1234567890M]
+          [32345678901234567890.1234567890M]]]])
 
       ;; Must sync field values
       (sync/sync-database! (mt/db))
@@ -1282,29 +1294,29 @@
                      (:error result)))))))
       (is (< (count before-names) (+ (count (future-thread-names)) 5))))))
 
-(deftest alternate-host-test
+(deftest ^:parallel alternate-host-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Alternate BigQuery host can be configured"
       (mt/with-temp [:model/Database {:as temp-db}
                      {:engine  :bigquery-cloud-sdk
                       :details (-> (:details (mt/db))
                                    (assoc :host "bigquery.example.com"))}]
-        (let [client (#'bigquery/database-details->client (:details temp-db))]
+        (let [^BigQuery client (#'bigquery/database-details->client (:details temp-db))]
           (is (= "bigquery.example.com"
                  (.getHost (.getOptions client)))
               "BigQuery client should be configured with alternate host"))))))
 
-(deftest user-agent-is-set-test
+(deftest ^:parallel user-agent-is-set-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "User agent is set for bigquery requests"
-      (let [client (#'bigquery/database-details->client (:details (mt/db)))
-            mb-version (:tag config/mb-version-info)
-            run-mode   (name config/run-mode)
-            user-agent (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
+      (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
+            mb-version       (:tag config/mb-version-info)
+            run-mode         (name config/run-mode)
+            user-agent       (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)]
         (is (= user-agent
                (-> client .getOptions .getUserAgent)))))))
 
-(deftest timestamp-precision-test
+(deftest ^:parallel timestamp-precision-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [sql (str "select"
                    " timestamp '2024-12-11 16:23:55.123456 UTC' col_timestamp,"
@@ -1315,3 +1327,33 @@
       (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
               (-> (qp/process-query query)
                   mt/rows))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct BigQuery types"
+    (are [base-type expected] (= expected (driver/type->database-type :bigquery-cloud-sdk base-type))
+      :type/Array              [[:raw "JSON"]]
+      :type/Dictionary         [[:raw "JSON"]]
+      :type/Boolean            [[:raw "BOOL"]]
+      :type/Float              [[:raw "FLOAT64"]]
+      :type/Integer            [[:raw "INT"]]
+      :type/Number             [[:raw "INT"]]
+      :type/Text               [[:raw "STRING"]]
+      :type/TextLike           [[:raw "STRING"]]
+      :type/Date               [[:raw "DATE"]]
+      :type/DateTime           [[:raw "DATETIME"]]
+      :type/DateTimeWithTZ     [[:raw "TIMESTAMP"]]
+      :type/Time               [[:raw "TIME"]]
+      :type/JSON               [[:raw "JSON"]]
+      :type/SerializedJSON     [[:raw "JSON"]]
+      :type/Decimal            [[:raw "BIGDECIMAL"]])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "compile-transform creates CREATE OR REPLACE TABLE"
+      (is (= ["CREATE OR REPLACE TABLE `PRODUCTS_COPY` AS SELECT * FROM products" nil]
+             (driver/compile-transform :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
+                                                            :output-table :PRODUCTS_COPY}))))
+    (testing "compile-insert generates INSERT INTO"
+      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
+             (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
+                                                         :output-table :PRODUCTS_COPY}))))))

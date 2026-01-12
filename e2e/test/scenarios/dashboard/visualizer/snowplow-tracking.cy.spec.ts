@@ -1,5 +1,6 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  ACCOUNTS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_CREATED_AT,
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
   PRODUCTS_COUNT_BY_CREATED_AT,
@@ -8,7 +9,7 @@ import {
 const { H } = cy;
 
 describe("Snowplow tracking", () => {
-  H.describeWithSnowplow("add database card", () => {
+  describe("add database card", () => {
     beforeEach(() => {
       H.resetSnowplow();
       H.restore();
@@ -36,6 +37,11 @@ describe("Snowplow tracking", () => {
         idAlias: "productsCountByCreatedAtQuestionId",
         wrapId: true,
       });
+
+      H.createQuestion(ACCOUNTS_COUNT_BY_CREATED_AT, {
+        idAlias: "accountsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
     });
 
     it("should track visualizer related events", () => {
@@ -43,6 +49,7 @@ describe("Snowplow tracking", () => {
 
       H.editDashboard();
       H.openQuestionsSidebar();
+      cy.log("open questions sidebar");
       H.clickVisualizeAnotherWay(ORDERS_COUNT_BY_CREATED_AT.name);
       // visualize another way from question list
       H.expectUnstructuredSnowplowEvent({
@@ -52,6 +59,7 @@ describe("Snowplow tracking", () => {
 
       H.modal().within(() => {
         // switch to datasets list
+        cy.log("switch to datasets list");
         H.switchToAddMoreData();
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_add_more_data_clicked",
@@ -59,14 +67,15 @@ describe("Snowplow tracking", () => {
         });
 
         // add a dataset
-        H.addDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
+        cy.log("add a dataset");
+        H.selectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_data_changed",
           event_detail: "visualizer_datasource_added",
           triggered_from: "visualizer-modal",
         });
 
-        // deselect a dataset
+        cy.log("deselect a dataset");
         H.deselectDataset(PRODUCTS_COUNT_BY_CREATED_AT.name);
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_data_changed",
@@ -74,15 +83,8 @@ describe("Snowplow tracking", () => {
           triggered_from: "visualizer-modal",
         });
 
-        // select a dataset (i.e. replace other ones with a new one)
-        H.selectDataset(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name);
-        H.expectUnstructuredSnowplowEvent({
-          event: "visualizer_data_changed",
-          event_detail: "visualizer_datasource_replaced",
-          triggered_from: "visualizer-modal",
-        });
-
         // switch to columns list
+        cy.log("switch to columns list");
         H.switchToColumnsList();
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_show_columns_clicked",
@@ -90,8 +92,9 @@ describe("Snowplow tracking", () => {
         });
 
         // deselect a column
+        cy.log("deselect a column");
         H.deselectColumnFromColumnsList(
-          ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
+          ORDERS_COUNT_BY_CREATED_AT.name,
           "Count",
         );
         H.expectUnstructuredSnowplowEvent({
@@ -101,10 +104,8 @@ describe("Snowplow tracking", () => {
         });
 
         // select a column
-        H.selectColumnFromColumnsList(
-          ORDERS_COUNT_BY_PRODUCT_CATEGORY.name,
-          "Count",
-        );
+        cy.log("select a column");
+        H.selectColumnFromColumnsList(ORDERS_COUNT_BY_CREATED_AT.name, "Count");
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_data_changed",
           event_detail: "visualizer_column_added",
@@ -112,6 +113,7 @@ describe("Snowplow tracking", () => {
         });
 
         // show settings sidebar
+        cy.log("show settings sidebar");
         H.toggleVisualizerSettingsSidebar();
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_settings_clicked",
@@ -119,6 +121,7 @@ describe("Snowplow tracking", () => {
         });
 
         // change the visualization type
+        cy.log("change the visualization type");
         H.selectVisualization("line");
         H.expectUnstructuredSnowplowEvent({
           event: "visualizer_data_changed",
@@ -128,6 +131,7 @@ describe("Snowplow tracking", () => {
       });
 
       // save the card
+      cy.log("save the card");
       H.saveDashcardVisualizerModal({ mode: "create" });
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_save_clicked",
@@ -136,6 +140,7 @@ describe("Snowplow tracking", () => {
 
       H.showDashcardVisualizerModal(1);
       // show the table preview
+      cy.log("show the table preview");
       cy.findByTestId("visualizer-view-as-table-button").click();
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_view_as_table_clicked",
@@ -146,8 +151,9 @@ describe("Snowplow tracking", () => {
         cy.findByLabelText("Close").click();
       });
 
-      // resets a dataset
-      H.resetDataSourceButton(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name).click();
+      cy.log("resets a dataset");
+      H.selectVisualization("bar");
+      H.resetDataSourceButton(ORDERS_COUNT_BY_CREATED_AT.name).click();
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_data_changed",
         event_detail: "visualizer_datasource_reset",
@@ -155,7 +161,8 @@ describe("Snowplow tracking", () => {
       });
 
       // remove a dataset
-      H.removeDataSource(ORDERS_COUNT_BY_PRODUCT_CATEGORY.name, {
+      cy.log("remove a dataset");
+      H.removeDataSource(ORDERS_COUNT_BY_CREATED_AT.name, {
         throughMenu: true,
       });
       H.expectUnstructuredSnowplowEvent(
@@ -164,10 +171,11 @@ describe("Snowplow tracking", () => {
           event_detail: "visualizer_datasource_removed",
           triggered_from: "visualizer-modal",
         },
-        3, // we already removed two datasets before
+        2, // we already removed two datasets before
       );
 
       // close the modal
+      cy.log("close the modal");
       H.closeDashcardVisualizerModal();
       H.expectUnstructuredSnowplowEvent({
         event: "visualizer_close_clicked",

@@ -7,7 +7,12 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { getDocsUrl, getIsPaidPlan, getUpgradeUrl } from "./settings";
+import {
+  getDocsUrl,
+  getIsPaidPlan,
+  getStoreUrl,
+  getUpgradeUrl,
+} from "./settings";
 
 describe("getUpgradeUrl", () => {
   it.each([
@@ -129,6 +134,41 @@ describe("getDocsUrl", () => {
 
     expect(getDocsUrl(state, { page: "foo/bar", anchor: "baz" })).toBe(
       "https://www.metabase.com/docs/v0.41/foo/bar.html#baz",
+    );
+  });
+});
+
+describe("getStoreUrlFromState", () => {
+  it("should return the correct URL", () => {
+    const state = createMockState({
+      settings: createMockSettingsState({
+        "store-url": "https://test-store.metabase.com",
+      }),
+    });
+
+    expect(getStoreUrl(state)).toBe("https://test-store.metabase.com/");
+
+    expect(getStoreUrl(state, "account/manage/plans")).toBe(
+      "https://test-store.metabase.com/account/manage/plans",
+    );
+  });
+
+  it("should return for falsey values", () => {
+    const stateUndefined = createMockState({
+      settings: createMockSettingsState({
+        "store-url": undefined,
+      }),
+    });
+
+    const stateCorruptedString = createMockState({
+      settings: createMockSettingsState({
+        "store-url": "false",
+      }),
+    });
+
+    expect(getStoreUrl(stateUndefined)).toBe("https://store.metabase.com/");
+    expect(getStoreUrl(stateCorruptedString)).toBe(
+      "https://store.metabase.com/",
     );
   });
 });

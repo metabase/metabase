@@ -51,7 +51,6 @@ describe("dashboard reducers", () => {
         toastDashboardId: null,
       },
       tabDeletions: {},
-      theme: "light",
     });
   });
 
@@ -310,7 +309,7 @@ describe("dashboard reducers", () => {
       });
     });
 
-    it("should stay idle with no cards to load", () => {
+    it("should be complete when the dashboard doesn't have cards to load", () => {
       expect(
         reducer(initState, {
           type: FETCH_DASHBOARD_CARD_DATA,
@@ -320,7 +319,7 @@ describe("dashboard reducers", () => {
         ...initState,
         loadingDashCards: {
           loadingIds: [],
-          loadingStatus: "idle",
+          loadingStatus: "complete",
           startTime: null,
           endTime: null,
         },

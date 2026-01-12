@@ -2,10 +2,13 @@
   "API client for interfacing with Harbormaster on store-api-url."
   (:require
    [clj-http.client :as http]
+   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
+   [martian.clj-http :as martian-http]
+   [martian.core :as martian]
    [medley.core :as m]
    [metabase.api.settings :as api.auth]
-   [metabase.cloud-migration.core :as cloud-migration]
+   [metabase.store-api.core :as store-api]
    [metabase.util :as m.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -42,7 +45,7 @@
   `->config` either gets the store-api-url and api-key from settings or throws an exception when either are unset or
   blank."
   []
-  (let [store-api-url (cloud-migration/store-api-url)
+  (let [store-api-url (store-api/store-api-url)
         _ (when (str/blank? store-api-url)
             (log/error "Missing store-api-url. Cannot create hm client config.")
             (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
@@ -101,6 +104,9 @@
 (mu/defn make-request :- :hm-client/http-reply
   "Makes a request to the store-api-url with the given method, path, and body.
 
+  The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
+  and back to kebab-keys on response.
+
   Returns a tuple of [:ok response] if the request was successful, or [:error response] if it failed."
   [method :- [:enum :get :head :post :put :delete :options :copy :move :patch]
    url :- :string
@@ -109,9 +115,115 @@
                 api-key]} (->config)
         request           (cond-> {:headers {"Authorization" (str "Bearer " api-key)
                                              "Content-Type" "application/json"}}
-                            body (assoc :body (json/encode body)))
+                            body (assoc :body (json/encode (m.util/deep-snake-keys body))))
         request-method-fn (->requestor method)
         unparsed-response (send-request request-method-fn store-api-url url request)
-        response          (decode-response unparsed-response url request)
+        response          (m.util/deep-kebab-keys (decode-response unparsed-response url request))
         success?          (calculate-success response url request)]
     [(if success? :ok :error) response]))
+
+;; OpenAPI-based API
+
+(defn- bearer-auth [secret]
+  {:name ::add-bearer-token
+   :enter (fn [ctx] (assoc-in ctx [:request :headers "Authorization"] (str "Bearer " secret)))})
+
+(defn- create-client
+  [store-api-url api-key]
+  (martian-http/bootstrap-openapi
+   (str store-api-url "/openapi.json")
+   ;; martian options for calling operations
+   (merge {:server-url store-api-url}
+          (when api-key {:interceptors (into [(bearer-auth api-key)] martian-http/default-interceptors)}))
+   ;; clj-http options for loading the openapi.json itself
+   {:headers (merge {} (when api-key {"Authorization" (str "Bearer " api-key)}))}))
+
+(def ^:private create-client-memo
+  (memoize/ttl create-client
+               :ttl/threshold (m.util/minutes->ms 5)))
+
+(defn- client []
+  (let [store-api-url (store-api/store-api-url)
+        api-key       (api.auth/api-key)]
+    (when (str/blank? store-api-url)
+      (log/error "Missing store-api-url. Cannot create hm client config.")
+      (throw (ex-info (tru "Missing store-api-url.") {:store-api-url store-api-url})))
+    (create-client-memo store-api-url api-key)))
+
+(defn explore
+  "Explore the Harbormaster API, using Martian.
+  e.g.
+    (explore)                   ;; endpoint listing
+    (explore :list-connections) ;; spec for the endpoint with operation-id :list-connections, from the (explore) call."
+  [& args]
+  (apply martian/explore (client) args))
+
+(defn- maybe-decode [x]
+  (try
+    (json/decode+kw x)
+    (catch Exception _
+      x)))
+
+(defn call
+  "Call the API, using Martian. Will throw on non 2xx, and you can get the failure body (if any) using ex-data.
+  The Harbormaster API uses snake_keys, and this fn automatically converts kebab-keys to snake_keys on request,
+  and back to kebab-keys on response.
+  e.g.
+    ;; call the :foo endpoint with {:some-id id}
+    ;; use (explore :list-connections) for params, if any, and pass them in a map
+    (call :list-connections)"
+  [operation-id & {:as args}]
+  (try
+    (m.util/deep-kebab-keys (:body (martian/response-for (client) operation-id (m.util/deep-snake-keys args))))
+    (catch Exception e
+      (let [resp-body (some-> e ex-data :body maybe-decode m.util/deep-kebab-keys)
+            msg (format "Error on Harbormaster operation call %s" operation-id)]
+        (log/error msg (or resp-body e))
+        (throw (ex-info msg (if (map? resp-body) resp-body {})))))))
+
+(defn request
+  "Same as call, but return the request that will be performed.
+  Useful for debugging calls."
+  [operation-id & {:as args}]
+  (martian/request-for (client) operation-id args))
+
+(comment
+  ;; List all available operations on the API.
+  (explore)
+  ;; => [[:list-connections "Query connections for instance-id."]
+  ;;     [:create-connection "Create a connection."]
+  ;;     [:sync-connection "Sync a connection."]
+  ;;     [:get-connection "Pull a connection."]
+  ;;     [:update-connection "Update a connection."]
+  ;;     [:delete-connection "Delete a connection."]]
+
+  ;; Check params and returns for :list-connections
+  (explore :list-connections)
+  ;; => {:summary "Query connections for instance-id.",
+  ;;     :parameters {},
+  ;;     :returns
+  ;;     {200
+  ;;      [{{:k :hosted_instance_resource_id} Int,
+  ;;        {:k :created_at} (cond-pre Str Inst),
+  ;;        {:k :last_sync_at} Any,
+  ;;        {:k :error_detail} Any,
+  ;;        :type (enum "gdrive" "google_spreadsheet" "pg_replication" "sql_database"),
+  ;;        {:k :status_reason} Any,
+  ;;        {:k :last_sync_started_at} Any,
+  ;;        {:k :updated_at} (cond-pre Str Inst),
+  ;;        {:k :hosted_instance_id} (cond-pre Str Uuid),
+  ;;        :status (enum "syncing" "error" "paused" "initializing" "active"),
+  ;;        :id (cond-pre Str Uuid),
+  ;;        :error Any}]}}
+
+  ;; What's the request that (call :list-connections) will make?
+  (request :list-connections)
+  ;; => {:headers {"Authorization" "Bearer mb_api_key_128f293f4faca8ee89bdce1f36798e05c55715b4637801fac4a63101bb6f979d",
+  ;;               "Accept" "application/json"},
+  ;;     :method :get,
+  ;;     :url "http://harbormaster:5010/api/v2/mb/connections",
+  ;;     :as :text}
+
+  ;; Call the :list-connections operation.
+  (call :list-connections))
+  ;; => ()

@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import type { ButtonProps, MantineSize } from "metabase/ui";
 
 export type ConfirmationState = {
   title: string;
-  message?: string;
+  message?: string | ReactNode;
   onConfirm: () => void;
   onCancel?: () => void;
   confirmButtonText?: string;
   cancelButtonText?: string;
+  confirmButtonProps?: Omit<ButtonProps, "onClick" | "children">;
+  size?: MantineSize;
 };
 
 export const useConfirmation = () => {
@@ -35,25 +38,34 @@ export const useConfirmation = () => {
       title={confirmationState.title}
       message={confirmationState?.message}
       confirmButtonText={confirmationState.confirmButtonText}
+      confirmButtonProps={confirmationState.confirmButtonProps}
+      size={confirmationState.size}
     />
   ) : null;
 
-  const show = ({
-    title,
-    message,
-    onConfirm,
-    onCancel,
-    confirmButtonText = t`Confirm`,
-    cancelButtonText = t`Cancel`,
-  }: ConfirmationState) =>
-    setConfirmationState({
+  const show = useCallback(
+    ({
       title,
       message,
       onConfirm,
       onCancel,
-      confirmButtonText,
-      cancelButtonText,
-    });
+      confirmButtonText = t`Confirm`,
+      cancelButtonText = t`Cancel`,
+      confirmButtonProps,
+      size,
+    }: ConfirmationState) =>
+      setConfirmationState({
+        title,
+        message,
+        onConfirm,
+        onCancel,
+        confirmButtonText,
+        cancelButtonText,
+        confirmButtonProps,
+        size,
+      }),
+    [],
+  );
 
   return { modalContent, show };
 };

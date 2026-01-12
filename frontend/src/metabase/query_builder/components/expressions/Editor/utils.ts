@@ -11,7 +11,7 @@ import {
   type DefinedClauseName,
   expressionClauseSnippet,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
 
 export function useInitialClause({
   initialExpressionClause,

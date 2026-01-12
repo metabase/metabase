@@ -1,7 +1,9 @@
-import type { MantineTheme } from "@mantine/core";
+import type { MantineColorsTuple } from "@mantine/core";
 
-import { color as legacyColor } from "metabase/lib/colors";
-type ColorShades = MantineTheme["colors"]["dark"];
+import { colorConfig } from "metabase/lib/colors";
+import type { ColorName } from "metabase/lib/colors/types";
+
+export const ALL_COLOR_NAMES = Object.keys(colorConfig);
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -20,43 +22,7 @@ const ORIGINAL_COLORS = [
   "teal",
 ] as const;
 
-// these should only include semantic colors
-// for use in the UI
-const CUSTOM_COLORS = [
-  "bg-black",
-  "bg-dark",
-  "bg-light",
-  "bg-medium",
-  "bg-white",
-  "border",
-  "brand",
-  "brand-light",
-  "brand-lighter",
-  "danger",
-  "error",
-  "filter",
-  "focus",
-  "shadow",
-  "success",
-  "summarize",
-  "text-dark",
-  "text-light",
-  "text-medium",
-  "text-white",
-  "warning",
-  "white",
-  // TODO: Check with an adult and make sure this is okay
-  "text-primary",
-  "text-secondary",
-  "text-secondary-inverse",
-  "text-tertiary",
-  "background",
-  "background-disabled",
-  "accent-gray",
-  "accent-gray-light",
-] as const;
-
-export function getColorShades(colorName: string): ColorShades {
+export function getColorShades(colorName: string): MantineColorsTuple {
   // yes this is silly, but it makes typescript so happy
   return [
     colorName,
@@ -72,13 +38,18 @@ export function getColorShades(colorName: string): ColorShades {
   ];
 }
 
-export function getThemeColors(): Record<string, ColorShades> {
+export function getThemeColors(
+  colorScheme: "light" | "dark",
+): Record<string, MantineColorsTuple> {
   return {
     ...Object.fromEntries(
       ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      CUSTOM_COLORS.map((name) => [name, getColorShades(legacyColor(name))]),
+      Object.entries(colorConfig).map(([name, colors]) => [
+        name,
+        getColorShades(colors[colorScheme] || colors.light),
+      ]),
     ),
   };
 }
@@ -88,6 +59,19 @@ export function getThemeColors(): Record<string, ColorShades> {
  * @param colorName
  * @returns string referencing a css variable
  */
-export function color(colorName: (typeof CUSTOM_COLORS)[number]): string {
+export function color(colorName: ColorName): string {
   return `var(--mb-color-${colorName})`;
 }
+
+export const isColorName = (name?: string | null): name is ColorName => {
+  return !!name && ALL_COLOR_NAMES.includes(name);
+};
+
+/**
+ * Prefer to use `color()` instead.
+ * Only use `maybeColor()` if you can't be sure you're going to have a `ColorName` as input,
+ * e.g. the value comes from an endpoint, upstream type-checking is too loose, etc.
+ */
+export const maybeColor = (maybeColorName: ColorName | string): string => {
+  return isColorName(maybeColorName) ? color(maybeColorName) : maybeColorName;
+};

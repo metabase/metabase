@@ -2,10 +2,18 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen, waitFor } from "__support__/ui";
 import { FormProvider } from "metabase/forms";
+import { createMockGroup } from "metabase-types/api/mocks";
 
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
-const defaultGroups = [{ id: 1, name: "Administrators", member_count: 1 }];
+const defaultGroups = [
+  createMockGroup({
+    id: 1,
+    name: "Administrators",
+    member_count: 1,
+    magic_group_type: "admin",
+  }),
+];
 const defaultMappings = { "group=Administrators": [1] };
 
 const setup = ({
@@ -19,7 +27,10 @@ const setup = ({
   groups = defaultGroups,
 } = {}) => {
   render(
-    <FormProvider initialValues={{}} onSubmit={() => {}}>
+    <FormProvider
+      initialValues={{ [setting.key]: setting.value }}
+      onSubmit={() => {}}
+    >
       <GroupMappingsWidgetView
         allGroups={groups}
         mappings={mappings}
@@ -35,6 +46,71 @@ const setup = ({
 };
 
 describe("GroupMappingsWidgetView", () => {
+  describe("tooltip text", () => {
+    it("shows JWT-specific tooltip text when mappingSetting is jwt-group-mappings", async () => {
+      setup({ mappingSetting: "jwt-group-mappings" });
+
+      const aboutMappingsElement = await screen.findByText("About mappings");
+      await userEvent.hover(aboutMappingsElement);
+
+      expect(
+        await screen.findByText(
+          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If no mappings are defined, groups will automatically be assigned based on exactly matching names\./,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows default tooltip text when mappingSetting is not jwt-group-mappings", async () => {
+      setup({ mappingSetting: "ldap-group-mappings" });
+
+      const aboutMappingsElement = await screen.findByText("About mappings");
+      await userEvent.hover(aboutMappingsElement);
+
+      expect(
+        await screen.findByText(
+          /Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server\. If a group isn‘t mapped, its membership won‘t be synced\./,
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("no mappings message", () => {
+    it("shows JWT-specific message when mappingSetting is jwt-group-mappings and sync is enabled", async () => {
+      setup({
+        mappingSetting: "jwt-group-mappings",
+        mappings: {},
+        setting: { key: "jwt-group-sync", value: true },
+      });
+
+      expect(
+        await screen.findByText(
+          "No mappings yet, groups will be automatically assigned by exactly matching names",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows default message when mappingSetting is jwt-group-mappings but sync is disabled", async () => {
+      setup({
+        mappingSetting: "jwt-group-mappings",
+        mappings: {},
+        setting: { key: "jwt-group-sync", value: false },
+      });
+
+      expect(
+        await screen.findByText("No mappings yet, group sync is not on"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows default message when mappingSetting is not jwt-group-mappings", async () => {
+      setup({
+        mappingSetting: "ldap-group-mappings",
+        mappings: {},
+      });
+
+      expect(await screen.findByText("No mappings yet")).toBeInTheDocument();
+    });
+  });
+
   describe("when a mapping is set for admin group", () => {
     it("handles deleting mapping", async () => {
       const updateSettingSpy = jest.fn();

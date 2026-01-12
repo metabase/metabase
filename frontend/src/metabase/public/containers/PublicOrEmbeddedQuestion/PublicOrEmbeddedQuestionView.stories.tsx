@@ -23,6 +23,8 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import PivotTable from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
+import Table from "metabase/visualizations/visualizations/Table/Table";
+import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import {
   createMockCard,
   createMockColumn,
@@ -45,15 +47,13 @@ registerVisualization(PivotTable);
 registerVisualization(SmartScalar);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
 
 export default {
   title: "App/Embed/PublicOrEmbeddedQuestionView",
   component: PublicOrEmbeddedQuestionView,
-  decorators: [
-    ReduxDecorator,
-    createWaitForResizeToStopDecorator(),
-    MockIsEmbeddingDecorator,
-  ],
+  decorators: [ReduxDecorator, createWaitForResizeToStopDecorator()],
   parameters: {
     layout: "fullscreen",
     msw: {
@@ -85,16 +85,6 @@ function ReduxDecorator(Story: StoryFn) {
       <Story />
     </MetabaseReduxProvider>
   );
-}
-
-declare global {
-  interface Window {
-    overrideIsWithinIframe?: boolean;
-  }
-}
-function MockIsEmbeddingDecorator(Story: StoryFn) {
-  window.overrideIsWithinIframe = true;
-  return <Story />;
 }
 
 const CARD_BAR_ID = getNextId();
@@ -205,7 +195,7 @@ export const TransparentThemeDefault = {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#ddd" h="100%">
+    <Box bg="background-primary" h="100%">
       <Story />
     </Box>
   );
@@ -296,6 +286,10 @@ export const SmartScalarDarkTheme = {
 };
 
 export const SmartScalarLightThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -348,6 +342,10 @@ export const SmartScalarLightThemeTooltip = {
 };
 
 export const SmartScalarDarkThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -357,6 +355,25 @@ export const SmartScalarDarkThemeTooltip = {
 
   decorators: [NarrowContainer],
   play: SmartScalarLightThemeTooltip.play,
+};
+
+export const TableLightTheme = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    titled: false,
+    card: createMockCard({
+      id: getNextId(),
+      display: "table",
+      ...(TABLE_MOCK_DATA.variousColumnSettings[0].card as any),
+    }),
+    result: createMockDataset({
+      data: createMockDatasetData(
+        TABLE_MOCK_DATA.variousColumnSettings[0].data as any,
+      ),
+    }),
+  },
 };
 
 function NarrowContainer(Story: StoryFn) {

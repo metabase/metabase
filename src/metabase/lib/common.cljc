@@ -1,13 +1,14 @@
 (ns metabase.lib.common
+  (:refer-clojure :exclude [mapv every? #?(:clj for)])
   (:require
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema.common :as schema.common]
    [metabase.util :as u]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv #?@(:clj [every? for])]])
   #?(:cljs (:require-macros [metabase.lib.common])))
 
 (comment lib.options/keep-me
@@ -58,23 +59,16 @@
   [segment-def]
   (lib.ref/ref segment-def))
 
+(defmethod ->op-arg :metadata/measure
+  [measure-def]
+  (lib.ref/ref measure-def))
+
 (defmethod ->op-arg :lib/external-op
   [{:keys [operator options args] :or {options {}}}]
-  (->op-arg (lib.options/ensure-uuid (into [(keyword operator) options]
-                                           (map ->op-arg)
-                                           args))))
-
-(defn ensure-ident
-  "Given an MBQL clause, ensure that it has an `:ident` in its options."
-  [clause]
-  (lib.options/update-options clause update :ident #(or % (lib.ident/random-ident))))
-
-(defn preserve-ident-of
-  "Given two clauses, preserve the `original`'s `:ident` on `replacement`."
-  [replacement original]
-  (if-let [ident (lib.options/ident original)]
-    (lib.options/update-options replacement assoc :ident ident)
-    replacement))
+  (->op-arg (-> (lib.options/ensure-uuid (into [(keyword operator) options]
+                                               (map ->op-arg)
+                                               args))
+                ((#?(:clj requiring-resolve :cljs resolve) 'metabase.lib.normalize/normalize)))))
 
 (defn defop-create
   "Impl for [[defop]]."

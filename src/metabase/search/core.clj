@@ -3,11 +3,9 @@
   (:require
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
-   [metabase.search.appdb.core :as search.engines.appdb]
    [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.impl :as search.impl]
-   [metabase.search.in-place.legacy :as search.legacy]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.spec :as search.spec]
    [metabase.search.util :as search.util]
@@ -15,14 +13,10 @@
    [metabase.util.log :as log]
    [potemkin :as p]))
 
-(comment
-  ;; Make sure to import all the engine implementations. In future this can happen automatically, as per drivers.
-  ;;
-  ;; TODO -- maybe engine loading should be moved to [[metabase.search.init]] instead
-  search.engine/keep-me
-  search.engines.appdb/keep-me
-  search.legacy/keep-me
+(set! *warn-on-reflection* true)
 
+(comment
+  search.engine/keep-me
   search.config/keep-me
   search.impl/keep-me)
 
@@ -40,10 +34,20 @@
 
  [search.ingestion
   bulk-ingest!
+  max-searchable-value-length
   searchable-value-trim-sql]
 
  [search.spec
-  define-spec])
+  spec
+  define-spec]
+
+ [search.util
+  collapse-id
+  indexed-entity-id->model-index-id
+  indexed-entity-id->model-pk
+  tsv-language
+  to-tsquery-expr
+  weighted-tsvector])
 
 (defmethod analytics/known-labels :metabase-search/index-updates
   [_]
@@ -66,7 +70,7 @@
 
 (defmethod analytics/initial-value :metabase-search/engine-default
   [_ {:keys [engine]}]
-  (if (= engine (name (search.impl/default-engine))) 1 0))
+  (if (= engine (name (search.engine/default-engine))) 1 0))
 
 (defmethod analytics/initial-value :metabase-search/engine-active
   [_ {:keys [engine]}]
@@ -103,10 +107,7 @@
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
 
-(defn reindex!
-  "Populate a new index, and make it active. Simultaneously updates the current index."
-  [& {:as opts}]
-  ;; If there are multiple indexes, return the peak inserted for each type. In practice, they should all be the same.
+(defn- reindex-logic! [opts]
   (when (supports-index?)
     (try
       (log/info "Reindexing searchable entities")
@@ -125,6 +126,23 @@
       (catch Exception e
         (analytics/inc! :metabase-search/index-error)
         (throw e)))))
+
+(defn reindex!
+  "Populate a new index, and make it active. Simultaneously updates the current index.
+  Returns a future that will complete when the reindexing is done.
+  Respects `search.ingestion/*force-sync*` and waits for the future if it's true.
+  Alternately, if `:async?` is false, it will also run synchronously."
+  [& {:keys [async?] :or {async? true} :as opts}]
+  (let [f (fn []
+            (try
+              (reindex-logic! opts)
+              (catch Exception e
+                (log/error e "Reindex failed")
+                (analytics/inc! :metabase-search/index-error)
+                (throw e))))]
+    (if (or search.ingestion/*force-sync* (not async?))
+      (doto (promise) (deliver (f)))
+      (future (f)))))
 
 (defn reset-tracking!
   "Stop tracking the current indexes. Used when resetting the appdb."

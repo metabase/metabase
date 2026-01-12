@@ -8,7 +8,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
@@ -48,11 +49,15 @@
                                    :database-type     "integer"})]
     (lib.tu/mock-metadata-provider
      meta/metadata-provider
-     {:fields [date-field
-               datetime-field
-               timestamp-field
-               unix-seconds-field
-               unix-millis-field]})))
+     {:database (assoc meta/database
+                       :engine  :bigquery-cloud-sdk
+                       :details {:project-id-from-credentials "mock-project"
+                                 :service-account-json        "{}"})
+      :fields   [date-field
+                 datetime-field
+                 timestamp-field
+                 unix-seconds-field
+                 unix-millis-field]})))
 
 (def mock-temporal-fields
   {:date      (lib.metadata/field mock-temporal-fields-metadata-provider 1)
@@ -77,16 +82,16 @@
                                   :type  :timestamp
                                   :as    {:date     (t/local-date "2019-12-10")
                                           :datetime (t/local-date-time "2019-12-10T14:47:00")}}
-    :unix-timestamp-seconds      {:value [:field 4 nil]
+    :unix-timestamp-seconds      {:value [:field 4 {::add/source-table (meta/id :checkins)}]
                                   :type  :timestamp
-                                  :as    (let [expected (-> [:timestamp_seconds (h2x/identifier :field "PUBLIC" "CHECKINS" "unix_seconds")]
+                                  :as    (let [expected (-> [:timestamp_seconds (h2x/identifier :field "PUBLIC.CHECKINS" "unix_seconds")]
                                                             (h2x/with-database-type-info "timestamp"))]
                                            {:date      [:date expected]
                                             :datetime  [:datetime expected]
                                             :timestamp expected})}
-    :unix-timestamp-milliseconds {:value [:field 5 nil]
+    :unix-timestamp-milliseconds {:value [:field 5 {::add/source-table (meta/id :checkins)}]
                                   :type  :timestamp
-                                  :as    (let [expected (-> [:timestamp_millis (h2x/identifier :field "PUBLIC" "CHECKINS" "unix_milliseconds")]
+                                  :as    (let [expected (-> [:timestamp_millis (h2x/identifier :field "PUBLIC.CHECKINS" "unix_milliseconds")]
                                                             (h2x/with-database-type-info "timestamp"))]
                                            {:date      [:date expected]
                                             :datetime  [:datetime expected]
@@ -181,12 +186,12 @@
                             (repeat (dec num-args) filter-value))]
     (sql.qp/->honeysql :bigquery-cloud-sdk filter-clause)))
 
-(defn test-temporal-type-reconciliation!
-  [test-case]
+(defn test-temporal-type-reconciliation [test-case]
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider mock-temporal-fields-metadata-provider
-      (mt/with-report-timezone-id! nil
-        (binding [*print-meta* true]
-          (when-let [test-case (expand-test-case test-case)]
-            (is (= (temporal-type-reconciliation-expected-value test-case)
-                   (temporal-type-reconciliation-actual-value test-case)))))))))
+      ;; just need some sort of invalid timezone ID to override everything else
+      (binding [qp.timezone/*report-timezone-id-override* ::nil
+                *print-meta*                              true]
+        (when-let [test-case (expand-test-case test-case)]
+          (is (= (temporal-type-reconciliation-expected-value test-case)
+                 (temporal-type-reconciliation-actual-value test-case))))))))

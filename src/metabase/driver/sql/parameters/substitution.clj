@@ -6,19 +6,20 @@
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
      :prepared-statement-args [#t \"2017-01-01\"]}"
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.dates :as params.dates]
-   [metabase.driver.common.parameters.operators :as params.ops]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.dates :as params.dates]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
@@ -29,7 +30,8 @@
     DateTimeRange
     FieldFilter
     ReferencedCardQuery
-    ReferencedQuerySnippet)))
+    ReferencedQuerySnippet
+    TemporalUnit)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -262,6 +264,17 @@
      :prepared-statement-args args}))
 
 (mu/defn- field->clause :- driver-api/mbql.schema.field
+  [field other-opts]
+  (driver-api/normalize
+   driver-api/mbql.schema.field
+   [:field
+    (:id field)
+    (merge {:base-type                     (:base-type field)
+            driver-api/qp.add.source-table (:table-id field)
+            ::compiling-field-filter?      true}
+           other-opts)]))
+
+(mu/defn- field->field-filter-clause :- driver-api/mbql.schema.field
   [driver     :- :keyword
    field      :- driver-api/schema.metadata.column
    param-type :- driver-api/schema.parameter.type
@@ -272,20 +285,14 @@
   ;; middleware would work either because we don't know what Field this parameter actually refers to until we resolve
   ;; the parameter. There's probably _some_ way to structure things that would make this "duplicate" call unneeded, but
   ;; I haven't figured out what that is yet
-  [:field
-   (u/the-id field)
-   {:base-type                     (:base-type field)
-    :temporal-unit                 (align-temporal-unit-with-param-type-and-value driver field param-type value)
-    driver-api/qp.add.source-table (:table-id field)
-    ;; in case anyone needs to know we're compiling a Field filter.
-    ::compiling-field-filter?      true}])
+  (field->clause field {:temporal-unit (align-temporal-unit-with-param-type-and-value driver field param-type value)}))
 
 (mu/defn- field->identifier :- driver-api/schema.common.non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
   [driver field param-type value]
-  (->> (field->clause driver field param-type value)
+  (->> (field->field-filter-clause driver field param-type value)
        (sql.qp/->honeysql driver)
        (honeysql->replacement-snippet-info driver)
        :replacement-snippet))
@@ -312,7 +319,8 @@
             (sql.qp/->honeysql driver form))]
     (cond
       (params.ops/operator? param-type)
-      (->> (assoc params :target [:template-tag (field->clause driver field param-type value)])
+      #_{:clj-kondo/ignore [:deprecated-var]}
+      (->> (assoc params :target [:dimension (field->field-filter-clause driver field param-type value)])
            params.ops/to-clause
            driver-api/desugar-filter-clause
            driver-api/wrap-value-literals-in-mbql
@@ -320,7 +328,8 @@
            (honeysql->replacement-snippet-info driver))
 
       (params.dates/exclusion-date-type param-type value)
-      (let [field-clause (field->clause driver field param-type value)]
+      (let [field-clause (field->field-filter-clause driver field param-type value)]
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (->> (params.dates/date-string->filter value field-clause)
              driver-api/desugar-filter-clause
              driver-api/wrap-value-literals-in-mbql
@@ -346,24 +355,35 @@
       :else                                           (prepend-field
                                                        (field-filter->equals-clause-sql driver value)))))
 
+(defn- replace-alias
+  [driver field alias replacement-snippet-info]
+  (if (str/blank? alias)
+    replacement-snippet-info
+    (let [[old-name] (->> (field->clause field nil)
+                          (sql.qp/->honeysql driver)
+                          (sql.qp/format-honeysql driver))]
+      (update replacement-snippet-info :replacement-snippet str/replace old-name alias))))
+
 (mu/defmethod ->replacement-snippet-info [:sql FieldFilter]
   [driver                            :- :keyword
-   {:keys [value], :as field-filter} :- [:map
-                                         [:field driver-api/schema.metadata.column]
-                                         [:value :any]]]
-  (cond
-    ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
-    ;; = 1`). This is only used for field filters outside of optional clauses
-    (= value params/no-value) {:replacement-snippet "1 = 1"}
-    ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
-    ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
-    ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
-    (sequential? value)
-    (combine-replacement-snippet-maps (for [v value]
-                                        (->replacement-snippet-info driver (assoc field-filter :value v))))
-    ;; otherwise convert single value to SQL.
-    :else
-    (field-filter->replacement-snippet-info driver field-filter)))
+   {:keys [value alias field], :as field-filter} :- [:map
+                                                     [:field driver-api/schema.metadata.column]
+                                                     [:value :any]]]
+  (let [replacement-snippet-info
+        (cond
+          ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
+          ;; = 1`). This is only used for field filters outside of optional clauses
+          (= value params/no-value) {:replacement-snippet "1 = 1"}
+          ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
+          ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
+          ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
+          (sequential? value)
+          (combine-replacement-snippet-maps (for [v value]
+                                              (->replacement-snippet-info driver (assoc field-filter :value v))))
+          ;; otherwise convert single value to SQL.
+          :else
+          (field-filter->replacement-snippet-info driver field-filter))]
+    (replace-alias driver field alias replacement-snippet-info)))
 
 ;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
@@ -379,22 +399,12 @@
   {:prepared-statement-args nil
    :replacement-snippet     content})
 
-(defmulti time-grouping->replacement-snippet-info
-  "Like ->replacement-snipped-info, but specialized for converting time-groupings.  This is separate from the main
-  ->replacement-snippet-info because it requires an extra argument."
-  {:arglists '([driver column temporal-unit])
-   :added "0.55.0"}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(def date-groupings
-  "Set of time groupings that should be coerced to dates"
-  #{"day" "week" "month" "quarter" "year"})
-
-(defmethod time-grouping->replacement-snippet-info :sql
-  [driver column {:keys [value]}]
-  (honeysql->replacement-snippet-info driver
-                                      (if (= value params/no-value)
-                                        [:raw column]
-                                        (cond-> (sql.qp/date driver (keyword value) [:raw column])
-                                          (date-groupings value) h2x/->date))))
+(defmethod ->replacement-snippet-info [:sql TemporalUnit]
+  [driver {:keys [value field alias]}]
+  (let [replacement-snippet-info
+        (honeysql->replacement-snippet-info
+         driver
+         (sql.qp/->honeysql driver
+                            (field->clause field (when (not= value params/no-value)
+                                                   {:temporal-unit (keyword value)}))))]
+    (replace-alias driver field alias replacement-snippet-info)))

@@ -14,7 +14,7 @@
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field-values :as field-values]
-   [metabase.warehouses.api :as api.database]
+   [metabase.warehouses-rest.api :as api.database]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
@@ -26,23 +26,23 @@
       (letfn [(user-permissions [user]
                 (-> (mt/user-http-request user :get 200 "user/current")
                     :permissions))]
-        (testing "admins should have full advanced permisions"
-          (is (= {:can_access_setting      true
-                  :can_access_subscription true
-                  :can_access_monitoring   true
-                  :can_access_data_model   true
-                  :is_group_manager        false
-                  :can_access_db_details   true}
-                 (user-permissions :crowberto))))
+        (testing "admins should have full advanced permissions"
+          (is (=? {:can_access_setting        true
+                   :can_access_subscription   true
+                   :can_access_monitoring     true
+                   :can_access_data_model     true
+                   :is_group_manager          false
+                   :can_access_db_details     true}
+                  (user-permissions :crowberto))))
 
         (testing "non-admin users should only have subscriptions enabled by default"
-          (is (= {:can_access_setting      false
-                  :can_access_subscription true
-                  :can_access_monitoring   false
-                  :can_access_data_model   false
-                  :is_group_manager        false
-                  :can_access_db_details   false}
-                 (user-permissions :rasta))))
+          (is (=? {:can_access_setting        false
+                   :can_access_subscription   true
+                   :can_access_monitoring     false
+                   :can_access_data_model     false
+                   :is_group_manager          false
+                   :can_access_db_details     false}
+                  (user-permissions :rasta))))
 
         (testing "can_access_data_model is true if a user has any data model perms"
           (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
@@ -59,6 +59,23 @@
           (mt/with-all-users-data-perms-graph! {(mt/id) {:details :yes}}
             (is (partial= {:can_access_db_details true}
                           (user-permissions :rasta)))))))))
+
+(deftest current-user-query-permissions-published-table-test
+  (testing "GET /api/user/current can_create_queries respects published tables"
+    (mt/with-premium-features #{:data-studio}
+      (letfn [(user-permissions [user]
+                (-> (mt/user-http-request user :get 200 "user/current")
+                    :permissions))]
+        (testing "user with collection permission on published table should have can_create_queries true"
+          (mt/with-temp [:model/Collection collection {}
+                         :model/Table      _table     {:db_id         (mt/id)
+                                                       :is_published  true
+                                                       :collection_id (:id collection)}]
+            (perms/grant-collection-read-permissions! (perms-group/all-users) (:id collection))
+            (mt/with-no-data-perms-for-all-users!
+              (is (partial= {:can_create_queries        true
+                             :can_create_native_queries false}
+                            (user-permissions :rasta))))))))))
 
 (deftest new-database-view-data-permission-level-test
   (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
@@ -88,8 +105,8 @@
 
         (testing "A new database defaults to `:blocked` if the group has a sandbox for any table"
           (mt/with-temp [:model/Table {table-id :id} {:db_id db-id}
-                         :model/GroupTableAccessPolicy _ {:group_id group-id
-                                                          :table_id table-id}
+                         :model/Sandbox _ {:group_id group-id
+                                           :table_id table-id}
                          :model/Database {db-id-2 :id} {}]
             (is (= :blocked (perm-value db-id-2)))))))))
 
@@ -115,8 +132,8 @@
 
         (testing "A new table defaults to `:blocked` if the group has a sandbox for any existing table"
           (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
-          (mt/with-temp [:model/GroupTableAccessPolicy _ {:group_id group-id
-                                                          :table_id table-id-1}
+          (mt/with-temp [:model/Sandbox _ {:group_id group-id
+                                           :table_id table-id-1}
                          :model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
             (is (nil? (perm-value nil)))
             (is (= :unrestricted (perm-value table-id-1)))
@@ -145,10 +162,10 @@
           (data-perms/set-database-permission! all-users-group-id db-id :perms/view-data :unrestricted)
           (mt/with-temp [:model/Card                   {card-id :id}  {}
                          :model/Table                  {table-id :id} {:db_id db-id}
-                         :model/GroupTableAccessPolicy _              {:table_id             table-id
-                                                                       :group_id             all-users-group-id
-                                                                       :card_id              card-id
-                                                                       :attribute_remappings {"foo" 1}}]
+                         :model/Sandbox _              {:table_id             table-id
+                                                        :group_id             all-users-group-id
+                                                        :card_id              card-id
+                                                        :attribute_remappings {"foo" 1}}]
             (is (= :blocked (advanced-permissions.common/new-group-view-data-permission-level db-id)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -800,9 +817,9 @@
                            (mt/user-http-request :rasta :post 200 execute-path
                                                  {:parameters {"id" 1}})))))
                 (testing "Fails with access to the DB blocked"
-                  (mt/with-all-users-data-perms-graph! {(u/the-id (mt/db)) {:view-data      :blocked
-                                                                            :create-queries :no
-                                                                            :details        :yes}}
+                  (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :blocked
+                                                                 :create-queries :no
+                                                                 :details        :yes}}
                     (mt/with-actions-enabled
                       (is (partial= {:message "You don't have permissions to do that."}
                                     (mt/user-http-request :rasta :post 403 execute-path
@@ -884,7 +901,7 @@
             [table-a (upload-test/create-upload-table! :schema-name schema-name)]
             (upload-test/with-upload-table!
               [table-b (upload-test/create-upload-table! :schema-name schema-name)]
-              (let [db-id       (u/the-id (mt/db))
+              (let [db-id       (mt/id)
                     append-csv! #(upload-test/update-csv-with-defaults!
                                   action
                                   :table-id (:id table-a)
@@ -911,7 +928,7 @@
                        action)
         (upload-test/with-upload-table!
           [table-a (upload-test/create-upload-table!)]
-          (let [db-id       (u/the-id (mt/db))
+          (let [db-id       (mt/id)
                 append-csv! #(upload-test/update-csv-with-defaults!
                               action
                               :table-id (:id table-a)
@@ -929,7 +946,7 @@
     (testing "GET /api/database and GET /api/database/:id responses should include can_upload depending on unrestricted data access to the upload schema"
       (mt/with-model-cleanup [:model/Table]
         (let [schema-name (sql.tx/session-schema driver/*driver*)
-              db-id       (u/the-id (mt/db))]
+              db-id       (mt/id)]
           (upload-test/with-upload-table! [table (upload-test/create-upload-table! :schema-name schema-name)]
             (mt/with-temp [:model/Table {} {:db_id db-id :schema "some_schema"}]
               (doseq [[schema-perms can-upload?] {:query-builder               true

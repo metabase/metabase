@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { c, msgid, ngettext, t } from "ttag";
 
+import { DEFAULT_TIME_STYLE } from "metabase/lib/formatting/datetime-utils";
 import {
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_OPERATORS,
@@ -23,6 +24,7 @@ import type {
 } from "metabase/querying/filters/types";
 import type { ExcludeDateFilterUnit } from "metabase-lib";
 import * as Lib from "metabase-lib";
+import type { DateFormattingSettings } from "metabase-types/api";
 
 export function isDatePickerOperator(
   operator: string,
@@ -248,13 +250,13 @@ function getQuarterYearFilterClause(
 
 export function getDateFilterDisplayName(
   value: DateFilterValue,
-  { withPrefix }: DateFilterDisplayOpts = {},
+  { withPrefix, formattingSettings }: DateFilterDisplayOpts = {},
 ) {
   return match(value)
     .with(
       { type: "specific", operator: "=" },
       ({ values: [date], hasTime }) => {
-        const dateText = formatDate(date, hasTime);
+        const dateText = formatDate(date, hasTime, formattingSettings);
         return withPrefix
           ? c("On a date. Example: On Jan 20.").t`On ${dateText}`
           : dateText;
@@ -264,31 +266,36 @@ export function getDateFilterDisplayName(
       { type: "specific", operator: "<" },
       ({ values: [date], hasTime }) => {
         return c("Before a date. Example: Before Jan 20.")
-          .t`Before ${formatDate(date, hasTime)}`;
+          .t`Before ${formatDate(date, hasTime, formattingSettings)}`;
       },
     )
     .with(
       { type: "specific", operator: ">" },
       ({ values: [date], hasTime }) => {
         return c("After a date. Example: After Jan 20.")
-          .t`After ${formatDate(date, hasTime)}`;
+          .t`After ${formatDate(date, hasTime, formattingSettings)}`;
       },
     )
     .with(
       { type: "specific", operator: "between" },
       ({ values: [startDate, endDate], hasTime }) => {
-        return `${formatDate(startDate, hasTime)} - ${formatDate(endDate, hasTime)}`;
+        return `${formatDate(startDate, hasTime, formattingSettings)} - ${formatDate(endDate, hasTime, formattingSettings)}`;
       },
     )
-    .with({ type: "relative" }, ({ value, unit, offsetValue, offsetUnit }) => {
-      if (offsetValue != null && offsetUnit != null) {
-        const prefix = Lib.describeTemporalInterval(value, unit);
-        const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
-        return `${prefix}, ${suffix}`;
-      } else {
-        return Lib.describeTemporalInterval(value, unit);
-      }
-    })
+    .with(
+      { type: "relative" },
+      ({ value, unit, offsetValue, offsetUnit, options }) => {
+        if (offsetValue != null && offsetUnit != null) {
+          const prefix = Lib.describeTemporalInterval(value, unit);
+          const suffix = Lib.describeRelativeDatetime(offsetValue, offsetUnit);
+          return `${prefix}, ${suffix}`;
+        } else {
+          return Lib.describeTemporalInterval(value, unit, {
+            "include-current": options?.includeCurrent,
+          });
+        }
+      },
+    )
     .with({ type: "exclude", operator: "!=" }, ({ values, unit }) => {
       if (values.length <= 2 && unit != null) {
         const parts = values.map((value) => formatExcludeUnit(value, unit));
@@ -317,10 +324,17 @@ export function getDateFilterDisplayName(
     .exhaustive();
 }
 
-function formatDate(date: Date, hasTime: boolean) {
-  return hasTime
-    ? dayjs(date).format("MMMM D, YYYY hh:mm A")
-    : dayjs(date).format("MMMM D, YYYY");
+export function formatDate(
+  date: Date,
+  hasTime: boolean,
+  formattingSettings: DateFormattingSettings = {
+    date_style: "LL", // fall back to local date format
+    time_style: DEFAULT_TIME_STYLE,
+  },
+) {
+  const { date_style, time_style } = formattingSettings;
+  const format = hasTime ? `${date_style} ${time_style}` : date_style;
+  return dayjs(date).format(format);
 }
 
 function formatMonth(month: number, year: number) {

@@ -25,7 +25,20 @@ export const FormDashboardTabSelect = ({
       const firstTabId = currentData?.tabs?.length
         ? String(currentData.tabs[0].id)
         : undefined;
-      dashboardTabHelpers.setValue(firstTabId);
+      /**
+       * Kelvin 2025-11-13 fixes EMB-1001
+       *
+       * I have no idea why this fixes the problem. `dashboardTabHelpers.setValue` should have
+       * worked and `useField("dashboard_tab_id")` should have picked up the change immediately.
+       *
+       * But this hadn't work reliably. I've also tried logging that the `setValue` calls were also
+       * successful and I couldn't find other places that override the field `dashboard_tab_id` either.
+       *
+       * This is still a mystery to me.
+       */
+      setTimeout(() => {
+        dashboardTabHelpers.setValue(firstTabId);
+      }, 0);
     },
     [currentData, dashboardTabHelpers],
   );

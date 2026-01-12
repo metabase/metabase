@@ -117,7 +117,7 @@ If you've already been running Metabase with the default application database (H
 
 ### Running Metabase as a service
 
-We can use the [systemd](https://systemd.io/) initialization service to register a Metabase service that can be started and stopped automatically. Prior to executing this process, ensure that the Metabase container is operational. Then, utilize Podman's built-in feature to generate the service file as follows:
+We can use the [systemd](https://systemd.io/) initialization service to register a Metabase service that can be started and stopped automatically. Before executing this process, ensure that the Metabase container is operational. Then, use Podman's built-in feature to generate the service file as follows:
 
 ```
 sudo podman generate systemd --new --name metabase > metabase.service

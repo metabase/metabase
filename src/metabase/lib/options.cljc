@@ -1,10 +1,11 @@
 (ns metabase.lib.options
-  (:refer-clojure :exclude [uuid])
+  (:refer-clojure :exclude [uuid not-empty])
   (:require
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [not-empty]]))
 
 (defn- mbql-clause? [x]
   (and (vector? x)
@@ -84,8 +85,3 @@
   "Get the `:lib/uuid` associated with something, e.g. an MBQL clause or join."
   [x]
   (:lib/uuid (options x)))
-
-(mu/defn ident :- [:maybe ::lib.schema.common/non-blank-string]
-  "Get the `:ident` associated with something, e.g. an MBQL clause or join."
-  [x]
-  (:ident (options x)))

@@ -7,7 +7,7 @@ import {
   ORDERS_COUNT_BY_PRODUCT_CATEGORY,
 } from "e2e/support/test-visualizer-data";
 
-describe("scenarios > dashboard > visualizer > basics", () => {
+describe("scenarios > dashboard > visualizer > columns-mapping", () => {
   beforeEach(() => {
     H.restore();
 
@@ -21,13 +21,11 @@ describe("scenarios > dashboard > visualizer > basics", () => {
 
     H.createQuestion(ACCOUNTS_COUNT_BY_COUNTRY, {
       idAlias: "accountsCountByCountryQuestionId",
-      entityIdAlias: "accountsCountByCountryQuestionEntityId",
       wrapId: true,
     });
 
     H.createQuestion(ORDERS_COUNT_BY_PRODUCT_CATEGORY, {
       idAlias: "ordersCountByProductCategoryQuestionId",
-      entityIdAlias: "ordersCountByProductCategoryQuestionEntityId",
       wrapId: true,
     });
   });
@@ -89,7 +87,7 @@ describe("scenarios > dashboard > visualizer > basics", () => {
     H.modal().within(() => {
       H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
 
-      // cartesian (starting point) -> funnel -> scatter
+      cy.log("cartesian (starting point) -> funnel -> scatter");
       H.selectVisualization("funnel");
       H.assertWellItems({
         horizontal: ["Country", ...COUNTRY_CODES],
@@ -98,11 +96,11 @@ describe("scenarios > dashboard > visualizer > basics", () => {
       H.selectVisualization("scatter");
       H.assertWellItems({ horizontal: ["Country"], vertical: ["Count"] });
 
-      // Resetting the visualization to cartesian
-      H.switchToAddMoreData();
-      H.selectDataset(ACCOUNTS_COUNT_BY_COUNTRY.name);
+      cy.log("Resetting the visualization to cartesian");
+      H.clickUndoButton();
+      H.clickUndoButton();
 
-      // cartesian (starting point) -> pie -> funnel -> scatter
+      cy.log("cartesian (starting point) -> pie -> funnel -> scatter");
       H.selectVisualization("pie");
       H.assertWellItems({ pieDimensions: ["Country"], pieMetric: ["Count"] });
       H.selectVisualization("funnel");

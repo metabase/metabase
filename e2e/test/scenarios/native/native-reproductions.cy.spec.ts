@@ -1,15 +1,16 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
-  QuestionDetails,
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import type { IconName } from "metabase/ui";
 import type { Database, ListDatabasesResponse } from "metabase-types/api";
 
 import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
+
 const { ORDERS_ID, REVIEWS } = SAMPLE_DATABASE;
 
 describe("issue 11727", { tags: "@external" }, () => {
@@ -103,12 +104,12 @@ describe("issue 38083", () => {
       visitQuestion: true,
     });
 
-    cy.get("legend")
-      .contains(QUESTION.native["template-tags"].state["display-name"])
-      .parent("fieldset")
-      .within(() => {
-        cy.icon("revert").should("not.exist");
-      });
+    H.filterWidget()
+      .filter(
+        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
+      )
+      .icon("revert")
+      .should("not.exist");
   });
 });
 
@@ -390,46 +391,21 @@ describe("issues 52811, 52812", () => {
 });
 
 describe("issue 52806", () => {
-  const questionDetails: QuestionDetails = {
-    name: "SQL",
-    dataset_query: {
-      database: SAMPLE_DB_ID,
-      type: "native",
-      native: {
-        query: "SELECT * FROM ORDERS WHERE ID = {{id}}",
-        "template-tags": {
-          id: {
-            id: "b22a5ce2-fe1d-44e3-8df4-f8951f7921bc",
-            name: "id",
-            "display-name": "ID",
-            type: "number",
-            default: "1",
-          },
-        },
-      },
-    },
-    visualization_settings: {},
-  };
-
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
   });
 
-  it(
-    "should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)",
-    { tags: "@flaky" },
-    () => {
-      cy.intercept("/api/automagic-dashboards/database/*/candidates").as(
-        "candidates",
-      );
-      H.visitQuestionAdhoc(questionDetails);
-      cy.findByTestId("main-logo-link").click();
-      H.modal().button("Discard changes").click();
-      cy.wait("@candidates");
-      cy.location().should((location) => expect(location.search).to.eq(""));
-    },
-  );
+  it("should remove parameter values from the URL when leaving the query builder and discarding changes (metabase#52806)", () => {
+    cy.visit("/");
+    H.newButton("SQL query").click();
+    H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
+    cy.findByTestId("main-logo-link").click();
+    H.modal().button("Discard changes").click();
+    cy.findByTestId("home-page");
+    cy.location().should((location) => expect(location.search).to.eq(""));
+  });
 });
 
 describe("issue 55951", () => {
@@ -781,5 +757,220 @@ describe("issue 60719", () => {
       cy.wait("@updateCard");
       cy.findByText("Cannot save card with cycles.").should("be.visible");
     });
+  });
+});
+
+describe("issue 59356", () => {
+  function typeRunShortcut() {
+    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+  }
+
+  function getLoader() {
+    return H.queryBuilderMain().findByTestId("loading-indicator");
+  }
+
+  function getEmptyStateMessage() {
+    return H.queryBuilderMain().findByText(
+      "Here's where your results will appear",
+    );
+  }
+
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should properly cancel the query via the keyboard shortcut (metabase#59356)", () => {
+    cy.log("open the native query");
+    H.startNewNativeQuestion({
+      database: WRITABLE_DB_ID,
+      query: "select pg_sleep(5000)",
+    });
+
+    cy.log("verify that the query is not running");
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 0);
+
+    cy.log("run the query and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 1);
+
+    cy.log("run the query again and verify that it is running");
+    typeRunShortcut();
+    getLoader().should("be.visible");
+    getEmptyStateMessage().should("not.exist");
+    cy.get("@dataset.all").should("have.length", 2);
+
+    cy.log("cancel the query and verify that no new query is running");
+    typeRunShortcut();
+    getLoader().should("not.exist");
+    getEmptyStateMessage().should("be.visible");
+    cy.get("@dataset.all").should("have.length", 2);
+  });
+});
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
+  });
+});
+
+describe("issue 66745", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("PUT", "/api/card/*").as("saveCard");
+  });
+
+  ["row", "bar"].forEach((vizType) => {
+    it(`should not break visualization on native query column rename (metabase#63711) - ${vizType}`, () => {
+      H.createNativeQuestion(
+        {
+          name: `66745 - ${vizType}`,
+          native: {
+            query:
+              'SELECT \'Category 1\' AS CATEGORY_NAME, \'Category 2\' AS CATEGORY_NAME2, 100 AS "Total", 60 AS "Hello", 40 AS "World"',
+          },
+          display: vizType,
+          visualization_settings: {
+            "graph.dimensions": ["CATEGORY_NAME"],
+            "graph.metrics": ["Total", "World"],
+          },
+        },
+        {
+          wrapId: true,
+          visitQuestion: true,
+        },
+      );
+
+      cy.findByTestId("query-builder-main")
+        .findByText("Open Editor")
+        .should("be.visible")
+        .click();
+
+      H.NativeEditor.focus().type('{backspace}2"');
+
+      getRunQueryButton().click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+
+      H.modal().findByText("Save").click();
+
+      cy.wait("@saveCard");
+
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Save")
+        .should("not.exist");
+
+      H.visitQuestion("@questionId");
+
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
+
+      // eslint-disable-next-line no-unscoped-text-selectors
+      cy.findByText("Something’s gone wrong").should("not.exist");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().within(() => {
+        cy.findAllByPlaceholderText("Select a field").should("have.length", 2);
+        cy.findAllByPlaceholderText("Select a field")
+          .eq(1)
+          .should("have.value", "Total");
+      });
+    });
+  });
+});
+
+describe("issue 51717", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should open question info sidebar when variables sidebar is already open (metabase#51717)", () => {
+    H.createNativeQuestion(
+      {
+        name: "42",
+        native: { query: "select 42" },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+
+    cy.log("Open variables sidebar");
+    cy.findByTestId("native-query-editor-action-buttons")
+      .should("be.visible")
+      .findByLabelText("Variables")
+      .click();
+    cy.findByTestId("sidebar-right")
+      .should("be.visible")
+      .and("contain", "Variables and parameters");
+
+    cy.log("Info sidebar is opened");
+    H.openQuestionInfoSidesheet();
+    cy.findByTestId("sidesheet")
+      .as("infoSidebar")
+      .should("be.visible")
+      .and("contain", "Info");
+
+    cy.log("Make sure info sidebar is interactive (on top of the stack)");
+    cy.get("@infoSidebar").findByRole("tab", { name: "History" }).click();
+    cy.get("@infoSidebar").should("contain", "You created this");
   });
 });

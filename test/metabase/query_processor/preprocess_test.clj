@@ -2,20 +2,23 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.card :as lib.card]
    [metabase.lib.card-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.annotate :as annotate]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.humanization :as u.humanization]))
@@ -48,8 +51,8 @@
                     :num-rows 5}
                    (run-query))))
           (testing "preprocess should return same results even when query was cached."
-            (is (= expected-results
-                   (qp.preprocess/preprocess query)))))))))
+            (is (= (lib.schema.util/remove-lib-uuids expected-results)
+                   (lib.schema.util/remove-lib-uuids (qp.preprocess/preprocess query))))))))))
 
 (driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
 
@@ -229,26 +232,11 @@
                    {:source-table "card__2"
                     :aggregation  [[:sum [:field "TOTAL" {:base-type :type/Float}]]]
                     :breakout     [[:field "RATING" {:base-type :type/Float}]]}))]
-      (let [preprocessed (lib/query mp (qp.preprocess/preprocess query))
-            stages       (:stages preprocessed)]
-        (testing "added metadata"
-          (testing "first stage (from Card 1)"
-            (is (=? {:name                         "RATING"
-                     :display-name                 "Product → Rating"
-                     :metabase.lib.join/join-alias "Product"}
-                    (m/find-first #(= (:name %) "RATING")
-                                  (get-in (nth stages 0) [:lib/stage-metadata :columns])))))
-          (testing "second stage (from Card 2)"
-            (is (=? {:name                    "RATING"
-                     :display-name            "Product → Rating"
-                     :lib/original-join-alias "Product"}
-                    (m/find-first #(= (:name %) "RATING")
-                                  (get-in (nth stages 1) [:lib/stage-metadata :columns])))))))
       (is (=? [{:display_name "Product → Rating"}
                {:display_name "Sum of Total"}]
               (qp.preprocess/query->expected-cols query))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 ;;; and [[metabase.lib.card-test/preserve-edited-metadata-test]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
@@ -311,9 +299,11 @@
                  {:aggregation [[:count]]
                   :breakout    [[:field %products.created-at {:source-field %product-id, :temporal-unit :month}]
                                 [:field %products.category {:source-field %product-id}]]}))]
+    ;; actually, ok just to not return `:source-alias`, which is used for mysterious FE legacy historical purposes. We
+    ;; can go ahead and return various Lib keys for Lib purposes.
     (doseq [col (qp.preprocess/query->expected-cols query)]
       (testing (pr-str (:name col))
-        (is (empty? (m/filter-vals #(= % "PRODUCTS__via__PRODUCT_ID") col)))))
+        (is (not (contains? col :source-alias)))))
     (testing "result metadata should still contain fk_field_id"
       (is (=? [{:fk_field_id (meta/id :orders :product-id)}
                {:fk_field_id (meta/id :orders :product-id)}
@@ -348,13 +338,13 @@
                                                        :fields       [&Products.products.price]}]
                                              :fields [$id]})}]})
           query (lib/query mp (lib.metadata/card mp 1))]
-      (is (=? {:query {:fields (lib.tu.macros/$ids orders
-                                 [$id
-                                  &People.people.longitude
-                                  ;; the `:default` temporal unit gets removed somewhere
-                                  &People.people.birth-date
-                                  &Products.products.price])}}
-              (qp.preprocess/preprocess query)))
+      (is (=? {:query {:fields [[:field "ID"                 {:base-type :type/BigInteger}]
+                                [:field "People__LONGITUDE"  {:base-type :type/Float}]
+                                [:field "People__BIRTH_DATE" {:base-type :type/Date, :inherited-temporal-unit :default}]
+                                [:field "Products__PRICE"    {:base-type :type/Float}]]}}
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL)))
       (is (= [;; orders.id, from :fields
               "ID"
               ;; from the People join :fields
@@ -399,6 +389,244 @@
                  {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
                 (lib.metadata.result-metadata/returned-columns query))))
       (testing `qp.preprocess/query->expected-cols
-        (is (=? [{:name "CREATED_AT_2", :display_name "Created At: Month", :field_ref [:field "CREATED_AT_2" {}]}
+        ;; I think traditionally this field ref would have used a Field ID, and `:field_ref` should aim to preserve
+        ;; the traditional response as much as possible. It only comes back as a ID ref here because the preprocessing
+        ;; middleware that adds implicit columns adds the `:qp/added-implicit-fields?` key which
+        ;; causes [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] to force ID refs
+        (is (=? [{:name "CREATED_AT_2", :display_name "Created At: Month", :field_ref [:field (meta/id :orders :created-at) nil]}
                  {:name "count", :display_name "Count", :field_ref [:field "count" {}]}]
                 (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel filter-on-implicitly-joined-column-test
+  (testing "Should be able to remove a column that was implicitly joined from a column in an explicit join (#59695)"
+    (let [mp    (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [{:id            1
+                           :dataset-query (lib.tu.macros/mbql-query orders)}]})
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query nil
+                   {:source-table "card__1"
+                    :joins        [{:source-table (meta/id :checkins)
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "CH"
+                                    :condition    [:=
+                                                   [:field "ID" {:base-type :type/BigInteger}]
+                                                   [:field (meta/id :checkins :id)
+                                                    {:base-type :type/BigInteger, :join-alias "CH"}]]}]
+                    :filter       [:=
+                                   [:field (meta/id :venues :price) {:base-type               :type/Integer
+                                                                     :source-field            (meta/id :checkins :venue-id)
+                                                                     :source-field-join-alias "CH"}]
+                                   "1234"]}))]
+      (is (=? {:query {:source-query {:source-table (meta/id :orders)
+                                      :fields       [[:field (meta/id :orders :id)         {}]
+                                                     [:field (meta/id :orders :user-id)    {}]
+                                                     [:field (meta/id :orders :product-id) {}]
+                                                     [:field (meta/id :orders :subtotal)   {}]
+                                                     [:field (meta/id :orders :tax)        {}]
+                                                     [:field (meta/id :orders :total)      {}]
+                                                     [:field (meta/id :orders :discount)   {}]
+                                                     [:field (meta/id :orders :created-at) {}]
+                                                     [:field (meta/id :orders :quantity)   {}]]}
+                       :joins        [{:source-query {:source-table (meta/id :checkins)}
+                                       :alias        "CH"
+                                       :strategy     :left-join
+                                       :fields       [[:field (meta/id :checkins :id)       {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
+                                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
+                                       :condition    [:=
+                                                      [:field "ID" {:base-type :type/BigInteger}]
+                                                      [:field (meta/id :checkins :id)
+                                                       {:base-type :type/BigInteger, :join-alias "CH"}]]}
+                                      {:source-table        (meta/id :venues)
+                                       :qp/is-implicit-join true
+                                       :fk-join-alias       "CH"
+                                       :alias               "VENUES__via__VENUE_ID__via__CH"
+                                       :strategy            :left-join
+                                       :fk-field-id         (meta/id :checkins :venue-id)
+                                       :condition           [:=
+                                                             [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]
+                                                             [:field (meta/id :venues :id) {:join-alias "VENUES__via__VENUE_ID__via__CH"}]]}]
+                       :fields       [[:field "ID"         {:base-type :type/BigInteger}]
+                                      [:field "USER_ID"    {:base-type :type/Integer}]
+                                      [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                      [:field "SUBTOTAL"   {:base-type :type/Float}]
+                                      [:field "TAX"        {:base-type :type/Float}]
+                                      [:field "TOTAL"      {:base-type :type/Float}]
+                                      [:field "DISCOUNT"   {:base-type :type/Float}]
+                                      [:field "CREATED_AT" {:base-type :type/DateTimeWithLocalTZ}]
+                                      [:field "QUANTITY"   {:base-type :type/Integer}]
+                                      ;; TODO (Cam 7/15/25) -- these should ACTUALLY be using field name refs rather
+                                      ;; than ID refs as well
+                                      [:field (meta/id :checkins :id)       {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :date)     {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :user-id)  {:join-alias "CH"}]
+                                      [:field (meta/id :checkins :venue-id) {:join-alias "CH"}]]
+                       :filter       [:=
+                                      [:field
+                                       (meta/id :venues :price)
+                                       {:source-field-join-alias "CH"
+                                        :join-alias              "VENUES__via__VENUE_ID__via__CH"}]
+                                      [:value 1234 {}]]}}
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL))))))
+
+(deftest ^:parallel returned-columns-no-duplicates-test
+  (testing "Don't return columns from a join twice (QUE-1607)"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 (lib.tu.macros/mbql-query people
+                   {:source-query {:source-table $$people
+                                   :breakout     [!month.created-at]
+                                   :aggregation  [[:count]]}
+                    :joins        [{:source-query {:source-table $$people
+                                                   :breakout     [!month.birth-date]
+                                                   :aggregation  [[:count]]}
+                                    :alias        "Q2"
+                                    :condition    [:= !month.created-at !month.&Q2.birth-date]
+                                    :fields       :all}]
+                    :order-by     [[:asc !month.created-at]]
+                    :limit        3}))]
+      (is (=? {:query {:joins [{:fields [[:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                         [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}]
+                       :fields [[:field "CREATED_AT" {:inherited-temporal-unit :month}]
+                                [:field "count" {:base-type :type/Integer}]
+                                ;; TODO (Cam 9/11/25) -- this should use a name ref as well, once we convert the
+                                ;; `resolve-joins` middleware this should be fixed
+                                [:field (meta/id :people :birth-date) {:join-alias "Q2"}]
+                                [:field "count" {:base-type :type/Integer, :join-alias "Q2"}]]}}
+              (-> query
+                  qp.preprocess/preprocess
+                  lib/->legacy-MBQL)))
+      (is (= ["CREATED_AT"
+              "count"
+              "Q2__BIRTH_DATE"
+              "Q2__count"]
+             (mapv :lib/desired-column-alias (qp.preprocess/query->expected-cols query)))))))
+
+(deftest ^:parallel unambiguous-field-refs-test
+  (testing "QP metadata MUST return unambiguous field refs (if refs are ambiguous then force name refs) (QUE-1623)"
+    (let [mp            (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
+                         meta/metadata-provider
+                         [(lib.tu.macros/mbql-query orders
+                            {:breakout    [$user-id]
+                             :aggregation [[:count]]})
+                          (lib.tu.macros/mbql-query orders
+                            {:breakout    [$user-id]
+                             :aggregation [[:count]]})
+                          (lib.tu.macros/mbql-query people
+                            {:fields [$id]
+                             :joins  [{:fields       :all
+                                       :alias        "ord1"
+                                       :source-table "card__1"
+                                       :condition    [:= $id &ord1.orders.user-id]}
+                                      {:fields       :all
+                                       :alias        "ord2"
+                                       :source-table "card__2"
+                                       :condition    [:= $id &ord2.orders.user-id]}]})])
+          query         (lib/query mp {:database (meta/id)
+                                       :type     :query
+                                       :query    {:source-table "card__3"}})
+          expected-cols (qp.preprocess/query->expected-cols query)]
+      ;; use deduplicated column name for maximum backwards compatibility with legacy FE viz settings maps that use them
+      ;; as keys.
+      (is (apply distinct? (map :field_ref expected-cols)))
+      (is (=? [{:lib/desired-column-alias "ID",            :field_ref [:field (meta/id :people :id) nil]}
+               {:lib/desired-column-alias "ord1__USER_ID", :field_ref [:field "USER_ID" {}]}
+               {:lib/desired-column-alias "ord1__count",   :field_ref [:field "count" {}]}
+               {:lib/desired-column-alias "ord2__USER_ID", :field_ref [:field "USER_ID_2" {}]}
+               {:lib/desired-column-alias "ord2__count",   :field_ref [:field "count_2" {}]}]
+              (map #(select-keys % [:lib/desired-column-alias :field_ref])
+                   expected-cols))))))
+
+;;; adapted from [[metabase.query-processor.explicit-joins-test/test-31769]]
+(deftest ^:parallel test-31769
+  (testing "Make sure queries built with MLv2 that have source Cards with joins work correctly (#31769) (#33083)"
+    (let [mp    (lib.tu.mocks-31769/mock-metadata-provider meta/metadata-provider meta/id)
+          query (lib.tu.mocks-31769/query mp)]
+      (is (=? {:stages [{:source-card 1}
+                        {:joins [{:alias  "Card 2 - Products → Category"
+                                  :fields :all
+                                  :stages [{:source-card 2}]}]}]}
+              query))
+      (testing `lib/returned-columns
+        (binding [lib.metadata.calculation/*display-name-style* :long]
+          (is (= [["Products → Category"                     "Products__CATEGORY"]
+                  ["Count"                                   "count"]
+                  ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+                 (mapv (juxt :display-name :lib/desired-column-alias)
+                       (lib/returned-columns query))))))
+      (testing `qp.preprocess/query->expected-cols
+        (is (=? {:stages [{:breakout    [[:field {:join-alias "Products"} pos-int?]]
+                           :aggregation [[:count {}]]
+                           :joins       [{:alias  "Products"
+                                          :stages [{:fields #(= (count %) 8)}]}
+                                         {:alias  "People - User"
+                                          :stages [{:fields #(= (count %) 13)}]}]}
+                          {:fields [[:field {} "Products__CATEGORY"]
+                                    [:field {} "count"]]}
+                          {:fields [[:field {} "Products__CATEGORY"]
+                                    [:field {} "count"]
+                                    [:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
+                           :joins  [{:alias  "Card 2 - Products → Category"
+                                     :fields [[:field {:join-alias "Card 2 - Products → Category"} (meta/id :products :category)]]
+                                     :stages [{:breakout [[:field {} (meta/id :products :category)]]}
+                                              {:fields [[:field {} "CATEGORY"]]}]}]}]}
+                (qp.preprocess/preprocess query)))
+        (is (= [["Products → Category"                     "Products__CATEGORY"]
+                ["Count"                                   "count"]
+                ["Card 2 - Products → Category → Category" "Card 2 - Products → Category__CATEGORY"]]
+               (map (juxt :display_name :lib/desired-column-alias)
+                    (qp.preprocess/query->expected-cols query))))))))
+
+(deftest ^:parallel sane-desired-column-aliases-test
+  (testing "Do not 'double-dip' a desired-column alias and do `__via__` twice"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:type     :query
+                  :database (meta/id)
+                  :query    {:aggregation  [[:count]]
+                             :source-table (meta/id :orders)
+                             :breakout     [[:field
+                                             (meta/id :products :category)
+                                             {:source-field (meta/id :orders :product-id)}]]}})]
+      (testing "one stage"
+        (is (=? [{:name                         "CATEGORY"
+                  :display_name                 "Product → Category"
+                  ;; This should be `:source/implicitly-joinable` because we reify the join during preprocessing, and
+                  ;; join doesn't exist in the original version of the query. Note that join alias doesn't come back in
+                  ;; this case because [[metabase.lib.metadata.result-metadata/remove-implicit-join-aliases]] strips it
+                  ;; out.
+                  :lib/source                   :source/implicitly-joinable
+                  :lib/breakout?                true
+                  :lib/source-column-alias      "CATEGORY"
+                  :lib/desired-column-alias     "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                  :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
+                  :source_alias                 (symbol "nil #_\"key is not present.\"")
+                  :fk_field_id                  (meta/id :orders :product-id)}
+                 {:name                     "count"
+                  :display_name             "Count"
+                  :lib/source               :source/aggregations
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"}]
+                (qp.preprocess/query->expected-cols query))))
+      ;; in the second stage keys like `:fk-field-id` need to get renamed to `:lib/original-fk-field-id`. and
+      ;; desired-alias => new source-alias
+      (testing "two stages"
+        (let [query (lib/append-stage query)]
+          (is (=? [{:name                     "CATEGORY"
+                    :display_name             "Product → Category"
+                    :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                    :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                    :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                    :lib/original-fk-field-id (meta/id :orders :product-id)}
+                   {:name                     "count"
+                    :display_name             "Count"
+                    :lib/source-column-alias  "count"
+                    :lib/desired-column-alias "count"}]
+                  (qp.preprocess/query->expected-cols query))))))))

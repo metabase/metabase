@@ -1,0 +1,1 @@
+export { DataModelMeasureDetailPage } from "./DataModelMeasureDetailPage";

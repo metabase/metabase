@@ -200,7 +200,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     });
   });
 
-  it("don't propagate permissions by checkbox without access select", () => {
+  it("don't propagate permissions after turning off 'Also change sub-collections' toggle (#30494)", () => {
     cy.visit("/admin/permissions/collections");
 
     const collections = ["Our analytics", "First collection"];
@@ -224,14 +224,14 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       "All Users",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       "View",
-      false,
+      true, // Turn 'Also change sub-collections' toggle on
     );
 
     H.modifyPermission(
       "All Users",
       COLLECTION_ACCESS_PERMISSION_INDEX,
       null,
-      true,
+      false, // Turn 'Also change sub-collections' toggle off
     );
 
     // Navigate to children
@@ -456,11 +456,13 @@ describe("scenarios > admin > permissions", () => {
     cy.signIn("nodata");
     H.visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question");
-    cy.findByTestId("viz-settings-button").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").should("not.exist");
+    H.queryBuilderMain().findByText(
+      "Sorry, you don't have permission to run this query.",
+    );
+    H.queryBuilderFooter()
+      .findByTestId("viz-settings-button")
+      .should("not.exist");
+    H.queryBuilderFooter().findByText("Visualization").should("not.exist");
   });
 
   it("shows permission error for cards that use blocked data sources", () => {
@@ -492,6 +494,8 @@ describe("scenarios > admin > permissions", () => {
   });
 
   it("shows permissions help", () => {
+    // pro-token because some help sections are hidden for OSS
+    H.activateToken("pro-self-hosted");
     cy.visit("/admin/permissions");
 
     // Data permissions w/o `legacy-no-self-service` in graph
@@ -575,7 +579,7 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 
-  it("should show a dismissable modal and banner showing split permisson changes (#metabase#45073", () => {
+  it("should show a dismissable modal and banner showing split permission changes (#metabase#45073", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure
@@ -627,7 +631,7 @@ describe("scenarios > admin > permissions", () => {
     cy.findByRole("alert").should("not.exist");
   });
 
-  it("split permisson change modal should dismiss even if network request fails", () => {
+  it("split permission change modal should dismiss even if network request fails", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure
@@ -715,7 +719,7 @@ describe("scenarios > admin > permissions", () => {
         "All Users",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "View",
-        true,
+        false,
       );
 
       cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
@@ -738,7 +742,7 @@ describe("scenarios > admin > permissions", () => {
         "nosql",
         COLLECTION_ACCESS_PERMISSION_INDEX,
         "Curate",
-        true,
+        false,
       );
 
       cy.button("Save changes").click();

@@ -10,6 +10,7 @@ import { AdminSettingInput } from "../widgets/AdminSettingInput";
 import {
   PublicLinksActionListing,
   PublicLinksDashboardListing,
+  PublicLinksDocumentListing,
   PublicLinksQuestionListing,
 } from "../widgets/PublicLinksListing";
 
@@ -31,6 +32,9 @@ export function PublicSharingSettingsPage() {
           </SettingsSection>
           <SettingsSection title={t`Shared questions`}>
             <PublicLinksQuestionListing />
+          </SettingsSection>
+          <SettingsSection title={t`Shared documents`}>
+            <PublicLinksDocumentListing />
           </SettingsSection>
           <SettingsSection title={t`Shared action forms`}>
             <PublicLinksActionListing />

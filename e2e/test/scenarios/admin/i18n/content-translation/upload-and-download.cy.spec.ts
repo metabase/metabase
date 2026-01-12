@@ -1,6 +1,11 @@
 import path from "path";
 
 import {
+  getCSVWithHeaderRow,
+  uploadTranslationDictionaryViaAPI,
+} from "e2e/support/helpers/e2e-content-translation-helpers";
+
+import {
   germanFieldNames,
   invalidLocaleXX,
   multipleInvalidLocales,
@@ -11,14 +16,12 @@ import {
 import {
   assertOnlyTheseTranslationsAreStored,
   generateLargeCSV,
-  getCSVWithHeaderRow,
   uploadTranslationDictionary,
-  uploadTranslationDictionaryViaAPI,
 } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
 
-describe("scenarios > admin > localization > content translation", () => {
+describe("scenarios > admin > embedding > guest embeds> content translation", () => {
   describe("oss", () => {
     beforeEach(() => {
       H.restore();
@@ -26,7 +29,7 @@ describe("scenarios > admin > localization > content translation", () => {
     });
 
     it("admin settings configuration form is not present", () => {
-      cy.visit("/admin/settings/localization");
+      cy.visit("/admin/embedding/guest");
       cy.findByTestId("content-translation-configuration").should("not.exist");
     });
   });
@@ -52,9 +55,9 @@ describe("scenarios > admin > localization > content translation", () => {
     describe("The translation download button", () => {
       it("downloads the stored translations", () => {
         uploadTranslationDictionaryViaAPI(germanFieldNames);
-        cy.visit("/admin/settings/localization");
+        cy.visit("/admin/embedding");
         cy.findByTestId("content-translation-configuration")
-          .button(/Download translation dictionary/i)
+          .button(/Get translation dictionary template/i)
           .click();
         const downloadsFolder = Cypress.config("downloadsFolder");
         cy.readFile(
@@ -149,29 +152,21 @@ describe("scenarios > admin > localization > content translation", () => {
           .should("exist");
       });
 
-      it(
-        "erases previously stored translations when a new CSV is uploaded",
-        { tags: "@flaky" },
-        () => {
-          uploadTranslationDictionary(germanFieldNames);
-          assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
-            const oneArabicFieldName = [nonAsciiFieldNames[0]];
-            uploadTranslationDictionary(oneArabicFieldName);
-            assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
-          });
-        },
-      );
+      it("erases previously stored translations when a new CSV is uploaded", () => {
+        uploadTranslationDictionary(germanFieldNames);
+        assertOnlyTheseTranslationsAreStored(germanFieldNames).then(() => {
+          const oneArabicFieldName = [nonAsciiFieldNames[0]];
+          uploadTranslationDictionary(oneArabicFieldName);
+          assertOnlyTheseTranslationsAreStored(oneArabicFieldName, "ar");
+        });
+      });
 
-      it(
-        "does not erase previously stored translations when an upload fails",
-        { tags: "@flaky" },
-        () => {
-          uploadTranslationDictionary(germanFieldNames);
-          assertOnlyTheseTranslationsAreStored(germanFieldNames);
-          uploadTranslationDictionary(invalidLocaleXX);
-          assertOnlyTheseTranslationsAreStored(germanFieldNames);
-        },
-      );
+      it("does not erase previously stored translations when an upload fails", () => {
+        uploadTranslationDictionary(germanFieldNames);
+        assertOnlyTheseTranslationsAreStored(germanFieldNames);
+        uploadTranslationDictionary(invalidLocaleXX);
+        assertOnlyTheseTranslationsAreStored(germanFieldNames);
+      });
 
       it("rejects a CSV upload with invalid locales in multiple rows", () => {
         uploadTranslationDictionary(multipleInvalidLocales);
@@ -188,7 +183,7 @@ describe("scenarios > admin > localization > content translation", () => {
       });
 
       it("rejects, in the frontend, a CSV upload that is too big", () => {
-        cy.visit("/admin/settings/localization");
+        cy.visit("/admin/embedding");
         cy.get("#content-translation-dictionary-upload-input").selectFile(
           {
             contents: Cypress.Buffer.from(
@@ -214,7 +209,7 @@ describe("scenarios > admin > localization > content translation", () => {
       });
 
       it("rejects invalid CSV", () => {
-        cy.visit("/admin/settings/localization");
+        cy.visit("/admin/embedding");
         const validCSV = getCSVWithHeaderRow(germanFieldNames);
         const invalidCSV = validCSV + '\nde,Price,"Preis"X';
 

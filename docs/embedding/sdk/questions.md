@@ -1,11 +1,11 @@
 ---
-title: "Embedded analytics SDK - questions"
-description: How to embed charts in your app with the Embedded analytics SDK.
+title: "Modular embedding SDK - questions"
+description: How to embed charts in your app with the Modular embedding SDK.
 ---
 
-# Embedded analytics SDK - questions
+# Modular embedding SDK - questions
 
-{% include plans-blockquote.html feature="Embedded analytics SDK" sdk=true %}
+{% include plans-blockquote.html feature="Modular embedding SDK" sdk=true %}
 
 There are different ways you can embed questions:
 
@@ -26,6 +26,7 @@ A lightweight question component. Use this component when you want to display re
 The component has a default height, which can be customized by using the `height` prop. To inherit the height from the parent container, you can pass `100%` to the height prop.
 
 #### API Reference
+
 - [Component](./api/StaticQuestion.html)
 - [Props](./api/StaticQuestionProps.html)
 
@@ -46,6 +47,7 @@ Use this component when you want to allow people to explore their data and custo
 ![Interactive question](../images/interactive-question.png)
 
 #### API Reference
+
 - [Component](./api/InteractiveQuestion.html)
 - [Props](./api/InteractiveQuestionProps.html)
 
@@ -69,9 +71,13 @@ You can pass parameter values to questions defined with SQL via the `initialSqlP
 
 `initialSqlParameters` can't be used with questions built using the query builder.
 
+## Questions with natural language
+
+See [AI chat](./ai-chat.md).
+
 ## Customizing interactive questions
 
-By default, the Embedded analytics SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
+By default, the modular embedding SDK provides a default layout for interactive questions that allows you to view your questions, apply filters and aggregations, and access functionality within the query builder.
 
 Here's an example of using the `InteractiveQuestion` component with its default layout:
 
@@ -90,6 +96,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (e.g., `<InteractiveQuestion.Filter />`).
 
 #### API Reference:
+
 - [InteractiveQuestion.BackButton](./api/InteractiveQuestion.html#backbutton)
 - [InteractiveQuestion.Breakout](./api/InteractiveQuestion.html#breakout)
 - [InteractiveQuestion.BreakoutDropdown](./api/InteractiveQuestion.html#breakoutdropdown)
@@ -117,8 +124,27 @@ You can use [plugins](./plugins.md) to add custom functionality to your question
 
 ### `mapQuestionClickActions`
 
-This plugin allows you to add custom actions to the click-through menu of an interactive question. You can add and
-customize the appearance and behavior of the custom actions.
+When people click on a data point in the embedded interactive chart, Metabase shows them a menu of actions by default. The plugin `mapQuestionClickActions` allows you to customize this behavior. You can choose to:
+
+- Open the default Metabase menu.
+- Add custom actions to that click-through menu.
+- Perform immediate action without opening a menu.
+
+Use `mapQuestionClickActions` globally at the provider level, or on individual `InteractiveQuestion` or `InteractiveDashboard` components. For more on provider scope, see [Plugins](./plugins.md)
+
+The example below shows all the options for click action behavior. This example will:
+
+- Open a menu with custom actions when "Last Name" column is clicked.
+- Perform an immediate action (show an alert) when the "Plan" column is clicked.
+- Shows the default menu (available as `clickActions`) in all other cases.
+
+The behavior is determined by what `mapQuestionClickActions` returns: array of actions to open a menu, or a single action to trigger an immediate action.
+
+```typescript
+{% include_file "{{ dirname }}/snippets/questions/interactive-question-click-actions.tsx" snippet="example" %}
+```
+
+You can also customize the appearance of custom actions in the click menu. The example below shows an example of a click menu with default actions, a custom action, and a custom action with customized appearance:
 
 ```typescript
 {% include_file "{{ dirname }}/snippets/questions/interactive-question-plugins.tsx" snippet="example" %}

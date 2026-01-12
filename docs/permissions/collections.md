@@ -50,7 +50,7 @@ There is one, important exception: when a group has their data permission set to
 
 ## Dashboards with questions from multiple collections
 
-If a dashboard includes questions saved to other collections, the group will need view or curate access to all of those collections in order to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
+If a dashboard includes questions saved to other collections, the group will need view or curate access to all of those collections to view those questions. If not, Metabase will apologize and tell you that you lack permissions to see the cards saved to the other collections.
 
 ![Dashboard with questions from multiple collections, where the person is not in a group with access to one of the collections](./images/dashboard-no-permissions.png)
 
@@ -111,11 +111,7 @@ A personal collection works just like any other collection except that its permi
 [collections]: ../exploration-and-organization/collections.md
 [collection-permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions/collection-permissions
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-permissions]: ./data.md
-[data-sandboxing]: ../permissions/data-sandboxes.md
 [offical-collections]: ../exploration-and-organization/collections.md#official-collections
 [permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
-[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions
-[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [sql-snippet-folders]: ../questions/native-editor/snippets.md

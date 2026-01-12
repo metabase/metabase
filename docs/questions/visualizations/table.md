@@ -20,7 +20,7 @@ When viewing tables, you can click on the **gear** icon in the bottom left to br
 
 ![Adding or removing columns](../images/column-selection.png)
 
-Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#column-visibility).
+Admins (and people in groups with access to table metadata) can hide columns across your entire Metabase by marking them as hidden in the [table metadata settings](../../data-modeling/metadata-editing.md#field-visibility).
 
 > **Hiding columns should _not_ be used to secure sensitive information**. Hiding columns in table visualization settings only affects the visibility of the columns _in the visualization_, not in the query results. Even people with view-only permissions to the question will be able to change the visualization settings and unhide columns. To exclude a column from the results of a specific query, uncheck the column in the "Data" block of the query builder.
 
@@ -265,11 +265,12 @@ Lets you change the unit of currency from whatever the system default is.
 
 ### Currency label style
 
-Allows you to switch between displaying the currency label as:
+Choose how to display the currency label. For example, for Canadian dollars:
 
-- a symbol (like $)
-- a code (like USD)
-- the full name of the currency (like "US dollars")
+- **Symbol**: `CA$` 
+- **Local symbol**: `$`
+- **Code**: `CAD`
+- **Name**: `Canadian dollars`
 
 ### Where to display the unit of currency
 
@@ -290,7 +291,7 @@ You can set as many rules on a table as you want, and change the order in which 
 
 ## Adding tables to dashboards
 
-When you add a table to a dashboard, you can add [custom destinations](../../dashboards/interactive.md#custom-destinations) to individual columns, wire up filter widgets, and more. To see an example of a table used in a dashboard, check out our article on [building a record lookup tool with Metabase](/learn/metabase-basics/querying-and-dashboards/dashboards/build-a-record-lookup-tool).
+When you add a table to a dashboard, you can add [custom destinations](../../dashboards/interactive.md#custom-destinations) to individual columns, wire up filter widgets, and more. To see an example of a table used in a dashboard, check out our article on [building a record lookup tool with Metabase](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/dashboards/build-a-record-lookup-tool).
 
 ## Table pagination on dashboard cards
 

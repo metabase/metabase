@@ -3,6 +3,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
@@ -11,6 +12,7 @@
    [metabase.server.settings :as server.settings]
 
    [metabase.settings.core :as setting]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [ring.util.codec :refer [base64-encode]])
@@ -62,7 +64,7 @@
   [url]
   (if (= url "*")
     {:protocol nil :domain "*" :port "*"}
-    (let [pattern #"^(?:(https?)://)?([^:/]+)(?::(\d+|\*))?$"
+    (let [pattern #"^(?:(https?|app|capacitor)://)?([^:/]+)(?::(\d+|\*))?$"
           matches (re-matches pattern url)]
       (if-not matches
         (do (log/errorf "Invalid URL: %s" url) nil)
@@ -101,16 +103,24 @@
                new-domain
                (when (and port (not= domain "*")) (format ":%s" port))))))))
 
+(def ^:private always-allowed-iframe-hosts
+  ["'self'"
+   "https://www.metabase.com/"
+   "https://metabase.com/"])
+
 (defn- parse-allowed-iframe-hosts*
   [hosts-string]
   (->> (str/split hosts-string #"[ ,\s\r\n]+")
        (remove str/blank?)
        (mapcat add-wildcard-entries)
-       (into ["'self'"])))
+       (into always-allowed-iframe-hosts)))
 
 (def ^{:doc "Parse the string of allowed iframe hosts, adding wildcard prefixes as needed."}
   parse-allowed-iframe-hosts
   (memoize parse-allowed-iframe-hosts*))
+
+(def ^:private frontend-dev-port (or (env/env :mb-frontend-dev-port) "8080"))
+(def ^:private frontend-address (str "http://localhost:" frontend-dev-port))
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
@@ -126,7 +136,7 @@
                                     "https://www.google-analytics.com")
                                   ;; for webpack hot reloading
                                   (when config/is-dev?
-                                    "http://localhost:8080")
+                                    frontend-address)
                                   ;; for react dev tools to work in Firefox until resolution of
                                   ;; https://github.com/facebook/react/issues/17997
                                   (when config/is-dev?
@@ -145,11 +155,12 @@
                                    (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
-                                   "http://localhost:8080")
+                                   frontend-address)
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
+                  :style-src-attr ["'self'"]
                   :frame-src    (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts))
                   :font-src     ["*"]
                   :img-src      ["*"
@@ -164,11 +175,12 @@
                                    (setting/get-value-of-type :string :snowplow-url))
                                  ;; Webpack dev server
                                  (when config/is-dev?
-                                   "*:8080 ws://*:8080")
+                                   (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]
-                  :manifest-src ["'self'"]}]
+                  :manifest-src ["'self'"]
+                  :media-src    ["www.metabase.com"]}]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defn- content-security-policy-header-with-frame-ancestors
@@ -192,8 +204,12 @@
 (defn approved-protocol?
   "Checks if the protocol is compatible with the reference one"
   [protocol reference-protocol]
-  (or (nil? reference-protocol)
-      (= protocol reference-protocol)))
+  (if (nil? reference-protocol)
+    ;; When the approved origin has no protocol (e.g., "localhost"),
+    ;; treat it as allowing only HTTP or HTTPS. Custom schemes like
+    ;; app:// must be explicitly specified in the approved origins.
+    (contains? #{"http" "https"} protocol)
+    (= protocol reference-protocol)))
 
 (defn approved-port?
   "Checks if the port is compatible with the reference one"
@@ -208,34 +224,48 @@
   (let [urls (str/split approved-origins-raw #" +")]
     (keep parse-url urls)))
 
+(defn- localhost-origin?
+  "Returns true if the origin is localhost (any port)"
+  [raw-origin]
+  (when raw-origin
+    (let [origin (parse-url raw-origin)]
+      (and origin
+           (= (u/lower-case-en (:domain origin)) "localhost")))))
+
 (mu/defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
   [raw-origin :- [:maybe :string]
    approved-origins-raw :- [:maybe :string]]
   (boolean
-   (when (and (seq raw-origin) (seq approved-origins-raw))
-     (let [approved-list (parse-approved-origins approved-origins-raw)
-           origin        (parse-url raw-origin)]
-       (some (fn [approved-origin]
-               (and
-                (approved-domain? (:domain origin) (:domain approved-origin))
-                (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                (approved-port? (:port origin) (:port approved-origin))))
-             approved-list)))))
+   (or
+    ;; Allow localhost origins unless explicitly disallowed
+    (and (localhost-origin? raw-origin)
+         (not (server.settings/disable-cors-on-localhost)))
+    ;; Check against approved origins list
+    (when (and (seq raw-origin) (seq approved-origins-raw))
+      (let [approved-list (parse-approved-origins approved-origins-raw)
+            origin        (parse-url raw-origin)]
+        (some (fn [approved-origin]
+                (and
+                 (approved-domain? (:domain origin) (:domain approved-origin))
+                 (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                 (approved-port? (:port origin) (:port approved-origin))))
+              approved-list))))))
 
 (defn access-control-headers
   "Returns headers for CORS requests"
   [origin enabled? approved-origins]
-  (when enabled?
-    (merge
-     (when (approved-origin? origin approved-origins)
-       {"Access-Control-Allow-Origin" origin
-        "Vary"                        "Origin"})
-     {"Access-Control-Allow-Headers"  "*"
-      "Access-Control-Allow-Methods"  "*"
-      "Access-Control-Expose-Headers" "X-Metabase-Anti-CSRF-Token"
-      ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
-      "Access-Control-Max-Age"  "60"})))
+  (let [localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))]
+    (when (or enabled? localhost-allowed?)
+      (merge
+       (when (approved-origin? origin approved-origins)
+         {"Access-Control-Allow-Origin" origin
+          "Vary"                        "Origin"})
+       {"Access-Control-Allow-Headers"  "*"
+        "Access-Control-Allow-Methods"  "*"
+        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version"
+        ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
+        "Access-Control-Max-Age"  "60"}))))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options."
@@ -246,7 +276,9 @@
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors allow-iframes? nonce)
    (access-control-headers origin
-                           (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                           (or
+                            (setting/get-value-of-type :boolean :enable-embedding-sdk)
+                            (setting/get-value-of-type :boolean :enable-embedding-simple))
                            (embedding.settings/embedding-app-origins-sdk))
    (when-not allow-iframes?
      ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
@@ -259,15 +291,33 @@
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"
     ;; Tell browser not to use MIME sniffing to guess types of files -- protect against MIME type confusion attacks
-    "X-Content-Type-Options"            "nosniff"}))
+    "X-Content-Type-Options"            "nosniff"}
+   ;; Add Cross-Origin headers from environment variables if set
+   (when-let [corp (env/env :mb-cross-origin-resource-policy)]
+     {"Cross-Origin-Resource-Policy" corp})
+   (when-let [coep (env/env :mb-cross-origin-embedder-policy)]
+     {"Cross-Origin-Embedder-Policy" coep})))
+
+(defn- always-allow-cors?
+  "Returns true if the request/response should have CORS headers added."
+  [request response]
+  ;; Needed for showing errors in the SDK when embedding or SSO is disabled.
+  (and (= (:uri request) "/auth/sso")
+       (or (= (:request-method request) :options)
+           (contains? #{400 402} (:status response)))))
 
 (defn- add-security-headers* [request response]
   ;; merge is other way around so that handler can override headers
-  (update response :headers #(merge %2 %1) (security-headers
-                                            :origin         (get (:headers request) "origin")
-                                            :nonce          (:nonce request)
-                                            :allow-iframes? ((some-fn request/public? request/embed?) request)
-                                            :allow-cache?   (request/cacheable? request))))
+  (let [headers (security-headers
+                 :origin         (get (:headers request) "origin")
+                 :nonce          (:nonce request)
+                 :allow-iframes? ((some-fn request/public? request/embed?) request)
+                 :allow-cache?   (request/cacheable? request))
+        cors-headers (when (always-allow-cors? request response)
+                       {"Access-Control-Allow-Origin" "*"
+                        "Access-Control-Allow-Headers" "*"
+                        "Access-Control-Allow-Methods" "*"})]
+    (update response :headers #(merge %2 %1 cors-headers) headers)))
 
 (defn add-security-headers
   "Middleware that adds HTTP security and cache-busting headers."

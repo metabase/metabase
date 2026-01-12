@@ -12,14 +12,14 @@ import {
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import { isNotNull } from "metabase/lib/types";
-import { getGroupName } from "metabase/querying/filters/utils/groups";
-import { DelayGroup, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import {
   type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import { getGroupName } from "metabase/querying/filters/utils/groups";
+import { DelayGroup, Icon } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import { WIDTH } from "../constants";
 import type {
@@ -154,8 +154,6 @@ export function FilterColumnPicker({
         itemTestId="dimension-list-item"
         searchProp={SEARCH_PROP}
         globalSearch
-        fuzzySearch
-        withBorders
       />
     </DelayGroup>
   );

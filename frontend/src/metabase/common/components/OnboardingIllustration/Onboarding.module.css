@@ -1,0 +1,22 @@
+.Container {
+  overflow: hidden;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  container-type: inline-size;
+
+  @media screen and (--breakpoint-max-lg) {
+    display: none;
+  }
+}
+
+.Colors {
+  --illustration-primary: var(--mb-color-brand);
+}
+
+.Image {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}

@@ -99,6 +99,7 @@ export const createMockDateTimeFieldFingerprint = (
 export const createMockFieldDimension = (
   opts?: Partial<FieldDimension>,
 ): FieldDimension => ({
+  id: 1,
   type: "internal",
   name: "mock_field",
   ...opts,

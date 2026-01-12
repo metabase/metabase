@@ -115,7 +115,7 @@
                              "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))]
     path))
 
-(when (or config/is-dev? config/is-test?)
+(when (not config/is-prod?)
   (defn- load-local-plugin-manifest! [^Path path]
     (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
@@ -141,7 +141,7 @@
        (map u.files/get-path (str/split additional-paths #",")))))
 
   (defn- load-local-plugin-manifests!
-    "Load local plugin manifest files when running in dev or test mode, to simulate what would happen when loading those
+    "Load local plugin manifest files when not running in a production mode, to simulate what would happen when loading those
   same plugins from the uberjar. This is needed because some plugin manifests define driver methods and the like that
   aren't defined elsewhere."
     []
@@ -170,7 +170,7 @@
   (extract-system-modules!)
   (let [paths (plugins-paths)]
     (init-plugins! paths))
-  (when (or config/is-dev? config/is-test?)
+  (when (not config/is-prod?)
     (load-local-plugin-manifests!)))
 
 (defonce ^:private loaded? (atom false))

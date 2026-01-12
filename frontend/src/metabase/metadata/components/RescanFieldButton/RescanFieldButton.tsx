@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
 import { useRescanFieldValuesMutation } from "metabase/api";
-import { useTemporaryState, useToast } from "metabase/common/hooks";
+import { useTemporaryState } from "metabase/common/hooks";
+import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button } from "metabase/ui";
 import type { FieldId } from "metabase-types/api";
 
@@ -12,17 +13,13 @@ interface Props {
 export const RescanFieldButton = ({ fieldId }: Props) => {
   const [rescanFieldValues] = useRescanFieldValuesMutation();
   const [started, setStarted] = useTemporaryState(false, 2000);
-  const [sendToast] = useToast();
+  const { sendErrorToast } = useMetadataToasts();
 
   const handleClick = async () => {
     const { error } = await rescanFieldValues(fieldId);
 
     if (error) {
-      sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "var(--mb-color-warning)",
-        message: t`Failed to start scan`,
-      });
+      sendErrorToast(t`Failed to start scan`);
     } else {
       setStarted(true);
     }

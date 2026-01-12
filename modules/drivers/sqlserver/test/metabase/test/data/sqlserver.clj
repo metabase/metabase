@@ -57,14 +57,15 @@
 
 (defmethod tx/create-and-grant-roles! :sqlserver
   [driver details roles user-name _default-role]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        login-name (str user-name "_login")]
     ;; create a non-sa user
     (doseq [statement [(format (str "IF NOT EXISTS ("
                                     "SELECT name FROM master.sys.server_principals WHERE name = '%s')"
                                     " BEGIN CREATE LOGIN [%s] WITH PASSWORD = N'%s' END")
-                               user-name user-name (:password details))
+                               login-name login-name (:password details))
                        (format "DROP USER IF EXISTS [%s];" user-name)
-                       (format "CREATE USER %s FOR LOGIN %s;" user-name user-name)
+                       (format "CREATE USER %s FOR LOGIN %s;" user-name login-name)
                        (format "EXEC sp_addrolemember 'db_owner', %s;" user-name)]]
       (jdbc/execute! spec [statement])))
   (drop-if-exists-and-create-roles! driver details roles)
@@ -86,7 +87,7 @@
           (jdbc/execute! spec [statement] {:transaction? false}))))
     (doseq [statement [(format "EXEC sp_droprolemember 'db_owner', %s" db-user)
                        (format "DROP USER IF EXISTS %s;" db-user)
-                       (format "DROP LOGIN %s;" db-user)]]
+                       (format "DROP LOGIN %s;" (str db-user "_login"))]]
       (jdbc/execute! spec [statement] {:transaction? false}))))
 
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
@@ -165,3 +166,8 @@
     (sql/format
      {(if materialized? :drop-materialized-view :drop-view) [[:if-exists [:raw qualified-view]]]}
      :dialect (sql.qp/quote-style driver))))
+
+(defmethod sql.tx/generated-column-sql :sqlserver [_ expr]
+  (format "AS (%s)" expr))
+
+(defmethod sql.tx/generated-column-infers-type? :sqlserver [_] true)

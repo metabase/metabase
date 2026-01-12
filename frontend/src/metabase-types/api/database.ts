@@ -14,11 +14,13 @@ export type DatabaseSettings = {
 
 export type DatabaseFeature =
   | "actions"
+  | "actions/data-editing"
   | "basic-aggregations"
   | "binning"
   | "case-sensitivity-string-filter-options"
   | "convert-timezone"
   | "datetime-diff"
+  | "database-replication"
   | "database-routing"
   | "dynamic-schema"
   | "expression-aggregations"
@@ -37,6 +39,7 @@ export type DatabaseFeature =
   | "persist-models"
   | "persist-models-enabled"
   | "regex"
+  | "regex/lookaheads-and-lookbehinds"
   | "schemas"
   | "set-timezone"
   | "left-join"
@@ -51,7 +54,10 @@ export type DatabaseFeature =
   | "window-functions/offset"
   | "distinct-where"
   | "saved-question-sandboxing"
-  | "split-part";
+  | "split-part"
+  | "collate"
+  | "transforms/python"
+  | "transforms/table";
 
 export interface Database extends DatabaseData {
   id: DatabaseId;
@@ -116,6 +122,19 @@ export interface GetDatabaseRequest {
   exclude_uneditable_details?: boolean;
 }
 
+export interface GetDatabaseSettingsAvailableResponse {
+  settings: Record<string, DatabaseLocalSettingAvailability>;
+}
+
+export type DatabaseLocalSettingDisableReason = {
+  key: string;
+  message: string;
+};
+
+export type DatabaseLocalSettingAvailability =
+  | { enabled: true }
+  | { enabled: false; reasons: DatabaseLocalSettingDisableReason[] };
+
 export type GetDatabaseHealthResponse =
   | { status: "ok" }
   | { status: "error"; message: string; errors: unknown };
@@ -163,6 +182,7 @@ export interface GetDatabaseMetadataRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
+  skip_fields?: boolean;
 }
 
 export interface CreateDatabaseRequest {

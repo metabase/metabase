@@ -1,28 +1,28 @@
 .root {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .title {
   font-size: var(--mantine-font-size-xl);
   font-weight: var(--mantine-heading-font-weight);
   line-height: var(--mantine-line-height-md);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .overlay {
-  background-color: color-mix(
-    in hsl,
-    var(--mb-color-bg-black),
-    transparent 40%
-  );
+  background-color: var(--mb-color-overlay);
   padding: 11px;
 }
 
 .content {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
+  border: 1px solid var(--mb-color-border);
 }
 
 .header {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 }
 
 .ModalCloseButton {

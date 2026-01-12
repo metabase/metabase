@@ -1,113 +1,60 @@
-import {
-  activateToken,
-  assertChatVisibility,
-  chatMessages,
-  closeMetabotViaCloseButton,
-  lastChatMessage,
-  mockMetabotResponse,
-  openMetabotViaCommandPalette,
-  openMetabotViaSearchButton,
-  openMetabotViaShortcutKey,
-  popover,
-  restore,
-  sendMetabotMessage,
-} from "e2e/support/helpers";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+
+const { H } = cy;
 
 const loremIpsum =
   "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer auctor id erat non sollicitudin. ";
 
 describe("Metabot UI", () => {
   beforeEach(() => {
-    restore();
+    H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/ee/metabot-v3/v2/agent-streaming").as(
-      "agentReq",
+    cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+    cy.intercept("GET", "/api/automagic-dashboards/database/*/candidates").as(
+      "xrayCandidates",
     );
-    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
   });
 
   describe("OSS", { tags: "@OSS" }, () => {
     beforeEach(() => {
       cy.visit("/");
-      cy.wait("@sessionProperties");
+      cy.wait("@xrayCandidates");
     });
 
     it("should not be available in OSS", () => {
-      openMetabotViaShortcutKey(false);
-      assertChatVisibility("not.visible");
+      H.openMetabotViaShortcutKey(false);
+      H.assertChatVisibility("not.visible");
       cy.findByLabelText("Navigation bar").within(() => {
         cy.findByText("New").click();
       });
-      popover().findByText("Metabot request").should("not.exist");
-      assertChatVisibility("not.visible");
+      H.popover().findByText("Metabot request").should("not.exist");
+      H.assertChatVisibility("not.visible");
     });
   });
 
   describe("EE", () => {
     beforeEach(() => {
-      activateToken("bleeding-edge");
+      H.activateToken("bleeding-edge");
       cy.visit("/");
-      cy.wait("@sessionProperties");
-    });
-
-    it("should be able to be opened and closed", () => {
-      openMetabotViaSearchButton();
-      closeMetabotViaCloseButton();
-
-      openMetabotViaCommandPalette();
-      closeMetabotViaCloseButton();
-
-      // FIXME: shortcut keys aren't working in CI only, but work locally
-      // openMetabotViaShortcutKey();
-      // closeMetabotViaShortcutKey();
-    });
-
-    it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
-      openMetabotViaSearchButton();
-      chatMessages().should("not.exist");
-
-      mockMetabotResponse({
-        statusCode: 200,
-        body: whoIsYourFavoriteResponse,
-      });
-      sendMetabotMessage("Who is your favorite?");
-
-      lastChatMessage().should("have.text", "You, but don't tell anyone.");
-
-      mockMetabotResponse({ statusCode: 500 });
-      sendMetabotMessage("Who is your favorite?");
-      lastChatMessage().should(
-        "have.text",
-        "Metabot is currently offline. Please try again later.",
-      );
-    });
-
-    it("should allow starting a new metabot conversation via the /metabot/new", () => {
-      mockMetabotResponse({
-        statusCode: 200,
-        body: whoIsYourFavoriteResponse,
-      });
-      cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
-      assertChatVisibility("visible");
-      lastChatMessage().should("have.text", "You, but don't tell anyone.");
+      cy.wait("@xrayCandidates");
     });
 
     describe("scroll management", () => {
       it("should not show filler element if there are not messages", () => {
-        openMetabotViaSearchButton();
-        chatMessages().should("not.exist");
+        H.openMetabotViaSearchButton();
+        H.chatMessages().should("not.exist");
         cy.findByTestId("metabot-message-filler").should("not.exist");
       });
 
       it("should correctly size the filler element to take remaining space if messages aren't scrollable", () => {
-        openMetabotViaSearchButton();
+        H.openMetabotViaSearchButton();
 
-        mockMetabotResponse({
+        H.mockMetabotResponse({
           statusCode: 200,
           body: whoIsYourFavoriteResponse,
         });
 
-        sendMetabotMessage("Who is your favorite?");
+        H.sendMetabotMessage("Who is your favorite?");
         cy.findByTestId("metabot-chat-inner-messages")
           .invoke("innerHeight")
           .then((containerHeight) => {
@@ -128,20 +75,20 @@ describe("Metabot UI", () => {
       });
 
       it("should resize filler element and auto-scroll to new prompt on subsequent messages", () => {
-        openMetabotViaSearchButton();
-        mockMetabotResponse({
+        H.openMetabotViaSearchButton();
+        H.mockMetabotResponse({
           statusCode: 200,
           body: whoIsYourFavoriteResponse,
         });
-        sendMetabotMessage("Who is your favorite?");
+        H.sendMetabotMessage("Who is your favorite?");
 
         cy.log("test on message shorter than prompt");
-        mockMetabotResponse({
+        H.mockMetabotResponse({
           statusCode: 200,
           body: `0:"${loremIpsum.repeat(5)}"
 d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         });
-        sendMetabotMessage("You really mean that?");
+        H.sendMetabotMessage("You really mean that?");
         cy.log("scroll new prompt to top of the scroll area");
         cy.findByTestId("metabot-chat-inner-messages")
           .findByText("You really mean that?")
@@ -155,12 +102,12 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
           expect($el[0].clientHeight).to.be.greaterThan(0);
         });
 
-        mockMetabotResponse({
+        H.mockMetabotResponse({
           statusCode: 200,
           body: `0:"${loremIpsum.repeat(50)}"
 d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         });
-        sendMetabotMessage("Keep going...");
+        H.sendMetabotMessage("Keep going...");
 
         cy.log(
           "if the response is longer than the scroll area the filler height should be zero",
@@ -171,21 +118,110 @@ d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
       });
 
       it("should open metabot to the bottom of the conversation when reopened with message history", () => {
-        mockMetabotResponse({
+        H.mockMetabotResponse({
           statusCode: 200,
           body: `0:"${loremIpsum.repeat(5)}"
 d:{"finishReason":"stop","usage":{"promptTokens":4916,"completionTokens":8}}`,
         });
-        openMetabotViaSearchButton();
-        sendMetabotMessage("Who is your favorite?");
+        H.openMetabotViaSearchButton();
+        H.sendMetabotMessage("Who is your favorite?");
 
-        closeMetabotViaCloseButton();
-        openMetabotViaSearchButton();
+        H.closeMetabotViaCloseButton();
+        H.openMetabotViaSearchButton();
         cy.findByTestId("metabot-chat-inner-messages").then(($el) => {
           const el = $el[0];
           const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight;
           expect(isAtBottom).to.be.true;
         });
+      });
+    });
+  });
+
+  describe("metabot events", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+      H.activateToken("bleeding-edge");
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track Metabot chart explainer", () => {
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+      cy.findByLabelText("Explain this chart").should("be.visible").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metabot_explain_chart_clicked",
+      });
+    });
+
+    describe("Metabot chat", () => {
+      beforeEach(() => {
+        cy.visit("/");
+        cy.wait("@xrayCandidates");
+      });
+
+      it("should be able to be opened and closed", () => {
+        H.openMetabotViaSearchButton();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "header",
+        });
+        H.closeMetabotViaCloseButton();
+      });
+
+      it("should be controlled via keyboard shortcut", () => {
+        H.openMetabotViaShortcutKey();
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_chat_opened",
+          triggered_from: "keyboard_shortcut",
+        });
+        H.closeMetabotViaShortcutKey();
+        cy.log("We don't track closing the chat via kbd");
+        H.expectUnstructuredSnowplowEvent(
+          {
+            event: "metabot_chat_opened",
+            triggered_from: "keyboard_shortcut",
+          },
+          1,
+        );
+      });
+
+      it("should allow a user to send a message to the agent and handle successful or failed responses", () => {
+        H.openMetabotViaSearchButton();
+        H.chatMessages().should("not.exist");
+
+        H.mockMetabotResponse({
+          statusCode: 200,
+          body: whoIsYourFavoriteResponse,
+        });
+        H.sendMetabotMessage("Who is your favorite?");
+        H.expectUnstructuredSnowplowEvent({
+          event: "metabot_request_sent",
+        });
+
+        H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
+
+        H.mockMetabotResponse({ statusCode: 500 });
+        H.sendMetabotMessage("Who is your favorite?");
+        H.lastChatMessage().should(
+          "have.text",
+          "Metabot is currently offline. Please try again later.",
+        );
+      });
+
+      it("should allow starting a new metabot conversation via the /metabot/new", () => {
+        H.mockMetabotResponse({
+          statusCode: 200,
+          body: whoIsYourFavoriteResponse,
+        });
+        cy.visit("/metabot/new?q=Who%20is%20your%20favorite%3F");
+        H.assertChatVisibility("visible");
+        H.lastChatMessage().should("have.text", "You, but don't tell anyone.");
       });
     });
   });

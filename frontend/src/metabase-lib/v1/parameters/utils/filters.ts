@@ -68,7 +68,7 @@ export function fieldFilterForParameter(
 ): (field: Field) => boolean {
   return (field) =>
     isParameterCompatibleWithColumn(parameter, {
-      isString: field.isString(),
+      isString: field.isString() || field.isStringLike(),
       isNumeric: field.isNumeric(),
       isBoolean: field.isBoolean(),
       isTemporal: field.isDate(),
@@ -139,6 +139,8 @@ function tagFilterForParameter(
       return (tag) => tag.type === "number";
     case "string":
       return (tag) => tag.type === "text";
+    case "boolean":
+      return (tag) => tag.type === "boolean";
     case "temporal-unit":
       return (tag) => tag.type === "temporal-unit";
   }

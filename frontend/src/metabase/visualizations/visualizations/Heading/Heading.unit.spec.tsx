@@ -7,8 +7,7 @@ import type {
   Dashboard,
   DashboardParameterMapping,
   Parameter,
-  ParameterId,
-  ParameterValueOrArray,
+  ParameterValuesMap,
   VirtualDashboardCard,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,7 +31,7 @@ interface Options {
   onUpdateVisualizationSettings?: ({ text }: { text: string }) => void;
   settings?: VisualizationSettings;
   dashboard?: Dashboard;
-  parameterValues?: Record<ParameterId, ParameterValueOrArray>;
+  parameterValues?: ParameterValuesMap;
 }
 
 const defaultProps = {
@@ -94,7 +93,7 @@ describe("Text", () => {
     });
 
     it("should replace mapped variables with parameter values", () => {
-      const variableName = "variable";
+      const variableName = "foo_bar";
       const text = `Variable: {{${variableName}}}`;
 
       const parameterValue = 15;
@@ -132,7 +131,7 @@ describe("Text", () => {
         );
         expect(screen.getByTestId("editing-dashboard-heading-container"))
           .toHaveStyle(`border: 1px solid var(--mb-color-brand);
-                        color: var(--mb-color-text-light);`);
+                        color: var(--mb-color-text-tertiary);`);
       });
 
       it("should preview with text when it has content", () => {
@@ -323,7 +322,7 @@ function mapParameterToVariable({
 }) {
   const parameter: Parameter = {
     id: "e7f8ca",
-    name: "foo bar",
+    name: "foo_bar",
     slug: "foo_bar",
     type: "text",
     value: parameterValue,
@@ -337,8 +336,8 @@ function mapParameterToVariable({
     },
   ];
   const parameters: Parameter[] = [parameter];
-  const parameterValues: Record<ParameterId, ParameterValueOrArray> = {
-    [parameter.id]: parameter.value,
+  const parameterValues = {
+    [parameter.id]: parameter.value ?? null,
   };
 
   return { parameters, parameterValues, parameter_mappings };

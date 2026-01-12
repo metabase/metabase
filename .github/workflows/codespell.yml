@@ -1,0 +1,21 @@
+name: Codespell
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-**"
+  pull_request:
+
+jobs:
+  codespell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: codespell-project/actions-codespell@v2
+        with:
+          # keep this list in sync with the list in `mage/src/mage/codespell.clj`
+          path: >-
+            docs
+            enterprise
+            modules/drivers

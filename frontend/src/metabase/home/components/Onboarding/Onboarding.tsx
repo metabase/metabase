@@ -11,6 +11,7 @@ import { jt, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
+import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
@@ -98,11 +99,11 @@ export const Onboarding = () => {
   );
 
   const newNativeQuestionUrl = Urls.newQuestion({
-    type: "native",
+    DEPRECATED_RAW_MBQL_type: "native",
     creationType: "native_question",
     collectionId: "root",
     cardType: "question",
-    databaseId: lastUsedDatabaseId || undefined,
+    DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
 
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
@@ -119,7 +120,7 @@ export const Onboarding = () => {
     });
   };
 
-  // Scroll the last opened item into view when the user navigates back go this page
+  // Scroll the last opened item into view when the user navigates back to this page
   useEffect(() => {
     if (isValidItemKey(lastItemOpened)) {
       const item = itemRefs[lastItemOpened].current;
@@ -211,6 +212,7 @@ export const Onboarding = () => {
       pt="xl"
       pb={212}
     >
+      <OnboardingIllustration />
       <Box maw={592} m="0 auto">
         <Accordion
           defaultValue={lastItemOpened || DEFAULT_ITEM}
@@ -337,7 +339,7 @@ export const Onboarding = () => {
                       <Text>
                         {jt`Hover over a table and click the yellow lightning bolt ${(
                           <Icon
-                            c="var(--mb-color-warning)"
+                            c="warning"
                             className={S.inlineIcon}
                             key="bolt_icon"
                             name="bolt_filled"
@@ -569,8 +571,8 @@ export const Onboarding = () => {
               <Accordion.Panel>
                 <Stack gap="lg">
                   <VideoTutorial
-                    id="pbkECx-1Cos"
-                    si="r1KRkR0CJ3BmHOOE"
+                    id="MPw5__mVg58"
+                    si="jaUgne1VDg6VXprJ"
                     title="How to create an alert?"
                   />
                   {shouldConfigureCommunicationChannels && (
@@ -593,8 +595,8 @@ export const Onboarding = () => {
                   <Text>
                     {jt`Go to a question and click on the ${(
                       <Icon
-                        key="sharing-icon"
-                        name="share"
+                        key="more-icon"
+                        name="ellipsis"
                         className={S.inlineIcon}
                       />
                     )} icon on the top bar, then ${(

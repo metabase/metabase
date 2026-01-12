@@ -13,7 +13,6 @@ import {
 } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
 import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
@@ -163,7 +162,7 @@ const LinkToDocsOnReferencingSavedQuestionsInQueries = () => {
     <Box
       p="md"
       ta="center"
-      bg={color("bg-light")}
+      bg={"background-secondary"}
       style={{
         borderTop: "1px solid var(--mb-color-border)",
       }}
@@ -196,10 +195,10 @@ const Header = ({
 
     {selectedSchema?.name && schemas.length > 1 && (
       <>
-        <Box component="span" mx="sm" c="text-medium">
+        <Box component="span" mx="sm" c="text-secondary">
           /
         </Box>
-        <Box component="span" data-testid="source-schema" c="text-medium">
+        <Box component="span" data-testid="source-schema" c="text-secondary">
           {selectedSchema.displayName()}
         </Box>
       </>

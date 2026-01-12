@@ -8,15 +8,20 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.lib.ident :as lib.ident]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -57,86 +62,87 @@
   Maybe we should lower it for the sake of displaying a parameter dropdown."
   1000)
 
-(defn- values-from-card-query
-  [card value-field-ref opts]
-  (let [query-string (:query-string opts)
-        value-base-type (:base_type (qp.util/field->field-info value-field-ref (:result_metadata card)))
-        new-filter      [:and
-                         [(if (isa? value-base-type :type/Text)
-                            :not-empty
-                            :not-null)
-                          value-field-ref]
-                         (when query-string
-                           (if-not (isa? value-base-type :type/Text)
-                             [:= value-field-ref query-string]
-                             [:contains [:lower value-field-ref] (u/lower-case-en query-string)]))]]
-    {:database (:database_id card)
-     :type     :query
-     :query    (if-let [inner-mbql (and (not= (:type card) :model)
-                                        (-> card :dataset_query :query))]
-                 ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
-                 (let [target-stage (:stage-number opts)
-                       last-stage   (mbql.u/legacy-last-stage-number inner-mbql)
-                       inner-mbql   (if (and target-stage last-stage
-                                             (= (inc last-stage) target-stage))
-                                      {:source-query inner-mbql}
-                                      inner-mbql)]
-                   (-> inner-mbql
-                       (dissoc :aggregation :order-by :fields)
-                       (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins)))
-                       (assoc :breakout        [value-field-ref]
-                              :breakout-idents (lib.ident/indexed-idents 1))
-                       (update :limit (fnil min *max-rows*) *max-rows*)
-                       (update :filter (fn [old]
-                                         (cond->> new-filter
-                                           old (conj [:and old]))))))
-                 ;; Model or Native query - wrap it with a new MBQL stage.
-                 {:source-table    (format "card__%d" (:id card))
-                  :breakout        [value-field-ref]
-                  :breakout-idents (lib.ident/indexed-idents 1)
-                  :limit           *max-rows*
-                  :filter          new-filter})
-     :middleware {:disable-remaps? true}}))
+(mr/def ::values-from-card-query.options
+  [:map
+   ;; despite this being called "query string" it can actually be any value because it just gets used in an `:=`
+   ;; filter clause. :eyeroll:
+   [:query-string {:optional true} :any]])
+
+(mu/defn- values-from-card-query :- [:maybe ::lib.schema/query]
+  [{query :dataset_query, :keys [id], :as _card} :- [:and
+                                                     :metabase.queries.schema/card
+                                                     [:map
+                                                      [:id ::lib.schema.id/card]]]
+   field-ref                        :- [:or :mbql.clause/field :mbql.clause/expression]
+   {:keys [query-string] :as _opts} :- [:maybe ::values-from-card-query.options]]
+  (when (seq query)
+    ;; start a new query using this Card as a starting point
+    (let [query (lib/query query (lib.metadata/card query id))]
+      (when-let [visible-columns (or (not-empty (lib/visible-columns query))
+                                     (log/warnf "Cannot get values from Card %d: Card query has no visible columns"
+                                                id))]
+        (when-let [value-column (or (lib/find-matching-column query -1 field-ref visible-columns)
+                                    (log/warnf "Cannot get values from Card %d: failed to find column for ref %s\nFound: %s"
+                                               id
+                                               (pr-str field-ref)
+                                               (pr-str (map (some-fn :lib/source-column-alias :name) visible-columns))))]
+          (let [textual?     (lib.types.isa/string? value-column)
+                nonempty     ((if textual? lib/not-empty lib/not-null) value-column)
+                query-filter (when query-string
+                               (if textual?
+                                 (lib/contains (lib/lower value-column) (u/lower-case-en query-string))
+                                 (lib/= value-column query-string)))]
+            (-> query
+                (lib/limit *max-rows*)
+                (lib/filter nonempty)
+                (cond-> #_query query-filter (lib/filter query-filter))
+                (lib/breakout value-column)
+                ;; TODO(Braden, 07/04/2025): This should probably become a lib helper? I suspect this isn't the only
+                ;; "internal" query in the BE.
+                (assoc-in [:middleware :disable-remaps?] true))))))))
 
 (mu/defn values-from-card
   "Get distinct values of a field from a card.
 
   (values-from-card 1 [:field \"name\" nil] \"red\")
   ;; will execute a mbql that looks like
-  ;; {:source-table (format \"card__%d\" card-id)
-  ;;  :fields       [value-field]
-  ;;  :breakout     [value-field]
-  ;;  :filter       [:contains [:lower value-field] \"red\"]
-  ;;  :limit        *max-rows*}
+  ;; {:source-card card-id
+  ;;  :fields      [value-field]
+  ;;  :breakout    [value-field]
+  ;;  :filters     [[:contains {} [:lower {} value-field] \"red\"]]
+  ;;  :limit       *max-rows*}
   =>
   {:values          [[\"Red Medicine\"]]
   :has_more_values false}
   "
-  ([card value-field]
-   (values-from-card card value-field nil))
+  ([card field-ref]
+   (values-from-card card field-ref nil))
 
-  ([card            :- (ms/InstanceOf :model/Card)
-    value-field-ref :- ::parameters.schema/legacy-field-or-expression-reference
-    opts            :- [:maybe :map]]
-   (let [mbql-query   (values-from-card-query card value-field-ref opts)
-         result       (qp/process-query mbql-query)
+  ([card      :- :metabase.queries.schema/card
+    field-ref :- [:or :mbql.clause/field :mbql.clause/expression]
+    opts      :- [:maybe ::values-from-card-query.options]]
+   (let [mbql-query   (values-from-card-query card field-ref opts)
+         result       (some-> mbql-query qp/process-query)
          values       (get-in result [:data :rows])]
      {:values         values
       ;; If the row_count returned = the limit we specified, then it's probably has more than that.
       ;; If the query has its own limit smaller than *max-rows*, then there's no more values.
       :has_more_values (= (:row_count result) *max-rows*)})))
 
-(defn card-values
+(mu/defn card-values
   "Given a param and query returns the values."
-  [{config :values_source_config :as _param} query]
+  [{config :values_source_config :as _param} :- ::parameters.schema/parameter
+   query-string                              :- [:maybe ms/NonBlankString]]
   (let [card-id (:card_id config)
         card    (t2/select-one :model/Card :id card-id)]
-    (values-from-card card (:value_field config) {:query-string query})))
+    (values-from-card card (lib/->pMBQL (:value_field config)) {:query-string query-string})))
 
 (defn- can-get-card-values?
   [card value-field]
   (boolean
    (and (not (:archived card))
+        ;; existing usage -- do not use this in new code
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
@@ -147,19 +153,21 @@
   `default-case-thunk` is a 0-arity function that returns values list when:
   - :values_source_type = card but the card is archived or the card no longer contains the value-field.
   - :values_source_type = nil."
-  [parameter query default-case-thunk]
+  [parameter          :- ::parameters.schema/parameter
+   query-string       :- [:maybe ms/NonBlankString]
+   default-case-thunk :- [:=> [:cat :any] ms/FieldValuesResult]]
   (case (:values_source_type parameter)
-    "static-list" (static-list-values parameter query)
-    "card"        (let [card (t2/select-one :model/Card :id (get-in parameter [:values_source_config :card_id]))]
-                    (when-not (mi/can-read? card)
-                      (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
-                    (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
-                      (card-values parameter query)
-                      (default-case-thunk)))
-    nil           (default-case-thunk)
+    :static-list (static-list-values parameter query-string)
+    :card        (let [card (t2/select-one :model/Card :id (get-in parameter [:values_source_config :card_id]))]
+                   (when-not (mi/can-read? card)
+                     (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+                   (if (can-get-card-values? card (get-in parameter [:values_source_config :value_field]))
+                     (card-values parameter query-string)
+                     (default-case-thunk)))
+    nil          (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type parameter))
                     {:status-code 400
-                     :parameter parameter}))))
+                     :parameter   parameter}))))
 
 (defn pk-of-fk-pk-field-ids
   "Check if the collection `field-ids` contains the IDs of FK fields pointing to the same PK and
@@ -192,17 +200,19 @@
             ;; more than two groups are always ambiguous, so no match
             nil))))))
 
-(defn parameter-remapped-value
+(mu/defn parameter-remapped-value
   "Fetch the remapped value for the given `value` of parameter `param` with default values provided by
   the function `default-case-thunk`.
 
   `default-case-thunk` is a 0-arity function that returns values list when :values_source_type = nil."
-  [param value default-case-thunk]
+  [param              :- ::parameters.schema/parameter
+   value
+   default-case-thunk :- [:=> [:cat] :any]]
   (case (:values_source_type param)
-    "static-list" (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
-                                (get-in param [:values_source_config :values]))
-    "card"        nil
-    nil           (default-case-thunk)
+    :static-list (m/find-first #(and (vector? %) (= (count %) 2) (= (first %) value))
+                               (get-in param [:values_source_config :values]))
+    :card        nil
+    nil          (default-case-thunk)
     (throw (ex-info (tru "Invalid parameter source {0}" (:values_source_type param))
                     {:status-code 400
-                     :parameter param}))))
+                     :parameter   param}))))

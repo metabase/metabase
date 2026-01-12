@@ -3,25 +3,25 @@
   align-items: center;
   justify-content: center;
   z-index: 5;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   width: 36px;
   height: 36px;
   box-sizing: content-box;
-  border-bottom: 1px solid var(--mb-color-border);
+  border-bottom: 1px solid var(--mb-color-border-subtle);
 }
 
 .sticky {
   position: absolute;
   top: 0;
   right: 0;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-subtle);
 }
 
 .button {
   transition: background-color 200ms;
-  background-color: var(--mb-base-color-brand-10);
+  background-color: var(--mb-color-brand-lighter);
 }
 
 .button:hover {
-  background: var(--mb-base-color-brand-20) !important;
+  background: var(--mb-color-brand-light) !important;
 }

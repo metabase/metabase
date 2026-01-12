@@ -11,16 +11,16 @@ import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/common/components/Markdown";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
-  "onChange" | "onFocus" | "onBlur"
+  "style" | "onChange" | "onFocus" | "onBlur"
 >;
 
-export interface EditableTextProps extends EditableTextAttributes {
+export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   initialValue?: string | null;
   placeholder?: string;
   maxLength?: number;
@@ -30,6 +30,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   isDisabled?: boolean;
   isMarkdown?: boolean;
   onChange?: (value: string) => void;
+  onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   "data-testid"?: string;
@@ -46,6 +47,7 @@ const EditableText = forwardRef(function EditableText(
     isDisabled = false,
     isMarkdown = false,
     onChange,
+    onContentChange,
     onFocus,
     onBlur,
     "data-testid": dataTestId,
@@ -95,10 +97,12 @@ const EditableText = forwardRef(function EditableText(
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setInputValue(event.currentTarget.value);
+      const nextValue = event.currentTarget.value;
+      setInputValue(nextValue);
       submitOnBlur.current = true;
+      onContentChange?.(nextValue);
     },
-    [submitOnBlur],
+    [onContentChange],
   );
 
   const handleKeyDown = useCallback(

@@ -77,7 +77,7 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
       H.selectVisualization("funnel");
 
       cy.button("Add more data").click();
-      H.addDataset(VIEWS_COLUMN_CARD.name);
+      H.selectDataset(VIEWS_COLUMN_CARD.name);
       cy.button("Done").click();
 
       H.assertDataSourceColumnSelected(STEP_COLUMN_CARD.name, "Step");
@@ -177,8 +177,8 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(CHECKOUT_PAGE_VIEWS.name);
-      H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
+      H.selectDataset(CHECKOUT_PAGE_VIEWS.name);
+      H.selectDataset(PAYMENT_DONE_PAGE_VIEWS.name);
       H.switchToColumnsList();
 
       H.assertDataSourceColumnSelected(LANDING_PAGE_VIEWS.name, "views");
@@ -260,9 +260,8 @@ describe("scenarios > dashboard > visualizer > funnels", () => {
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.selectDataset(LANDING_PAGE_VIEWS.name);
-      H.addDataset(CHECKOUT_PAGE_VIEWS.name);
-      H.addDataset(PAYMENT_DONE_PAGE_VIEWS.name);
+      H.selectDataset(CHECKOUT_PAGE_VIEWS.name);
+      H.selectDataset(PAYMENT_DONE_PAGE_VIEWS.name);
 
       H.verticalWell().within(() => {
         cy.findByText("METRIC").should("not.exist");

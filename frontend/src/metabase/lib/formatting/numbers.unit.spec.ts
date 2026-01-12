@@ -61,6 +61,98 @@ describe("formatNumber", () => {
       }),
     ).toEqual("1.000015e+0");
   });
+
+  describe("compact mode with decimals setting", () => {
+    it("should respect various decimal settings in compact mode (metabase#63145)", () => {
+      const value = 1234567;
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 0,
+        }),
+      ).toBe("1M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 1,
+        }),
+      ).toBe("1.2M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 2,
+        }),
+      ).toBe("1.23M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 3,
+        }),
+      ).toBe("1.235M");
+
+      expect(
+        formatNumber(value, {
+          compact: true,
+          decimals: 4,
+        }),
+      ).toBe("1.2346M");
+    });
+  });
+
+  describe("formatNumber – compact rounding (metabase#59454)", () => {
+    it("rounds billions with 0 decimals", () => {
+      expect(
+        formatNumber(1_499_999_999, {
+          compact: true,
+          maximumFractionDigits: 0,
+        }),
+      ).toBe("1B");
+      expect(
+        formatNumber(1_500_000_000, {
+          compact: true,
+          maximumFractionDigits: 0,
+        }),
+      ).toBe("2B");
+      expect(
+        formatNumber(1_949_999_999, {
+          compact: true,
+          maximumFractionDigits: 0,
+        }),
+      ).toBe("2B");
+    });
+
+    it("carries to the next unit at 999.5M (0 decimals)", () => {
+      expect(
+        formatNumber(999_499_999, { compact: true, maximumFractionDigits: 0 }),
+      ).toBe("999M");
+      expect(
+        formatNumber(999_500_000, { compact: true, maximumFractionDigits: 0 }),
+      ).toBe("1B");
+    });
+
+    it("keeps sign with rounding", () => {
+      expect(
+        formatNumber(-1_950_000_000, {
+          compact: true,
+          maximumFractionDigits: 0,
+        }),
+      ).toBe("-2B");
+    });
+
+    it("respects explicit decimals when provided", () => {
+      expect(
+        formatNumber(1_950_000_000, {
+          compact: true,
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
+      ).toBe("2.0B");
+    });
+  });
 });
 
 describe("formatNumber with scale (multiply function)", () => {

@@ -5,6 +5,7 @@ import {
 } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_DASHCARD_ID,
@@ -21,6 +22,8 @@ import type {
   DashboardCard,
   Parameter,
 } from "metabase-types/api";
+
+const { WEB_PORT } = WEBMAIL_CONFIG;
 
 const { ORDERS } = SAMPLE_DATABASE;
 
@@ -63,6 +66,7 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
       parameters: [DATE_FILTER],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
+      cy.wrap(String(dashboard.id)).as("dashboardNumericStringId");
       cy.wrap(dashboard.entity_id).as("dashboardEntityId");
     });
 
@@ -202,7 +206,65 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
         .then(() => {
           resolveCardEndpoint();
         });
-      cy.findByText("New question").should("be.visible");
+
+      cy.findByTestId("interactive-question-result-toolbar").should(
+        "be.visible",
+      );
+    });
+  });
+
+  const idTypes = [
+    {
+      idType: "numeric ID",
+      dashboardIdAlias: "@dashboardId",
+      issueId: "(EMB-773)",
+    },
+    {
+      idType: "numeric string ID",
+      dashboardIdAlias: "@dashboardNumericStringId",
+      issueId: "(EMB-1120)",
+    },
+    {
+      idType: "entity ID",
+      dashboardIdAlias: "@dashboardEntityId",
+      issueId: "(EMB-773)",
+    },
+  ];
+
+  describe("Dashboard ID types", () => {
+    idTypes.forEach(({ idType, dashboardIdAlias, issueId }) => {
+      it(`can go to dashcard and go back using a ${idType} dashboard ${issueId}`, () => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+        });
+
+        getSdkRoot().within(() => {
+          H.getDashboardCard().findByText("Orders").click();
+
+          cy.findByTestId("interactive-question-result-toolbar").should(
+            "be.visible",
+          );
+
+          cy.findByLabelText("Back to Orders in a dashboard").click();
+          cy.findByText("Orders in a dashboard").should("be.visible");
+          cy.findByText("Back to Orders in a dashboard").should("not.exist");
+        });
+      });
+
+      it(`can drill a question and go back using a ${idType} dashboard ${issueId}`, () => {
+        cy.get(dashboardIdAlias).then((dashboardId) => {
+          mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+        });
+
+        getSdkRoot().within(() => {
+          cy.findByText("123").first().click();
+          H.popover().findByText("View this Product's Orders").click();
+
+          cy.findByLabelText("Back to Orders in a dashboard").click();
+          cy.findByText("Orders in a dashboard").should("be.visible");
+          cy.findByText("Back to Orders in a dashboard").should("not.exist");
+        });
+      });
     });
   });
 
@@ -247,5 +309,116 @@ describe("scenarios > embedding-sdk > interactive-dashboard", () => {
     // Verify no additional dataset queries were made after re-renders
     cy.wait(500);
     cy.get("@datasetQuery.all").should("have.length", 1);
+  });
+
+  idTypes.forEach(({ idType, dashboardIdAlias }) => {
+    it(`should be able to download dashcard results using ${idType}`, () => {
+      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query/xlsx").as(
+        "dashcardDownload",
+      );
+
+      cy.get(dashboardIdAlias).then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard dashboardId={dashboardId} withDownloads />,
+        );
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Orders in a dashboard").should("be.visible");
+
+        // Open dashcard menu
+        H.getDashboardCard().realHover();
+        H.getEmbeddedDashboardCardMenu().click();
+
+        H.popover().findByText("Download results").click();
+        H.popover().findByText(".xlsx").click();
+        H.popover().findByText("Download").click();
+      });
+
+      cy.wait("@dashcardDownload").then((interception) => {
+        expect(interception.response?.statusCode).to.equal(200);
+
+        cy.log(
+          "content-disposition is allowed in cross-origin requests (metabase#61708)",
+        );
+        expect(
+          interception.response?.headers?.["access-control-expose-headers"],
+        ).to.include("Content-Disposition");
+
+        cy.log(
+          "question name is prefixed in the downloaded file name (metabase#61708)",
+        );
+        expect(
+          interception.response?.headers?.["content-disposition"],
+        ).to.include('filename="orders_');
+        expect(
+          interception.response?.headers?.["content-disposition"],
+        ).not.to.include('filename="query_result_');
+      });
+    });
+  });
+
+  describe("subscriptions", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      cy.signOut();
+    });
+
+    it("should not include links to Metabase", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <InteractiveDashboard dashboardId={dashboardId} withSubscriptions />,
+        );
+
+        cy.button("Subscriptions").click();
+        H.clickSend();
+        const emailUrl = `http://localhost:${WEB_PORT}/email`;
+        cy.request("GET", emailUrl).then(({ body }) => {
+          const latest = body.slice(-1)[0];
+          cy.request(`${emailUrl}/${latest.id}/html`).then(({ body }) => {
+            expect(body).to.include("Orders in a dashboard");
+            expect(body).not.to.include("href=");
+          });
+        });
+      });
+    });
+  });
+});
+
+describe("scenarios > embedding-sdk > interactive-dashboard > tabs", () => {
+  it("should not show add a chart button on empty dashboard with many tabs (metabase#65001)", () => {
+    signInAsAdminAndEnableEmbeddingSdk();
+
+    const TAB_WITH_CARDS = { id: 1, name: "Tab with cards" };
+    const EMPTY_TAB = { id: 2, name: "Empty tab" };
+
+    const questionCard: Partial<DashboardCard> = {
+      id: ORDERS_DASHBOARD_DASHCARD_ID,
+      dashboard_tab_id: TAB_WITH_CARDS.id,
+      card_id: ORDERS_QUESTION_ID,
+      row: 0,
+      col: 0,
+      size_x: 16,
+      size_y: 8,
+    };
+
+    H.createDashboardWithTabs({
+      name: "Dashboard with empty tab",
+      tabs: [TAB_WITH_CARDS, EMPTY_TAB],
+      dashcards: [questionCard],
+    }).then(({ id: dashboardId }) => {
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      mountSdkContent(<InteractiveDashboard dashboardId={dashboardId} />);
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.findByRole("tab", { name: EMPTY_TAB.name }).click();
+      cy.findByTestId("dashboard-empty-state").should("be.visible");
+      cy.findByText("Add a chart").should("not.exist");
+    });
   });
 });

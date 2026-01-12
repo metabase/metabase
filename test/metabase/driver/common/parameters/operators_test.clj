@@ -1,7 +1,7 @@
 (ns metabase.driver.common.parameters.operators-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver.common.parameters.operators :as params.ops]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.query-processor.error-type :as qp.error-type]))
 
 (deftest ^:parallel to-clause-test

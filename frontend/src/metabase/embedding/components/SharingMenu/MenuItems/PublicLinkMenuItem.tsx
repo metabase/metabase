@@ -2,9 +2,10 @@ import { t } from "ttag";
 
 import Link from "metabase/common/components/Link";
 import { useSetting } from "metabase/common/hooks";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Icon, Menu, Stack, Text, Title } from "metabase/ui";
+import { Button, Icon, Menu } from "metabase/ui";
 
 export function PublicLinkMenuItem({
   hasPublicLink,
@@ -22,6 +23,11 @@ export function PublicLinkMenuItem({
         data-testid="embed-menu-public-link-item"
         leftSection={<Icon name="link" aria-hidden />}
         onClick={onClick}
+        {...(!isPublicSharingEnabled && {
+          onClick: undefined,
+          component: "div",
+          disabled: true,
+        })}
       >
         {isPublicSharingEnabled ? (
           hasPublicLink ? (
@@ -30,12 +36,23 @@ export function PublicLinkMenuItem({
             t`Create a public link`
           )
         ) : (
-          <Link to="/admin/settings/public-sharing" target="_blank">
-            <Stack gap="xs">
-              <Title order={4}>{t`Public links are off`}</Title>
-              <Text size="sm">{t`Enable them in settings`}</Text>
-            </Stack>
-          </Link>
+          <>
+            {t`Public link`}
+            <Button
+              component={Link}
+              to="/admin/settings/public-sharing"
+              target="_blank"
+              variant="subtle"
+              h="auto"
+              lh="inherit"
+              ml="sm"
+              p={0}
+              bd={0}
+              className={CS.floatRight}
+            >
+              {t`Enable`}
+            </Button>
+          </>
         )}
       </Menu.Item>
     );

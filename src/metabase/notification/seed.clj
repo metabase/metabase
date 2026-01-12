@@ -101,7 +101,43 @@
                             :recipients   [{:type    :notification-recipient/template
                                             :details {:pattern "{{context.admin_email}}" :is_optional true}}
                                            {:type                 :notification-recipient/group
-                                            :permissions_group_id (:id (perms/admin-group))}]}]}]))
+                                            :permissions_group_id (:id (perms/admin-group))}]}]}
+
+          ;; new comment appeared
+          {:internal_id   "system-event/comment-created"
+           :active        true
+           :payload_type  :notification/system-event
+           :subscriptions [{:type       :notification-subscription/system-event
+                            :event_name :event/comment-created}]
+           :handlers      [{:active       true
+                            :channel_type :channel/email
+                            :channel_id   nil
+                            :template     {:name         "Comment Created email template"
+                                           :channel_type :channel/email
+                                           :details      {:type           "email/handlebars-resource"
+                                                          :subject        "Comment on {{payload.event_info.entity_title}}"
+                                                          :path           "metabase/channel/email/comment_created.hbs"
+                                                          :recipient-type "cc"}}
+                            :recipients   [{:type    :notification-recipient/template
+                                            :details {:pattern "{{payload.event_info.email}}"}}]}]}
+
+          ;; support access grant created
+          {:internal_id "system-event/support-access-grant-created"
+           :active true
+           :payload_type :notification/system-event
+           :subscriptions [{:type :notification-subscription/system-event
+                            :event_name :event/support-access-grant-created}]
+           :handlers [{:active true
+                       :channel_type :channel/email
+                       :channel_id nil
+                       :template {:name "Support Access Grant Created Email"
+                                  :channel_type :channel/email
+                                  :details {:type "email/handlebars-resource"
+                                            :subject "Support Access Grant Created"
+                                            :path "metabase/channel/email/support_access_grant.hbs"
+                                            :recipient-type "cc"}}
+                       :recipients [{:type :notification-recipient/template
+                                     :details {:pattern "{{payload.event_info.support_email}}"}}]}]}]))
 
 (defn- cleanup-notification!
   [internal-id existing-row]
@@ -169,3 +205,6 @@
         summary (frequencies actions)]
     (log/infof "Seeded notifications: %s" summary)
     summary))
+
+(comment
+  (seed-notification!))

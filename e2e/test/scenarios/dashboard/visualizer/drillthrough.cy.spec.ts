@@ -181,7 +181,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     // 4. Funnel (regular)
     H.getDashboardCard(4).get("polygon").first().click();
-    cy.wait(200); // HACK: wait for popover to appear
+    H.tooltip().should("not.exist");
     H.clickActionsPopover().button("=").click();
     cy.wait("@dataset");
 
@@ -194,7 +194,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     // 5. Funnel (scalar)
     H.getDashboardCard(5).get("polygon").first().click();
-    cy.wait(200); // HACK: wait for popover to appear
+    H.tooltip().should("not.exist");
     H.clickActionsPopover().button("=").click();
     cy.wait("@dataset");
 

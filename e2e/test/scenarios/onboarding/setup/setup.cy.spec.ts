@@ -9,7 +9,10 @@ const { admin } = USERS;
 const locales = ["en", "xx"];
 
 describe("scenarios > setup", () => {
-  beforeEach(() => H.restore("blank"));
+  beforeEach(() => {
+    H.restore("blank");
+    H.resetSnowplow();
+  });
 
   locales.forEach((locale) => {
     it(
@@ -31,8 +34,6 @@ describe("scenarios > setup", () => {
         skipWelcomePage();
 
         cy.findByTestId("setup-forms").within(() => {
-          selectPreferredLanguageAndContinue();
-
           // ====
           // User
           // ====
@@ -150,8 +151,6 @@ describe("scenarios > setup", () => {
     skipWelcomePage();
 
     cy.findByTestId("setup-forms").within(() => {
-      selectPreferredLanguageAndContinue();
-
       // User
       fillUserAndContinue({
         ...admin,
@@ -202,26 +201,6 @@ describe("scenarios > setup", () => {
     });
   });
 
-  // Values in this test are set through MB_USER_DEFAULTS environment variable!
-  // Please see https://github.com/metabase/metabase/pull/18763 for details
-  it("should allow pre-filling user details", () => {
-    cy.visit("/setup#123456");
-
-    skipWelcomePage();
-
-    selectPreferredLanguageAndContinue();
-
-    cy.findByTestId("setup-forms").within(() => {
-      cy.findByLabelText("First name").should("have.value", "Testy");
-      cy.findByLabelText("Last name").should("have.value", "McTestface");
-      cy.findByLabelText("Email").should("have.value", "testy@metabase.test");
-      cy.findByLabelText("Company or team name").should(
-        "have.value",
-        "Epic Team",
-      );
-    });
-  });
-
   it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
     H.mockSessionProperty("is-hosted?", true);
 
@@ -230,7 +209,6 @@ describe("scenarios > setup", () => {
     );
 
     skipWelcomePage();
-    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
       cy.findByDisplayValue("John").should("exist");
@@ -244,27 +222,8 @@ describe("scenarios > setup", () => {
   it("should not show 'Sample Database' if env var is explicitly set to false during setup", () => {
     H.mockSessionProperty("has-sample-database?", false);
 
-    cy.visit(
-      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
-    );
+    navigateToDatabaseStep();
 
-    skipWelcomePage();
-    selectPreferredLanguageAndContinue();
-
-    cy.findByTestId("setup-forms").within(() => {
-      const password = "12341234";
-      cy.findByLabelText("Create a password").should("be.empty").type(password);
-      cy.findByLabelText("Confirm your password").type(password);
-      cy.button("Next").click();
-
-      cy.log("Just go through the usage questionaire");
-      cy.findByLabelText("What will you use Metabase for?").should(
-        "be.visible",
-      );
-      cy.button("Next").click();
-    });
-
-    cy.log("We are now on the database step");
     cy.findByLabelText("Add your data").within(() => {
       cy.button("Continue with sample data").should("not.exist");
       cy.button("I'll add my data later").click();
@@ -272,6 +231,38 @@ describe("scenarios > setup", () => {
 
     cy.log("We're done with the database step");
     cy.findByLabelText("I'll add my own data later").should("be.visible");
+  });
+
+  it("should create a new user upon inviting a teammate", () => {
+    H.mockSessionProperty("email-configured?", true);
+
+    navigateToDatabaseStep();
+    cy.findByTestId("step-number").should("have.text", "3");
+
+    cy.findByLabelText("Setup section").click();
+    cy.findByLabelText("First name").type("TeammateFirstName");
+    cy.findByLabelText("Last name").type("TeammateLastName");
+    cy.findByLabelText("Email").type("teammate@metabase.test");
+    cy.intercept("POST", "/api/user").as("createUser");
+
+    cy.button("Send invitation").click();
+
+    cy.wait("@createUser").then((interception) => {
+      expect(interception.request.body).to.include({
+        first_name: "TeammateFirstName",
+        last_name: "TeammateLastName",
+        email: "teammate@metabase.test",
+      });
+    });
+
+    // Checks invite event was sent
+    H.expectUnstructuredSnowplowEvent({
+      event: "invite_sent",
+      source: "setup",
+    });
+
+    // Checks we are now in the next step
+    cy.findByTestId("step-number").should("have.text", "4");
   });
 
   it("should allow a quick setup for the 'embedding' use case", () => {
@@ -291,6 +282,10 @@ describe("scenarios > setup", () => {
 
     cy.findByTestId("setup-forms").within(() => {
       cy.findByLabelText("Hi, John. Nice to meet you!").should("be.visible");
+
+      skipLicenseStepOnEE();
+
+      cy.findByText("Finish").click();
       cy.findByText("You're all set up!").should("be.visible");
       cy.findByText("Take me to Metabase").click();
     });
@@ -299,6 +294,19 @@ describe("scenarios > setup", () => {
     H.main()
       .findByText("Get started with Embedding Metabase in your app")
       .should("be.visible");
+  });
+
+  // There are only one step in the setup flow, so there is no need to show step numbers.
+  it("should not show step numbers in cloud embedding use case", () => {
+    H.mockSessionProperty("is-hosted?", true);
+    H.mockSessionProperty("token-features", { hosting: true });
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    H.main().findByText("What should we call you?").should("be.visible");
+    cy.findByTestId("step-number").should("not.exist");
   });
 
   it("should allow localization in the 'embedding' setup flow", () => {
@@ -328,6 +336,12 @@ describe("scenarios > setup", () => {
       cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
         "be.visible",
       );
+
+      if (IS_ENTERPRISE) {
+        cy.button("Ik activeer later").click();
+      }
+
+      cy.findByText("Voltooi").click();
       cy.findByText("Breng me naar Metabase").click();
     });
 
@@ -338,43 +352,74 @@ describe("scenarios > setup", () => {
       .should("be.visible");
   });
 
+  it("should update the site locale setting when changing language in setup", () => {
+    cy.intercept("PUT", "/api/setting/site-locale").as("updateSiteLocale");
+
+    cy.visit(
+      "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited&use_case=embedding",
+    );
+
+    cy.log("Change language to Dutch before user creation");
+    cy.get("header")
+      .should("be.visible")
+      .findByLabelText("Select a language")
+      .should("have.value", "English")
+      .click();
+
+    H.popover().findByText("Dutch").should("be.visible").click();
+
+    cy.log("Verify site locale does not get updated before a user is created");
+    cy.get("@updateSiteLocale.all").should("have.length", 0);
+
+    cy.findByTestId("setup-forms").within(() => {
+      const password = "12341234";
+
+      cy.findByDisplayValue("John").should("exist");
+      cy.findByLabelText("Maak een wachtwoord").type(password);
+      cy.findByLabelText("Bevestig je wachtwoord").type(password);
+      cy.button("Volgende").click();
+
+      cy.findByLabelText("Hallo, John. Leuk je te ontmoeten!").should(
+        "be.visible",
+      );
+    });
+
+    cy.log("After user creation, change language to German");
+    cy.get("header")
+      .should("be.visible")
+      .findByLabelText("Selecteer een taal")
+      .should("have.value", "Dutch")
+      .click();
+
+    H.popover()
+      .findByText("German")
+      .scrollIntoView()
+      .should("be.visible")
+      .click();
+
+    cy.findByTestId("setup-forms").within(() => {
+      cy.findByText("Ich aktiviere später").click();
+      cy.findByText("Beenden").click();
+      cy.findByText("Führe mich zu Metabase").click();
+    });
+
+    cy.location("pathname").should("eq", "/");
+
+    cy.log("Verify final language (German) is preserved");
+    H.main()
+      .findByText(
+        "Erste Schritte mit der Einbettung der Metabase in Ihre Anwendung",
+      )
+      .should("be.visible");
+  });
+
   it("should allow you to connect a db during setup", () => {
     const dbName = "SQLite db";
 
     cy.intercept("GET", "api/collection/root").as("getRootCollection");
     cy.intercept("GET", "api/database").as("getDatabases");
 
-    cy.visit("/setup#123456");
-
-    skipWelcomePage();
-
-    selectPreferredLanguageAndContinue();
-
-    cy.findByLabelText(/What should we call you/);
-
-    cy.findByTestId("setup-forms").within(() => {
-      const strongPassword = "QJbHYJN3tPW[";
-      cy.findByLabelText(/^Create a password/)
-        .clear()
-        .type(strongPassword, { delay: 0 });
-      cy.findByLabelText(/^Confirm your password/)
-        .clear()
-        .type(strongPassword, { delay: 0 })
-        .blur();
-    });
-
-    cy.findByLabelText(/What should we call you/)
-      .button("Next")
-      .click();
-
-    // make sure this bit of the form loads before clicking next
-    cy.findByLabelText(/What will you use Metabase for/).findByText(
-      /Let us know your plans/,
-    );
-
-    cy.findByLabelText(/What will you use Metabase for/)
-      .button("Next")
-      .click();
+    navigateToDatabaseStep();
 
     cy.findByTestId("database-form").within(() => {
       cy.findByPlaceholderText("Search databases").type("lite").blur();
@@ -423,13 +468,15 @@ describe("scenarios > setup", () => {
   });
 
   it("embedded use-case, it should hide the db step and show the embedding homepage", () => {
+    cy.intercept("GET", "/api/activity/recents*").as("getRecents");
+    cy.intercept("GET", "/api/collection/root").as("getRootCollection");
+    cy.intercept("GET", "/api/database").as("getDatabases");
+
     cy.visit("/setup");
 
     cy.location("pathname").should("eq", "/setup");
 
     skipWelcomePage();
-
-    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
       // User
@@ -483,12 +530,20 @@ describe("scenarios > setup", () => {
 
     // should persist page loads
     cy.reload();
+    cy.wait([
+      "@getRecents",
+      "@getRootCollection",
+      "@getDatabases",
+      "@properties",
+    ]);
 
     H.main()
       .findByText("Get started with Embedding Metabase in your app")
-      .should("exist");
+      .should("be.visible");
 
-    H.main().findByText("Hide these").realHover();
+    H.main().scrollTo("top");
+
+    H.main().findByText("Hide these").trigger("mouseover");
 
     H.popover().findByText("Embedding done, all good").click();
 
@@ -505,8 +560,6 @@ describe("scenarios > setup (EE)", () => {
     cy.visit("/setup");
 
     skipWelcomePage();
-
-    selectPreferredLanguageAndContinue();
 
     cy.findByTestId("setup-forms").within(() => {
       fillUserAndContinue({
@@ -540,7 +593,7 @@ describe("scenarios > setup (EE)", () => {
   });
 });
 
-H.describeWithSnowplow("scenarios > setup", () => {
+describe("scenarios > setup", () => {
   beforeEach(() => {
     H.restore("blank");
     H.resetSnowplow();
@@ -563,13 +616,6 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.expectUnstructuredSnowplowEvent({
       event: "step_seen",
       step_number: 1,
-      step: "language",
-    });
-    selectPreferredLanguageAndContinue();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "step_seen",
-      step_number: 2,
       step: "user_info",
     });
 
@@ -582,7 +628,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       cy.findByText("What will you use Metabase for?").should("exist");
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: 3,
+        step_number: 2,
         step: "usage_question",
       });
       cy.button("Next").click();
@@ -594,7 +640,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: 4,
+        step_number: 3,
         step: "db_connection",
       });
       cy.findByText("Continue with sample data").click();
@@ -607,7 +653,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
       if (IS_ENTERPRISE) {
         H.expectUnstructuredSnowplowEvent({
           event: "step_seen",
-          step_number: 5,
+          step_number: 4,
           step: "license_token",
         });
 
@@ -620,7 +666,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: IS_ENTERPRISE ? 6 : 5,
+        step_number: IS_ENTERPRISE ? 5 : 4,
         step: "data_usage",
       });
 
@@ -628,7 +674,7 @@ H.describeWithSnowplow("scenarios > setup", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "step_seen",
-        step_number: IS_ENTERPRISE ? 7 : 6,
+        step_number: IS_ENTERPRISE ? 6 : 5,
         step: "completed",
       });
 
@@ -658,7 +704,6 @@ H.describeWithSnowplow("scenarios > setup", () => {
     H.blockSnowplow();
     cy.visit("/setup");
     skipWelcomePage();
-    selectPreferredLanguageAndContinue();
     H.assertNoUnstructuredSnowplowEvent({
       event: "step_seen",
     });
@@ -670,13 +715,6 @@ const skipWelcomePage = () => {
     cy.findByText("Welcome to Metabase");
     cy.findByText("Let's get started").click();
   });
-};
-
-const selectPreferredLanguageAndContinue = () => {
-  cy.findByTestId("step-number").should("have.text", "1");
-  cy.findByText("What's your preferred language?");
-  cy.findByLabelText("English");
-  cy.findByText("Next").click();
 };
 
 const fillUserAndContinue = ({
@@ -729,4 +767,26 @@ const typeToken = (token: string) => {
     // hides the token from failure screenshots
     .invoke("attr", "type", "password")
     .type(token, { log: false });
+};
+
+// Navigate to the setup page, fills user data, password, skips usage questionnaire and proceeds to the database step
+const navigateToDatabaseStep = () => {
+  cy.visit(
+    "/setup?first_name=John&last_name=Doe&email=john@doe.test&site_name=Doe%20Unlimited",
+  );
+
+  skipWelcomePage();
+
+  cy.findByTestId("setup-forms").within(() => {
+    const password = "12341234";
+    cy.findByLabelText("Create a password").should("be.empty").type(password);
+    cy.findByLabelText("Confirm your password").type(password);
+    cy.button("Next").click();
+
+    cy.log("Just go through the usage questionnaire");
+    cy.findByLabelText("What will you use Metabase for?").should("be.visible");
+    cy.button("Next").click();
+  });
+
+  cy.log("We are now on the database step");
 };

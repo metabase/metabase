@@ -9,6 +9,16 @@ on:
       skip-lint:
         type: boolean
         default: false
+  workflow_dispatch:
+    inputs:
+      skip:
+        description: "Skip main frontend jobs (type-check, unit tests, timezone tests)"
+        type: boolean
+        default: false
+      skip-lint:
+        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}-frontend
@@ -25,15 +35,16 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
+
+      - name: Get Eslint cache key
+        uses: ./.github/actions/get-cache-keys
+        id: get-cache-keys
       - name: Restore ESLint cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
-          path: .eslintcache
-          key: eslintcache-${{ hashFiles('yarn.lock', '.eslintrc.js') }}
-          restore-keys: |
-            eslintcache-
+          path: ${{ github.workspace}}/.eslintcache
+          key: ${{ steps.get-cache-keys.outputs.eslint-cache-key }}
+
       - name: Compile CLJS
         run: yarn build-pure:cljs
       - name: Find CSS variables that are used but never defined
@@ -42,6 +53,8 @@ jobs:
         run: yarn run lint-prettier-pure
       - name: Run ESLint linter
         run: yarn run lint-eslint-pure
+      - name: Run CSS linter
+        run: yarn run lint-css
 
   fe-type-check:
     if: ${{ !inputs.skip }}
@@ -53,8 +66,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - run: yarn build-pure:cljs
         name: Compile CLJS
       - run: yarn type-check-pure
@@ -63,8 +74,13 @@ jobs:
   fe-tests-unit:
     if: ${{ !inputs.skip }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2] # 2 shards for parallel execution
     env:
+      SHARDS: 2 # should match matrix above
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
       JEST_JUNIT_OUTPUT_NAME: test-report-frontend-unit.xml
     steps:
@@ -73,24 +89,15 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
-      - name: Run frontend unit tests and collect the code coverage information
-        if: github.ref_name == 'master'
-        run: yarn run test-unit --coverage --silent
       - name: Run frontend unit tests
-        if: github.ref_name != 'master'
-        run: yarn run test-unit --silent
-      - name: Upload coverage to codecov.io
-        if: github.ref_name == 'master'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: front-end
-          token: ${{ secrets.CODECOV_TOKEN }}
+        run: yarn run test-unit --silent --shard=${{ matrix.shard }}/${{ env.SHARDS }}
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         with:
           input-path: ./target/junit
           output-name: frontend-unit
@@ -110,8 +117,6 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
       - name: Run frontend timezones tests
         run: yarn run test-timezones
 

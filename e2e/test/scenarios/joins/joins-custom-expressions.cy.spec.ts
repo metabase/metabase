@@ -115,8 +115,8 @@ describe("scenarios > joins > custom expressions", () => {
           H.openOrdersTable({ mode: "notebook" });
 
           H.join();
-          H.entityPickerModal().within(() => {
-            H.entityPickerModalTab("Tables").click();
+          H.miniPicker().within(() => {
+            cy.findByText("Sample Database").click();
             cy.findByText("Reviews").click();
           });
           H.popover().within(() => {
@@ -151,8 +151,8 @@ describe("scenarios > joins > custom expressions", () => {
     H.openNotebook();
 
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("Orders Model").click();
     });
     H.popover().within(() => {
@@ -181,8 +181,8 @@ describe("scenarios > joins > custom expressions", () => {
     H.openOrdersTable({ mode: "notebook" });
 
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Reviews").click();
     });
     H.popover().within(() => {
@@ -202,13 +202,13 @@ describe("scenarios > joins > custom expressions", () => {
     H.popover().findByText("Inner join").click();
     H.getNotebookStep("join")
       .findByLabelText("Left column")
-      .findByText("Custom expression")
+      .findByText("1")
       .click();
     H.enterCustomColumnDetails({ formula: "[ID] + 1" });
     H.popover().button("Update").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
-      .findByText("Custom expression")
+      .findByText("1")
       .click();
     H.enterCustomColumnDetails({ formula: "[Reviews → ID] + 1" });
     H.popover().button("Update").click();

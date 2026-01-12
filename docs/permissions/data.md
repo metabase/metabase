@@ -54,19 +54,19 @@ Permission levels include:
 
 - [Can view](#can-view-data-permission)
 - [Granular](#granular-view-data-permission)
-- [Sandboxed](#sandboxed-view-data-permission)
+- [Row and column security](#row-and-column-security)
 - [Impersonated](#impersonated-view-data-permission)
 - [Blocked](#blocked-view-data-permission)
 
 View data permission settings apply to different levels in your database:
 
-| View data permission | Database | Schema | Table |
-| -------------------- | -------- | ------ | ----- |
-| Can view             | ✅       | ✅     | ✅    |
-| Granular\*           | ✅       | ✅     | ❌    |
-| Sandboxed            | ❌       | ❌     | ✅    |
-| Impersonated         | ✅       | ❌     | ❌    |
-| Blocked              | ✅       | ✅     | ✅    |
+| View data permission    | Database | Schema | Table |
+| ----------------------- | -------- | ------ | ----- |
+| Can view                | ✅       | ✅     | ✅    |
+| Granular\*              | ✅       | ✅     | ❌    |
+| Row and column security | ❌       | ❌     | ✅    |
+| Impersonated            | ✅       | ❌     | ❌    |
+| Blocked                 | ✅       | ✅     | ✅    |
 
 \* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
 
@@ -90,13 +90,13 @@ This option lets you set View data permissions for individual schemas or tables.
 
 For tables, you have the option to set either **Can view** or **Sandboxed**.
 
-### Sandboxed view data permission
+### Row and column security
 
-{% include plans-blockquote.html feature="Sandboxed view data permission" %}
+{% include plans-blockquote.html feature="Row and column security" %}
 
-Allows you to set row-level permissions based on user attributes. Can only be configured at the table level.
+Allows you to set row-level permissions based on user attributes, as well as custom views. Can only be configured at the table level.
 
-See [Data sandboxes](./data-sandboxes.md).
+See [Row and column security](./row-and-column-security.md).
 
 ### Impersonated view data permission
 
@@ -130,6 +130,8 @@ Create query levels include:
 
 People can use Metabase's query builder or its native/SQL editor.
 
+If a group has "Blocked" or "Row and column security" View data permissions for _any_ of the tables in the database, then this group will have native queries disabled for _all_ tables in that database. That's because Metabase can't parse SQL queries, so it can't know for sure whether the SQL queries are using the tables with restricted access.
+
 ### Query builder only create queries permission
 
 People can create new questions and drill-through existing questions using Metabase's query builder.
@@ -148,6 +150,8 @@ You can set permissions on whether people in a group can download results (and h
 - Granular (you want to set access for individual tables or schemas)
 - 10 thousand rows
 - 1 million rows
+
+Downloads of native queries are only allowed if a group has download permissions for the _entire_ database. If a group only has download permissions for specific tables or schemas (using the Granular setting), they won't be able to download results from native/SQL queries, even for tables they have permissions for. This is because Metabase doesn't parse SQL queries, so it can't determine which tables are being queried.
 
 ## Manage table metadata permissions
 
@@ -187,14 +191,9 @@ See [Upload permissions](../databases/uploads.md#add-people-to-a-group-with-data
 - [Impersonation](./impersonation.md)
 - [Learn permissions](https://www.metabase.com/learn/metabase-basics/administration/permissions)
 - [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
-- [Data sandboxing: setting row-level permissions][sandbox-rows]
-- [Advanced data sandboxing: limiting access to columns][sandbox-columns]
 - [Users, roles, and privileges](../databases/users-roles-privileges.md)
 
 [collections]: ./collections.md
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
-[data-sandboxing]: ./data-sandboxes.md
 [permissions-overview]: ./introduction.md
-[sandbox-columns]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-column-permissions.html
-[sandbox-rows]: https://www.metabase.com/learn/metabase-basics/administration/permissions/data-sandboxing-row-permissions.html
 [sql-snippet-folders]: ../questions/native-editor/snippets.md

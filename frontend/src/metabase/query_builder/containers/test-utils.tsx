@@ -24,6 +24,7 @@ import {
   setupSearchEndpoints,
   setupTimelinesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
   screen,
@@ -52,6 +53,8 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockUnsavedCard,
+  createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
@@ -60,6 +63,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { RequestState, State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryBuilder } from "./QueryBuilder";
 
@@ -284,10 +288,12 @@ export const setup = async ({
         <Route path="/model">
           <Route path="new" component={NewModelOptions} />
           <Route path="query" component={TestQueryBuilder} />
+          <Route path="columns" component={TestQueryBuilder} />
           <Route path="metadata" component={TestQueryBuilder} />
           <Route path="notebook" component={TestQueryBuilder} />
           <Route path=":slug" component={TestQueryBuilder} />
           <Route path=":slug/query" component={TestQueryBuilder} />
+          <Route path=":slug/columns" component={TestQueryBuilder} />
           <Route path=":slug/metadata" component={TestQueryBuilder} />
           <Route path=":slug/notebook" component={TestQueryBuilder} />
         </Route>
@@ -303,6 +309,15 @@ export const setup = async ({
     {
       withRouter: true,
       initialRoute,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({
+          permissions: createMockUserPermissions({
+            can_create_queries: true,
+            can_create_native_queries: true,
+          }),
+        }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
+      }),
     },
   );
 
@@ -340,8 +355,9 @@ export const startNewNotebookModel = async () => {
   await userEvent.click(screen.getByText("Use the notebook editor"));
   await waitForLoaderToBeRemoved();
 
-  const modal = await screen.findByTestId("entity-picker-modal");
+  const modal = await screen.findByTestId("mini-picker");
   await waitForLoaderToBeRemoved();
+  await userEvent.click(await within(modal).findByText("Sample Database"));
   await userEvent.click(await within(modal).findByText("Orders"));
 
   expect(screen.getByRole("button", { name: "Get Answer" })).toBeEnabled();

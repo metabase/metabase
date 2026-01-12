@@ -121,7 +121,7 @@ function createCardFromQuery({
 }: Partial<Card> & { query: Lib.Query }): Card {
   return createMockCard({
     ...rest,
-    dataset_query: Lib.toLegacyQuery(query),
+    dataset_query: Lib.toJsQuery(query),
   });
 }
 
@@ -159,7 +159,6 @@ describe("ViewOnlyTag", () => {
                 joins: [
                   {
                     alias: "Orders Question",
-                    ident: "Heqv_gfsCdfE95MkLLup_",
                     fields: "all",
                     // This card does not exist
                     "source-table": "card__123",
@@ -227,7 +226,6 @@ describe("ViewOnlyTag", () => {
               joins: [
                 {
                   alias: "Orders Question",
-                  ident: "Heqv_gfsCdfE95MkLLup_",
                   fields: "all",
                   "source-table": `card__${sourceCard.id}`,
                   condition: [
@@ -282,7 +280,7 @@ describe("ViewOnlyTag", () => {
 
   describe("implicit joins", () => {
     for (const visibility_type of HIDDEN_VISIBILITY_TYPES) {
-      it(`should not show the View-only badge when an implictly joined table is ${visibility_type}`, async () => {
+      it(`should not show the View-only badge when an implicitly joined table is ${visibility_type}`, async () => {
         setup({
           card: createCardFromQuery({ query: ORDERS_QUERY }),
           tables: [

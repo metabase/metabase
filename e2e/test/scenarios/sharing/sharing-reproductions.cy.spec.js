@@ -323,14 +323,14 @@ describe("issue 21559", { tags: "@external" }, () => {
   it("should respect dashboard card visualization (metabase#21559)", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
 
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(q2Details.name);
+      H.selectDataset(q2Details.name);
       cy.findByText("80.52").should("exist");
       H.horizontalWell().findAllByTestId("well-item").should("have.length", 2);
       cy.button("Save").click();
@@ -339,7 +339,7 @@ describe("issue 21559", { tags: "@external" }, () => {
     // Make sure visualization changed to funnel
     H.getDashboardCard(0).within(() => {
       cy.findByText("80.52").should("exist");
-      cy.get("polygon[fill='#509EE3']").should("exist");
+      cy.get("polygon[fill='#509EE2']").should("exist");
     });
 
     H.saveDashboard();
@@ -506,10 +506,7 @@ describe("issue 24223", () => {
       `${admin.first_name} ${admin.last_name}`,
     ]);
     cy.findByTestId("subscription-parameters-section").within(() => {
-      cy.findAllByTestId("field-set-content")
-        .filter(":contains(Doohickey)")
-        .icon("close")
-        .click();
+      H.filterWidget({ name: "Category" }).icon("close").click();
     });
 
     H.sidebar().button("Done").click();
@@ -661,12 +658,13 @@ describe("issue 26988", () => {
       },
     }).then(({ body: card }) => {
       H.visitDashboard(card.dashboard_id);
-    });
 
-    H.openStaticEmbeddingModal({
-      activeTab: "lookAndFeel",
-      previewMode: "preview",
-      acceptTerms: false,
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: card.dashboard_id,
+        activeTab: "lookAndFeel",
+        previewMode: "preview",
+      });
     });
 
     cy.wait("@previewDashboard");
@@ -932,7 +930,8 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    H.openSharingMenu("Edit alerts");
+    cy.findByLabelText("Move, trash, and more…").click();
+    H.popover().findByText("Edit alerts").click();
     H.modal().findByText("Check daily at 9:00 AM").should("be.visible").click();
 
     H.modal().within(() => {

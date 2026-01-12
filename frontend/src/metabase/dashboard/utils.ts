@@ -2,12 +2,16 @@ import type { Location } from "history";
 import _ from "underscore";
 
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/lib/errors/types";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -26,6 +30,7 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
+  Parameter,
   ParameterId,
   QuestionDashboardCard,
   VirtualCard,
@@ -35,7 +40,7 @@ import type {
 import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
-  if (after.parameters && before.embedding_params) {
+  if (after.parameters && before.embedding_params && before.enable_embedding) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, (param) => {
         return param.slug === embedSlug;
@@ -196,7 +201,11 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-  return dashcard.card.dataset_query?.type === "native";
+  if (dashcard.card.dataset_query == null) {
+    return false;
+  }
+  const question = new Question(dashcard.card);
+  return question.isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -205,11 +214,9 @@ export function showVirtualDashCardInfoText(
   dashcard: DashboardCard,
   isMobile: boolean,
 ) {
-  if (isVirtualDashCard(dashcard)) {
-    return isMobile || dashcard.size_y > 2 || dashcard.size_x > 5;
-  } else {
-    return true;
-  }
+  const dashcardAreaSize = dashcard.size_y * dashcard.size_x;
+
+  return isMobile || (dashcardAreaSize >= 12 && dashcard.size_x > 3);
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {
@@ -279,7 +286,10 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(datasets: Dataset[]) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
   const isAccessRestricted = datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
@@ -290,6 +300,19 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
+    };
+  }
+
+  const staticEntityLoadingError = datasets.find((dataset) =>
+    isStaticEmbeddingEntityLoadingError(dataset.error, {
+      isGuestEmbed,
+    }),
+  )?.error as StaticEmbeddingEntityError | undefined;
+
+  if (staticEntityLoadingError) {
+    return {
+      message: staticEntityLoadingError.data,
+      icon: "warning" as const,
     };
   }
 
@@ -335,7 +358,10 @@ const shouldHideCard = (
   dashcardData: Record<CardId, Dataset | null | undefined>,
   wasVisible: boolean,
 ) => {
-  const shouldHideEmpty = dashcard.visualization_settings?.["card.hide_empty"];
+  const dashcardSettings = isVisualizerDashboardCard(dashcard)
+    ? dashcard.visualization_settings?.visualization?.settings
+    : dashcard.visualization_settings;
+  const shouldHideEmpty = dashcardSettings?.["card.hide_empty"];
 
   if (isVirtualDashCard(dashcard) || !shouldHideEmpty) {
     return false;
@@ -349,7 +375,7 @@ const shouldHideCard = (
 
   return (
     !hasRows(dashcardData) &&
-    !getDashcardResultsError(Object.values(dashcardData))
+    !getDashcardResultsError(Object.values(dashcardData), false)
   );
 };
 
@@ -481,4 +507,49 @@ export function getMappedParametersIds(
     const mappings = dashcard.parameter_mappings ?? [];
     return mappings.map((parameter) => parameter.parameter_id);
   });
+}
+
+/**
+ * Reorders a dashboard header parameter within the full parameters array.
+ *
+ * Since `dashboard.parameters` includes both header and inline (dashcard) parameters,
+ * this function ensures that the header parameters are correctly reordered while
+ * maintaining the integrity of the full parameters array.
+ */
+export function setDashboardHeaderParameterIndex(
+  parameters: Parameter[],
+  headerParameterIds: ParameterId[],
+  parameterId: ParameterId,
+  index: number,
+) {
+  const headerIndex = headerParameterIds.indexOf(parameterId);
+  const fullIndex = parameters.findIndex((p) => p.id === parameterId);
+
+  if (headerIndex === -1 || fullIndex === -1 || headerIndex === index) {
+    return parameters;
+  }
+
+  const reorderedHeaders = [...headerParameterIds];
+  reorderedHeaders.splice(headerIndex, 1);
+  reorderedHeaders.splice(index, 0, parameterId);
+
+  let targetIndex = 0;
+
+  if (index > 0) {
+    const prevHeaderId = reorderedHeaders[index - 1];
+    const prevIndex = parameters.findIndex((p) => p.id === prevHeaderId);
+    if (prevIndex >= 0) {
+      targetIndex = prevIndex + 1;
+    }
+  }
+
+  const result = [...parameters];
+  const [movedParam] = result.splice(fullIndex, 1);
+
+  if (fullIndex < targetIndex) {
+    targetIndex--;
+  }
+
+  result.splice(targetIndex, 0, movedParam);
+  return result;
 }

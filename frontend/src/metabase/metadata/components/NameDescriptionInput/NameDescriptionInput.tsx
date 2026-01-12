@@ -1,4 +1,5 @@
 import { useElementSize } from "@mantine/hooks";
+import type { ReactNode } from "react";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Box, Group, Icon, type IconName, Text, rem } from "metabase/ui";
@@ -8,31 +9,51 @@ import S from "./NameDescriptionInput.module.css";
 import { Textarea } from "./Textarea";
 
 interface Props {
-  description: string;
-  descriptionPlaceholder: string;
   name: string;
   nameIcon: IconName;
   nameMaxLength?: number;
   namePlaceholder: string;
   namePrefix?: string;
-  onDescriptionChange: (description: string) => void;
+  nameRightSection?: ReactNode;
+  description: string;
+  descriptionPlaceholder: string;
+  readOnly?: boolean;
   onNameChange: (name: string) => void;
+  onDescriptionChange: (description: string) => void;
 }
 
 export const NameDescriptionInput = ({
-  description,
-  descriptionPlaceholder,
   name,
   nameIcon,
   nameMaxLength,
   namePlaceholder,
   namePrefix,
-  onDescriptionChange,
+  nameRightSection,
+  description,
+  descriptionPlaceholder,
+  readOnly,
   onNameChange,
+  onDescriptionChange,
 }: Props) => {
   const { ref, width } = useElementSize();
   const { ref: sectionRef, width: sectionWidth } = useElementSize();
-  const leftSectionWidth = sectionWidth > 0 ? sectionWidth : 40;
+  const leftSectionWidth = Math.max(sectionWidth, 40);
+
+  const handleDescriptionChange = (value: string) => {
+    const newDescription = value.trim();
+
+    if (description !== newDescription) {
+      onDescriptionChange(newDescription);
+    }
+  };
+
+  const handleNameChange = (value: string) => {
+    const newName = value.trim();
+
+    if (name !== newName) {
+      onNameChange(newName);
+    }
+  };
 
   return (
     <Box ref={ref}>
@@ -46,7 +67,7 @@ export const NameDescriptionInput = ({
         leftSection={
           <Group
             align="center"
-            c="text-light"
+            c="text-tertiary"
             gap={10}
             flex="1"
             fs="lg"
@@ -56,7 +77,7 @@ export const NameDescriptionInput = ({
             ref={sectionRef}
             wrap="nowrap"
           >
-            <Icon c="brand" flex="0 0 auto" name={nameIcon} size={20} />
+            <Icon flex="0 0 auto" name={nameIcon} size={20} c="brand" />
 
             {namePrefix && (
               <Ellipsified
@@ -64,7 +85,7 @@ export const NameDescriptionInput = ({
                 lines={1}
                 tooltip={namePrefix}
               >
-                <Text c="text-light" component="span" size="lg">
+                <Text c="text-tertiary" component="span" size="lg">
                   {namePrefix}
                   {":"}
                 </Text>
@@ -84,6 +105,7 @@ export const NameDescriptionInput = ({
         maxLength={nameMaxLength}
         placeholder={namePlaceholder}
         required
+        rightSection={nameRightSection}
         size="lg"
         styles={{
           section: {
@@ -95,7 +117,8 @@ export const NameDescriptionInput = ({
           },
         }}
         value={name}
-        onChange={onNameChange}
+        readOnly={readOnly}
+        onChange={handleNameChange}
       />
 
       <Textarea
@@ -108,7 +131,8 @@ export const NameDescriptionInput = ({
         minRows={2}
         placeholder={descriptionPlaceholder}
         value={description}
-        onChange={onDescriptionChange}
+        readOnly={readOnly}
+        onChange={handleDescriptionChange}
       />
     </Box>
   );

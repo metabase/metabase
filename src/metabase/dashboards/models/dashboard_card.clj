@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
@@ -24,7 +25,7 @@
   #_(derive :hook/search-index))
 
 (t2/deftransforms :model/DashboardCard
-  {:parameter_mappings     mi/transform-parameters-list
+  {:parameter_mappings     parameters/transform-parameter-mappings
    :visualization_settings mi/transform-visualization-settings
    :inline_parameters      mi/transform-json})
 
@@ -73,7 +74,7 @@
   [dashboard-card]
   (t2/instance :model/DashboardCard
                (-> dashboard-card
-                   (m/update-existing :parameter_mappings mi/normalize-parameters-list)
+                   (m/update-existing :parameter_mappings parameters/normalize-parameter-mappings)
                    (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
 
 (defmethod serdes/hash-fields :model/DashboardCard
@@ -190,15 +191,6 @@
         (update-dashboard-cards-series! {dashcard-id series}))
       nil)))
 
-(def ParamMapping
-  "Schema for a parameter mapping as it would appear in the DashboardCard `:parameter_mappings` column."
-  [:and
-   [:map-of :keyword :any]
-   [:map
-    ;; TODO -- validate `:target` as well... breaks a few tests tho so those will have to be fixed (#40021)
-    [:parameter_id ms/NonBlankString]
-    #_[:target       :any]]])
-
 (def ^:private NewDashboardCard
   ;; TODO - make the rest of the options explicit instead of just allowing whatever for other keys (#40021)
   [:map
@@ -216,6 +208,14 @@
   [dashboard-cards :- [:sequential NewDashboardCard]]
   (when (seq dashboard-cards)
     (t2/with-transaction [_conn]
+      (let [card-ids (keep :card_id dashboard-cards)]
+        (when (seq card-ids)
+          (let [in-report-cards (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil])]
+            (when (seq in-report-cards)
+              (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                              {:status-code 400
+                               :in-report-card-ids (map :id in-report-cards)}))))))
+
       (let [dashboard-card-ids (t2/insert-returning-pks!
                                 :model/DashboardCard
                                 (for [dashcard dashboard-cards]

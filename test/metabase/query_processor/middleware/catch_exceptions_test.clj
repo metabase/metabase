@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
-  "There are additional tests in [[metabase.query-processor-test.failure-test]]."
+  "There are additional tests in [[metabase.query-processor.failure-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
@@ -85,7 +85,7 @@
    (catch-exceptions run {}))
 
   ([run query]
-   (let [query    (merge {:type :query} query)
+   (let [query    (merge {:type :query, :database 1} query)
          metadata {}
          rows     []
          qp       (fn [query rff]

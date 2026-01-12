@@ -46,8 +46,9 @@
   &[data-variant="default"] {
     color: var(--mb-color-text-primary);
     border-color: var(--mb-color-border);
-    background-color: var(--mb-color-background);
+    background-color: var(--mb-color-background-primary);
 
+    &[aria-pressed="true"],
     &:hover {
       color: var(--mb-color-text-hover);
       background-color: var(--mb-color-background-hover);
@@ -55,6 +56,8 @@
   }
 
   &[data-variant="filled"] {
+    color: var(--mb-color-text-primary-inverse);
+
     &:hover {
       border-color: alpha(var(--button-bg), 0.88);
       background-color: alpha(var(--button-bg), 0.88);
@@ -69,12 +72,12 @@
 
     &:disabled,
     &[data-disabled="true"] {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
       border-color: transparent;
       background-color: transparent;
 
       &:hover {
-        color: var(--mb-color-text-light);
+        color: var(--mb-color-text-tertiary);
         border-color: transparent;
         background-color: transparent;
       }
@@ -88,7 +91,7 @@
     border-radius: 8px;
     display: flex;
     justify-content: flex-start;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     font-weight: 500;
     background-color: transparent;
     padding: rem(4px) rem(15px);
@@ -103,7 +106,7 @@
     }
 
     &[aria-pressed="true"] {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
       background-color: var(--button-color);
     }
 
@@ -124,7 +127,7 @@
 
     display: flex;
     justify-content: flex-start;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     background-color: transparent;
 
     &:hover {
@@ -142,12 +145,12 @@
 
     &:disabled,
     &[data-disabled="true"] {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
       border-color: transparent;
       background-color: transparent;
 
       &:hover {
-        color: var(--mb-color-text-light);
+        color: var(--mb-color-text-tertiary);
         border-color: transparent;
         background-color: transparent;
       }

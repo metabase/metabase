@@ -1,9 +1,9 @@
 (ns metabase.driver.mongo
   "MongoDB Driver."
+  (:refer-clojure :exclude [some mapv empty? get-in])
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
-   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
@@ -15,11 +15,13 @@
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [some mapv empty? get-in]]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
@@ -61,36 +63,37 @@
 
 (defmethod driver/humanize-connection-error-message
   :mongo
-  [_ message]
-  (condp re-matches message
-    #"^Timed out after \d+ ms while waiting for a server .*$"
-    :cannot-connect-check-host-and-port
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^Timed out after \d+ ms while waiting for a server .*$"
+      :cannot-connect-check-host-and-port
 
-    #"^host and port should be specified in host:port format$"
-    :invalid-hostname
+      #"^host and port should be specified in host:port format$"
+      :invalid-hostname
 
-    #"^Password can not be null when the authentication mechanism is unspecified$"
-    :password-required
+      #"^Password can not be null when the authentication mechanism is unspecified$"
+      :password-required
 
-    #"^org.apache.sshd.common.SshException: No more authentication methods available$"
-    :ssh-tunnel-auth-fail
+      #"^org.apache.sshd.common.SshException: No more authentication methods available$"
+      :ssh-tunnel-auth-fail
 
-    #"^java.net.ConnectException: Connection refused$"
-    :ssh-tunnel-connection-fail
+      #"^java.net.ConnectException: Connection refused$"
+      :ssh-tunnel-connection-fail
 
-    #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
-    :certificate-not-trusted
+      #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
+      :certificate-not-trusted
 
-    #".*MongoSocketReadException: Prematurely reached end of stream.*"
-    :requires-ssl
+      #".*MongoSocketReadException: Prematurely reached end of stream.*"
+      :requires-ssl
 
-    #".* KeyFactory not available"
-    :unsupported-ssl-key-type
+      #".* KeyFactory not available"
+      :unsupported-ssl-key-type
 
-    #"java.security.InvalidKeyException: invalid key format"
-    :invalid-key-format
+      #"java.security.InvalidKeyException: invalid key format"
+      :invalid-key-format
 
-    message))
+      message)))
 
 ;;; ### Syncing
 
@@ -111,7 +114,7 @@
       {:version (get build-info "version")
        :semantic-version sanitized-version-array})))
 
-(defmethod driver/describe-database :mongo
+(defmethod driver/describe-database* :mongo
   [_ database]
   (mongo.connection/with-mongo-database [^MongoDatabase db database]
     {:tables (set (for [collection (mongo.util/list-collection-names db)
@@ -144,136 +147,7 @@
             #{}
             (throw e)))))))
 
-(defn- describe-table-query-step
-  "A single reduction step in the [[describe-table-query]] pipeline.
-  At the end of each step the output is a combination of 'result' and 'item' objects. There is one 'result' for each
-  path which has the most common type for that path. 'item' objects have yet to be aggregated into 'result' objects.
-  Each object has the following keys:
-  - result: true means the object represents a 'result', false means it represents a 'item' to be further processed.
-  - path:   The path to the field in the document.
-  - type:   If 'item', the type of the field's value. If 'result', the most common type for the field.
-  - index:  If 'item', the index of the field in the parent object. If 'result', it is the minimum of such indices.
-  - object: If 'item', the value of the field if it's an object. If 'result', it is null."
-  [max-depth depth]
-  [{"$facet"
-    (cond-> {"results"    [{"$match" {"result" true}}]
-             "newResults" [{"$match" {"result" false}}
-                           {"$group" {"_id"   {"type"       "$type"
-                                               "path"       "$path"}
-                                      ;; count is zero if type is "null" so we only select "null" as the type if there
-                                      ;; is no other type for the path
-                                      "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type" "null"]}
-                                                                "then" 0
-                                                                "else" 1}}}
-                                      "index" {"$min" "$index"}}}
-                           {"$sort" {"count" -1}}
-                           {"$group" {"_id"        "$_id.path"
-                                      "type"       {"$first" "$_id.type"}
-                                      "index"      {"$min" "$index"}}}
-                           {"$project" {"path"      "$_id"
-                                        "type"       1
-                                        "result"     {"$literal" true}
-                                        "object"     nil
-                                        "index"      1}}]}
-      (not= depth max-depth)
-      (assoc "nextItems" [{"$match" {"result" false, "object" {"$ne" nil}}}
-                          {"$project" {"path" 1
-                                       "kvs"  {"$map" {"input" {"$objectToArray" "$object"}
-                                                       "as"    "item"
-                                                       "in"    {"k"          "$$item.k"
-                                                                ;; we only need v in the next step it's an object
-                                                                "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
-                                                                                       "then" "$$item.v"
-                                                                                       "else" nil}}
-                                                                "type"       {"$type" "$$item.v"}}}}}}
-                          {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-                          {"$project" {"path"       {"$concat" ["$path" "." "$kvs.k"]}
-                                       "type"       "$kvs.type"
-                                       "result"     {"$literal" false}
-                                       "index"      1
-                                       "object"     "$kvs.object"}}]))}
-   {"$project" {"acc" {"$concatArrays" (cond-> ["$results" "$newResults"]
-                                         (not= depth max-depth)
-                                         (conj "$nextItems"))}}}
-   {"$unwind" "$acc"}
-   {"$replaceRoot" {"newRoot" "$acc"}}])
-
-(defn- describe-table-query
-  "To understand how this works, see the comment block below for a rough translation of this query into Clojure."
-  [& {:keys [collection-name sample-size max-depth]}]
-  (let [start-n       (quot sample-size 2)
-        end-n         (- sample-size start-n)
-        sample        [{"$sort" {"_id" 1}}
-                       {"$limit" start-n}
-                       {"$unionWith"
-                        {"coll" collection-name
-                         "pipeline" [{"$sort" {"_id" -1}}
-                                     {"$limit" end-n}]}}]
-        initial-items [{"$project" {"path" "$ROOT"
-                                    "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"}
-                                                   "as"    "item"
-                                                   "in"    {"k"          "$$item.k"
-                                                            "object"     {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
-                                                                                   "then" "$$item.v"
-                                                                                   "else" nil}}
-                                                            "type"       {"$type" "$$item.v"}}}}}}
-                       {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-                       {"$project" {"path"       "$kvs.k"
-                                    "result"     {"$literal" false}
-                                    "type"       "$kvs.type"
-                                    "index"      1
-                                    "object"     "$kvs.object"}}]]
-    (concat sample
-            initial-items
-            (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
-            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "index" "$index"}}])))
-
-(comment
-  ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
-  ;; It is almost logically equivalent, excluding minor details like how the sample is taken, and dealing with null
-  ;; values. It is arguably easier to understand the Clojure version and translate it into MongoDB query language
-  ;; than to understand the MongoDB query version directly.
-  (defn describe-table-clojure [sample-data max-depth]
-    (let [;; initial items is a list of maps, each map a field in a document in the sample
-          initial-items (mapcat (fn [x]
-                                  (for [[i [k v]] (map vector (range) x)]
-                                    {:path   (name k)
-                                     :object (if (map? v) v nil)
-                                     :index  i
-                                     :type   (type v)}))
-                                sample-data)
-          most-common (fn [xs]
-                        (key (apply max-key val (frequencies xs))))]
-      (:results (reduce
-                 (fn [{:keys [results next-items]} depth]
-                   {:results    (concat results
-                                        (for [[path group] (group-by :path next-items)]
-                                          {:path  path
-                                           :type  (most-common (map :type group))
-                                           :index (apply min (map :index group))}))
-                    :next-items (when (not= depth max-depth)
-                                  (->> (keep :object next-items)
-                                       (mapcat (fn [x]
-                                                 (for [[i [k v]] (map vector (range) x)]
-                                                   {:path   (str (:path x) "." (name k))
-                                                    :object (if (map? v) v nil)
-                                                    :index  i
-                                                    :type   (type v)})))))})
-                 {:results [], :next-items initial-items}
-                 (range (inc max-depth))))))
-  ;; Example:
-  (def sample-data
-    [{:a 1 :b {:c "hello" :d [1 2 3]}}
-     {:a 2 :b {:c "world"}}])
-  (describe-table-clojure sample-data 0)
-  ;; => ({:path "a", :type java.lang.Long, :index 0}
-  ;;     {:path "b", :type clojure.lang.PersistentArrayMap, :index 1})
-  (describe-table-clojure sample-data 1)
-  ;; => ({:path "a", :type java.lang.Long, :index 0}
-  ;;     {:path "b", :type clojure.lang.PersistentArrayMap, :index 1}
-  ;;     {:path ".c", :type java.lang.String, :index 0}
-  ;;     {:path ".d", :type clojure.lang.PersistentVector, :index 1})
-  )
+;; describe-table impl start
 
 (def describe-table-query-depth
   "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
@@ -290,23 +164,140 @@
   ;;  > If people have problems with that, I think we can make it configurable.
   7)
 
-(mu/defn- describe-table :- [:sequential
-                             [:map {:closed true}
-                              [:path  driver-api/schema.common.non-blank-string]
-                              [:type  driver-api/schema.common.non-blank-string]
-                              [:index :int]]]
-  "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
-  Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
-  [db table]
-  (let [query (describe-table-query {:collection-name (:name table)
-                                     :sample-size     (* table-rows-sample/nested-field-sample-limit 2)
-                                     :max-depth       describe-table-query-depth})
-        data  (:data (driver-api/process-query {:database (:id db)
-                                                :type     "native"
-                                                :native   {:collection (:name table)
-                                                           :query      (json/encode query)}}))
-        cols  (map (comp keyword :name) (:cols data))]
-    (map #(zipmap cols %) (:rows data))))
+(defn ^:dynamic *sample-stages*
+  "Stages to get sample of a collection in [[describe-table-pipeline]]. Dynamic for testing purposes."
+  [collection-name sample-size]
+  (let [start-n       (quot sample-size 2)
+        end-n         (- sample-size start-n)]
+    [{"$sort" {"_id" 1}}
+     {"$limit" start-n}
+     {"$unionWith"
+      {"coll" collection-name
+       "pipeline" [{"$sort" {"_id" -1}}
+                   {"$limit" end-n}]}}]))
+
+(def ^:private unwind-stages
+  "Sequence of stages repeated in _search_ phase of [[describe-table-pipeline]]
+    for [[describe-table-query-depth]] times.
+
+    Each repetition $unwinds documents having `val` of type \"object\", so those are __swapped__ for sequence
+    of their children.
+
+    Documents with non-object val are left untouched.
+
+    Each document that is processed has path from parent stored in `path`. `indices` represent indices of keys
+    in the `path` in parent objects as per $objectToArray."
+  [{"$addFields" {"kvs" {"$cond" [{"$eq" [{"$type" "$val"} "object"]} {"$objectToArray" "$val"} nil]}}}
+   {"$unwind" {"path" "$kvs" "preserveNullAndEmptyArrays" true "includeArrayIndex" "index"}}
+   {"$project" {"path" {"$cond" [{"$and" ["$path" "$kvs.k"]}
+                                 {"$concat" ["$path" "." "$kvs.k"]}
+                                 {"$ifNull" ["$kvs.k" "$path"]}]}
+                "val" {"$cond" ["$kvs.k" "$kvs.v" "$val"]}
+                "indices" {"$cond" [{"$or" ["$index" {"$eq" ["$index" 0]}]}
+                                    {"$concatArrays" ["$indices" ["$index"]]}
+                                    "$indices"]}}}])
+
+(defn- describe-table-pipeline
+  "Construct mongo aggregation pipeline to fetch at most `leaf-limit` number of _leaf fields_. _Leaf fields_ are later
+  transformed by [[dbfields->ftree]] and [[ftree->nested-fields]] to be returned as :fields
+  of [[driver/describe-table]]. `sample-size` represents number of documents taken from start and end of a collection.
+  `document-sample-depth` conveys how deep the documents are sampled, ie. number of repetitions of [[unwind-stages]]."
+  [{:keys [collection-name sample-size document-sample-depth leaf-limit]}]
+  (into []
+        cat
+        [;; 1. Fetch.
+         (*sample-stages* collection-name sample-size)
+         [;; 2. Initialize.
+          {"$project" {"path"    {"$literal" nil}
+                       "indices" {"$literal" []}
+                       "val"     "$$ROOT"}}]
+         ;; 3. Search
+         (apply concat (repeat document-sample-depth unwind-stages))
+         ;; 4. Group results
+         [{"$group" {"_id"     {"path"   "$path"
+                                "type"   {"$type" "$val"}
+                                "ensure" {"$cond" [{"$eq" ["$path" "_id"]} 0 1]}}
+                     "count"   {"$sum" {"$cond" [{"$eq" [{"$type" "$val"} "null"]} 0 1]}}
+                     "indices" {"$min" "$indices"}}}
+          {"$sort" {"count" -1}}
+          {"$group" {"_id" "$_id.path"
+                     "info" {"$first" {"count"   "$count"
+                                       "type"    "$_id.type"
+                                       "ensure"  "$_id.ensure"
+                                       "indices" "$indices"}}}}
+          {"$sort" {"info.ensure" 1 "info.count"  -1 "_id" 1}}
+          {"$limit" leaf-limit}
+          {"$project" {"_id"     1
+                       "type"    "$info.type"
+                       "indices" "$info.indices"}}
+          {"$project" {"info" 0}}]]))
+
+(defn- raw-path->ftree-paths
+  "Construct sequence of ftree paths from `path`. `path` is string of form eg. `c1.c2...`. The result
+  for the example looks as '([:children 'c1'] [:children 'c1' :children 'c2']."
+  [path]
+  (->> (str/split path #"\.")
+       (reductions conj [])
+       rest
+       (map #(vec (interleave (repeat :children) %)))))
+
+(defn- ftree-path->raw-path
+  [ftree-path]
+  (str/join "." (remove #{:children} ftree-path)))
+
+(defn- ftree-set-type
+  "Set type in ftree node.
+
+  There may be situations where some documents from sampled data contain path `a.b` of type eg. datetime and path
+  `a.b.c` of some other type. That could result in type conflict on `a.b`.
+
+  When building the ftree, Type conflicts are resolved as \"object wins\"."
+  [ftree path new-type]
+  (let [type-path (conj (vec path) :database-type)
+        current-type (get-in ftree type-path)]
+    (when (and (some? current-type) (not= current-type new-type))
+      (log/warnf "Type conflict in sampled data at path `%s`, t1 `%s`, t2 `%s`."
+                 (ftree-path->raw-path path) current-type new-type))
+    (cond-> ftree
+      (or (= "object" new-type) (nil? current-type)) (assoc-in type-path new-type))))
+
+(defn- dbfields->ftree*
+  "Construct _raw_ ftree from `dbfields`. Intended result is described in the [[dbfields->ftree]] docstring.
+  _Raw_ means that nodes have only #{:database-type :visibility-type :index} keys."
+  [dbfields]
+  (loop [[{raw-path :path leaf-type :type :as dbfield} & dbfields*] dbfields
+         ftree {:children {}}]
+    (if (nil? dbfield)
+      ftree
+      (let [ftree-paths (raw-path->ftree-paths raw-path)
+            parents-paths (butlast ftree-paths)
+            leaf-path (last ftree-paths)
+            ftree* (reduce #(-> %1
+                                (ftree-set-type %2 "object")
+                                (assoc-in (conj %2 :visibility-type) :details-only))
+                           ftree parents-paths)
+            ftree* (ftree-set-type ftree* leaf-path leaf-type)
+            ftree* (reduce #(assoc-in %1 (conj (vec (first %2)) :index) (second %2))
+                           ftree*
+                           (map vector ftree-paths (:indices dbfield)))]
+        (recur dbfields* ftree*)))))
+
+(defn- ftree-prewalk
+  "Walk the `ftree` and apply (f ftree path) to each node prior descending to its children. Nodes are walked according
+  to index and name. Returns the modified ftree."
+  [ftree f]
+  (letfn [(sorted-children-paths
+            [ftree* path]
+            (->> (get-in ftree* (conj path :children))
+                 keys (sort-by (juxt #(get-in ftree* (conj path :children % :index)) identity))
+                 (map (partial conj path :children))))
+
+          (ftree-prewalk*
+            [ftree* path]
+            (reduce ftree-prewalk*
+                    (f ftree* path)
+                    (sorted-children-paths ftree* path)))]
+    (reduce ftree-prewalk* ftree (sorted-children-paths ftree []))))
 
 (defn- db-type->base-type [db-type]
   ;; Mongo types from $type aggregation operation
@@ -335,72 +326,95 @@
         "decimal"    :type/Decimal}
        db-type :type/*))
 
-(defn- add-database-position
-  "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
-  [fields i]
-  (->> fields
-       ;; Previously database-position was set with Clojure according to the logic in this imperative pseudocode:
-       ;; i = 0
-       ;; for each row in sample:
-       ;;   for each k,v in row:
-       ;;     field.database-position = i
-       ;;     i = i + 1
-       ;;     for each k,v in field.nested-fields:
-       ;;       field.database-position = i
-       ;;       i = i + 1
-       ;;       etc.
-       ;; We can't match this logic exactly with a MongoDB query. We can get close though: index is the minimum index
-       ;; of the key in the object over all documents in the sample. however, there can be more than one key that has
-       ;; the same index. so name is used to keep the order stable.
-       (sort-by (juxt :index :name))
-       (reduce (fn [[fields i] field]
-                 (let [field             (assoc field :database-position i)
-                       i                 (inc i)
-                       nested-fields     (:nested-fields field)
-                       [nested-fields i] (if nested-fields
-                                           (add-database-position nested-fields i)
-                                           [nested-fields i])
-                       field             (-> field
-                                             (m/assoc-some :nested-fields nested-fields)
-                                             (dissoc :index))]
-                   [(conj fields field) i]))
-               [#{} i])))
+(defn- ftree-reconcile-nodes
+  "Add missing keys [[dbfields->ftree*]] nodes to match description in [[dbfields->ftree]]."
+  [ftree]
+  (let [index (atom -1)]
+    (-> (ftree-prewalk
+         ftree
+         (fn [ftree* path]
+           (-> ftree*
+               (assoc-in (conj path :database-position) (swap! index inc))
+               (assoc-in (conj path :base-type) (-> (get-in ftree* (conj path :database-type))
+                                                    db-type->base-type))
+               (assoc-in (conj path :name) (last path)))))
+        (as-> $ (if (map? (get-in $ [:children "_id"]))
+                  (assoc-in $ [:children "_id" :pk?] true)
+                  $)))))
+
+(defn- dbfields->ftree
+  "Build ftree from `dbfields`. Ftree is intermediate structure, later transformed for needs
+  of [[driver/describe-table]]. For details see the [[ftree->nested-fields]].
+
+  Ftree is of form
+  {:children {'toplevelkey' {:name 'toplevelkey'
+                             :database-position <int>
+                             :database-type <string>
+                             :base-type <base-type>
+                             :index <int>                              ; index of key in mongo object
+                             :visibility-type :details-only            ; only for object database-type
+                             :pk? true                                 ; only in '_id' named toplevel key
+                             :children {'nestedkey' {:name 'nestedkey'
+                                                     ...}
+                                        ...}}
+              ...}}
+
+  Reason for doing this in 2 steps is that for adding database-position the structure has to be fully constructed
+  first.
+
+  The resulting structure will hold at most [[driver.settings/sync-leaf-fields-limit]] leaf fields. That translates
+  to at most [[driver.settings/sync-leaf-fields-limit]] * [[describe-table-query-depth]]. That is 7K fields at the
+  time of writing hence safe to reside in memory for further operation."
+  [dbfields]
+  (-> dbfields dbfields->ftree* ftree-reconcile-nodes))
+
+(defn- ftree->nested-fields
+  "Create nested-fields structure suitable for :fields key of structure return by [[driver/describe-table]]. `ftree`
+  is a tree that represents sampled mongo documents. See the [[dbfields->ftree]] for details."
+  [ftree]
+  (letfn [(ftree->nested-fields*
+            [ftree*]
+            (-> ftree*
+                (cond-> (contains? ftree* :children)
+                  (-> (update :children #(set (map ftree->nested-fields* (vals %))))
+                      (set/rename-keys {:children :nested-fields})))
+                (dissoc :index)))]
+    (:nested-fields (ftree->nested-fields* ftree))))
+
+(defn- fetch-dbfields-rff
+  [_metadata]
+  (fn
+    ([] (transient []))
+    ([r] (persistent! r))
+    ([acc row]
+     (conj! acc (zipmap [:path :type :indices] row)))))
+
+(defn- fetch-dbfields
+  "Fetch _dbfields_ from a mongo collection.
+
+  Result is vector of maps as
+  [{:path 'x.y.z' :type 'int' :indices [1 1 1]} ...]
+
+  Each row represents leaf in sampled documents, its type and indices of keys present in the path of mongo of nested
+  object."
+  [database table]
+  (let [pipeline (describe-table-pipeline {:collection-name (:name table)
+                                           :sample-size (* table-rows-sample/nested-field-sample-limit 2)
+                                           :document-sample-depth describe-table-query-depth
+                                           :leaf-limit (driver.settings/sync-leaf-fields-limit)})
+        query {:database (:id database)
+               :type     "native"
+               :native   {:collection (:name table)
+                          :query      (json/encode pipeline)}}]
+    (driver-api/process-query query fetch-dbfields-rff)))
 
 (defmethod driver/describe-table :mongo
   [_driver database table]
-  (let [fields (->> (describe-table database table)
-                    (map (fn [field]
-                           (let [path (str/split (:path field) #"\.")
-                                 name (last path)]
-                             (cond-> {:name              name
-                                      :database-type     (:type field)
-                                      :base-type         (db-type->base-type (:type field))
-                                      ; index is used by `set-database-position`, and not present in final result
-                                      :index             (:index field)
-                                      ; path is used to nest fields, and not present in final result
-                                      :path              path}
-                               (= name "_id")
-                               (assoc :pk? true))))))
-        ;; convert the flat list of fields into deeply-nested map.
-        ;; `fields` and `:nested-fields` values are maps from name to field
-        fields (reduce
-                (fn [acc field]
-                  (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path)))
-                {}
-                fields)
-        ;; replace maps from name to field with sets of fields and set visibility-type for parent fields
-        fields (walk/postwalk (fn [x]
-                                (cond-> x
-                                  (and (map? x) (:nested-fields x))
-                                  (assoc :visibility-type :details-only)
+  {:schema nil
+   :name (:name table)
+   :fields (-> (fetch-dbfields database table) dbfields->ftree ftree->nested-fields)})
 
-                                  (map? x)
-                                  (m/update-existing :nested-fields #(set (vals %)))))
-                              (set (vals fields)))
-        [fields _] (add-database-position fields 0)]
-    {:schema nil
-     :name   (:name table)
-     :fields fields}))
+;; describe-table impl end
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true
@@ -413,6 +427,8 @@
                               :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
+                              :test/create-table-without-data  false
+                              :rename                          true
                               :test/jvm-timezone-setting       false
                               :identifiers-with-spaces         true
                               :saved-question-sandboxing       false
@@ -422,6 +438,8 @@
                               :expressions/today               true
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                      false
+                              :python-transforms               true
+                              :transforms/python               true
                               :database-routing                true}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
@@ -497,8 +515,9 @@
 (defmethod driver/table-rows-sample :mongo
   [_driver table fields rff opts]
   (driver-api/with-metadata-provider (:db_id table)
-    (let [mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
-                      :order-by [[:desc [:field (get-id-field-id table) nil]]]}]
+    (let [id-column  (driver-api/field (driver-api/metadata-provider) (get-id-field-id table))
+          mongo-opts {:limit    table-rows-sample/nested-field-sample-limit
+                      :order-by [(driver-api/order-by-clause id-column :desc)]}]
       (table-rows-sample/table-rows-sample table fields rff (merge mongo-opts opts)))))
 
 (defn- encode-mongo
@@ -528,7 +547,7 @@
              (encode-object-id [oid] (str "ObjectId(\"" (.toString ^ObjectId oid) "\")"))]
        (cond
          (map? mgo) (encode-map mgo next-indent)
-         (vector? mgo) (encode-vector mgo next-indent)
+         (sequential? mgo) (encode-vector mgo next-indent)
          (instance? ObjectId mgo) (encode-object-id mgo)
          (instance? Binary mgo) (encode-binary mgo)
          :else (json/encode mgo))))))
@@ -536,11 +555,154 @@
 (defmethod driver/prettify-native-form :mongo
   [_driver native-form]
   (try
-    (encode-mongo native-form)
+    (let [parsed (if (string? native-form)
+                   (json/decode native-form)
+                   native-form)]
+      (encode-mongo parsed))
     (catch Throwable e
-      (log/errorf "Unexpected error while encoding Mongo BSON query: %s" (ex-message e))
+      (log/errorf "Unexpected error while prettifying Mongo BSON query: %s" (ex-message e))
       (log/debugf e "Query:\n%s" native-form)
       native-form)))
+
+(defmethod driver/create-table! :mongo
+  [_driver database-id table-name _column-definitions & {:keys [primary-key]}]
+  ;; MongoDB collections are created implicitly when first document is inserted
+  ;; We can create an empty collection explicitly if needed
+  (mongo.connection/with-mongo-database [^MongoDatabase db database-id]
+    (.createCollection db (name table-name))
+    ;; Create indexes for any primary key fields
+    (when primary-key
+      (doseq [pk-field primary-key]
+        (mongo.util/create-index
+         (mongo.util/collection db (name table-name))
+         {pk-field 1})))))
+
+(defmethod driver/drop-table! :mongo
+  [_driver db-id table-name]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (some-> (mongo.util/collection db (name table-name))
+            .drop)))
+
+(defmethod driver/rename-table! :mongo
+  [_driver db-id old-table-name new-table-name]
+  (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+    (let [old-collection (mongo.util/collection db (name old-table-name))]
+      (.renameCollection old-collection
+                         (com.mongodb.MongoNamespace.
+                          (.getName db)
+                          (name new-table-name))))))
+
+(defmethod driver/drop-transform-target! [:mongo :table]
+  [driver database target]
+  (driver/drop-table! driver (:id database) (:name target)))
+
+(defmethod driver/connection-spec :mongo
+  [_driver database]
+  (:details database))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for MongoDB that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] "string")
+(defmethod type->database-type :type/Text [_] "string")
+(defmethod type->database-type :type/Number [_] "long")
+(defmethod type->database-type :type/Integer [_] "int")
+(defmethod type->database-type :type/BigInteger [_] "long")
+(defmethod type->database-type :type/Float [_] "double")
+(defmethod type->database-type :type/Decimal [_] "decimal")
+(defmethod type->database-type :type/Boolean [_] "bool")
+(defmethod type->database-type :type/Date [_] "date")
+(defmethod type->database-type :type/DateTime [_] "date")
+(defmethod type->database-type :type/DateTimeWithTZ [_] "date")
+(defmethod type->database-type :type/Time [_] "date")
+(defmethod type->database-type :type/TimeWithTZ [_] "date")
+(defmethod type->database-type :type/Instant [_] "date")
+(defmethod type->database-type :type/UUID [_] "uuid")
+(defmethod type->database-type :type/JSON [_] "object")
+(defmethod type->database-type :type/SerializedJSON [_] "string")
+(defmethod type->database-type :type/Array [_] "array")
+(defmethod type->database-type :type/Dictionary [_] "object")
+(defmethod type->database-type :type/MongoBSONID [_] "objectId")
+(defmethod type->database-type :type/MongoBinData [_] "binData")
+(defmethod type->database-type :type/IPAddress [_] "string")
+(defmethod type->database-type :default [_] "object")
+
+(defmethod driver/type->database-type :mongo
+  [_driver base-type]
+  (type->database-type base-type))
+
+(defn- convert-value-for-insertion
+  [base-type value]
+  (condp #(isa? %2 %1) base-type
+    :type/JSON
+    (json/decode value)
+
+    :type/Dictionary
+    (json/decode value)
+
+    :type/Array
+    (json/decode value)
+
+    :type/Integer
+    (parse-long value)
+
+    :type/BigInteger
+    (bigint value)
+
+    :type/Float
+    (parse-double value)
+
+    :type/Decimal
+    (bigdec value)
+
+    :type/Number
+    (bigint value)
+
+    :type/Boolean
+    (parse-boolean value)
+
+    :type/Date
+    (u.date/parse value)
+
+    :type/DateTime
+    (u.date/parse value)
+
+    :type/DateTimeWithTZ
+    (u.date/parse value)
+
+    :type/Time
+    (u.date/parse value)
+
+    :type/TimeWithTZ
+    (u.date/parse value)
+
+    :type/Instant
+    (u.date/parse value)
+
+    :type/UUID
+    (parse-uuid value)
+
+    value))
+
+(defmethod driver/insert-col->val [:mongo :jsonl-file]
+  [_driver _ column-def v]
+  (if (string? v)
+    (convert-value-for-insertion (:type column-def) v)
+    v))
+
+(defmethod driver/insert-from-source! [:mongo :rows]
+  [_driver db-id {table-name :name :keys [columns]} {:keys [data]}]
+  (let [col-names (mapv :name columns)]
+    (mongo.connection/with-mongo-database [^MongoDatabase db db-id]
+      (let [collection (mongo.util/collection db (name table-name))
+            documents (map #(into {} (map vector col-names %))
+                           data)]
+        (if (> (bounded-count 2 documents) 1)
+          (doseq [chunk (partition-all (or driver/*insert-chunk-rows* 1000) documents)]
+            (mongo.util/insert-many collection chunk))
+          (mongo.util/insert-one collection (first documents)))))))
 
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.
@@ -605,3 +767,7 @@
                               credentials)]
         (mg/get-db-names unauthenticated-connection)))
     :.)
+
+(defmethod driver/table-name-length-limit :mongo
+  [_driver]
+  64)

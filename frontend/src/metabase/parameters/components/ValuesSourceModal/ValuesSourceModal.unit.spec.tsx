@@ -42,7 +42,7 @@ import { createMockState } from "metabase-types/store/mocks";
 import ValuesSourceModal from "./ValuesSourceModal";
 
 describe("ValuesSourceModal", () => {
-  describe("string paramter", () => {
+  describe("string parameter", () => {
     const metadata = createMockMetadata({
       fields: [
         createMockField({
@@ -471,7 +471,7 @@ describe("ValuesSourceModal", () => {
         );
         expect(screen.getByText("do it once in a model")).toBeInTheDocument();
         expect(screen.getByText("do it once in a model").tagName).not.toBe("A");
-      });
+      }, 45000); // The test continues to exceed 30 seconds timeout in ci: https://github.com/metabase/metabase/actions/runs/18809109055/job/53668418124#step:5:786
     });
   });
 
@@ -787,7 +787,7 @@ const setup = async ({
       setupTableQueryMetadataEndpoint(
         createMockTable({
           id: `card__${card.id}`,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ),
     );

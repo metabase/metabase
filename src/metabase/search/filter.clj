@@ -1,8 +1,9 @@
 (ns metabase.search.filter
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.driver.common.parameters.dates :as params.dates]
+   [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.search.config :as search.config]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
@@ -17,8 +18,9 @@
 
 (defn- visible-to? [search-ctx {:keys [visibility] :as _spec}]
   (case visibility
-    :all      true
-    :app-user (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))))
+    :all       true
+    :app-user  (not (search.permissions/sandboxed-or-impersonated-user? search-ctx))
+    :superuser (:is-superuser? search-ctx)))
 
 (def ^:private context-key->filter
   "Map the context keys to their corresponding filters"
@@ -40,7 +42,8 @@
           (remove nil?)
           (for [search-model (:models search-ctx)
                 :let [spec (search.spec/spec search-model)]]
-            (when (and (visible-to? search-ctx spec) (every? (:attrs spec) required))
+            (when (and (visible-to? search-ctx spec)
+                       (every? (:attrs spec) required))
               (:name spec))))))
 
 (defn models-without-collection
@@ -54,7 +57,7 @@
 (defn- date-range-filter-clause
   [dt-col dt-val]
   (let [date-range (try
-                     (params.dates/date-string->range dt-val {:inclusive-end? false})
+                     (qp.parameters.dates/date-string->range dt-val {:inclusive-end? false})
                      (catch Exception _e
                        (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
         start      (some-> (:start date-range) u.date/parse)
@@ -70,7 +73,7 @@
       [:< dt-col end]
 
       (nil? end)
-      [:> dt-col start]
+      [:>= dt-col start]
 
       :else
       [:and [:>= dt-col start] [:< dt-col end]])))
@@ -85,6 +88,19 @@
 
 (defmethod where-clause* ::list [_ k v] [:in k v])
 
+(defmethod where-clause* ::collection-hierarchy [_ k v]
+  ;; Filter by collection and all descendants
+  ;; Match items directly in the collection OR in descendant collections
+  ;; Tables in collections are an EE feature (data-studio), so exclude them in OSS
+  (let [collection-filter [:or
+                           [:= k v]
+                           [:like :collection.location (str "%" (collection/location-path v) "%")]]]
+    (if (premium-features/has-feature? :data-studio)
+      collection-filter
+      [:and
+       [:not= :search_index.model [:inline "table"]]
+       collection-filter])))
+
 (defn personal-collections-where-clause
   "Build a clause limiting the entries to those (not) within or within personal collections, if relevant.
   WARNING: this method queries the appdb, and its approach will get very slow when there are many users!"
@@ -95,7 +111,9 @@
     "only-mine"
     [:or
      [:= :collection.personal_owner_id current-user-id]
-     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection :personal_owner_id [:= current-user-id]))]]
+     [:like :collection.location (format "/%d/%%" (t2/select-one-pk :model/Collection
+                                                                    :personal_owner_id [:= current-user-id]
+                                                                    :location          "/"))]]
 
     "exclude-others"
     (let [with-filter #(personal-collections-where-clause
@@ -103,7 +121,7 @@
                         collection-id-col)]
       [:or (with-filter "only-mine") (with-filter "exclude")])
 
-    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil])
+    (let [personal-ids   (t2/select-pks-vec :model/Collection :personal_owner_id [:not= nil] :location "/")
           child-patterns (for [id personal-ids] (format "/%d/%%" id))]
       (case filter-type
         "only"

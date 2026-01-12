@@ -106,7 +106,7 @@ function UndoToast({
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "bg-dark" : "brand"}
+          color={undo.pausedAt ? "background-tertiary-inverse" : "brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
@@ -125,10 +125,14 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
+              c={undo.iconColor ?? "text-secondary-inverse"}
             />
           )}
-          <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+          {undo.renderChildren ? (
+            undo.renderChildren(undo)
+          ) : (
+            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+          )}
         </CardContentSide>
         <ControlsCardContent>
           {undo.actions && undo.actions.length > 0 && (
@@ -136,12 +140,23 @@ function UndoToast({
               {undo.actionLabel ?? t`Undo`}
             </UndoButton>
           )}
+          {undo.extraAction && (
+            <UndoButton
+              role="button"
+              onClick={() => {
+                undo.extraAction?.action();
+                if (undo.canDismiss) {
+                  onDismiss();
+                }
+              }}
+              to=""
+            >
+              {undo.extraAction.label}
+            </UndoButton>
+          )}
           {undo.canDismiss && (
             <DismissIcon
-              color={
-                undo.dismissIconColor ||
-                "var(--mb-color-text-secondary-inverse)"
-              }
+              color={undo.dismissIconColor || "text-secondary-inverse"}
               name="close"
               onClick={onDismiss}
             />
@@ -160,7 +175,10 @@ export function UndoListing() {
     <UndoListOverlay
       undos={undos}
       onUndo={(undo) => dispatch(performUndo(undo.id))}
-      onDismiss={(undo) => dispatch(dismissUndo({ undoId: undo.id }))}
+      onDismiss={(undo) => {
+        undo.onDismiss?.(undo.id);
+        dispatch(dismissUndo({ undoId: undo.id }));
+      }}
     />
   );
 }

@@ -2,7 +2,7 @@
   width: 100%;
   background-color: var(
     --notification-warning-bg,
-    var(--mb-base-color-orion-10)
+    var(--mb-color-background-secondary)
   );
   padding: var(
     --notification-warning-padding,

@@ -2,8 +2,6 @@ import cx from "classnames";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
 import {
   Box,
   Flex,
@@ -16,13 +14,14 @@ import {
 
 import { UPGRADE_URL } from "../constants";
 
+import S from "./UpsellBanner.module.css";
 import {
   type DismissibleProps,
   UpsellWrapperDismissible,
 } from "./UpsellBannerDismissible";
+import { UpsellCta } from "./UpsellCta";
 import { UpsellGem } from "./UpsellGem";
 import { UpsellWrapper } from "./UpsellWrapper";
-import S from "./Upsells.module.css";
 import { trackUpsellClicked, trackUpsellViewed } from "./analytics";
 import { useUpsellLink } from "./use-upsell-link";
 
@@ -44,6 +43,7 @@ type UpsellBannerPropsBase = {
   large?: boolean;
   children: React.ReactNode;
   style?: React.CSSProperties;
+  onClick?: () => void;
 };
 
 export type UpsellBannerProps =
@@ -59,9 +59,10 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
   location,
   large,
   children,
+  onClick,
   ...props
 }: UpsellBannerProps) => {
-  const url = useUpsellLink({
+  const urlWithParams = useUpsellLink({
     url: buttonLink ?? UPGRADE_URL,
     campaign,
     location,
@@ -76,17 +77,17 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       ? props
       : { dismissible: false, onDismiss: () => {} };
   const gemSize = large ? 24 : undefined;
-  const contentAlignment = large ? "flex-start" : "center";
 
   return (
     <Box
       className={cx(S.UpsellBannerComponent, large && S.Large)}
       data-testid="upsell-banner"
-      bg="bg-white"
+      bg="background-primary"
       {...domProps}
     >
-      <Flex align={contentAlignment} gap="md" wrap="nowrap">
-        <UpsellGem size={gemSize} />
+      <Flex align="flex-start" gap="sm" wrap="nowrap">
+        <UpsellGem size={gemSize} mt="1px" />
+
         <Stack gap="xs">
           <Title lh={1.25} order={3} size="md">
             {title}
@@ -98,23 +99,14 @@ export const _UpsellBanner: React.FC<UpsellBannerProps> = ({
       </Flex>
 
       <Flex align="center" gap="md">
-        {buttonLink !== undefined ? (
-          <ExternalLink
-            onClickCapture={() => trackUpsellClicked({ location, campaign })}
-            href={url}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
-          </ExternalLink>
-        ) : (
-          <Link
-            onClickCapture={() => trackUpsellClicked({ location, campaign })}
-            to={internalLink}
-            className={S.UpsellCTALink}
-          >
-            {buttonText}
-          </Link>
-        )}
+        <UpsellCta
+          onClick={onClick}
+          url={buttonLink ? urlWithParams : undefined}
+          internalLink={internalLink}
+          buttonText={buttonText}
+          onClickCapture={() => trackUpsellClicked({ location, campaign })}
+          size={large ? "large" : undefined}
+        />
 
         {dismissible && (
           <UnstyledButton

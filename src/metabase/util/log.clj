@@ -11,9 +11,28 @@
    [metabase.config.core :as config]
    [metabase.util.format :as u.format]
    [metabase.util.log.capture]
+   [metabase.util.performance :as perf]
    [net.cgrand.macrovich :as macros])
   (:import
+   (clojure.lang ExceptionInfo)
    (org.apache.logging.log4j ThreadContext)))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private suppressed-exception-context-message "METABASE HIDDEN EXCEPTION ONLY FOR CONTEXT")
+
+(defn get-exception-data
+  "Given an exception/throwable thrown by `with-exception-context-fn`, get the map of all context data contained in the
+  suppressed exception(s) added. Inner context overrides outer context."
+  [e]
+  (let [ex-chain (->> e (iterate ex-cause) (take-while some?))
+        suppressed-exception-data (->> ex-chain
+                                       (mapcat (fn [^Throwable t]
+                                                 ;; reversed to make inner context override outer context
+                                                 (reverse (.getSuppressed t))))
+                                       (keep #(when (= suppressed-exception-context-message (ex-message %))
+                                                (::context (ex-data %)))))]
+    (into {} suppressed-exception-data)))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
@@ -49,6 +68,41 @@
          (lambdaisland.glogi/log logger# level# nil s#)
          a#))))
 
+(defn with-thread-context-fn
+  "Not for public consumption. See macro docstring for details."
+  [context-map f]
+  (let [context-map (perf/update-keys context-map #(str "mb-" (u.format/qualified-name %)))
+        context-keys (keys context-map)
+        ;; Store original values before modifying
+        original-context (into {}
+                               (keep (fn [k]
+                                       (when-let [v (ThreadContext/get (name k))]
+                                         [(name k) v])))
+                               context-keys)]
+    (try
+      (doseq [k context-keys]
+        (ThreadContext/put (name k) (str (get context-map k))))
+      (f)
+      (finally
+        (doseq [k context-keys]
+          (if-let [original (find original-context (name k))]
+            (ThreadContext/put (name k) (val original))
+            (ThreadContext/remove (name k))))))))
+
+(defmacro with-thread-context
+  "Executes body with the given context map and message prefix in ThreadContext.
+   The context map's keys and values are added to the ThreadContext individually.
+   Preserves any existing context values and restores them after execution.
+
+   Example usage:
+   (with-context {:notification_id 1}
+     (log/infof \"Hello\"))
+
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+  [context-map & body]
+  `(with-thread-context-fn ~context-map
+     (fn [] ~@body)))
+
 (defn- tools-logp
   "Macro helper for [[logp]] in CLJ."
   [logger-ns level x more]
@@ -56,9 +110,11 @@
      (when (clojure.tools.logging.impl/enabled? logger# ~level)
        (let [x# ~x]
          (if (instance? Throwable x#)
-           (clojure.tools.logging/log* logger# ~level x#  ~(if (nil? more)
-                                                             ""
-                                                             `(print-str ~@more)))
+           (let [d# (get-exception-data x#)]
+             (with-thread-context d#
+               (clojure.tools.logging/log* logger# ~level x#  ~(if (nil? more)
+                                                                 ""
+                                                                 `(print-str ~@more)))))
            (clojure.tools.logging/log* logger# ~level nil (print-str x# ~@more)))))))
 
 (defn- tools-logf
@@ -211,6 +267,51 @@
   `(binding [clojure.tools.logging/*logger-factory* clojure.tools.logging.impl/disabled-logger-factory]
      ~@body))
 
+(defn- copy-ex-info
+  "Copies an ExceptionInfo into a new ExceptionInfo with different ex-data & cause, but all other data the same"
+  ^ExceptionInfo
+  [^ExceptionInfo e new-data new-cause]
+  (let [^ExceptionInfo new-e (ex-info (ex-message e) new-data new-cause)]
+    (.setStackTrace new-e (.getStackTrace e))
+    (doseq [^Throwable t (.getSuppressed e)]
+      (.addSuppressed new-e t))
+    new-e))
+
+(defn- suppressed-exception
+  [context-map]
+  (ex-info suppressed-exception-context-message {::context context-map}))
+
+(defn- annotate-ex-info [e context-map]
+  (let [new-e (copy-ex-info e
+                            (assoc (ex-data e) ::context (merge {} context-map (::context (ex-data e))))
+                            (ex-cause e))]
+    (.addSuppressed new-e (suppressed-exception context-map))
+    new-e))
+
+(defn- annotate-throwable [e context-map]
+  (.addSuppressed ^Throwable e (suppressed-exception context-map))
+  e)
+
+(defn with-exception-context-fn
+  "Not meant for public consumption.
+
+  Runs `f`, catching any exceptions thrown and rethrowing them with:
+  - `ex-data` augmented with `context-map`, only if the exception was an `ExceptionInfo`, and
+  - a *suppressed* exception attached. The suppressed exception is meant purely to hold `ex-data` for later logging."
+  [context-map f]
+  (try
+    (f)
+    (catch ExceptionInfo e
+      (throw (annotate-ex-info e context-map)))
+    (catch Throwable e
+      (throw (annotate-throwable e context-map)))))
+
+(defmacro with-exception-context
+  "Not meant for public consumption, use `with-context` instead."
+  [context-map & body]
+  `(with-exception-context-fn ~context-map
+     (fn [] ~@body)))
+
 (defmacro with-context
   "Executes body with the given context map and message prefix in ThreadContext.
    The context map's keys and values are added to the ThreadContext individually.
@@ -220,24 +321,29 @@
    (with-context {:notification_id 1}
      (log/infof \"Hello\"))
 
-   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\""
+   ThreadContext will contain: {\"notification_id\" \"1\"} and stack \"Notification 1\"
+
+  Any exceptions thrown within the body will ALSO be annotated with the context (in a suppressed `ExceptionInfo`
+  attached to the original exception, and/or directly in the `ex-data` if they're `ExceptionInfo`s already.
+
+  If the exception is logged (via `log/error` or similar), the exception data attached above will be logged as well."
   [context-map & body]
   (macros/case
-    :clj `(let [ctx-map# (update-keys ~context-map #(str "mb-" (u.format/qualified-name %)))
-                ctx-keys# (keys ctx-map#)
-                ;; Store original values before modifying
-                original-values# (into {}
-                                       (keep (fn [k#]
-                                               (when-let [v# (ThreadContext/get (name k#))]
-                                                 [(name k#) v#])))
-                                       ctx-keys#)]
-            (try
-              (doseq [k# ctx-keys#]
-                (ThreadContext/put (name k#) (str (get ctx-map# k#))))
-              ~@body
-              (finally
-                (doseq [k# ctx-keys#]
-                  (if-let [original# (find original-values# (name k#))]
-                    (ThreadContext/put (name k#) (val original#))
-                    (ThreadContext/remove (name k#)))))))
+    :clj `(with-thread-context ~context-map
+            (with-exception-context ~context-map
+              ~@body))
     :cljs ~@body))
+
+(defn with-context-meta
+  "Given a map, returns the map with the `::context` set. Used for propagation of log context across threads."
+  [m]
+  (vary-meta m assoc ::context (->> (ThreadContext/getImmutableContext)
+                                    (keep (fn [[k v]] (when (str/starts-with? k "mb-")
+                                                        [(str/replace k "mb-" "") v])))
+                                    (into {}))))
+
+(defmacro with-restored-context-from-meta
+  "Given a map presumably containing metadata from `with-context-meta`, sets the current ThreadContext"
+  [m & body]
+  `(with-context (::context (meta ~m))
+     ~@body))

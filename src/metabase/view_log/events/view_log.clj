@@ -69,12 +69,12 @@
           :capacity 500
           :interval (* increment-view-count-interval-seconds 1000))))
 
-(defn- increment-view-counts!
+(defn increment-view-counts!
   "Increment the view count of the given `model` and `model-id`."
   [model model-id]
   (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
-(mu/defn ^:private record-views!
+(mu/defn record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
   [view-or-views :- [:or :map [:sequential :map]]]
   (span/with-span!
@@ -82,7 +82,7 @@
     (when (premium-features/log-enabled?)
       (t2/insert! :model/ViewLog view-or-views))))
 
-(defn- generate-view
+(defn generate-view
   "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
   [& {:keys [model object-id object user-id has-access context]
       :or   {has-access true}}]

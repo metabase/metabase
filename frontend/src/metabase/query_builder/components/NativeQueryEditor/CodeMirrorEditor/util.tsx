@@ -3,9 +3,10 @@ import { createSelector } from "@reduxjs/toolkit";
 import { shallowEqual } from "react-redux";
 import { t } from "ttag";
 
+import { METAKEY } from "metabase/lib/browser";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_AI_SQL_GENERATION } from "metabase/plugins";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
@@ -264,10 +265,8 @@ export const getPlaceholderText = (engine?: string | null): string => {
 
   const engineType = getEngineNativeType(engine);
 
-  if (PLUGIN_AI_SQL_GENERATION.isEnabled()) {
-    if (engineType === "sql") {
-      return PLUGIN_AI_SQL_GENERATION.getPlaceholderText();
-    }
+  if (PLUGIN_METABOT.isEnabled() && engineType === "sql") {
+    return t`Write your SQL here, or press ${METAKEY} + Shift + i to have SQL generated for you.`;
   }
 
   switch (true) {

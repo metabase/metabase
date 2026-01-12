@@ -1,4 +1,6 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import * as formik from "formik";
+
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   defaultAuditInfo,
   setupAuditInfoEndpoint,
@@ -6,7 +8,7 @@ import {
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { render, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 import {
@@ -18,11 +20,14 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { SaveQuestionProvider, useSaveQuestionContext } from "./context";
+import {
+  FormValuesPatcher,
+  SaveQuestionProvider,
+  useSaveQuestionContext,
+} from "./context";
 
 const TestComponent = () => {
   const { values, saveToDashboard } = useSaveQuestionContext();
-
   return (
     <div>
       {values.collection_id && (
@@ -64,7 +69,8 @@ const setup = ({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("audit_app");
+  setupEnterpriseOnlyPlugin("collections");
 
   renderWithProviders(
     <SaveQuestionProvider
@@ -138,13 +144,14 @@ describe("SaveQuestionContext", () => {
         );
 
         setup({
-          question: new Question(
-            createMockCard({
+          question: new Question({
+            ...createMockCard({
               collection_id: 11,
               collection: createMockCollection({ id: 11 }),
               dashboard_id: 20,
             }),
-          ),
+            creationType: "custom_question",
+          }),
         });
 
         expect(screen.getByTestId("saveToDashboard")).toBeInTheDocument();
@@ -339,5 +346,80 @@ describe("SaveQuestionContext", () => {
         expect(screen.queryByTestId("dashboardId")).not.toBeInTheDocument();
       });
     });
+  });
+});
+
+describe("FormValuesPatcher", () => {
+  const setValuesSpy = jest.fn();
+  const setup = (initialValue: unknown) => {
+    jest.spyOn(formik, "useFormikContext").mockReturnValue({
+      values: initialValue,
+      setValues: setValuesSpy,
+    } as unknown as formik.FormikContextType<unknown>);
+  };
+
+  beforeEach(() => {
+    setValuesSpy.mockClear();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("should patch untouched fields when nextValues change", () => {
+    setup({ name: "initial", count: 1 });
+
+    const { rerender } = render(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    rerender(
+      <FormValuesPatcher nextValues={{ name: "updated", count: 99 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    expect(setValuesSpy).toHaveBeenCalledWith({ name: "updated", count: 99 });
+  });
+
+  it("should preserve user-modified fields when nextValues change", () => {
+    setup({ name: "user typed", count: 1 });
+
+    const { rerender } = render(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    rerender(
+      <FormValuesPatcher nextValues={{ name: "updated", count: 99 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    expect(setValuesSpy).toHaveBeenCalledWith({
+      name: "user typed",
+      count: 99,
+    });
+  });
+
+  it("should not patch anything when nextValues remain unchanged", () => {
+    setup({ name: "initial", count: 1 });
+
+    const { rerender } = render(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    rerender(
+      <FormValuesPatcher nextValues={{ name: "initial", count: 1 }}>
+        <div />
+      </FormValuesPatcher>,
+    );
+
+    expect(setValuesSpy).not.toHaveBeenCalled();
   });
 });

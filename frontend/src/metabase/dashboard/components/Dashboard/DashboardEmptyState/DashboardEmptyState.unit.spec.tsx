@@ -20,7 +20,6 @@ const setup = ({
 
   render(
     <DashboardEmptyState
-      isNightMode={false}
       isDashboardEmpty={isDashboardEmpty}
       isEditing={isEditing}
       addQuestion={addQuestion}
@@ -123,12 +122,7 @@ describe("DashboardEmptyState", () => {
 
 describe("DashboardEmptyStateWithoutAddPrompt", () => {
   it("renders read-only empty state for the dashboard", () => {
-    render(
-      <DashboardEmptyStateWithoutAddPrompt
-        isNightMode={false}
-        isDashboardEmpty={true}
-      />,
-    );
+    render(<DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={true} />);
 
     expect(illustration()).toBeInTheDocument();
     expect(
@@ -143,12 +137,7 @@ describe("DashboardEmptyStateWithoutAddPrompt", () => {
   });
 
   it("renders read-only empty state for the dashboard tab", () => {
-    render(
-      <DashboardEmptyStateWithoutAddPrompt
-        isNightMode={false}
-        isDashboardEmpty={false}
-      />,
-    );
+    render(<DashboardEmptyStateWithoutAddPrompt isDashboardEmpty={false} />);
 
     expect(illustration()).toBeInTheDocument();
     expect(

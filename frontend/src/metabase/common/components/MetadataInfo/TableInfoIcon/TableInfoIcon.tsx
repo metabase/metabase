@@ -28,11 +28,7 @@ export function TableInfoIcon({
     <TableInfoPopover {...props} table={table}>
       <span aria-label={t`More info`}>
         <PopoverDefaultIcon name={icon} className={className} size={size} />
-        <PopoverHoverTarget
-          className={className}
-          name="info_filled"
-          size={size}
-        />
+        <PopoverHoverTarget className={className} name="info" size={size} />
       </span>
     </TableInfoPopover>
   );

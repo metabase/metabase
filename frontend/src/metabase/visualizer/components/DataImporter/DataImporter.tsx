@@ -97,63 +97,73 @@ export const DataImporter = ({ className }: { className?: string }) => {
         </Button>
       )}
 
-      {showDatasets ? (
-        <Flex
-          direction="column"
-          className={S.Content}
-          style={{
-            height: "100%",
-          }}
-        >
-          <TextInput
-            m="xs"
-            variant="filled"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder={t`Search for something`}
-            leftSection={<Icon name="search" />}
-            autoFocus
+      <Flex
+        direction="column"
+        className={S.Content}
+        h="100%"
+        gap="sm"
+        display={showDatasets ? "flex" : "none"}
+      >
+        <TextInput
+          m="xs"
+          variant="filled"
+          value={search}
+          onChange={handleSearchChange}
+          placeholder={t`Search for something`}
+          leftSection={<Icon name="search" />}
+          autoFocus
+        />
+        <DatasetsList
+          style={{ flex: 1 }}
+          search={debouncedSearch}
+          setDataSourceCollapsed={setDataSourceCollapsed}
+          muted={!showDatasets}
+        />
+      </Flex>
+      <Flex
+        direction="column"
+        className={S.Content}
+        bg="background-primary"
+        h="100%"
+        display={showDatasets ? "none" : "flex"}
+        bd="1px solid var(--mb-color-border)"
+        style={{
+          borderRadius: "var(--default-border-radius)",
+        }}
+      >
+        {dataSources.length > 0 ? (
+          <ColumnsList
+            collapsedDataSources={collapsedDataSources}
+            toggleDataSource={toggleDataSource}
+            onRemoveDataSource={onRemoveDataSource}
+            onResetDataSource={onResetDataSource}
           />
+        ) : (
           <Flex
             direction="column"
-            pt="sm"
-            px="sm"
+            className={S.Content}
+            bg="background-primary"
             style={{
-              overflowY: "auto",
-              flex: 1,
+              borderRadius: "var(--default-border-radius)",
+              height: "100%",
+              border: `1px solid var(--mb-color-border)`,
             }}
           >
-            <DatasetsList
-              search={debouncedSearch}
-              setDataSourceCollapsed={setDataSourceCollapsed}
-            />
+            {dataSources.length > 0 ? (
+              <ColumnsList
+                collapsedDataSources={collapsedDataSources}
+                toggleDataSource={toggleDataSource}
+                onRemoveDataSource={onRemoveDataSource}
+                onResetDataSource={onResetDataSource}
+              />
+            ) : (
+              <Center h="100%" w="100%" mx="auto">
+                <Text>{t`Pick a dataset first`}</Text>
+              </Center>
+            )}
           </Flex>
-        </Flex>
-      ) : (
-        <Flex
-          direction="column"
-          className={S.Content}
-          bg="white"
-          style={{
-            borderRadius: "var(--default-border-radius)",
-            height: "100%",
-            border: `1px solid var(--mb-color-border)`,
-          }}
-        >
-          {dataSources.length > 0 ? (
-            <ColumnsList
-              collapsedDataSources={collapsedDataSources}
-              toggleDataSource={toggleDataSource}
-              onRemoveDataSource={onRemoveDataSource}
-              onResetDataSource={onResetDataSource}
-            />
-          ) : (
-            <Center h="100%" w="100%" mx="auto">
-              <Text>{t`Pick a dataset first`}</Text>
-            </Center>
-          )}
-        </Flex>
-      )}
+        )}
+      </Flex>
     </Box>
   );
 };

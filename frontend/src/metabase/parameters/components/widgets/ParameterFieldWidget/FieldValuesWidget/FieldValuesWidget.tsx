@@ -24,7 +24,10 @@ import TokenField, {
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
-import Fields from "metabase/entities/fields";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { Fields } from "metabase/entities/fields";
+import { useTranslateContent } from "metabase/i18n/hooks";
+import type { ContentTranslationFunction } from "metabase/i18n/types";
 import { parseNumber } from "metabase/lib/number";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { isNotNull } from "metabase/lib/types";
@@ -41,13 +44,11 @@ import {
   MultiAutocompleteOption,
   MultiAutocompleteValue,
 } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import { getSourceType } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   CardId,
-  Dashboard,
   DashboardId,
   FieldValue,
   Parameter,
@@ -109,10 +110,10 @@ export interface IFieldValuesWidgetProps {
   showOptionsInPopover?: boolean;
 
   parameter: Parameter;
-  parameters?: Parameter[];
+  parameters?: Parameter[]; // linked parameters with values
   fields: Field[];
-  dashboard?: Dashboard | null;
-  question?: Question;
+  dashboardId?: DashboardId;
+  cardId?: CardId;
 
   value: RowValue[];
   onChange: (value: RowValue[]) => void;
@@ -149,8 +150,8 @@ export const FieldValuesWidgetInner = forwardRef<
     parameter,
     parameters,
     fields,
-    dashboard,
-    question,
+    dashboardId,
+    cardId,
     value,
     onChange,
     multi,
@@ -177,8 +178,12 @@ export const FieldValuesWidgetInner = forwardRef<
   );
   const [isExpanded, setIsExpanded] = useState(false);
   const dispatch = useDispatch();
+  const tc = useTranslateContent();
 
   const previousWidth = usePrevious(width);
+
+  const { uuid, token } = useEmbeddingEntityContext();
+  const entityIdentifier = uuid ?? token ?? null;
 
   useMount(() => {
     if (shouldList({ parameter, fields, disableSearch })) {
@@ -203,11 +208,11 @@ export const FieldValuesWidgetInner = forwardRef<
     let newOptions: FieldValue[] = [];
     let hasMoreOptions = false;
     try {
-      if (canUseDashboardEndpoints(dashboard)) {
+      if (canUseDashboardEndpoints(dashboardId)) {
         const result = await dispatchFetchDashboardParameterValues(query);
         newOptions = result.values;
         hasMoreOptions = result.has_more_values;
-      } else if (canUseCardEndpoints(question)) {
+      } else if (canUseCardEndpoints(cardId)) {
         const result = await dispatchFetchCardParameterValues(query);
         newOptions = result.values;
         hasMoreOptions = result.has_more_values;
@@ -240,8 +245,6 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const dispatchFetchCardParameterValues = async (query?: string) => {
-    const cardId = question?.id();
-
     if (!isNotNull(cardId) || !parameter) {
       return { has_more_values: false, values: [] };
     }
@@ -249,6 +252,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchCardParameterValues({
         cardId,
+        entityIdentifier,
         parameter,
         query,
       }),
@@ -256,8 +260,6 @@ export const FieldValuesWidgetInner = forwardRef<
   };
 
   const dispatchFetchDashboardParameterValues = async (query?: string) => {
-    const dashboardId = dashboard?.id;
-
     if (!isNotNull(dashboardId) || !parameter || !parameters) {
       return { has_more_values: false, values: [] };
     }
@@ -265,6 +267,7 @@ export const FieldValuesWidgetInner = forwardRef<
     return dispatch(
       fetchDashboardParameterValues({
         dashboardId,
+        entityIdentifier,
         parameter,
         parameters,
         query,
@@ -325,8 +328,8 @@ export const FieldValuesWidgetInner = forwardRef<
         formatOptions,
         value,
         parameter,
-        cardId: question?.id(),
-        dashboardId: dashboard?.id,
+        cardId,
+        dashboardId,
         autoLoad: true,
         compact: false,
         displayValue: option?.[1],
@@ -341,8 +344,8 @@ export const FieldValuesWidgetInner = forwardRef<
         formatOptions,
         value: option[0],
         parameter,
-        cardId: question?.id(),
-        dashboardId: dashboard?.id,
+        cardId,
+        dashboardId,
         autoLoad: false,
         displayValue: option[1],
       });
@@ -483,13 +486,14 @@ export const FieldValuesWidgetInner = forwardRef<
               <RemappedValue
                 parameter={parameter}
                 fields={fields}
-                dashboardId={dashboard?.id}
-                cardId={question?.id()}
+                dashboardId={dashboardId}
+                cardId={cardId}
                 value={isNumericParameter ? parseNumericValue(value) : value}
+                tc={tc}
               />
             )}
             renderOption={({ option }) => (
-              <RemappedOption option={option} fields={fields} />
+              <RemappedOption option={option} fields={fields} tc={tc} />
             )}
             onChange={(values) => {
               if (isNumericParameter) {
@@ -713,6 +717,7 @@ type RemappedValueProps = {
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
+  tc: ContentTranslationFunction;
 };
 
 function RemappedValue({
@@ -721,7 +726,11 @@ function RemappedValue({
   value,
   dashboardId,
   cardId,
+  tc,
 }: RemappedValueProps) {
+  const { uuid, token } = useEmbeddingEntityContext();
+  const entityIdentifier = uuid ?? token ?? null;
+
   const isRemapped =
     Field.remappedField(fields) != null ||
     getSourceType(parameter) === "static-list";
@@ -729,7 +738,9 @@ function RemappedValue({
   const { data: dashboardData } = useGetRemappedDashboardParameterValueQuery(
     dashboardId != null && value != null && isRemapped
       ? {
-          dashboard_id: dashboardId,
+          ...(entityIdentifier
+            ? { entityIdentifier }
+            : { dashboard_id: dashboardId }),
           parameter_id: parameter.id,
           value,
         }
@@ -739,7 +750,7 @@ function RemappedValue({
   const { data: cardData } = useGetRemappedCardParameterValueQuery(
     cardId != null && value != null && isRemapped
       ? {
-          card_id: cardId,
+          ...(entityIdentifier ? { entityIdentifier } : { card_id: cardId }),
           parameter_id: parameter.id,
           value,
         }
@@ -758,19 +769,19 @@ function RemappedValue({
 
   const remappedData = dashboardData ?? cardData ?? parameterData;
   if (remappedData == null) {
-    return value;
+    return tc(value);
   }
 
   const remappedValue = getValue(remappedData);
   const remappedLabel = getLabel(remappedData);
   if (remappedLabel == null) {
-    return value;
+    return tc(value);
   }
 
   return (
     <MultiAutocompleteValue
       value={String(remappedValue)}
-      label={String(remappedLabel ?? remappedValue)}
+      label={tc(String(remappedLabel ?? remappedValue))}
     />
   );
 }
@@ -778,13 +789,16 @@ function RemappedValue({
 type RemappedOptionProps = {
   option: ComboboxItem;
   fields: Field[];
+  tc: ContentTranslationFunction;
 };
 
-function RemappedOption({ option, fields }: RemappedOptionProps) {
+function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
   const isRemapped = Field.remappedField(fields) != null;
   if (!isRemapped) {
-    return option.label;
+    return tc(option.label);
   }
 
-  return <MultiAutocompleteOption value={option.value} label={option.label} />;
+  return (
+    <MultiAutocompleteOption value={option.value} label={tc(option.label)} />
+  );
 }

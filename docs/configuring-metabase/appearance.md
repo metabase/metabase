@@ -19,7 +19,7 @@ If you're looking for date, time, number, or currency formatting, see [Formattin
 
 ## Changing Metabase's appearance
 
-Hit cmd/ctrl + k to bring up the command palette and search for "Appearance" and click on Settings -> Appearance.
+Hit cmd/ctrl + k to bring up the command palette and search for "Branding" and click on Settings -> Branding.
 
 You can also click on the **gear** icon at the bottom of the navigation sidebar and click through **Admin settings** > **Settings** > **Appearance**.
 
@@ -27,6 +27,18 @@ Appearance settings are split across different tabs:
 
 - [Branding](#branding)
 - [Conceal Metabase](#conceal-metabase)
+
+## Dark mode
+
+People can display their Metabase in dark mode in their [account settings](../people-and-groups/account-settings.md#theme). Options are:
+
+- System default (which is also the default setting). Metabase will switch between light and dark mode when the system switches without having to reload the page.
+- Always use dark mode.
+- Always use light mode.
+
+You can quickly toggle dark mode from anywhere in Metabase by opening the [command palette](../exploration-and-organization/exploration.md#command-palette) and searching for "light" or "dark" or "theme".
+
+Dark mode is a user-level setting, not an instance-level setting. Currently, there's no way to change the theme to dark mode for the entire instance, but you can edit some [user interface colors](#user-interface-colors).
 
 ## Branding
 
@@ -58,7 +70,7 @@ You can customize the colors that Metabase uses throughout the app:
 
 ![Chart colors](./images/chart-colors.png)
 
-You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. And don't bother ordering the colors here, as their order doesn't apply to the order of colors for series on charts. When building a chart, Metabase will select colors to make each series easy to distinguish.
+You can choose up to 24 hex values. If you choose fewer than 24 colors, Metabase will auto-generate colors to fill in the rest of the values. The order of colors doesn't apply to the order of colors for series on charts. When building a chart, Metabase will select colors to make each series easy to distinguish.
 
 Custom colors are unavailable for:
 
@@ -70,7 +82,7 @@ Custom colors are unavailable for:
 
 ## Logo
 
-You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it’s around 60px tall. (In other words, ask the nearest designer for help.)
+You can replace Metabase's familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own logo. For things to work best, the logo you upload should be an SVG file that looks good when it's around 60px tall. (In other words, ask the nearest designer for help.)
 
 ## Font
 
@@ -169,4 +181,4 @@ Metabase will display this illustration when searches don't return any results.
 
 - [Customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding).
 - [Embedding introduction](../embedding/start.md).
-- [Brand your Metabase](https://www.metabase.com/learn/metabase-basics/embedding/brand).
+- [Brand your Metabase](https://www.metabase.com/docs/latest/configuring-metabase/appearance).

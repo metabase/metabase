@@ -1,8 +1,12 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { ForeignKeySchema, TableSchema } from "metabase/schema";
 import type {
-  Field,
+  ForeignKey,
+  GetTableDataRequest,
   GetTableQueryMetadataRequest,
   GetTableRequest,
   Table,
+  TableData,
   TableId,
   TableListQuery,
   UpdateTableFieldsOrderRequest,
@@ -19,6 +23,7 @@ import {
   provideTableTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const tableApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -29,6 +34,10 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (tables = []) => provideTableListTags(tables),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [TableSchema])),
+        ),
     }),
     getTable: builder.query<Table, GetTableRequest>({
       query: ({ id }) => ({
@@ -36,6 +45,10 @@ export const tableApi = Api.injectEndpoints({
         url: `/api/table/${id}`,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, TableSchema)),
+        ),
     }),
     getTableQueryMetadata: builder.query<Table, GetTableQueryMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -44,13 +57,27 @@ export const tableApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (table) => (table ? provideTableTags(table) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, TableSchema)),
+        ),
     }),
-    listTableForeignKeys: builder.query<Field[], TableId>({
+    getTableData: builder.query<TableData, GetTableDataRequest>({
+      query: ({ tableId }) => ({
+        method: "GET",
+        url: `/api/table/${tableId}/data`,
+      }),
+    }),
+    listTableForeignKeys: builder.query<ForeignKey[], TableId>({
       query: (id) => ({
         method: "GET",
         url: `/api/table/${id}/fks`,
       }),
       providesTags: [listTag("field")],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [ForeignKeySchema])),
+        ),
     }),
     updateTable: builder.mutation<Table, UpdateTableRequest>({
       query: ({ id, ...body }) => ({
@@ -63,6 +90,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           tag("database"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
@@ -72,7 +100,12 @@ export const tableApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+        invalidateTags(error, [
+          tag("table"),
+          tag("database"),
+          tag("card"),
+          tag("dataset"),
+        ]),
     }),
     updateTableFieldsOrder: builder.mutation<
       Table,
@@ -89,6 +122,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           listTag("field"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
@@ -128,6 +162,9 @@ export const {
   useListTablesQuery,
   useGetTableQuery,
   useGetTableQueryMetadataQuery,
+  useLazyGetTableQueryMetadataQuery,
+  useGetTableDataQuery,
+  useListTableForeignKeysQuery,
   useLazyListTableForeignKeysQuery,
   useUpdateTableMutation,
   useUpdateTableListMutation,
@@ -136,3 +173,31 @@ export const {
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;
+
+/**
+ * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.
+ * Dispatches queries to load metadata for each related table.
+ *
+ * @param table - The table containing foreign key fields
+ * @param params - Optional parameters to pass to the metadata query (excluding 'id')
+ * @returns A thunk function that dispatches metadata fetch actions for all foreign tables
+ */
+export const fetchForeignTablesMetadata = (
+  table: Table,
+  params?: Omit<GetTableQueryMetadataRequest, "id">,
+) => {
+  return (dispatch: (action: unknown) => void) => {
+    const fkTableIds = new Set<TableId>();
+    for (const field of table.fields ?? []) {
+      if (field.target?.table_id != null) {
+        fkTableIds.add(field.target.table_id);
+      }
+    }
+
+    fkTableIds.forEach((id) =>
+      dispatch(
+        tableApi.endpoints.getTableQueryMetadata.initiate({ id, ...params }),
+      ),
+    );
+  };
+};

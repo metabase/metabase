@@ -41,7 +41,7 @@ The above command would copy the database file to the directory you ran the comm
 
 Amazon has its own best practices on how to backup and restore RDS databases, so we'll defer to them. We recommend that you enable automated RDS Backups.
 
-Instructions can be found in the [Amazon RDS User Guide](http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
+Instructions can be found in the [Amazon RDS User Guide](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html).
 
 ## Self-hosted PostgreSQL database
 

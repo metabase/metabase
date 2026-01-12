@@ -2,8 +2,9 @@
 import styled from "@emotion/styled";
 
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 import type { InitialSyncStatus } from "metabase-types/api";
 
 interface Props {
@@ -15,7 +16,7 @@ const getIconColor = ({ status }: Props): string => {
     case "incomplete":
       return color("brand");
     default:
-      return color("text-white");
+      return color("text-primary-inverse");
   }
 };
 

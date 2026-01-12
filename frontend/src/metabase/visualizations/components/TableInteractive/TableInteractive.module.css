@@ -10,7 +10,7 @@
 }
 
 .pivotedFirstColumn {
-  border-right: 1px solid var(--mb-color-border);
+  border-right: 1px solid var(--mb-color-border-subtle);
 }
 
 .bodyCellWithImage img {

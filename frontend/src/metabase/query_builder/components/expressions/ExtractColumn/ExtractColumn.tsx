@@ -6,7 +6,7 @@ import { getExample } from "metabase/querying/drills/utils/column-extract-drill"
 import { Box, Button, Flex, Stack, Text, Title } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ExpressionWidgetHeader } from "../ExpressionWidgetHeader";
+import { ExpressionWidgetHeader } from "../ExpressionWidget/ExpressionWidgetHeader";
 
 import styles from "./ExtractColumn.module.css";
 import { getName } from "./util";
@@ -199,10 +199,10 @@ function ExtractColumnButton({
       onClick={onClick}
     >
       <Flex align="center" justify="space-between" gap="1rem">
-        <Text color="text-dark" className={styles.content} fw="bold" p={0}>
+        <Text color="text-primary" className={styles.content} fw="bold" p={0}>
           {title}
         </Text>
-        <Text color="text-light" size="sm" className={styles.example}>
+        <Text color="text-tertiary" size="sm" className={styles.example}>
           {example}
         </Text>
       </Flex>

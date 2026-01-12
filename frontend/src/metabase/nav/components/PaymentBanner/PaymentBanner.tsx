@@ -3,8 +3,8 @@ import { jt, t } from "ttag";
 
 import { Banner } from "metabase/common/components/Banner";
 import ExternalLink from "metabase/common/components/ExternalLink";
+import { useStoreUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { getStoreUrl } from "metabase/selectors/settings";
 import { Text } from "metabase/ui";
 import type { TokenStatus } from "metabase-types/api";
 
@@ -13,6 +13,8 @@ interface PaymentBannerProps {
 }
 
 export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
+  const storeUrl = useStoreUrl();
+
   return match(tokenStatus.status)
     .with("past-due", () => (
       <Banner
@@ -23,7 +25,7 @@ export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
               <ExternalLink
                 key="payment-past-due"
                 className={CS.link}
-                href={getStoreUrl()}
+                href={storeUrl}
               >
                 {t`review your payment settings`}
               </ExternalLink>
@@ -40,7 +42,7 @@ export const PaymentBanner = ({ tokenStatus }: PaymentBannerProps) => {
             <ExternalLink
               key="payment-unpaid"
               className={CS.link}
-              href={getStoreUrl()}
+              href={storeUrl}
             >
               {t`Review your payment settings`}
             </ExternalLink>

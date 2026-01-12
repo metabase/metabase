@@ -35,7 +35,13 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       cy.reload();
 
       H.assertPermissionTable([["Sample Database", "No"]]);
-      H.isPermissionDisabled(OSS_NATIVE_QUERIES_PERMISSION_INDEX, "No", false);
+
+      H.isPermissionDisabled(
+        "Sample Database",
+        OSS_NATIVE_QUERIES_PERMISSION_INDEX,
+        "No",
+        false,
+      );
 
       H.modifyPermission(
         "Sample Database",
@@ -85,14 +91,14 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       H.modifyPermission(
         tableName,
         EE_DATA_ACCESS_PERMISSION_INDEX,
-        "Sandboxed",
+        "Row and column security",
       );
 
       cy.findByText("Pick a column").click();
       H.popover().within(() => {
         cy.findByText(colName).click();
       });
-      cy.findByText("Pick a user attribute").click();
+      cy.findByPlaceholderText("Pick a user attribute").click();
       H.popover().within(() => {
         cy.findByText("attr_uid").click();
       });
@@ -142,8 +148,14 @@ describe("scenarios > admin > permissions > downgrade ee to oss", () => {
       ["Analytic Events", "Can view", "No", "1 million rows", "No"],
       ["Feedback", "Can view", "No", "1 million rows", "No"],
       ["Invoices", "Can view", "No", "1 million rows", "No"],
-      ["Orders", "Sandboxed", "Query builder only", "1 million rows", "No"],
-      ["People", "Sandboxed", "No", "1 million rows", "No"],
+      [
+        "Orders",
+        "Row and column security",
+        "Query builder only",
+        "1 million rows",
+        "No",
+      ],
+      ["People", "Row and column security", "No", "1 million rows", "No"],
       ["Products", "Can view", "No", "1 million rows", "No"],
       ["Reviews", "Can view", "No", "1 million rows", "No"],
     ]);

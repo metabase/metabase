@@ -2,7 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import {
   DEFAULT_CARD_SIZE,
   GRID_WIDTH,
@@ -37,11 +37,11 @@ import {
 } from "../analytics";
 import type { SectionLayout } from "../sections";
 import {
+  getCurrentDashcards,
   getDashCardById,
   getDashboard,
   getDashboardId,
   getDashboards,
-  getDashcardList,
   getDashcards,
   getSelectedTabId,
 } from "../selectors";
@@ -471,7 +471,7 @@ export const removeCardFromDashboard = createThunkAction(
   }) =>
     (dispatch, getState) => {
       const dashboard = checkNotNull(getDashboard(getState()));
-      const dashcards = getDashcardList(getState());
+      const dashcards = getCurrentDashcards(getState());
       const dashcard = getDashCardById(getState(), dashcardId);
 
       const originalParameters = dashboard.parameters

@@ -1,4 +1,5 @@
 (ns metabase.driver.sparksql
+  (:refer-clojure :exclude [select-keys every? empty? not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -16,9 +17,10 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util.honey-sql-2 :as h2x])
+   [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.performance :refer [select-keys every? empty? not-empty get-in]])
   (:import
-   (java.sql Connection ResultSet)))
+   (java.sql Connection ResultSet Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -37,19 +39,19 @@
   (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
         field-clause  (driver-api/update-field-options
                        field-clause
-                       update
-                       driver-api/qp.add.source-table
-                       (fn [source-table]
-                         (cond
-                            ;; DO NOT qualify fields from field filters with `t1`, that won't
-                            ;; work unless the user-written SQL query is doing the same
-                            ;; thing.
-                           compiling-field-filter? driver-api/qp.add.none
-                            ;; for all other fields from the source table qualify them with
-                            ;; `t1`
-                           (integer? source-table) source-table-alias
-                            ;; no changes for anyone else.
-                           :else                   source-table)))]
+                       (fn [{source-table driver-api/qp.add.source-table, :as options}]
+                         (-> options
+                             (cond-> (pos-int? source-table) (assoc :qp/allow-coercion-for-columns-without-integer-qp.add.source-table true))
+                             (assoc driver-api/qp.add.source-table (cond
+                                                                     ;; DO NOT qualify fields from field filters with `t1`, that won't
+                                                                     ;; work unless the user-written SQL query is doing the same
+                                                                     ;; thing.
+                                                                     compiling-field-filter? driver-api/qp.add.none
+                                                                     ;; for all other fields from the source table qualify them with
+                                                                     ;; `t1`
+                                                                     (pos-int? source-table) source-table-alias
+                                                                     ;; no changes for anyone else.
+                                                                     :else                   source-table)))))]
     (parent-method driver field-clause)))
 
 (defn- format-over
@@ -107,7 +109,7 @@
     (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-database :sparksql
+(defmethod driver/describe-database* :sparksql
   [driver database]
   {:tables
    (sql-jdbc.execute/do-with-connection-with-options
@@ -158,7 +160,7 @@
   (let [inner-query (-> (assoc inner-query
                                :remark   (driver-api/query->remark :sparksql outer-query)
                                :query    sql
-                               :max-rows (driver-api/query->max-rows-limit outer-query))
+                               :max-rows #_{:clj-kondo/ignore [:deprecated-var]} (driver-api/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
@@ -226,9 +228,6 @@
         (.close stmt)
         (throw e)))))
 
-;; the current HiveConnection doesn't support .createStatement
-(defmethod sql-jdbc.execute/statement-supported? :sparksql [_] false)
-
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :expression-aggregations         true
@@ -242,7 +241,8 @@
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
                               :window-functions/cumulative     false
-                              :database-routing                false}]
+                              :database-routing                false
+                              :jdbc/statements                 false}]
   (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
 
 (defmethod sql.qp/quote-style :sparksql
@@ -260,3 +260,8 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :sparksql
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:sparksql Types/ARRAY]
+  [_ ^ResultSet rs _rsmeta ^Integer i]
+  (fn []
+    (.getObject rs i)))

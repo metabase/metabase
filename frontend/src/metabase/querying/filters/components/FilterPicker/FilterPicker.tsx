@@ -1,10 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
-import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
-import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "metabase/query_builder/components/expressions";
+import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
-import type { DefinedClauseName } from "metabase-lib/v1/expressions";
 
 import {
   FilterColumnPicker,
@@ -27,6 +29,7 @@ export type FilterPickerProps = {
   onSelect: (filter: Lib.Filterable) => void;
   onClose?: () => void;
   onBack?: () => void;
+  readOnly?: boolean;
 } & Pick<
   FilterColumnPickerProps,
   "withColumnItemIcon" | "withColumnGroupIcon" | "withCustomExpression"
@@ -44,6 +47,7 @@ export function FilterPicker({
   withColumnItemIcon,
   withColumnGroupIcon,
   withCustomExpression,
+  readOnly,
 }: FilterPickerProps) {
   const [filter, setFilter] = useState(initialFilter);
   const [column, setColumn] = useState(
@@ -153,6 +157,7 @@ export function FilterPicker({
       isNew={isNewFilter}
       onChange={handleChange}
       onBack={handleBack}
+      readOnly={readOnly}
     />
   );
 }

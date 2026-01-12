@@ -1,3 +1,5 @@
+import type { Location } from "history";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,61 +8,72 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { useSelector } from "metabase/lib/redux";
-import { getLocation } from "metabase/selectors/routing";
+import * as Urls from "metabase/lib/urls";
 
-export function ToolsApp({ children }: { children: React.ReactNode }) {
-  {
-    return (
-      <AdminSettingsLayout
-        maw="100rem"
-        sidebar={
-          <AdminNavWrapper>
-            <ToolsNavItem
-              label={t`Help`}
-              path="/admin/tools/help"
-              icon="info_filled"
-            />
-            <ToolsNavItem
-              label={t`Tasks`}
-              path="/admin/tools/tasks"
-              icon="clipboard"
-            />
-            <ToolsNavItem
-              label={t`Jobs`}
-              path="/admin/tools/jobs"
-              icon="clock"
-            />
-            <ToolsNavItem
-              label={t`Logs`}
-              path="/admin/tools/logs"
-              icon="audit"
-            />
-            <ToolsNavItem
-              label={t`Erroring questions`}
-              path="/admin/tools/errors"
-              icon="warning_round_filled"
-            />
-            <ToolsNavItem
-              label={t`Model cache log`}
-              path="/admin/tools/model-caching"
-              icon="database"
-            />
-          </AdminNavWrapper>
-        }
-      >
-        {children}
-      </AdminSettingsLayout>
-    );
-  }
+type ToolsAppProps = {
+  location: Location;
+  children?: ReactNode;
+};
+
+export function ToolsApp({ location, children }: ToolsAppProps) {
+  return (
+    <AdminSettingsLayout
+      maw="100rem"
+      fullWidth={location?.pathname === Urls.dependencyGraph()}
+      sidebar={
+        <AdminNavWrapper>
+          <ToolsNavItem
+            label={t`Help`}
+            path={Urls.adminToolsHelp()}
+            icon="info"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Tasks`}
+            path={Urls.adminToolsTasks()}
+            icon="clipboard"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Jobs`}
+            path={Urls.adminToolsJobs()}
+            icon="clock"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Logs`}
+            path={Urls.adminToolsLogs()}
+            icon="audit"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Erroring questions`}
+            path={Urls.adminToolsErrors()}
+            icon="warning_round_filled"
+            location={location}
+          />
+          <ToolsNavItem
+            label={t`Model cache log`}
+            path={Urls.adminToolsModelCaching()}
+            icon="database"
+            location={location}
+          />
+        </AdminNavWrapper>
+      }
+    >
+      {children}
+    </AdminSettingsLayout>
+  );
 }
 
-const ToolsNavItem = (props: AdminNavItemProps) => {
-  const location = useSelector(getLocation);
-  const subpath = location?.pathname;
+type ToolsNavItemProps = AdminNavItemProps & {
+  location: Location;
+};
 
+const ToolsNavItem = ({ location, ...props }: ToolsNavItemProps) => {
   // we want to highlight the nav item even if a subpath is active
-  const isActive = subpath.includes(props.path);
+  const subpath = location?.pathname;
+  const isActive = !!props.path && subpath.includes(props.path);
 
   return <AdminNavItem {...props} active={isActive} />;
 };

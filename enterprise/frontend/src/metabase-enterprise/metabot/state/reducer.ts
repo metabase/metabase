@@ -1,200 +1,317 @@
 import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
+import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import { uuid } from "metabase/lib/uuid";
-import type { MetabotHistory, MetabotStateContext } from "metabase-types/api";
+import type { MetabotCodeEdit, SuggestedTransform } from "metabase-types/api";
 
 import { TOOL_CALL_MESSAGES } from "../constants";
 
-import { sendAgentRequest, sendStreamedAgentRequest } from "./actions";
+import { sendAgentRequest } from "./actions";
+import {
+  type ConvoPayloadAction,
+  convoReducer,
+  createConversation,
+  getMetabotInitialState,
+  getRequestConversation,
+  resetReactionState,
+} from "./reducer-utils";
+import type {
+  MetabotAgentChatMessage,
+  MetabotErrorMessage,
+  MetabotSuggestedTransform,
+  MetabotUserChatMessage,
+} from "./types";
 import { createMessageId } from "./utils";
-
-export type MetabotChatMessage = {
-  id: string;
-  role: "user" | "agent";
-  message: string;
-};
-
-export type MetabotErrorMessage = {
-  type: "message" | "alert";
-  message: string;
-};
-
-export type MetabotToolCall = {
-  id: string;
-  name: string;
-  message: string;
-  status: "started" | "ended";
-};
-
-export interface MetabotState {
-  useStreaming: boolean;
-  isProcessing: boolean;
-  conversationId: string;
-  messages: MetabotChatMessage[];
-  errorMessages: MetabotErrorMessage[];
-  visible: boolean;
-  history: MetabotHistory;
-  state: any;
-  toolCalls: MetabotToolCall[];
-}
-
-export const getMetabotInitialState = (): MetabotState => ({
-  useStreaming: true,
-  isProcessing: false,
-  conversationId: uuid(),
-  messages: [],
-  errorMessages: [],
-  visible: false,
-  history: [],
-  state: {},
-  toolCalls: [],
-});
 
 export const metabot = createSlice({
   name: "metabase-enterprise/metabot",
   initialState: getMetabotInitialState(),
   reducers: {
-    toggleStreaming: (state) => {
-      state.useStreaming = !state.useStreaming;
-    },
-    addUserMessage: (
-      state,
-      action: PayloadAction<Omit<MetabotChatMessage, "role">>,
-    ) => {
-      const { id, message } = action.payload;
-
-      state.errorMessages = [];
-      state.messages.push({ id, role: "user", message });
-
-      if (state.useStreaming) {
-        state.history.push({ id, role: "user", content: message });
+    // TOP-LEVEL STATE REDUCERS
+    createAgent: (state, action: ConvoPayloadAction<{ visible?: boolean }>) => {
+      const { agentId, ...options } = action.payload;
+      if (!state.conversations[agentId]) {
+        const newConvo = createConversation(agentId, options);
+        state.conversations[agentId] = castDraft(newConvo);
+      } else {
+        console.warn("Conversation already exists for agentId: ", agentId);
       }
     },
-    addAgentMessage: (
-      state,
-      action: PayloadAction<Omit<MetabotChatMessage, "id" | "role">>,
-    ) => {
-      state.toolCalls = [];
-      state.messages.push({
-        id: createMessageId(),
-        role: "agent",
-        message: action.payload.message,
-      });
+    destroyAgent: (state, action: ConvoPayloadAction) => {
+      const { agentId } = action.payload;
+      delete state.conversations[agentId];
+      resetReactionState(state, agentId);
     },
-    addAgentErrorMessage: (
-      state,
-      action: PayloadAction<MetabotErrorMessage>,
-    ) => {
-      state.errorMessages.push(action.payload);
+    resetConversation: (state, action: ConvoPayloadAction) => {
+      const { agentId } = action.payload;
+      const visible = state.conversations[agentId]?.visible ?? false;
+      const newConvo = createConversation(agentId, { visible });
+      state.conversations[agentId] = castDraft(newConvo);
+      resetReactionState(state, agentId);
     },
-    addAgentTextDelta: (state, action: PayloadAction<string>) => {
-      const hasToolCalls = state.toolCalls.length > 0;
-      const lastMessage = _.last(state.messages);
-      const canAppend = !hasToolCalls && lastMessage?.role === "agent";
-
-      if (canAppend) {
-        lastMessage!.message = lastMessage!.message + action.payload;
-      } else {
-        state.messages.push({
+    setDebugMode: (state, action: PayloadAction<boolean>) => {
+      state.debugMode = action.payload;
+    },
+    // CONVERSATION REDUCERS
+    addDeveloperMessage: convoReducer(
+      (convo, action: ConvoPayloadAction<{ message: string }>) => {
+        convo.experimental.developerMessage = `HIDDEN DEVELOPER MESSAGE: ${action.payload.message}\n\n`;
+      },
+    ),
+    addUserMessage: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<Omit<MetabotUserChatMessage, "role">>,
+      ) => {
+        const { id, message, agentId, ...rest } = action.payload;
+        convo.errorMessages = [];
+        convo.messages.push({ id, role: "user", ...rest, message } as any);
+        convo.history.push({ id, role: "user", content: message });
+      },
+    ),
+    addAgentMessage: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<
+          Omit<MetabotAgentChatMessage, "id" | "role">
+        >,
+      ) => {
+        convo.activeToolCalls = [];
+        convo.messages.push({
           id: createMessageId(),
           role: "agent",
-          message: action.payload,
-        });
-      }
+          ...action.payload,
+          // transforms in message is making this flakily produce possibly infinite
+          // typescript errors. since unused ts-expect-error directives produces
+          // errors, casting this as any to avoid having to add / remove constantly.
+        } as any);
+      },
+    ),
+    addAgentErrorMessage: convoReducer(
+      (convo, action: ConvoPayloadAction<MetabotErrorMessage>) => {
+        convo.errorMessages.push(action.payload);
+      },
+    ),
+    addAgentTextDelta: convoReducer(
+      (convo, action: ConvoPayloadAction<{ text: string }>) => {
+        const hasToolCalls = convo.activeToolCalls.length > 0;
+        const lastMessage = _.last(convo.messages);
+        const canAppend =
+          !hasToolCalls &&
+          lastMessage?.role === "agent" &&
+          lastMessage.type === "text";
 
-      state.toolCalls = hasToolCalls ? [] : state.toolCalls;
-    },
-    setStateContext: (state, action: PayloadAction<MetabotStateContext>) => {
-      state.state = action.payload;
-    },
-    toolCallStart: (
-      state,
-      action: PayloadAction<{ toolCallId: string; toolName: string }>,
-    ) => {
-      const { toolCallId, toolName } = action.payload;
-      const toolCallMessage = TOOL_CALL_MESSAGES[toolName];
-      if (toolCallMessage) {
-        state.toolCalls.push({
+        if (canAppend) {
+          lastMessage.message = lastMessage.message + action.payload.text;
+        } else {
+          convo.messages.push({
+            id: createMessageId(),
+            role: "agent",
+            type: "text",
+            message: action.payload.text,
+          });
+        }
+
+        convo.activeToolCalls = hasToolCalls ? [] : convo.activeToolCalls;
+      },
+    ),
+    toolCallStart: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{
+          toolCallId: string;
+          toolName: string;
+          args?: string;
+        }>,
+      ) => {
+        const { toolCallId, toolName, args } = action.payload;
+        convo.messages.push({
           id: toolCallId,
+          role: "agent",
+          type: "tool_call",
           name: toolName,
-          message: toolCallMessage,
+          args,
           status: "started",
         });
-      }
-    },
-    toolCallEnd: (state, action: PayloadAction<{ toolCallId: string }>) => {
-      state.toolCalls = state.toolCalls.map((tc) =>
-        tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
-      );
-    },
+        convo.activeToolCalls.push({
+          id: toolCallId,
+          name: toolName,
+          message: TOOL_CALL_MESSAGES[toolName],
+          status: "started",
+        });
+      },
+    ),
+    toolCallEnd: convoReducer(
+      (
+        convo,
+        action: ConvoPayloadAction<{ toolCallId: string; result?: any }>,
+      ) => {
+        convo.activeToolCalls = convo.activeToolCalls.map((tc) =>
+          tc.id === action.payload.toolCallId ? { ...tc, status: "ended" } : tc,
+        );
+
+        // Update the message in messages array with result for debug history
+        const message = convo.messages.findLast(
+          (msg) =>
+            msg.type === "tool_call" && msg.id === action.payload.toolCallId,
+        );
+        if (message?.type === "tool_call") {
+          message.status = "ended";
+          message.result = action.payload.result;
+        }
+      },
+    ),
     // NOTE: this reducer fn should be made smarter if/when we want to have
     // metabot's `state` object be able to remove / forget values. currently
     // we do not rewind the state to the point in time of the original prompt
     // so if / when this becomes expected, we'll need to do some extra work here
     // NOTE: this doesn't work in non-streaming contexts right now
-    rewindStateToMessageId: (state, { payload: id }: PayloadAction<string>) => {
-      state.isProcessing = false;
-      const messageIndex = state.messages.findLastIndex((m) => id === m.id);
-      if (messageIndex > -1) {
-        state.messages = state.messages.slice(0, messageIndex);
-      }
+    rewindStateToMessageId: convoReducer(
+      (convo, action: ConvoPayloadAction<{ messageId: string }>) => {
+        convo.isProcessing = false;
 
-      const historyIndex = state.history.findLastIndex((h) => id === h.id);
-      if (state.useStreaming && historyIndex > -1) {
-        state.history = state.history.slice(0, historyIndex);
-      }
+        const id = action.payload.messageId;
+        const messageIndex = convo.messages.findLastIndex((m) => id === m.id);
+        if (messageIndex > -1) {
+          convo.messages = convo.messages.slice(0, messageIndex);
+        }
+
+        const historyIndex = convo.history.findLastIndex((h) => id === h.id);
+        if (historyIndex > -1) {
+          convo.history = convo.history.slice(0, historyIndex);
+        }
+      },
+    ),
+    setIsProcessing: convoReducer(
+      (state, action: ConvoPayloadAction<{ processing: boolean }>) => {
+        state.isProcessing = action.payload.processing;
+      },
+    ),
+    setVisible: convoReducer(
+      (state, action: ConvoPayloadAction<{ visible: boolean }>) => {
+        state.visible = action.payload.visible;
+      },
+    ),
+    setMetabotReqIdOverride: convoReducer(
+      (state, action: ConvoPayloadAction<{ id: string | undefined }>) => {
+        state.experimental.metabotReqIdOverride = action.payload.id;
+      },
+    ),
+    setProfileOverride: convoReducer(
+      (state, action: ConvoPayloadAction<{ profile: string | undefined }>) => {
+        state.profileOverride = action.payload.profile;
+      },
+    ),
+    // REACTIONS REDUCERS
+    setNavigateToPath: (state, action: PayloadAction<string>) => {
+      state.reactions.navigateToPath = action.payload;
     },
-    resetConversation: (state) => {
-      state.messages = [];
-      state.errorMessages = [];
-      state.history = [];
-      state.state = {};
-      state.isProcessing = false;
-      state.toolCalls = [];
-      state.conversationId = uuid();
+    addSuggestedTransform: (
+      state,
+      { payload: transform }: PayloadAction<MetabotSuggestedTransform>,
+    ) => {
+      // mark all other transform w/ same id as inactive before adding new one
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === transform.id) {
+          t.active = false;
+        }
+      });
+      // transform type caused flaky "possible infinite type definition" errorj
+      // ts-expect-error fails when it doesn't fail, so casting to any
+      state.reactions.suggestedTransforms.push(transform as any);
     },
-    resetConversationId: (state) => {
-      state.conversationId = uuid();
+    activateSuggestedTransform: (
+      state,
+      action: PayloadAction<{
+        id?: SuggestedTransform["id"];
+        suggestionId: string;
+      }>,
+    ) => {
+      const { id, suggestionId } = action.payload;
+
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === id) {
+          t.active = t.suggestionId === suggestionId;
+        }
+      });
     },
-    setIsProcessing: (state, action: PayloadAction<boolean>) => {
-      state.isProcessing = action.payload;
+    deactivateSuggestedTransform: (
+      state,
+      action: PayloadAction<SuggestedTransform["id"] | undefined>,
+    ) => {
+      state.reactions.suggestedTransforms.forEach((t) => {
+        if (t.id === action.payload) {
+          t.active = false;
+        }
+      });
     },
-    setVisible: (state, action: PayloadAction<boolean>) => {
-      state.visible = action.payload;
+    addSuggestedCodeEdit: (
+      state,
+      { payload: codeEdit }: PayloadAction<MetabotCodeEdit>,
+    ) => {
+      state.reactions.suggestedCodeEdits[codeEdit.buffer_id] = codeEdit;
+    },
+    removeSuggestedCodeEdit: (
+      state,
+      action: PayloadAction<MetabotCodeEdit["buffer_id"]>,
+    ) => {
+      delete state.reactions.suggestedCodeEdits[action.payload];
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(logout.pending, getMetabotInitialState)
-      // streamed response handlers
-      .addCase(sendStreamedAgentRequest.pending, (state) => {
-        state.isProcessing = true;
-        state.errorMessages = [];
-      })
-      .addCase(sendStreamedAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.history?.slice() ?? [];
-        state.state = { ...(action.payload?.state ?? {}) };
-        state.toolCalls = [];
-        state.isProcessing = false;
-      })
-      .addCase(sendStreamedAgentRequest.rejected, (state) => {
-        state.toolCalls = [];
-        state.isProcessing = false;
-      })
-      // non-streamed response handlers
-      .addCase(sendAgentRequest.pending, (state) => {
-        state.isProcessing = true;
-        state.errorMessages = [];
+      // CONVERSATION REQUEST REDUCERS
+      .addCase(sendAgentRequest.pending, (state, action) => {
+        const convo = getRequestConversation(state, action);
+        if (convo) {
+          convo.isProcessing = true;
+          convo.errorMessages = [];
+        }
       })
       .addCase(sendAgentRequest.fulfilled, (state, action) => {
-        state.history = action.payload?.history?.slice() ?? [];
-        state.state = { ...(action.payload?.state ?? {}) };
-        state.isProcessing = false;
+        const convo = getRequestConversation(state, action);
+        if (convo) {
+          convo.state = { ...(action.payload?.state ?? {}) };
+          convo.history = action.payload?.history?.slice() ?? [];
+          convo.activeToolCalls = [];
+          convo.isProcessing = false;
+          convo.experimental.developerMessage = "";
+        }
       })
-      .addCase(sendAgentRequest.rejected, (state) => {
-        state.isProcessing = false;
+      .addCase(sendAgentRequest.rejected, (state, action) => {
+        const convo = getRequestConversation(state, action);
+        if (convo) {
+          // aborted requests needs special state adjustments
+          if (action.payload?.type === "abort") {
+            convo.state = { ...(action.payload?.state ?? {}) };
+            convo.history = action.payload?.history?.slice() ?? [];
+            if (action.payload.unresolved_tool_calls.length > 0) {
+              // update history w/ synthetic tool_result entries for each unresolved tool call
+              // as having a tool_call without a matching tool_result is invalid
+              const syntheticToolResults =
+                action.payload.unresolved_tool_calls.map((tc) => ({
+                  role: "tool" as const,
+                  content: "Tool execution interrupted by user",
+                  tool_call_id: tc.toolCallId,
+                }));
+              convo.history.push(...syntheticToolResults);
+
+              // update message state so that unresolved tools are marked as ended
+              convo.messages.forEach((msg) => {
+                if (msg.type === "tool_call" && msg.status === "started") {
+                  msg.status = "ended";
+                  msg.result = "Tool execution interrupted by user";
+                  msg.is_error = true;
+                }
+              });
+            }
+          }
+
+          convo.activeToolCalls = [];
+          convo.isProcessing = false;
+        }
       });
   },
 });

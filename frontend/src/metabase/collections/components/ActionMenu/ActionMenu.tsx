@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { HACK_getParentCollectionFromEntityUpdateAction } from "metabase/archive/utils";
+import { trackCollectionItemBookmarked } from "metabase/collections/analytics";
 import type {
   CreateBookmark,
   DeleteBookmark,
@@ -12,6 +13,7 @@ import type {
 } from "metabase/collections/types";
 import {
   canArchiveItem,
+  canBookmarkItem,
   canCopyItem,
   canMoveItem,
   canPinItem,
@@ -20,11 +22,11 @@ import {
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { connect, useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
 import * as Urls from "metabase/lib/urls";
-import { addUndo } from "metabase/redux/undo";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
@@ -83,8 +85,10 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps & ActionMenuStateProps) {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
+  const canBookmark = canBookmarkItem(item);
   const canPin = canPinItem(item, collection);
   const canPreview = canPreviewItem(item, collection);
   const canMove = canMoveItem(item, collection);
@@ -113,8 +117,13 @@ function ActionMenu({
     if (!createBookmark && !deleteBookmark) {
       return undefined;
     }
+
     const handler = () => {
       const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
+
+      if (!isBookmarked) {
+        trackCollectionItemBookmarked(item);
+      }
       toggleBookmark?.(item.id.toString(), normalizeItemModel(item));
     };
     return handler;
@@ -138,21 +147,18 @@ function ActionMenu({
     );
     const redirect = getParentEntityLink(entity, parentCollection);
 
-    dispatch(
-      addUndo({
-        message: t`${item.name} has been restored.`,
-        actionLabel: t`View`, // could be collection or dashboard
-        action: () => dispatch(push(redirect)),
-        undo: false,
-      }),
-    );
-  }, [item, dispatch]);
+    sendToast({
+      message: t`${item.name} has been restored.`,
+      actionLabel: t`View`, // could be collection or dashboard
+      action: () => dispatch(push(redirect)),
+    });
+  }, [item, dispatch, sendToast]);
 
   const handleDeletePermanently = useCallback(() => {
     const Entity = entityForObject(item);
     dispatch(Entity.actions.delete(item));
-    dispatch(addUndo({ message: t`This item has been permanently deleted.` }));
-  }, [item, dispatch]);
+    sendToast({ message: t`This item has been permanently deleted.` });
+  }, [item, dispatch, sendToast]);
 
   return (
     <>
@@ -165,7 +171,7 @@ function ActionMenu({
         onMove={canMove ? handleMove : undefined}
         onCopy={canCopy ? handleCopy : undefined}
         onArchive={canArchive ? handleArchive : undefined}
-        onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
+        onToggleBookmark={canBookmark ? handleToggleBookmark : undefined}
         onTogglePreview={canPreview ? handleTogglePreview : undefined}
         onRestore={canRestore ? handleRestore : undefined}
         onDeletePermanently={canDelete ? openModal : undefined}

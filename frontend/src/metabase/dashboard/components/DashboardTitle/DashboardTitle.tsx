@@ -1,12 +1,15 @@
 import { t } from "ttag";
 
 import EditableText from "metabase/common/components/EditableText";
+import { DASHBOARD_NAME_MAX_LENGTH } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useDashboardTitle } from "metabase/dashboard/hooks/use-dashboard-title";
+import { useTranslateContent } from "metabase/i18n/hooks";
 
 export const DashboardTitle = ({ className }: { className?: string }) => {
   const [title, setTitle] = useDashboardTitle();
-  const { dashboard } = useDashboardContext();
+  const { dashboard, isEditableDashboard } = useDashboardContext();
+  const tc = useTranslateContent();
 
   if (!dashboard) {
     return null;
@@ -16,12 +19,12 @@ export const DashboardTitle = ({ className }: { className?: string }) => {
     <EditableText
       className={className}
       key={title}
-      initialValue={title}
+      initialValue={tc(title)}
       placeholder={t`Add title`}
-      isDisabled={!dashboard?.can_write}
+      isDisabled={!isEditableDashboard}
       data-testid="dashboard-name-heading"
       onChange={setTitle}
-      maxLength={100}
+      maxLength={DASHBOARD_NAME_MAX_LENGTH}
     />
   );
 };

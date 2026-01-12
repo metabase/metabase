@@ -1,21 +1,24 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
+  (:refer-clojure :exclude [some select-keys not-empty get-in])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.users.models.user-parameter-value :as user-parameter-value]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -122,7 +125,7 @@
    dashcard-id    :- ::lib.schema.id/dashcard
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-  (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
+  (let [request-params            (some-> request-params not-empty (->> (lib/normalize ::dashboards.schema/parameters)))
         dashboard                 (-> (t2/select-one :model/Dashboard :id dashboard-id)
                                       (t2/hydrate :resolved-params)
                                       (api/check-404))

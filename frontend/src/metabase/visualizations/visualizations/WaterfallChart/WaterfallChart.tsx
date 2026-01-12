@@ -1,6 +1,7 @@
+import Color from "color";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color, staticVizOverrides } from "metabase/lib/colors";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_DATA_SETTINGS,
@@ -66,7 +67,9 @@ Object.assign(
         // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         props: { title: t`Total color` },
         widget: "color",
-        getDefault: () => color("text-dark"),
+        // Unfortunately, to get static viz to look right, we need to avoid using alpha colors here
+        getDefault: () =>
+          Color(color("text-primary", staticVizOverrides)).hex(),
         getHidden: (_series: any, vizSettings: ComputedVisualizationSettings) =>
           vizSettings["waterfall.show_total"] !== true,
         readDependencies: ["waterfall.show_total"],

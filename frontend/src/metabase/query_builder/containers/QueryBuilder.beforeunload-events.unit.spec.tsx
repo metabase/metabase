@@ -92,7 +92,7 @@ describe("QueryBuilder - beforeunload events", () => {
         const { mockEventListener } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         await triggerMetadataChange();
@@ -107,7 +107,7 @@ describe("QueryBuilder - beforeunload events", () => {
         const { mockEventListener } = await setup({
           card: TEST_MODEL_CARD,
           dataset: TEST_MODEL_DATASET,
-          initialRoute: `/model/${TEST_MODEL_CARD.id}/metadata`,
+          initialRoute: `/model/${TEST_MODEL_CARD.id}/columns`,
         });
 
         const mockEvent = callMockEvent(mockEventListener, "beforeunload");

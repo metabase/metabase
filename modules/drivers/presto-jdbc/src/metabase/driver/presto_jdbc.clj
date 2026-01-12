@@ -1,5 +1,6 @@
 (ns metabase.driver.presto-jdbc
   "Presto JDBC driver. See https://prestodb.io/docs/current/ for complete dox."
+  (:refer-clojure :exclude [select-keys])
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
@@ -23,7 +24,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [select-keys]])
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
@@ -47,17 +49,18 @@
 (driver/register! :presto-jdbc, :parent #{:sql-jdbc
                                           ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
-(doseq [[feature supported?] {:basic-aggregations              true
-                              :binning                         true
-                              :expression-aggregations         true
-                              :expression-literals             true
-                              :expressions                     true
-                              :native-parameters               true
-                              :now                             true
-                              :set-timezone                    true
-                              :standard-deviation-aggregations true
-                              :metadata/key-constraints        false
-                              :database-routing                false}]
+(doseq [[feature supported?] {:basic-aggregations               true
+                              :binning                          true
+                              :database-routing                 true
+                              :expression-aggregations          true
+                              :expression-literals              true
+                              :expressions                      true
+                              :metadata/key-constraints         false
+                              :native-parameters                true
+                              :now                              true
+                              :regex/lookaheads-and-lookbehinds false
+                              :set-timezone                     true
+                              :standard-deviation-aggregations  true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers
@@ -595,7 +598,7 @@
                    (describe-schema driver conn catalog schema))))
           (jdbc/reducible-query {:connection conn} sql))))
 
-(defmethod driver/describe-database :presto-jdbc
+(defmethod driver/describe-database* :presto-jdbc
   [driver {{:keys [catalog schema] :as _details} :details :as database}]
   (sql-jdbc.execute/do-with-connection-with-options
    driver

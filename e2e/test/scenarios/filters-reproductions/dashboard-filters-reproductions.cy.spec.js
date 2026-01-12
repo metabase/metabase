@@ -1,6 +1,7 @@
+const { H } = cy;
+
 import dayjs from "dayjs";
 
-const { H } = cy;
 import {
   SAMPLE_DB_ID,
   SAMPLE_DB_SCHEMA_ID,
@@ -409,62 +410,66 @@ describe("issue 12985 > dashboard filter dropdown/search", () => {
     cy.findByText("Ergonomic Silk Coat");
   });
 
-  it.skip("should work for aggregated questions (metabase#12985-2)", () => {
-    const questionDetails = {
-      name: "12985-v2",
-      query: {
-        "source-query": {
-          "source-table": PRODUCTS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", PRODUCTS.CATEGORY, null]],
+  it(
+    "should work for aggregated questions (metabase#12985-2)",
+    { tags: "@skip" },
+    () => {
+      const questionDetails = {
+        name: "12985-v2",
+        query: {
+          "source-query": {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [["field", PRODUCTS.CATEGORY, null]],
+          },
+          filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
         },
-        filter: [">", ["field", "count", { "base-type": "type/Integer" }], 1],
-      },
-    };
+      };
 
-    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { id, card_id, dashboard_id } }) => {
-        cy.log("Connect dashboard filter to the aggregated card");
+      H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+        ({ body: { id, card_id, dashboard_id } }) => {
+          cy.log("Connect dashboard filter to the aggregated card");
 
-        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-          dashcards: [
-            {
-              id,
-              card_id,
-              row: 0,
-              col: 0,
-              size_x: 11,
-              size_y: 6,
-              series: [],
-              visualization_settings: {},
-              // Connect filter to the card
-              parameter_mappings: [
-                {
-                  parameter_id: categoryFilter.id,
-                  card_id,
-                  target: [
-                    "dimension",
-                    ["field", "CATEGORY", { "base-type": "type/Text" }],
-                  ],
-                },
-              ],
-            },
-          ],
-        });
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 11,
+                size_y: 6,
+                series: [],
+                visualization_settings: {},
+                // Connect filter to the card
+                parameter_mappings: [
+                  {
+                    parameter_id: categoryFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["field", "CATEGORY", { "base-type": "type/Text" }],
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
 
-        H.visitDashboard(dashboard_id);
-      },
-    );
+          H.visitDashboard(dashboard_id);
+        },
+      );
 
-    H.filterWidget().contains("Category").click();
-    // It will fail at this point until the issue is fixed because popover never appears
-    H.popover().contains("Gadget").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
-    cy.url().should("contain", "?category=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Ergonomic Silk Coat");
-  });
+      H.filterWidget().contains("Category").click();
+      // It will fail at this point until the issue is fixed because popover never appears
+      H.popover().contains("Gadget").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Add filter").click();
+      cy.url().should("contain", "?category=Gadget");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Ergonomic Silk Coat");
+    },
+  );
 });
 
 describe("issues 15119 and 16112", () => {
@@ -833,9 +838,7 @@ describe("issue 17775", () => {
     H.editDashboard();
 
     // Make sure filter can be connected to the custom column using UI, rather than using API.
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Column to filter on")
@@ -879,7 +882,9 @@ describe("issue 19494", () => {
     sectionId: "string",
   };
   function connectFilterToCard({ filterName, cardPosition }) {
-    cy.findByText(filterName).find(".Icon-gear").click();
+    H.filterWidget({ isEditing: true })
+      .filter(`:contains("${filterName}")`)
+      .click();
 
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText("Select…").eq(cardPosition).click();
@@ -1042,9 +1047,7 @@ describe("issue 20656", () => {
     // Trying to edit the filter should not show mapping fields and shouldn't break frontend (metabase#24536)
     H.editDashboard();
 
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Column to filter on");
@@ -1258,9 +1261,7 @@ describe("issue 22788", () => {
   }
 
   function openFilterSettings() {
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .find(".Icon-gear")
-      .click();
+    H.filterWidget({ isEditing: true }).click();
   }
 
   beforeEach(() => {
@@ -1418,7 +1419,7 @@ describe("issues 15279 and 24500", () => {
     name: "",
     slug: "",
     id: "af72ce9c",
-    type: "foo",
+    type: "string/=",
     sectionId: "bar",
   };
 
@@ -1498,10 +1499,7 @@ describe("issues 15279 and 24500", () => {
     cy.log("Make sure corrupted filter cannot connect to any field");
     // The corrupted filter is only visible when editing the dashboard
     H.editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("unnamed")
-      .icon("gear")
-      .click();
+    H.filterWidget({ name: "unnamed", isEditing: true }).click();
     cy.findByTestId("parameter-mapper-container").should(
       "contain",
       "No valid fields",
@@ -2136,10 +2134,6 @@ describe("issue 27768", () => {
     sectionId: "string",
   };
 
-  function getFilterOptions(filterName) {
-    cy.findByText(filterName).find(".Icon-gear").click();
-  }
-
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -2159,7 +2153,7 @@ describe("issue 27768", () => {
     // We need to manually connect the filter to the custom column using the UI,
     // but when we fix the issue, it should be safe to do this via API
     H.editDashboard();
-    getFilterOptions(filter.name);
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().findByText("Select…").click();
     H.popover().contains("CCategory").click();
@@ -2175,7 +2169,7 @@ describe("issue 27768", () => {
 
     // Make sure the filter is still connected to the custom column
     H.editDashboard();
-    getFilterOptions(filter.name);
+    H.filterWidget({ isEditing: true, name: filter.name }).click();
 
     H.getDashboardCard().within(() => {
       cy.findByText("Select…").should("not.exist");
@@ -3266,7 +3260,7 @@ describe("44047", () => {
           parameter_id: parameterDetails.id,
           target: [
             "dimension",
-            ["field", REVIEWS.RATING, { type: "type/Integer" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
           ],
         },
       ],
@@ -3281,7 +3275,10 @@ describe("44047", () => {
         {
           card_id: card.id,
           parameter_id: parameterDetails.id,
-          target: ["dimension", ["field", "RATING", { type: "type/Integer" }]],
+          target: [
+            "dimension",
+            ["field", "RATING", { "base-type": "type/Integer" }],
+          ],
         },
       ],
     };
@@ -3781,6 +3778,186 @@ describe("issue 35852", () => {
       });
     });
   }
+});
+
+describe("issue 47097", () => {
+  const questionDetails = {
+    name: "Products",
+    query: {
+      "source-table": PRODUCTS_ID,
+    },
+  };
+
+  const parameterDetails = {
+    id: "49596bcb-62bb-49d6-a92d-bf5dbfddf43b",
+    type: "string/=",
+    name: "Category",
+    slug: "category",
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it('should be able to use filters without "create-queries" permissions when coming from a dashboard (metabase#47097)', () => {
+    cy.log("create a dashboard with a parameter mapped to a field with values");
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 12,
+              parameter_mappings: [
+                {
+                  parameter_id: parameterDetails.id,
+                  card_id,
+                  target: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+                },
+              ],
+            },
+          ],
+        });
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+
+    cy.log("verify the field values in a dashboard");
+    cy.signIn("nodata");
+    H.visitDashboard("@dashboardId");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+
+    cy.log("drill-thru without filter values and check the dropdown");
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").should("be.visible");
+      cy.findByPlaceholderText("Search the list").type("{esc}");
+    });
+    H.queryBuilderHeader().findByLabelText("Back to Dashboard").click();
+    H.getDashboardCard().should("be.visible");
+
+    cy.log("add a filter value, drill-thru, and check the dropdown");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().findByText("Products").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.filterWidget().click();
+    H.popover().findByText("Widget").should("be.visible");
+  });
+});
+
+describe("issue 48524", () => {
+  const questionDetails = {
+    name: "15119",
+    query: { "source-table": REVIEWS_ID },
+  };
+
+  const ratingFilter = {
+    id: "5dfco74e",
+    slug: "rating",
+    name: "Rating",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const reviewerFilter = {
+    id: "ad1c877e",
+    name: "Reviewer",
+    slug: "reviewer",
+    type: "string/=",
+    sectionId: "string",
+  };
+
+  const dashboardDetails = { parameters: [reviewerFilter, ratingFilter] };
+
+  function createDashboard() {
+    H.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        H.updateDashboardCards({
+          dashboard_id,
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 12,
+              size_y: 8,
+              parameter_mappings: [
+                {
+                  parameter_id: ratingFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", REVIEWS.RATING, null]],
+                },
+                {
+                  parameter_id: reviewerFilter.id,
+                  card_id,
+                  target: ["dimension", ["field", REVIEWS.REVIEWER, null]],
+                },
+              ],
+            },
+          ],
+        });
+        cy.wrap(dashboard_id).as("dashboardId");
+      },
+    );
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not apply last used parameter values when some parameters have values set in the URL (metabase#48524)", () => {
+    createDashboard();
+
+    cy.log(
+      "open the dashboard with 2 parameters to populate their last used values",
+    );
+    H.visitDashboard("@dashboardId", {
+      params: {
+        [reviewerFilter.slug]: ["abbey-heidenreich"],
+        [ratingFilter.slug]: 4,
+      },
+    });
+    H.assertTableRowsCount(1);
+
+    cy.log(
+      "open the dashboard again and verify that the last used values are applied",
+    );
+    H.visitDashboard("@dashboardId");
+    H.assertTableRowsCount(1);
+
+    cy.log(
+      "open the dashboard with only 1 parameter value and verify that the last used values are not applied in this case",
+    );
+    H.visitDashboard("@dashboardId", {
+      params: {
+        [ratingFilter.slug]: 4,
+      },
+    });
+    H.assertTableRowsCount(535);
+  });
 });
 
 describe("issue 32573", () => {
@@ -4346,7 +4523,7 @@ describe("issue 17061", () => {
 });
 
 // TODO ranquild unskip after v54 release
-describe.skip("issue 48824", () => {
+describe("issue 48824", { tags: "@skip" }, () => {
   const dateParameter = {
     id: "abc",
     name: "Date filter",
@@ -4399,6 +4576,93 @@ describe.skip("issue 48824", () => {
     H.filterWidget()
       .findByText("Vorheriger 30 Tage, ab vor 7 tage")
       .should("be.visible");
+  });
+});
+
+describe("issue 62627", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  function toggleLinkedFilter(parameterName) {
+    cy.button(parameterName)
+      .parent()
+      .findByRole("switch")
+      .click({ force: true });
+  }
+
+  it("should properly link inline parameters (metabase#62627)", () => {
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+    H.editDashboard();
+
+    cy.log("add a top-level filter");
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
+    H.setDashboardParameterName("Vendor");
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("add an inline card filter");
+    H.showDashboardCardActions();
+    H.getDashboardCard()
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Add a filter")
+      .click();
+    H.popover().findByText("Text or Category").click();
+    H.selectDashboardFilter(H.getDashboardCard(), "Category");
+    H.setDashboardParameterName("Category");
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Vendor");
+    });
+    H.saveDashboard();
+
+    cy.log(
+      "verify that the inline parameter is linked to the top-level parameter",
+    );
+    H.dashboardParametersContainer().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Balistreri-Muller").click();
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Widget").should("be.visible");
+      cy.findByText("Gadget").should("not.exist");
+    });
+
+    cy.log("make the top-level parameter be linked to the inline parameter");
+    H.editDashboard();
+    H.getDashboardCard().findByTestId("editing-parameter-widget").click();
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Vendor");
+    });
+    H.editingDashboardParametersContainer()
+      .findByTestId("editing-parameter-widget")
+      .click();
+    H.dashboardParameterSidebar().within(() => {
+      cy.findByText("Linked filters").click();
+      toggleLinkedFilter("Category");
+    });
+    H.saveDashboard();
+
+    cy.log(
+      "verify that the top-level parameter is linked to the inline parameter",
+    );
+    H.dashboardParametersContainer().within(() =>
+      H.filterWidget().icon("close").click(),
+    );
+    H.getDashboardCard().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParametersContainer().within(() => H.filterWidget().click());
+    H.popover().within(() => {
+      cy.findByText("Barrows-Johns").should("be.visible");
+      cy.findByText("Americo Sipes and Sons").should("not.exist");
+    });
   });
 });
 
@@ -4523,6 +4787,7 @@ describe("issue 14595", () => {
           },
           {
             name: "Many data types",
+            database: WRITABLE_DB_ID,
             query: { "source-table": tableId },
           },
         ],
@@ -4830,5 +5095,353 @@ describe("issue 59306", () => {
         .invoke("outerWidth")
         .should("be.lt", 400);
     });
+  });
+});
+
+describe("Issue 60987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+  });
+
+  it("should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)", () => {
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+    H.popover().findByPlaceholderText("Find...").type("aa");
+    H.popover().findByText("Didn't find any results").should("be.visible");
+  });
+});
+
+describe("Issue 60987", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+  });
+
+  it("should show the empty state for parameters when searching the in the parameter target picker popover (metabase#60987)", () => {
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("aa");
+      cy.findByText("Didn't find any results")
+        .should("be.visible")
+        .should("have.css", "color", "rgba(7, 23, 34, 0.62)"); // the text "text-medium"
+    });
+  });
+});
+
+describe("Issue 46767", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        type: "question",
+        query: {
+          "source-table": ORDERS_ID,
+          joins: [
+            {
+              "source-table": PRODUCTS_ID,
+              fields: "all",
+              strategy: "left-join",
+              alias: "Products",
+              condition: [
+                "=",
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                  },
+                ],
+                [
+                  "field",
+                  PRODUCTS.ID,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products",
+                  },
+                ],
+              ],
+            },
+          ],
+        },
+      },
+    }).then((response) => {
+      H.visitDashboard(response.body.dashboard_id);
+    });
+
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.getDashboardCard().findByText("Select…").click();
+  });
+
+  it("search results for parameter target picker should not show empty sections (metabase#46767)", () => {
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Find...").type("Ean");
+      cy.findByText("Products").should("be.visible");
+      cy.findByText("User").should("not.exist");
+    });
+  });
+});
+
+describe("issue 46541", () => {
+  const TARGET_FILTER = {
+    name: "Target filter",
+    slug: "target-filter",
+    id: "ffa421da",
+    type: "number/>=",
+    sectionId: "number",
+  };
+
+  const OTHER_FILTER = {
+    name: "Other filter",
+    slug: "other-filter",
+    id: "dfaa3356",
+    type: "number/>=",
+    sectionId: "number",
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        query: { "source-table": ORDERS_ID },
+      },
+      dashboardDetails: {
+        name: "Dashboard A",
+      },
+    }).then(({ body }) => {
+      cy.wrap(body.dashboard_id).as("dashboardA");
+
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          query: { "source-table": ORDERS_ID },
+        },
+        dashboardDetails: {
+          name: "Dashboard B",
+          parameters: [TARGET_FILTER, OTHER_FILTER],
+        },
+      }).then(({ body }) => {
+        cy.wrap(body.dashboard_id).as("dashboardB");
+
+        H.updateDashboardCards({
+          dashboard_id: body.dashboard_id,
+          cards: [
+            {
+              card_id: body.card_id,
+              parameter_mappings: [
+                {
+                  parameter_id: TARGET_FILTER.id,
+                  card_id: body.card_id,
+                  target: ["dimension", ["field", ORDERS.TOTAL, null]],
+                },
+                {
+                  parameter_id: OTHER_FILTER.id,
+                  card_id: body.card_id,
+                  target: ["dimension", ["field", ORDERS.SUBTOTAL, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        cy.log("Set parameter value on Dashboard B");
+        H.visitDashboard("@dashboardB");
+        H.filterWidget(OTHER_FILTER).click();
+        H.popover().within(() => {
+          cy.findByPlaceholderText("Enter a number").type("10");
+          cy.button("Add filter").click();
+        });
+
+        cy.log("Set up click behaviour on Dashboard A");
+        H.visitDashboard("@dashboardA");
+        H.editDashboard();
+
+        H.showDashboardCardActions();
+        cy.findByLabelText("Click behavior").click();
+
+        H.sidebar().within(() => {
+          cy.findByText("Tax").click();
+          cy.findByText("Go to a custom destination").click();
+          cy.findByText("Dashboard").click();
+        });
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Dashboards").click();
+          cy.findByText("Dashboard B").click();
+        });
+
+        H.sidebar().findByText(TARGET_FILTER.name).click();
+        H.popover().findByText("Tax").click();
+        H.saveDashboard();
+      });
+    });
+  });
+
+  it("should reset other filters when coming to a dashboard from a click action with a filter (metabase#46541)", () => {
+    cy.log("Navigate from Dashboard A to Dashboard B with a click action");
+    H.tableInteractiveBody().findByText("2.07").click();
+
+    H.filterWidget(TARGET_FILTER).should("contain", "2.07");
+    H.filterWidget(OTHER_FILTER).should("not.contain", "10");
+  });
+});
+
+describe("issue 46372", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should not show a scrollbar when auto-connecting a dashcard filter (metabase#46372)", () => {
+    H.createDashboardWithQuestions({
+      questions: [
+        { name: "Question A", query: { "source-table": PRODUCTS_ID } },
+        { name: "Question B", query: { "source-table": PRODUCTS_ID } },
+      ],
+    }).then(({ dashboard }) => {
+      H.visitDashboard(dashboard.id);
+      H.editDashboard(dashboard.id);
+
+      H.setFilter("Text or Category", "Is");
+      H.selectDashboardFilter(cy.findAllByTestId("dashcard").first(), "Title");
+      H.undoToast().findByRole("button", { name: "Auto-connect" }).click();
+
+      H.main().findByText("Auto-connected").should("be.visible");
+      H.main()
+        .findByText("Auto-connected")
+        .parent()
+        .parent()
+        .then(($body) => {
+          cy.wrap($body[0].scrollHeight).should("eq", $body[0].offsetHeight);
+        });
+    });
+  });
+});
+
+describe("issue 49319", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should ignore parameters that not exist in the saved dashboard in edit mode (metabase#49319)", () => {
+    cy.log("open an existing dashboard");
+    H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+    cy.log("add a parameter and save the dashboard");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Vendor");
+    H.saveDashboard();
+
+    cy.log("add another parameter to the dashboard with a default value");
+    H.editDashboard();
+    H.setFilter("Text or Category", "Is");
+    H.selectDashboardFilter(H.getDashboardCard(), "Category");
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("change the value for the saved parameter");
+    cy.findByTestId("fixed-width-filters").findByText("Text").click();
+    H.dashboardParameterSidebar().findByText("No default").click();
+    H.popover().within(() => {
+      cy.findByText("Americo Sipes and Sons").click();
+      cy.findByText("Barrows-Johns").click();
+      cy.button("Add filter").click();
+    });
+    H.dashboardParameterSidebar().button("Done").click();
+
+    cy.log("the unsaved parameter should be ignored in edit mode");
+    H.assertTableRowsCount(179);
+
+    cy.log("both parameters should be applied when the dashboard is saved");
+    H.saveDashboard();
+    H.assertTableRowsCount(82);
   });
 });

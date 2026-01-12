@@ -1,6 +1,6 @@
-import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-
 import { isDate } from "metabase-lib/v1/types/utils/isa";
+
+import { isValidIso8601 } from "./date-validation";
 
 const TIMESERIES_UNITS = new Set([
   "minute",
@@ -32,7 +32,7 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
       return false;
     }
 
-    if (!moment(value, moment.ISO_8601).isValid()) {
+    if (!isValidIso8601(value)) {
       return false;
     }
   }

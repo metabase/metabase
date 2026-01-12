@@ -32,7 +32,6 @@ export const CollapsibleDashboardParameterList = forwardRef<
 
   const parametersListCommonProps = {
     ...listProps,
-    widgetsVariant: "subtle" as const,
     isSortable: false,
     widgetsPopoverPosition: "bottom-end" as const,
   };
@@ -89,7 +88,13 @@ export const CollapsibleDashboardParameterList = forwardRef<
     <>
       {/* Invisible expanded parameter list for measurements */}
       <div
-        className={cx(CS.fixed, CS.hidden, CS.pointerEventsNone, CS.fullWidth)}
+        className={cx(
+          CS.fixed,
+          CS.hidden,
+          CS.pointerEventsNone,
+          CS.fullWidth,
+          CS.left,
+        )}
       >
         <DashboardParameterList
           {...parametersListCommonProps}

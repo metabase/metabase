@@ -6,12 +6,12 @@
   line-height: 24px;
   border-radius: var(--mantine-radius-xs);
 
-  &:hover {
-    background-color: var(--mb-color-bg-light);
+  [data-mantine-color-scheme] &:hover {
+    background-color: var(--mb-color-background-hover);
   }
 
   &[data-disabled] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background-tertiary-inverse);
   }
 
   &[data-weekend] {
@@ -19,7 +19,7 @@
   }
 
   &[data-outside] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background-tertiary-inverse);
   }
 
   &[data-in-range] {
@@ -43,11 +43,11 @@
   }
 
   &[data-selected] {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-background-brand);
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-brand);
 
     &:hover {
-      background-color: var(--mb-color-background-brand);
+      background-color: var(--mb-color-brand);
     }
   }
 }
@@ -55,7 +55,7 @@
 .weekday {
   width: 2.5rem;
   height: 2rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   font-size: var(--mantine-font-size-sm);
   line-height: var(--mantine-line-height-lg);
   text-align: center;
@@ -77,15 +77,15 @@
   }
 
   &[data-disabled] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background-tertiary-inverse);
   }
 
   &:where([data-weekend]) {
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
   }
 
   &[data-outside] {
-    color: var(--mb-color-bg-dark);
+    color: var(--mb-color-background-tertiary-inverse);
   }
 
   &[data-in-range] {
@@ -210,7 +210,7 @@
 
 .input {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 }
 
 .error {

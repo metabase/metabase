@@ -3,8 +3,8 @@ import { EditorView, tooltips } from "@codemirror/view";
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
+import { suggestions } from "metabase/querying/expressions";
 import type * as Lib from "metabase-lib";
-import { suggestions } from "metabase-lib/v1/expressions/complete";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import S from "./Editor.module.css";
@@ -15,6 +15,7 @@ type Options = {
   query: Lib.Query;
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   metadata: Metadata;
   extensions?: Extension[];
 };
@@ -38,6 +39,7 @@ export function useExtensions(options: Options): Extension[] {
     query,
     stageIndex,
     availableColumns,
+    availableMetrics,
     metadata,
     extensions: extra = [],
   } = options;
@@ -49,6 +51,7 @@ export function useExtensions(options: Options): Extension[] {
         query,
         stageIndex,
         availableColumns,
+        availableMetrics,
         metadata,
       }),
       expander(),
@@ -57,6 +60,7 @@ export function useExtensions(options: Options): Extension[] {
         stageIndex,
         expressionMode,
         availableColumns,
+        availableMetrics,
         metadata,
       }),
       tooltips({

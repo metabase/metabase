@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -52,7 +53,9 @@
   (merge
    {:account             (tx/db-test-env-var-or-throw :snowflake :account)
     :user                (tx/db-test-env-var-or-throw :snowflake :user)
-    :password            (tx/db-test-env-var-or-throw :snowflake :password)
+    :private-key-options "uploaded"
+    :private-key-value (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))
+    :use-password false
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
@@ -210,6 +213,9 @@
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
 
+(defmethod sql.tx/generated-column-sql :snowflake [_ expr]
+  (format "AS (%s)" expr))
+
 (defn- setup-tracking-db!
   "Idempotently create test tracking database"
   [conn driver]
@@ -329,6 +335,30 @@
                      [(format "DROP ROLE IF EXISTS %s;" role-name)]
                      {:transaction? false}))))
 
+(defn set-user-public-key [details pk-user pub-key]
+  (let [spec (sql-jdbc.conn/connection-details->spec :snowflake details)]
+    (jdbc/execute! spec (format "ALTER USER %s SET RSA_PUBLIC_KEY = '%s'"
+                                pk-user
+                                pub-key))))
+
+(defmethod tx/drop-db-user-if-exists! :snowflake
+  [driver details db-user]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec [(format "DROP USER IF EXISTS \"%s\"" db-user)])))
+
+(defmethod tx/create-db-user! :snowflake
+  [driver details db-user]
+  (tx/drop-db-user-if-exists! driver details db-user)
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (jdbc/execute! spec "USE ROLE ACCOUNTADMIN")
+    (jdbc/execute! spec (format "CREATE USER %s
+                                 DEFAULT_ROLE = 'ACCOUNTADMIN'
+                                 DEFAULT_WAREHOUSE = '%s'
+                                 MUST_CHANGE_PASSWORD = FALSE;"
+                                db-user
+                                (tx/db-test-env-var-or-throw driver :warehouse)))
+    (jdbc/execute! spec (format "GRANT ROLE %s TO USER %s" "ACCOUNTADMIN" db-user))))
+
 (comment
   (old-dataset-names)
   (into [] (jdbc/reducible-query (no-db-connection-spec) ["select * from metabase_test_tracking.PUBLIC.datasets"]))
@@ -355,3 +385,5 @@
          order by created"]
        (jdbc/reducible-query (no-db-connection-spec))
        (into [] (map (juxt :database_name :created)))))
+
+(defmethod sql.tx/session-schema :snowflake [_driver] "PUBLIC")

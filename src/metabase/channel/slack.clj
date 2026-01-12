@@ -17,11 +17,6 @@
 
 (set! *warn-on-reflection* true)
 
-(defn slack-configured?
-  "Is Slack integration configured?"
-  []
-  (boolean (or (seq (channel.settings/slack-app-token)) (seq (channel.settings/slack-token)))))
-
 (def ^:private slack-token-error-codes
   "List of error codes that indicate an invalid or revoked Slack token."
   ;; If any of these error codes are received from the Slack API, we send an email to all admins indicating that the
@@ -212,7 +207,7 @@
   "Refreshes users and conversations in slack-cache. finds both in parallel, sets
   [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
   []
-  (when (slack-configured?)
+  (when (channel.settings/slack-configured?)
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
           private-channels? #(contains? (oauth-scopes) "groups:read")
@@ -304,7 +299,7 @@
    the URL of the uploaded file."
   [file       :- NonEmptyByteArray
    filename   :- ms/NonBlankString]
-  {:pre [(slack-configured?)]}
+  {:pre [(channel.settings/slack-configured?)]}
   ;; TODO: we could make uploading files a lot faster by uploading the files in parallel.
   ;; Steps 1 and 2 can be done for all files in parallel, and step 3 can be done once at the end.
   (let [;; Step 1: Get the upload URL using files.getUploadURLExternal
@@ -319,25 +314,19 @@
       (log/debug "Uploaded image" (:url <>)))))
 
 (mu/defn post-chat-message!
-  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel. message-content if provided should be a map containing :blocks
-  e.g {:blocks [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}"
-  [channel-id  :- ms/NonBlankString
-   text-or-nil :- [:maybe :string]
-   & [message-content]]
+  "Calls Slack API `chat.postMessage` endpoint and posts a message to a channel.
+  message-blocks if provided should be a map containing slack message blocks
+  e.g [{:type \"section\", :text {:type \"plain_text\", :text \"Hello, world!\"}}]
+  See: https://app.slack.com/block-kit-builder"
+  [message-content :- [:map {:closed true}
+                       [:channel                      :string]
+                       [:blocks      {:optional true} [:sequential :map]]
+                       [:text        {:optional true} :string]
+                       [:attachments {:optional true} [:sequential :map]]]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
-  (let [base-params {:channel     channel-id
-                     :username    "MetaBot"
-                     :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-                     :text        text-or-nil}
-
-        message-content
-        (if (sequential? message-content)
-          {:blocks (mapcat :blocks message-content)}
-          message-content)
-
-        message-params
-        (if (seq (:blocks message-content))
-          {:blocks (json/encode (:blocks message-content))}
-          {})]
+  (let [base-params    {:username "MetaBot"
+                        :icon_url "http://static.metabase.com/metabot_slack_avatar_whitebg.png"}
+        message-params (update-vals message-content #(if (string? %) % (json/encode %)))]
+    ;; https://api.slack.com/methods/chat.postMessage
     (POST "chat.postMessage"
       {:form-params (merge base-params message-params)})))

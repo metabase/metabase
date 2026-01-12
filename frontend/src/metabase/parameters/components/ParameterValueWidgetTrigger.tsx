@@ -1,7 +1,7 @@
 import cx from "classnames";
 import { type ReactNode, type Ref, forwardRef } from "react";
 
-import { Flex } from "metabase/ui";
+import { Box, Flex, UnstyledButton } from "metabase/ui";
 
 import S from "./ParameterValueWidget.module.css";
 
@@ -16,17 +16,32 @@ function ParameterValueWidgetTriggerInner(
     ariaLabel,
     className,
     mimicMantine = false,
-    variant = "default",
+    hasPopover = false,
   }: {
     children: ReactNode;
     hasValue: boolean;
     ariaLabel?: string;
     className?: string;
     mimicMantine?: boolean;
-    variant?: "default" | "subtle";
+    hasPopover?: boolean;
   },
-  ref: Ref<HTMLDivElement>,
+  ref: Ref<HTMLButtonElement | HTMLButtonElement>,
 ) {
+  const attributes = hasPopover
+    ? {
+        // HACK: This is a hack to make typescript think we're rendering a button.
+        // UnstyledButton's styles are widened somewhere down the stack so that they
+        // are not compatible with Ref<HTMLButtonElement> and we need to cast it to "button"
+        // to sidestep this issue.
+        component: UnstyledButton as unknown as "button",
+        ref: ref as Ref<HTMLButtonElement>,
+        type: "button" as const,
+      }
+    : {
+        component: "div" as const,
+        ref: ref as Ref<HTMLDivElement>,
+      };
+
   if (mimicMantine) {
     return (
       <Flex
@@ -37,7 +52,7 @@ function ParameterValueWidgetTriggerInner(
           [S.hasValue]: hasValue,
         })}
         aria-label={ariaLabel}
-        ref={ref}
+        {...attributes}
       >
         {children}
       </Flex>
@@ -45,16 +60,14 @@ function ParameterValueWidgetTriggerInner(
   }
 
   return (
-    <div
-      ref={ref}
+    <Box
       className={cx(S.parameter, className, {
         [S.selected]: hasValue,
-        [S[variant]]: variant,
       })}
-      role="button"
       aria-label={ariaLabel}
+      {...attributes}
     >
       {children}
-    </div>
+    </Box>
   );
 }

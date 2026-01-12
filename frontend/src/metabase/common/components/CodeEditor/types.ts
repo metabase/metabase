@@ -6,4 +6,5 @@ export type CodeLanguage =
   | "pug"
   | "python"
   | "ruby"
+  | "sql"
   | "typescript";

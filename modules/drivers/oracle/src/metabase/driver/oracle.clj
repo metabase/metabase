@@ -1,4 +1,5 @@
 (ns metabase.driver.oracle
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -19,12 +20,14 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
    [metabase.driver.sql.query-processor.empty-string-is-null :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
    (java.security KeyStore)
@@ -47,13 +50,19 @@
 (driver/register! :oracle, :parent #{:sql-jdbc
                                      ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:datetime-diff           true
-                              :expression-literals     true
-                              :now                     true
-                              :identifiers-with-spaces true
-                              :convert-timezone        true
-                              :expressions/date        false
-                              :database-routing        false}]
+(doseq [[feature supported?] {:convert-timezone                 true
+                              :database-routing                 false
+                              :datetime-diff                    true
+                              :describe-default-expr            true
+                              :describe-is-generated            true
+                              :describe-is-nullable             true
+                              :expression-literals              true
+                              :expressions/date                 false
+                              :identifiers-with-spaces          true
+                              :now                              true
+                              ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
+                              ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
+                              :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (mr/def ::details
@@ -291,7 +300,8 @@
 (defmethod sql.qp/->honeysql [:oracle :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver arg)
-        has-timezone? (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone")]
+        has-timezone? (or (sql.qp.u/field-with-tz? arg)
+                          (h2x/is-of-type? expr #"timestamp(\(\d\))? with time zone"))]
     (sql.u/validate-convert-timezone-args has-timezone? target-timezone source-timezone)
     (-> (if has-timezone?
           expr
@@ -571,12 +581,13 @@
   (sql.qp/->honeysql driver [::sql.qp/cast expr "varchar2(256)"]))
 
 (defmethod driver/humanize-connection-error-message :oracle
-  [_ message]
+  [_ messages]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
   ;; return a slightly nicer looking version. Otherwise just return message as-is
-  (if (str/includes? message "(or sid service-name)")
-    "You must specify the SID and/or the Service Name."
-    message))
+  (let [message (first messages)]
+    (if (str/includes? message "(or sid service-name)")
+      "You must specify the SID and/or the Service Name."
+      message)))
 
 (defn- remove-rownum-column
   "Remove the `:__rownum__` column from results, if present."
@@ -610,7 +621,7 @@
 (defmethod sql-jdbc.sync/excluded-schemas :oracle
   [_]
   #{"ANONYMOUS"
-    ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+    ;; TODO - are there other APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
     "APEX_040200"
     "APPQOSSYS"
     "AUDSYS"

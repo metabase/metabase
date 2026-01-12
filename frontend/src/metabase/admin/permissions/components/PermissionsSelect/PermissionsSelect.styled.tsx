@@ -2,8 +2,9 @@
 import styled from "@emotion/styled";
 import { forwardRef } from "react";
 
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import { Icon, type IconProps } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
@@ -32,7 +33,7 @@ export const OptionsListItem = styled.li`
   padding: 0.5rem 1rem;
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: ${() => lighten("accent7", 0.1)};
   }
 `;
@@ -44,7 +45,7 @@ export const ActionsList = styled(OptionsList)`
 export const ToggleContainer = styled.div`
   display: flex;
   align-items: center;
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
   padding: 0.5rem 1rem;
   justify-content: flex-end;
 `;
@@ -67,12 +68,12 @@ export const WarningIcon = styled(
   }),
 )`
   margin-right: 0.25rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;
 
 export const DisabledPermissionOption = styled(PermissionsSelectOption)<{
   isHighlighted: boolean;
 }>`
   color: ${(props) =>
-    props.isHighlighted ? color("text-medium") : color("text-light")};
+    props.isHighlighted ? color("text-secondary") : color("text-tertiary")};
 `;

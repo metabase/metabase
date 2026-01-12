@@ -1,53 +1,52 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
+  (:refer-clojure :exclude [get-in])
   (:require
-   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
-   [metabase.lib.card :as lib.card]
-   [metabase.lib.field.resolution :as lib.field.resolution]
-   [metabase.lib.join.util :as lib.join.util]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
-(set! *warn-on-reflection* true)
+(mr/def ::field-id-or-name->filters
+  [:map-of [:or ::lib.schema.id/field :string] ::lib.schema/filters])
 
-(def ^:private FieldIDOrName->Filters
-  [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential mbql.s/Filter]])
-
-(mu/defn- filter->field-map :- FieldIDOrName->Filters
+(mu/defn- filters->field-map :- ::field-id-or-name->filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses the reference
   it."
-  [filter-clause :- [:maybe mbql.s/Filter]]
+  [filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]]
   (reduce
    (partial merge-with concat)
    {}
-   (for [subclause (lib.util.match/match filter-clause #{:between :< :<= :> :>=})
-         field-id-or-name (lib.util.match/match subclause [:field field-id-or-name _] field-id-or-name)]
+   (for [subclause        (lib.util.match/match filters #{:between :< :<= :> :>=})
+         field-id-or-name (lib.util.match/match subclause [:field _opts field-id-or-name] field-id-or-name)]
      {field-id-or-name [subclause]})))
 
 (mu/defn- extract-bounds :- [:map [:min-value number?] [:max-value number?]]
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
   the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
   given field."
-  [field-id-or-name  :- [:maybe [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]]
-   fingerprint       :- [:maybe :map]
-   field-id-or-name->filters :- FieldIDOrName->Filters]
+  [field-id-or-name          :- [:maybe [:or ::lib.schema.id/field :string]]
+   fingerprint               :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]
+   field-id-or-name->filters :- ::field-id-or-name->filters]
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         filter-clauses                     (get field-id-or-name->filters field-id-or-name)
         ;; [:between <field> <min> <max>] or [:< <field> <x>]
         user-maxes                         (lib.util.match/match filter-clauses
-                                             [(_ :guard #{:< :<= :between}) & args] (last args))
+                                             [(_tag :guard #{:< :<= :between}) _opts & args] (last args))
         user-mins                          (lib.util.match/match filter-clauses
-                                             [(_ :guard #{:> :>= :between}) _ min-val & _] min-val)
+                                             [(_tag :guard #{:> :>= :between}) _opts _field min-val & _]
+                                             min-val)
         min-value                          (or (when (seq user-mins)
                                                  (apply max user-mins))
                                                global-min)
@@ -56,71 +55,24 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value (missing or incomplete fingerprint)")
-                      {:type qp.error-type/invalid-query
+                      {:type             qp.error-type/invalid-query
                        :field-id-or-name field-id-or-name
-                       :fingerprint fingerprint})))
+                       :fingerprint      fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
-(def ^:private PossiblyLegacyColumnMetadata
-  [:map
-   [:name :string]])
-
-;;; TODO (Cam 6/12/25) -- Mega HACK -- we should be using higher-level Lib methods that return metadata with
-;;; desired aliases in the first place instead of trying to calculate it ourselves.
-(defn- add-desired-column-aliases [cols]
-  (let [unique-name-fn (lib.util/unique-name-generator)]
-    (for [col cols]
-      (assoc col :lib/desired-column-alias (unique-name-fn
-                                            (lib.join.util/desired-alias
-                                             (qp.store/metadata-provider)
-                                             ;; add in join alias info just for desired column alias purposes.
-                                             (merge
-                                              ;; this is an even bigger MEGA HACK -- why does our 'source metadata' lose
-                                              ;; the join alias information ??
-                                              (when-let [source-alias (:source-alias col)]
-                                                {:metabase.lib.join/join-alias source-alias})
-                                              col)))))))
-
-(mu/defn- matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
-  [field-name      :- ::lib.schema.common/non-blank-string
-   source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
-  (do
-    ;; make sure source-metadata exists
-    (when-not source-metadata
-      (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
-                      {:field field-name})))
-    ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)
-          mlv2-metadatas (cond-> mlv2-metadatas
-                           (not (every? :lib/desired-column-alias mlv2-metadatas)) add-desired-column-aliases)
-          field-ref      [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]]
-      (or
-       (lib.field.resolution/resolve-column-in-metadata (qp.store/metadata-provider) field-ref mlv2-metadatas)
-       (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field {0}"
-                            (pr-str field-name))
-                       {:field field-name, :resolved-metadata mlv2-metadatas}))))))
-
-(mu/defn- matching-metadata :- ::lib.schema.metadata/column
-  [field-id-or-name :- [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
-   source-metadata  :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
-  (if (integer? field-id-or-name)
-    ;; for Field IDs, just fetch the Field from the Store
-    (lib.metadata/field (qp.store/metadata-provider) field-id-or-name)
-    ;; for field literals, we require `source-metadata` from the source query
-    (matching-metadata-from-source-metadata field-id-or-name source-metadata)))
-
-(mu/defn- update-binned-field :- mbql.s/field
+(mu/defn- update-binned-field :- :mbql.clause/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
-  [{:keys [source-metadata], :as _inner-query}
-   field-id-or-name->filters                  :- FieldIDOrName->Filters
-   [_ id-or-name {:keys [binning], :as opts}] :- mbql.s/field]
-  (let [metadata                                   (matching-metadata id-or-name source-metadata)
+  [query                                                        :- ::lib.schema/query
+   path                                                         :- ::lib.walk/path
+   field-id-or-name->filters                                    :- ::field-id-or-name->filters
+   [_tag {:keys [binning], :as _opts} id-or-name :as field-ref] :- :mbql.clause/field]
+  (let [metadata                                   (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)
         {:keys [min-value max-value], :as min-max} (extract-bounds id-or-name
                                                                    (:fingerprint metadata)
                                                                    field-id-or-name->filters)
-        [new-strategy resolved-options]            (lib.binning.util/resolve-options (qp.store/metadata-provider)
+        [new-strategy resolved-options]            (lib.binning.util/resolve-options query
                                                                                      (:strategy binning)
                                                                                      (get binning (:strategy binning))
                                                                                      metadata
@@ -129,24 +81,30 @@
         ;; Bail out and use unmodifed version if we can't converge on a nice version.
         new-options (or (lib.binning.util/nicer-breakout new-strategy resolved-options)
                         resolved-options)]
-    [:field id-or-name (update opts :binning merge {:strategy new-strategy} new-options)]))
+    (lib/update-options field-ref update :binning merge {:strategy new-strategy} new-options)))
 
-(defn update-binning-strategy-in-inner-query
-  "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
-  [{filters :filter, :as inner-query}]
-  (let [field-id-or-name->filters (filter->field-map filters)]
-    (lib.util.match/replace inner-query
-      [:field _ (_ :guard :binning)]
-      (try
-        (update-binned-field inner-query field-id-or-name->filters &match)
-        (catch Throwable e
-          (throw (ex-info (.getMessage e) {:clause &match} e)))))))
+(defn- propagate-original-binning [query path clause]
+  (let [col (lib.walk/apply-f-for-stage-at-path lib/metadata query path (lib/update-options clause dissoc :lib/original-binning))]
+    (lib/update-options clause u/assoc-dissoc :lib/original-binning (:lib/original-binning col))))
 
-(defn update-binning-strategy
+(mu/defn update-binning-strategy :- ::lib.schema/query
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
-  [{query-type :type, :as query}]
-  (if (= query-type :native)
-    query
-    (update query :query update-binning-strategy-in-inner-query)))
+  [query :- ::lib.schema/query]
+  (let [path->field-id-or-name->filters (memoize
+                                         (fn [path]
+                                           (let [stage (get-in query path)]
+                                             (filters->field-map (:filters stage)))))]
+    (lib.walk/walk-clauses
+     query
+     (fn [query path-type path clause]
+       (when (= path-type :lib.walk/stage)
+         (lib.util.match/match-lite clause
+           ;; first update all the `:binning` options
+           [:field (_opts :guard :binning) _id-or-name]
+           (update-binned-field query path (path->field-id-or-name->filters path) clause)
+
+           ;; then do another pass and update `:lib/original-binning` options
+           [:field (_opts :guard :lib/original-binning) _id-or-name]
+           (propagate-original-binning query path clause)))))))

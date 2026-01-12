@@ -12,10 +12,15 @@ available-timezones: null
 breakout-bins-num: null
 custom-formatting: null
 custom-geojson: null
+custom-homepage: null
+custom-homepage-dashboard: null
 custom-geojson-enabled: null
 default-maps-enabled: null
+disable-cors-on-localhost: null
 email-max-recipients-per-second: null
 embedding-homepage: null
+embedding-hub-production-embed-snippet-created: null
+embedding-hub-test-embed-snippet-created: null
 enable-embedding: null
 enable-nested-queries: null
 enable-pivoted-exports: null
@@ -50,6 +55,7 @@ show-homepage-pin-message: null
 show-homepage-xrays: null
 show-metabot: null
 show-sdk-embed-terms: null
+show-simple-embed-terms: null
 show-static-embed-terms: null
 site-locale: null
 site-name: null
@@ -57,5 +63,5 @@ source-address-header: null
 start-of-week: null
 subscription-allowed-domains: null
 synchronous-batch-updates: null
+system-timezone: null
 unaggregated-query-row-limit: null
-update-channel: null

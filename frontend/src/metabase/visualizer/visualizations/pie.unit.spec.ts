@@ -62,7 +62,6 @@ describe("pie", () => {
       addColumnToPieChart(
         state,
         {},
-        {},
         [metricColumn],
         { ...metricColumn, name: "COLUMN_1" },
         metricColumnRef,
@@ -98,7 +97,6 @@ describe("pie", () => {
       addColumnToPieChart(
         state,
         settings,
-        {},
         [metricColumn2],
         { ...metricColumn2, name: "COLUMN_2" },
         metricColumn2Ref,
@@ -119,7 +117,6 @@ describe("pie", () => {
 
       addColumnToPieChart(
         state,
-        {},
         {},
         [dimensionColumn],
         { ...dimensionColumn, name: "COLUMN_1" },
@@ -155,7 +152,6 @@ describe("pie", () => {
 
       addColumnToPieChart(
         state,
-        {},
         {},
         [dimensionColumn2],
         { ...dimensionColumn2, name: "COLUMN_2" },
@@ -288,7 +284,6 @@ describe("pie", () => {
       combineWithPieChart(
         state,
         settings,
-        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -329,7 +324,6 @@ describe("pie", () => {
       combineWithPieChart(
         state,
         settings,
-        {},
         createMockDataset({
           data: { cols: [metricColumn2] },
         }),
@@ -357,7 +351,6 @@ describe("pie", () => {
       combineWithPieChart(
         state,
         settings,
-        {},
         createMockDataset({
           data: { cols: [metricColumn2, metricColumn3] },
         }),
@@ -385,7 +378,6 @@ describe("pie", () => {
       combineWithPieChart(
         state,
         settings,
-        {},
         createMockDataset({
           data: { cols: [dimensionColumn] },
         }),
@@ -422,7 +414,6 @@ describe("pie", () => {
       combineWithPieChart(
         state,
         settings,
-        {},
         createMockDataset({
           data: { cols: [dimensionColumn2, dimensionColumn3] },
         }),
@@ -450,7 +441,6 @@ describe("pie", () => {
       combineWithPieChart(
         state,
         settings,
-        {},
         createMockDataset({
           data: { cols: [dimensionColumn2] },
         }),

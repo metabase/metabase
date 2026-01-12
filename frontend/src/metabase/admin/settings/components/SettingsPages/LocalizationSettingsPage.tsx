@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   SettingsPageWrapper,
   SettingsSection,
@@ -9,7 +8,6 @@ import {
 import { CommunityLocalizationNotice } from "metabase/common/components/CommunityLocalizationNotice";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
 
@@ -72,9 +70,6 @@ export function LocalizationSettingsPage() {
           inputType="select"
         />
       </SettingsSection>
-      <ErrorBoundary>
-        <PLUGIN_CONTENT_TRANSLATION.ContentTranslationConfiguration />
-      </ErrorBoundary>
       <FormattingWidget />
     </SettingsPageWrapper>
   );

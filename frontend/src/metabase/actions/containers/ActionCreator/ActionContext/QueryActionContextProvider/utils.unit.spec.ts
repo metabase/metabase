@@ -3,12 +3,9 @@ import {
   getDefaultFieldSettings,
   getDefaultFormSettings,
 } from "metabase/actions/utils";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type {
-  NativeDatasetQuery,
-  Parameter,
-  TemplateTagType,
-} from "metabase-types/api";
+import type { Parameter, TemplateTagType } from "metabase-types/api";
 import {
   SAMPLE_DB_ID,
   createAdHocNativeCard,
@@ -145,9 +142,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         formSettings,
       );
 
-      const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
-        .native["template-tags"];
-
+      const tags = Lib.templateTags(newQuestion.query());
       expect(tags?.name.type).toEqual("text");
       expect(tags?.price.type).toEqual("number");
     });
@@ -168,9 +163,7 @@ describe("actions > containers > ActionCreator > QueryActionContextProvider > ut
         formSettings,
       );
 
-      const tags = (newQuestion.card().dataset_query as NativeDatasetQuery)
-        .native["template-tags"];
-
+      const tags = Lib.templateTags(newQuestion.query());
       expect(tags?.name.type).toEqual("date");
       expect(tags?.price.type).toEqual("date");
     });

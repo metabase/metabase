@@ -4,6 +4,7 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
+   [malli.util :as mut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
@@ -17,19 +18,36 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
-(def ^{:arglists '([model])} InstanceOf
+;;;
+;;; TODO (Cam 9/29/25) -- maybe we should just automatically generate schemas for all the known models
+;;; in [[metabase.models.resolution]] e.g. `:model/Card` that way you can just do
+;;;
+;;;    [card :- :model/Card]
+;;;
+;;; instead of
+;;;
+;;;    [card :- (ms/InstanceOf :model/Card)]
+(def ^{:arglists '([model-or-models])} InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
     (ms/defn my-fn
       [user :- (ms/InstanceOf User)]
       ...)"
   (memoize
-   (fn [model]
+   (mu/fn [model-or-models :- [:or
+                               :keyword
+                               [:sequential {:min 1} :keyword]
+                               [:set {:min 1} :keyword]]]
      (mu/with-api-error-message
       [:fn
-       {:error/message (format "value must be an instance of %s" (name model))}
-       #(t2/instance-of? model %)]
-      (deferred-tru "value must be an instance of {0}" (name model))))))
+       {:error/message (format "value must be an instance of %s" (pr-str model-or-models))}
+       (if (keyword? model-or-models)
+         #(t2/instance-of? model-or-models %)
+         (fn [instance]
+           (some (fn [model]
+                   (t2/instance-of? model instance))
+                 model-or-models)))]
+      (deferred-tru "value must be an instance of {0}" (pr-str model-or-models))))))
 
 (def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."
@@ -52,6 +70,17 @@
                      count)))]
        maps-schema]
       (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
+
+#_{:clj-kondo/ignore [:unused-private-var]}
+(def ^{:arglists '([map-schema])
+       :private  true}
+  ->kebab-keys-map
+  "Transform all keys of a map schema to kebab keys."
+  (memoize
+   (fn [map-schema]
+     (mut/transform-entries map-schema
+                            (partial map (fn [[k opts s]]
+                                           [(u/->kebab-case-en k) opts s]))))))
 
 (defn enum-keywords-and-strings
   "Returns an enum schema that accept both keywords and strings.
@@ -79,7 +108,8 @@
    ;; purpose like `:metabase.warehouses.schema/database-description`. Who knows?
    [:and
     {:error/message "non-blank string"
-     :json-schema   {:type "string" :minLength 1}}
+     :json-schema   {:type "string" :minLength 1}
+     :api/regex     #".+"}
     [:string {:min 1}]
     [:fn
      {:error/message "non-blank string"}
@@ -114,6 +144,16 @@
       :error/fn    (fn [_ _]
                      (str message))
       :api/regex   #"[1-9]\d*"}]))
+
+(def NegativeInt
+  "Schema representing an integer than must be less than 0"
+  (let [message (deferred-tru "value must be an integer less than zero.")]
+    [:int
+     {:max         -1
+      :description (str message)
+      :error/fn    (fn [_ _]
+                     (str message))
+      :api/regex   #"-[1-9]\d*"}]))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
@@ -280,7 +320,7 @@
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (mu/with-api-error-message
-   [:re #"^[A-Za-z0-9_\-]{21}$"]
+   [:re {:api/regex #"[A-Za-z0-9_\-]{21}"} #"^[A-Za-z0-9_\-]{21}$"]
    (deferred-tru "String must be a valid 21-character NanoID string.")))
 
 (def UUIDString

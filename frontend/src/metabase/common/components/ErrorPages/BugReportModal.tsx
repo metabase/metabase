@@ -3,7 +3,6 @@ import { c, t } from "ttag";
 
 import FormTextArea from "metabase/common/components/FormTextArea";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import {
   Box,
   Button,
@@ -69,7 +68,7 @@ export const BugReportModal = ({
               placeholder={t`What were you trying to do, and what steps did you take? What was the expected result, and what happened instead?`}
             />
             <Box
-              bg={color("accent-gray-light")}
+              bg={"accent-gray-light"}
               p="lg"
               my="md"
               style={{ borderRadius: "0.5rem" }}
@@ -79,7 +78,7 @@ export const BugReportModal = ({
                   <Text size="lg" fw="bold">
                     {t`Include diagnostic information`}
                   </Text>
-                  <Text color="text-medium" w="80%">
+                  <Text color="text-secondary" w="80%">
                     {/* eslint-disable-next-line no-literal-metabase-strings -- this is a translation context string, not shown to users */}
                     {c("{0} is the name of the application, usually 'Metabase'")
                       .t`This information helps ${applicationName} figure out what exactly caused the issue.`}
@@ -120,7 +119,7 @@ export const BugReportModal = ({
               <FormSubmitButton
                 variant="outline"
                 label={c("This is a verb, not a noun").t`Download`}
-                color="text-dark"
+                color="text-primary"
                 my="sm"
                 px="lg"
                 radius="md"

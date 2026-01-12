@@ -12,18 +12,14 @@ const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("scenarios > organization > bookmarks > collection", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
+    H.enableTracking();
   });
 
   it("cannot add bookmark to root collection", () => {
-    cy.intercept("GET", "/api/collection/root/items?**").as(
-      "fetchRootCollectionItems",
-    );
-
-    cy.visit("/collection/root");
-
-    cy.wait("@fetchRootCollectionItems");
+    H.visitCollection("root");
 
     H.getSidebarSectionTitle("Collections");
     cy.icon("bookmark").should("not.exist");
@@ -34,6 +30,12 @@ describe("scenarios > organization > bookmarks > collection", () => {
 
     // Add bookmark
     cy.icon("bookmark").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "bookmark_added",
+      event_detail: "collection",
+      triggered_from: "collection_header",
+    });
 
     H.navigationSidebar().within(() => {
       H.getSidebarSectionTitle(/Bookmarks/);
@@ -64,43 +66,6 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.findByTestId("collection-menu").icon("bookmark").should("exist");
   });
 
-  it("can add/remove bookmark from unpinned Question in collection", () => {
-    addThenRemoveBookmarkTo("Orders");
-  });
-
-  it("can add/remove bookmark from pinned Question in collection", () => {
-    const name = "Orders";
-    cy.visit("/collection/root");
-
-    pin(name);
-    H.tableHeaderColumn("ID");
-    bookmarkPinnedItem(name);
-  });
-
-  it("can add/remove bookmark from unpinned Dashboard in collection", () => {
-    addThenRemoveBookmarkTo("Orders in a dashboard");
-  });
-
-  it("can add/remove bookmark from pinned Question in collection", () => {
-    const name = "Orders in a dashboard";
-    cy.visit("/collection/root");
-
-    pin(name);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("A dashboard");
-    bookmarkPinnedItem(name);
-  });
-
-  it("adds and removes bookmarks from Model in collection", () => {
-    H.createQuestion({
-      name: "Orders Model",
-      query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
-      type: "model",
-    });
-
-    addThenRemoveBookmarkTo("Orders Model");
-  });
-
   it("removes items from bookmarks list when they are archived", () => {
     // A question
     bookmarkThenArchive("Orders");
@@ -110,7 +75,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("can remove bookmark from item in sidebar", () => {
-    cy.visit(`/collection/${ADMIN_PERSONAL_COLLECTION_ID}`);
+    H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
 
     // Add bookmark
     cy.findByTestId("collection-menu").icon("bookmark").click();
@@ -123,7 +88,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
   });
 
   it("can toggle bookmark list visibility", () => {
-    cy.visit(`/collection/${ADMIN_PERSONAL_COLLECTION_ID}`);
+    H.visitCollection(ADMIN_PERSONAL_COLLECTION_ID);
 
     // Add bookmark
     cy.icon("bookmark").click();
@@ -138,42 +103,141 @@ describe("scenarios > organization > bookmarks > collection", () => {
       cy.findByText(adminPersonalCollectionName);
     });
   });
+
+  describe("collection items", () => {
+    it("can add/remove bookmark from unpinned Question in collection", () => {
+      addBookmarkTo("Orders");
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "question",
+        triggered_from: "collection_list",
+      });
+      removeBookmarkFrom("Orders");
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "bookmark_added",
+          event_detail: "question",
+          triggered_from: "collection_list",
+        },
+        1,
+      );
+    });
+
+    it("can add/remove bookmark from pinned Question in collection", () => {
+      const name = "Orders";
+      H.visitCollection("root");
+
+      pin(name);
+      H.tableHeaderColumn("ID");
+      bookmarkPinnedItem(name);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "question",
+        triggered_from: "collection_list",
+      });
+    });
+
+    it("can add/remove bookmark from unpinned Dashboard in collection", () => {
+      addBookmarkTo("Orders in a dashboard");
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "dashboard",
+        triggered_from: "collection_list",
+      });
+      removeBookmarkFrom("Orders in a dashboard");
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "bookmark_added",
+          event_detail: "dashboard",
+          triggered_from: "collection_list",
+        },
+        1,
+      );
+    });
+
+    it("can add/remove bookmark from pinned Dashboard in collection", () => {
+      const name = "Orders in a dashboard";
+      H.visitCollection("root");
+
+      pin(name);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("A dashboard");
+      bookmarkPinnedItem(name);
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "dashboard",
+        triggered_from: "collection_list",
+      });
+    });
+
+    it("adds and removes bookmarks from Model in collection", () => {
+      H.createQuestion({
+        name: "Orders Model",
+        query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
+        type: "model",
+      });
+
+      addBookmarkTo("Orders Model");
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "model",
+        triggered_from: "collection_list",
+      });
+
+      removeBookmarkFrom("Orders Model");
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "bookmark_added",
+          event_detail: "model",
+          triggered_from: "collection_list",
+        },
+        1,
+      );
+    });
+
+    it("can bookmark a collection", () => {
+      const collectionName = "First collection";
+
+      addBookmarkTo(collectionName);
+      H.expectUnstructuredSnowplowEvent({
+        event: "bookmark_added",
+        event_detail: "collection",
+        triggered_from: "collection_list",
+      });
+
+      removeBookmarkFrom(collectionName);
+      H.expectUnstructuredSnowplowEvent(
+        {
+          event: "bookmark_added",
+          event_detail: "collection",
+          triggered_from: "collection_list",
+        },
+        1,
+      );
+    });
+  });
 });
 
-function addThenRemoveBookmarkTo(name) {
-  addBookmarkTo(name);
-  removeBookmarkFrom(name);
-}
-
 function addBookmarkTo(name) {
-  cy.visit("/collection/root");
+  H.visitCollection("root");
 
-  openEllipsisMenuFor(name);
-  cy.findByText("Bookmark").click();
+  H.openCollectionItemMenu(name);
+  H.popover().findByTextEnsureVisible("Bookmark").click();
 
-  H.navigationSidebar().within(() => {
-    H.getSidebarSectionTitle(/Bookmarks/);
-    cy.findByText(name);
-  });
+  H.navigationSidebar()
+    .findByRole("section", { name: "Bookmarks" })
+    .should("contain", name);
 }
 
 function removeBookmarkFrom(name) {
-  openEllipsisMenuFor(name);
+  H.openCollectionItemMenu(name);
 
-  cy.findByText("Remove from bookmarks").click();
+  H.popover().findByTextEnsureVisible("Remove from bookmarks").click();
 
-  H.navigationSidebar().within(() => {
-    H.getSidebarSectionTitle(/Bookmarks/).should("not.exist");
-    cy.findByText(name).should("not.exist");
-  });
-}
-
-function openEllipsisMenuFor(name) {
-  cy.get("td")
-    .contains(name)
-    .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
+  H.navigationSidebar()
+    .findByRole("section", { name: "Bookmarks" })
+    .should("not.exist");
 }
 
 function bookmarkThenArchive(name) {
@@ -182,17 +246,13 @@ function bookmarkThenArchive(name) {
 }
 
 function pin(name) {
-  openEllipsisMenuFor(name);
-  H.popover().within(() => {
-    cy.findByText("Pin this").click();
-  });
+  H.openCollectionItemMenu(name);
+  H.popover().findByTextEnsureVisible("Pin this").click();
 }
 
 function archive(name) {
-  openEllipsisMenuFor(name);
-  H.popover().within(() => {
-    cy.findByText("Move to trash").click();
-  });
+  H.openCollectionItemMenu(name);
+  H.popover().findByTextEnsureVisible("Move to trash").click();
 }
 
 function bookmarkPinnedItem(name) {

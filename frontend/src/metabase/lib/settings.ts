@@ -109,6 +109,14 @@ class MetabaseSettings {
   }
 
   /**
+   * @deprecated remove an event listener
+   */
+  off(key: SettingKey, callback: SettingListener) {
+    this._listeners[key] =
+      this._listeners[key]?.filter((c) => c !== callback) || [];
+  }
+
+  /**
    * @deprecated use getSetting(state, "admin-email")
    */
   adminEmail() {

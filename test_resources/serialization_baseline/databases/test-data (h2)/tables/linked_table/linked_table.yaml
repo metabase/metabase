@@ -1,0 +1,31 @@
+name: linked_table
+display_name: Linked Table
+description: null
+created_at: '2025-08-11T16:53:07.28327Z'
+db_id: test-data (h2)
+schema: null
+entity_type: null
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: null
+caveats: null
+serdes/meta:
+- id: test-data (h2)
+  model: Database
+- id: linked_table
+  model: Table
+archived_at: null
+collection_id: null
+data_authority: unconfigured
+data_layer: null
+data_source: null
+database_require_filter: null
+deactivated_at: null
+is_published: false
+is_writable: null
+owner_email: null
+owner_user_id: null

@@ -1,3 +1,3 @@
 import { generateReleaseLog } from './release-log';
 
-generateReleaseLog();
+console.log(await generateReleaseLog());

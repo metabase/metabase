@@ -1,5 +1,6 @@
 const { H } = cy;
 
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   FIRST_COLLECTION_ID,
@@ -7,8 +8,17 @@ import {
   ORDERS_MODEL_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import type { CardId, FieldReference } from "metabase-types/api";
+import type {
+  NativeQuestionDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import type {
+  CardId,
+  FieldReference,
+  GroupPermissions,
+  NativePermissions,
+} from "metabase-types/api";
 
 const {
   ORDERS,
@@ -26,7 +36,9 @@ describe("issue 29943", () => {
     getHeaderCell(1, "Total").should("exist");
     getHeaderCell(2, "Custom").should("exist");
 
-    H.moveDnDKitElement(H.tableHeaderColumn("Custom"), { horizontal: -100 });
+    const tableHeaderAlias = "customHeader";
+    H.tableHeaderColumn("Custom").as(tableHeaderAlias);
+    H.moveDnDKitElementByAlias(`@${tableHeaderAlias}`, { horizontal: -100 });
 
     getHeaderCell(1, "Custom").should("exist");
     getHeaderCell(2, "Total").should("exist");
@@ -36,7 +48,7 @@ describe("issue 29943", () => {
     getHeaderCell(columnIndex, name)
       .closest("[data-testid=model-column-header-content]")
       .should("have.css", "background-color")
-      .and("eq", "rgb(80, 158, 227)");
+      .and("eq", "rgb(80, 158, 226)");
 
     cy.findByLabelText("Display name").should("have.value", name);
   }
@@ -101,7 +113,7 @@ describe("issue 29943", () => {
   });
 });
 
-describe("issue 35711", () => {
+describe("issues with metadata editing on models with custom expressions", () => {
   const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
   const DISCOUNT_FIELD_REF: FieldReference = [
@@ -115,9 +127,10 @@ describe("issue 35711", () => {
   function reorderTaxAndTotalColumns() {
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Tax");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Total");
+    H.tableHeaderColumn("Total").as("totalColumn");
 
     // drag & drop the Total column 80 px to the left to switch it with Tax column
-    H.moveDnDKitElement(H.tableHeaderColumn("Total"), { horizontal: -80 });
+    H.moveDnDKitElementByAlias("@totalColumn", { horizontal: -80 });
 
     cy.findAllByTestId("header-cell").eq(4).should("have.text", "Total");
     cy.findAllByTestId("header-cell").eq(5).should("have.text", "Tax");
@@ -136,7 +149,7 @@ describe("issue 35711", () => {
     cy.signInAsAdmin();
   });
 
-  it("can edit metadata of a model with a custom column (metabase#35711)", () => {
+  it("can edit metadata of a model with a custom column (metabase#35711, metabase#39993)", () => {
     H.createQuestion(
       {
         type: "model",
@@ -395,13 +408,13 @@ describe("issue 41785, issue 46756", () => {
   it("does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)", () => {
     // it's important to create the model through UI to reproduce this issue
     H.startNewModel();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
     H.popover().findByText("ID").click();
@@ -462,8 +475,8 @@ describe("issue 40635", () => {
 
   it("correctly displays question's and nested model's column names (metabase#40635)", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -472,8 +485,8 @@ describe("issue 40635", () => {
 
     H.join();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -487,8 +500,8 @@ describe("issue 40635", () => {
 
     H.join();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -511,7 +524,6 @@ describe("issue 40635", () => {
 
     cy.button("Save").click();
     H.modal().button("Save").click();
-    H.modal().findByText("Not now").click();
 
     assertSettingsSidebar();
     assertVisualizationColumns();
@@ -670,8 +682,8 @@ describe("issue 25113", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     H.openNotebook();
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("People Model").click();
     });
     H.popover().findByText("ID").click();
@@ -682,7 +694,7 @@ describe("issue 25113", () => {
 });
 
 describe("issue 39749", () => {
-  const modelDetails: H.StructuredQuestionDetails = {
+  const modelDetails: StructuredQuestionDetails = {
     type: "model",
     query: {
       "source-table": ORDERS_ID,
@@ -738,7 +750,7 @@ describe("issue 39749", () => {
 });
 
 describe("issue 25885", () => {
-  const mbqlModelDetails: H.StructuredQuestionDetails = {
+  const mbqlModelDetails: StructuredQuestionDetails = {
     type: "model",
     query: {
       "source-table": ORDERS_ID,
@@ -854,9 +866,9 @@ describe("issue 33844", () => {
     H.tableInteractive().findByText("ID").should("not.exist");
     H.openObjectDetail(0);
     H.modal().within(() => {
-      cy.findByText("Order").should("be.visible");
-      cy.findByText("ID").should("be.visible");
-      cy.findByTestId("object-detail-close-button").click();
+      cy.findByText("Quantity").should("be.visible");
+      cy.findByRole("heading", { name: "1" }).should("be.visible");
+      cy.findByLabelText("Close").click();
     });
 
     cy.log("make the column visible in table views");
@@ -877,13 +889,13 @@ describe("issue 33844", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     testModelMetadata(true);
   });
 
@@ -919,7 +931,7 @@ describe("issue 45924", () => {
     H.popover().findByText("ID").click();
     cy.findByTestId("run-button").click();
     cy.wait("@dataset");
-    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    cy.findByTestId("dataset-edit-bar").findByText("Columns").click();
     H.tableHeaderClick("ID1");
     cy.findByLabelText("Display name").should("have.value", "ID1");
     cy.findByTestId("dataset-edit-bar").button("Save changes").click();
@@ -949,43 +961,6 @@ describe("issue 43088", () => {
   });
 });
 
-describe("issue 39993", () => {
-  const columnName = "Exp";
-
-  const modelDetails: H.StructuredQuestionDetails = {
-    type: "model",
-    query: {
-      "source-table": ORDERS_ID,
-      fields: [
-        ["field", ORDERS.ID, { "base-type": "type/BigInteger" }],
-        ["expression", columnName, { "base-type": "type/Integer" }],
-      ],
-      expressions: { [columnName]: ["+", 1, 1] },
-    },
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.intercept("PUT", "/api/card/*").as("updateModel");
-  });
-
-  it("should preserve viz settings for models with custom expressions (metabase#39993)", () => {
-    H.createQuestion(modelDetails).then(({ body: card }) =>
-      H.visitModel(card.id),
-    );
-    H.openQuestionActions();
-    H.popover().findByText("Edit metadata").click();
-    H.waitForLoaderToBeRemoved();
-    cy.log("drag & drop the custom column 100 px to the left");
-    H.moveDnDKitElement(H.tableHeaderColumn(columnName), { horizontal: -100 });
-    cy.button("Save changes").click();
-    cy.wait("@updateModel");
-    cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
-    cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
-  });
-});
-
 describe("issue 34574", () => {
   beforeEach(() => {
     H.restore();
@@ -999,7 +974,7 @@ describe("issue 34574", () => {
   });
 
   it("should accept markdown for model description and render it properly (metabase#34574)", () => {
-    const modelDetails: H.StructuredQuestionDetails = {
+    const modelDetails: StructuredQuestionDetails = {
       name: "34574",
       type: "model",
       query: {
@@ -1066,11 +1041,11 @@ describe("issue 34517", () => {
     cy.location("pathname").should("eq", "/model/query");
 
     // wait for the model editor to be fully loaded
-    H.entityPickerModal().should("exist");
+    H.miniPicker().should("exist");
     cy.reload();
 
     // wait for the model editor to be fully loaded
-    H.entityPickerModal().should("exist");
+    H.miniPicker().should("exist");
     cy.location("pathname").should("eq", "/model/query");
   });
 });
@@ -1079,7 +1054,7 @@ describe("issue 35840", () => {
   const modelName = "M1";
   const questionName = "Q1";
 
-  const modelDetails: H.StructuredQuestionDetails = {
+  const modelDetails: StructuredQuestionDetails = {
     type: "model",
     name: modelName,
     query: {
@@ -1090,9 +1065,7 @@ describe("issue 35840", () => {
     },
   };
 
-  const getQuestionDetails = (
-    modelId: CardId,
-  ): H.StructuredQuestionDetails => ({
+  const getQuestionDetails = (modelId: CardId): StructuredQuestionDetails => ({
     type: "question",
     name: questionName,
     query: {
@@ -1150,12 +1123,15 @@ describe("issue 36161", () => {
   });
 
   it("should allow to override metadata for custom columns (metabase#36161)", () => {
-    H.visitModel(ORDERS_MODEL_ID);
-    cy.wait("@dataset");
+    cy.log("Go straight to model query definition");
+    cy.visit(`/model/${ORDERS_MODEL_ID}/query`);
+    H.tableInteractiveBody().should("be.visible").and("contain", "37.65");
 
-    H.openQuestionActions("Edit query definition");
+    cy.log("Deselect all columns (except for ID)");
     H.getNotebookStep("data").button("Pick columns").click();
     H.popover().findByText("Select all").click();
+
+    cy.log("Add two custom columns based on the ID");
     H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[ID]", name: "ID2" });
     H.popover().button("Done").click();
@@ -1164,13 +1140,16 @@ describe("issue 36161", () => {
     H.popover().button("Done").click();
     H.runButtonOverlay().click();
     cy.wait("@dataset");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+
+    cy.log("Rename custom columns");
+    cy.findByTestId("editor-tabs-columns-name").click();
     H.openColumnOptions("ID2");
     H.renameColumn("ID2", "ID2 custom");
     H.openColumnOptions("ID3");
     H.renameColumn("ID3", "ID3 custom");
     H.saveMetadataChanges();
 
+    cy.log("Assert that the renamed columns appear in filter options");
     H.openNotebook();
     H.getNotebookStep("data").button("Filter").click();
     H.popover().within(() => {
@@ -1186,7 +1165,6 @@ describe("issue 34514", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
     cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
     // It's important to navigate via UI so that there are
@@ -1198,9 +1176,8 @@ describe("issue 34514", () => {
   });
 
   it("should not make network request with invalid query (metabase#34514)", () => {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.wait("@fetchTables");
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -1212,10 +1189,9 @@ describe("issue 34514", () => {
     assertBackToEmptyState();
   });
 
-  it("should allow browser history navigation between tabs (metabase#34514)", () => {
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
-      cy.wait("@fetchTables");
+  it("should allow browser history navigation between tabs (metabase#34514, metabase#45787)", () => {
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -1223,19 +1199,17 @@ describe("issue 34514", () => {
     cy.wait("@dataset");
     assertQueryTabState();
 
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns-name").click();
     assertMetadataTabState();
-
-    // Close the TabHinToast component.
-    // This isn't a part of the test scenario but it helps with flakiness.
-    cy.icon("close").click();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
-    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
+    cy.get("@dataset.all").should("have.length", 1);
 
     cy.go("back");
     assertBackToEmptyState();
+    cy.get("@dataset.all").should("have.length", 1);
   });
 
   function assertQueryTabState() {
@@ -1253,13 +1227,12 @@ describe("issue 34514", () => {
   }
 
   function assertBackToEmptyState() {
-    H.entityPickerModal().should("be.visible");
-    H.entityPickerModal().button("Close").click();
+    H.miniPicker().should("be.visible");
 
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
     cy.button("Save").should("be.disabled");
     H.getNotebookStep("data")
-      .findByText("Pick your starting data")
+      .findByPlaceholderText("Search for tables and more...")
       .should("be.visible");
     H.tableInteractive().should("not.exist");
     cy.findByTestId("query-visualization-root").within(() => {
@@ -1329,13 +1302,13 @@ describe("issue 47988", () => {
     H.createQuestion(model1Details);
     H.createQuestion(model2Details);
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M1").click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("M2").click();
     });
     H.visualize();
@@ -1343,74 +1316,8 @@ describe("issue 47988", () => {
   });
 });
 
-describe.skip("issues 28270, 33708", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createQuestion(
-      {
-        type: "model",
-        query: {
-          "source-table": PRODUCTS_ID,
-        },
-      },
-      { visitQuestion: true },
-    );
-    cy.intercept("POST", "/api/dataset").as("dataset");
-  });
-
-  it("shows object relationships when model-based ad-hoc question has a filter (metabase#28270)", () => {
-    checkRelationships();
-    H.modal().icon("close").click();
-
-    H.tableHeaderClick("Title");
-    H.popover().findByText("Filter by this column").click();
-    H.popover().findByLabelText("Filter operator").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
-    H.popover().last().findByText("Contains").click();
-    H.popover().findByLabelText("Filter value").type("a,");
-    H.popover().button("Add filter").click();
-
-    checkRelationships();
-  });
-
-  it("shows object relationships after navigating back from relationships question (metabase#33708)", () => {
-    checkRelationships();
-
-    H.modal().findByText("Orders").click();
-    cy.wait("@dataset");
-    cy.go("back");
-    cy.go("back"); // TODO: remove this when (metabase#33709) is fixed
-
-    checkRelationships();
-  });
-
-  function openObjectDetails() {
-    cy.findAllByTestId("cell-data").eq(8).should("have.text", "1").click();
-  }
-
-  function checkRelationships() {
-    openObjectDetails();
-
-    cy.wait(["@dataset", "@dataset"]);
-
-    H.modal().within(() => {
-      cy.findByTestId("fk-relation-orders")
-        .should("be.visible")
-        .and("contain.text", "93")
-        .and("contain.text", "Orders");
-
-      cy.findByTestId("fk-relation-reviews")
-        .should("be.visible")
-        .and("contain.text", "8")
-        .and("contain.text", "Reviews");
-    });
-  }
-});
-
 describe("issue 46221", () => {
-  const modelDetails: H.NativeQuestionDetails = {
+  const modelDetails: NativeQuestionDetails = {
     name: "46221",
     native: { query: "select 42" },
     type: "model",
@@ -1446,7 +1353,7 @@ describe("issue 46221", () => {
 });
 
 describe("issue 20624", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     name: "Question",
     type: "question",
     query: {
@@ -1715,7 +1622,7 @@ describe("issue 57557", () => {
     });
     H.waitForLoaderToBeRemoved();
     cy.findByTestId("editor-tabs-query").should("be.disabled");
-    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should("be.checked");
   });
 });
 
@@ -1762,8 +1669,8 @@ describe("issue 57359", () => {
     H.openOrdersTable({ mode: "notebook" });
     cy.wrap([1, 2]).each(() => {
       H.join();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
+        cy.findByText("Sample Database").click();
         cy.findByText("Products").click();
       });
     });
@@ -1806,7 +1713,7 @@ describe("issue 55486", () => {
   });
 
   function checkIsShowingMetadataEditorTab() {
-    cy.findByTestId("editor-tabs-metadata").should("be.checked");
+    cy.findByTestId("editor-tabs-columns").should("be.checked");
     cy.findByTestId("visualization-root").should("be.visible");
   }
 
@@ -1818,7 +1725,7 @@ describe("issue 55486", () => {
   it("should render the correct query after using the back button in a model (metabase#56775)", () => {
     H.openQuestionActions("Edit query definition");
 
-    H.datasetEditBar().findByText("Metadata").click();
+    H.datasetEditBar().findByText("Columns").click();
     checkIsShowingMetadataEditorTab();
 
     H.datasetEditBar().findByText("Query").click();
@@ -1849,7 +1756,8 @@ describe("Issue 30712", () => {
 
     H.startNewModel();
 
-    H.entityPickerModal().findByText("Orders").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Orders").click();
     H.join();
     H.joinTable("Products");
 
@@ -1867,7 +1775,7 @@ describe("Issue 30712", () => {
   });
 });
 
-describe.skip("issue 60930", () => {
+describe("issue 60930", { tags: "@skip" }, () => {
   const modelDetails: StructuredQuestionDetails = {
     name: "Model",
     type: "model",
@@ -1935,5 +1843,261 @@ describe.skip("issue 60930", () => {
     H.popover().findByLabelText("Select all").click();
     H.saveMetadataChanges();
     H.tableInteractive().findByText("ID2").should("not.exist");
+  });
+});
+
+describe("Issue 56913", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal().button("Turn this into a model").click();
+
+    H.createNativeQuestion(
+      {
+        native: {
+          query: "select {{ x }}",
+          "template-tags": {
+            x: {
+              id: "d7f1fb15-c7b8-6051-443d-604b6ed5457b",
+              name: "x",
+              "display-name": "X",
+              type: "text",
+              default: null,
+            },
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should show the error modal when converting a native question with variables into a model, even when the 'turn into a model' modal was previously acknowledged (metabase#56913)", () => {
+    H.openQuestionActions();
+    H.popover().findByText("Turn into a model").click();
+    H.modal()
+      .findByText("Variables in models aren't supported yet")
+      .should("be.visible");
+  });
+});
+
+describe("issue 45919", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should allow to query a model with a hidden column", () => {
+    cy.log("create a new model with result_metadata");
+    cy.visit("/model/new");
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+    H.popover().findByText("Sample Database").click();
+    H.popover().findByText("People").click();
+    H.runButtonOverlay().click();
+    H.tableInteractive().should("be.visible");
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.tableInteractiveHeader().findByText("Password").should("be.visible");
+
+    cy.log("hide the Password field");
+    cy.request("PUT", `/api/field/${PEOPLE.PASSWORD}`, {
+      visibility_type: "sensitive",
+    });
+
+    cy.log("the query should succeed, and the Password field should be hidden");
+    H.queryBuilderHeader().button("Refresh").click();
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().findByText("Password").should("not.exist");
+    H.tableInteractiveHeader().findByText("Email").should("be.visible");
+  });
+});
+
+describe("issue 50915", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should use the model for the data source for drills after the model is created (metabase#50915)", () => {
+    cy.log("create a model via the UI");
+    cy.visit("/model/new");
+    H.main().findByText("Use the notebook editor").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    H.join();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("People").click();
+    });
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+    cy.findByTestId("save-question-modal").button("Save").click();
+    H.queryBuilderHeader().should("be.visible");
+    H.queryBuilderMain()
+      .findByText("37.65", { timeout: 10000 })
+      .should("be.visible");
+
+    cy.log("immediately after saving, drill-thru");
+    H.tableHeaderClick("Discount ($)");
+    H.popover().findByText("Distinct values").click();
+    H.queryBuilderMain()
+      .findByText("1,115", { timeout: 10000 })
+      .should("be.visible");
+    H.assertTableData({ columns: ["Distinct values of Discount"] });
+
+    cy.log("assert that the model is used for the data source");
+    H.openNotebook();
+    H.getNotebookStep("data")
+      .findByText("Orders + People")
+      .should("be.visible");
+  });
+});
+
+describe("issue 38747", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should allow you to drill through with entity qualified ids", () => {
+    cy.visit("/model/new");
+    cy.findByRole("link", { name: /notebook editor/ }).click();
+
+    H.miniPickerBrowseAll().click();
+    H.entityPickerModalItem(0, "Databases").click();
+    H.entityPickerModalItem(1, "Products").click();
+    H.runButtonInOverlay().click();
+
+    // Wait for the query to run so we can click the columns "button"
+    // ... It's actually a list item, so we can't check to see if it's
+    // actually disabled in any sane way
+    H.tableInteractive().should("exist");
+
+    H.datasetEditBar().findByText("Columns").click();
+    cy.findAllByTestId("model-column-header-content")
+      .contains("Vendor")
+      .click();
+
+    cy.findByPlaceholderText("Select a semantic type").click();
+    H.popover().findByText("Entity Key").click();
+    H.datasetEditBar().button("Save").click();
+
+    H.modal().button("Save").click();
+
+    cy.findByRole("gridcell", { name: "Nolan-Wolff" }).click();
+
+    // Assert that we're at an adhoc question with aproprate filters
+    cy.location("pathname").should("equal", "/question");
+    cy.findByTestId("filter-pill").should(
+      "contain.text",
+      "Vendor is Nolan-Wolff",
+    );
+    H.tableInteractive().should("have.attr", "data-rows-count", "1");
+  });
+});
+
+describe("issue 67680", () => {
+  function setTablePermissions(createQueriesPermission: NativePermissions) {
+    const permissions: GroupPermissions = {
+      [SAMPLE_DB_ID]: {
+        "view-data": {
+          public: {
+            [ORDERS_ID]: DataPermissionValue.BLOCKED,
+            [PRODUCTS_ID]: DataPermissionValue.UNRESTRICTED,
+          },
+        },
+        "create-queries": createQueriesPermission,
+      },
+    };
+    cy.updatePermissionsGraph({
+      [USER_GROUPS.ALL_USERS_GROUP]: permissions,
+      [USER_GROUPS.DATA_GROUP]: permissions,
+      [USER_GROUPS.COLLECTION_GROUP]: permissions,
+    });
+  }
+
+  function setTablePermissionsWithCreateQueries() {
+    setTablePermissions(DataPermissionValue.QUERY_BUILDER);
+  }
+
+  function setTablePermissionsWithoutCreateQueries() {
+    setTablePermissions(DataPermissionValue.NO);
+  }
+
+  function updateModelSourceTableWithResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.runButtonInOverlay().click();
+    H.tableInteractiveHeader().findByText("Category").should("be.visible");
+    H.saveMetadataChanges();
+  }
+
+  function updateModelSourceTableWithoutResultMetadata() {
+    H.visitModel(ORDERS_MODEL_ID);
+    H.openQuestionActions("Edit query definition");
+    H.getNotebookStep("data").findByText("Orders").click();
+    H.popover().findByText("Products").click();
+    H.saveMetadataChanges();
+  }
+
+  function verifyNormalUserCanAccessModel() {
+    cy.signInAsNormalUser();
+    H.visitModel(ORDERS_MODEL_ID);
+    H.assertQueryBuilderRowCount(200);
+  }
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+  });
+
+  describe("when the user has create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+  });
+
+  describe("when the user does not have create queries permission", () => {
+    beforeEach(() => {
+      setTablePermissionsWithoutCreateQueries();
+    });
+
+    it("should not override column ids for a mbql model when it is saved with result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
+
+    it("should not override column ids for a mbql model when it is saved without result_metadata (metabase#67680)", () => {
+      updateModelSourceTableWithoutResultMetadata();
+      verifyNormalUserCanAccessModel();
+    });
   });
 });

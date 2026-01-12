@@ -7,8 +7,9 @@ title: Database users, roles, and privileges
 We recommend creating a `metabase` database user with the following database roles:
 
 - [`analytics` for read access](#minimum-database-privileges) to any schemas or tables used for analysis.
-- Optional [`metabase_actions` for write access](#privileges-to-enable-actions) to tables used for Metabase actions.
+- Optional [`metabase_actions` for write access](#privileges-to-enable-actions-and-editable-table-data) to tables used for Metabase actions.
 - Optional [`metabase_model_persistence` for write access](#privileges-to-enable-model-persistence) to the schema used for Metabase model persistence.
+- Optional [`metabase_transforms` for write access](#privileges-to-enable-transforms) to the schema used for Metabase transforms.
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
@@ -62,7 +63,7 @@ GRANT analytics TO metabase;
 -- GRANT SELECT ON "your_table" IN SCHEMA "your_schema" TO analytics;
 ```
 
-Depending on how you use Metabase, you can also additonally grant:
+Depending on how you use Metabase, you can also additionally grant:
 
 - `TEMPORARY` privileges to create temp tables.
 - `EXECUTE` privileges to use stored procedures or user-defined functions.
@@ -86,30 +87,30 @@ GRANT ALL PRIVILEGES ON "database" TO metabase;
 
 This is a good option if you're connecting to a local database for development or testing.
 
-## Privileges to enable actions
+## Privileges to enable actions and editable table data
 
-[Actions](../actions/introduction.md) let Metabase write back to specific tables in your database.
+Both [actions](../actions/introduction.md) and the [editable table data](../data-modeling/editable-tables.md) let Metabase write back to specific tables in your database.
 
-In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables used with actions:
+In addition to the [minimum database privileges](#minimum-database-privileges), you'll need to grant write access to any tables you want to be able to write to.
 
-- Create a new role called `metabase_actions`.
-- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to any tables used with Metabase actions.
-- Give the `metabase_actions` role to the `metabase` user.
+- Create a new role called `metabase_writer`.
+- Give the role `INSERT`, `UPDATE`, and `DELETE` privileges to the relevant tables.
+- Give the `metabase_writer` role to the `metabase` user.
 
 ```sql
--- Create a role to bundle database privileges for Metabase actions.
-CREATE ROLE metabase_actions WITH LOGIN;
+-- Create a role to bundle database privileges for Metabase writing to your database.
+CREATE ROLE metabase_writer WITH LOGIN;
 
--- Grant write privileges to the TABLE used with Metabase actions.
-GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase_actions;
+-- Grant write privileges to the TABLE
+GRANT INSERT, UPDATE, DELETE ON "your_table" IN SCHEMA "your_schema" TO metabase_writer;
 
 -- Grant role to the metabase user.
-GRANT metabase_actions TO metabase;
+GRANT metabase_writer TO metabase;
 ```
 
 ## Privileges to enable model persistence
 
-[Model persistence](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model caching, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
+[Model persistence](../data-modeling/model-persistence.md) lets Metabase save query results to a specific schema in your database. Metabase's database user will need the `CREATE` privilege to set up the dedicated schema for model persistence, as well as write access (`INSERT`, `UPDATE`, `DELETE`) to that schema.
 
 In addition to the [minimum database privileges](#minimum-database-privileges):
 
@@ -133,6 +134,19 @@ GRANT INSERT, UPDATE, DELETE ON "your_model's_table" IN SCHEMA "your_schema" TO 
 -- Grant role to the metabase user.
 GRANT metabase_model_persistence TO metabase;
 ```
+
+## Privileges to enable transforms
+
+[Transforms](../data-modeling/transforms.md) let Metabase write query results back to your database. We suggest that you create a dedicated schema for your transforms. Metabase's database user will need to be able to create and drop transform tables.
+
+In addition to the [minimum database privileges](#minimum-database-privileges):
+
+- Create a new role called `metabase_transforms`.
+- Create a dedicated schema for transforms.
+- Give the `metabase_transforms` role `CREATE TABLE` / `ALTER` / `DROP` privileges for the specified schema
+- Give the `metabase_transforms` role to the `metabase` user.
+
+In certain cases, Metabase will give you an option to create new schemas for transforms, in which case you'll also need `CREATE SCHEMA` privileges for your metabase users (or `CREATE DATABASE` for ClickHouse).
 
 ## Privileges to enable uploads
 
@@ -169,7 +183,7 @@ Let's say you have customers named Tangerine and Lemon:
 - Create roles to bundle privileges specific to each customer's use case. For example:
   - `tangerine_queries` to bundle read privileges for people to query and create stored procedures against the Tangerine schema.
   - `lemon_queries` to bundle read privileges for people to query tables in the Lemon schema.
-  - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions) on a Lemonade table in the Lemon schema.
+  - `lemon_actions` to bundle the write privileges needed to create [actions](#privileges-to-enable-actions-and-editable-table-data) on a Lemonade table in the Lemon schema.
 - Add each user to their respective roles.
 
 ```sql

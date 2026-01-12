@@ -10,15 +10,12 @@
    [medley.core :as m]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.collections.models.collection :as collection]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
-   [metabase.lib.util :as lib.util]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
@@ -358,17 +355,17 @@
     (fn [base suffix]
       (as-> (str base separator suffix) %
         (driver/escape-alias driver %)
-        (lib.util/truncate-alias % max-length)))))
+        (lib/truncate-alias % max-length)))))
 
 (defn- derive-display-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver " "))]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver " ")})]
     (mapv generator-fn
           (for [h header]
             (humanization/name->human-readable-name
              (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver "_"))]
+  (let [generator-fn (lib/unique-name-generator-with-options {:unique-alias-fn (unique-alias-fn driver "_")})]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 
@@ -539,7 +536,10 @@
         table             (sync/create-table! db {:name         table-name
                                                   :schema       (not-empty schema)
                                                   :display_name display-name})
-        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
+        _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true
+                                                                :data_authority :authoritative
+                                                                :data_source :upload
+                                                                :is_writable true})
         _sync             (scan-and-sync-table! db table)
         _set_names        (set-display-names! (:id table) columns)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
@@ -599,7 +599,7 @@
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
     (check-filetype filename file)
-    (collection/check-write-perms-for-collection collection-id)
+    (api/create-check :model/Card {:collection_id collection-id})
     (try
       (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
@@ -681,12 +681,10 @@
     - the schema of the CSV file does not match the schema of the table
 
     Note that we do not require the column ordering to be consistent between the header and the table schema."
-  [fields-by-normed-name normalized-header]
-  ;; Assumes table-cols are unique when normalized
-  (let [normalized-field-names (keys fields-by-normed-name)
-        [extra missing _both]  (data/diff (set normalized-header) (set normalized-field-names))]
-    ;; check for duplicates
-    (when (some #(< 1 %) (vals (frequencies normalized-header)))
+  [existing-column-names upload-column-names raw-header]
+  (let [[extra missing _both] (data/diff (set upload-column-names) (set existing-column-names))]
+    ;; We use lossy normalization for column names then *force* uniqueness, so this must use the original header.
+    (when (some #(< 1 %) (vals (frequencies raw-header)))
       (throw (ex-info (tru "The CSV file contains duplicate column names.")
                       {:status-code 422})))
     (when-let [error-message (extra-and-missing-error-markdown extra missing)]
@@ -744,9 +742,9 @@
 
 (defn- only-table-id
   "For models that depend on only one table, return its id, otherwise return nil. Doesn't support native queries."
-  [model]
+  [{query :dataset_query, :as model}]
   ; dataset_query can be empty in tests
-  (when-let [query (queries/card->lib-query model)]
+  (when-let [query (not-empty query)]
     (when (and (mbql? model) (no-joins? query))
       (lib/source-table-id query))))
 
@@ -791,14 +789,20 @@
                                    auto-pk?
                                    without-auto-pk-columns)
               name->field        (m/index-by :name (t2/select :model/Field :table_id (:id table) :active true))
-              column-names       (for [h header] (normalize-column-name driver h))
+              ;; Gotcha: Long column names, which get sanitized and truncated to the same string, will be match to the
+              ;; database columns based on their order. If their order in the new upload differs from that in previous
+              ;; uploads, they will be matched incorrectly.
+              ;; We accept this edge case (customers can reorder CSV columns to fix) rather than rejecting uploads
+              ;; with ambiguous column names even when the order is consistent (see #44926/#issuecomment-3524373073).
+              ;; Future idea: match on display names for smart re-ordering.
+              column-names       (map name (derive-column-names driver header))
               display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
                                   auto-pk?
                                   (driver/create-auto-pk-with-append-csv? driver)
                                   (not (contains? name->field auto-pk-column-name)))
               name->field        (cond-> name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema name->field column-names)
+              _                  (check-schema (keys name->field) column-names header)
               settings           (upload-parsing/get-settings)
               ;; TODO: Add a method for drivers to override types here. See https://github.com/metabase/metabase/pull/55209.
               old-types          (map (comp upload-types/base-type->upload-type :base_type name->field) column-names)

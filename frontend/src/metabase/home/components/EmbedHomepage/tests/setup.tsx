@@ -1,7 +1,7 @@
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -11,6 +11,7 @@ import type { Settings, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createMockSettingsState,
@@ -21,14 +22,16 @@ import { EmbedHomepage } from "../EmbedHomepage";
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   settings?: Partial<Settings>;
+  isAdmin?: boolean;
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   settings = {},
+  isAdmin = false,
 }: SetupOpts = {}) {
   jest.clearAllMocks();
 
@@ -38,14 +41,17 @@ export async function setup({
   setupPropertiesEndpoints(createMockSettings());
 
   const state = createMockState({
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: createMockSettingsState({
       "token-features": createMockTokenFeatures(tokenFeatures),
       ...settings,
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(
@@ -60,12 +66,12 @@ export async function setup({
 }
 
 export const getLastHomepageSettingSettingCall = () =>
-  fetchMock.lastCall("path:/api/setting/embedding-homepage", {
+  fetchMock.callHistory.lastCall("path:/api/setting/embedding-homepage", {
     method: "PUT",
   });
 
 export const getLastFeedbackCall = () =>
-  fetchMock.lastCall("path:/api/product-feedback", {
+  fetchMock.callHistory.lastCall("path:/api/product-feedback", {
     method: "POST",
   });
 

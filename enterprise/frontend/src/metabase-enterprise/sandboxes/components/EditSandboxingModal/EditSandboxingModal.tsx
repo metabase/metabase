@@ -29,12 +29,15 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   GroupTableAccessPolicy,
   Table,
-  UserAttribute,
+  UserAttributeKey,
 } from "metabase-types/api";
 
-import AttributeMappingEditor, {
+import {
   AttributeOptionsEmptyState,
+  DataAttributeMappingEditor,
 } from "../AttributeMappingEditor";
+
+import { shouldDisableItem } from "./utils";
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const ERROR_MESSAGE = t`An error occurred.`;
@@ -78,7 +81,7 @@ const isPolicyValid = (
 
 export interface EditSandboxingModalProps {
   policy?: GroupTableAccessPolicy;
-  attributes: UserAttribute[];
+  attributes: UserAttributeKey[];
   params: GroupTableAccessPolicyParams;
   onCancel: () => void;
   onSave: (policy: GroupTableAccessPolicy) => void;
@@ -146,7 +149,9 @@ const EditSandboxingModal = ({
 
   return (
     <div>
-      <h2 className={CS.p3}>{t`Restrict access to this table`}</h2>
+      <h2
+        className={CS.p3}
+      >{t`Configure row and column security for this table`}</h2>
 
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
@@ -216,6 +221,7 @@ const EditSandboxingModal = ({
                   hideModal();
                 }}
                 onClose={hideModal}
+                shouldDisableItem={shouldDisableItem}
               />
             )}
           </div>
@@ -228,7 +234,7 @@ const EditSandboxingModal = ({
                   {t`You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question.`}
                 </div>
               )}
-              <AttributeMappingEditor
+              <DataAttributeMappingEditor
                 value={policy.attribute_remappings}
                 policyTable={policyTable}
                 onChange={(attribute_remappings) =>
@@ -265,7 +271,6 @@ const EditSandboxingModal = ({
         <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
-            error={error}
             className={CS.ml1}
             actionFn={savePolicy}
             primary
@@ -397,8 +402,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
     ) {
       return (
         <span>
-          {c("{0} is a name of a variable being used by sandboxing")
-            .jt`${(<strong>{target[1][1]}</strong>)} variable`}
+          {c(
+            "{0} is a name of a variable being used by row and column security",
+          ).jt`${(<strong key="strong">{target[1][1]}</strong>)} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -436,8 +442,10 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
             const columnInfo = Lib.displayInfo(query, stageIndex, column);
             return (
               <span>
-                {c("{0} is a name of a field being used by sandboxing")
-                  .jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
+                {c(
+                  "{0} is a name of a field being used by row and column security",
+                )
+                  .jt`${(<strong key="strong">{columnInfo.displayName}</strong>)} field`}
               </span>
             );
           }}

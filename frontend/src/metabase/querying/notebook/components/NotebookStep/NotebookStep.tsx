@@ -5,12 +5,12 @@ import { t } from "ttag";
 import ExpandingContent from "metabase/common/components/ExpandingContent";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { color as c } from "metabase/lib/colors";
 import { Box, Flex } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
+  NotebookDataPickerOptions,
   NotebookStepAction,
 } from "../../types";
 
@@ -31,6 +31,7 @@ interface NotebookStepProps {
   readOnly?: boolean;
   openStep: (id: string) => void;
   updateQuery: (query: Lib.Query) => Promise<void>;
+  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 export function NotebookStep({
@@ -41,6 +42,7 @@ export function NotebookStep({
   openStep,
   updateQuery,
   readOnly = false,
+  dataPickerOptions,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
@@ -92,7 +94,7 @@ export function NotebookStep({
 
   const { title, color, Step, StepHeader } = getStepConfig(step.type);
 
-  const canPreview = step.previewQuery != null;
+  const canPreview = step.previewQuery != null && !readOnly;
   const hasPreviewButton = !isPreviewOpen && canPreview;
   const canRevert = step.revert != null && !readOnly;
 
@@ -123,6 +125,7 @@ export function NotebookStep({
               isLastOpened={isLastOpened}
               reportTimezone={reportTimezone}
               readOnly={readOnly}
+              dataPickerOptions={dataPickerOptions}
             />
           </Box>
           {!readOnly && (
@@ -134,7 +137,7 @@ export function NotebookStep({
                 component={NotebookActionButton}
                 icon="play"
                 title={t`Preview`}
-                color={c("text-light")}
+                color={"text-tertiary"}
                 onClick={openPreview}
                 data-testid="step-preview-button"
               />

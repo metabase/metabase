@@ -12,16 +12,16 @@
    [metabase.config.core :as config]
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
-   [metabase.core.initialization-status :as init-status]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
+   [metabase.initialization-status.core :as init-status]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
@@ -35,7 +35,8 @@
    [metabase.util.system-info :as u.system-info]
    [metabase.warehouses.models.database :as database])
   (:import
-   (java.lang.management ManagementFactory)))
+   (java.lang.management ManagementFactory)
+   (sun.misc Signal SignalHandler)))
 
 (set! *warn-on-reflection* true)
 
@@ -112,13 +113,49 @@
 (defenterprise ensure-audit-db-installed!
   "OSS implementation of `audit-db/ensure-db-installed!`, which is an enterprise feature, so does nothing in the OSS
   version."
-  metabase-enterprise.audit-app.audit [] ::noop)
+  metabase-enterprise.audit-app.audit []
+  (log/info "Not installing EE audit app DB")
+  ::noop)
+
+(defn- signal-handler
+  "Create a signal handler that logs the received signal and then delegates to the original handler."
+  [^String signal-name ^SignalHandler original-handler]
+  (reify SignalHandler
+    (handle [_ sig]
+      (log/warnf "Received system signal: SIG%s" (.getName sig))
+      (when original-handler
+        (try
+          (.handle original-handler sig)
+          (catch Exception e
+            (log/errorf e "Error calling original signal handler for SIG%s" signal-name)))))))
+
+(defn- init-signal-logging!
+  "Set up signal handlers to log system signals like SIGTERM, SIGINT, etc."
+  []
+  (let [signals-to-log ["TERM" "INT" "HUP" "QUIT"]]
+    (log/debug "Setting up signal logging...")
+    (doseq [signal-name signals-to-log]
+      (try
+        (let [signal (Signal. signal-name)
+              ;; Capture the current handler before replacing it
+              original-handler (try
+                                 (Signal/handle signal SignalHandler/SIG_DFL)
+                                 (catch Exception _ nil))
+              ;; Create our logging handler that delegates to the original
+              logging-handler (signal-handler signal-name original-handler)]
+          (Signal/handle signal logging-handler)
+          (log/debugf "Signal handler registered for SIG%s" signal-name))
+        (catch IllegalArgumentException e
+          (log/debugf "Ignoring invalid signal SIG%s: %s" signal-name (.getMessage e)))
+        (catch Exception e
+          (log/warnf e "Failed to register signal handler for SIG%s" signal-name))))))
 
 (defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/infof "Starting Metabase version %s ..." config/mb-version-string)
   (log/infof "System info:\n %s" (u/pprint-to-str (u.system-info/system-info)))
+  (init-signal-logging!)
   (init-status/set-progress! 0.1)
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
   (.addShutdownHook (Runtime/getRuntime) (Thread. ^Runnable destroy!))
@@ -145,8 +182,6 @@
   (log/info "Setting up prometheus metrics")
   (analytics/setup!)
   (init-status/set-progress! 0.5)
-  (premium-features/airgap-check-user-count)
-  (init-status/set-progress! 0.55)
   (task/init-scheduler!)
   (analytics/add-listeners-to-scheduler!)
   ;; run a very quick check to see if we are doing a first time installation
@@ -173,17 +208,18 @@
   (ensure-audit-db-installed!)
   (notification/seed-notification!)
 
-  (init-status/set-progress! 0.9)
+  (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
-  (init-status/set-progress! 0.95)
+  (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
-        duration   (- (System/currentTimeMillis) start-time)]
+        duration   (u/since-ms-wall-clock start-time)]
     (log/infof "Metabase Initialization COMPLETE in %s" (u/format-milliseconds duration))))
 
 (defn init!

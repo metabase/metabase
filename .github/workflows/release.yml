@@ -17,8 +17,6 @@ on:
         options:
           - none
           - latest
-          - beta
-          - nightly
         required: true
         default: 'none'
       auto:
@@ -41,8 +39,6 @@ on:
         # options:
         #   - none
         #   - latest
-        #   - beta
-        #   - nightly
         required: true
         default: 'none'
       auto:
@@ -215,13 +211,15 @@ jobs:
           return version_path;
 
     - name: Upload to S3
-      run: aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+      run: |
+        aws s3 cp ./metabase.jar s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.jar
+        aws s3 cp ./SHA256.sum s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.version_path.outputs.result }}/metabase.sha256
 
     - name: Create cloudfront invalidation
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
-        --paths /${{ steps.version_path.outputs.result }}/metabase.jar
+        --paths "/${{ steps.version_path.outputs.result }}/*"
 
   verify-s3-download:
     runs-on: ubuntu-22.04
@@ -403,7 +401,9 @@ jobs:
             });
 
   trigger-ee-extra-pr:
-    needs: verify-s3-download
+    needs:
+      - containerize-ee
+      - verify-s3-download
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -423,6 +423,19 @@ jobs:
                 auto: 'true', // always auto-merge
               }
             });
+
+  # updates the llms.txt asynchronously.
+  # release does not need to wait for this PR to be merged,
+  # because the llms.txt is in the main git repo.
+  trigger-update-llms-txt:
+    # do not trigger llms.txt update on automatic patch releases
+    if: ${{ !inputs.auto }}
+    needs: add-extra-tags
+    uses: ./.github/workflows/llms-txt-generate.yml
+    secrets: inherit
+    with:
+      version: ${{ inputs.version }}
+      branch: ${{ github.ref_name }}
 
   draft-release-notes:
     if: ${{ !inputs.auto }}

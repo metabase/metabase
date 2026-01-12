@@ -136,4 +136,45 @@ describe("scenarios > dashboard > filters > number", () => {
     H.filterWidget().findByText("2.07");
     H.ensureDashboardCardHasText("37.65");
   });
+
+  it("should allow between filters without min or max (metabase#54364)", () => {
+    const getInput = (index) =>
+      cy
+        .findAllByPlaceholderText("Enter a number")
+        .should("have.length", 2)
+        .eq(index);
+
+    const getMinInput = () => getInput(0);
+    const getMaxInput = () => getInput(1);
+
+    H.setFilter("Number", "Between");
+    H.selectDashboardFilter(H.getDashboardCard(), "Total");
+    H.saveDashboard();
+
+    cy.log("min only");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      getMinInput().type("150");
+      cy.button("Add filter").click();
+    });
+    H.getDashboardCard().within(() => H.assertTableRowsCount(256));
+
+    cy.log("max only");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      getMinInput().clear();
+      getMaxInput().type("20");
+      cy.button("Update filter").click();
+    });
+    H.getDashboardCard().within(() => H.assertTableRowsCount(52));
+
+    cy.log("min and max only");
+    H.filterWidget().click();
+    H.popover().within(() => {
+      getMinInput().clear().type("150");
+      getMaxInput().clear().type("155");
+      cy.button("Update filter").click();
+    });
+    H.getDashboardCard().within(() => H.assertTableRowsCount(166));
+  });
 });

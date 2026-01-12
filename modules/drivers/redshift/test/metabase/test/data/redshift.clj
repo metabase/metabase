@@ -73,9 +73,20 @@
           :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
+(def db-routing-connection-details
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
+          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
+
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
-  @db-connection-details)
+  (if tx/*use-routing-details*
+    @db-routing-connection-details
+    @db-connection-details))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -87,7 +98,7 @@
 (defmethod sql.tx/qualified-name-components :redshift [& args]
   (apply tx/single-db-qualified-name-components (unique-session-schema) args))
 
-;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
+;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statement to kill all
 ;; open connections to that DB, which doesn't work with Redshift
 (defmethod ddl/drop-db-ddl-statements :redshift
   [& args]
@@ -197,6 +208,13 @@
    {:write? true}
    (fn [conn]
      (delete-old-schemas! conn)
+     (create-session-schema! conn)))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
+   {:write? true}
+   (fn [conn]
+     (delete-old-schemas! conn)
      (create-session-schema! conn))))
 
 (defn- delete-session-schema!
@@ -213,6 +231,11 @@
    driver
    (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
    {:write? true}
+   delete-session-schema!)
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver @db-routing-connection-details)
+   {:write? true}
    delete-session-schema!))
 
 (def ^:dynamic *override-describe-database-to-filter-by-db-name?*
@@ -223,10 +246,10 @@
 
 (defonce ^:private ^{:arglists '([driver database])}
   original-describe-database
-  (get-method driver/describe-database :redshift))
+  (get-method driver/describe-database* :redshift))
 
 ;; For test databases, only sync the tables that are qualified by the db name
-(defmethod driver/describe-database :redshift
+(defmethod driver/describe-database* :redshift
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
     (let [r                (original-describe-database driver database)
@@ -278,11 +301,13 @@
          table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
      (sql-jdbc.execute/do-with-connection-with-options
       driver
-      (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
       {:write? false}
       (fn [^java.sql.Connection conn]
         (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
+                                     #_catalog        (if tx/*use-routing-details*
+                                                        (tx/db-test-env-var :redshift :db-routing)
+                                                        (tx/db-test-env-var :redshift :db))
                                      #_schema-pattern session-schema
                                      #_table-pattern  table-name
                                      #_types          (into-array String ["TABLE"]))]
@@ -324,3 +349,5 @@
                            (format "REVOKE ALL PRIVILEGES ON SCHEMA %s FROM %s;" schema role-name)
                            (format "DROP USER IF EXISTS %s" role-name)]]
           (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defmethod sql.tx/generated-column-sql :redshift [_ _] nil)

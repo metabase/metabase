@@ -7,8 +7,8 @@ import type { HTMLAttributes } from "react";
 import type { LinkProps } from "metabase/common/components/Link";
 import Link from "metabase/common/components/Link";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
+import { maybeColor } from "metabase/ui/utils/colors";
 
 interface RawMaybeLinkProps {
   to?: string;
@@ -29,7 +29,7 @@ export function RawMaybeLink({
 
 const hoverStyle = (props: RawMaybeLinkProps) => css`
   cursor: pointer;
-  ${props.activeColor ? `color: ${color(props.activeColor)};` : ""}
+  ${props.activeColor ? `color: ${maybeColor(props.activeColor)};` : ""}
 `;
 
 export const MaybeLink = styled(RawMaybeLink)`
@@ -38,7 +38,7 @@ export const MaybeLink = styled(RawMaybeLink)`
   font-size: 0.875em;
   font-weight: bold;
   ${(props) =>
-    props.inactiveColor ? `color: ${color(props.inactiveColor)};` : ""}
+    props.inactiveColor ? `color: ${maybeColor(props.inactiveColor)};` : ""}
   min-width: ${(props) => (props.isSingleLine ? 0 : "")};
 
   :hover {
@@ -51,6 +51,7 @@ export const BadgeIcon = styled(
   doNotForwardProps("hasMargin", "targetOffsetX"),
 )<{ hasMargin: boolean }>`
   margin-right: ${(props) => (props.hasMargin ? "5px" : 0)};
+  flex-shrink: 0;
 `;
 
 export const BadgeText = styled.span<{ isSingleLine: boolean }>`

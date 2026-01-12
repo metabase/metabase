@@ -15,11 +15,16 @@
 }
 
 .nameInput {
+  border-start-start-radius: var(--mantine-radius-md);
+  border-start-end-radius: var(--mantine-radius-md);
   border-end-start-radius: 0;
   border-end-end-radius: 0;
 }
 
 .descriptionInput {
+  line-height: var(--mantine-line-height-lg);
   border-start-start-radius: 0;
   border-start-end-radius: 0;
+  border-end-start-radius: var(--mantine-radius-md);
+  border-end-end-radius: var(--mantine-radius-md);
 }

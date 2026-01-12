@@ -1,13 +1,13 @@
 import { modelToUrl } from "./modelToUrl";
 
 describe("urls > modelToUrl", () => {
-  it("should return null for unknown model", () => {
+  it("should return 404 for unknown model", () => {
     expect(
       // @ts-expect-error - testing the error case
       modelToUrl({
         model: "pikachu",
       }),
-    ).toBeNull();
+    ).toContain("/404");
   });
 
   it("should return a question URL for a card", () => {
@@ -61,5 +61,38 @@ describe("urls > modelToUrl", () => {
         },
       }),
     ).toBe("/question#?db=22&table=33");
+  });
+
+  it("should return a document URL for a document", () => {
+    expect(
+      modelToUrl({
+        model: "document",
+        name: "My Cool Document",
+        id: 123,
+      }),
+    ).toBe("/document/123");
+  });
+
+  it("should return an action URL for an action", () => {
+    expect(
+      modelToUrl({
+        model: "action",
+        name: "My Cool Action",
+        id: 123,
+        model_id: 456,
+      }),
+    ).toBe("/model/456/detail/actions/123");
+  });
+
+  it("should return a segment URL for a segment", () => {
+    expect(
+      modelToUrl({
+        model: "segment",
+        name: "My Cool Segment",
+        id: 123,
+        database_id: 456,
+        table_id: 789,
+      }),
+    ).toBe("/question#?db=456&table=789&segment=123");
   });
 });

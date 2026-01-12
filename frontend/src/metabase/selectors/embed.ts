@@ -15,6 +15,10 @@ export const getEmbedOptions = (
   return state.embed.options;
 };
 
+/**
+ * TODO: Remove this selector and introduce a function in `frontend/src/metabase/embedding/config.ts` instead.
+ * Since we won't be getting any value from Redux anymore.
+ */
 export const getIsEmbedding = createSelector(
   [getIsEmbeddingIframe],
   (isEmbeddingIframe) => isEmbeddingIframe || isEmbeddingSdk(),

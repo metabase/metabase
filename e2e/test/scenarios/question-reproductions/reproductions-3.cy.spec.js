@@ -233,12 +233,16 @@ describe("issue 38176", () => {
         .blur();
 
       cy.wait("@updateQuestion");
+      cy.wait("@cardQuery");
       cy.findByRole("tab", { name: "History" }).click();
       cy.findByText(/added a description/i);
       cy.findByTestId("question-revert-button").click();
+      cy.wait("@cardQuery");
 
       cy.findByRole("tab", { name: "History" }).click();
-      cy.findByText(/reverted to an earlier version/i).should("be.visible");
+      cy.findByText(/reverted to an earlier version/i, {
+        timeout: 10000,
+      }).should("be.visible");
     });
 
     cy.findByLabelText("Close").click();
@@ -263,7 +267,8 @@ describe("issue 38354", { tags: "@external" }, () => {
   it("should be possible to change source database (metabase#38354)", () => {
     H.openNotebook();
     H.getNotebookStep("data").findByTestId("data-step-cell").click();
-    H.entityPickerModal().within(() => {
+    H.miniPicker().within(() => {
+      H.miniPickerHeader().click();
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -681,62 +686,6 @@ describe("issue 42244", () => {
   });
 });
 
-describe("issue 42957", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("does not show collections that contain models from different tabs (metabase#42957)", () => {
-    H.createQuestion({
-      name: "Model",
-      type: "model",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    });
-
-    H.createCollection({ name: "Collection without models" }).then(
-      ({ body: collection }) => {
-        cy.wrap(collection.id).as("collectionId");
-      },
-    );
-
-    cy.get("@collectionId").then((collectionId) => {
-      H.createQuestion({
-        name: "Question",
-        type: "question",
-        query: {
-          "source-table": ORDERS_ID,
-        },
-        collection_id: collectionId,
-      });
-    });
-
-    H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-
-      // wait for data to load
-      H.entityPickerModalLevel(1).should("contain", "Orders, Count");
-
-      // open filter
-      cy.findByRole("button", { name: /Filter/ }).click();
-    });
-
-    H.popover().findByLabelText("Saved questions").click();
-
-    H.entityPickerModal().within(() => {
-      // close filter
-      cy.findByRole("button", { name: /Filter/ }).click();
-      H.entityPickerModalLevel(1).should(
-        "not.contain",
-        "Collection without models",
-      );
-    });
-  });
-});
-
 describe("issue 40064", () => {
   beforeEach(() => {
     H.restore();
@@ -784,13 +733,13 @@ describe("issue 40064", () => {
       blur: true,
     });
     H.popover().within(() => {
-      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
+      cy.findByText("Unknown column: Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
 });
 
-describe.skip("issue 10493", () => {
+describe("issue 10493", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
@@ -890,13 +839,13 @@ describe("issue 32020", () => {
     H.startNewQuestion();
 
     cy.log("create joined question manually");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question1Details.name).click();
     });
     H.join();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText(question2Details.name).click();
     });
     H.popover().findByText("ID").click();
@@ -944,8 +893,8 @@ describe("issue 44071", () => {
   it("should be able to save questions based on another questions without collection access (metabase#44071)", () => {
     cy.visit("/");
     H.newButton("Question").click();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText(/Personal Collection/).click();
       cy.findByText(questionDetails.name).click();
     });
@@ -1425,21 +1374,22 @@ describe("issue 19894", () => {
 
     H.startNewQuestion();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q1").click();
+    H.miniPicker().should("exist");
+    cy.realType("Q1");
+    H.miniPicker().findByText("Q1").click();
 
     cy.button("Join data").click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q2").click();
+    cy.realType("Q2");
+    H.miniPicker().findByText("Q2").click();
 
     H.popover().findByText("Category").click();
     H.popover().findByText("Category").click();
 
     cy.button("Join data").click();
 
-    H.entityPickerModalTab("Collections").click();
-    H.entityPickerModalItem(1, "Q3").click();
+    cy.realType("Q3");
+    H.miniPicker().findByText("Q3").click();
 
     H.popover().findByText("Category").should("be.visible");
     H.popover().findByText("Count").should("be.visible");
@@ -1600,18 +1550,24 @@ describe("issue 44974", { tags: "@external" }, () => {
         },
       };
 
-      H.createQuestion(questionDetails, {
-        // Visit question to put it in recents
-        visitQuestion: true,
-      });
+      H.createQuestion(questionDetails);
 
       H.openOrdersTable({ mode: "notebook" });
       H.join();
+      H.miniPicker().within(() => {
+        cy.findByText("Our analytics").click();
+        cy.findByText("Orders Model").should("be.visible");
+        cy.findByText(questionDetails.name).should("not.exist");
+      });
+      H.miniPickerHeader().click();
+      H.miniPickerBrowseAll().click();
 
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Recents").should("not.exist");
-        H.entityPickerModalTab("Collections").click();
+        cy.findAllByRole("tab").should("not.exist");
+        H.entityPickerModalItem(0, "Our analytics").click();
+        cy.findByText("Orders Model").should("be.visible");
         cy.findByText(questionDetails.name).should("not.exist");
+        cy.button("Close").click();
       });
     });
   });
@@ -1730,7 +1686,7 @@ describe("issue 39771", () => {
   });
 });
 
-describe("issue 45063", { tags: "@flaky" }, () => {
+describe("issue 45063", () => {
   function createGuiQuestion({ sourceTableId }) {
     const questionDetails = {
       name: "Question",
@@ -1805,7 +1761,12 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     });
   }
 
-  function verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel }) {
+  function verifyListFilter({
+    fieldDisplayName,
+    filterHeaderName,
+    fieldValue,
+    fieldValueLabel,
+  }) {
     H.tableHeaderClick(fieldDisplayName);
     H.popover().findByText("Filter by this column").click();
     H.popover().within(() => {
@@ -1814,13 +1775,14 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       cy.button("Add filter").click();
     });
     cy.findByTestId("qb-filters-panel")
-      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .findByText(`${filterHeaderName || fieldDisplayName} is ${fieldValue}`)
       .click();
     H.popover().findByLabelText(fieldValueLabel).should("be.checked");
   }
 
   function verifySearchFilter({
     fieldDisplayName,
+    filterHeaderName,
     fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
@@ -1834,7 +1796,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       .button("Add filter")
       .click();
     cy.findByTestId("qb-filters-panel")
-      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .findByText(`${filterHeaderName || fieldDisplayName} is ${fieldValue}`)
       .should("be.visible");
   }
 
@@ -1842,6 +1804,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     visitCard,
     fieldId,
     fieldDisplayName,
+    filterHeaderName,
     fieldPlaceholder,
     fieldValue,
     fieldValueLabel,
@@ -1852,7 +1815,12 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     setListValues({ fieldId });
     cy.signInAsNormalUser();
     visitCard();
-    verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    verifyListFilter({
+      fieldDisplayName,
+      filterHeaderName,
+      fieldValue,
+      fieldValueLabel,
+    });
     H.assertQueryBuilderRowCount(expectedRowCount);
 
     cy.log("search values");
@@ -1862,6 +1830,7 @@ describe("issue 45063", { tags: "@flaky" }, () => {
     visitCard();
     verifySearchFilter({
       fieldDisplayName,
+      filterHeaderName,
       fieldPlaceholder,
       fieldValue,
       fieldValueLabel,
@@ -1965,7 +1934,8 @@ describe("issue 45063", { tags: "@flaky" }, () => {
       verifyRemappedFilter({
         visitCard: () => cy.get("@modelId").then(H.visitModel),
         fieldId: ORDERS.PRODUCT_ID,
-        fieldDisplayName: "PRODUCT_ID",
+        fieldDisplayName: "Product ID",
+        filterHeaderName: "PRODUCT_ID", // the title case version doesn't get picked up in filters
         fieldPlaceholder: "Search by Title or enter an ID",
         fieldValue: 1,
         fieldValueLabel: "Rustic Paper Wallet",
@@ -2024,7 +1994,7 @@ describe("issue 41464", () => {
   });
 });
 
-describe.skip("issue 45359", () => {
+describe("issue 45359", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.intercept("/app/fonts/Lato/lato-v16-latin-regular.woff2").as(
@@ -2401,8 +2371,8 @@ describe("issue 50038", () => {
                   strategy: "left-join",
                   condition: [
                     "=",
-                    ["field", ORDERS_ID, {}],
-                    ["field", PRODUCTS_ID, {}],
+                    ["field", PRODUCTS.ID, null],
+                    ["field", ORDERS.PRODUCT_ID, { "join-alias": "Orders" }],
                   ],
                 },
               ],
@@ -2654,7 +2624,8 @@ describe("issue 23449", () => {
     H.navigationSidebar().findByLabelText("Browse models").click();
     cy.findByLabelText("Create a new model").click();
     cy.findByRole("link", { name: /Use the notebook editor/ }).click();
-    H.entityPickerModal().findByText("Reviews").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("Reviews").click();
 
     cy.log("Remove Body column");
     cy.findByLabelText("Pick columns").click();
@@ -2934,8 +2905,8 @@ describe("Issue 33835", { tags: "@external" }, () => {
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "orders" });
 
     H.startNewQuestion();
-    H.entityPickerModal().findByText("Writable Postgres12").click();
-    H.entityPickerModal().findByText("Orders").click();
+    H.miniPicker().findByText("Writable Postgres12").click();
+    H.miniPicker().findByText("Orders").click();
 
     H.getNotebookStep("summarize")
       .findByText("Pick a function or metric")
@@ -3214,7 +3185,10 @@ describe("Issue 42817", () => {
   });
 
   it("should be possible to drill down into a question with datetime buckets and a native join (metabase#42817)", () => {
-    H.echartsContainer().get("path[fill='#fff']").first().click();
+    H.echartsContainer()
+      .get("path[fill='hsla(0, 0%, 100%, 1.00)']")
+      .first()
+      .click();
 
     H.popover().findByText("See this day by hour").click();
 

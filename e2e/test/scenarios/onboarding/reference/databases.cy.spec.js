@@ -1,4 +1,8 @@
 const { H } = cy;
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+
+const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > reference > databases", () => {
   beforeEach(() => {
@@ -69,19 +73,24 @@ describe("scenarios > reference > databases", () => {
       });
     });
 
-    it.skip("should sort data reference database list (metabase#15598)", () => {
-      cy.visit("/browse");
-      checkReferenceDatabasesOrder();
+    it(
+      "should sort data reference database list (metabase#15598)",
+      { tags: "@skip" },
+      () => {
+        cy.visit("/browse");
+        checkReferenceDatabasesOrder();
 
-      cy.visit("/reference/databases/");
-      checkReferenceDatabasesOrder();
-    });
+        cy.visit("/reference/databases/");
+        checkReferenceDatabasesOrder();
+      },
+    );
 
     it("should sort databases in new UI based question data selection popover", () => {
       H.startNewQuestion();
+      H.miniPickerBrowseAll().click();
       H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
-        cy.findByTestId("item-picker-level-0").within(() => {
+        H.entityPickerModalItem(0, "Databases").click();
+        cy.findByTestId("item-picker-level-1").within(() => {
           cy.get("[data-index='0']").should("contain.text", "a");
           cy.get("[data-index='1']").should("contain.text", "b");
           cy.get("[data-index='2']").should("contain.text", "c");
@@ -91,8 +100,58 @@ describe("scenarios > reference > databases", () => {
       });
     });
 
-    it.skip("should sort databases in new native question data selection popover", () => {
-      checkQuestionSourceDatabasesOrder("Native query");
+    it(
+      "should sort databases in new native question data selection popover",
+      { tags: "@skip" },
+      () => {
+        checkQuestionSourceDatabasesOrder("Native query");
+      },
+    );
+  });
+
+  describe("x-ray", () => {
+    beforeEach(() => {
+      cy.intercept("GET", "/api/automagic-dashboards/**").as(
+        "getXrayDashboard",
+      );
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should x-ray a table in a data reference page", () => {
+      cy.visit(`/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}`);
+      cy.findAllByRole("listitem")
+        .filter(":contains(X-ray this table)")
+        .click();
+      cy.wait("@getXrayDashboard");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "table",
+        triggered_from: "data_reference",
+      });
+    });
+
+    it("should x-ray a field in a data reference page", () => {
+      cy.visit(
+        `/reference/databases/${SAMPLE_DB_ID}/tables/${PEOPLE_ID}/fields/${PEOPLE.EMAIL}`,
+      );
+      cy.findAllByRole("listitem")
+        .filter(":contains(X-ray this field)")
+        .click();
+      cy.wait("@getXrayDashboard");
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "field",
+        triggered_from: "data_reference",
+      });
     });
   });
 });

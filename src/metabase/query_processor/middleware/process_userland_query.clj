@@ -5,15 +5,19 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
+  (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
+   [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? empty? get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -22,7 +26,8 @@
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
       (assoc :running_time (when start-time-ms
-                             (- (System/currentTimeMillis) start-time-ms)))
+                             ;; Consider having `:start_time_nanos` instead, to avoid the pitfalls of system clocks.
+                             (u/since-ms-wall-clock start-time-ms)))
       (dissoc :start_time_millis)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -115,7 +120,7 @@
        (vswap! row-count inc)
        (rf result row)))))
 
-(defn- query-execution-info
+(mu/defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id pulse-id]
@@ -124,7 +129,7 @@
     query-type                     :type
     parameters                     :parameters
     destination-database-id        :destination-database/id
-    :as                            query}]
+    :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
                      (-> original-query
@@ -162,8 +167,11 @@
 
   4. Submit a background job to analyze field usages"
   [qp :- ::qp.schema/qp]
-  (mu/fn [query :- ::qp.schema/query
+  (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
+    ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
+    ;; This has to live somewhere and while processing each query seems like a natural place.
+    (analytics/set! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))

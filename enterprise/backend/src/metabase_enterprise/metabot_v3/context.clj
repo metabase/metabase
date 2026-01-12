@@ -1,8 +1,14 @@
 (ns metabase-enterprise.metabot-v3.context
   (:require
    [clojure.java.io :as io]
+   [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase.activity-feed.core :as activity-feed]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -41,46 +47,144 @@
 (mr/def ::context
   [:map-of :keyword :any])
 
-(def ^:private max-database-tables
-  "If the number of tables in the database doesn't exceed this number, we send them all to the agent."
-  100)
+(mr/def ::capabilities
+  [:set :string])
+
+(defn backend-metabot-capabilities
+  "Set of backend capabilities available to the AI service. Those are determined by the endpoints available to
+  ai-service. When an endpoint would change in a non-backward compatible way, we should create a new version of this
+  capability."
+  []
+  ;; 20 ns per call, safe to keep unmemoized
+  (for [[[_method url _params] _spec] (-> (the-ns 'metabase-enterprise.metabot-v3.tools.api)
+                                          meta
+                                          :api/endpoints)]
+    (str "backend:/api/ee/metabot-tools" url)))
+
+(defn- query-for-sql-parsing
+  "Given an item in context, return the query if it is a native query or SQL transform that can have table usage parsed
+  from it, otherwise nil."
+  [item]
+  (when-let [query (case (:type item)
+                     "transform" (-> item :source :query)
+                     "adhoc" (-> item :query)
+                     (-> item :query))]
+    ;; Draft transforms might not have a database yet. Check this before attempting to normalize the query.
+    (when (:database query)
+      (when-let [normalized-query (lib-be/normalize-query query)]
+        (when (lib/native-only-query? normalized-query)
+          normalized-query)))))
 
 (defn- database-tables-for-context
-  "Get database tables formatted for metabot context, prioritizing tables used in the query (if provided), then filling up to the limit with most viewed tables."
-  ([database-id] (database-tables-for-context database-id nil))
-  ([database-id {:keys [all-tables-limit query] :or {all-tables-limit max-database-tables}}]
-   (when database-id
-     (try
-       (let [used-tables (if query
-                           (table-utils/used-tables query)
-                           [])
-             used-table-ids (set (map :id used-tables))]
-         (table-utils/database-tables database-id
-                                      {:all-tables-limit all-tables-limit
-                                       :priority-tables used-tables
-                                       :exclude-table-ids used-table-ids}))
-       (catch Exception e
-         (log/error e "Error getting database tables for context")
-         ;; If we can't get table info, just return empty - don't break the context
-         [])))))
+  "Get database tables formatted for metabot context. Only includes tables used in the query, formatted for API output.
+   Removes duplicate tables by id while preserving first occurrence order."
+  [{:keys [query]}]
+  (try
+    (if query
+      (let [used-tables (table-utils/used-tables query)
+            tables (table-utils/enhanced-database-tables (:database query)
+                                                         {:priority-tables used-tables
+                                                          :all-tables-limit (count used-tables)})]
+        (m/distinct-by :id tables))
+      [])
+    (catch Exception e
+      (log/error e "Error getting database tables for context")
+      [])))
+
+(defn- python-transform-db-and-table-ids
+  "Returns a map with :database-id and :table-ids, or nil if not a Python transform."
+  [item]
+  (when (and (= (:type item) "transform")
+             (= (get-in item [:source :type]) "python"))
+    (when-let [source-database (get-in item [:source :source-database])]
+      (when-let [source-tables (not-empty (get-in item [:source :source-tables]))]
+        {:database-id source-database
+         :table-ids (vals source-tables)}))))
+
+(defn- python-transform-tables-for-context
+  "Get tables for Python transform formatted for metabot context."
+  [{:keys [database-id table-ids]}]
+  (try
+    (when (and database-id (seq table-ids))
+      (when-let [tables (not-empty (table-utils/used-tables-from-ids database-id table-ids))]
+        (table-utils/enhanced-database-tables database-id
+                                              {:priority-tables tables
+                                               :all-tables-limit (count tables)})))
+    (catch Exception e
+      (log/error e "Error getting Python transform tables for context")
+      [])))
 
 (defn- enhance-context-with-schema
-  "Enhance context by adding table schema information for native queries"
+  "Enhance context by adding table schema information for native queries, SQL transforms, and Python transforms"
   [context]
   (if-let [user-viewing (get context :user_is_viewing)]
     (let [enhanced-viewing
           (mapv (fn [item]
-                  (if (and (#{:native "native"} (get-in item [:query :type]))
-                           (get-in item [:query :database]))
-                    (let [database-id (get-in item [:query :database])
-                          tables (database-tables-for-context database-id {:query (:query item)})]
-                      (if (seq tables)
-                        (assoc item :database_schema tables)
-                        item))
-                    item))
+                  (or
+                   ;; Handle native queries and SQL transforms
+                   (when-let [query (query-for-sql-parsing item)]
+                     (when-let [tables (seq (database-tables-for-context {:query query}))]
+                       (assoc item :used_tables tables)))
+
+                   ;; Handle Python transforms
+                   (when-let [db-and-table-ids (python-transform-db-and-table-ids item)]
+                     (when-let [tables (seq (python-transform-tables-for-context db-and-table-ids))]
+                       (assoc item :used_tables tables)))
+
+                   ;; Unknown item: return unchanged
+                   item))
                 user-viewing)]
       (assoc context :user_is_viewing enhanced-viewing))
     context))
+
+(defn- annotate-transform-source-types
+  "Annotate transforms in context with source types if not already present (e.g. for draft transforms not yet saved)"
+  [context]
+  (if-let [user-viewing (get context :user_is_viewing)]
+    (let [annotated-viewing
+          (mapv (fn [item]
+                  (try
+                    (if (and (= (:type item) "transform")
+                             (not (:source_type item)))
+                      (let [transform (transforms.util/normalize-transform item)]
+                        (assoc transform
+                               :source_type (transforms.util/transform-source-type (:source transform))))
+                      item)
+                    (catch Exception e
+                      (log/error e "Error annotating transform source type for metabot context")
+                      item)))
+                user-viewing)]
+      (assoc context :user_is_viewing annotated-viewing))
+    context))
+
+(defn- add-backend-capabilities
+  "Add backend capabilities to context, merging with any existing capabilities."
+  [context]
+  (update context :capabilities (fnil into #{}) (backend-metabot-capabilities)))
+
+(defn- add-recent-views
+  "Add user's recent views to the context since these have a higher likelihood of being relevant to a user's query.
+  Includes the 5 most recent items across cards, datasets, metrics, dashboards, and tables.
+  (Excludes collections and documents for now, which aren't searchable by Metabot.)"
+  [context]
+  (try
+    (let [recents (:recents (activity-feed/get-recents api/*current-user-id*
+                                                       [:views :selections]
+                                                       {:models [:card :dataset :metric :dashboard :table]}))
+          processed-recents (mapv (fn [item]
+                                    (let [item-type
+                                          (case (:model item)
+                                            :card "question"
+                                            :dataset "model"
+                                            (name (:model item)))]
+                                      (-> item
+                                          (select-keys [:id :name :description])
+                                          (assoc :type item-type))))
+                                  (take 5 recents))]
+      (assoc context :user_recently_viewed processed-recents))
+    (catch Exception e
+      (log/error e "Error adding recent views to metabot context")
+      context)))
 
 (defn- set-user-time
   [context {:keys [date-format] :or {date-format DateTimeFormatter/ISO_INSTANT}}]
@@ -98,4 +202,7 @@
     opts    :- [:maybe [:map-of :keyword :any]]]
    (-> context
        enhance-context-with-schema
+       annotate-transform-source-types
+       add-backend-capabilities
+       add-recent-views
        (set-user-time opts))))

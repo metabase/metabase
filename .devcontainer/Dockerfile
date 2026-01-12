@@ -4,7 +4,6 @@ FROM mcr.microsoft.com/vscode/devcontainers/java:21
 
 RUN ( curl -fsSL https://deb.nodesource.com/setup_22.x | bash ) \
   && export DEBIAN_FRONTEND=noninteractive \
-  && apt-key adv --refresh-keys --keyserver keyserver.ubuntu.com \
   && apt-get update && apt-get -y install --no-install-recommends nodejs yarn rlwrap fontconfig
 
 # install Clojure

@@ -8,8 +8,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
-;;; Schema for `info.context`; used for informational purposes to record how a query was executed.
 (mr/def ::context
+  "Schema for `info.context`; used for informational purposes to record how a query was executed."
   [:enum
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
    {:decode/normalize identity}
@@ -41,13 +41,13 @@
   #?(:clj bytes?
      :cljs :any))
 
-;;; Schema for query `:info` dictionary, which is used for informational purposes to record information about how a
-;;; query was executed in QueryExecution and other places. It is considered bad form for middleware to change its
-;;; behavior based on this information, don't do it!
-;;;
-;;; TODO - this schema is somewhat misleading because if you use a function
-;;; like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required
 (mr/def ::info
+  "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
+  was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
+  based on this information, don't do it!
+
+  TODO - this schema is somewhat misleading because if you use a function
+  like [[metabase.query-processor/userland-query]] some of these keys (e.g. `:context`) are in fact required"
   [:map
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
    {:decode/normalize identity}
@@ -59,8 +59,6 @@
    [:executed-by             {:optional true} [:maybe ::lib.schema.id/user]]
    [:action-id               {:optional true} [:maybe ::lib.schema.id/action]]
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
-   ;; NanoID for the card. Gets set on the client even for ad-hoc queries.
-   [:card-entity-id          {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
@@ -71,10 +69,16 @@
    ;;
    ;; TODO (Cam 6/13/25) -- weird to put this at the top-level of the query as opposed to in the stage to which this
    ;; applies... I guess it's mostly only used to in [[metabase.lib.metadata.result-metadata]] tho
-   [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/card.result-metadata.map]]]
+   [:metadata/model-metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
    ;; Pivot QP runs multiple queries, and in the dataset api, we need to have access to the original query
    ;; so that we can pass it to the pivot.qp for downloads on unsaved questions
    [:pivot/original-query    {:optional true} [:maybe [:map-of :any :any]]]
+   ;; this gets added by [[metabase.query-processor.pivot]] for pivot queries; it's merged in to other metadata
+   ;; by [[metabase.query-processor.middleware.results-metadata]] before recording it.
+   [:pivot/result-metadata   {:optional true} [:maybe [:multi
+                                                       {:dispatch keyword?}
+                                                       [true  [:= :none]]
+                                                       [false [:sequential ::lib.schema.metadata/column]]]]]
    ;; `:hash` gets added automatically for userland queries (see [[metabase.query-processor/userland-query]]), so
    ;; don't try passing these in yourself. In fact, I would like this a lot better if we could take these keys xout of
    ;; `:info` entirely and have the code that saves QueryExceutions figure out their values when it goes to save them

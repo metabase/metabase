@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import type { Location } from "history";
+import { Route } from "react-router";
 
 import {
   setupDatabasesEndpoints,
@@ -11,11 +12,11 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
-import { Route } from "metabase/hoc/Title";
 import type { ListTasksResponse } from "metabase-types/api";
 import { createMockTask } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
@@ -112,7 +113,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
@@ -125,8 +132,12 @@ describe("TasksApp", () => {
     expect(history?.getCurrentLocation().search).toEqual("");
 
     await userEvent.click(nextPage);
-
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(2);
+    });
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
@@ -142,7 +153,9 @@ describe("TasksApp", () => {
 
     await userEvent.click(previousPage);
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
@@ -167,7 +180,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
@@ -177,7 +196,9 @@ describe("TasksApp", () => {
     const taskPicker = screen.getByPlaceholderText("Filter by task");
 
     await userEvent.click(nextPage);
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
@@ -190,7 +211,9 @@ describe("TasksApp", () => {
     const taskPopover = screen.getByRole("listbox");
     await userEvent.click(within(taskPopover).getByText("task-b"));
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
@@ -212,7 +235,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
@@ -222,7 +251,9 @@ describe("TasksApp", () => {
     const taskStatusPicker = screen.getByPlaceholderText("Filter by status");
 
     await userEvent.click(nextPage);
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
@@ -235,7 +266,9 @@ describe("TasksApp", () => {
     const taskStatusPopover = screen.getByRole("listbox");
     await userEvent.click(within(taskStatusPopover).getByText("Success"));
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
@@ -257,7 +290,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
@@ -269,7 +308,9 @@ describe("TasksApp", () => {
     });
 
     await userEvent.click(nextPage);
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
     ]);
@@ -280,7 +321,9 @@ describe("TasksApp", () => {
 
     await userEvent.click(startedAtHeader);
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=50&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
@@ -296,7 +339,13 @@ describe("TasksApp", () => {
   it("should allow to filter tasks list", async () => {
     const { history } = setup();
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
@@ -320,7 +369,9 @@ describe("TasksApp", () => {
     await userEvent.click(within(taskPopover).getByText("task-b"));
 
     expect(taskPicker).toHaveValue("task-b");
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
@@ -344,7 +395,9 @@ describe("TasksApp", () => {
     await userEvent.click(within(taskStatusPopover).getByText("Success"));
 
     expect(taskStatusPicker).toHaveValue("Success");
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
@@ -362,7 +415,9 @@ describe("TasksApp", () => {
     await userEvent.click(clearTaskButton);
 
     expect(taskPicker).toHaveValue("");
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
@@ -378,7 +433,9 @@ describe("TasksApp", () => {
     await userEvent.click(clearTaskStatusButton);
 
     expect(taskStatusPicker).toHaveValue("");
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success&task=task-b",
@@ -396,7 +453,13 @@ describe("TasksApp", () => {
   it("should allow to sort tasks list", async () => {
     const { history } = setup();
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
     ]);
     await waitForLoaderToBeRemoved();
@@ -418,7 +481,9 @@ describe("TasksApp", () => {
     expect(
       within(startedAtHeader).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
     ]);
@@ -432,7 +497,9 @@ describe("TasksApp", () => {
     expect(
       within(endedAtHeader).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
@@ -449,7 +516,9 @@ describe("TasksApp", () => {
     expect(
       within(durationHeader).getByRole("img", { name: "chevronup icon" }),
     ).toBeInTheDocument();
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=asc",
       "http://localhost/api/task?limit=50&offset=0&sort_column=ended_at&sort_direction=asc",
@@ -471,7 +540,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&task=task-b",
     ]);
     await waitForLoaderToBeRemoved();
@@ -490,7 +565,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=started_at&sort_direction=desc&status=success",
     ]);
     await waitForLoaderToBeRemoved();
@@ -509,7 +590,13 @@ describe("TasksApp", () => {
       }),
     });
 
-    expect(fetchMock.calls("path:/api/task").map(([url]) => url)).toEqual([
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls("path:/api/task")).toHaveLength(1);
+    });
+
+    expect(
+      fetchMock.callHistory.calls("path:/api/task").map((call) => call.url),
+    ).toEqual([
       "http://localhost/api/task?limit=50&offset=0&sort_column=duration&sort_direction=asc",
     ]);
   });

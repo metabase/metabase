@@ -171,8 +171,6 @@ Because Metabase doesn't display locked parameters as filter widgets, you can us
 
 ## Customizing the appearance of a static embed
 
-![Look and feel: appearance settings on static embed](./images/04-preview.png)
-
 You can change the appearance of an embedded item by adding hash parameters (e.g., `#theme=night`) to the end of the URL in your iframe's `src` attribute.
 
 For example, the following embedding URL will display an embedded item in dark mode, without a border, and with its original title:
@@ -183,16 +181,16 @@ your_embedding_url#theme=night&bordered=false&titled=true
 
 You can preview appearance settings from your question or dashboard's embedded appearance settings.
 
-| Parameter name             | Possible values                                                                                                                                |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `background`               | `true` (default), `false`. Dashboards only.                                                                                                    |
-| `bordered`                 | `true` (default), `false`.                                                                                                                     |
-| `locale`\*                 | E.g., `ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                                 |
-| `titled`                   | `true` (default), `false`.                                                                                                                     |
+| Parameter name             | Possible values                                                                                                                                    |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `background`               | `true` (default), `false`. Dashboards only.                                                                                                        |
+| `bordered`                 | `true` (default), `false`.                                                                                                                         |
+| `locale`\*                 | E.g., `ko`. See [list of locales](../configuring-metabase/localization.md#supported-languages)                                                     |
+| `titled`                   | `true` (default), `false`.                                                                                                                         |
 | `theme`                    | `null` (default), `night`. `theme=transparent` should work, but is deprecated (see [Transparent backgrounds](#transparent-backgrounds-for-embeds)) |
-| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                         |
-| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                  |
-| `downloads`\*\*            | `true` (default), `false`, `results`, `pdf`                                                                                                    |
+| `refresh` (dashboard only) | integer (seconds, e.g., `refresh=60`).                                                                                                             |
+| `font`\*                   | [font name](../configuring-metabase/fonts.md)                                                                                                      |
+| `downloads`\*\*            | `true` (default), `false`, `results`, `pdf`                                                                                                        |
 
 \* Available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans
 
@@ -216,7 +214,7 @@ If you have multiple parameters, separate them with an ampersand (`&`):
 category=Gadget&state=Vermont#theme=night&locale=ko
 ```
 
-The `locale` param only changes the language for Metabase UI elements. The _content_'s language is defined by whomever created the item. So for example Metabase wouldn't translate the name of a question, but Metabase _would_ translate the UI text "Export to PDF".
+The `locale` parameter changes the language for Metabase UI elements, like the label of "Export to PDF" button. To change the _content_'s language in a static embed (like names of questions and dashboards), you'll need to [upload a translation dictionary](./translations.md).
 
 ## Transparent backgrounds for embeds
 

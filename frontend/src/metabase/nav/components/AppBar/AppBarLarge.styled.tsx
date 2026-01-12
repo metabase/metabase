@@ -17,24 +17,8 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   border-bottom: 1px solid
     ${(props) =>
       props.hasSidebarOpen ? "var(--mb-color-border)" : "transparent"};
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   transition: border-bottom-color 200ms ease;
-`;
-
-export const AppBarLeftContainer = styled.div`
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  min-width: 5rem;
-`;
-
-export const AppBarRightContainer = styled.div`
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 1rem;
-  max-width: 32.5rem;
-  justify-content: flex-end;
 `;
 
 interface AppBarInfoContainerProps {
@@ -48,8 +32,4 @@ export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
   visibility: ${(props) => (props.isVisible ? "visible" : "hidden")};
   transition: ${(props) =>
     props.isVisible ? `opacity 0.5s` : `opacity 0.5s, visibility 0s`};
-`;
-
-export const AppBarProfileLinkContainer = styled.div`
-  color: var(--mb-color-text-light);
 `;

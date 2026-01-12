@@ -1,15 +1,17 @@
+import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { useMemo } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import {
   type NumberFormatter,
   useNumberFormatter,
 } from "metabase/common/hooks/use-number-formatter";
+import { formatRowCount } from "metabase/common/utils/format-row-count";
+import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
-import Database from "metabase/entities/databases";
+import { Databases } from "metabase/entities/databases";
 import { connect } from "metabase/lib/redux";
 import { setLimit } from "metabase/query_builder/actions";
 import LimitPopover from "metabase/query_builder/components/LimitPopover";
@@ -18,7 +20,7 @@ import {
   getIsResultDirty,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Box } from "metabase/ui";
+import { Box, Popover, UnstyledButton } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -76,6 +78,7 @@ function QuestionRowCount({
   className,
   onChangeLimit,
 }: QuestionRowCountProps) {
+  const [opened, { close, toggle }] = useDisclosure(false);
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   const formatNumber = useNumberFormatter();
   const message = useMemo(() => {
@@ -99,31 +102,42 @@ function QuestionRowCount({
     return null;
   }
 
+  if (!canChangeLimit) {
+    return (
+      <RowCountLabel
+        className={className}
+        data-testid="question-row-count"
+        highlighted={limit != null}
+        disabled={!canChangeLimit}
+      >
+        {message}
+      </RowCountLabel>
+    );
+  }
+
   return (
-    <PopoverWithTrigger
-      triggerElement={
-        <RowCountLabel
-          className={className}
-          data-testid="question-row-count"
-          highlighted={limit != null}
-          disabled={!canChangeLimit}
-        >
-          {message}
-        </RowCountLabel>
-      }
-      id={POPOVER_ID}
-      aria-role="dialog"
-      disabled={!canChangeLimit}
-    >
-      {({ onClose }: { onClose: () => void }) => (
+    <Popover opened={opened} onClose={close} position="bottom-start">
+      <Popover.Target>
+        <UnstyledButton onClick={toggle} id={POPOVER_ID} aria-haspopup="dialog">
+          <RowCountLabel
+            className={className}
+            data-testid="question-row-count"
+            highlighted={limit != null}
+            disabled={false}
+          >
+            {message}
+          </RowCountLabel>
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown>
         <LimitPopover
           className={CS.p2}
           limit={limit}
           onChangeLimit={handleLimitChange}
-          onClose={onClose}
+          onClose={close}
         />
-      )}
-    </PopoverWithTrigger>
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
@@ -139,34 +153,24 @@ function RowCountLabel({
 }) {
   const label = t`Row count`;
   const { highlighted, ...propsForChild } = props;
-  return disabled ? (
+  return (
     <Box
       component="span"
-      className={cx(QuestionRowCountS.RowCountStaticLabel, className)}
-      {...propsForChild}
-      aria-label={label}
-    />
-  ) : (
-    <button
       className={cx(
-        QuestionRowCountS.RowCountButton,
+        disabled
+          ? QuestionRowCountS.RowCountStaticLabel
+          : QuestionRowCountS.RowCountButton,
         {
-          [QuestionRowCountS.isHighlighted]: highlighted,
+          [QuestionRowCountS.isHighlighted]: !disabled && highlighted,
         },
         className,
       )}
       {...propsForChild}
       aria-label={label}
-      aria-haspopup="dialog"
-      aria-controls={POPOVER_ID}
+      aria-controls={disabled ? undefined : POPOVER_ID}
     />
   );
 }
-
-const formatRowCount = (count: number, formatNumber: NumberFormatter) => {
-  const countString = formatNumber(count);
-  return ngettext(msgid`${countString} row`, `${countString} rows`, count);
-};
 
 function getLimitMessage(
   question: Question,
@@ -193,23 +197,13 @@ function getLimitMessage(
   return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
 }
 
-function getRowCountMessage(result: Dataset, formatNumber: NumberFormatter) {
-  if (result.data.rows_truncated > 0) {
-    return t`Showing first ${formatRowCount(result.row_count, formatNumber)}`;
-  }
-  if (result.row_count === HARD_ROW_LIMIT) {
-    return t`Showing first ${formatRowCount(HARD_ROW_LIMIT, formatNumber)} rows`;
-  }
-  return t`Showing ${formatRowCount(result.row_count, formatNumber)}`;
-}
-
 function getDatabaseId(_state: State, { question }: OwnProps & StateProps) {
   return question.databaseId();
 }
 
 const ConnectedQuestionRowCount = _.compose(
   connect(mapStateToProps, mapDispatchToProps),
-  Database.load({
+  Databases.load({
     id: getDatabaseId,
     loadingAndErrorWrapper: false,
   }),

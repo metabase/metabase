@@ -50,8 +50,9 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
-  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
+  "Entities in the order they should be serialized/deserialized in `load-from-h2`. This is done so we make sure that
+   we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
+   `Fields`."
   (concat
    [:model/Channel
     :model/ChannelTemplate
@@ -111,12 +112,24 @@
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
-    :model/NotificationCard]
+    :model/NotificationCard
+    ;; 57+
+    :model/Glossary
+    ;; 58+
+    :model/AuthIdentity
+    :model/Document
+    :model/DocumentBookmark
+    :model/Comment
+    :model/CommentReaction
+    ;; 59+
+    :model/Measure]
    (when config/ee-available?
-     [:model/GroupTableAccessPolicy
+     [:model/Sandbox
+      :model/Tenant
       :model/ConnectionImpersonation
       :model/Metabot
-      :model/MetabotEntity
+      :model/MetabotConversation
+      :model/MetabotMessage
       :model/MetabotPrompt])))
 
 (defn- objects->colums+values
@@ -349,6 +362,7 @@
     :model/HTTPAction
     :model/FieldUserSettings
     :model/QueryAction
+    :model/MetabotConversation
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name
@@ -360,7 +374,7 @@
   (str (name (t2/table-name model)) "_id_seq"))
 
 ;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
-(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+(defmethod postgres-id-sequence-name :model/Sandbox
   [_model]
   "group_table_access_policy_id_seq")
 

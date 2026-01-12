@@ -1,15 +1,20 @@
 import EventEmitter from "events";
 import querystring from "querystring";
 
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { isWithinIframe } from "metabase/lib/dom";
+import { IFRAMED_IN_SELF } from "metabase/lib/iframe";
 import { delay } from "metabase/lib/promise";
+import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
 // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
+// eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+const METABASE_VERSION_HEADER = "X-Metabase-Version";
 
 let ANTI_CSRF_TOKEN = null;
 
@@ -33,11 +38,10 @@ export class Api extends EventEmitter {
   basename = "";
   apiKey = "";
   sessionToken;
-
-  onBeforeRequest;
+  onResponseError;
 
   /**
-   * @type {string|{name: string, version: string}}
+   * @type {string|{name: string, version: string | null}}
    */
   requestClient;
 
@@ -67,11 +71,18 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Session"] = self.sessionToken;
     }
 
-    if (isWithinIframe()) {
+    if (isWithinIframe() && !self.requestClient) {
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
       headers["X-Metabase-Embedded"] = "true";
-      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-      headers["X-Metabase-Client"] = "embedding-iframe";
+      /**
+       * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
+       * This header is only used for analytics and for checking if we want to disable some features in the
+       * embedding iframe (only for Documents at the time of this comment)
+       */
+      if (!IFRAMED_IN_SELF) {
+        // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+        headers["X-Metabase-Client"] = "embedding-iframe";
+      }
     }
 
     if (self.requestClient) {
@@ -79,7 +90,8 @@ export class Api extends EventEmitter {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient.name;
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-        headers["X-Metabase-Client-Version"] = self.requestClient.version;
+        headers["X-Metabase-Client-Version"] =
+          self.requestClient.version ?? "unknown";
       } else {
         // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
         headers["X-Metabase-Client"] = self.requestClient;
@@ -101,7 +113,7 @@ export class Api extends EventEmitter {
     return headers;
   }
 
-  _makeMethod(method, creatorOptions = {}) {
+  _makeMethod(methodTemplate, creatorOptions = {}) {
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -114,12 +126,12 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
-        if (this.onBeforeRequest) {
-          await this.onBeforeRequest();
-        }
-
-        const options = { ...defaultOptions, ...invocationOptions };
-        let url = urlTemplate;
+        let { url, method, options } =
+          await this.apiRequestManipulationMiddleware({
+            url: urlTemplate,
+            method: methodTemplate,
+            options: { ...defaultOptions, ...invocationOptions },
+          });
         // this will transform arrays to objects with numeric keys
         // we shouldn't be using top level-arrays in the API
         const data = { ...rawData };
@@ -240,6 +252,10 @@ export class Api extends EventEmitter {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           // getResponseHeader() is case-insensitive
           const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
+          const metabaseVersion = xhr.getResponseHeader(
+            METABASE_VERSION_HEADER,
+          );
+
           if (antiCsrfToken) {
             ANTI_CSRF_TOKEN = antiCsrfToken;
           }
@@ -254,12 +270,17 @@ export class Api extends EventEmitter {
           if (status === 202 && body && body._status > 0) {
             status = body._status;
           }
+
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse({ body, data });
             }
             resolve(body);
           } else {
+            if (this.onResponseError) {
+              this.onResponseError({ body, status, metabaseVersion });
+            }
+
             reject({
               status: status,
               data: body,
@@ -318,6 +339,8 @@ export class Api extends EventEmitter {
           }
 
           const token = response.headers.get(ANTI_CSRF_HEADER);
+          const metabaseVersion = response.headers.get(METABASE_VERSION_HEADER);
+
           if (token) {
             ANTI_CSRF_TOKEN = token;
           }
@@ -336,6 +359,10 @@ export class Api extends EventEmitter {
             }
             return body;
           } else {
+            if (this.onResponseError) {
+              this.onResponseError({ body, status, metabaseVersion });
+            }
+
             throw { status: status, data: body };
           }
         });
@@ -347,6 +374,68 @@ export class Api extends EventEmitter {
           throw error;
         }
       });
+  }
+
+  /**
+   * @param data {import('metabase/plugins').OnBeforeRequestHandlerData}
+   * @return data {Promise<import('metabase/plugins').OnBeforeRequestHandlerData>}
+   */
+  async apiRequestManipulationMiddleware(data) {
+    let { method, url, options } = data;
+
+    /**
+     * Handlers order is important.
+     * Handlers are executed in order and each handler uses the data returned by a previous handler.
+     * @type {import('metabase/plugins').OnBeforeRequestHandler[]}
+     */
+    const handlers = [];
+
+    if (isEmbeddingSdk()) {
+      handlers.push(
+        ...[
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .getOrRefreshSessionHandler,
+          PLUGIN_EMBEDDING_SDK.onBeforeRequestHandlers
+            .overrideRequestsForGuestEmbeds,
+        ],
+      );
+    } else {
+      handlers.push(
+        ...[
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForPublicEmbeds,
+          PLUGIN_API.onBeforeRequestHandlers.overrideRequestsForStaticEmbeds,
+        ],
+      );
+    }
+
+    if (handlers.length) {
+      for (const handler of handlers) {
+        const onBeforeRequestHandlerResult = await handler({
+          method,
+          url,
+          options,
+        });
+
+        if (onBeforeRequestHandlerResult) {
+          if (onBeforeRequestHandlerResult.method) {
+            method = onBeforeRequestHandlerResult.method;
+          }
+
+          if (onBeforeRequestHandlerResult.url) {
+            url = onBeforeRequestHandlerResult.url;
+          }
+
+          if (onBeforeRequestHandlerResult.options) {
+            options = {
+              ...options,
+              ...onBeforeRequestHandlerResult.options,
+            };
+          }
+        }
+      }
+    }
+
+    return { method, url, options };
   }
 }
 

@@ -100,10 +100,11 @@
   [details]
   (if (use-ssh-tunnel? details)
     (let [[_ proto host]                           (re-find #"(.*://)?(.*)" (:host details))
-          [session ^PortForwardingTracker tracker] (start-ssh-tunnel! (assoc details :host host))
+          orig-port                                (let [p (:port details)]
+                                                     (if (string? p) (Integer/parseInt p) p))
+          [session ^PortForwardingTracker tracker] (start-ssh-tunnel! (assoc details :host host :port orig-port))
           tunnel-entrance-port                     (.. tracker getBoundAddress getPort)
           tunnel-entrance-host                     (.. tracker getBoundAddress getHostName)
-          orig-port                                (:port details)
           details-with-tunnel                      (assoc details
                                                           :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
                                                           :host (str proto "localhost") ;; SSH tunnel will always be through localhost

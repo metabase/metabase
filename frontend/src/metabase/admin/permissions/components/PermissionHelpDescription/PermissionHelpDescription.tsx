@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
-import { t } from "ttag";
 
-import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
-import ExternalLink from "metabase/common/components/ExternalLink";
-import { useSelector } from "metabase/lib/redux";
-import { getUpgradeUrl } from "metabase/selectors/settings";
+import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, Text, Title } from "metabase/ui";
 
@@ -14,8 +10,7 @@ interface PermissionHelpDescriptionProps {
   name: ReactNode;
   description?: ReactNode;
   icon: IconName;
-  iconColor: string;
-  hasUpgradeNotice?: boolean;
+  iconColor: ColorName;
 }
 
 export const PermissionHelpDescription = ({
@@ -23,12 +18,7 @@ export const PermissionHelpDescription = ({
   description,
   icon,
   iconColor,
-  hasUpgradeNotice,
 }: PermissionHelpDescriptionProps) => {
-  const upgradeUrl = useSelector((state) =>
-    getUpgradeUrl(state, { utm_content: "admin_permissions" }),
-  );
-
   return (
     <div>
       <Flex align="center" mb={4}>
@@ -45,15 +35,6 @@ export const PermissionHelpDescription = ({
         ) : (
           description
         ))}
-
-      {hasUpgradeNotice ? (
-        <>
-          <Text mt="1rem">{getLimitedPermissionAvailabilityMessage()}</Text>{" "}
-          <Text fw="bold">
-            <ExternalLink href={upgradeUrl}>{t`Upgrade to Pro`}</ExternalLink>
-          </Text>
-        </>
-      ) : null}
     </div>
   );
 };

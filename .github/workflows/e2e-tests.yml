@@ -22,72 +22,6 @@ jobs:
       chunks: 50
       specs: ${{ inputs.specs }}
 
-  # if this is a test on a release branch, we need to check the build requirements
-  get-build-requirements:
-    if: |
-      !cancelled() &&
-      contains(github.ref, 'release-x')
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
-      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: release
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
-      - name: Get build dependencies
-        uses: actions/github-script@v7
-        id: dependencies
-        with:
-          script: | # js
-            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
-
-            const version = getVersionFromReleaseBranch('${{ github.ref }}');
-            const requirements = getBuildRequirements(version);
-
-            return {
-              java_version: requirements.java,
-              node_version: requirements.node,
-            };
-
-  build:
-    needs: [get-build-requirements]
-    if: ${{ !cancelled() && !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-    strategy:
-      matrix:
-        edition: [oss, ee]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-      # make sure that builds on release branches get licenses, because we use them for releases
-      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-        with:
-          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: uberjar
-          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
-
-      - name: Build uberjar with ./bin/build.sh
-        timeout-minutes: 10
-        run: ./bin/build.sh
-        shell: bash
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-        with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
-
   reset-e2e-test-comment:
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
@@ -124,9 +58,8 @@ jobs:
     uses: ./.github/workflows/e2e-test.yml
     needs:
       - e2e-matrix-builder
-      - build
     if: |
-      !cancelled() && needs.build.result == 'success'
+      !cancelled() && !inputs.skip
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.e2e-matrix-builder.outputs.matrix) }}
@@ -140,32 +73,77 @@ jobs:
       tags: ${{ matrix.tags }}
       runner: ${{ matrix.runner }}
 
-  # run this separately to make it non-blocking
-  flaky-e2e-tests:
-    name: Flaky e2e Tests
-    uses: ./.github/workflows/e2e-test.yml
-    needs:
-      - build
-      - e2e-matrix-builder
-    # skip flaky test run if only e2e specs changed as an optimization
-    if: |
-      !cancelled() && needs.build.result == 'success' && needs.e2e-matrix-builder.outputs.isDefaultSpecPattern == 'true'
-    secrets: inherit
-    with:
-      name: Flaky
-      tags: "@flaky"
+  collect-timings:
+    name: Collect E2E Timings
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: e2e-tests
+    if: always() && !cancelled() && github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github
+            e2e/support
+          sparse-checkout-cone-mode: false
+
+      - name: Download all timing artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: timing-data-*
+          path: timing-files
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Merge split timings
+        id: merge
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const globber = await glob.create('timing-files/*/chunkTimings.json');
+            const chunkFiles = await globber.glob();
+
+            const specs = new Map();
+            chunkFiles.forEach(file => {
+              const { durations = [] } = JSON.parse(fs.readFileSync(file, 'utf8'));
+              durations.forEach(({ spec, duration }) => specs.set(spec, duration));
+            });
+
+            if (specs.size === 0) {
+              throw new Error('No timing data found - no specs had timing changes');
+            }
+
+            const outputPath = 'e2e/support/runTimings.json';
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            const runTimings = {
+              durations: [...specs].map(([spec, duration]) => ({ spec, duration }))
+            };
+
+            fs.writeFileSync(outputPath, JSON.stringify(runTimings, null, 2));
+            console.log(`Merged timing data for ${specs.size} specs`);
+
+      - name: Upload merged timing files
+        if: steps.merge.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: merged-e2e-timings
+          path: e2e/support/runTimings.json
+          retention-days: 7
 
   e2e-tests-result:
     needs:
       - e2e-tests
-      - flaky-e2e-tests
     runs-on: ubuntu-latest
     timeout-minutes: 5
     name: e2e-tests-result
     if: always() && !cancelled()
     env:
       E2E_TESTS_RESULT: ${{ needs.e2e-tests.result }}
-      FLAKY_E2E_TESTS_RESULT: ${{ needs.flaky-e2e-tests.result }}
     steps:
       - name: Stub
         if: ${{ needs.e2e-tests.result == 'skipped' }}
@@ -175,17 +153,8 @@ jobs:
         if: ${{ needs.e2e-tests.result != 'skipped' }}
         run: | # sh
           echo "E2E Tests: ${{ needs.e2e-tests.result }}"
-          echo "Flaky E2E Tests: ${{ needs.flaky-e2e-tests.result }}"
 
           if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
             echo "E2E Tests failed"
             exit 1
           fi
-
-  pr-env:
-    needs: [build]
-    if: |
-      !cancelled() &&
-      contains(github.event.pull_request.labels.*.name, 'PR-Env')
-    uses: ./.github/workflows/pr-env.yml
-    secrets: inherit

@@ -56,4 +56,5 @@
 (defmethod advanced-config.file.i/initialize-section! :users
   [_section-name users]
   (doseq [user users]
-    (init-from-config-file! user)))
+    ;; we're lower-casing emails in :model/User, so we should do the same here
+    (init-from-config-file! (update user :email u/lower-case-en))))

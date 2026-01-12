@@ -26,6 +26,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.custom-migrations.metrics-v2 :as metrics-v2]
    [metabase.app-db.custom-migrations.pulse-to-notification :as pulse-to-notification]
+   [metabase.app-db.custom-migrations.reserve-at-symbol-user-attributes :as reserve-at-symbol-user-attributes]
    [metabase.app-db.custom-migrations.util :as custom-migrations.util]
    [metabase.config.core :as config]
    [metabase.task.bootstrap]
@@ -1758,3 +1759,67 @@
 ;; [[metabase.notification.task.send/init-send-notification-triggers!]]
 (define-migration MigrateAlertToNotification
   (pulse-to-notification/migrate-alerts!))
+
+(define-reversible-migration MigrateClickHouseDetailsToMultiDB
+  (let [update-one! (fn [{:keys [id details]}]
+                      (let [decrypted-details (encrypted-json-out details)
+                            scan-all-databases? (boolean (:scan-all-databases decrypted-details))
+                            db-filters-type (if scan-all-databases? "all" "inclusion")
+                            dbname (:dbname decrypted-details)
+                            db-filters-patterns (if (and (string? dbname) (seq dbname))
+                                                  (str/join ", " (str/split (str/trim dbname) #" +"))
+                                                  "default")
+                            new-details (merge decrypted-details
+                                               {:enable-multiple-db true}
+                                               {:db-filters-type db-filters-type}
+                                               (when-not scan-all-databases?
+                                                 {:db-filters-patterns db-filters-patterns}))
+                            encrypted-details (encrypted-json-in new-details)]
+                        (t2/query {:update :metabase_database
+                                   :set    {:details encrypted-details}
+                                   :where  [:= :id id]})))]
+    (run! update-one! (t2/reducible-query {:select [:id :details]
+                                           :from   [:metabase_database]
+                                           :where  [:= :engine "clickhouse"]})))
+  (let [rollback-one! (fn [{:keys [id details]}]
+                        (let [decrypted-details (encrypted-json-out details)
+                              new-details (dissoc decrypted-details
+                                                  :enable-multiple-db
+                                                  :db-filters-type
+                                                  :db-filters-patterns)
+                              encrypted-details (encrypted-json-in new-details)]
+                          (t2/query {:update :metabase_database
+                                     :set    {:details encrypted-details}
+                                     :where  [:= :id id]})))]
+    (run! rollback-one! (t2/reducible-query {:select [:id :details]
+                                             :from   [:metabase_database]
+                                             :where  [:= :engine "clickhouse"]}))))
+
+;; This migration is purely to avoid breaking stats/dev instances that have existing transforms without a `type` field.
+;; This was commented out before the 57 release since this was a migration purely to avoid any breakages internally.
+(define-migration BackfillTransformSourceType
+  ;; Copied logic from metabase-enterprise.transforms.models.transform, aside from query normalization
+  #_(let [parse-transform-source (fn [source-json]
+                                   (-> source-json
+                                       (json-out true)
+                                       (m/update-existing :type keyword)))
+          ;; Copied from metabase.lib.schema/native-only-query?
+          native-only-query?     (fn [query]
+                                   (and (map? query)
+                                        (= (count (:stages query)) 1)
+                                        (= (get-in query [:stages 0 :lib/type]) "mbql.stage/native")))
+          transforms             (t2/query {:select [:id :source]
+                                            :from   [:transform]})]
+      (doseq [{:keys [id source]} transforms]
+        (let [parsed-source  (parse-transform-source source)
+              source-type    (:type parsed-source)
+              query          (:query parsed-source)
+              transform-type (case source-type
+                               :python "python"
+                               :query  (if (native-only-query? query) "native" "mbql")
+                               (throw (ex-info (str "Unable to categorize transform with unknown source type: " source-type)
+                                               {:transform-id id :source-type source-type})))]
+          (t2/update! :transform id {:source_type transform-type})))))
+
+(define-migration MoveExistingAtSymbolUserAttributes
+  (reserve-at-symbol-user-attributes/migrate!))

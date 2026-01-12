@@ -2,13 +2,13 @@ import { c, t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { useStoreUrl } from "metabase/common/hooks";
 import {
   Form,
   FormErrorMessage,
   FormProvider,
   FormTextInput,
 } from "metabase/forms";
-import { getStoreUrl } from "metabase/selectors/settings";
 import {
   Box,
   Button,
@@ -36,9 +36,10 @@ export const LicenseTokenForm = ({
   onSkip,
   initialValue = "",
 }: LicenseTokenFormProps) => {
+  const storeUrl = useStoreUrl("checkout");
   const storeLink = (
     <ExternalLink
-      href={getStoreUrl("checkout")}
+      href={storeUrl}
       key="store-link"
     >{t`Try Metabase for free`}</ExternalLink>
   );
@@ -70,7 +71,7 @@ export const LicenseTokenForm = ({
                       <UnstyledButton
                         component={Icon}
                         size="1rem"
-                        name="info_filled"
+                        name="info"
                         aria-label={t`Token details information`}
                         c="brand"
                       />
@@ -87,7 +88,7 @@ export const LicenseTokenForm = ({
                   </HoverCard>
                 </Box>
               }
-              rightSectionWidth="1rem"
+              rightSectionWidth="2rem"
             />
             <FormErrorMessage />
           </Box>
@@ -107,7 +108,7 @@ export const LicenseTokenForm = ({
               px={0}
               fw="normal"
             >{t`I'll activate later`}</Button>
-            <Text c="text-light" size="sm">
+            <Text c="text-tertiary" size="sm">
               {t`You won't have access to paid features until you activate.`}
             </Text>
           </Box>

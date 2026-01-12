@@ -5,8 +5,6 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embed.settings]
-   [metabase.premium-features.token-check :as token-check]
-   [metabase.premium-features.token-check-test :as token-check-test]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -22,15 +20,10 @@
             (is (not (embed.settings/show-static-embed-terms)))))
         (when config/ee-available?
           (testing "should return false when an EE user has a valid token"
-            (with-redefs [token-check/fetch-token-status (fn [_x]
-                                                           {:valid    true
-                                                            :status   "fake"
-                                                            :features ["test" "fixture"]
-                                                            :trial    false})]
-              (mt/with-temporary-setting-values [premium-embedding-token (token-check-test/random-token)]
-                (is (not (embed.settings/show-static-embed-terms)))
-                (embed.settings/show-static-embed-terms! false)
-                (is (not (embed.settings/show-static-embed-terms))))))
+            (mt/with-random-premium-token! [_token]
+              (is (not (embed.settings/show-static-embed-terms)))
+              (embed.settings/show-static-embed-terms! false)
+              (is (not (embed.settings/show-static-embed-terms)))))
           (testing "when an EE user doesn't have a valid token"
             (mt/with-temporary-setting-values [premium-embedding-token nil show-static-embed-terms nil]
               (testing "should return true when the user has not accepted licensing terms"
@@ -74,12 +67,12 @@
     (mt/with-temporary-setting-values [enable-embedding-sdk true]
       (let [origin-value "localhost:*"]
         (embed.settings/embedding-app-origins-sdk! origin-value)
-        (testing "All localhosty origins should be ignored, so the result should be \"localhost:*\""
+        (testing "All localhosty origins should be ignored, so the result should be empty"
           (embed.settings/embedding-app-origins-sdk! (str origin-value " localhost:8080"))
-          (is (= "localhost:*" (embed.settings/embedding-app-origins-sdk))))
+          (is (= "" (embed.settings/embedding-app-origins-sdk))))
         (testing "Normal ips are added to the list"
           (embed.settings/embedding-app-origins-sdk! (str origin-value " " other-ip))
-          (is (= (str "localhost:* " other-ip) (embed.settings/embedding-app-origins-sdk))))))))
+          (is (= other-ip (embed.settings/embedding-app-origins-sdk))))))))
 
 (deftest enable-embedding-SDK-false-returns-nothing
   (mt/with-premium-features #{:embedding :embedding-sdk}
@@ -160,7 +153,7 @@
       :else (throw (ex-info "Invalid expected-behavior in test-enabled-sync." {:expected-behavior expected-behavior})))))
 
 (deftest sync-enabled-test
-  (mt/with-premium-features #{:embedding :embedding-sdk}
+  (mt/with-premium-features #{:embedding :embedding-sdk :embedding-simple}
     ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't test syncing for them.
     (test-enabled-sync! {} :no-op)
     (test-enabled-sync! {:mb-enable-embedding-static true} :no-op)
@@ -185,13 +178,13 @@
         (= expected-behavior :no-op)
         (do (is (= (:embedding-app-origins-interactive unsyncd-setting)
                    (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:embedding-app-origins-sdk unsyncd-setting))
+            (is (= (:embedding-app-origins-sdk unsyncd-setting)
                    (embed.settings/embedding-app-origins-sdk))))
 
         (= expected-behavior :sets-both)
         (do (is (= (:mb-embedding-app-origin env)
                    (embed.settings/embedding-app-origins-interactive)))
-            (is (= (#'embed.settings/add-localhost (:mb-embedding-app-origin env))
+            (is (= (:mb-embedding-app-origin env)
                    (embed.settings/embedding-app-origins-sdk))))
 
         :else (throw (ex-info "Invalid expected-behavior in test-origin-sync." {:expected-behavior expected-behavior}))))))
@@ -199,11 +192,12 @@
 (deftest sync-origins-test
   ;; n.b. illegal combinations will be disallowed by [[embed.settings/check-and-sync-settings-on-startup!]], so we don't
   ;; test syncing for them.
-  (mt/with-premium-features #{:embedding :embedding-sdk}
+  (mt/with-premium-features #{:embedding :embedding-sdk :embedding-simple}
     (mt/with-temporary-setting-values [enable-embedding true
                                        enable-embedding-sdk true
                                        enable-embedding-interactive true
                                        enable-embedding-static true
+                                       enable-embedding-simple true
                                        embedding-app-origin nil
                                        embedding-app-origins-interactive nil
                                        embedding-app-origins-sdk nil]
@@ -216,3 +210,63 @@
       (test-origin-sync! {:mb-embedding-app-origins-interactive nil} :no-op)
 
       (test-origin-sync! {:mb-embedding-app-origin other-ip} :sets-both))))
+
+(deftest disable-cors-on-localhost-validation-test
+  (testing "Should reject localhost origins when disable-cors-on-localhost is enabled"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         disable-cors-on-localhost true
+                                         embedding-app-origins-sdk ""]
+        (testing "localhost:* should be rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+               (embed.settings/embedding-app-origins-sdk! "localhost:*"))))
+        (testing "localhost:3000 should be rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+               (embed.settings/embedding-app-origins-sdk! "localhost:3000"))))
+        (testing "localhost mixed with other origins should be rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+               (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")))))))
+
+  (testing "Should allow localhost origins when disable-cors-on-localhost is disabled"
+    (mt/with-premium-features #{:embedding-sdk}
+      (mt/with-temporary-setting-values [enable-embedding-sdk true
+                                         disable-cors-on-localhost false
+                                         embedding-app-origins-sdk ""]
+        (testing "localhost origins should be allowed"
+          (embed.settings/embedding-app-origins-sdk! "localhost:*")
+          (is (= "" (embed.settings/embedding-app-origins-sdk)))
+          (embed.settings/embedding-app-origins-sdk! "localhost:3000")
+          (is (= "" (embed.settings/embedding-app-origins-sdk))))
+        (testing "localhost mixed with other origins should work"
+          (embed.settings/embedding-app-origins-sdk! "https://example.com localhost:3000")
+          (is (= "https://example.com" (embed.settings/embedding-app-origins-sdk))))))))
+
+(deftest toggle-full-app-embedding-test
+  (mt/discard-setting-changes [embedding-app-origins-interactive]
+    (testing "can't change embedding-app-origins-interactive if :embedding feature is not available"
+      (mt/with-premium-features #{}
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting embedding-app-origins-interactive is not enabled because feature :embedding is not available"
+             (embed.settings/embedding-app-origins-interactive! "https://metabase.com")))
+        (testing "even if env is set, return the default value"
+          (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "https://metabase.com"]
+            (is (nil? (embed.settings/embedding-app-origins-interactive)))))))))
+
+(deftest toggle-full-app-embedding-test-2
+  (mt/discard-setting-changes [embedding-app-origins-interactive]
+    (testing "can change embedding-app-origins-interactive if :embedding is enabled"
+      (mt/with-premium-features #{:embedding}
+        (embed.settings/embedding-app-origins-interactive! "https://metabase.com")
+        (is (= "https://metabase.com"
+               (embed.settings/embedding-app-origins-interactive)))
+        (testing "it works with env too"
+          (mt/with-temp-env-var-value! [mb-embedding-app-origins-interactive "ssh://metabase.com"]
+            (is (= "ssh://metabase.com"
+                   (embed.settings/embedding-app-origins-interactive)))))))))

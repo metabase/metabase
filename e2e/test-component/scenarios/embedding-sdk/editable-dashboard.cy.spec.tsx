@@ -1,6 +1,7 @@
 const { H } = cy;
 import { EditableDashboard } from "@metabase/embedding-sdk-react";
 
+import { WEBMAIL_CONFIG } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_BY_YEAR_QUESTION_ID,
@@ -21,6 +22,8 @@ import {
   createMockHeadingDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+
+const { WEB_PORT } = WEBMAIL_CONFIG;
 
 const categoryParameter = createMockParameter({
   id: "1b9cd9f1",
@@ -46,12 +49,14 @@ const countParameter = createMockParameter({
   sectionId: "number",
 });
 
+const DASHBOARD_NAME = "Embedding SDK Test Dashboard";
+
 describe("scenarios > embedding-sdk > editable-dashboard", () => {
   beforeEach(() => {
     signInAsAdminAndEnableEmbeddingSdk();
 
     H.createDashboard({
-      name: "Embedding SDK Test Dashboard",
+      name: DASHBOARD_NAME,
       parameters: [categoryParameter, textParameter, countParameter],
     }).then(({ body: dashboard }) => {
       cy.wrap(dashboard.id).as("dashboardId");
@@ -256,12 +261,15 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           .then(() => {
             resolveCardEndpoint();
           });
-        cy.findByText("New question").should("be.visible");
+
+        cy.findByTestId("interactive-question-result-toolbar").should(
+          "be.visible",
+        );
       });
     });
   });
 
-  it("should not show New Question button in sidebar (metabase#53896)", () => {
+  it("should show New Question button in sidebar (metabase#59246)", () => {
     cy.get("@dashboardId").then((dashboardId) => {
       mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
     });
@@ -269,8 +277,220 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
     getSdkRoot().within(() => {
       cy.findByText("Add a chart").should("be.visible").click();
 
-      cy.findByText("New Question").should("not.exist");
+      cy.findByText("New Question").should("be.visible");
       cy.findByText("New SQL query").should("not.exist");
+    });
+  });
+
+  describe("create new question from dashboards", () => {
+    const testCases = [
+      { name: "numeric id", alias: "@dashboardId" },
+      { name: "entity id", alias: "@dashboardEntityId" },
+    ];
+
+    testCases.forEach((testCase) => {
+      it(`should allow creating a new question from the dashboard with ${testCase.name}`, () => {
+        cy.get(testCase.alias).then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+        });
+
+        getSdkRoot().within(() => {
+          cy.button("Edit dashboard").should("be.visible").click();
+          cy.button("Add questions").should("be.visible").click();
+          cy.button("New Question").should("be.visible").click();
+
+          cy.log("building the query");
+          H.popover().findByRole("link", { name: "Orders" }).click();
+          cy.button("Visualize").click();
+
+          cy.log("test going back to the dashboard from the visualization");
+          cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
+
+          cy.log("create a new question again");
+          cy.button("New Question").should("be.visible").click();
+          H.popover().findByRole("link", { name: "Orders" }).click();
+          /**
+           * We need to visualize before we can save the question.
+           * This will be addressed in EMB-584
+           */
+          cy.button("Visualize").click();
+          cy.button("Save").click();
+
+          H.modal().within(() => {
+            cy.findByRole("heading", { name: "Save new question" }).should(
+              "be.visible",
+            );
+            cy.findByLabelText("Name").clear().type("Orders in a dashboard");
+            // Dashboard without tabs should not show the tab selector
+            cy.findByLabelText("Which tab should this go on?").should(
+              "not.exist",
+            );
+            cy.button("Save").click();
+          });
+
+          /**
+           * I was supposed to test the dashcard auto-scroll here, but for some reason,
+           * the test always fails on CI, but not locally. So I didn't test it here.
+           */
+          cy.log("Now we should be back on the dashboard in the edit mode");
+          cy.findByText("You're editing this dashboard.").should("be.visible");
+          cy.findByText("Orders in a dashboard").should("be.visible");
+          const NEW_DASHCARD_INDEX = 0;
+          H.getDashboardCard(NEW_DASHCARD_INDEX)
+            .findByText("Orders in a dashboard")
+            .should("be.visible");
+
+          cy.button("Save").click();
+          cy.findByText("You're editing this dashboard.").should("not.exist");
+        });
+      });
+    });
+
+    describe("with dashboard with tabs", () => {
+      const DASHBOARD_WITH_TABS_NAME = "Dashboard With tabs";
+
+      beforeEach(() => {
+        cy.signInAsAdmin();
+        H.createDashboardWithTabs({
+          name: DASHBOARD_WITH_TABS_NAME,
+          tabs: [
+            { name: "Tab 1", id: 1 },
+            { name: "Tab 2", id: 2 },
+          ],
+        }).then(({ id: dashboardId }) => {
+          cy.wrap(dashboardId).as("dashboardWithTabsId");
+        });
+        cy.signOut();
+      });
+
+      it("should allow to save unsaved changes before creating a dashboard question", () => {
+        cy.get("@dashboardWithTabsId").then((dashboardId) => {
+          mountSdkContent(<EditableDashboard dashboardId={dashboardId} />);
+        });
+
+        const ADDED_QUESTION_NAME = "Orders";
+        const ADDED_QUESTION_NAME_2 = "Orders Model";
+        const ADDED_QUESTION_NAME_3 = "Products in a dashboard";
+
+        getSdkRoot().within(() => {
+          cy.button("Edit dashboard").should("be.visible").click();
+          cy.button("Add questions").should("be.visible").click();
+
+          cy.log("make the dashboard dirty");
+          cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME }).click();
+          cy.button("New Question").should("be.visible").click();
+
+          cy.log("we should now see the save confirmation modal");
+          H.modal().within(() => {
+            cy.findByRole("heading", { name: "Save your changes?" }).should(
+              "be.visible",
+            );
+            cy.findByText(
+              "You’ll need to save your changes before leaving to create a new question.",
+            ).should("be.visible");
+
+            cy.button("Save changes").should("be.visible").click();
+          });
+
+          cy.log(
+            "go back to the dashboard should still land us in the edit mode with the dirty state saved",
+          );
+          cy.button(`Back to ${DASHBOARD_WITH_TABS_NAME}`).click();
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME)
+            .should("be.visible");
+
+          cy.log("make the dashboard dirty again");
+          cy.button("Add questions").should("be.visible").click();
+          cy.findByRole("menuitem", { name: ADDED_QUESTION_NAME_2 }).click();
+          cy.button("New Question").click();
+
+          H.modal().button("Save changes").click();
+
+          cy.log("we are back in the query builder");
+          H.popover().findByRole("link", { name: "Products" }).click();
+          cy.button("Save").click();
+
+          H.modal().within(() => {
+            cy.findByLabelText("Name").clear().type(ADDED_QUESTION_NAME_3);
+            cy.findByLabelText("Where do you want to save this?").should(
+              "not.exist",
+            );
+            // Test saving a question to a different tab
+            cy.findByLabelText("Which tab should this go on?")
+              .should("be.visible")
+              .and("have.value", "Tab 1")
+              .click();
+          });
+
+          // The popover is rendered in the portal root, so we need to call this outside `H.modal()`
+          H.popover().findByRole("option", { name: "Tab 2" }).click();
+          cy.log("save the question to the dashboard");
+          H.modal().button("Save").click();
+
+          cy.log(
+            "we should see 2 dash cards in the the first tab, and the 3rd one in the second tab",
+          );
+          cy.log(
+            'we should be on the "Tab 2" tab, because we saved the question there',
+          );
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME_3)
+            .should("be.visible");
+
+          // 1st tab
+          H.goToTab("Tab 1");
+          H.getDashboardCard()
+            .findByText(ADDED_QUESTION_NAME)
+            .should("be.visible");
+          H.getDashboardCard(1)
+            .findByText(ADDED_QUESTION_NAME_2)
+            .should("be.visible");
+        });
+      });
+    });
+  });
+
+  describe("subscriptions", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.setupSMTP();
+      const questionCard: Partial<DashboardCard> = {
+        id: ORDERS_DASHBOARD_DASHCARD_ID,
+        card_id: ORDERS_QUESTION_ID,
+        row: 0,
+        col: 0,
+        size_x: 16,
+        size_y: 8,
+      };
+      H.createDashboard({
+        name: DASHBOARD_NAME,
+        dashcards: [questionCard],
+        parameters: [categoryParameter, textParameter, countParameter],
+      }).then(({ body: dashboard }) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        cy.wrap(dashboard.entity_id).as("dashboardEntityId");
+      });
+      cy.signOut();
+    });
+
+    it("should not include links to Metabase", () => {
+      cy.get<string>("@dashboardId").then((dashboardId) => {
+        mountSdkContent(
+          <EditableDashboard dashboardId={dashboardId} withSubscriptions />,
+        );
+
+        cy.button("Subscriptions").click();
+        H.clickSend();
+        const emailUrl = `http://localhost:${WEB_PORT}/email`;
+        cy.request("GET", emailUrl).then(({ body }) => {
+          const latest = body.slice(-1)[0];
+          cy.request(`${emailUrl}/${latest.id}/html`).then(({ body }) => {
+            expect(body).to.include("Embedding SDK Test Dashboard");
+            expect(body).not.to.include("href=");
+          });
+        });
+      });
     });
   });
 });

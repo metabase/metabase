@@ -1,4 +1,5 @@
 (ns metabase.lib.schema.expression.temporal
+  (:refer-clojure :exclude [some #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -10,6 +11,7 @@
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some #?(:clj doseq) #?(:clj for)]]
    [metabase.util.time.impl-common :as u.time.impl-common])
   #?@
    (:clj
@@ -113,7 +115,7 @@
     [:cat
      [:merge
       ::common/options
-      [:map [:mode {:optional true} ;; no mode should be iso string
+      [:map [:mode {:optional true} ; no mode should be iso string
              (into [:enum {:decode/normalize normalize-datetime-mode}]
                    datetime-string-modes)]]]
      [:schema [:ref ::expression/string]]]
@@ -132,7 +134,7 @@
       ::common/options
       [:map [:mode (into [:enum {:decode/normalize normalize-datetime-mode}]
                          datetime-binary-modes)]]]
-     :any]]])
+     [:schema [:ref ::expression/expression]]]]])
 
 ;; doesn't contain `:millisecond`
 (mr/def ::datetime-diff-unit
@@ -180,7 +182,11 @@
     (into [:enum
            {:error/message "valid timezone ID"
             :error/fn      (fn [{:keys [value]} _]
-                             (str "invalid timezone ID: " (pr-str value)))}]
+                             (str "invalid timezone ID: " (pr-str value)))
+            :description   "A valid timezone ID like: \"Asia/Aden\", \"America/Cuiaba\"."
+            ;; The timezone list is dynamic which make the .github/workflows/openapi-check.yml flaky on CI
+            ;; so we need to hack this to write a static schema
+            :json-schema   {:type "string"}}]
           (sort
            #?(;; 600 timezones on java 17
               :clj (ZoneId/getAvailableZoneIds)
@@ -273,13 +279,21 @@
    [true  [:= {:decode/normalize common/normalize-keyword-lower} :current]]
    [false :int]])
 
+(mr/def ::relative-datetime.unit
+  [:or
+   [:= :default]
+   [:ref ::temporal-bucketing/unit.date-time.interval]])
+
+;;; TODO (Cam 7/16/25) -- I think unit is rewuired unless `n` is `:current`
 (mbql-clause/define-catn-mbql-clause :relative-datetime :- :type/DateTime
   [:n    [:schema [:ref ::relative-datetime.amount]]]
-  [:unit [:? [:schema [:ref ::temporal-bucketing/unit.date-time.interval]]]])
+  [:unit [:? [:schema [:ref ::relative-datetime.unit]]]])
 
 (mbql-clause/define-tuple-mbql-clause :time :- :type/Time
   #_:timestr [:schema [:ref ::expression/string]]
-  #_:unit [:ref ::temporal-bucketing/unit.time.interval])
+  #_:unit    [:or
+              [:= {:decode/normalize common/normalize-keyword-lower} :default]
+              [:ref ::temporal-bucketing/unit.time.interval]])
 
 ;;; this has some stuff that's missing from [[::temporal-bucketing/unit.date-time.extract]], like `:week-of-year-iso`
 (mr/def ::temporal-extract.unit

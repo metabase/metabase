@@ -9,6 +9,7 @@
 (def card-size-defaults
   "Default card sizes per visualization type"
   {:table       {:min {:width 4 :height 3} :default {:width 12 :height 9}}
+   :list        {:min {:width 12 :height 6} :default {:width 12 :height 9}}
    :gauge       {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :bar         {:min {:width 4 :height 3} :default {:width 12 :height 6}}
    :pie         {:min {:width 4 :height 3} :default {:width 12 :height 8}}

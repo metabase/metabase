@@ -1,7 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Form } from "metabase/forms";
 import { FixedSizeIcon, Group, Loader } from "metabase/ui";
 
 export const LoaderInButton = styled(Loader)`
@@ -20,12 +19,6 @@ export const FormWrapper = styled.div`
   flex-direction: column;
 `;
 
-export const StyledForm = styled(Form)`
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-`;
-
 export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-block: 1rem;
   gap: 1rem;
@@ -37,7 +30,7 @@ export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
   padding-bottom: 0;
   `
       : `
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   border-top: 1px solid var(--mb-color-border);
   padding-inline: 2.5rem;
   `}

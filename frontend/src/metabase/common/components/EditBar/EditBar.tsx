@@ -1,11 +1,13 @@
+import type { ReactNode } from "react";
+
 import { Group } from "metabase/ui";
 
 import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
 
 type Props = {
   title: string;
-  center?: JSX.Element;
-  buttons: JSX.Element[];
+  center?: ReactNode;
+  buttons: ReactNode;
   admin?: boolean;
   className?: string;
   "data-testid"?: string;

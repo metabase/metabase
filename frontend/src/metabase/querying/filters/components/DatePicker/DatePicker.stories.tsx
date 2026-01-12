@@ -1,18 +1,45 @@
+import type { Store } from "@reduxjs/toolkit";
 import FakeTimers from "@sinonjs/fake-timers";
 import type { Meta, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { merge } from "icepick";
 import { type ComponentProps, useEffect } from "react";
 
+import { getStore } from "__support__/entities-store";
+import { mockSettings } from "__support__/settings";
+import { createMockEntitiesState } from "__support__/store";
+import { MetabaseReduxProvider } from "metabase/lib/redux";
+import { publicReducers } from "metabase/reducers-public";
 import { Box, Popover } from "metabase/ui";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { DatePicker } from "./DatePicker";
 
 import "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
+const storeInitialState = createMockState({
+  settings: mockSettings(),
+  entities: createMockEntitiesState({}),
+});
+const store = getStore(
+  publicReducers,
+  storeInitialState,
+  [],
+) as unknown as Store<State>;
+
+const ReduxDecorator = (Story: StoryFn) => {
+  return (
+    <MetabaseReduxProvider store={store}>
+      <Story />
+    </MetabaseReduxProvider>
+  );
+};
+
 export default {
   title: "Components/Parameters/DatePicker",
   component: DatePicker,
+  decorators: [ReduxDecorator],
 } as Meta<typeof DatePicker>;
 
 let clock: FakeTimers.InstalledClock | undefined;
@@ -36,7 +63,6 @@ function withMockDate(StoryFn: StoryFn) {
 }
 
 type CustomStoryProps = {
-  theme?: "light" | "dark";
   snapshotSize?: {
     width: number;
     height: number;
@@ -45,16 +71,6 @@ type CustomStoryProps = {
 const Template: StoryFn<
   ComponentProps<typeof DatePicker> & CustomStoryProps
 > = (args) => {
-  const isDarkTheme = args.theme === "dark";
-
-  useEffect(() => {
-    if (isDarkTheme) {
-      document.documentElement.setAttribute("data-metabase-theme", "night");
-    } else {
-      document.documentElement.setAttribute("data-metabase-theme", "light");
-    }
-  }, [isDarkTheme]);
-
   return (
     <>
       <Popover opened position="bottom-start" withinPortal={false}>

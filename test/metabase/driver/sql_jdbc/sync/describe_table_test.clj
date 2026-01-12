@@ -16,12 +16,12 @@
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
+   [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.one-off-dbs :as one-off-dbs]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -58,6 +58,8 @@
                :pk?                        true
                :database-required          false
                :database-is-auto-increment true
+               :database-is-generated      false
+               :database-is-nullable       false
                :json-unfolding             false}
               {:name                       "NAME"
                :database-type              "CHARACTER VARYING"
@@ -65,6 +67,8 @@
                :database-position          1
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "CATEGORY_ID"
                :database-type              "INTEGER"
@@ -72,6 +76,8 @@
                :database-position          2
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "LATITUDE"
                :database-type              "DOUBLE PRECISION"
@@ -79,6 +85,8 @@
                :database-position          3
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "LONGITUDE"
                :database-type              "DOUBLE PRECISION"
@@ -86,6 +94,8 @@
                :database-position          4
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}
               {:name                       "PRICE"
                :database-type              "INTEGER"
@@ -93,6 +103,8 @@
                :database-position          5
                :database-required          false
                :database-is-auto-increment false
+               :database-is-generated      false
+               :database-is-nullable       true
                :json-unfolding             false}}}
            (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
 
@@ -109,28 +121,34 @@
                          "GRANT ALL ON \"employee_counter\" TO GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       (sync/sync-database! (mt/db))
-      (is (= {:fields #{{:base-type                 :type/Integer
+      (is (= {:fields #{{:base-type                  :type/Integer
                          :database-is-auto-increment true
-                         :database-position         0
-                         :database-required         false
-                         :database-type             "INTEGER"
-                         :name                      "id"
-                         :pk?                       true
-                         :json-unfolding            false}
-                        {:base-type                 :type/Integer
+                         :database-is-generated      false
+                         :database-is-nullable       false
+                         :database-position          0
+                         :database-required          false
+                         :database-type              "INTEGER"
+                         :name                       "id"
+                         :pk?                        true
+                         :json-unfolding             false}
+                        {:base-type                  :type/Integer
                          :database-is-auto-increment true
-                         :database-position         1
-                         :database-required         false
-                         :database-type             "INTEGER"
-                         :name                      "count"
-                         :json-unfolding            false}
-                        {:base-type                 :type/Integer
+                         :database-is-generated      false
+                         :database-is-nullable       false
+                         :database-position          1
+                         :database-required          false
+                         :database-type              "INTEGER"
+                         :name                       "count"
+                         :json-unfolding             false}
+                        {:base-type                  :type/Integer
                          :database-is-auto-increment false
-                         :database-position         2
-                         :database-required         true
-                         :database-type             "INTEGER"
-                         :name                      "rank"
-                         :json-unfolding            false}}
+                         :database-is-generated      false
+                         :database-is-nullable       false
+                         :database-position          2
+                         :database-required          true
+                         :database-type              "INTEGER"
+                         :name                       "rank"
+                         :json-unfolding             false}}
               :name "employee_counter"}
              (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
 
@@ -386,10 +404,10 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (mt/dataset (mt/dataset-definition
                    "naked_json"
-                   ["json_table"
-                    [{:field-name "array_col" :base-type :type/JSON}
-                     {:field-name "string_col" :base-type :type/JSON}]
-                    [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]])
+                   [["json_table"
+                     [{:field-name "array_col" :base-type :type/JSON}
+                      {:field-name "string_col" :base-type :type/JSON}]
+                     [["[1, 2, 3]" "\"just-a-string-in-a-json-column\""]]]])
 
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns

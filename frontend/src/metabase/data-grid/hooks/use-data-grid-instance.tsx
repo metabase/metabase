@@ -336,10 +336,7 @@ export const useDataGridInstance = <TData, TValue>({
         setColumnSizingMap(newWidths);
       };
 
-      measureColumnWidths(
-        handleColumnsMeasured,
-        Object.keys(preserveColumnSizingMap),
-      );
+      measureColumnWidths(handleColumnsMeasured);
     },
     [
       measureColumnWidths,
@@ -432,6 +429,7 @@ export const useDataGridInstance = <TData, TValue>({
 
   // Setup cell selection functionality
   const selection = useCellSelection({
+    gridRef,
     table,
     isEnabled: enableSelection,
     scrollTo,

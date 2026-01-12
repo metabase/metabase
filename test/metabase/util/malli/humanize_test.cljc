@@ -54,7 +54,7 @@
   (let [error (mr/explain
                [:or
                 :int
-                mbql.s/value]
+                ::mbql.s/value]
                [:value "192.168.1.1" {:base_type :type/FK}])]
     (are [f expected] (= expected
                          (f error))
@@ -71,7 +71,7 @@
                [:map
                 [:x [:or
                      :int
-                     mbql.s/value]]]
+                     ::mbql.s/value]]]
                {:x [:value "192.168.1.1" {:base_type :type/FK}]})]
     (are [f expected] (= expected
                          (f error))
@@ -124,7 +124,7 @@
 
 (deftest ^:parallel ref-test-2
   (are [f expected] (= expected
-                       (f (mr/explain [:or mbql.s/value] [:value "192.168.1.1" {:base_type :type/FK}])))
+                       (f (mr/explain [:or ::mbql.s/value] [:value "192.168.1.1" {:base_type :type/FK}])))
     me/humanize
     [nil nil {:base_type ["Not a valid base type: :type/FK"]}]
 

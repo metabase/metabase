@@ -302,3 +302,31 @@
   :export?    false
   :visibility :internal
   :audit      :getter)
+
+(defsetting http-channel-host-strategy
+  (deferred-tru (str "Controls which types of hosts are allowed as HTTP channel destinations.\n"
+                     "Options:\n"
+                     "- external-only (default - only external hosts)\n"
+                     "- allow-private (external + private networks but NOT localhost)\n"
+                     "- allow-all (no restrictions including localhost).\n"))
+  :type       :keyword
+  :visibility :internal
+  :default    :external-only
+  :export?    false
+  :setter     (fn [new-value]
+                (when (some? new-value)
+                  (assert (#{:external-only :allow-private :allow-all} (keyword new-value))
+                          (tru "Invalid http-channel-host-strategy! Only values of external-only, allow-private, and allow-all are allowed.")))
+                (setting/set-value-of-type! :keyword :http-channel-host-strategy new-value)))
+
+(defsetting slack-configured?
+  "Is Slack integration configured?"
+  :type       :boolean
+  :visibility :internal
+  :getter     (fn []
+                (boolean
+                 (or
+                  (seq (slack-app-token))
+                  (seq (slack-token)))))
+  :export?    false
+  :setter     :none)

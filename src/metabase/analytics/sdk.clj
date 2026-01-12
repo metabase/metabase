@@ -50,7 +50,7 @@
     "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
-(defn- embedding-context?
+(defn embedding-context?
   "Should we track this request as being made by an embedding client?"
   [client]
   (or (= client embedding-sdk-client)

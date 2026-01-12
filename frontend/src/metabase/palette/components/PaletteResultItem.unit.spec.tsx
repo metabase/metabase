@@ -38,31 +38,17 @@ describe("PaletteResultItem", () => {
   it("icons should default to brand color", async () => {
     setup({ item: { icon: "model" } });
 
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "var(--mb-color-brand)",
-    );
+    expect(await screen.findByRole("img", { name: /model/ })).toHaveStyle({
+      color: "var(--mb-color-brand)",
+    });
   });
 
   it("icons should use provided colors when available", async () => {
-    setup({ item: { icon: "model", extra: { iconColor: "green" } } });
+    setup({ item: { icon: "model", extra: { iconColor: "accent1" } } });
 
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "green",
-    );
-  });
-
-  it("if active, icon color should always be white", async () => {
-    setup({
-      item: { icon: "model", extra: { iconColor: "green" } },
-      active: true,
+    expect(await screen.findByRole("img", { name: /model/ })).toHaveStyle({
+      color: "var(--mb-color-accent1)",
     });
-
-    expect(await screen.findByRole("img", { name: /model/ })).toHaveAttribute(
-      "color",
-      "var(--mb-color-text-white)",
-    );
   });
 
   it("should not render an icon if none is provided", async () => {
@@ -81,7 +67,9 @@ const setupInList = ({ item }: { item: Partial<PaletteActionImpl> }) => {
         component={() => (
           <PaletteResultList
             items={items.map((item) => mockPaletteActionImpl(item))}
-            onRender={({
+            maxHeight={580}
+            minHeight={220}
+            renderItem={({
               item,
               active,
             }: {

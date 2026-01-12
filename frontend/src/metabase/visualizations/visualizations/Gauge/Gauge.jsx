@@ -1,16 +1,15 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import * as d3 from "d3";
-import { Component } from "react";
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import * as React from "react";
-import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
-import ChartSettingGaugeSegments from "metabase/visualizations/components/settings/ChartSettingGaugeSegments";
+import { color } from "metabase/ui/utils/colors";
+import { ChartSettingSegmentsEditor } from "metabase/visualizations/components/settings/ChartSettingSegmentsEditor";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,
@@ -34,14 +33,16 @@ const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
-const getBackgroundArcColor = () => color("bg-medium");
-const getSegmentLabelColor = () => color("text-dark");
-const getCenterLabelColor = () => color("text-dark");
-const getArrowFillColor = () => color("text-medium");
-const getArrowStrokeColor = () => color("bg-white");
+const getBackgroundArcColor = () => color("background-tertiary");
+const getSegmentLabelColor = () => color("text-primary");
+const getCenterLabelColor = () => color("text-primary");
+const getArrowFillColor = () => color("text-secondary-opaque");
+const getArrowStrokeColor = () => color("background-primary");
+
+// in px, because scaling was not working well with PDF Exports (metabase#65322)
+const FONT_SIZE_SEGMENT_LABEL = 4;
 
 // in ems, but within the scaled 100px SVG element
-const FONT_SIZE_SEGMENT_LABEL = 0.28;
 const FONT_SIZE_CENTER_LABEL_MIN = 0.5;
 const FONT_SIZE_CENTER_LABEL_MAX = 0.7;
 
@@ -118,10 +119,7 @@ export default class Gauge extends Component {
     },
     "gauge.segments": {
       get section() {
-        return t`Display`;
-      },
-      get title() {
-        return t`Gauge ranges`;
+        return t`Ranges`;
       },
       getDefault(series) {
         let value = 100;
@@ -134,8 +132,9 @@ export default class Gauge extends Component {
           { min: value, max: value * 2, color: color("success"), label: "" },
         ];
       },
-      widget: ChartSettingGaugeSegments,
+      widget: ChartSettingSegmentsEditor,
       persistDefault: true,
+      noPadding: true,
     },
   };
 
@@ -312,7 +311,7 @@ export default class Gauge extends Component {
               {/* TEXT LABELS */}
               {showLabels &&
                 textLabels.map(({ label, value }, index) => (
-                  <HideIfOverlowingSVG key={index}>
+                  <HideIfOverflowingSVG key={index}>
                     <GaugeSegmentLabel
                       position={valuePosition(
                         value,
@@ -324,7 +323,7 @@ export default class Gauge extends Component {
                     >
                       {label}
                     </GaugeSegmentLabel>
-                  </HideIfOverlowingSVG>
+                  </HideIfOverflowingSVG>
                 ))}
               {/* CENTER LABEL */}
               {/* NOTE: can't be a component because ref doesn't work? */}
@@ -367,16 +366,24 @@ const GaugeArc = ({
     .outerRadius(OUTER_RADIUS)
     .innerRadius(OUTER_RADIUS * INNER_RADIUS_RATIO);
 
-  const clicked = segment && { value: segment.min, column, settings };
-  const isClickable = clicked && onVisualizationClick != null;
+  const isClickable = segment != null && onVisualizationClick != null;
   const options = column && settings?.column ? settings.column(column) : {};
   const range = segment ? [segment.min, segment.max] : [];
   const value = range.map((v) => formatValue(v, options)).join(" - ");
   const hovered = segment ? { data: [{ key: segment.label, value }] } : {};
 
   const handleClick = (e) => {
-    if (onVisualizationClick && visualizationIsClickable(clicked)) {
-      onVisualizationClick({ ...clicked, event: e.nativeEvent });
+    if (!segment) {
+      return;
+    }
+    const clickData = {
+      value: segment.min,
+      column,
+      settings,
+      event: e.nativeEvent,
+    };
+    if (onVisualizationClick && visualizationIsClickable(clickData)) {
+      onVisualizationClick(clickData);
     }
   };
 
@@ -409,16 +416,19 @@ const GaugeArc = ({
 };
 
 const GaugeNeedle = ({ angle, isAnimated = true }) => (
-  <path
-    d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
-    transform={`translate(0,-${INNER_RADIUS}) rotate(${degrees(
-      angle,
-    )}, 0, ${INNER_RADIUS})`}
+  <g
+    transform={`rotate(${degrees(angle)})`}
     style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
-    stroke={getArrowStrokeColor()}
-    strokeWidth={ARROW_STROKE_THICKNESS}
-    fill={getArrowFillColor()}
-  />
+  >
+    <path
+      d={`M-${ARROW_BASE} 0 L0 -${ARROW_HEIGHT} L${ARROW_BASE} 0 Z`}
+      transform={`translate(0,-${INNER_RADIUS})`}
+      style={isAnimated ? { transition: "transform 1.5s ease-in-out" } : null}
+      stroke={getArrowStrokeColor()}
+      strokeWidth={ARROW_STROKE_THICKNESS}
+      fill={getArrowFillColor()}
+    />
+  </g>
 );
 
 const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
@@ -426,12 +436,12 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: "var(--mb-color-text-medium)",
-      fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
+      fill: "var(--mb-color-text-secondary)",
+      fontSize: `${FONT_SIZE_SEGMENT_LABEL}px`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit
       transform:
-        y > 0 ? `translate(0,${FONT_SIZE_SEGMENT_LABEL}em)` : undefined,
+        y > 0 ? `translate(0,${FONT_SIZE_SEGMENT_LABEL / 2}px)` : undefined,
       ...style,
     }}
   >
@@ -439,35 +449,43 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
   </text>
 );
 
-class HideIfOverlowingSVG extends React.Component {
-  componentDidMount() {
-    this._hideIfClipped();
-  }
-  componentDidUpdate() {
-    this._hideIfClipped();
-  }
-  _hideIfClipped() {
-    const element = ReactDOM.findDOMNode(this);
+const HideIfOverflowingSVG = ({ children }) => {
+  const elementRef = useRef(null);
+  const [isHidden, setIsHidden] = useState(false);
+
+  const hideIfClipped = useCallback(() => {
+    const element = elementRef.current;
+
     if (element) {
       let svg = element;
-      while (svg.nodeName.toLowerCase() !== "svg") {
+
+      while (svg && svg.nodeName.toLowerCase() !== "svg") {
         svg = svg.parentNode;
       }
-      const svgRect = svg.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      if (
-        elementRect.left >= svgRect.left &&
-        elementRect.right <= svgRect.right &&
-        elementRect.top >= svgRect.top &&
-        elementRect.bottom <= svgRect.bottom
-      ) {
-        element.classList.remove(CS.hidden);
-      } else {
-        element.classList.add(CS.hidden);
+
+      if (svg) {
+        const svgRect = svg.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+
+        const shouldBeHidden = !(
+          elementRect.left >= svgRect.left &&
+          elementRect.right <= svgRect.right &&
+          elementRect.top >= svgRect.top &&
+          elementRect.bottom <= svgRect.bottom
+        );
+
+        setIsHidden(shouldBeHidden);
       }
     }
-  }
-  render() {
-    return this.props.children;
-  }
-}
+  }, []);
+
+  useEffect(() => {
+    hideIfClipped();
+  });
+
+  return (
+    <g ref={elementRef} className={isHidden ? CS.hidden : undefined}>
+      {children}
+    </g>
+  );
+};

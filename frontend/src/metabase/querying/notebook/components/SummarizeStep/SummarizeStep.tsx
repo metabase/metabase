@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Box, Flex } from "metabase/ui";
+import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
 import { AggregateStep } from "../AggregateStep";
@@ -10,9 +11,13 @@ export function SummarizeStep({
   step,
   color,
   isLastOpened,
+  readOnly,
   ...props
 }: NotebookStepProps) {
   const isMetric = step.question.type() === "metric";
+
+  const hasBreakouts = Lib.breakouts(step.query, step.stageIndex).length > 0;
+  const showBreakouts = !readOnly || hasBreakouts;
 
   return (
     <Flex
@@ -20,11 +25,12 @@ export function SummarizeStep({
       direction={{ base: "column", md: "row" }}
       gap={{ base: "sm", md: isMetric ? "md" : "sm" }}
     >
-      <Box w={{ base: "100%", md: "50%" }}>
+      <Box w={{ base: "100%", md: "50%" }} flex="1 1 auto">
         <AggregateStep
           step={step}
           color={color}
           isLastOpened={isLastOpened}
+          readOnly={readOnly}
           {...props}
         />
       </Box>
@@ -33,16 +39,19 @@ export function SummarizeStep({
           {t`Default time dimension`}
         </Box>
       ) : (
-        <Box c={color} fw="bold">{t`by`}</Box>
+        showBreakouts && <Box c={color} fw="bold">{t`by`}</Box>
       )}
-      <Box w={{ base: "100%", md: "50%" }}>
-        <BreakoutStep
-          step={step}
-          color={color}
-          isLastOpened={false}
-          {...props}
-        />
-      </Box>
+      {showBreakouts && (
+        <Box w={{ base: "100%", md: "50%" }}>
+          <BreakoutStep
+            step={step}
+            color={color}
+            isLastOpened={false}
+            readOnly={readOnly}
+            {...props}
+          />
+        </Box>
+      )}
     </Flex>
   );
 }

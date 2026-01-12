@@ -15,13 +15,14 @@
         (let [dataset-query (mt/mbql-query venues {:fields [$id $name]})
               query (assoc
                      dataset-query
-                     :parameters [{:target [:dimension
+                     :parameters [{:id     "metabase.actions.execution/prefetch-parameters-pk"
+                                   :target [:dimension
                                             (-> dataset-query
                                                 :query
                                                 :fields
                                                 first)]
-                                   :type "id"
-                                   :value [1]}]
+                                   :type   :id
+                                   :value  [1]}]
                      :constraints nil
                      :middleware nil
                      :cache-strategy nil)]

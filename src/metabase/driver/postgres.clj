@@ -1,11 +1,11 @@
 (ns metabase.driver.postgres
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
+  (:refer-clojure :exclude [some select-keys mapv not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [honey.sql.pg-ops :as sql.pg-ops]
@@ -33,17 +33,21 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some select-keys mapv not-empty]]
+   [taoensso.nippy :as nippy])
   (:import
-   (java.io StringReader)
+   (java.io DataInput DataOutput StringReader)
    (java.sql
     Connection
     ResultSet
     ResultSetMetaData
     Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
+   (org.apache.commons.codec.binary Hex)
    (org.postgresql.copy CopyManager)
-   (org.postgresql.jdbc PgConnection)))
+   (org.postgresql.jdbc PgConnection)
+   (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,9 +66,14 @@
                               :describe-fields          true
                               :describe-fks             true
                               :describe-indexes         true
+                              :describe-default-expr    true
+                              :describe-is-generated    true
+                              :describe-is-nullable     true
                               :convert-timezone         true
                               :datetime-diff            true
                               :now                      true
+                              :rename                   true
+                              :atomic-renames           true
                               :persist-models           true
                               :schemas                  true
                               :identifiers-with-spaces  true
@@ -76,7 +85,11 @@
                               :expressions/integer      true
                               :expressions/float        true
                               :expressions/date         true
-                              :database-routing         true}]
+                              :database-routing         true
+                              :transforms/table         true
+                              :transforms/python        true
+                              :transforms/index-ddl     true
+                              :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]
@@ -86,9 +99,11 @@
 ;; Features that are supported by postgres only
 (doseq [feature [:actions
                  :actions/custom
+                 :actions/data-editing
                  :table-privileges
                  ;; Index sync is turned off across the application as it is not used ATM.
-                 #_:index-info]]
+                 #_:index-info
+                 :database-replication]]
   (defmethod driver/database-supports? [:postgres feature]
     [driver _feat _db]
     (= driver :postgres)))
@@ -106,28 +121,29 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/humanize-connection-error-message :postgres
-  [_ message]
-  (condp re-matches message
-    #"^FATAL: database \".*\" does not exist$"
-    :database-name-incorrect
+  [_ messages]
+  (let [message (first messages)]
+    (condp re-matches message
+      #"^FATAL: database \".*\" does not exist$"
+      :database-name-incorrect
 
-    #"^No suitable driver found for.*$"
-    :invalid-hostname
+      #"^No suitable driver found for.*$"
+      :invalid-hostname
 
-    #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    :cannot-connect-check-host-and-port
+      #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
+      :cannot-connect-check-host-and-port
 
-    #"^FATAL: role \".*\" does not exist$"
-    :username-incorrect
+      #"^FATAL: role \".*\" does not exist$"
+      :username-incorrect
 
-    #"^FATAL: password authentication failed for user.*$"
-    :password-incorrect
+      #"^FATAL: password authentication failed for user.*$"
+      :password-incorrect
 
-    #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
-    (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
-      (str (str/capitalize message) \.))
+      #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
+      (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
+        (str (str/capitalize message) \.))
 
-    message))
+      message)))
 
 (defmethod driver/db-default-timezone :postgres
   [driver database]
@@ -142,11 +158,13 @@
 (defmethod driver/connection-properties :postgres
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 5432)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 5432)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/auth-provider-options
+    (driver.common/auth-provider-options)
     (assoc driver.common/default-password-details
            :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
@@ -274,13 +292,16 @@
           rf
           init
           (when-let [syncable-schemas (seq (driver/syncable-schemas driver database))]
-            (let [have-select-privilege? (sql-jdbc.describe-database/have-select-privilege-fn driver conn)]
+            (let [have-privilege-fn (sql-jdbc.describe-database/have-privilege-fn driver conn)]
               (eduction
-               (comp (filter have-select-privilege?)
-                     (map #(dissoc % :type)))
+               (comp (filter #(have-privilege-fn % :select))
+                     (map (fn [table]
+                            (-> table
+                                (dissoc :type)
+                                (assoc :is_writable (have-privilege-fn table :write))))))
                (get-tables database syncable-schemas nil))))))))))
 
-(defmethod driver/describe-database :postgres
+(defmethod driver/describe-database* :postgres
   [_driver database]
   ;; TODO: we should figure out how to sync tables using transducer, this way we don't have to hold 100k tables in
   ;; memory in a set like this
@@ -314,10 +335,15 @@
                         [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                         [:!= :is_identity [:inline "NO"]]]]]
                 :database-required]
+               [:column_default :database-default]
                [[:or
                  [:and [:!= :column_default nil] [:like :column_default [:inline "%nextval(%"]]]
                  [:!= :is_identity [:inline "NO"]]]
-                :database-is-auto-increment]]
+                :database-is-auto-increment]
+               [[:= :is_generated "ALWAYS"]
+                :database-is-generated]
+               [[:= :is_nullable [:inline "YES"]]
+                :database-is-nullable]]
       :from [[:information_schema.columns :c]]
       :left-join [[{:select [:tc.table_schema
                              :tc.table_name
@@ -351,7 +377,10 @@
                [false :pk?]
                [nil :field-comment]
                [false :database-required]
-               [false :database-is-auto-increment]]
+               [nil   :database-default]
+               [false :database-is-auto-increment]
+               [false :database-is-generated]
+               [false :database-is-nullable]]
       :from [[:pg_catalog.pg_class :pc]]
       :join [[:pg_catalog.pg_namespace :pn] [:= :pn.oid :pc.relnamespace]
              [:pg_catalog.pg_attribute :pa] [:= :pa.attrelid :pc.oid]
@@ -434,42 +463,9 @@
   [_ json-field-identifier]
   [:length [:cast json-field-identifier :text]])
 
-(defn- ->timestamp [honeysql-form]
-  (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
-
-(defn- format-interval
-  "Generate a Postgres 'INTERVAL' literal.
-
-    (sql/format-expr [::interval 2 :day])
-    =>
-    [\"INTERVAL '2 day'\"]"
-  ;; I tried to write this with Malli but couldn't figure out how to make it work. See
-  ;; https://metaboat.slack.com/archives/CKZEMT1MJ/p1676076592468909
-  [_fn [amount unit]]
-  {:pre [(number? amount)
-         (#{:millisecond :second :minute :hour :day :week :month :year} unit)]}
-  [(format "INTERVAL '%s %s'" (num amount) (name unit))])
-
-(sql/register-fn! ::interval #'format-interval)
-
-(defn- interval [amount unit]
-  (h2x/with-database-type-info [::interval amount unit] "interval"))
-
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [driver hsql-form amount unit]
-  ;; Postgres doesn't support quarter in intervals (#20683)
-  (cond
-    (= unit :quarter)
-    (recur driver hsql-form (* 3 amount) :month)
-
-    ;; date + interval -> timestamp, so cast the expression back to date
-    (h2x/is-of-type? hsql-form "date")
-    (h2x/cast "date" (h2x/+ hsql-form (interval amount unit)))
-
-    :else
-    (let [hsql-form (->timestamp hsql-form)]
-      (-> (h2x/+ hsql-form (interval amount unit))
-          (h2x/with-type-info (h2x/type-info hsql-form))))))
+  (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
 (defmethod sql.qp/current-datetime-honeysql-form :postgres
   [driver]
@@ -527,12 +523,12 @@
     (h2x/cast "date" [:date_trunc (h2x/literal unit) expr])
 
     #_else
-    (let [expr' (->timestamp expr)]
+    (let [expr' (h2x/->pg-timestamp expr)]
       (-> [:date_trunc (h2x/literal unit) expr']
           (h2x/with-database-type-info (h2x/database-type expr'))))))
 
 (defn- extract-from-timestamp [unit expr]
-  (extract unit (->timestamp expr)))
+  (extract unit (h2x/->pg-timestamp expr)))
 
 (defn- extract-integer [unit expr]
   (h2x/->integer (extract-from-timestamp unit expr)))
@@ -580,7 +576,8 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
-        timestamptz? (or (h2x/is-of-type? expr "timestamptz")
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? expr "timestamptz")
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone target-timezone (if (not timestamptz?)
@@ -593,6 +590,7 @@
   (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
     (when (some? raw-value)
       (condp #(isa? %2 %1) base-type
+        :type/PostgresBitString (h2x/cast :varbit raw-value)
         :type/IPAddress    (h2x/cast :inet raw-value)
         :type/PostgresEnum (if (quoted? database-type)
                              (h2x/cast database-type raw-value)
@@ -749,7 +747,7 @@
       (if (or (::sql.qp/forced-alias opts)
               (= (driver-api/qp.add.source-table opts) driver-api/qp.add.source))
         (keyword (driver-api/qp.add.source-alias opts))
-        (walk/postwalk #(if (h2x/identifier? %)
+        (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :postgres % stored-field)
                           %)
                        identifier))
@@ -813,7 +811,7 @@
   {:array         :type/*
    :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
-   :bit           :type/*
+   :bit           :type/PostgresBitString
    :bool          :type/Boolean
    :boolean       :type/Boolean
    :box           :type/*
@@ -862,10 +860,10 @@
    :tsvector      :type/*
    :txid_snapshot :type/*
    :uuid          :type/UUID
-   :varbit        :type/*
+   :varbit        :type/PostgresBitString
    :varchar       :type/Text
    :xml           :type/Structured
-   (keyword "bit varying")                :type/*
+   (keyword "bit varying")                :type/PostgresBitString
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
@@ -929,8 +927,9 @@
   {:sslmode "disable"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :postgres
-  [_ {ssl? :ssl, :as details-map}]
-  (let [props (-> details-map
+  [_ {ssl? :ssl, :keys [auth-provider], :as details-map}]
+  (let [use-iam? (= (some-> auth-provider keyword) :aws-iam)
+        props (-> details-map
                   (update :port (fn [port]
                                   (if (string? port)
                                     (Integer/parseInt port)
@@ -946,10 +945,19 @@
                   ;; internal property values back; only merge in the ones the driver might recognize
                   (merge ssl-prms (select-keys props (keys ssl-prms))))
                 (merge disable-ssl-params props))
+        props (if use-iam?
+                (-> props
+                    (assoc :subprotocol "aws-wrapper:postgresql"
+                           :classname "software.amazon.jdbc.ds.AwsWrapperDataSource"
+                           :wrapperPlugins "iam")
+                    (dissoc :auth-provider :use-auth-provider))
+                props)
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
                 (driver-api/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
+    (when (and use-iam? (not ssl?))
+      (throw (ex-info "You must enable SSL in order to use AWS IAM authentication" {})))
     props))
 
 (defmethod sql-jdbc.sync/excluded-schemas :postgres [_driver] #{"information_schema" "pg_catalog"})
@@ -996,13 +1004,29 @@
   [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn [] (.getString rs i)))
 
+;; Handle bytea columns to avoid truncation (#30671)
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BINARY]
+  [_driver ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn []
+    (when-let [bytes (.getBytes rs i)]
+      (str "\\x" (String. (Hex/encodeHex bytes))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BIT]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; convert bit strings to strings, leave booleans as objects
+  (if (= "bit" (.getColumnTypeName rsmeta i))
+    (fn []
+      (.getString rs i))
+    (fn []
+      (.getObject rs i))))
+
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (let [obj (.getObject rs i)]
-      (cond (instance? org.postgresql.util.PGobject obj)
-            (.getValue ^org.postgresql.util.PGobject obj)
+      (cond (instance? PGobject obj)
+            (.getValue ^PGobject obj)
 
             :else
             obj))))
@@ -1026,6 +1050,33 @@
                            :type   driver-api/qp.error-type.invalid-query}))
           (throw e))))))
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Postgres that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [:text])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/TimeWithTZ [_] [:time-with-time-zone])
+(defmethod type->database-type :type/UUID [_] [:uuid])
+(defmethod type->database-type :type/JSON [_] [:jsonb])
+(defmethod type->database-type :type/SerializedJSON [_] [:jsonb])
+(defmethod type->database-type :type/IPAddress [_] [:inet])
+
+(defmethod driver/type->database-type :postgres
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod driver/upload-type->database-type :postgres
   [_driver upload-type]
   (case upload-type
@@ -1048,6 +1099,20 @@
 (defmethod driver/create-auto-pk-with-append-csv? :postgres
   [driver]
   (= driver :postgres))
+
+(defmethod driver/rename-tables!* :postgres
+  [driver db-id sorted-rename-map]
+  (let [sqls (mapv (fn [[from-table to-table]]
+                     (first (sql/format {:alter-table (keyword from-table)
+                                         :rename-table (keyword (name to-table))}
+                                        :quoted true
+                                        :dialect (sql.qp/quote-style driver))))
+                   sorted-rename-map)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (with-open [stmt (.createStatement ^java.sql.Connection (:connection t-conn))]
+        (doseq [sql sqls]
+          (.addBatch ^java.sql.Statement stmt ^String sql))
+        (.executeBatch ^java.sql.Statement stmt)))))
 
 (defn- alter-column-using-hsql-expr
   "In postgres some ALTER COLUMN statements generated by replacing or appending csv files
@@ -1204,3 +1269,39 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :postgres
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42P01"))
+
+(defmethod driver/create-schema-if-needed! :postgres
+  [driver conn-spec schema]
+  (let [sql [[(format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/extra-info :postgres
+  [_driver]
+  {:providers [{:name "Aiven" :pattern "\\.aivencloud\\.com$"}
+               {:name "Amazon RDS" :pattern "\\.rds\\.amazonaws\\.com$"}
+               {:name "Azure" :pattern "\\.postgres\\.database\\.azure\\.com$"}
+               {:name "Crunchy Data" :pattern "\\.db\\.postgresbridge\\.com$"}
+               {:name "DigitalOcean" :pattern "db\\.ondigitalocean\\.com$"}
+               {:name "Fly.io" :pattern "\\.fly\\.dev$"}
+               {:name "Neon" :pattern "\\.neon\\.tech$"}
+               {:name "PlanetScale" :pattern "\\.psdb\\.cloud$"}
+               {:name "Railway" :pattern "\\.railway\\.app$"}
+               {:name "Render" :pattern "\\.render\\.com$"}
+               {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
+               {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]
+   :field-groups [{:id "host-and-port"
+                   :container-style "host-and-port-section"}]})
+
+;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
+
+(nippy/extend-freeze PGobject :postgres/PGobject
+  [^PGobject obj ^DataOutput data-output]
+  (nippy/freeze-to-out! data-output (.getType obj))
+  (nippy/freeze-to-out! data-output (.getValue obj)))
+
+(nippy/extend-thaw :postgres/PGobject
+  [^DataInput data-input]
+  (let [type  (nippy/thaw-from-in! data-input)
+        value (nippy/thaw-from-in! data-input)]
+    (doto (PGobject.) (.setType type) (.setValue value))))

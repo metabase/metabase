@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.databricks-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -10,7 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.databricks :as databricks]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
@@ -43,14 +42,14 @@
     (testing "`driver/describe-database` returns expected results for `all` schema filters."
       (let [actual-tables (driver/describe-database :databricks (-> (mt/db)
                                                                     (update :details dissoc :schema-filters-patterns)
-                                                                    (update :details assoc  :schema-filters-type "all")))]
+                                                                    (update :details assoc :schema-filters-type "all")))]
         (testing "tables from multiple schemas were found"
           (are [name schema] (contains? (:tables actual-tables)
                                         {:name name, :schema schema, :description nil})
-            "venues"   (maybe-qualify-schema "test-data")
+            "venues" (maybe-qualify-schema "test-data")
             "checkins" (maybe-qualify-schema "test-data")
-            "airport"  (maybe-qualify-schema "airports")
-            "bird"     (maybe-qualify-schema "bird-flocks")))
+            "airport" (maybe-qualify-schema "airports")
+            "bird" (maybe-qualify-schema "bird-flocks")))
         (testing "information_schema is excluded"
           (is (empty? (filter #(str/includes? "information_schema" (:schema %)) (:tables actual-tables)))))))
     (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
@@ -259,20 +258,14 @@
               (is (= "2017-04-18T09:53:37.046-07:00"
                      (last (first rows)))))))))))
 
-(deftest additional-options-test
+(deftest ^:synchronized additional-options-test
   (mt/test-driver
     :databricks
     (testing "Connections with UserAgentEntry"
       (sql-jdbc.conn/with-connection-spec-for-testing-connection
        [spec [:databricks (:details (mt/db))]]
-        (is (= [{:a 1}] (jdbc/query spec ["select 1 as a"]))))
-      (with-redefs [config/mb-version-info {:tag "invalid agent"}]
-        (sql-jdbc.conn/with-connection-spec-for-testing-connection
-         [spec [:databricks (:details (mt/db))]]
-          (is (thrown-with-msg?
-               Exception
-               #"Incorrect format for User-Agent entry"
-               (jdbc/query spec ["select 1 as a"]))))))
+        (is (= (str "Metabase/" (:tag config/mb-version-info)) (:UserAgentEntry spec)))
+        (is (= [{:a 1}] (jdbc/query spec ["select 1 as a"])))))
     (testing "Additional options are added to :subname key of generated spec"
       (is (re-find #";IgnoreTransactions=0$"
                    (->> {:http-path "p/a/t/h",
@@ -351,6 +344,43 @@
                                 :active true))))
               (is (= 1 (count (mt/rows (mt/run-mbql-query venues {:limit 1}))))))))))))
 
+(deftest multi-level-changes-inactive-table-schemas-too
+  (mt/test-driver
+    :databricks
+    ;; skip if running in multi-level since we are manipulating it in this test
+    (when-not (tx/db-test-env-var :databricks :multi-level-schema false)
+      (let [details (get (mt/db) :details)
+            ;; metabase_ci_multicatalog.test_schema.test (id, name)
+            multicatalog (tx/db-test-env-var :databricks :multicatalog-catalog "metabase_ci_multicatalog")
+            multicatalog-schema (tx/db-test-env-var :databricks :multicatalog-schema "test_schema")
+            multi-pattern (format "%s.%s,%s.%s"
+                                  (:catalog details)
+                                  (:schema-filters-patterns details)
+                                  multicatalog
+                                  multicatalog-schema)]
+        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
+          ;; First sync with multi-level-schema off
+          (mt/with-db
+            db
+            (testing "With multi-level-schema default (off)"
+              (sync/sync-database! (mt/db))
+              ;; originally we have unqualified schemas, only in one catalog
+              (is (= #{"test-data"}
+                     (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))
+          (testing "With multi-level-schema on, schemas are qualified"
+            (t2/update! :model/Database db-id {:details (assoc details
+                                                               :multi-level-schema true
+                                                               :schema-filters-patterns multi-pattern)})
+            ;; Deactivate its tables for testing
+            (t2/update! :model/Table {:db_id db-id} {:active false})
+            (mt/with-db
+              (t2/select-one :model/Database db-id)
+              (sync/sync-database! (mt/db))
+              (is (= #{(format "%s.%s" (:catalog details) "test-data")
+                       (format "%s.%s" multicatalog multicatalog-schema)}
+                     ;; active` *and* inactive tables both have their schemas changed.
+                     (t2/select-fn-set :schema :model/Table :db_id (mt/id)))))))))))
+
 (deftest multi-level-schema-wanted-catalogs-test
   (mt/test-driver
     :databricks
@@ -359,19 +389,20 @@
       (let [details (get (mt/db) :details)
             ;; metabase_ci_multicatalog.test_schema.test (id, name)
             multicatalog (tx/db-test-env-var :databricks :multicatalog-catalog "metabase_ci_multicatalog")
-            multicatalog-schema (tx/db-test-env-var :databricks :multicatalog-schema "test_schema")]
-        (mt/with-temp [:model/Database {db-id :id :as _db} {:engine :databricks :details (-> details
-                                                                                             (assoc :multi-level-schema true)
-                                                                                             (dissoc :schema-filters-type
-                                                                                                     :schema-filters-patterns))}]
+            multicatalog-schema (tx/db-test-env-var :databricks :multicatalog-schema "test_schema")
+            schema-filters (set [(format "%s.%s" (:catalog details) "test-data")
+                                 (format "%s.%s" multicatalog multicatalog-schema)
+                                 "system.query"])]
+        (mt/with-temp [:model/Database {db-id :id :as _db} {:engine :databricks
+                                                            :details (-> details
+                                                                         (assoc :multi-level-schema true
+                                                                                :schema-filters-type "inclusion"
+                                                                                :schema-filters-patterns (str/join ", " schema-filters)))}]
           (mt/with-db
             (t2/select-one :model/Database db-id)
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [table-schemas (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)]
-              (is (set/subset? #{(format "%s.%s" (:catalog details) "test-data")
-                                 (format "%s.%s" multicatalog multicatalog-schema)
-                                 "system.query"}
-                               table-schemas))
+              (is (= schema-filters table-schemas))
               (is (nil? (some #(str/starts-with? % "__databricks") table-schemas))))))))))
 
 (deftest multi-catalog-joins
@@ -394,7 +425,7 @@
         (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
           (mt/with-db db
             (sync/sync-database! (mt/db) {:scan :schema})
-            (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)
+            (let [mp (lib-be/application-database-metadata-provider db-id)
                   [t1-id t2-id] (t2/select-fn-vec
                                  :id
                                  :model/Table
@@ -419,6 +450,12 @@
               (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1 "toucan" 1 1]]
                      (mt/rows (qp/process-query manual-query)))))))))))
 
+(deftest ^:parallel array-test
+  (mt/test-driver :databricks
+    (let [query (mt/native-query {:query "select array(1,2,3)"})]
+      (is (= [["[1,2,3]"]]
+             (mt/rows (qp/process-query query)))))))
+
 (deftest can-connect-test
   (mt/test-driver
     :databricks
@@ -435,6 +472,6 @@
                   :databricks
                   (-> (:details (mt/db))
                       (dissoc :token)
-                      (assoc :use-m2m      true
-                             :client-id    (tx/db-test-env-var-or-throw :databricks :client-id)
+                      (assoc :use-m2m true
+                             :client-id (tx/db-test-env-var-or-throw :databricks :client-id)
                              :oauth-secret (tx/db-test-env-var-or-throw :databricks :oauth-secret)))))))))

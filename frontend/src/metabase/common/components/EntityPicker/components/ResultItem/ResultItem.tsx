@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { color } from "metabase/lib/colors";
 import { humanize, titleize } from "metabase/lib/formatting";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
@@ -37,7 +36,7 @@ export const ResultItem = ({
     >
       <Flex gap="md" miw="10rem" align="center" style={{ flex: 1 }}>
         <FixedSizeIcon
-          color={color(icon.color ?? (isSelected ? "text-white" : "brand"))}
+          c={icon.color ?? (isSelected ? "text-primary-inverse" : "brand")}
           name={icon.name}
           style={{
             flexShrink: 0,
@@ -53,17 +52,14 @@ export const ResultItem = ({
         />
         {item.description && (
           <Tooltip maw="20rem" multiline label={item.description}>
-            <FixedSizeIcon color="brand" name="info" />
+            <FixedSizeIcon c="brand" name="info" />
           </Tooltip>
         )}
       </Flex>
 
       {parentInfo && (
         <Flex
-          style={{
-            color: isSelected ? color("text-white") : color("text-light"),
-            flexShrink: 0,
-          }}
+          c={isSelected ? "text-primary-inverse" : "text-tertiary"}
           align="center"
           gap="sm"
           w="20rem"

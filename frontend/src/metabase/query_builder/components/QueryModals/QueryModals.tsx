@@ -1,17 +1,18 @@
-import type React from "react";
 import { useCallback } from "react";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { getDashboard } from "metabase/api";
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import Modal from "metabase/common/components/Modal";
-import QuestionSavedModal from "metabase/common/components/QuestionSavedModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
+import { type ToastArgs, useToast } from "metabase/common/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
+import { QuestionAlertListModal } from "metabase/notifications/modals";
+import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import { NewDatasetModal } from "metabase/query_builder/components/NewDatasetModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
@@ -19,16 +20,17 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
-import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
+import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
+import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
-import type Question from "metabase-lib/v1/Question";
+import { Text } from "metabase/ui";
+import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
 import type { QueryBuilderMode } from "metabase-types/store";
 
 import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
-import { MoveQuestionModal } from "../MoveQuestionModal";
 
 type OnCreateOptions = { dashboardTabId?: DashboardTabId | undefined };
 
@@ -64,8 +66,9 @@ export function QueryModals({
   setQueryBuilderMode,
   originalQuestion,
   onChangeLocation,
-}: QueryModalsProps): React.JSX.Element {
+}: QueryModalsProps) {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const initialCollectionId = useGetDefaultCollectionId();
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
@@ -132,27 +135,32 @@ export function QueryModals({
           options?.dashboardTabId,
         );
       } else {
-        onOpenModal(MODAL_TYPES.SAVED);
+        onCloseModal();
+        setQueryBuilderMode("view");
+
+        sendToast(getAddToDashboardToastProps(onOpenModal));
       }
 
       return newQuestion;
     },
     [
-      onCloseModal,
       onCreate,
-      onOpenModal,
+      onCloseModal,
       setQueryBuilderMode,
       navigateToDashboardQuestionDashboard,
+      sendToast,
+      onOpenModal,
     ],
   );
 
   const handleCopySaved = useCallback(
     (
-      newQuestion: Question,
+      newCard: Card,
       options?: {
         dashboardTabId?: DashboardTabId | undefined;
       },
     ) => {
+      const newQuestion = new Question(newCard, question.metadata());
       const isDashboardQuestion = _.isNumber(newQuestion.dashboardId());
       const isModel = newQuestion.type() === "model";
 
@@ -165,14 +173,19 @@ export function QueryModals({
         onCloseModal();
         setQueryBuilderMode("view");
       } else {
-        onOpenModal(MODAL_TYPES.SAVED);
+        onCloseModal();
+        setQueryBuilderMode("view");
+
+        sendToast(getAddToDashboardToastProps(onOpenModal));
       }
     },
     [
-      onOpenModal,
+      question,
       navigateToDashboardQuestionDashboard,
-      setQueryBuilderMode,
       onCloseModal,
+      setQueryBuilderMode,
+      sendToast,
+      onOpenModal,
     ],
   );
 
@@ -189,37 +202,6 @@ export function QueryModals({
           opened={true}
         />
       );
-    case MODAL_TYPES.SAVED:
-      return (
-        <Modal small onClose={onCloseModal}>
-          <QuestionSavedModal
-            onClose={onCloseModal}
-            addToDashboard={() => {
-              onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-            }}
-          />
-        </Modal>
-      );
-    case MODAL_TYPES.ADD_TO_DASHBOARD_SAVE:
-      return (
-        <SaveQuestionModal
-          question={question}
-          originalQuestion={originalQuestion}
-          initialCollectionId={initialCollectionId}
-          onSave={async (question) => {
-            await onSave(question);
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-          }}
-          onCreate={async (question, options) => {
-            const newQuestion = await onCreate(question, options);
-            onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD);
-            return newQuestion;
-          }}
-          onClose={onCloseModal}
-          opened={true}
-          multiStep
-        />
-      );
     case MODAL_TYPES.ADD_TO_DASHBOARD:
       return (
         <AddToDashSelectDashModal
@@ -230,10 +212,7 @@ export function QueryModals({
       );
     case MODAL_TYPES.CREATE_ALERT:
       return (
-        <CreateOrEditQuestionAlertModal
-          onAlertCreated={onCloseModal}
-          onClose={onCloseModal}
-        />
+        <QuestionAlertListModal question={question} onClose={onCloseModal} />
       );
     case MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED:
       return (
@@ -249,45 +228,46 @@ export function QueryModals({
         />
       );
     case MODAL_TYPES.MOVE:
-      return <MoveQuestionModal question={question} onClose={onCloseModal} />;
+      return <MoveCardModal card={question.card()} onClose={onCloseModal} />;
     case MODAL_TYPES.ARCHIVE:
       return (
-        <Modal onClose={onCloseModal}>
-          <ArchiveQuestionModal question={question} onClose={onCloseModal} />
-        </Modal>
+        <ArchiveCardModal
+          card={question.card()}
+          onArchive={() => dispatch(setArchivedQuestion(question, true))}
+          onUnarchive={() => dispatch(setArchivedQuestion(question, false))}
+          onClose={onCloseModal}
+        />
       );
     case MODAL_TYPES.CLONE:
       return (
-        <Modal onClose={onCloseModal}>
-          <EntityCopyModal
-            entityType="questions"
-            entityObject={{
-              ...question.card(),
-              collection_id: question.canWrite()
-                ? question.collectionId()
-                : initialCollectionId,
-            }}
-            copy={async (formValues) => {
-              if (!underlyingQuestion) {
-                return;
-              }
+        <EntityCopyModal
+          entityType="cards"
+          entityObject={{
+            ...question.card(),
+            collection_id: question.canWrite()
+              ? question.collectionId()
+              : initialCollectionId,
+          }}
+          copy={async (formValues) => {
+            if (!underlyingQuestion) {
+              return;
+            }
 
-              const question = underlyingQuestion
-                .setDisplayName(formValues.name)
-                .setCollectionId(formValues.collection_id)
-                .setDashboardId(formValues.dashboard_id)
-                .setDescription(formValues.description || null);
+            const question = underlyingQuestion
+              .setDisplayName(formValues.name)
+              .setCollectionId(formValues.collection_id)
+              .setDashboardId(formValues.dashboard_id)
+              .setDescription(formValues.description || null);
 
-              const object = await onCreate(question, {
-                dashboardTabId: formValues.dashboard_tab_id,
-              });
+            const object = await onCreate(question, {
+              dashboardTabId: formValues.dashboard_tab_id,
+            });
 
-              return object;
-            }}
-            onClose={onCloseModal}
-            onSaved={handleCopySaved}
-          />
-        </Modal>
+            return object.card();
+          }}
+          onClose={onCloseModal}
+          onSaved={handleCopySaved}
+        />
       );
     case MODAL_TYPES.TURN_INTO_DATASET:
       return (
@@ -328,14 +308,20 @@ export function QueryModals({
         </Modal>
       );
     case MODAL_TYPES.PREVIEW_QUERY:
-      return (
-        <Modal fit onClose={onCloseModal}>
-          <PreviewQueryModal onClose={onCloseModal} />
-        </Modal>
-      );
+      return <PreviewQueryModal onClose={onCloseModal} />;
     case MODAL_TYPES.QUESTION_EMBED:
       return (
         <QuestionEmbedWidget card={question._card} onClose={onCloseModal} />
       );
   }
+}
+
+function getAddToDashboardToastProps(
+  onOpenModal: (modalType: QueryModalType) => void,
+): ToastArgs {
+  return {
+    message: () => <Text c="inherit" fw="bold" mr="2.5rem">{t`Saved`}</Text>,
+    actionLabel: t`Add this to a dashboard`,
+    action: () => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD),
+  };
 }

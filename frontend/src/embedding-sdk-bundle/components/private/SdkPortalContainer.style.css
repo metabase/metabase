@@ -1,0 +1,4 @@
+.portalWrapper {
+  /* Avoid taking space inside a container e.g. flex */
+  display: contents;
+}

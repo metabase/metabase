@@ -17,9 +17,9 @@ import {
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
-  NightModeToggleButton,
 } from "../buttons";
 import { AddLinkOrEmbedButton } from "../buttons/AddLinkOrEmbedButton";
+import { DashboardSubscriptionsButton } from "../buttons/DashboardSubscriptionsButton";
 
 import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 import type { DashboardActionButton, DashboardActionKey } from "./types";
@@ -73,23 +73,6 @@ export const dashboardActionButtons: Record<
     component: () => <RefreshWidget />,
     enabled: ({ dashboard, isEditing }) => !isEditing && !dashboard?.archived,
   },
-  [DASHBOARD_ACTION.NIGHT_MODE_TOGGLE]: {
-    component: () => <NightModeToggleButton />,
-    enabled: ({
-      isEditing,
-      isFullscreen,
-      dashboard,
-      hasNightModeToggle,
-      onNightModeChange,
-    }) =>
-      Boolean(
-        !isEditing &&
-          isFullscreen &&
-          !dashboard.archived &&
-          hasNightModeToggle &&
-          onNightModeChange,
-      ),
-  },
   [DASHBOARD_ACTION.FULLSCREEN_TOGGLE]: {
     component: FullscreenToggle,
     enabled: ({ isFullscreen, isPublic }) => isPublic || isFullscreen,
@@ -134,7 +117,7 @@ export const dashboardActionButtons: Record<
     enabled: ({ isAnalyticsDashboard = false }) => isAnalyticsDashboard,
   },
 
-  //   UTILITY
+  // UTILITY
   [DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER]: {
     component: () => (
       <Center h="1.25rem" px="sm">
@@ -146,5 +129,10 @@ export const dashboardActionButtons: Record<
   DOWNLOAD_PDF: {
     component: () => <ExportAsPdfButton />,
     enabled: ({ downloadsEnabled }) => Boolean(downloadsEnabled.pdf),
+  },
+  // Modular embedding
+  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS]: {
+    enabled: ({ withSubscriptions }) => withSubscriptions,
+    component: () => <DashboardSubscriptionsButton />,
   },
 };

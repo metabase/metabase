@@ -2,36 +2,32 @@ import cx from "classnames";
 import type { CSSProperties } from "react";
 import { t } from "ttag";
 
-import { alpha, darken } from "metabase/lib/colors";
-import { Icon, useMantineTheme } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type { DatasetEditorTab } from "metabase-types/store";
 
 import EditorTabsS from "./EditorTabs.module.css";
 
 type Props = {
   currentTab: string;
   disabledQuery: boolean;
-  disabledMetadata: boolean;
-  onChange: (optionId: string) => void;
+  disabledColumns: boolean;
+  onChange: (optionId: DatasetEditorTab) => void;
 };
 
 export function EditorTabs({
   currentTab,
   disabledQuery,
-  disabledMetadata,
+  disabledColumns,
   onChange,
 }: Props) {
-  const theme = useMantineTheme();
-
   return (
     <ul
       className={EditorTabsS.TabBar}
       style={
         {
-          "--active-tab-color": darken(theme.fn.themeColor("brand")),
-          "--inactive-tab-color": alpha(
-            darken(theme.fn.themeColor("brand")),
-            0.3,
-          ),
+          "--active-tab-color": "var(--mb-color-brand-dark)",
+          "--inactive-tab-color":
+            "color-mix(in srgb, var(--mb-color-brand-dark) 30%, transparent )",
         } as CSSProperties
       }
     >
@@ -44,7 +40,7 @@ export function EditorTabs({
           })}
           htmlFor="editor-tabs-query"
         >
-          <Icon name="notebook" mr="10px" />
+          <Icon name="sql" mr="10px" />
           <input
             className={EditorTabsS.RadioInput}
             type="radio"
@@ -65,13 +61,38 @@ export function EditorTabs({
       <li>
         <label
           className={cx(EditorTabsS.Tab, {
+            [EditorTabsS.active]: currentTab === "columns",
+            [EditorTabsS.inactive]: currentTab !== "columns",
+            [EditorTabsS.disabled]: disabledColumns,
+          })}
+          htmlFor="editor-tabs-columns"
+        >
+          <Icon name="notebook" mr="10px" />
+          <input
+            type="radio"
+            className={EditorTabsS.RadioInput}
+            id="editor-tabs-columns"
+            name="editor-tabs"
+            value="columns"
+            checked={currentTab === "columns"}
+            onChange={() => {
+              onChange("columns");
+            }}
+            disabled={disabledColumns}
+            data-testid="editor-tabs-columns"
+          />
+          <span data-testid="editor-tabs-columns-name">{t`Columns`}</span>
+        </label>
+      </li>
+      <li>
+        <label
+          className={cx(EditorTabsS.Tab, {
             [EditorTabsS.active]: currentTab === "metadata",
             [EditorTabsS.inactive]: currentTab !== "metadata",
-            [EditorTabsS.disabled]: disabledMetadata,
           })}
           htmlFor="editor-tabs-metadata"
         >
-          <Icon name="notebook" mr="10px" />
+          <Icon name="gear" mr="10px" />
           <input
             type="radio"
             className={EditorTabsS.RadioInput}
@@ -82,10 +103,9 @@ export function EditorTabs({
             onChange={() => {
               onChange("metadata");
             }}
-            disabled={disabledMetadata}
             data-testid="editor-tabs-metadata"
           />
-          <span data-testid="editor-tabs-metadata-name">{t`Metadata`}</span>
+          <span data-testid="editor-tabs-metadata-name">{t`Settings`}</span>
         </label>
       </li>
     </ul>

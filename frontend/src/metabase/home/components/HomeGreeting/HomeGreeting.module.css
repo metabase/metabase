@@ -1,0 +1,53 @@
+.greetingRoot {
+  display: flex;
+  align-items: center;
+}
+
+.greetingLogoContainer {
+  position: relative;
+  width: 4rem;
+  height: 2.5rem;
+  margin-inline-end: 0.5rem;
+
+  @media (--breakpoint-min-xl) {
+    width: 4rem;
+    height: 3rem;
+  }
+}
+
+.greetingLogo {
+  width: 100%;
+  position: absolute;
+  top: 0;
+
+  &.isCool {
+    opacity: 1;
+  }
+
+  &.isNotCool {
+    opacity: 0;
+  }
+}
+
+.greetingMessage {
+  color: var(--mb-color-text-primary);
+  font-weight: bold;
+  line-height: 1.5rem;
+
+  &.withLogo {
+    font-size: 1.125rem;
+    margin-left: 0.5rem;
+
+    @media (--breakpoint-min-xl) {
+      font-size: 1.25rem;
+    }
+  }
+
+  &.withoutLogo {
+    font-size: 1.25rem;
+
+    @media (--breakpoint-min-xl) {
+      font-size: 1.5rem;
+    }
+  }
+}

@@ -2,8 +2,8 @@
   (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
-       ([metabase.util.malli.defn :as mu.defn]
-        [metabase.util.malli.fn :as mu.fn]
+       ([metabase.util.malli.fn :as mu.fn]
+        [metabase.util.malli.defn :as mu.defn]
         [net.cgrand.macrovich :as macros]
         [potemkin :as p]))
    [clojure.core :as core]
@@ -130,15 +130,23 @@
                                                          {:error (explain schema-or-validator value)})))
          value))))
 
-(core/defn map-schema-assoc
-  "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.
-   If kvs are provided, they are also associated with the schema."
-  [map-schema & kvs]
-  (if kvs
-    (if (next kvs)
-      (let [key (first kvs)
-            val (first (next kvs))
-            ret (mut/assoc map-schema key val)]
-        (recur ret (nnext kvs)))
-      (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
-    map-schema))
+(core/defn map-schema-keys
+  "Return a set of keys specified in a map `schema`. Resolves refs in the registry and handles maps wrapped in `:and`
+  or combined with `:merge`.
+
+    (map-schema-keys :metabase.lib.metadata.calculation/visible-columns.options)
+    ;; => #{:include-joined?
+            :include-expressions?
+            :include-implicitly-joinable-for-source-card?
+            :include-implicitly-joinable?
+            :include-remaps?}"
+  [schema]
+  ;;   TODO (Cam 8/7/25) -- there's probably a better way to do this but I don't know what it is.
+  (let [schema (mr/resolve-schema schema)]
+    (case (mc/type schema)
+      :map (into
+            #{}
+            (map first)
+            (mc/children schema))
+      :and (some map-schema-keys (mc/children schema))
+      nil)))

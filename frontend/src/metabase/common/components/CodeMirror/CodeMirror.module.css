@@ -15,7 +15,7 @@
     }
 
     .cm-content {
-      color: var(--mb-color-text-dark);
+      color: var(--mb-color-text-primary);
       background: none;
       padding-block: 8px;
     }
@@ -25,14 +25,14 @@
     }
 
     .cm-gutters {
-      background-color: var(--mb-color-bg-light);
+      background-color: var(--mb-color-background-secondary);
       border: none;
     }
 
     .cm-gutterElement {
       font-weight: bold;
       font-size: 10px;
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
       vertical-align: baseline;
       display: flex;
       align-items: center;
@@ -59,22 +59,106 @@
 
     .cm-cursor {
       border-left-width: 1.6px;
+      border-left-color: var(--mb-color-text-secondary);
     }
 
-    .cm-tooltip {
+    .cm-tooltip:not(.cm-tooltip-autocomplete) {
       border: none !important;
       background: none !important;
     }
 
     .cm-matchingBracket {
       background: none !important;
-      outline: 0.5px solid var(--mb-color-text-light);
+      outline: 0.5px solid var(--mb-color-text-tertiary);
       border-radius: 2px;
     }
 
     .cm-snippetField {
       font-style: italic;
       background: none;
+    }
+
+    .cm-completionMatchedText {
+      text-decoration: none;
+      font-weight: bold;
+      color: var(--mb-color-text-brand);
+    }
+
+    .cm-completionDetail {
+      color: var(--mb-color-text-tertiary);
+      font-style: normal;
+      text-align: right;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cm-completionIcon {
+      display: none;
+    }
+
+    .cm-completionLabel {
+      display: block;
+      max-width: 18rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: bold;
+    }
+
+    .cm-tooltip-autocomplete {
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+      background-color: var(--mb-color-background-primary);
+      color: var(--mb-color-text-primary);
+      border: 1px solid var(--mb-color-border);
+      max-width: 520px;
+
+      ul li {
+        color: inherit;
+        padding: 0 8px !important;
+        display: flex;
+        justify-content: space-between;
+
+        &:first-child {
+          margin-top: 4px;
+        }
+
+        &:last-child {
+          margin-bottom: 4px;
+        }
+
+        &:hover,
+        &[aria-selected="true"] {
+          background-color: var(--mb-color-background-secondary);
+          color: var(--mb-color-text-primary);
+        }
+      }
+
+      @supports (grid-template-columns: subgrid) {
+        ul:has(.cm-completionLabel) {
+          display: grid;
+          gap: 0 1rem;
+          grid-template-columns: 1fr;
+          grid-auto-rows: max-content;
+
+          &:has(.cm-completionDetail) {
+            grid-template-columns: max-content 1fr;
+          }
+
+          li {
+            display: grid;
+            grid-column: 1 / span 2;
+            grid-template-columns: subgrid;
+          }
+
+          .cm-completionLabel {
+            grid-column: 1;
+          }
+
+          .cm-completionDetail {
+            grid-column: 2;
+          }
+        }
+      }
     }
   }
 }

@@ -8,7 +8,9 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
+   ;; legacy usage -- don't do things like this going forward
+   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -33,7 +35,7 @@
 
 (mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe analyze/Fingerprint]]
+   fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
   (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
@@ -258,7 +260,7 @@
                                  (fn [stats-acc]
                                    (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
 
-(mu/defn refingerprint-field
+(mu/defn refingerprint-field!
   "Refingerprint a field"
   [field :- i/FieldInstance]
   (let [table (field/table field)]

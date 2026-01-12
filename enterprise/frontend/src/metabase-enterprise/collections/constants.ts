@@ -13,12 +13,17 @@ export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   icon: "folder",
 };
 
+export const REMOTE_SYNC_COLLECTION: CollectionInstanceAnaltyicsConfig = {
+  type: null,
+  icon: "synced_collection",
+};
+
 export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   type: "official",
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   name: t`Official`,
   icon: "official_collection",
-  color: "saturated-yellow",
+  color: "saturated-yellow" as const,
   tooltips: {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     default: t`Official collection`,

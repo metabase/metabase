@@ -27,12 +27,6 @@ export const CSS_VARIABLES_TO_SDK_THEME_MAP = {
   // Overlays
   "--mb-overlay-z-index": "popover.zIndex",
 
-  // Tooltips
-  "--mb-color-tooltip-text": "tooltip.textColor",
-  "--mb-color-tooltip-background": "tooltip.backgroundColor",
-  "--mb-color-tooltip-background-focused": "tooltip.focusedBackgroundColor",
-  "--mb-color-tooltip-text-secondary": "tooltip.secondaryTextColor",
-
   // Dashboards
   "--mb-color-bg-dashboard": "dashboard.backgroundColor",
   "--mb-color-bg-dashboard-card": "dashboard.card.backgroundColor",

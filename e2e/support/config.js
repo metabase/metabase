@@ -1,11 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import cypressOnFix from "cypress-on-fix";
 import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
+
+import { BACKEND_HOST, BACKEND_PORT } from "../runner/constants/backend-port";
 
 import * as ciTasks from "./ci_tasks";
 import { collectFailingTests } from "./collectFailedTests";
 import {
+  copyDirectory,
+  readDirectory,
   removeDirectory,
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
@@ -20,17 +25,9 @@ const {
 const cypressSplit = require("cypress-split");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
-const isCI = process.env["CYPRESS_CI"] === "true";
+const isCI = !!process.env.CI;
 
-const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
-
-const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
-
-const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
-const targetVersion = process.env["CROSS_VERSION_TARGET"];
-
-const isEmbeddingSdk = process.env.CYPRESS_IS_EMBEDDING_SDK === "true";
 
 // docs say that tsconfig paths should handle aliases, but they don't
 const assetsResolverPlugin = {
@@ -49,22 +46,14 @@ const assetsResolverPlugin = {
   },
 };
 
-// these are special and shouldn't be chunked out arbitrarily
-const specBlacklist = ["/embedding-sdk/", "/cross-version/"];
-
-function getSplittableSpecs(specs) {
-  return specs.filter((spec) => {
-    return !specBlacklist.some((blacklistedPath) =>
-      spec.includes(blacklistedPath),
-    );
-  });
-}
-
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
-  setupNodeEvents(on, config) {
+  setupNodeEvents(cypressOn, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // Use cypress-on-fix to enable multiple handlers
+    const on = cypressOnFix(cypressOn);
 
     // CLI grep can't handle commas in the name
     // needed when we want to run only specific tests
@@ -99,6 +88,7 @@ const defaultConfig = {
       //  Open dev tools in Chrome by default
       if (browser.name === "chrome" || browser.name === "chromium") {
         launchOptions.args.push("--auto-open-devtools-for-tabs");
+        launchOptions.args.push("--blink-settings=preferredColorScheme=1");
       }
 
       // Start browsers with prefers-reduced-motion set to "reduce"
@@ -124,6 +114,8 @@ const defaultConfig = {
       ...dbTasks,
       ...ciTasks,
       ...verifyDownloadTasks,
+      readDirectory,
+      copyDirectory,
       removeDirectory,
       signJwt,
     });
@@ -132,25 +124,19 @@ const defaultConfig = {
      **                          CONFIG                                **
      ********************************************************************/
 
-    if (!isQaDatabase) {
-      config.excludeSpecPattern = "e2e/snapshot-creators/qa-db.cy.snap.js";
-    }
-
     // `grepIntegrationFolder` needs to point to the root!
     // See: https://github.com/cypress-io/cypress/issues/24452#issuecomment-1295377775
     config.env.grepIntegrationFolder = "../../";
     config.env.grepFilterSpecs = true;
+    config.env.grepOmitFiltered = true;
 
     config.env.IS_ENTERPRISE = isEnterprise;
-    config.env.HAS_SNOWPLOW_MICRO = hasSnowplowMicro;
     config.env.SNOWPLOW_MICRO_URL = snowplowMicroUrl;
-    config.env.SOURCE_VERSION = sourceVersion;
-    config.env.TARGET_VERSION = targetVersion;
 
     require("@cypress/grep/src/plugin")(config);
 
     if (isCI) {
-      cypressSplit(on, config, getSplittableSpecs);
+      cypressSplit(on, config);
       collectFailingTests(on, config);
     }
 
@@ -168,6 +154,11 @@ const defaultConfig = {
 
     return config;
   },
+  baseUrl: `http://${BACKEND_HOST}:${BACKEND_PORT}`,
+  defaultBrowser: process.env.CYPRESS_BROWSER ?? "chrome",
+  env: {
+    CI: isCI,
+  },
   supportFile: "e2e/support/cypress.js",
   chromeWebSecurity: false,
   modifyObstructiveCode: false,
@@ -184,15 +175,6 @@ const defaultConfig = {
 
 const mainConfig = {
   ...defaultConfig,
-  ...(isEmbeddingSdk
-    ? {
-        chromeWebSecurity: true,
-        hosts: {
-          "my-site.local": "127.0.0.1",
-        },
-      }
-    : {}),
-  projectId: "ywjy9z",
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {
@@ -224,35 +206,15 @@ const mainConfig = {
   },
 };
 
-const snapshotsConfig = {
-  ...defaultConfig,
-  specPattern: "e2e/snapshot-creators/**/*.cy.snap.js",
-  video: false,
-};
-
-const crossVersionSourceConfig = {
-  ...defaultConfig,
-  baseUrl: "http://localhost:3000",
-  specPattern: "e2e/test/scenarios/cross-version/source/**/*.cy.spec.{js,ts}",
-};
-
-const crossVersionTargetConfig = {
-  ...defaultConfig,
-  baseUrl: "http://localhost:3001",
-  specPattern: "e2e/test/scenarios/cross-version/target/**/*.cy.spec.{js,ts}",
-};
-
-const stressTestConfig = {
-  ...defaultConfig,
-  retries: 0,
-};
-
 const embeddingSdkComponentTestConfig = {
   ...defaultConfig,
+  baseUrl: undefined, // baseUrl should not be set for component tests,
+  defaultCommandTimeout: 10000,
+  requestTimeout: 10000,
   video: false,
   specPattern: "e2e/test-component/scenarios/embedding-sdk/**/*.cy.spec.tsx",
   indexHtmlFile: "e2e/support/component-index.html",
-  supportFile: "e2e/support/cypress.js",
+  supportFile: "e2e/support/component-cypress.js",
 
   reporter: mainConfig.reporter,
   reporterOptions: mainConfig.reporterOptions,
@@ -266,10 +228,7 @@ const embeddingSdkComponentTestConfig = {
 };
 
 module.exports = {
+  defaultConfig,
   mainConfig,
-  snapshotsConfig,
-  stressTestConfig,
-  crossVersionSourceConfig,
-  crossVersionTargetConfig,
   embeddingSdkComponentTestConfig,
 };

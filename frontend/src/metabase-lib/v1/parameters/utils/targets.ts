@@ -4,7 +4,6 @@ import { isNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
@@ -41,6 +40,14 @@ export function getTemplateTagFromTarget(target: ParameterTarget) {
 
   const [, [type, tag]] = target;
   return type === "template-tag" ? tag : null;
+}
+
+export function getTextTagFromTarget(target: ParameterTarget) {
+  if (!target?.[1] || target?.[0] !== "text-tag") {
+    return null;
+  }
+
+  return target[1];
 }
 
 /**
@@ -157,8 +164,13 @@ export function buildColumnTarget(
 
 export function buildTemplateTagVariableTarget(
   variable: TemplateTagVariable,
-): ParameterVariableTarget {
-  return ["variable", normalize(variable.mbql())];
+): ParameterVariableTarget | NativeParameterDimensionTarget {
+  const tag = variable.tag();
+  if (tag?.type === "temporal-unit") {
+    return ["dimension", variable.mbql(), { "stage-number": 0 }];
+  } else {
+    return ["variable", variable.mbql()];
+  }
 }
 
 export function buildTextTagTarget(tagName: string): ParameterTextTarget {

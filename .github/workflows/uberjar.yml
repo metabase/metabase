@@ -1,14 +1,16 @@
-name: Build + Docker Uberjar
+name: Build Uberjar
 
 # This workflow builds an uberjar and pushes it to dockerhub for any branch, either on-demand,
 # or automatically for the listed branches
+
+concurrency:
+  group: uberjar-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
 
 on:
   push:
     branches:
       - master
-      - metabot-v3-main
-      - feature-visualizer
       - internal-tools
     paths-ignore:
       # config files
@@ -24,65 +26,102 @@ on:
     inputs:
       commit:
         description: "Optional full-length commit SHA-1 hash"
+  workflow_call:
 
 jobs:
-  get-container-info:
+  check-existing-artifacts:
     runs-on: ubuntu-22.04
     timeout-minutes: 5
-    name: Get container info
     outputs:
-      editions: ${{ toJson(fromJson(steps.info.outputs.result).editions) }}
-      ee: ${{ toJson(fromJson(steps.info.outputs.result).ee) }}
-      oss: ${{ toJson(fromJson(steps.info.outputs.result).oss) }}
+      ee_exists: ${{ steps.check-ee.outcome == 'success' }}
+      oss_exists: ${{ steps.check-oss.outcome == 'success' }}
+      should_build: ${{ steps.decide.outputs.should_build }}
     steps:
-      - name: Get docker repo and tag
-        id: info
+      - name: Check out the code
+        uses: actions/checkout@v4
+      - name: Try to fetch existing EE artifact
+        id: check-ee
+        continue-on-error: true
+        uses: ./.github/actions/fetch-artifact
+        with:
+          name: metabase-ee-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          output-name: metabase-ee.jar
+
+      - name: Try to fetch existing OSS artifact
+        id: check-oss
+        continue-on-error: true
+        uses: ./.github/actions/fetch-artifact
+        with:
+          name: metabase-oss-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          output-name: metabase-oss.jar
+
+      - name: Decide if build is needed
+        id: decide
+        run: |
+          EE_EXISTS="${{ steps.check-ee.outcome == 'success' }}"
+          OSS_EXISTS="${{ steps.check-oss.outcome == 'success' }}"
+
+          echo "EE exists: $EE_EXISTS"
+          echo "OSS exists: $OSS_EXISTS"
+
+          # Build only if artifacts don't exist for this commit hash
+          # Since we build by hash, if artifacts exist for this hash, we don't need to rebuild
+          if [[ "$EE_EXISTS" == "false" ]] || [[ "$OSS_EXISTS" == "false" ]]; then
+            SHOULD_BUILD="true"
+            echo "Will build: ee_exists=$EE_EXISTS, oss_exists=$OSS_EXISTS"
+          else
+            SHOULD_BUILD="false"
+            echo "Skipping build: artifacts exist for this commit hash"
+          fi
+
+          echo "should_build=$SHOULD_BUILD" >> $GITHUB_OUTPUT
+
+  # if this is on a release branch, we need to check the build requirements
+  get-build-requirements:
+    if: |
+      !cancelled() &&
+      contains(github.ref, 'release-x')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    outputs:
+      java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
+      node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get build dependencies
         uses: actions/github-script@v7
+        id: dependencies
         with:
           script: | # js
-            const branch = '${{ github.head_ref || github.ref_name }}';
-            const owner = '${{ github.repository_owner }}';
+            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            console.log(`Branch: ${branch}`);
-
-            if (branch === "master") {
-              return {
-                editions: ["ee", "oss"],
-                ee: {
-                  repo: `${owner}/metabase-enterprise-head`,
-                  tag: "latest"
-                },
-                oss: {
-                  repo: `${owner}/metabase-head`,
-                  tag: "latest"
-                }
-              };
-            }
+            const version = getVersionFromReleaseBranch('${{ github.ref }}');
+            const requirements = getBuildRequirements(version);
 
             return {
-              editions: ["ee"],
-              ee: {
-                repo: `${owner}/metabase-dev`,
-                tag: branch.replaceAll("/", "-"), // slashes make docker sad
-              },
+              java_version: requirements.java,
+              node_version: requirements.node,
             };
 
-      - name: Print output
-        run: |
-          echo "${{ steps.info.outputs.result }}"
 
   build:
-    needs: get-container-info
+    needs:
+      [check-existing-artifacts, get-build-requirements]
+    if: always() && !cancelled() && needs.check-existing-artifacts.outputs.should_build == 'true' && (needs.get-build-requirements.result == 'success' || needs.get-build-requirements.result == 'skipped')
     name: Build MB ${{ matrix.edition }}
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     strategy:
       matrix:
-        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
+        edition: ["ee", "oss"]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      SKIP_LICENSES: true # faster builds for dev
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}  # faster builds for dev
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -90,28 +129,38 @@ jobs:
           ref: ${{ github.event.inputs.commit }}
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.get-build-requirements.outputs.node_version || '22' }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: uberjar
-          java-version: 21
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 21 }}"
       - name: Build
         run: ./bin/build.sh
       - name: Prepare uberjar artifact
         uses: ./.github/actions/prepare-uberjar-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha  }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
 
   check-jar-health:
     runs-on: ubuntu-22.04
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
-    needs: [build, get-container-info]
+    needs: [build, check-existing-artifacts]
+    # We only care about the explicit JAR health check on push to `master` and the `release-` branches.
+    # JARs created in random branches on PRs are 99% of the time treated as ephemeral, and used only in e2e tests.
+    # E2E tests already have a step where they wait for the instance health check.
+    if: |
+      always() && !cancelled() &&
+      (github.ref_name == 'master' || startsWith(github.ref_name, 'release-')) &&
+      (needs.build.result == 'success' || (needs.check-existing-artifacts.outputs.should_build == 'false' && needs.check-existing-artifacts.outputs.ee_exists == 'true' && needs.check-existing-artifacts.outputs.oss_exists == 'true'))
     timeout-minutes: 10
     strategy:
       matrix:
-        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
+        edition: ["ee", "oss"]
         java-version: [21]
     steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
       - name: Prepare JRE (Java Run-time Environment)
         uses: actions/setup-java@v4
         with:
@@ -119,56 +168,12 @@ jobs:
           java-version: ${{ matrix.java-version }}
           distribution: "temurin"
       - run: java -version
-      - uses: actions/download-artifact@v4
-        name: Retrieve uberjar artifact
+      - name: Retrieve uberjar artifact
+        uses: ./.github/actions/fetch-artifact
         with:
-          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha  }}-uberjar
+          name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
       - name: Launch uberjar
         run: >-
-          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./metabase.jar &
       - name: Wait for Metabase to start
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
-  containerize:
-    needs: [check-jar-health, get-container-info]
-    strategy:
-      matrix:
-        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
-    uses: ./.github/workflows/containerize-jar.yml
-    secrets: inherit
-    with:
-      artifact-name: metabase-${{ matrix.edition }}-${{ github.event.inputs.commit || github.sha }}-uberjar
-      commit: ${{ github.event.inputs.commit || github.sha }}
-      repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
-      tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
-      release: "false"
-      build-args: |
-        GIT_COMMIT_SHA=${{ github.event.inputs.commit || github.sha }}
-
-  run-trivy:
-    needs: [get-container-info, containerize]
-    strategy:
-      matrix:
-        edition: ${{ fromJson(needs.get-container-info.outputs.editions) }}
-    runs-on: ubuntu-22.04
-    name: Run Trivy vulnerability scanner
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.commit || github.sha }}
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.29.0
-        env:
-          TRIVY_OFFLINE_SCAN: true
-          repo: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).repo }}
-          tag: ${{ fromJson(needs.get-container-info.outputs[matrix.edition]).tag }}
-        with:
-          image-ref: docker.io/${{ env.repo }}:${{ env.tag }}
-          format: sarif
-          output: trivy-results.sarif
-          version: "v0.57.1"
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: "trivy-results.sarif"

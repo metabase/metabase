@@ -55,6 +55,8 @@
 
  [misc
   parse-as-keyword
+  since-ms
+  start-timer
   varargs]
 
  [out

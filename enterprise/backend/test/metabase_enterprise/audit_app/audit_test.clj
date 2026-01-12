@@ -11,7 +11,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.core.core :as mbc]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.models.data-permissions :as data-perms]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -23,17 +23,17 @@
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
-(defmacro with-audit-db-restoration [& body]
+(defn do-with-audit-db-restoration! [thunk]
+  (mbc/ensure-audit-db-installed!)
+  (try
+    (thunk)
+    (finally
+      (mbc/ensure-audit-db-installed!))))
+
+(defmacro with-audit-db-restoration! [& body]
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
-  `(let [audit-collection-exists?# (t2/exists? :model/Collection :type "instance-analytics")]
-     (clojure.pprint/print-table (t2/select [:model/Database :id :name]))
-     (mt/with-temp-env-var-value! [mb-load-analytics-content (not audit-collection-exists?#)]
-       (mbc/ensure-audit-db-installed!)
-       (try
-         ~@body
-         (finally
-           (mbc/ensure-audit-db-installed!))))))
+  `(do-with-audit-db-restoration! (fn [] ~@body)))
 
 (deftest audit-db-installation-test
   (mt/test-drivers #{:postgres :h2 :mysql}
@@ -44,7 +44,7 @@
       (with-redefs [ee-audit/analytics-dir-resource nil]
         (is (nil? @#'ee-audit/analytics-dir-resource))
         (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-        (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+        (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
             "Audit DB is installed.")
         (is (= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
             "No cards created for Audit DB."))
@@ -53,7 +53,7 @@
 
     (testing "Audit DB content is installed when it is found"
       (is (= ::ee-audit/installed (ee-audit/ensure-audit-db-installed!)))
-      (is (= audit/audit-db-id (t2/select-one-fn :id 'Database {:where [:= :is_audit true]}))
+      (is (= audit/audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]}))
           "Audit DB is installed.")
       (is (some? (io/resource "instance_analytics")))
       (is (not= 0 (t2/count :model/Card {:where [:= :database_id audit/audit-db-id]}))
@@ -65,7 +65,7 @@
               :perms/manage-table-metadata :no
               :perms/view-data             :unrestricted
               :perms/create-queries        :no}
-             (-> (data-perms/data-permissions-graph :db-id audit/audit-db-id :audit? true)
+             (-> (data-perms.graph/data-permissions-graph :db-id audit/audit-db-id :audit? true)
                  (get-in [(u/the-id (perms-group/all-users)) audit/audit-db-id])))))
 
     (testing "Audit DB does not have scheduled syncs"
@@ -116,7 +116,7 @@
   (t2/delete! :model/Database :id audit/audit-db-id)
   (mt/with-temp-scheduler!
     (#'task.sync-databases/job-init)
-    (with-audit-db-restoration
+    (with-audit-db-restoration!
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
           "no sync scheduled after installation")
@@ -128,7 +128,7 @@
              (#'task.sync-databases/sync-and-analyze-database! "job-context"))))
       (is (= '("metabase.task.update-field-values.trigger.13371337")
              (get-audit-db-trigger-keys))
-          "no sync occured even when called directly for audit db."))))
+          "no sync occurred even when called directly for audit db."))))
 
 (deftest no-backfill-occurs-when-loading-analytics-content-test
   (mt/with-model-cleanup [:model/Collection]

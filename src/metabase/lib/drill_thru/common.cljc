@@ -1,4 +1,5 @@
 (ns metabase.lib.drill-thru.common
+  (:refer-clojure :exclude [select-keys not-empty])
   (:require
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
@@ -14,7 +15,8 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.underlying :as lib.underlying]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys not-empty]]))
 
 (defn mbql-stage?
   "Is this query stage an MBQL stage?"
@@ -59,7 +61,6 @@
   (->> (lib.metadata.calculation/visible-columns
         query
         stage-number
-        (lib.util/query-stage query stage-number)
         {:include-joined?                              false
          :include-expressions?                         false
          :include-implicitly-joinable?                 false

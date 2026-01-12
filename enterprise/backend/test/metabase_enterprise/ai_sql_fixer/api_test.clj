@@ -2,22 +2,16 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.ai-sql-fixer.api :as ai-sql-fixer.api]
+   [metabase-enterprise.metabot-v3.table-utils :as table-utils]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]))
-
-(deftest ^:parallel format-escpaed-test
-  (are [in out] (= out
-                   (with-out-str (#'ai-sql-fixer.api/format-escaped in *out*)))
-    "almallama"      "almallama"
-    "alma llama"     "\"alma llama\""
-    "\"alma\" llama" "\"\"\"alma\"\" llama\""))
 
 (deftest ^:parallel schema-sample-test
   (mt/test-driver :h2
-    (let [query {:database (mt/id)
-                 :native {:query (str "SELECT * FROM x.orders1"
-                                      " INNER JOIN products ON orders1.product_id = products.id"
-                                      " INNER JOIN ANALYTIC_EVENT ON true")}}
+    (let [query (lib/native-query (mt/metadata-provider)
+                                  (str "SELECT * FROM x.orders1"
+                                       " INNER JOIN products ON orders1.product_id = products.id"
+                                       " INNER JOIN ANALYTIC_EVENT ON true"))
           normalize #(into #{} (str/split % #"(?<=;)\n"))]
       (is (= (-> (str "CREATE TABLE PUBLIC.PRODUCTS (\n"
                       "  ID BIGINT,\n"
@@ -48,13 +42,12 @@
                       ");\n")
                  normalize)
              (-> (mt/with-current-user (mt/user->id :crowberto)
-                   (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))
+                   (table-utils/schema-sample query {:all-tables-limit 5}))
                  normalize))))))
 
 (deftest ^:parallel no-used-table-test
   (mt/test-driver :postgres
-    (let [query {:database (mt/id)
-                 :native {:query "SELECT * FROM x.orders1"}}
+    (let [query (lib/native-query (mt/metadata-provider) "SELECT * FROM x.orders1")
           normalize #(into #{} (str/split % #"(?<=;)\n"))]
       (is (= (-> (str "CREATE TABLE public.orders (\n"
                       "  id int4,\n"
@@ -75,5 +68,5 @@
                       ");\n")
                  normalize)
              (-> (mt/with-current-user (mt/user->id :crowberto)
-                   (#'ai-sql-fixer.api/schema-sample query {:all-tables-limit 5}))
+                   (table-utils/schema-sample query {:all-tables-limit 5}))
                  normalize))))))

@@ -3,9 +3,9 @@ import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { BUY_STORAGE_URL, UpsellStorage } from "metabase/admin/upsells";
+import { UpsellStorage } from "metabase/admin/upsells";
 import { skipToken } from "metabase/api";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getSubpathSafeUrl } from "metabase/lib/urls";
 import {
@@ -57,7 +57,7 @@ const PanelWrapper = ({
         <Title order={2} size="h4" mb="sm">
           {title}
         </Title>
-        <Text c="text-medium">{subtitle}</Text>
+        <Text c="text-secondary">{subtitle}</Text>
       </Box>
       {children}
     </Stack>
@@ -137,6 +137,7 @@ export const GdriveAddDataPanel = ({
 
   const isAdmin = useSelector(getUserIsAdmin);
   const hasStorage = useHasTokenFeature("attached_dwh");
+  const storeUrl = useStoreUrl("account/storage");
 
   const showGdrive = useShowGdrive();
   const { data: folder, error } = useGetGsheetsFolderQuery(
@@ -217,7 +218,7 @@ export const GdriveAddDataPanel = ({
           error={t`Metabase Storage is full. Add more storage to continue syncing.`}
         >
           <Group gap="sm" mt="sm" align="center">
-            <CTALink href={BUY_STORAGE_URL} text={t`Add storage`} />
+            <CTALink href={storeUrl} text={t`Add storage`} />
             <CTALink href={folderUrl} text={t`Go to Google Drive`} />
           </Group>
         </ErrorAlert>
@@ -307,7 +308,7 @@ const ErrorAlert = ({
         },
         label: {
           fontSize: "var(--mantine-font-size-md)",
-          color: "var(--mb-color-text-dark)",
+          color: "var(--mb-color-text-primary)",
         },
       }}
     >

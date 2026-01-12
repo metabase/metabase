@@ -29,6 +29,15 @@ on:
         required: false
         type: number
 
+env:
+  DISPLAY: "" # https://github.com/cypress-io/cypress/issues/4034
+  TERM: xterm
+  TZ: US/Pacific # to make Node match the instance tz
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+  PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+  JOB_NAME: ${{ inputs.name }}
+
 jobs:
   e2e-tests:
     runs-on: ${{ inputs.runner }}
@@ -36,30 +45,23 @@ jobs:
     name: e2e-tests-${{ inputs.name }}-${{ inputs.edition }}
     env:
       MB_EDITION: ${{ inputs.edition }}
-      DISPLAY: ""
-      QA_DB_ENABLED: true
-      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      HASH: ${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
-      JOB_NAME: ${{ inputs.name }}
       # Any env starting with `CYPRESS_` will be available to all Cypress tests via `Cypress.env()`
       # Example: you can get `CYPRESS_FOO` with `Cypress.env("FOO")`
-      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.MB_STARTER_CLOUD_TOKEN }}
-      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.MB_PRO_CLOUD_TOKEN }}
-      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_PULL_REQUEST_ID: ${{ github.event.pull_request.number || '' }}
-      COMMIT_INFO_MESSAGE: ${{ github.event.pull_request.title || github.event.head_commit.message || github.event.head.sha }}
-      MB_EXPERIMENTAL_SEARCH_BLOCK_ON_QUEUE: true
-      MB_SEARCH_ENGINE: appdb
-      MB_SNOWPLOW_AVAILABLE: true
-      MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
-      TZ: US/Pacific # to make node match the instance tz
-      CYPRESS_CI: true
-      CYPRESS_QA_DB_MONGO: ${{ inputs.name == 'mongo' }}
-      CYPRESS_IS_EMBEDDING_SDK: ${{ inputs.name == 'embedding-sdk' }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Setup python-runner
+        if: ${{ inputs.name == 'python' }}
+        env:
+          METABASE_AUTOMATION_USER_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: ./.github/scripts/setup-python-runner.sh
 
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
@@ -70,27 +72,21 @@ jobs:
           openldap: true
           webhook: true
           snowplow: true
-          postgres: ${{ inputs.name != 'mongo' }}
-          mysql: ${{ inputs.name != 'mongo' }}
-          mongo: ${{ inputs.name == 'mongo' }}
-
-      - name: Run Embedding SDK Storybook
-        if: inputs.name == 'embedding-sdk'
-        uses: ./.github/actions/run-embedding-sdk-storybook
+          postgres: true
+          mysql: true
+          mongo: true
 
       - name: Retrieve uberjar artifact for ${{ inputs.edition }}
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/fetch-artifact
         with:
           name: metabase-${{ inputs.edition }}-${{ github.event.pull_request.head.sha || github.sha }}-uberjar
+          extract-path: "target/uberjar"
+          output-name: "metabase.jar"
 
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-
-      - name: Prepare JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: "temurin"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
 
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -112,55 +108,70 @@ jobs:
         run: node e2e/runner/run_cypress_ci.js start
 
       - name: Generate database snapshots
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: node e2e/runner/run_cypress_ci.js snapshot
 
       - name: Run auto-split Cypress tests on ${{ inputs.name }}
+        id: split-e2e
         if: ${{ !inputs.specs }}
         env:
           SPLIT: ${{ inputs.total_chunks }}
           SPLIT_INDEX: ${{ inputs.split_index }}
           SPLIT_FILE: "./e2e/support/timings.json"
           SPLIT_OUTPUT_FILE: "newTimes.json"
-          SPLIT_TIME_THRESHOLD: 5.0
+          SPLIT_TIME_THRESHOLD: 0.01 # 1% threshold for changes
           # do not write cypress-split summary to github
           SPLIT_SUMMARY: false
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         shell: bash
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-            --env grepTags="-@mongo+-@flaky+-@OSS --@quarantine",grepOmitFiltered=true \
-            --spec "$SPEC_PATH" \
-            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+            --env grepTags="-@mongo+-@python+-@OSS+-@skip" \
+            --spec "$SPEC_PATH"
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
 
       - name: Run Tagged EE Cypress tests on ${{ inputs.name }}
+        id: tagged-e2e
         if: ${{ inputs.specs }}
         shell: bash
         env:
           SPEC_PATH: ${{ env.specs || inputs.specs }}
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
         run: |
           echo "Running tests with specs: $SPEC_PATH"
           node e2e/runner/run_cypress_ci.js e2e \
-          --env grepTags="${{inputs.tags}} --@quarantine",grepOmitFiltered=true \
-          --spec "$SPEC_PATH" \
-          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+          --env grepTags="${{inputs.tags && format('{0}+-@skip', inputs.tags) || '-@skip'}}" \
+          --spec "$SPEC_PATH"
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
         with:
           input-path: ./target/junit
+          # Related to our custom upload to S3
           output-name: e2e-${{ inputs.name }}
-          variant: e2e-tests
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
+          # Related to Trunk uploader
+          variant: e2e-tests
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: |
+          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
           name: cypress-recording-${{ inputs.name }}-${{ inputs.edition }}
           path: |
@@ -170,10 +181,57 @@ jobs:
 
       - name: Upload Failed Tests
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: |
+          !cancelled() && (steps.split-e2e.outcome == 'failure' || steps.tagged-e2e.outcome == 'failure')
         with:
           name: failed-tests-${{ inputs.name }}-${{ inputs.edition }}
           path: ./cypress/test-results
+          if-no-files-found: ignore
+
+      - name: Extract chunk-specific changed timings
+        id: extract-timings
+        if: inputs.split_index >= 0 && github.ref == 'refs/heads/master'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const oldTimingsPath = "./e2e/support/timings.json";
+            const newTimingsPath = "./e2e/support/newTimes.json";
+
+            if (!fs.existsSync(newTimingsPath)) {
+              throw new Error(`newTimes.json not found - cypress-split may not have generated it`);
+            }
+
+            if (!fs.existsSync(oldTimingsPath)) {
+              throw new Error(`Original timings file ${oldTimingsPath} not found`);
+            }
+
+            const oldTimings = fs.existsSync(oldTimingsPath)
+              ? JSON.parse(fs.readFileSync(oldTimingsPath, "utf8"))
+              : { durations: [] };
+
+            const newTimings = fs.existsSync(newTimingsPath)
+              ? JSON.parse(fs.readFileSync(newTimingsPath, "utf8"))
+              : { durations: [] };
+
+            const { extractChangedTimings } = require('${{ github.workspace }}/.github/scripts/extract-changed-timings.js');
+
+            const result = extractChangedTimings({ oldTimings, newTimings });
+
+            if (result.hasChanges) {
+              core.setOutput('has-changes', 'true');
+              fs.writeFileSync('chunkTimings.json', JSON.stringify(result.changedTimings, null, 2));
+              console.log(`Extracted ${Object.keys(result.changedTimings).length} changed timings for chunk index ${{ inputs.split_index }}`);
+            }
+
+      - name: Upload Timing Data
+        uses: actions/upload-artifact@v4
+        if: steps.extract-timings.outcome == 'success' && steps.extract-timings.outputs.has-changes == 'true'
+        with:
+          name: timing-data-${{ inputs.name }}-${{ inputs.split_index }}
+          path: chunkTimings.json
+          retention-days: 1 # gets merged immediately by parent workflow
 
       - name: Publish Summary
         if: failure()

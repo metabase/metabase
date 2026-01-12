@@ -60,6 +60,15 @@ const parameters = {
   },
 };
 
+const argTypes = {
+  theme: {
+    control: {
+      type: "inline-radio",
+    },
+    options: ["light", "dark"],
+  },
+};
+
 const globalStyles = css`
   ${defaultFontFiles({ baseUrl: "/" })}
 
@@ -73,13 +82,14 @@ const globalStyles = css`
 `;
 
 const decorators = [
-  (Story) => {
+  (Story, { args = {}, globals }) => {
     if (!document.body.classList.contains("mb-wrapper")) {
       document.body.classList.add("mb-wrapper");
     }
+
     return (
       <EmotionCacheProvider>
-        <ThemeProvider>
+        <ThemeProvider displayTheme={args.theme ?? globals.theme}>
           <Global styles={globalStyles} />
           <CssVariables />
           <Story />
@@ -110,8 +120,8 @@ function CssVariables() {
       Theming-specific CSS variables.
       These CSS variables are not part of the core design system colors.
     **/
-        --mb-color-bg-dashboard: var(--mb-color-bg-white);
-        --mb-color-bg-dashboard-card: var(--mb-color-bg-white);
+        --mb-color-bg-dashboard: var(--mb-color-background-primary);
+        --mb-color-bg-dashboard-card: var(--mb-color-background-primary);
       }
 
       /* For Embed frame questions to render properly */
@@ -134,6 +144,11 @@ function CssVariables() {
 initialize({
   onUnhandledRequest: "bypass",
 });
-const preview = { parameters, decorators, loaders: [mswLoader] };
+const preview = {
+  parameters,
+  decorators,
+  loaders: [mswLoader],
+  argTypes,
+};
 
 export default preview;

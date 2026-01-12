@@ -9,6 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
+  Form,
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
@@ -53,7 +54,6 @@ import Styles from "./PerformanceApp.module.css";
 import {
   FormWrapper,
   LoaderInButton,
-  StyledForm,
   StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
 
@@ -218,8 +218,13 @@ const StrategyFormBody = ({
 
   return (
     <FormWrapper>
-      <StyledForm
-        style={{ overflow: isInSidebar ? undefined : "auto" }}
+      <Form
+        display="flex"
+        style={{
+          overflow: isInSidebar ? undefined : "auto",
+          flexDirection: "column",
+          flexGrow: 1,
+        }}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
@@ -229,10 +234,10 @@ const StrategyFormBody = ({
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" color="text-medium">
+            <Box lh="1rem" pt="md" color="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
-                  <FixedSizeIcon name="database" color="inherit" />
+                  <FixedSizeIcon name="database" c="inherit" />
                 )}
                 <Text fw="bold" py="1rem">
                   {targetName}
@@ -306,7 +311,7 @@ const StrategyFormBody = ({
           isInSidebar={isInSidebar}
           dirty={dirty}
         />
-      </StyledForm>
+      </Form>
     </FormWrapper>
   );
 };
@@ -476,10 +481,10 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack gap="xs">
-            <Text lh="1rem" color="text-medium" id={headingId}>
+            <Text lh="1rem" color="text-secondary" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
-            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+            <Text lh="1rem" fw="normal" size="sm" color="text-secondary">
               {t`This determines how long cached results will be stored.`}
             </Text>
           </Stack>

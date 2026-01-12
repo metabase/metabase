@@ -8,9 +8,11 @@ export const BrowseContainer = styled.div`
   display: flex;
   flex: 1;
   flex-flow: column nowrap;
-  margin-top: 1rem;
+  padding-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
+  background-color: var(--mb-color-background-secondary);
+  min-height: 100%;
 `;
 
 export const BrowseSection = styled(Flex)`
@@ -23,7 +25,6 @@ export const BrowseHeader = styled.div`
   display: flex;
   flex-direction: column;
   padding: 1rem 2.5rem 3rem 2.5rem;
-  color: ${({ theme }) => theme.fn.themeColor("dark")};
 `;
 
 export const BrowseMain = styled.div`

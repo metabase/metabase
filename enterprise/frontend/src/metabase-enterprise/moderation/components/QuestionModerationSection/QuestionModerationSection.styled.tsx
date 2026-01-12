@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Button, { type ButtonProps } from "metabase/common/components/Button";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 import {
   MODERATION_STATUS,
   getStatusIcon,
@@ -17,7 +17,7 @@ export const VerifyButton = styled((props: ButtonProps) => (
   padding: 8px;
 
   &:disabled {
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
   }
 
   position: relative;

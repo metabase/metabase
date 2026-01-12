@@ -4,9 +4,9 @@ title: End-to-end tests with Cypress
 
 # End-to-end tests with Cypress
 
-Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
+Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occurring).
 
-*Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed.*
+_Please, get familiar with the [Cypress best practices](https://docs.cypress.io/app/core-concepts/best-practices) before you proceed._
 
 ## Getting Started
 
@@ -29,14 +29,14 @@ Our custom Cypress runner builds its own backend and creates a temporary H2 app 
 To run all Cypress tests headlessly in the terminal:
 
 ```sh
-OPEN_UI=false yarn run test-cypress
+CYPRESS_GUI=false yarn run test-cypress
 ```
 
 You can quickly test a single file only by using the official `--spec` flag.
 This flag can be used to run all specs within a folder, or to run multiple assorted specs. Consult [the official documentation](https://docs.cypress.io/app/references/command-line#cypress-run-spec-lt-spec-gt) for instructions.
 
 ```sh
-OPEN_UI=false yarn test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
+CYPRESS_GUI=false yarn test-cypress --spec e2e/test/scenarios/question/new.cy.spec.js
 ```
 
 You can specify a browser to execute Cypress tests in using the `--browser` flag. For more details, please consult [the official documentation](https://docs.cypress.io/guides/guides/launching-browsers).
@@ -122,28 +122,27 @@ One great feature of Cypress is that you can use the Chrome inspector after each
 
 `yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct JavaScript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your JavaScript reflected even if you then start `yarn build-hot`.
 
-### Running Cypress on M1 machines
+### Running Cypress on Apple Silicon
 
-You might run into problems when running Cypress on M1 machine.
+You might run into problems when running Cypress on Apple Silicon processors.
+
 This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `esbuild` as a dependency. The error might look [like this](https://github.com/evanw/esbuild/issues/1819#issuecomment-1018771557). [The solution](https://github.com/evanw/esbuild/issues/1819#issuecomment-1080720203) is to install NodeJS using one of the Node version managers like [nvm](https://github.com/nvm-sh/nvm) or [n](https://github.com/tj/n).
 
-Another issue you will almost surely face is the inability to connect to our Mongo QA Database. You can solve it by providing the following env:
+Another issue you will almost surely face is the inability to connect to our Mongo QA Database. The supported Docker image is incompatible (AMD64). You can solve it by providing the following env:
 
 ```shell
 export EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
 ```
 
+Please note that some users experienced Mongo connection timeouts even with this env var set. If that happens, try using OrbStack instead of Docker Desktop.
+
 ### Running tests that depend on Docker images
 
-A subset of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. The default cypress command will spin up all necessary docker containers for these tests to function properly, but you can toggle them off if you want
-
-```sh
-START_CONTAINERS=false yarn test-cypress
-```
+A large portion of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. See `e2e/test/scenarios/docker-compose.yml` for up to date information. The default cypress command will spin up all necessary Docker containers for the tests to function properly. You can manually set up the e2e environment without them but be aware that you will run into test failures.
 
 ### Running tests with Snowplow involved
 
-Tests that depend on Snowplow expect a running server. This is enabled by default. You can manually enable them as well by spinning up the snowplow micro docker container and setting the appropriate environment variables:
+Tests that depend on Snowplow expect a running server. This is enabled by default. You can manually enable them as well by spinning up the Snowplow micro Docker container and setting the appropriate environment variables:
 
 ```
 docker-compose -f ./snowplow/docker-compose.yml up -d
@@ -155,17 +154,15 @@ export MB_SNOWPLOW_URL=http://localhost:9090
 
 We have a few helpers for dealing with tests involving snowplow
 
-1. You can use `describeWithSnowplow` (or `describeWithSnowplowEE` for EE edition) method to define tests that only
-   run when a Snowplow instance is running
 1. Use `resetSnowplow()` test helper before each test to clear the queue of processed events.
-1. Use `expectSnowplowEvent({ ...payload }, count=n)` to assert that exactly `count` snowplow events match (partially)
+2. Use `expectSnowplowEvent({ ...payload }, count=n)` to assert that exactly `count` snowplow events match (partially)
    the payload provided (count defaults to 1)
-1. Use `expectUnstructuredSnowplowEvent` to assert that exactly `count` snowplow events are unstructured events that
+3. Use `expectUnstructuredSnowplowEvent` to assert that exactly `count` snowplow events are unstructured events that
    partial-match the payload provided. This is simply a convenience function for comparing
    `event.unstruct_event.data.data` rather than the entire `event`. Most of our events are unstructured events, so this is handy.
-1. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
-   *no* unstructured events match the payload.
-1. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
+4. Use `assertNoUnstructuredSnowplowEvent({ ...eventData })` is the inverse of `expectUnstructuredSnowplowEvent`, and asserts that
+   _no_ unstructured events match the payload.
+5. Use `expectNoBadSnowplowEvents()` after each test to assert that no invalid events have been sent.
 
 ### Running tests that require SMTP server
 
@@ -174,6 +171,10 @@ Some of our tests depend on the email being set up, and require a local SMTP ser
 ```sh
 docker run -d -p 1080:1080 -p 1025:1025 maildev/maildev:latest
 ```
+
+### Running tests that require translation dictionaries
+
+Some of the tests are checking content translation functionality. These tests require to run `./bin/i18n/build-translation-resources` command before running the tests to precompile JSON files with translations.
 
 ### Cypress comes with `Lodash` for free
 
@@ -190,7 +191,7 @@ Cypress._.times(N, () => {
 
 ### Embedding SDK tests
 
-See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/dev.md)
+See [sdk docs about e2e](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk-package/dev.md)
 
 ## DB Snapshots
 
@@ -216,15 +217,17 @@ Prior to running Cypress against Metabase® Enterprise Edition™, set `MB_EDITI
 
 **Enterprise instance will start without a premium token!**
 
-If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests. We achieve this by prefixing environment variables with `CYPRESS_`.
-You should provide two tokens that correspond to the `EE/PRO` self-hosted (all features enabled) and `STARTER` Cloud (no features enabled) Metabase plans. For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/). (note: only a few tests require the no features token)
+If you want to test premium features (feature flags), valid tokens need to be available to all Cypress tests.
+You should provide 4 tokens:
 
-- `CYPRESS_ALL_FEATURES_TOKEN`
-- `CYPRESS_NO_FEATURES_TOKEN`
+- MB_ALL_FEATURES_TOKEN: all feature enabled, including new feature not released yet to customers
+- MB_STARTER_CLOUD_TOKEN: only 'hosting' feature enabled to simulate the starter plan on cloud
+- MB_PRO_CLOUD_TOKEN: PRO features enabled + 'hosting' to simulate the pro plan on cloud
+- MB_PRO_SELF_HOSTED_TOKEN: PRO features but no 'hosting' to simulate the pro self-hosted plan
 
-```
-MB_EDITION=ee ENTERPRISE_TOKEN=xxxxxx yarn test-cypress
-```
+You can configure these via ENVs or via the `cypress.env.json` file (see `cypress.env.json.example` for an example).
+
+For more information, please see [Metabase pricing page](https://www.metabase.com/pricing/).
 
 If you navigate to the `/admin/settings/license` page, the license input field should display the active token. Be careful when sharing screenshots!
 

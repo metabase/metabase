@@ -9,8 +9,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs]
-   [metabase.util :as u])
+   [metabase.test.data.dataset-definitions :as defs])
   (:import
    (java.io BufferedOutputStream ByteArrayOutputStream)))
 
@@ -51,13 +50,15 @@
 
 (deftest errors-not-include-visualization-settings
   (testing "Queries that error should not include visualization settings"
+    ;; allowing `with-temp` here since it tests against the REST API
+    #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (mt/mbql-query orders
                                                                         {:order-by [[:asc $id]], :limit 5})
                                               :visualization_settings {:column_settings {}
                                                                        :notvisiblekey   :notvisiblevalue}}]
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! (perms-group/all-users)
-                                             (u/the-id (mt/db))
+                                             (mt/id)
                                              :perms/create-queries :query-builder)
         (let [results        (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" card-id))
               results-string (str results)

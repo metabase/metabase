@@ -124,12 +124,6 @@ async function getOriginalIssues({
     return [];
   }
 
-  // if this isn't a pull request, but is an Embedding SDK issue, skip it
-  if (!issue.pull_request && hasLabel(issue, "Embedding/SDK")) {
-    console.log("  Skip an Embedding SDK issue");
-    return [];
-  }
-
   // if this isn't a pull request, we don't need to trace further
   if (!issue.pull_request) {
     console.log('  Found an issue');

@@ -12,8 +12,6 @@ on:
         description: Tag name to apply to this release
         type: choice
         options:
-          - nightly
-          - beta
           - latest
         required: true
       tag_rollout:
@@ -36,8 +34,6 @@ on:
       tag_name:
         type: string
         # options:
-        #   - nightly
-        #   - beta
         #   - latest
         #   - none (skips everything)
         required: true
@@ -193,14 +189,16 @@ jobs:
     - name: Upload to s3 ${{ inputs.tag_name }} path
       run: | # sh
         aws s3 cp \
-          s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.source_path.outputs.result }}/metabase.jar \
-          s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.upload_path.outputs.result }}/metabase.jar
+          s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.source_path.outputs.result }}/ \
+          s3://${{ vars.AWS_S3_DOWNLOADS_BUCKET }}/${{ steps.upload_path.outputs.result }}/ \
+          --recursive \
+          --include "*"
 
     - name: Create cloudfront invalidation
       run: |
         aws cloudfront create-invalidation \
         --distribution-id ${{ vars.AWS_CLOUDFRONT_DOWNLOADS_ID }} \
-        --paths /${{ steps.upload_path.outputs.result }}/metabase.jar
+        --paths "/${{ steps.upload_path.outputs.result }}/*"
 
     - name: Download the jars
       run: | # sh
@@ -270,7 +268,7 @@ jobs:
         token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         fetch-depth: 0 # we want all branches and tags
         fetch-tags: true
-    - name: Add and push git tag for nightly/beta/latest
+    - name: Add and push git tag for latest
       if: ${{ !inputs.dot-x-tag }}
       run: | # sh
         if [[ "${{ matrix.edition }}" == "ee" ]]; then

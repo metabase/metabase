@@ -1,6 +1,6 @@
 import { createAction } from "redux-actions";
 
-import Questions from "metabase/entities/questions";
+import { Questions } from "metabase/entities/questions";
 import { createThunkAction } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -137,10 +137,7 @@ export const insertSnippet =
       query.queryText().slice(0, selectionStart) +
       `{{snippet: ${name}}}` +
       query.queryText().slice(nativeEditorCursorOffset);
-    const datasetQuery = query
-      .setQueryText(newText)
-      .updateSnippetsWithIds([snippet])
-      .datasetQuery();
+    const datasetQuery = query.setQueryText(newText).datasetQuery();
     dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
   };
 

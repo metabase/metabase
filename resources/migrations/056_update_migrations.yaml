@@ -56,6 +56,7 @@ databaseChangeLog:
                     referencedColumnNames: id
                     foreignKeyName: fk_query_table_analysis_id
                     deleteCascade: true
+
   - changeSet:
       id: v56.2025-06-06T20:11:56
       author: nvoxland
@@ -133,11 +134,6 @@ databaseChangeLog:
       id: v56.2025-06-13T15:00:00
       author: rafpaf
       comment: Create content translation table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: content_translation
       changes:
         - createTable:
             tableName: content_translation
@@ -171,37 +167,6 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v56.2025-07-04T15:00:00
-      author: qnkhuat
-      comment: fix v_alerts where cron string contains slash (#60427)
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: instance_analytics_views/alerts/v4/postgres-alerts.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: instance_analytics_views/alerts/v4/h2-alerts.sql
-            relativeToChangelogFile: true
-      rollback:
-        - sqlFile:
-            dbms: postgresql
-            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: instance_analytics_views/alerts/v3/h2-alerts.sql
-            relativeToChangelogFile: true
-
-  - changeSet:
       id: v56.2025-07-07T08:02:43
       author: johnswanson
       comment: improve full names in usage analytics - update view `v_users`
@@ -233,13 +198,373 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v56.2025-07-10T21:49:48
-      author: nvoxland
-      comment: Create the table backing the message queue
+      id: v56.2025-07-17T20:11:55
+      author: edpaget
+      comment: Add column to user for jwt-set attributes
       changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              - column:
+                  name: jwt_attributes
+                  type: ${text.type}
+                  remarks: JSON object containing attributes set through jwt
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-17T20:11:56
+      author: edpaget
+      comment: |
+        Add sync login_attributes with jwt_attributes, we need to replace jwt_attributes
+        with login attributes for users with sso_source jwt so that they will get the new
+        behavior where login_attributes can override jwt_attributes
+      changes:
+        - sql: >-
+           UPDATE core_user
+           SET jwt_attributes = login_attributes, login_attributes = '{}'
+           WHERE sso_source = 'jwt';
+      rollback:
+        - sql: >-
+           UPDATE core_user
+           SET login_attributes = jwt_attributes
+           WHERE sso_source = 'jwt';
+
+  - changeSet:
+      id: v56.2025-07-30T10:35:00
+      author: bronsa
+      comment: Add deactivated_at column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: deactivated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp when the table was deactivated (active changed from true to false)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-30T10:35:01
+      author: bronsa
+      comment: Add archived_at column to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: archived_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp when the table was marked for archiving
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-07-30T10:41:00
+      author: bronsa
+      comment: Add composite index on metabase_table for unarchived deactivated tables by db_id (PostgreSQL)
+      dbms: postgresql
+      changes:
+        - sql:
+            sql: >-
+              CREATE INDEX idx_metabase_table_db_deactivated
+              ON metabase_table (db_id, deactivated_at)
+              WHERE active = false AND archived_at IS NULL AND deactivated_at IS NOT NULL;
+      rollback:
+        - dropIndex:
+            tableName: metabase_table
+            indexName: idx_metabase_table_db_deactivated
+
+  - changeSet:
+      id: v56.2025-07-30T10:43:00
+      author: bronsa
+      comment: Backfill deactivated_at for existing inactive tables
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET deactivated_at = updated_at
+              WHERE active = false
+                AND deactivated_at IS NULL;
+      rollback:
+        - sql:
+            sql: >-
+              UPDATE metabase_table
+              SET deactivated_at = NULL;
+
+  - changeSet:
+      id: v56.2025-08-01T11:11:00
+      author: bronsa
+      comment: Migration to allow rollbacking of archived tables when possible
+      changes:
+        - empty: #no-op on forward migration
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: >-
+              UPDATE metabase_table
+              SET
+                name = REGEXP_REPLACE(name, '__mbarchiv__\d+$', ''),
+                archived_at = NULL
+              WHERE archived_at IS NOT NULL
+                AND active = false
+                AND name ~ '__mbarchiv__\d+$'
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabase_table mt2
+                  WHERE mt2.db_id = metabase_table.db_id
+                    AND mt2.schema IS NOT DISTINCT FROM metabase_table.schema
+                    AND mt2.name = REGEXP_REPLACE(metabase_table.name, '__mbarchiv__\d+$', '')
+                    AND mt2.id != metabase_table.id);
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              UPDATE metabase_table mt1
+              LEFT JOIN metabase_table mt2 ON (
+                mt2.db_id = mt1.db_id
+                AND (mt2.schema = mt1.schema OR (mt2.schema IS NULL AND mt1.schema IS NULL))
+                AND mt2.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1)
+                AND mt2.id != mt1.id
+              )
+              SET
+                mt1.name = SUBSTRING(mt1.name, 1, POSITION('__mbarchiv__' IN mt1.name) - 1),
+                mt1.archived_at = NULL
+              WHERE mt1.archived_at IS NOT NULL
+                AND mt1.active = false
+                AND mt1.name LIKE '%__mbarchiv__%'
+                AND mt2.id IS NULL;
+        - sql:
+            dbms: h2
+            sql: >-
+              UPDATE metabase_table
+              SET
+                name = SUBSTRING(name, 1, POSITION('__mbarchiv__' IN name) - 1),
+                archived_at = NULL
+              WHERE archived_at IS NOT NULL
+                AND active = false
+                AND name LIKE '%__mbarchiv__%'
+                AND NOT EXISTS (
+                  SELECT 1 FROM metabase_table mt2
+                  WHERE mt2.db_id = metabase_table.db_id
+                    AND (mt2.schema = metabase_table.schema OR (mt2.schema IS NULL AND metabase_table.schema IS NULL))
+                    AND mt2.name = SUBSTRING(metabase_table.name, 1, POSITION('__mbarchiv__' IN metabase_table.name) - 1)
+                    AND mt2.id != metabase_table.id);
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:00
+      author: sloansparger
+      comment: Add use_verified_content column to metabot
+      changes:
+        - addColumn:
+            tableName: metabot
+            columns:
+              - column:
+                  name: use_verified_content
+                  type: ${boolean.type}
+                  remarks: Whether this metabot should only use verified content
+                  constraints:
+                    nullable: true
+                  defaultValueBoolean: false
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:01
+      author: sloansparger
+      comment: Add collection_id column to metabot
+      changes:
+        - addColumn:
+            tableName: metabot
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: ID of the collection this metabot can access
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:02
+      author: sloansparger
+      comment: Add metabot_id column to metabot_prompt
+      changes:
+        - addColumn:
+            tableName: metabot_prompt
+            columns:
+              - column:
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this prompt is associated with
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:03
+      author: sloansparger
+      comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
+      changes:
+        - sql:
+            comment: Migrate collection references from metabot_entity to metabot.collection_id with exception to the default metabot instance
+            sql: >-
+              UPDATE metabot
+              SET collection_id = (
+                SELECT me.model_id
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot.id
+                  AND me.model = 'collection'
+                LIMIT 1
+              )
+              WHERE EXISTS (
+                SELECT 1
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot.id
+                  AND me.model = 'collection'
+              )
+              AND metabot.entity_id != 'metabotmetabotmetabot';
+      rollback:
+        - sql:
+            comment: Clear collection_id values set by the migration
+            sql: >-
+              UPDATE metabot
+              SET collection_id = NULL
+              WHERE collection_id IS NOT NULL
+              AND metabot.entity_id != 'metabotmetabotmetabot';
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:04
+      author: sloansparger
+      comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
+      changes:
+        - sql:
+            comment: Migrate metabot_prompt.metabot_entity_id to metabot_prompt.metabot_id
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_id = (
+                SELECT me.metabot_id
+                FROM metabot_entity me
+                WHERE me.id = metabot_prompt.metabot_entity_id
+              );
+      rollback:
+        - sql:
+            comment: Clear metabot_id values set by the migration
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_id = NULL
+              WHERE metabot_id IS NOT NULL;
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:05
+      author: sloansparger
+      comment: Add not null constraint to metabot_prompt.metabot_id
+      changes:
+        - addNotNullConstraint:
+            tableName: metabot_prompt
+            columnName: metabot_id
+            columnDataType: int
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:06
+      author: sloansparger
+      comment: Add index on metabot_prompt.metabot_id
+      changes:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_id
+            columns:
+              - column:
+                  name: metabot_id
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:07
+      author: sloansparger
+      comment: Add foreign key constraint metabot_prompt.metabot_id -> metabot.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:08
+      author: sloansparger
+      comment: Drop foreign key constraint metabot_prompt.metabot_entity_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            constraintName: fk_metabot_prompt_metabot_entity_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_prompt
+            baseColumnNames: metabot_entity_id
+            referencedTableName: metabot_entity
+            referencedColumnNames: id
+            constraintName: fk_metabot_prompt_metabot_entity_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:09
+      author: sloansparger
+      comment: Drop index on metabot_prompt.metabot_entity_id
+      changes:
+        - dropIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+      rollback:
+        - createIndex:
+            tableName: metabot_prompt
+            indexName: idx_metabot_prompt_metabot_entity_id
+            columns:
+              - column:
+                  name: metabot_entity_id
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:10
+      author: sloansparger
+      comment: Drop metabot_entity_id column from metabot_prompt
+      changes:
+        - dropColumn:
+            tableName: metabot_prompt
+            columnName: metabot_entity_id
+      rollback:
+        - addColumn:
+            tableName: metabot_prompt
+            columns:
+              - column:
+                  name: metabot_entity_id
+                  type: int
+                  remarks: The metabot entity this prompt is associated with
+                  constraints:
+                    nullable: true
+        - sql:
+            comment: Restore metabot_prompt.metabot_entity_id values from metabot_prompt.metabot_id
+            sql: >-
+              UPDATE metabot_prompt
+              SET metabot_entity_id = (
+                SELECT me.id
+                FROM metabot_entity me
+                WHERE me.metabot_id = metabot_prompt.metabot_id
+                  AND me.model = 'collection'
+                LIMIT 1
+              );
+        - addNotNullConstraint:
+            tableName: metabot_prompt
+            columnName: metabot_entity_id
+            columnDataType: int
+
+  - changeSet:
+      id: v56.2025-08-22T12:00:11
+      author: sloansparger
+      comment: Remove metabot_entity table as collection association is now direct
+      changes:
+        - dropTable:
+            tableName: metabot_entity
+            cascadeConstraints: true
+            comment: Remove metabot_entity table as collection association is now direct
+      rollback:
         - createTable:
-            tableName: queue_message
-            remarks: Lightweight message queue for cross-cluster communication
+            tableName: metabot_entity
+            remarks: Entities associated with a metabot
             columns:
               - column:
                   name: id
@@ -249,49 +574,253 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: queue_name
-                  type: varchar(254)
-                  remarks: The name of queue this message is in
+                  name: metabot_id
+                  type: int
+                  remarks: The metabot this entity is associated with
                   constraints:
                     nullable: false
               - column:
-                  remarks: The timestamp of when the message was created
+                  name: model
+                  type: varchar(32)
+                  remarks: The type of model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: The ID of the model this entity references
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the entity was created
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+        - createIndex:
+            tableName: metabot_entity
+            indexName: idx_metabot_entity_metabot_id
+            columns:
               - column:
-                  remarks: The status of the message
-                  name: status
-                  type: varchar(10)
-                  defaultValue: 'pending'
+                  name: metabot_id
+        - addForeignKeyConstraint:
+            baseTableName: metabot_entity
+            baseColumnNames: metabot_id
+            referencedTableName: metabot
+            referencedColumnNames: id
+            constraintName: fk_metabot_entity_metabot_id
+            onDelete: CASCADE
+        - sql:
+            comment: Restore collection references to metabot_entity from metabot.collection_id
+            sql: >-
+              INSERT INTO metabot_entity (metabot_id, model, model_id)
+              SELECT id, 'collection', collection_id
+              FROM metabot
+              WHERE collection_id IS NOT NULL;
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:00
+      author: piranha
+      comment: metabot_conversation table
+      changes:
+        - createTable:
+            tableName: metabot_conversation
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: varchar(36)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: 'Conversation UUID'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'created_at'
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_conversation_user_id
+                  remarks: 'Reference to user having the conversation'
+              - column:
+                  name: summary
+                  type: ${text.type}
+                  remarks: 'Auto-generated summary for the conversation'
+              - column:
+                  name: state
+                  type: ${text.type}
+                  remarks: 'Metabot conversation state'
+
+  - changeSet:
+      id: v56.2025-09-03T17:15:01
+      author: piranha
+      comment: Index on metabot_conversation.user_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_conversation_user_id
+            tableName: metabot_conversation
+            columns:
+              - column:
+                  name: user_id
+      rollback: # will be dropped with table
+
+  - changeSet:
+      id: v56.2025-09-03T17:16:00
+      author: piranha
+      comment: metabot_message table
+      changes:
+        - createTable:
+            tableName: metabot_message
+            remarks: Table to store metabot conversation messages
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: 'Autoincrement PK'
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+                  remarks: 'created_at'
+              - column:
+                  name: profile_id
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'ai-service profile used to perform the conversation'
+              - column:
+                  name: role
+                  type: varchar(20)
+                  constraints:
+                    nullable: false
+                  remarks: 'Role of the sender'
+              - column:
+                  name: data
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+                  remarks: 'Full message content'
+              - column:
+                  name: usage
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+                  remarks: 'Can be null for user messages; {"<model-name>": {"prompt": 1, "completion": 2}}'
+              - column:
+                  name: total_tokens
+                  type: int
+                  constraints:
+                    nullable: false
+                  remarks: 'A sum of all prompt+completion from `usage`'
+              - column:
+                  name: conversation_id
+                  type: varchar(36)
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabot_conversation
+                    referencedColumnNames: id
+                    foreignKeyName: fk_metabot_message_conversation_id
+                  remarks: 'Reference to a conversation'
+
+  - changeSet:
+      id: v56.2025-09-03T17:16:01
+      author: piranha
+      comment: Index on metabot_message.conversation_id
+      changes:
+        - createIndex:
+            indexName: idx_metabot_message_conversation_id
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: conversation_id
+      rollback: # will be dropped with table
+
+  - changeSet:
+      id: v56.2025-09-16T18:20:00
+      author: lbrdnk
+      comment: Semantic search token usage tracking
+      changes:
+        - createTable:
+            tableName: semantic_search_token_tracking
+            remarks: Token usage tracking info for semantic search
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID of a request
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_name
+                  remarks: Name of model used for embeddings generation
+                  type: varchar(256)
                   constraints:
                     nullable: false
               - column:
-                  remarks: Heartbeat to ensure status is not stuck
-                  name: status_heartbeat
+                  name: request_type
+                  remarks: Type of request, possibly index or query
+                  type: varchar(32)
+              - column:
+                  name: created_at
+                  remarks: Datetime of insertion
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
-                  remarks: Number of failures processing this message
-                  name: failures
+                  name: total_tokens
+                  remarks: Total tokens value as per OpenAI compatible API
                   type: int
-                  defaultValueNumeric: 0
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v56.2025-09-19T15:33:18
+      author: lbrdnk
+      comment: Semantic search token usage tracking
+      changes:
+        - createIndex:
+            tableName: semantic_search_token_tracking
+            indexName: idx_semantic_search_token_tracking_created_at
+            columns:
+              column:
+                name: created_at
+
+  - changeSet:
+      id: v56.2025-09-24T11:27:00
+      author: piranha
+      comment: Add an index on report_card.type since we're using this field for filtering all the time
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_type
+            columns:
               - column:
-                  remarks: Current owner of the message
-                  name: owner
-                  type: varchar(36)
-              - column:
-                  remarks: The content of the message
-                  name: payload
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
+                  name: type
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -186,6 +186,8 @@ const Funnel = ({ data, settings, hasDevWatermark = false }: FunnelProps) => {
           height={layout.height}
           width={layout.width}
           preserveAspectRatio="xMinYMin slice"
+          fill={palette.textMedium}
+          opacity={0.2}
         />
       )}
     </svg>

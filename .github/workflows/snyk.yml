@@ -13,39 +13,154 @@ on:
   schedule:
     - cron: '0 5 * * *'
 
-
 jobs:
-  monitor:
-    # don't run this workflow on a cron for forks
+  # Generate pom.xml files for all Maven projects
+  generate-poms:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    name: Generate Snyk report
+    name: Generate pom.xml files
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'snyk'
-      - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: .github/scripts/write-poms.sh
-      - name: Run snyk main project
+      - name: Upload pom files
+        uses: actions/upload-artifact@v4
+        with:
+          name: pom-files
+          path: |
+            pom.xml
+            modules/drivers/*/pom.xml
+
+  # Yarn/NPM projects that don't need pom files
+  frontend-projects:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: ${{ matrix.project.name }}
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        project:
+          - name: Main Frontend (yarn)
+            file: yarn.lock
+            package-manager: yarn
+            category: main-frontend-yarn
+          - name: Embedding SDK Template
+            file: bin/embedding-sdk/templates/yarn.lock
+            package-manager: yarn
+            category: embedding-sdk-template
+          - name: E2E Angular 20 Host App
+            file: e2e/embedding-sdk-host-apps/angular-20-host-app/package-lock.json
+            package-manager: npm
+            category: e2e-angular-host
+          - name: E2E Next 15 App Router
+            file: e2e/embedding-sdk-host-apps/next-15-app-router-host-app/package-lock.json
+            package-manager: npm
+            category: e2e-next-app-router
+          - name: E2E Next 15 Pages Router
+            file: e2e/embedding-sdk-host-apps/next-15-pages-router-host-app/package-lock.json
+            package-manager: npm
+            category: e2e-next-pages-router
+          - name: E2E Vite 6 Host App
+            file: e2e/embedding-sdk-host-apps/vite-6-host-app/package-lock.json
+            package-manager: npm
+            category: e2e-vite-host
+          - name: Release Helper
+            file: release/yarn.lock
+            package-manager: yarn
+            category: release-helper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: snyk test --all-projects --exclude="modules" --sarif-file-output=snyk-main.sarif
-      - name: Upload result to GitHub Code Scanning
+        run: snyk test --org="metabase-AnD9iS4Wfu4eBYMsG2DZ5N" --remote-repo-url="https://github.com/metabase/metabase" --file=${{ matrix.project.file }} --package-manager=${{ matrix.project.package-manager }} --sarif-file-output=snyk-${{ matrix.project.category }}.sarif
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: snyk-main.sarif
-          category: main-project
-      - name: Run snyk drivers
+          sarif_file: snyk-${{ matrix.project.category }}.sarif
+          category: ${{ matrix.project.category }}
+
+  # Maven projects that need pom files
+  maven-projects:
+    needs: generate-poms
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    name: ${{ matrix.project.name }}
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        project:
+          - name: Main Backend (maven)
+            file: pom.xml
+            category: main-backend-maven
+          - name: Driver - Athena
+            file: modules/drivers/athena/pom.xml
+            category: driver-athena
+          - name: Driver - BigQuery Cloud SDK
+            file: modules/drivers/bigquery-cloud-sdk/pom.xml
+            category: driver-bigquery-cloud-sdk
+          - name: Driver - ClickHouse
+            file: modules/drivers/clickhouse/pom.xml
+            category: driver-clickhouse
+          - name: Driver - Databricks
+            file: modules/drivers/databricks/pom.xml
+            category: driver-databricks
+          - name: Driver - Druid
+            file: modules/drivers/druid/pom.xml
+            category: driver-druid
+          - name: Driver - Druid JDBC
+            file: modules/drivers/druid-jdbc/pom.xml
+            category: driver-druid-jdbc
+          - name: Driver - Hive-like
+            file: modules/drivers/hive-like/pom.xml
+            category: driver-hive-like
+          - name: Driver - MongoDB
+            file: modules/drivers/mongo/pom.xml
+            category: driver-mongo
+          - name: Driver - Oracle
+            file: modules/drivers/oracle/pom.xml
+            category: driver-oracle
+          - name: Driver - Presto JDBC
+            file: modules/drivers/presto-jdbc/pom.xml
+            category: driver-presto-jdbc
+          - name: Driver - Redshift
+            file: modules/drivers/redshift/pom.xml
+            category: driver-redshift
+          - name: Driver - Snowflake
+            file: modules/drivers/snowflake/pom.xml
+            category: driver-snowflake
+          - name: Driver - SparkSQL
+            file: modules/drivers/sparksql/pom.xml
+            category: driver-sparksql
+          - name: Driver - SQLite
+            file: modules/drivers/sqlite/pom.xml
+            category: driver-sqlite
+          - name: Driver - SQL Server
+            file: modules/drivers/sqlserver/pom.xml
+            category: driver-sqlserver
+          - name: Driver - Starburst
+            file: modules/drivers/starburst/pom.xml
+            category: driver-starburst
+          - name: Driver - Vertica
+            file: modules/drivers/vertica/pom.xml
+            category: driver-vertica
+    steps:
+      - uses: actions/checkout@v4
+      - uses: snyk/actions/setup@0.4.0
+      - name: Download pom files
+        uses: actions/download-artifact@v4
+        with:
+          name: pom-files
+      - name: Run snyk test
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         continue-on-error: true
-        run: cd modules && snyk test --all-projects --sarif-file-output=snyk-drivers.sarif
-      - name: Upload result to GitHub Code Scanning
+        run: snyk test --org="metabase-AnD9iS4Wfu4eBYMsG2DZ5N" --remote-repo-url="https://github.com/metabase/metabase" --file=${{ matrix.project.file }} --package-manager=maven --sarif-file-output=snyk-${{ matrix.project.category }}.sarif
+
+      - name: Upload results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: modules/snyk-drivers.sarif
-          category: drivers
+          sarif_file: snyk-${{ matrix.project.category }}.sarif
+          category: ${{ matrix.project.category }}

@@ -15,11 +15,13 @@ import { DashboardPickerButton } from "./DashboardSelector.styled";
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
   value?: DashboardId;
+  fullWidth?: boolean;
 }
 
 export const DashboardSelector = ({
   onChange,
   value,
+  fullWidth = true,
 }: DashboardSelectorProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const {
@@ -45,7 +47,7 @@ export const DashboardSelector = ({
 
   if (error) {
     return (
-      <Group bg="bg-light" p="1rem">
+      <Group bg="background-secondary" p="1rem">
         <Icon name="warning" />
         {t`Error loading dashboard.`}
         {"  "}
@@ -56,8 +58,11 @@ export const DashboardSelector = ({
   ``;
   return (
     <Flex>
-      <DashboardPickerButton onClick={() => setIsOpen(true)}>
-        {dashboard?.name || t`Select a dashboard`}
+      <DashboardPickerButton
+        fullWidth={fullWidth}
+        onClick={() => setIsOpen(true)}
+      >
+        {dashboard?.name || t`Pick a dashboard`}
       </DashboardPickerButton>
       {isOpen && (
         <DashboardPickerModal

@@ -27,7 +27,11 @@ export const DatabaseConnectionHealthInfo = ({
         { isUninitialized: true },
         { isFetching: true },
         { isLoading: true },
-        () => ({ message: t`Loading...`, color: "text-light" }) as const,
+        () =>
+          ({
+            message: t`Loading...`,
+            color: "tooltip-text",
+          }) as const,
       )
       .with(
         { currentData: { status: "error" } },
@@ -38,7 +42,7 @@ export const DatabaseConnectionHealthInfo = ({
         () =>
           ({
             message: t`Failed to retrieve database health status.`,
-            color: "text-light",
+            color: "tooltip-text",
           }) as const,
       )
       .exhaustive();

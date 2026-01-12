@@ -1,0 +1,2750 @@
+databaseChangeLog:
+  - objectQuotingStrategy: QUOTE_ALL_OBJECTS
+  - changeSet:
+      id: v57.2025-08-01T10:00:00
+      author: qnkhuat
+      comment: Add undo/redo change tracking table
+      changes:
+        - createTable:
+            tableName: data_edit_undo_chain
+            remarks: Store the state necessary to power undo / redo.
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: Batch number for grouped changes (global increment)
+                  name: batch_num
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Reference to the table being modified
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: PK of the row being modified, potentially composite. Stored as a sorted JSON map.
+                  name: row_pk
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: ID of the user who made the change
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: scope
+                  type: ${text.type}
+                  remarks: Identifies where the changes were made from
+                  constraints:
+                    nullable: false
+              - column:
+                  name: undoable
+                  type: ${boolean.type}
+                  remarks: Identifies whether a change can be undo
+                  constraints:
+                    nullable: false
+                  defaultValue: true
+              - column:
+                  remarks: Value of the field before the change
+                  name: raw_before
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Value of the field after the change
+                  name: raw_after
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Whether this change has been undone
+                  name: undone
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the change was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the change was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-01T10:02:00
+      author: qnkhuat
+      comment: A table for generating atomic sequence numbers
+      changes:
+        - createTable:
+            tableName: sequences
+            remarks: A table for generating atomic sequence numbers
+            columns:
+              - column:
+                  name: name
+                  type: varchar(50)
+                  remarks: The name of the sequence
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: next_val
+                  remarks: The next value in this sequence
+                  type: bigint
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-15T10:00:00
+      author: qnkhuat
+      comment: Add metabase_table.is_writable
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: is_writable
+                  type: ${boolean.type}
+                  remarks: true if current connection can insert, update and delete rows from this table
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:00
+      author: edpaget
+      comment: Create document table
+      changes:
+        - createTable:
+            tableName: document
+            remarks: Documents table
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Document name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp of when the document was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document
+                  remarks: content of the document
+                  type: ${text.type}
+              - column:
+                  name: content_type
+                  remarks: the content_type of the document column
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  remarks: User who created this document
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: The timestamp of when the document was updated
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_id
+                  remarks: What collection I live in. Null if it's Our Analytics.
+                  type: int
+                  constraints:
+                    nullable: true
+              - column:
+                  name: archived
+                  remarks: Has this document been archived?
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: archived_directly
+                  remarks: Was this thing trashed directly
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: last_viewed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this document was last viewed
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: view_count
+                  type: integer
+                  defaultValueNumeric: 0
+                  remarks: Keeps a running count of document views
+                  constraints:
+                    nullable: false
+              - column:
+                  name: collection_position
+                  type: integer
+                  remarks: Collection position used for pinning documents. Higher numbers = pinned, null = not pinned.
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:10
+      author: edpaget
+      comment: Add index on document.creator_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:11
+      author: edpaget
+      comment: Add `document.creator_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:30
+      author: edpaget
+      comment: Add index on document.collection_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_collection_id
+            columns:
+              - column:
+                  name: collection_id
+
+  - changeSet:
+      id: v57.2025-08-21T12:00:59
+      author: johnswanson
+      comment: Add `document.collection_id` foreign key constraint
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_document_ref_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-08-21T17:23:20
+      author: edpaget
+      comment: Add document_id column to report_card table
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: document_id
+                  remarks: Associates cards with a particular document
+                  type: int
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-21T17:23:30
+      author: edpaget
+      comment: Add index on report_card.document_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_repord_card_document_id
+            columns:
+              - column:
+                  name: document_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:23:33
+      author: edpaget
+      comment: Add foreign key constraint for document_id in report_card
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: document_id
+            referencedTableName: document
+            referencedColumnNames: id
+            constraintName: fk_report_card_document_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:32
+      author: edpaget
+      comment: Create document_bookmark table
+      changes:
+        - createTable:
+            tableName: document_bookmark
+            remarks: Store user bookmarks for documents
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  remarks: User who bookmarked the document
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: document_id
+                  remarks: The document that was bookmarked
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: The timestamp when the bookmark was created
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:33
+      author: edpaget
+      comment: Add index on document_bookmark.user_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_user_id
+            columns:
+              - column:
+                  name: user_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:34
+      author: edpaget
+      comment: Add index on document_bookmark.document_id
+      changes:
+        - createIndex:
+            tableName: document_bookmark
+            indexName: idx_document_bookmark_document_id
+            columns:
+              - column:
+                  name: document_id
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:35
+      author: edpaget
+      comment: Add foreign key constraint for document_bookmark.user_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document_bookmark
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_bookmark_user_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:36
+      author: edpaget
+      comment: Add foreign key constraint for document_bookmark.document_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document_bookmark
+            baseColumnNames: document_id
+            referencedTableName: document
+            referencedColumnNames: id
+            constraintName: fk_document_bookmark_document_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-21T17:42:37
+      author: edpaget
+      comment: Add unique constraint for document_bookmark user_id and document_id
+      changes:
+        - addUniqueConstraint:
+            tableName: document_bookmark
+            columnNames: user_id, document_id
+            constraintName: idx_document_bookmark_user_document_unique
+
+  - changeSet:
+      id: v57.2025-08-22T00:00:00
+      author: metamben
+      comment: Create transform table
+      changes:
+        - createTable:
+            tableName: transform
+            remarks: The main table for Transform entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: Name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: the description of the transform
+                  constraints:
+                    nullable: true
+              - column:
+                  name: source
+                  remarks: JSON of source
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target
+                  remarks: JSON of target
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  remarks: The timestamp of when the transform was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the transform was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-22T00:01:00
+      author: eric
+      comment: Create transform_run table in app database to track transform execution
+      changes:
+        - createTable:
+            tableName: transform_run
+            remarks: Table to track transform executions and their status in the app database
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: "Identifier for the transform"
+                  constraints:
+                    nullable: false
+                    referencedTableName: transform
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_run_transform_id
+                    deleteCascade: true
+              - column:
+                  name: run_method
+                  type: varchar(255)
+                  remarks: "Method used to execute the transform job"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: "Current status of the transform job (running, completed, failed, etc.)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: ${boolean.type}
+                  remarks: "True only for currently running jobs, null for the others"
+                  constraints:
+                    nullable: true
+                    defaultValue: true
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: "When the transform job started"
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: "When the transform job completed (null if still running)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: "Human-readable message about the run; may contain error message in case status is error"
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-22T00:02:00
+      author: metamben
+      comment: Add last run index on transform_run. Mysql needs the foreign keys dropped on rollback.
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_last_run_idx
+            columns:
+              - column:
+                  name: transform_id
+              - column:
+                  name: start_time
+                  descending: true
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_last_run_idx
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_run_transform_id
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-22T00:03:00
+      author: metamben
+      comment: Add unique index to make sure at most one run can be active
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_run
+            constraintName: idx_unique_active_transform_run
+            columnNames: transform_id, is_active
+
+  - changeSet:
+      id: v57.2025-08-22T00:04:00
+      author: metamben
+      comment: Add index for querying active runs. Mysql needs the foreign keys dropped on rollback.
+      changes:
+        - createIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_active_runs
+            columns:
+              - column:
+                  name: is_active
+              - column:
+                  name: transform_id
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_run
+            constraintName: fk_transform_run_transform_id
+        - dropIndex:
+            tableName: transform_run
+            indexName: idx_transform_run_active_runs
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_run_transform_id
+            baseTableName: transform_run
+            baseColumnNames: transform_id
+            referencedTableName: transform
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-22T00:05:00
+      author: eric
+      comment: Create transform_run_cancelation table to track cancelation.
+      changes:
+        - createTable:
+            tableName: transform_run_cancelation
+            remarks: Table to track the cancelation of transform job executions
+            columns:
+              - column:
+                  name: run_id
+                  type: int
+                  remarks: The transform_run ID
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                    referencedTableName: transform_run
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_run_cancelation_transform_run_run_id
+                    deleteCascade: true
+              - column:
+                  name: time
+                  type: ${timestamp_type}
+                  remarks: "The time of the request"
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-22T00:06:00
+      author: galdre
+      comment: Add transform_tag table for grouping transforms
+      changes:
+        - createTable:
+            tableName: transform_tag
+            remarks: Tags for grouping transforms
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(254)
+                  remarks: The name of the transform tag.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The time the transform tag was created.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The time the transform tag was last updated.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: built_in_type
+                  type: varchar(255)
+                  remarks: "Type of the built-in transform tag: hourly, daily, weekly, monthly."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-22T00:07:00
+      author: galdre
+      comment: Add transform_job table for scheduled execution of tagged transforms
+      changes:
+        - createTable:
+            tableName: transform_job
+            remarks: Jobs that execute transforms based on tags
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: ${text.type}
+                  remarks: The name of the transform job.
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: A description of the transform job.
+              - column:
+                  name: schedule
+                  type: ${text.type}
+                  remarks: Cron expression for job schedule
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: NanoID identifier for the job
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this transform job was created.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this transform job was last updated.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: built_in_type
+                  type: varchar(255)
+                  remarks: "Type of the built-in transform job: hourly, daily, weekly, monthly."
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-22T00:08:00
+      author: galdre
+      comment: Add transform_transform_tag join table for transform-tag associations
+      changes:
+        - createTable:
+            tableName: transform_transform_tag
+            remarks: Join table for transforms and tags
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: transform_id
+                  type: int
+                  remarks: The id of the transform.
+                  constraints:
+                    nullable: false
+                    referencedTableName: transform
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_transform_tag_transform_id
+                    deleteCascade: true
+              - column:
+                  name: tag_id
+                  type: int
+                  remarks: The id of the tag.
+                  constraints:
+                    nullable: false
+                    referencedTableName: transform_tag
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_transform_tag_tag_id
+                    deleteCascade: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: position
+                  type: int
+                  remarks: The relative UI ordering of this tag on the transform
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-22T00:09:00
+      author: galdre
+      comment: Add unique constraints on transform_transform_tag(transform_id, tag_id). Deleting foreign keys needed for mysql.
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_transform_tag
+            columnNames: transform_id, tag_id
+            constraintName: unique_transform_tag
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_transform_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_transform_tag
+            constraintName: fk_transform_transform_tag_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_transform_tag
+            constraintName: unique_transform_tag
+
+  - changeSet:
+      id: v57.2025-08-22T00:10:00
+      author: galdre
+      comment: Add transform_job_transform_tag join table for job-tag associations
+      changes:
+        - createTable:
+            tableName: transform_job_transform_tag
+            remarks: Join table for jobs and tags
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_id
+                  type: int
+                  remarks: The id of the transform job.
+                  constraints:
+                    nullable: false
+                    referencedTableName: transform_job
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_job_transform_tag_job_id
+                    deleteCascade: true
+              - column:
+                  name: tag_id
+                  type: int
+                  remarks: The id of the transform tag.
+                  constraints:
+                    nullable: false
+                    referencedTableName: transform_tag
+                    referencedColumnNames: id
+                    foreignKeyName: fk_transform_job_transform_tag_tag_id
+                    deleteCascade: true
+              - column:
+                  name: entity_id
+                  type: char(21)
+                  remarks: Random NanoID tag for unique identity.
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: position
+                  type: int
+                  remarks: The ordering position of this tag for the job.
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-22T00:11:00
+      author: galdre
+      comment: Add unique constraint on transform_job_transform_tag(job_id, tag_id). Mysql needs the foreign keys dropped on rollback.
+      changes:
+        - addUniqueConstraint:
+            tableName: transform_job_transform_tag
+            columnNames: job_id, tag_id
+            constraintName: unique_job_tag
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_transform_tag
+            constraintName: fk_transform_job_transform_tag_job_id
+        - dropForeignKeyConstraint:
+            baseTableName: transform_job_transform_tag
+            constraintName: fk_transform_job_transform_tag_tag_id
+        - dropUniqueConstraint:
+            tableName: transform_job_transform_tag
+            constraintName: unique_job_tag
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_job_transform_tag_tag_id
+            baseTableName: transform_job_transform_tag
+            baseColumnNames: tag_id
+            referencedTableName: transform_tag
+            referencedColumnNames: id
+            onDelete: CASCADE
+        - addForeignKeyConstraint:
+            constraintName: fk_transform_job_transform_tag_job_id
+            baseTableName: transform_job_transform_tag
+            baseColumnNames: job_id
+            referencedTableName: transform_job
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-08-22T00:12:00
+      author: william
+      comment: Create transform_job_run table in app database to track transform job execution
+      changes:
+        - createTable:
+            tableName: transform_job_run
+            remarks: Table to track transform job executions and their status in the app database
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: job_id
+                  type: bigint
+                  remarks: "Identifier for the transform job"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: run_method
+                  type: varchar(255)
+                  remarks: "Method used to execute the transform job"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(50)
+                  remarks: "Current status of the transform job (running, completed, failed, etc.)"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_active
+                  type: ${boolean.type}
+                  remarks: "True only for currently running jobs, null for the others"
+                  constraints:
+                    nullable: true
+                    defaultValue: true
+              - column:
+                  name: start_time
+                  type: ${timestamp_type}
+                  remarks: "When the transform job started"
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: end_time
+                  type: ${timestamp_type}
+                  remarks: "When the tranform job completed (null if still running)"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: message
+                  type: ${text.type}
+                  remarks: "Human-readable message about the run; may contain error message in case status is error"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this transform job run was created.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: The timestamp this transform job run was last updated.
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-22T00:13:00
+      author: ranquild
+      comment: Create built-in transform tags
+      changes:
+        - sql: >-
+            INSERT INTO transform_tag(name, entity_id, built_in_type) VALUES
+            ('hourly', 'wYLcUPbtF7jVPO0duGGHR', 'hourly'),
+            ('daily', 'dUW7nvQHQBdA0Rx0gJckI', 'daily'),
+            ('weekly', 'qPGCJu7t97kn-X07_fgSj', 'weekly'),
+            ('monthly', 'DeeJHc81qKhD9qWINISO8', 'monthly');
+      rollback:
+        - sql: DELETE FROM transform_tag WHERE built_in_type IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-08-22T00:14:00
+      author: ranquild
+      comment: Create built-in transform jobs
+      changes:
+        - sql: >-
+            INSERT INTO transform_job(name, description, schedule, entity_id, built_in_type) VALUES
+            ('Hourly job', 'Executes transforms tagged with ''hourly'' every hour', '0 0 * * * ? *', 'RognTgBT2fXaxoQh4ws7z', 'hourly'),
+            ('Daily job', 'Executes transforms tagged with ''daily'' once per day', '0 0 0 * * ? *', 'PJahvcoF61oX5T4uCT_FY', 'daily'),
+            ('Weekly job', 'Executes transforms tagged with ''weekly'' once per week', '0 0 0 ? * 1 *', 'lXIFa2SUrXLgaLZJx33oU', 'weekly'),
+            ('Monthly job', 'Executes transforms tagged with ''monthly'' once per month', '0 0 0 1 * ? *', 'CL1TVitmzJrDjdjvO2xmN', 'monthly');
+      rollback:
+        - sql: DELETE FROM transform_job WHERE built_in_type IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-08-22T00:15:00
+      author: ranquild
+      comment: Create associations between built-in transform jobs and tags
+      changes:
+        - sql: >-
+            INSERT INTO transform_job_transform_tag(job_id, tag_id, entity_id, position)
+            SELECT job.id, tag.id, job.entity_id, 0 AS position
+            FROM transform_job AS job
+            JOIN transform_tag AS tag ON job.built_in_type = tag.built_in_type
+            WHERE job.built_in_type IS NOT NULL AND tag.built_in_type IS NOT NULL;
+      rollback:
+        - sql: >-
+            DELETE FROM transform_job_transform_tag
+            WHERE
+              job_id IN (SELECT id FROM transform_job WHERE built_in_type IS NOT NULL) AND
+              tag_id IN (SELECT id FROM transform_tag WHERE built_in_type IS NOT NULL);
+
+  - changeSet:
+      id: v57.2025-08-22T00:15:01
+      author: william
+      comment: Add template tag data to snippets
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: template_tags
+                  remarks: Template tags for the snippet
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+  - changeSet:
+      id: v57.2025-08-23T10:00:00
+      author: chodorowicz
+      comment: Add provider_name column to metabase_database table
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: provider_name
+                  type: varchar(100)
+                  remarks: "The name of the hosting provider for the database (e.g., AWS RDS, Azure)."
+                  constraints:
+                    nullable: true
+                  defaultValue: null
+
+  - changeSet:
+      id: v57.2025-08-23T15:00:00
+      author: christruter
+      comment: Add data_authority enum field to metabase_table
+      changes:
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: data_authority
+                  remarks: Indicates the data authority status - unconfigured, authoritative, computed, or ingested
+                  type: varchar(20)
+                  defaultValue: "unconfigured"
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-08-23T16:00:00
+      author: rileythomp
+      comment: Migrate ClickHouse database details to be use `enable-multiple-db` with db filters
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.MigrateClickHouseDetailsToMultiDB"
+
+  - changeSet:
+      id: v57.2025-08-24T10:00:00
+      author: kulyk
+      comment: Create comment table for documents feature
+      changes:
+        - createTable:
+            tableName: comment
+            remarks: Comments on various entities (documents, dashboards, etc.)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key for comment table
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: parent_comment_id
+                  type: int
+                  remarks: ID of the parent comment for threading (null for root comments)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_type
+                  type: varchar(50)
+                  remarks: Type of entity being commented on
+                  defaultValue: "document"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: target_id
+                  type: int
+                  remarks: ID of the entity being commented on
+                  constraints:
+                    nullable: false
+              - column:
+                  name: child_target_id
+                  type: ${text.type}
+                  remarks: Sub-entity ID (e.g., document block node ID)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: User who created this comment
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: ${text.type}
+                  remarks: The comment content
+                  constraints:
+                    nullable: false
+              - column:
+                  name: is_resolved
+                  type: ${boolean.type}
+                  remarks: Whether this comment thread is resolved
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deleted_at
+                  type: ${timestamp_type}
+                  remarks: Soft delete timestamp (null if not deleted)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-08-24T10:01:00
+      author: kulyk
+      comment: Add foreign key constraint for comment creator
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_comment_creator_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:02:00
+      author: kulyk
+      comment: Add foreign key constraint for comment threading
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment
+            baseColumnNames: parent_comment_id
+            referencedTableName: comment
+            referencedColumnNames: id
+            constraintName: fk_comment_parent_comment_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:03:00
+      author: kulyk
+      comment: Add index for comment entity lookups
+      changes:
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_entity
+            columns:
+              - column:
+                  name: target_type
+              - column:
+                  name: target_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:04:00
+      author: kulyk
+      comment: Add index for comment creator lookups
+      changes:
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_creator_id
+            columns:
+              - column:
+                  name: creator_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-08-24T10:05:00
+      author: kulyk
+      comment: Add index for comment threading
+      changes:
+        - createIndex:
+            tableName: comment
+            indexName: idx_comment_parent_comment_id
+            columns:
+              - column:
+                  name: parent_comment_id
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:15:00
+      author: kulyk
+      comment: Create comment_reaction table for comment reactions feature
+      changes:
+        - createTable:
+            tableName: comment_reaction
+            remarks: Store reactions (emojis) on comments
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key for comment_reaction table
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: comment_id
+                  type: int
+                  remarks: ID of the comment being reacted to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: User who added this reaction
+                  constraints:
+                    nullable: false
+              - column:
+                  name: emoji
+                  type: varchar(10)
+                  remarks: Unicode emoji (supports compound emojis)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when reaction was added
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-01T17:16:00
+      author: kulyk
+      comment: Add foreign key constraint for comment reactions to comments
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment_reaction
+            baseColumnNames: comment_id
+            referencedTableName: comment
+            referencedColumnNames: id
+            constraintName: fk_comment_reaction_comment_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:17:00
+      author: kulyk
+      comment: Add foreign key constraint for comment reactions to users
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: comment_reaction
+            baseColumnNames: user_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_comment_reaction_user_id
+            onDelete: CASCADE
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:18:00
+      author: kulyk
+      comment: Add unique constraint to prevent duplicate reactions
+      changes:
+        - addUniqueConstraint:
+            tableName: comment_reaction
+            columnNames: comment_id, user_id, emoji
+            constraintName: unique_user_comment_emoji
+      rollback: # will be removed along the table
+
+  - changeSet:
+      id: v57.2025-09-01T17:19:00
+      author: kulyk
+      comment: Add index for comment reaction lookups
+      changes:
+        - createIndex:
+            tableName: comment_reaction
+            indexName: idx_comment_reaction_comment_id
+            columns:
+              - column:
+                  name: comment_id
+      rollback: # will be removed along the table
+  - changeSet:
+      id: v57.2025-09-08T17:50:00
+      author: metamben
+      comment: Drop old dependency table
+      changes:
+        - dropTable:
+            tableName: dependency
+      rollback:
+        - createTable:
+            tableName: dependency
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_model
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dependent_on_id
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model
+            columns:
+              column:
+                name: model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_model_id
+            columns:
+              column:
+                name: model_id
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_model
+            columns:
+              column:
+                name: dependent_on_model
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_dependent_on_id
+            columns:
+              column:
+                name: dependent_on_id
+        # - modifySql:                 # doesn't work with liquibase 4.33.0
+        #     dbms: postgresql
+        #     replace:
+        #       replace: WITHOUT
+        #       with: WITH
+
+  - changeSet:
+      id: v57.2025-09-08T18:00:00
+      author: metamben
+      comment: Create dependency table to track dependencies in a general way
+      changes:
+        - createTable:
+            tableName: dependency
+            remarks: A table to track dependencies between Metabase entities
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: from_entity_type
+                  type: varchar(20)
+                  remarks: The type of the dependent entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_entity_id
+                  type: int
+                  remarks: The ID of the dependent entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_type
+                  type: varchar(20)
+                  remarks: The type of the entity depended on
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_entity_id
+                  type: int
+                  remarks: The ID of the entity depended on
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-08T18:10:00
+      author: metamben
+      comment: Unique constraint to prevent duplicate dependencies
+      changes:
+        - addUniqueConstraint:
+            tableName: dependency
+            columnNames: from_entity_type, from_entity_id, to_entity_type, to_entity_id
+            constraintName: idx_unique_dependency
+
+  - changeSet:
+      id: v57.2025-09-08T18:20:00
+      author: metamben
+      comment: Index for finding dependencies FROM a specific entity
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_from
+            columns:
+              - column:
+                  name: from_entity_type
+              - column:
+                  name: from_entity_id
+
+  - changeSet:
+      id: v57.2025-09-08T18:30:00
+      author: metamben
+      comment: Index for finding dependencies TO a specific entity
+      changes:
+        - createIndex:
+            tableName: dependency
+            indexName: idx_dependency_to
+            columns:
+              - column:
+                  name: to_entity_type
+              - column:
+                  name: to_entity_id
+
+  - changeSet:
+      id: v57.2025-09-11T10:00:00
+      author: qnkhuat
+      comment: Add python_library table for storing Python transform user modules
+      changes:
+        - createTable:
+            tableName: python_library
+            remarks: Store Python library code for user modules in transforms
+            columns:
+              - column:
+                  name: id
+                  type: integer
+                  autoIncrement: true
+                  remarks: Primary key for python_library
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_python_library
+              - column:
+                  name: path
+                  type: varchar(254)
+                  remarks: Path identifier for the library
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_python_library_path
+              - column:
+                  name: source
+                  type: ${text.type}
+                  remarks: Python source code for user modules
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When the record was created
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When the record was last updated
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+
+  - changeSet:
+      id: v57.2025-09-11T16:00:00
+      author: johnswanson
+      comment: Create remote_sync_object table to track remote sync objects
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: remote_sync_object
+      changes:
+        - createTable:
+            tableName: remote_sync_object
+            remarks: Track remote sync objects
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for remote-sync objects
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: model_type
+                  type: varchar(32)
+                  remarks: Type of model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: model_id
+                  type: int
+                  remarks: ID of the model
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: Status of the object
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status_changed_at
+                  type: ${timestamp_type}
+                  remarks: When the status changed
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-12T16:08:00
+      author: piranha
+      comment: Create glossary table
+      changes:
+        - createTable:
+            tableName: glossary
+            remarks: Table to store glossary terms and their definitions
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  remarks: Primary key identifier for glossary entries
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: term
+                  type: varchar(255)
+                  remarks: The glossary term or phrase being defined
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: definition
+                  type: ${text.type}
+                  remarks: The detailed definition or explanation of the term
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when comment was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-16T12:55:00
+      author: stasgavrylov
+      comment: Add content_html column to comment table for storing HTML-rendered content
+      changes:
+        - addColumn:
+            tableName: comment
+            columns:
+              - column:
+                  name: content_html
+                  type: ${text.type}
+                  remarks: HTML-rendered version of the comment content
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-09-18T10:00:00
+      author: metamben
+      comment: Add dependency_analysis_version to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:01:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to report_card
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:02:00
+      author: metamben
+      comment: Add dependency_analysis_version to transform
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:03:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to transform
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:04:00
+      author: metamben
+      comment: Add dependency_analysis_version to native_query_snippet
+      changes:
+        - addColumn:
+            tableName: native_query_snippet
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:05:00
+      author: metamben
+      comment: Add index for dependency_analysis_version to native_query_snippet
+      changes:
+        - createIndex:
+            tableName: native_query_snippet
+            indexName: idx_native_query_snippet_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:06:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to report_dashboard
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:07:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to report_dashboard
+      changes:
+        - createIndex:
+            tableName: report_dashboard
+            indexName: idx_report_dashboard_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:08:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to document
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:09:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to document
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+  - changeSet:
+      id: v57.2025-09-18T10:10:00
+      author: rileythomp
+      comment: Add dependency_analysis_version to sandboxes
+      changes:
+        - addColumn:
+            tableName: sandboxes
+            columns:
+              - column:
+                  name: dependency_analysis_version
+                  type: smallint
+                  defaultValue: 0
+                  remarks: Version of the dependency analysis for this entity.
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v57.2025-09-18T10:11:00
+      author: rileythomp
+      comment: Add index for dependency_analysis_version to sandboxes
+      changes:
+        - createIndex:
+            tableName: sandboxes
+            indexName: idx_sandboxes_dependency_analysis_version
+            columns:
+              - column:
+                  name: dependency_analysis_version
+
+  - changeSet:
+      id: v57.2025-09-19T11:30:20
+      author: ranquild
+      comment: Add transform_job.ui_display_type
+      changes:
+        - addColumn:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  remarks: The display type of the schedule, used for the UI only; "cron/raw" or "cron/builder".
+                  type: varchar(32)
+                  defaultValue: 'cron/raw'
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-09-19T12:30:20
+      author: ranquild
+      comment: Set transform_job.ui_display_type for built-in jobs
+      changes:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/builder'
+            where: built_in_type IS NOT NULL
+      rollback:
+        - update:
+            tableName: transform_job
+            columns:
+              - column:
+                  name: ui_display_type
+                  value: 'cron/raw'
+            where: built_in_type IS NOT NULL
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:02
+      author: johnswanson
+      comment: Fix MySQL alerts view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v5/mysql-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:08
+      author: johnswanson
+      comment: Fix MySQL audit_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/audit_log/v3/mysql-audit_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/audit_log/v2/mysql-audit_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:11
+      author: johnswanson
+      comment: Fix MySQL content view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/content/v3/mysql-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:13
+      author: johnswanson
+      comment: Fix MySQL fields view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/fields/v2/mysql-fields.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/fields/v1/mysql-fields.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:16
+      author: johnswanson
+      comment: Fix MySQL query_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v3/mysql-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/query_log/v2/mysql-query_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:19
+      author: johnswanson
+      comment: Fix MySQL subscriptions view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/subscriptions/v2/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/subscriptions/v1/mysql-subscriptions.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:22
+      author: johnswanson
+      comment: Fix MySQL tables view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tables/v2/mysql-tables.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/tables/v1/mysql-tables.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:25
+      author: johnswanson
+      comment: Fix MySQL tasks view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/tasks/v3/mysql-tasks.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/tasks/v2/mysql-tasks.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:28
+      author: johnswanson
+      comment: Fix MySQL users view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/users/v4/mysql-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/users/v3/mysql-users.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-23T14:32:31
+      author: johnswanson
+      comment: Fix MySQL view_log view to use SQL SECURITY INVOKER (issue #45641)
+      dbms: mysql,mariadb
+      changes:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v3/mysql-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            path: instance_analytics_views/view_log/v2/mysql-view_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-09-24T14:40:00
+      author: edpaget
+      comment: Create remote_sync_task table
+      changes:
+        - createTable:
+            tableName: remote_sync_task
+            remarks: Table to track remote sync tasks and their progress
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: sync_task_type
+                  type: varchar(24)
+                  remarks: Type of the sync task
+                  constraints:
+                    nullable: false
+              - column:
+                  name: progress
+                  type: float
+                  remarks: Progress percentage of the sync task (0.0 to 1.0)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: cancelled
+                  type: ${boolean.type}
+                  remarks: Whether the sync task was cancelled
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task started
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the sync task ended
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_progress_report_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of the last progress update
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: current_timestamp
+              - column:
+                  name: initiated_by
+                  type: int
+                  remarks: ID of the user who initiated the sync task
+                  constraints:
+                    nullable: true
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: error message if this task failed
+                  constraints:
+                    nullable: true
+              - column:
+                  name: version
+                  type: varchar(50)
+                  remarks: Version that was imported or exported (ex the Git SHA)
+
+  - changeSet:
+      id: v57.2025-09-24T14:41:00
+      author: edpaget
+      comment: Add index for remote_sync_task.initiated_by
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_initiated_by
+            columns:
+              - column:
+                  name: initiated_by
+
+  - changeSet:
+      id: v57.2025-09-24T14:42:00
+      author: edpaget
+      comment: Add foreign key constraint for remote_sync_task.initiated_by
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: remote_sync_task
+            baseColumnNames: initiated_by
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_remote_sync_task_initiated_by
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v57.2025-09-30T10:00:00
+      author: edpaget
+      comment: Add composite index on remote_sync_object for dirty detection queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_object
+            indexName: idx_remote_sync_object_model_lookup
+            columns:
+              - column:
+                  name: model_type
+              - column:
+                  name: model_id
+
+  - changeSet:
+      id: v57.2025-09-30T10:03:00
+      author: edpaget
+      comment: Add composite index on remote_sync_task for current task queries
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_current
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+              - column:
+                  name: id
+                  descending: true
+
+  - changeSet:
+      id: v57.2025-09-30T10:04:00
+      author: edpaget
+      comment: Add index on remote_sync_task for timeout detection
+      changes:
+        - createIndex:
+            tableName: remote_sync_task
+            indexName: idx_remote_sync_task_progress_report
+            columns:
+              - column:
+                  name: last_progress_report_at
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:00
+      author: camsaul
+      comment: >-
+        In v57, we started persisting MBQL 5 in the app DB; to support rollbacks to v56 and older (which don't work
+        100% correctly with MBQL 5 in the app DB) I'm copying the old legacy query to a new column. Note that new
+        Cards created in 57 won't populate this column.
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: legacy_query
+                  type: ${text.type}
+                  remarks: >-
+                    Legacy MBQL version of the query (serialized as JSON) for existing Cards created before v57, to
+                    support rollbacks to v56. This column should be removed in v58.
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:01
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from report_card.dataset_query to report_card.legacy_query to support rollbacks
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET legacy_query = dataset_query;
+      rollback:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            WHERE legacy_query IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:02
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query
+      changes:
+        - addColumn:
+            tableName: query_action
+            columns:
+              - column:
+                  name: legacy_query
+                  type: ${text.type}
+                  remarks: >-
+                    Legacy MBQL version of the query (serialized as JSON) for existing Query Actions created before
+                    v57, to support rollbacks to v56. This column should be removed in v58.
+
+  - changeSet:
+      id: v57.2025-10-06T18:26:03
+      author: camsaul
+      comment: >-
+        Copy legacy MBQL queries from Actions v1 query_action.dataset_query to query_action.legacy_query to support rollbacks
+      changes:
+        - sql: >-
+            UPDATE query_action
+            SET legacy_query = dataset_query;
+      rollback:
+        - sql: >-
+            UPDATE query_action
+            SET dataset_query = legacy_query
+            WHERE legacy_query IS NOT NULL;
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:00
+      author: jeff-bruemmer
+      comment: Add public_uuid column to document table for public sharing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: public_uuid
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: public_uuid
+                  type: char(36)
+                  remarks: UUID for publicly-accessible version of this document
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:01
+      author: jeff-bruemmer
+      comment: Add made_public_by_id column to document table for public sharing
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: document
+                columnName: made_public_by_id
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: made_public_by_id
+                  type: int
+                  remarks: ID of the user who made this document public
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:02
+      author: jeff-bruemmer
+      comment: Add index on document.public_uuid
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_public_uuid
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_public_uuid
+            unique: true
+            columns:
+              - column:
+                  name: public_uuid
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:03
+      author: jeff-bruemmer
+      comment: Add foreign key constraint for document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_document_made_public_by_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: document
+            baseColumnNames: made_public_by_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_document_made_public_by_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-10-09T00:00:04
+      author: jeff-bruemmer
+      comment: Add index on document.made_public_by_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: document
+                indexName: idx_document_made_public_by_id
+      changes:
+        - createIndex:
+            tableName: document
+            indexName: idx_document_made_public_by_id
+            columns:
+              - column:
+                  name: made_public_by_id
+      rollback:
+        - empty
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:22
+      author: wotbrew
+      comment: Add column metabase_field.database_is_pk
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_pk
+                  remarks: Whether or not the field is part of the primary key (not user editable like semantic_type)
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_pk
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:23
+      author: wotbrew
+      comment: Add column metabase_field.database_is_nullable
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_nullable
+                  remarks: Whether or not the field will accept nulls
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_nullable
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:24
+      author: wotbrew
+      comment: Add column metabase_field.database_is_generated
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_is_generated
+                  remarks: Whether or not the column is computed and will not accept writes
+                  type: ${boolean.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_is_generated
+
+  - changeSet:
+      id: v57.2025-10-21T14:14:25
+      author: wotbrew
+      comment: Add column metabase_field.database_default
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_default
+                  remarks: The dialect specific column default expression
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_field
+            columnName: database_default
+
+  - changeSet:
+      id: v57.2025-10-23T19:55:50
+      author: noahmoss
+      comment: Add source_type column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: source_type
+                  type: varchar(32)
+                  remarks: The type of transform ("python", "native", or "mbql")
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform
+            columnName: source_type
+
+  - changeSet:
+      id: v57.2025-10-23T19:56:00
+      author: noahmoss
+      comment: Backfill source_type column for existing transforms
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.BackfillTransformSourceType"
+
+  - changeSet:
+      id: v57.2025-10-23T19:57:00
+      author: noahmoss
+      comment: Make transform.source_type column NOT NULL
+      changes:
+        - addNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+      rollback:
+        - dropNotNullConstraint:
+            tableName: transform
+            columnName: source_type
+            columnDataType: varchar(32)
+
+  - changeSet:
+      id: v57.2025-10-27T19:01:00
+      author: qnkhuat
+      comment: Usage analytics; Add documents to content view
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v5/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v5/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v5/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v3/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v4/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v3/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:00
+      author: metamben
+      comment: Add creator_id column to transform table
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: creator_id
+                  remarks: User who created this transform
+                  type: int
+                  defaultValue: 13371338
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:01
+      author: metamben
+      comment: Add index on transform.creator_id
+      changes:
+        - createIndex:
+            tableName: transform
+            indexName: idx_transform_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-11-03T10:00:02
+      author: metamben
+      comment: Add foreign key constraint for transform.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: transform
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_transform_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-11-13T22:27:19
+      author: nvoxland
+      comment: Update old remote-sync settings
+      changes:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE `key`='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE `key`='remote-sync-type' AND value='production';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET value = 'read-write'
+                WHERE key='remote-sync-type' AND value='development';
+
+                UPDATE setting
+                SET value = 'read-only'
+                WHERE key='remote-sync-type' AND value='production';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+                UPDATE setting
+                SET "VALUE" = 'read-write'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='development';
+
+                UPDATE setting
+                SET "VALUE" = 'read-only'
+                WHERE "KEY"='remote-sync-type' AND "VALUE"='production';
+      rollback:
+        - sql:
+            dbms: mariadb,mysql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE `key`='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE `key`='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET value = 'development'
+              WHERE key='remote-sync-type' AND value='read-write';
+
+              UPDATE setting
+              SET value = 'production'
+              WHERE key='remote-sync-type' AND value='read-only';
+        - sql:
+            dbms: h2
+            splitStatements: true
+            sql: |
+              UPDATE setting
+              SET "VALUE" = 'development'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-write';
+
+              UPDATE setting
+              SET "VALUE" = 'production'
+              WHERE "KEY"='remote-sync-type' AND "VALUE"='read-only';
+
+  - changeSet:
+      id: v57.2025-11-18T10:00:00
+      author: bronsa
+      comment: Add creator_id column to glossary table
+      changes:
+        - addColumn:
+            tableName: glossary
+            columns:
+              - column:
+                  name: creator_id
+                  remarks: User who created this glossary entry
+                  type: int
+                  defaultValue: 13371338
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v57.2025-11-18T10:00:01
+      author: bronsa
+      comment: Add index on glossary.creator_id
+      changes:
+        - createIndex:
+            tableName: glossary
+            indexName: idx_glossary_creator_id
+            columns:
+              - column:
+                  name: creator_id
+
+  - changeSet:
+      id: v57.2025-11-18T10:00:02
+      author: bronsa
+      comment: Add foreign key constraint for glossary.creator_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: glossary
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_glossary_ref_creator_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v57.2025-11-18T10:01:00
+      author: bronsa
+      comment: Usage analytics; Add glossary to content, creator_id to transform content
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v6/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v6/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v6/h2-content.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/content/v5/postgres-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/content/v5/mysql-content.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/content/v5/h2-content.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:23
+      author: nvoxland
+      comment: Add remote_sync_object.model_name
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_name
+                  type: varchar(255)
+                  remarks: Copy of the name from the object being sync'ed
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:24
+      author: nvoxland
+      comment: Add remote_sync_object.model_collection_id
+      changes:
+        # No foreign key because the referenced collection may be deleted
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_collection_id
+                  type: int
+                  remarks: Copy of the collection from the object being sync'ed
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:25
+      author: nvoxland
+      comment: Add remote_sync_object.model_display
+      changes:
+        - addColumn:
+            tableName: remote_sync_object
+            columns:
+              - column:
+                  name: model_display
+                  type: varchar(50)
+                  remarks: Copy of the display field from the object being sync'ed
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:26
+      author: nvoxland
+      comment: Update in-flight remote_sync_objects
+      changes:
+        - sql:
+            splitStatements: true
+            sql: |
+              update remote_sync_object set model_name = (select name from collection where id = remote_sync_object.model_id) where model_type = 'Collection';
+              update remote_sync_object set model_collection_id = (select id from collection where id = remote_sync_object.model_id) where model_type = 'Collection';
+
+              update remote_sync_object set model_name = (select name from report_card where id = remote_sync_object.model_id) where model_type = 'Card';
+              update remote_sync_object set model_collection_id = (select collection_id from report_card where id = remote_sync_object.model_id) where model_type = 'Card';
+              update remote_sync_object set model_display = (select display from report_card where id = remote_sync_object.model_id) where model_type = 'Card';
+
+              update remote_sync_object set model_name = (select name from document where id = remote_sync_object.model_id) where model_type = 'Document';
+              update remote_sync_object set model_collection_id = (select collection_id from document where id = remote_sync_object.model_id) where model_type = 'Document';
+
+              update remote_sync_object set model_name = (select name from report_dashboard where id = remote_sync_object.model_id) where model_type = 'Dashboard';
+              update remote_sync_object set model_collection_id = (select collection_id from report_dashboard where id = remote_sync_object.model_id) where model_type = 'Dashboard';
+
+              update remote_sync_object set model_name = (select name from native_query_snippet where id = remote_sync_object.model_id) where model_type = 'NativeQuerySnippet';
+              update remote_sync_object set model_collection_id = (select collection_id from native_query_snippet where id = remote_sync_object.model_id) where model_type = 'NativeQuerySnippet';
+
+              update remote_sync_object set model_name = (select name from timeline where id = remote_sync_object.model_id) where model_type = 'Timeline';
+              update remote_sync_object set model_collection_id = (select collection_id from timeline where id = remote_sync_object.model_id) where model_type = 'Timeline';
+
+              update remote_sync_object set model_name='DELETED' where model_name is null;
+      rollback: ## Changes will get rolled back when columns are rolled back
+
+
+  - changeSet:
+      id: v57.2025-12-08T19:05:27
+      author: nvoxland
+      comment: Mark remote_sync_objects.model_name as not null
+      changes:
+        - addNotNullConstraint:
+            tableName: remote_sync_object
+            columnName: model_name
+            columnDataType: varchar(255)
+
+
+
+  - changeSet:
+      id: v57.2025-12-09T12:45:01
+      author: dpsutton
+      comment: >-
+        Copy legacy MBQL queries from report_card.legacy_query to report_card.dataset_query where the parsed query is erroneously '{}'
+      changes:
+        - sql: >-
+            UPDATE report_card
+            SET dataset_query = legacy_query
+            where dataset_query = '{}' and legacy_query is not null;
+      rollback: # nothing to undo
+
+# >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
+
+########################################################################################################################
+#
+# ADVICE:
+#
+# 1) Think through some of these points when writing a migration, learn from our past mistakes:
+#    - Do you really need a migration? Could the feature work without it? Prefer not to if possible.
+#      Data in the wild can be vastly different from what you expect, and it's hard to get right.
+#    - Make sure your migration is backward compatible: it might not be possible to add a constraint back
+#      if you drop it in a migration.
+#    - Postgres, MySQL and H2 have their differences. Make sure your migration works for all.
+#    - Database encryption is a major issue:
+#      - Fields like `metabase_database.details` or `setting.value` can be encrypted, so you need to decrypt them in
+#        your migration. See #42617, #44048.
+#      - Database could be partially encrypted, see https://www.notion.so/72575933ef2a446bafd16909e05a7387
+#    - Custom migrations:
+#      - Prefer SQL migrations when possible.
+#      - Never use application code: it can change and *will* break your migration.
+#      - Do not use Toucan models - refer table names directly.
+#      - If it's a big change, consider using Quartz, see #42279
+#      - More in `metabase.app_db.custom_migrations` namespace doc.
+#    - Never delete a migration: users won't be able to downgrade. If you really need to, see #44908
+#    - Migration id (`vXX.<date>`) must match its earliest released version:
+#      - Do not backport `v51....` to version 50, Metabase will try to downgrade it.
+#      - Instead, write a migration with an oldest target you plan to backport to in mind.
+#
+# 2) Migrations should go in the ###_update_migrations.yaml file for the target version.
+#
+# 3) Run mage lint-migrations to run core.spec checks against any changes you make here. Liquibase is pretty
+#    forgiving and won't complain if you accidentally mix up things like deleteCascade and onDelete: CASCADE. CI runs
+#    this check but it's nicer to know now instead of waiting for CI.
+#
+# 3) Migration IDs should follow the format
+#
+#    vMM.TIMESTAMP
+#
+#    Where
+#
+#    M         = major version
+#    TIMESTAMP = the current timestamp with format `yyyy-MM-dd'T'HH:mm:ss`
+#                To get this timestamp, evaluate this in your REPL: `(dev/migration-timestamp)`
+#
+#    E.g: You're adding a new migration for version 49, And it's 10:30:00AM on April 1, 2023 (UTC),
+#    your migration id should be: `v49.2023-04-01T10:30:00`.
+#
+# PLEASE KEEP THIS MESSAGE AT THE BOTTOM OF THIS FILE!!!!! Add new migrations above the message.
+#
+########################################################################################################################

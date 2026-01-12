@@ -14,53 +14,46 @@ import SnippetCollectionFormModal from "./SnippetCollectionFormModal";
 
 const TOP_SNIPPETS_FOLDER = {
   id: "root",
-  name: "Top folder",
+  name: "SQL snippets",
   can_write: true,
 };
 
 type SetupOpts = {
   folder?: Partial<Collection>;
-  onClose?: null | (() => void);
+  onClose?: () => void;
 };
 
 async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
   if (folder.id) {
-    fetchMock.get(
-      {
-        url: `path:/api/collection/${folder.id}`,
-      },
-      folder,
-    );
+    fetchMock.get(`path:/api/collection/${folder.id}`, folder);
 
-    fetchMock.put(`path:/api/collection/${folder.id}`, async (url) => {
+    fetchMock.put(`path:/api/collection/${folder.id}`, async (call) => {
       return createMockCollection(
-        await fetchMock.lastCall(url)?.request?.json(),
+        await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
       );
     });
   }
 
-  fetchMock.get(
-    { url: "path:/api/collection/root", query: { namespace: "snippets" } },
-    TOP_SNIPPETS_FOLDER,
-  );
+  fetchMock.get({
+    url: "path:/api/collection/root",
+    query: { namespace: "snippets" },
+    response: TOP_SNIPPETS_FOLDER,
+  });
 
-  fetchMock.get(
-    {
-      url: "path:/api/collection",
-      query: { namespace: "snippets" },
-    },
-    [TOP_SNIPPETS_FOLDER],
-  );
+  fetchMock.get({
+    url: "path:/api/collection",
+    query: { namespace: "snippets" },
+    response: [TOP_SNIPPETS_FOLDER],
+  });
 
-  fetchMock.post("path:/api/collection", async (url) => {
-    return createMockCollection(await fetchMock.lastCall(url)?.request?.json());
+  fetchMock.post("path:/api/collection", async (call) => {
+    return createMockCollection(
+      await fetchMock.callHistory.lastCall(call.url)?.request?.json(),
+    );
   });
 
   renderWithProviders(
-    <SnippetCollectionFormModal
-      collection={folder}
-      onClose={onClose || undefined}
-    />,
+    <SnippetCollectionFormModal collection={folder} onClose={onClose} />,
   );
 
   if (folder.id) {
@@ -125,13 +118,6 @@ describe("SnippetCollectionFormModal", () => {
       });
     });
 
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setup({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
-    });
-
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
       await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -190,13 +176,6 @@ describe("SnippetCollectionFormModal", () => {
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
       });
-    });
-
-    it("doesn't show cancel button if onClose props is not set", async () => {
-      await setupEditing({ onClose: null });
-      expect(
-        screen.queryByRole("button", { name: "Cancel" }),
-      ).not.toBeInTheDocument();
     });
 
     it("calls onClose when cancel button is clicked", async () => {

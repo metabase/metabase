@@ -50,12 +50,12 @@ To add a user attribute manually:
 4. Click **+ Add an attribute**.
 5. Add the name of the user attribute under "Key". For example, "Department".
 6. Add the value that applies to the specific person. For example, "Engineering".
-7. Optional: if a group for sandboxed people doesn't exist, [create a group](#creating-a-group) to organize people who will get sandboxed table permissions, such as "Sandboxed people".
+7. Optional: [create a group](#creating-a-group) to organize people who will get row and column security.
 8. Add the person to the group.
 
 You can also sync user attributes from your identity provider [via SSO](./start.md#authentication).
 
-User attributes are required for [data sandbox](../permissions/data-sandboxes.md) permissions.
+User attributes are required for [row and column security](../permissions/row-and-column-security.md) permissions.
 
 You can also employ user attributes to specify what database role Metabase should use when that person queries a database. Check out [impersonation access](../permissions/data.md#impersonated-view-data-permission).
 

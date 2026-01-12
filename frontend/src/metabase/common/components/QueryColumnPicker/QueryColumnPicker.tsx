@@ -11,17 +11,17 @@ import {
   QueryColumnInfoIcon,
 } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
 import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
-import { color } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import { isNotNull } from "metabase/lib/types";
-import type { IconName } from "metabase/ui";
-import { DelayGroup, Icon } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import {
   type DefinedClauseName,
   clausesForMode,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
+} from "metabase/querying/expressions";
+import type { IconName } from "metabase/ui";
+import { DelayGroup, Icon } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
+import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import S from "./QueryColumnPicker.module.css";
@@ -337,12 +337,10 @@ export function QueryColumnPicker({
         // Compat with E2E tests around MLv1-based components
         // Prefer using a11y role selectors
         itemTestId="dimension-list-item"
-        withBorders
         hasInitialFocus={hasInitialFocus}
         width={width}
         globalSearch={!disableSearch}
         searchable={!disableSearch}
-        fuzzySearch
       />
     </DelayGroup>
   );

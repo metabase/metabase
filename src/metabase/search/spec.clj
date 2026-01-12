@@ -1,25 +1,36 @@
 (ns metabase.search.spec
   (:require
+   [buddy.core.codecs :as codecs]
+   [buddy.core.hash :as buddy-hash]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [malli.error :as me]
-   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Set of search model string names."
-  #{"dashboard" "table" "dataset" "segment" "collection" "database" "action" "indexed-entity" "metric" "card"})
+  "Set of search model string names. Sorted by order to index based on importance and amount of time to index"
+  (cond->  ["collection" "dashboard" "segment" "measure" "database" "action" "document"]
+    config/ee-available? (conj "transform")
+    ;; metric/card/dataset moved to the end because they take a long time due to computing has_temporal_dim etc.
+    ;; table and indexed-entity moved to the end because there can be a large number of them
+    true (conj "table" "indexed-entity" "metric" "card" "dataset")))
+
+(def raw-spec-forms
+  "Stores the raw (unevaluated) spec forms captured at macro expansion time.
+  Used to compute a deterministic hash for index versioning."
+  (atom {}))
 
 (def ^:private search-model->toucan-model
   (into {}
         (map (fn [search-model]
-               [search-model (-> search-model api/model->db-model :db-model)]))
+               [search-model (-> search-model search.config/model->db-model :db-model)]))
         search-models))
 
 (def ^:private SearchModel
@@ -33,28 +44,49 @@
   - keyword: given by the corresponding column
   - vector: calculated by the given expression
   - map: a sub-select"
-  [:union :boolean :keyword vector? :map])
+  [:union :boolean :keyword vector? :map
+   [:map
+    [:fn fn?]
+    [:fields {:optional true} [:vector :keyword]]]])
+
+(defn function-attr?
+  "Attributes populate by clojure functions"
+  [attr-def]
+  (and (map? attr-def) (:fn attr-def)))
+
+(defn collect-fn-attr-req-fields
+  "Return set of required appdb fields declared in a spec's function attrs"
+  [spec]
+  (->> (:attrs spec)
+       vals
+       (filter function-attr?)
+       (mapcat :fields)
+       distinct))
 
 (def attr-types
   "The abstract types of each attribute."
-  {:archived            :boolean
-   :collection-id       :pk
-   :created-at          :timestamp
-   :creator-id          :pk
-   :dashboard-id        :int
-   :dashboardcard-count :int
-   :database-id         :pk
-   :id                  :text
-   :last-edited-at      :timestamp
-   :last-editor-id      :pk
-   :last-viewed-at      :timestamp
-   :name                :text
-   :native-query        nil
-   :official-collection :boolean
-   :pinned              :boolean
-   :updated-at          :timestamp
-   :verified            :boolean
-   :view-count          :int})
+  {:archived                :boolean
+   :collection-id           :pk
+   :created-at              :timestamp
+   :creator-id              :pk
+   :dashboard-id            :int
+   :dashboardcard-count     :int
+   :database-id             :pk
+   :id                      :text
+   :last-edited-at          :timestamp
+   :last-editor-id          :pk
+   :last-viewed-at          :timestamp
+   :name                    :text
+   :native-query            nil
+   :official-collection     :boolean
+   :pinned                  :boolean
+   :updated-at              :timestamp
+   :verified                :boolean
+   :view-count              :int
+   :non-temporal-dim-ids    :text
+   :has-temporal-dim        :boolean
+   :display-type            :text
+   :is-published            :boolean})
 
 (def ^:private explicit-attrs
   "These attributes must be explicitly defined, omitting them could be a source of bugs."
@@ -75,7 +107,10 @@
          :pinned
          :verified                                          ;;  in addition to being a filter, this is also a ranker
          :view-count
-         :updated-at])
+         :updated-at
+         :non-temporal-dim-ids
+         :has-temporal-dim
+         :is-published])
        distinct
        vec))
 
@@ -114,10 +149,12 @@
 (def ^:private Specification
   [:map {:closed true}
    [:name SearchModel]
-   [:visibility [:enum :all :app-user]]
+   [:visibility [:enum :all :app-user :superuser]]
    [:model :keyword]
    [:attrs Attrs]
-   [:search-terms [:sequential {:min 1} :keyword]]
+   [:search-terms [:or
+                   [:sequential {:min 1} :keyword]
+                   [:map-of :keyword [:or fn? true?]]]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
@@ -179,7 +216,10 @@
     (find-fields-kw expr)
 
     (and (vector? expr) (> (count expr) 1))
-    (into [] (mapcat find-fields-expr) (subvec expr 1))))
+    (into [] (mapcat find-fields-expr) (subvec expr 1))
+
+    (and (map? expr) (:fields expr))
+    (into [] (mapcat find-fields-expr) (:fields expr))))
 
 (defn- find-fields-attr [[k v]]
   (when v
@@ -187,33 +227,24 @@
       [[:this (keyword (u/->snake_case_en (name k)))]]
       (find-fields-expr v))))
 
-(defn- find-fields-select-item [x]
-  (cond
-    (keyword? x)
-    (find-fields-kw x)
+(defn- find-fields-search [item]
+  (let [x (if (map-entry? item) (key item) item)]
+    (cond
+      (keyword? x)
+      (find-fields-kw x)
 
-    (vector? x)
-    (find-fields-expr (first x))))
-
-(defn- find-fields-top [x]
-  (cond
-    (map? x)
-    (into [] (mapcat find-fields-attr) x)
-
-    (sequential? x)
-    (into [] (mapcat find-fields-select-item) x)
-
-    :else
-    (throw (ex-info "Unexpected format for fields" {:x x}))))
+      (vector? x)
+      (find-fields-expr (first x)))))
 
 (defn- find-fields
   "Search within a definition for all the fields referenced on the given table alias."
   [spec]
   (u/group-by #(nth % 0) #(nth % 1) conj #{}
               (-> []
-                  (into (mapcat find-fields-top)
-                        ;; Remove the keys with special meanings (should probably switch this to an allowlist rather)
-                        (vals (dissoc spec :name :visibility :native-query :where :joins :bookmark :model)))
+                  ;; select fields that will influence content
+                  (into (mapcat find-fields-attr (:attrs spec)))
+                  (into (mapcat find-fields-search (:search-terms spec)))
+                  (into (mapcat find-fields-attr (:render-terms spec)))
                   (into (find-fields-expr (:where spec))))))
 
 (defn- replace-qualification [expr from to]
@@ -282,13 +313,13 @@
   identity)
 
 (defn spec
-  "Register a metabase model as a search-model.
+  "Register a Metabase model as a search-model.
   Once we're trying up the fulltext search project, we can inline a detailed explanation.
   For now, see its schema, and the existing definitions that use it."
-  [search-model]
-  ;; make sure the model namespace is loaded.
-  (t2/resolve-model (search-model->toucan-model search-model))
-  (spec* search-model))
+  ([search-model]
+   ;; make sure the model namespace is loaded.
+   (t2/resolve-model (search-model->toucan-model search-model))
+   (spec* search-model)))
 
 (defn specifications
   "A mapping from each search-model to its specification."
@@ -310,15 +341,33 @@
     (assert (contains? (:joins spec) table) (str "Reference to table without a join: " table))))
 
 (defmacro define-spec
-  "Define a spec for a search model."
+  "Define a search specification for indexing and searching a Metabase model.
+
+   Spec keys:
+   - `:model` - Toucan model keyword (required)
+   - `:attrs` - Map of search index attributes (required)
+   - `:search-terms` - Vector of searchable text fields (required)
+   - `:render-terms` - Additional attributes needed for display (required)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:where` - HoneySQL where clause to filter indexed records
+   - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
+   - `:joins` - Map of join aliases to [model join-condition] tuples
+
+   Attribute value formats:
+   - `true` - Use column with same name (snake_case)
+   - `:column_name` - Use specified database column
+   - `{:fn function :fields [:field1 :field2]}` - Execute a clojure funtion at index time with the given fields"
   [search-model spec]
-  `(let [spec# (-> ~spec
-                   (assoc :name ~search-model)
-                   (update :visibility #(or % :all))
-                   (update :attrs #(merge ~default-attrs %)))]
-     (validate-spec! spec#)
-     (derive (:model spec#) :hook/search-index)
-     (defmethod spec* ~search-model [~'_] spec#)))
+  `(do
+     ;; Capture raw form before evaluation (symbols stay as symbols, not function objects)
+     (swap! raw-spec-forms assoc ~search-model '~spec)
+     (let [spec# (-> ~spec
+                     (assoc :name ~search-model)
+                     (update :visibility #(or % :all))
+                     (update :attrs #(merge ~default-attrs %)))]
+       (validate-spec! spec#)
+       (derive (:model spec#) :hook/search-index)
+       (defmethod spec* ~search-model [~'_] spec#))))
 
 ;; TODO we should memoize this for production (based on spec values)
 (defn model-hooks
@@ -365,3 +414,47 @@
 
   (let [where (-> (:model/ModelIndexValue (model-hooks)) first :where)]
     (insert-values where :updated {:model_index_id 1 :model_pk 5})))
+
+;;;; indexing helpers
+
+(defn explode-camel-case
+  "Transform CamelCase into 'CamelCase Camel Case' so that every word can be searchable"
+  [s]
+  (str s " " (str/replace s #"([a-z])([A-Z])" "$1 $2")))
+
+;;;; index version hashing
+
+(defn- canonicalize
+  "Convert a form to a canonical, JSON-serializable representation.
+   Symbols and keywords become strings, maps are sorted."
+  [form]
+  (cond
+    (symbol? form) (str form)
+    (keyword? form) (str form)
+    (map? form) (into (sorted-map)
+                      (for [[k v] form]
+                        [(canonicalize k) (canonicalize v)]))
+    (sequential? form) (mapv canonicalize form)
+    :else form))
+
+(def ^:dynamic *testing-only-index-version-hash*
+  "Override for tests that need a specific index version."
+  nil)
+
+(def ^{:arglists '([testing-only-index-version-hash]) :private true} index-version-hash*
+  (memoize (fn [testing-only-index-version-hash]
+             (or testing-only-index-version-hash
+                 (let [data {:specs        @raw-spec-forms
+                             :default-attrs default-attrs
+                             :attr-types    attr-types}]
+                   (-> data
+                       canonicalize
+                       json/encode
+                       buddy-hash/sha256
+                       codecs/bytes->hex))))))
+
+(defn index-version-hash
+  "Compute a deterministic hash of all search specifications.
+   Includes raw spec forms, default-attrs, and attr-types."
+  []
+  (index-version-hash* *testing-only-index-version-hash*))

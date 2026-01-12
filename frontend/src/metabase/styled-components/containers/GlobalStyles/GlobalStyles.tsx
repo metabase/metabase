@@ -4,6 +4,10 @@ import { useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -18,6 +22,7 @@ export const GlobalStyles = (): JSX.Element => {
 
   const sitePath = getSitePath();
   const theme = useMantineTheme();
+  const { colorScheme } = theme.other;
 
   // This can get expensive so we should memoize it separately
   const cssVariables = useMemo(() => getMetabaseCssVariables(theme), [theme]);
@@ -44,12 +49,15 @@ export const GlobalStyles = (): JSX.Element => {
     ${saveDomImageStyles}
     body {
         font-size: 0.875em;
+        ${isStaticEmbedding() || isPublicEmbedding()
+          ? ""
+          : `color-scheme: ${colorScheme};`}
         ${rootStyle}
       }
 
       ${baseStyle}
     `;
-  }, [cssVariables, font, sitePath, fontFiles]);
+  }, [cssVariables, font, sitePath, fontFiles, colorScheme]);
 
   return <Global styles={styles} />;
 };

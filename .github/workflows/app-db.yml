@@ -35,21 +35,21 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
 
     services:
       mysql:
@@ -68,8 +68,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -137,31 +137,33 @@ jobs:
             image: cimg/mysql:8.0
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: MySQL Latest
             junit-name: be-tests-mysql-latest-ee
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
+              enable-aws-iam-tests: 'true'
         job:
           - name: Enterprise Tests
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
 
     services:
       mysql:
@@ -180,8 +182,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -211,6 +213,14 @@ jobs:
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
+      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_MYSQL_AWS_IAM_TEST_HOST: ${{ secrets.MYSQL_AURORA_IAM_INSTANCE_HOST }}
+      MB_MYSQL_AWS_IAM_TEST_PORT: 3306
+      MB_MYSQL_AWS_IAM_TEST_USER: my_iam_user
+      MB_MYSQL_AWS_IAM_TEST_DBNAME: test_db
+      MB_MYSQL_AWS_IAM_TEST_SSL_CERT: trust
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
     # "be-tests-mariadb-10-2-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
@@ -249,21 +259,19 @@ jobs:
             docker-image: postgres:12-alpine
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: Postgres Latest
             junit-name: postgres-latest-ee
             docker-image: postgres:latest
             env:
               enable-ssl-tests: 'true'
+              enable-aws-iam-tests: 'true'
         job:
-          - name: Driver Tests
-            build-static-viz: false
-            test-args: >-
-              :only-tags [:mb/driver-tests]
           - name: Enterprise Tests
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
@@ -271,14 +279,14 @@ jobs:
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
@@ -289,8 +297,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -309,6 +317,13 @@ jobs:
       MB_POSTGRES_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
       MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+      MB_POSTGRES_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_POSTGRES_AWS_IAM_TEST_HOST: ${{ secrets.POSTGRES_AURORA_IAM_INSTANCE_HOST }}
+      MB_POSTGRES_AWS_IAM_TEST_PORT: 5432
+      MB_POSTGRES_AWS_IAM_TEST_USER: my_iam_user
+      MB_POSTGRES_AWS_IAM_TEST_DBNAME: test_db
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     services:
       postgres:
         image: ${{ matrix.version.docker-image }}

@@ -13,7 +13,8 @@
 
 (def Models
   "Schema enumerating bookmarkable models."
-  (into [:enum] ["card" "dashboard" "collection"]))
+  (into [:enum]
+        ["card" "dashboard" "collection" "document"]))
 
 (def BookmarkOrderings
   "Schema for an ordered of boomark orderings"
@@ -23,10 +24,15 @@
 
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
-  {"card"       [:model/Card       :model/CardBookmark       :card_id]
+  {"card" [:model/Card :model/CardBookmark :card_id]
    "dashboard"  [:model/Dashboard  :model/DashboardBookmark  :dashboard_id]
-   "collection" [:model/Collection :model/CollectionBookmark :collection_id]})
+   "collection" [:model/Collection :model/CollectionBookmark :collection_id]
+   "document" [:model/Document :model/DocumentBookmark :document_id]})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Fetch all bookmarks for the user"
   []
@@ -34,6 +40,10 @@
   ;; below
   (bookmark/bookmarks-for-user api/*current-user-id*))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:model/:id"
   "Create a new bookmark for user."
   [{:keys [model id]} :- [:map
@@ -46,6 +56,10 @@
                [400 "Bookmark already exists"])
     (first (t2/insert-returning-instances! bookmark-model {item-key id :user_id api/*current-user-id*}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:model/:id"
   "Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id."
   [{:keys [model id]} :- [:map
@@ -58,6 +72,10 @@
                 item-key id)
     api/generic-204-no-content))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/ordering"
   "Sets the order of bookmarks for user."
   [_route-params

@@ -1,7 +1,8 @@
-import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { DateFormattingSettings } from "metabase-types/api";
 
 import type {
+  DATE_PICKER_DIRECTIONS,
   DATE_PICKER_EXTRACTION_UNITS,
   DATE_PICKER_SHORTCUTS,
   DATE_PICKER_TRUNCATION_UNITS,
@@ -13,21 +14,6 @@ export interface ColumnItem {
   column: Lib.ColumnMetadata;
   displayName: string;
   stageIndex: number;
-}
-
-export interface SegmentItem {
-  segment: Lib.SegmentMetadata;
-  displayName: string;
-  stageIndex: number;
-  filterPositions: number[];
-}
-
-export interface GroupItem {
-  key: string;
-  displayName: string;
-  icon: IconName;
-  columnItems: ColumnItem[];
-  segmentItems: SegmentItem[];
 }
 
 export type FilterOperatorOption<T extends Lib.FilterOperatorName> = {
@@ -90,11 +76,12 @@ export type DatePickerValue =
 
 export type DatePickerValueType = DatePickerValue["type"];
 
-export type RelativeIntervalDirection = "last" | "current" | "next";
+export type RelativeIntervalDirection = (typeof DATE_PICKER_DIRECTIONS)[number];
 
 export interface ShortcutOption {
   label: string;
   shortcut: DatePickerShortcut;
+  direction: RelativeIntervalDirection;
   value: RelativeDatePickerValue;
 }
 
@@ -120,6 +107,7 @@ export type DateFilterValue =
 export type DateFilterDisplayOpts = {
   // whether to include `On` prefix for a single date filter
   withPrefix?: boolean;
+  formattingSettings?: DateFormattingSettings;
 };
 
 export type BooleanFilterValue = "true" | "false" | "is-null" | "not-null";

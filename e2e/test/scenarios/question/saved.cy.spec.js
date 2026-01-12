@@ -17,74 +17,6 @@ describe("scenarios > question > saved", () => {
     cy.intercept("POST", "api/card").as("cardCreate");
   });
 
-  it.skip("should should correctly display 'Save' modal (metabase#13817)", () => {
-    H.openOrdersTable();
-    H.openNotebook();
-
-    H.summarize({ mode: "notebook" });
-    H.popover().findByText("Count of rows").click();
-    H.addSummaryGroupingField({ field: "Total" });
-
-    // Test save modal and nested entity picker can be closed via consecutive escape key presses
-    H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within(() => {
-      cy.findByTestId("dashboard-and-collection-picker-button").click();
-      // wait for focus to be removed from clicked element to avoid test flakes
-      // cypress executes faster than ui updates causing the focus position to lag behind on save modal
-      cy.findByTestId("dashboard-and-collection-picker-button").should(
-        "not.be.focused",
-      );
-    });
-    H.entityPickerModal().should("exist");
-    cy.realPress("{esc}");
-    H.entityPickerModal().should("not.exist");
-    cy.findByTestId("save-question-modal").should("exist");
-    cy.findByTestId("dashboard-and-collection-picker-button").should(
-      "be.focused",
-    );
-    cy.realPress("{esc}");
-    cy.findByTestId("save-question-modal").should("not.exist");
-
-    // Save the question
-    H.queryBuilderHeader().button("Save").click();
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save").click();
-    });
-    cy.wait("@cardCreate");
-    cy.button("Not now").click();
-
-    // Add a filter in order to be able to save question again
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
-
-    H.popover().findByText("Total: Auto binned").click();
-    H.selectFilterOperator("Greater than");
-
-    H.popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("60");
-      cy.button("Add filter").click();
-    });
-
-    H.queryBuilderHeader().button("Save").click();
-
-    cy.findByTestId("save-question-modal").within((modal) => {
-      cy.findByText("Save question").should("be.visible");
-      cy.findByTestId("save-question-button").should("be.enabled");
-
-      cy.findByText("Save as new question").click();
-      cy.findByLabelText("Name")
-        .click()
-        .type("{selectall}{backspace}", { delay: 50 })
-        .blur();
-      cy.findByLabelText("Name").should("be.empty");
-      cy.findByLabelText("Description").should("be.empty");
-      cy.findByTestId("save-question-button").should("be.disabled");
-
-      cy.findByText(/^Replace original question,/).click();
-      cy.findByTestId("save-question-button").should("be.enabled");
-    });
-  });
-
   it("view and filter saved question", () => {
     H.visitQuestion(ORDERS_QUESTION_ID);
     cy.findAllByText("Orders"); // question and table name appears
@@ -138,8 +70,6 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
-
-    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
@@ -214,8 +144,6 @@ describe("scenarios > question > saved", () => {
       cy.button("Duplicate").click();
       cy.wait("@cardCreate");
     });
-
-    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
@@ -446,8 +374,8 @@ describe("scenarios > question > saved", () => {
       .findByText("Use the notebook editor")
       .click();
 
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Products").click();
     });
 
@@ -713,7 +641,7 @@ describe(
 
     it("should allow you to enable a webhook alert", () => {
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
 
       H.modal().findByText("New alert").should("be.visible");
@@ -723,7 +651,8 @@ describe(
       });
       H.modal().button("Done").click();
 
-      H.openSharingMenu("Edit alerts");
+      cy.findByLabelText("Move, trash, and more…").click();
+      H.popover().findByText("Edit alerts").click();
       H.modal()
         .findByText(/Created by you/)
         .should("be.exist")
@@ -733,10 +662,10 @@ describe(
     });
 
     // There is no api to test individual hooks for new Question Alerts
-    it.skip("should allow you to test a webhook", () => {
+    it("should allow you to test a webhook", { tags: "@skip" }, () => {
       cy.intercept("POST", "/api/pulse/test").as("testAlert");
       H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.findByTestId("sharing-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
       H.popover().findByText("Create an alert").click();
 
       H.modal().within(() => {

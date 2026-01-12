@@ -4,11 +4,12 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
+   [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -18,18 +19,6 @@
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
-
-(deftest ^:parallel ensure-previous-stages-have-metadata-test
-  (let [query (-> (lib.tu/venues-query)
-                  (lib/with-fields [(meta/field-metadata :venues :id) (meta/field-metadata :venues :name)])
-                  lib/append-stage
-                  lib/append-stage)]
-    (is (=? {:stages [{::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/table-defaults}
-                                                    {:name "NAME", :lib/source :source/table-defaults}]}
-                      {::lib.stage/cached-metadata [{:name "ID",   :lib/source :source/previous-stage}
-                                                    {:name "NAME", :lib/source :source/previous-stage}]}
-                      {}]}
-            (#'lib.stage/ensure-previous-stages-have-metadata query -1 {})))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
@@ -271,28 +260,28 @@
               :name "ID"
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger
-              :lib/desired-column-alias "ID"
+              :lib/source-column-alias "ID"
               :display-name "ID"}
              {:base-type :type/Text
               :semantic-type :type/Name
               :name "NAME"
               :lib/source :source/previous-stage
               :effective-type :type/Text
-              :lib/desired-column-alias "NAME"
+              :lib/source-column-alias "NAME"
               :display-name "Name"}
              {:base-type :type/BigInteger
               :semantic-type :type/PK
               :name "ID"
               :lib/source :source/previous-stage
               :effective-type :type/BigInteger
-              :lib/desired-column-alias "Cat__ID"
+              :lib/source-column-alias "Cat__ID"
               :display-name "ID"}
              {:base-type :type/Text
               :semantic-type :type/Name
               :name "NAME"
               :lib/source :source/previous-stage
               :effective-type :type/Text
-              :lib/desired-column-alias "Cat__NAME"
+              :lib/source-column-alias "Cat__NAME"
               :display-name "Name"}]
             (lib/visible-columns query)))))
 
@@ -575,7 +564,7 @@
         (testing (str "Stage number = " stage-number)
           (is (=? [{:name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
                    {:name "coun"}]
-                  (lib/returned-columns query stage-number (lib.util/query-stage query stage-number) {}))))))))
+                  (lib/returned-columns query stage-number stage-number {}))))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
   (testing "Remapped columns in joined source queries should work (#15578)"
@@ -627,7 +616,7 @@
                              ;; this is already here, DO NOT add a duplicate of it.
                              &CATEGORIES__via__CATEGORY_ID.categories.name]}))]
       (is (= ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "CATEGORIES__via__CATEGORY_ID__NAME"]
-             (map :lib/desired-column-alias (lib/returned-columns query -1 (lib.util/query-stage query -1) {:include-remaps? true})))))))
+             (map :lib/desired-column-alias (lib/returned-columns query -1 -1 {:include-remaps? true})))))))
 
 (deftest ^:parallel propagate-binning-info-test
   (testing "binning info from previous stages should get propagated"
@@ -764,7 +753,7 @@
                     "Price"]
                    (map :display-name (lib/returned-columns query))))))))))
 
-;;; adapted from [[metabase.query-processor-test.explicit-joins-test/join-against-saved-question-with-sort-test]]
+;;; adapted from [[metabase.query-processor.explicit-joins-test/join-against-saved-question-with-sort-test]]
 (deftest ^:parallel join-against-same-table-returned-columns-test
   (testing "Joining against a query that ultimately have the same source table SHOULD result in 'duplicate' columns being included."
     (let [query (lib/query
@@ -816,7 +805,7 @@
 
 (deftest ^:parallel return-correct-deduplicated-names-test
   (testing "Deduplicated names from previous stage should be preserved even when excluding certain fields"
-    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See ;; see
+    ;; e.g. a field called CREATED_AT_2 in the previous stage should continue to be called that. See
     ;; https://metaboat.slack.com/archives/C0645JP1W81/p1750961267171999
     (let [query (-> (lib/query
                      meta/metadata-provider
@@ -831,16 +820,202 @@
                     lib/append-stage
                     lib/append-stage
                     (as-> query (lib/remove-field query -1 (first (lib/fieldable-columns query -1)))))]
-      (is (=? [{:name                     "CREATED_AT_2"
-                :lib/original-name        "CREATED_AT"
-                :lib/deduplicated-name    "CREATED_AT_2"
-                :lib/source-column-alias  "CREATED_AT_2"
-                :lib/desired-column-alias "CREATED_AT_2"
-                :display-name             "Created At: Month"}
-               {:name                     "count"
-                :lib/original-name        "count"
-                :lib/deduplicated-name    "count"
-                :lib/source-column-alias  "count"
-                :lib/desired-column-alias "count"
-                :display-name             "Count"}]
-              (lib/returned-columns query))))))
+      (testing "Stage 1 of 3"
+        (is (=? [{:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT"
+                  :display-name             "Created At: Year"}
+                 {:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query 0))))
+      (testing "Stage 2 of 3"
+        (is (=? [{:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT"
+                  :lib/source-column-alias  "CREATED_AT"
+                  :lib/desired-column-alias "CREATED_AT"
+                  :display-name             "Created At: Year"}
+                 {:name                     "CREATED_AT"
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query 1))))
+      (testing "Stage 3 of 3"
+        (is (=? [{:name                     "CREATED_AT_2" ; name should get deduplicated in the last stage for historical reasons
+                  :lib/original-name        "CREATED_AT"
+                  :lib/deduplicated-name    "CREATED_AT_2"
+                  :lib/source-column-alias  "CREATED_AT_2"
+                  :lib/desired-column-alias "CREATED_AT_2"
+                  :display-name             "Created At: Month"}
+                 {:name                     "count"
+                  :lib/original-name        "count"
+                  :lib/deduplicated-name    "count"
+                  :lib/source-column-alias  "count"
+                  :lib/desired-column-alias "count"
+                  :display-name             "Count"}]
+                (lib/returned-columns query)))))))
+
+;;; TODO (Cam 8/7/25) -- move these tests that test [[lib.equality/=]] to [[metabase.lib.equality-test]]
+(deftest ^:parallel test-QUE-1607
+  (testing "do not add duplicate columns whne join uses name refs in :fields (QUE-1607)"
+    (is (lib.equality/=
+         {:base-type                    :type/Integer
+          :display-name                 "Sum of Quantity"
+          :effective-type               :type/Integer
+          :lib/deduplicated-name        "sum"
+          :lib/desired-column-alias     "Orders__sum"
+          :lib/original-join-alias      "Orders"
+          :lib/original-name            "sum"
+          :lib/source                   :source/joins
+          :lib/source-column-alias      "sum"
+          :lib/source-uuid              "4d059464-4190-40ae-bc4e-717ff016e157"
+          :lib/type                     :metadata/column
+          :metabase.lib.join/join-alias "Orders"
+          :name                         "sum"
+          :semantic-type                :type/Quantity
+          :source-alias                 "Orders"}
+         {:base-type                    :type/Integer
+          :display-name                 "Sum"
+          :effective-type               :type/Integer
+          :lib/original-join-alias      "Orders"
+          :lib/source                   :source/joins
+          :lib/source-uuid              "91b22976-279d-4052-b269-e4cd83a6683b"
+          :lib/type                     :metadata/column
+          :metabase.lib.join/join-alias "Orders"
+          :name                         "sum"}))))
+
+(deftest ^:parallel column-equality-test
+  (let [join-col     {:active                       true
+                      :base-type                    :type/Text
+                      :caveats                      nil
+                      :coercion-strategy            nil
+                      :custom-position              0
+                      :database-is-auto-increment   false
+                      :database-position            2
+                      :database-required            false
+                      :database-type                "CHARACTER VARYING"
+                      :description                  nil
+                      :display-name                 "Orders → Title"
+                      :effective-type               :type/Text,
+                      :fingerprint-version          5
+                      :fk-target-field-id           nil
+                      :has-field-values             :auto-list
+                      :id                           24504
+                      :name                         "TITLE"
+                      :nfc-path                     nil
+                      :parent-id                    nil
+                      :points-of-interest           nil
+                      :position                     2
+                      :preview-display              true
+                      :semantic-type                :type/Title
+                      :settings                     nil
+                      :source-alias                 "Orders"
+                      :table-id                     24050
+                      :visibility-type              :normal
+                      :lib/breakout?                false
+                      :lib/original-display-name    "Title"
+                      :lib/original-join-alias      "Orders"
+                      :lib/original-name            "TITLE"
+                      :lib/source                   :source/joins
+                      :lib/source-column-alias      "TITLE"
+                      :lib/type                     :metadata/column
+                      :metabase.lib.join/join-alias "Orders"}
+        existing-col {:base-type               :type/Integer
+                      :display-name            "Orders → Sum"
+                      :name                    "sum"
+                      :lib/source              :source/previous-stage
+                      :lib/type                :metadata/column
+                      :lib/original-join-alias "Orders"}]
+    (is (not (lib.equality/= join-col existing-col)))))
+
+(deftest ^:parallel sane-desired-column-aliases-test
+  (testing "Do not 'double-dip' a desired-column alias and do `__via__` twice"
+    (let [query (lib/query
+                 meta/metadata-provider
+                 {:lib/type :mbql/query
+                  :database (meta/id)
+                  :stages   [{:lib/type     :mbql.stage/mbql
+                              :aggregation  [[:count {}]]
+                              :source-table (meta/id :orders)
+                              :breakout     [[:field
+                                              {:source-field (meta/id :orders :product-id)}
+                                              (meta/id :products :category)]]}
+                             {:lib/type :mbql.stage/mbql
+                              :fields   [[:field
+                                          ;; having `:source-field` here AGAIN is probably not necessary since the join
+                                          ;; was actually already done in the previous stage; at any rate we should
+                                          ;; still return correct info.
+                                          {:source-field (meta/id :orders :product-id)}
+                                          (meta/id :products :category)]
+                                         [:field {:base-type :type/Integer} "count"]]
+                              :filters  [[:>
+                                          {}
+                                          [:field {:base-type :type/Integer} "count"]
+                                          0]]}]})]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (doseq [f [#'lib/returned-columns
+                   #'lib.metadata.result-metadata/returned-columns]]
+          (testing (pr-str f)
+            (is (=? [{:name                     "CATEGORY"
+                      :display-name             "Product → Category"
+                      :lib/source-column-alias  "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                      :lib/desired-column-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
+                      :fk-field-id              (symbol "nil #_\"key is not present.\"")
+                      :lib/original-fk-field-id (meta/id :orders :product-id)}
+                     {:name                     "count"
+                      :display-name             "Count"
+                      :lib/source-column-alias  "count"
+                      :lib/desired-column-alias "count"}]
+                    (f query)))))))))
+
+(deftest ^:parallel propagate-crazy-long-native-identifiers-test
+  (testing "respect crazy-long identifiers from native query stages (we need to use these to refer to native columns in the second stage) (#47584)"
+    (let [query (lib.tu.macros/mbql-5-query nil
+                  {:stages [{:native             "SELECT *"
+                             :lib/stage-metadata {:columns [{:base-type                :type/Text
+                                                             :database-type            "CHARACTER VARYING"
+                                                             :display-name             "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :effective-type           :type/Text
+                                                             :name                     "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :lib/source               :source/native
+                                                             :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                                             :lib/type                 :metadata/column}]}}
+                            {}
+                            {}]})]
+      (are [stage-number expected] (=? [expected]
+                                       (lib/returned-columns query stage-number))
+        0
+        {:lib/source               :source/native
+         :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+         :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+
+        1
+        {:lib/source               :source/previous-stage
+         :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+         :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}
+
+        2
+        {:lib/source               :source/previous-stage
+         :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
+         :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}))))

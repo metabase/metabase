@@ -9,21 +9,29 @@
 
     (qp.store/field 10) ;; get Field 10
 
-   Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information about that Field,
-  but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient than fetching
-  those Fields potentially dozens of times in a single query execution."
+  Of course, it would be entirely possible to call `(t2/select-one Field :id 10)` every time you needed information
+  about that Field, but fetching all Fields in a single pass and storing them for reuse is dramatically more efficient
+  than fetching those Fields potentially dozens of times in a single query execution.
+
+  THE QP STORE IS DEPRECATED! It's only needed for legacy queries, and we're moving to an MBQL 5 world. Don't use it
+  in new code going forward."
+  ;; This whole namespace is in the process of deprecation so ignore deprecated vars in this namespace.
+  {:clj-kondo/config '{:linters {:deprecated-var {:level :off}}}, :deprecated "0.57.0"}
+  (:refer-clojure :exclude [get-in])
   (:require
-   [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,13 +65,19 @@
 
 (mu/defn store-miscellaneous-value!
   "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
-  calls."
+  calls.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   [ks :- [:sequential :any]
    v]
   (swap! *store* assoc-in ks v))
 
 (mu/defn miscellaneous-value
-  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
+  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   ([ks]
    (miscellaneous-value ks nil))
 
@@ -76,7 +90,10 @@
   value, stores it in the cache, and returns the value. You can use this to ensure a given function is only ran once
   during the duration of a QP execution.
 
-  See also `cached` macro."
+  See also `cached` macro.
+
+  DEPRECATED -- use [[metabase.lib.metadata/general-cached-value]] going forward."
+  {:deprecated "0.57.0"}
   [ks thunk]
   (let [cached-value (miscellaneous-value ks ::not-found)]
     (if-not (= cached-value ::not-found)
@@ -95,8 +112,10 @@
 
     ;; cache lookups of Card.dataset_query
     (qp.store/cached card-id
-      (t2/select-one-fn :dataset_query Card :id card-id))"
-  {:style/indent 1}
+      (t2/select-one-fn :dataset_query Card :id card-id))
+
+  DEPRECATED -- use [[metabase.lib.core/general-cached-value]] going forward."
+  {:style/indent 1, :deprecated "0.57.0"}
   [k-or-ks & body]
   ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
   (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
@@ -114,22 +133,26 @@
    ::lib.schema.id/database
    ::lib.schema.metadata/metadata-providerable])
 
+(defn- ensure-cached-metadata-provider [mp]
+  (if (lib.metadata.protocols/cached-metadata-provider-with-cache? mp)
+    mp
+    (lib.metadata.cached-provider/cached-metadata-provider mp)))
+
 (mu/defn- ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
-  (if (integer? database-id-or-metadata-providerable)
-    (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
-    database-id-or-metadata-providerable))
+  (let [mp (if (pos-int? database-id-or-metadata-providerable)
+             (lib-be/application-database-metadata-provider database-id-or-metadata-providerable)
+             (lib.metadata/->metadata-provider database-id-or-metadata-providerable))]
+    (ensure-cached-metadata-provider mp)))
 
 (mu/defn- validate-existing-provider
   "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the
   Database. We don't need to replace it."
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (let [old-provider (miscellaneous-value [::metadata-provider])]
-    (when-not (identical? old-provider database-id-or-metadata-providerable)
-      (let [new-database-id      (if (integer? database-id-or-metadata-providerable)
-                                   database-id-or-metadata-providerable
-                                   (throw (ex-info "Cannot replace MetadataProvider with another one after it has been bound"
-                                                   {:old-provider old-provider, :new-provider database-id-or-metadata-providerable})))
+    (if (pos-int? database-id-or-metadata-providerable)
+      ;; Database ID
+      (let [new-database-id      database-id-or-metadata-providerable
             existing-database-id (u/the-id (lib.metadata/database old-provider))]
         (when-not (= new-database-id existing-database-id)
           (throw (ex-info (tru "Attempting to initialize metadata provider with new Database {0}. Queries can only reference one Database. Already referencing: {1}"
@@ -137,7 +160,15 @@
                                (pr-str existing-database-id))
                           {:existing-id existing-database-id
                            :new-id      new-database-id
-                           :type        qp.error-type/invalid-query})))))))
+                           :type        qp.error-type/invalid-query}))))
+
+      ;; Metadata Providerable
+      (let [new-provider (-> database-id-or-metadata-providerable
+                             lib.metadata/->metadata-provider
+                             ensure-cached-metadata-provider)]
+        (when-not (= new-provider old-provider)
+          (throw (ex-info "Cannot replace MetadataProvider with another one after it has been bound"
+                          {:old-provider old-provider, :new-provider database-id-or-metadata-providerable})))))))
 
 (mu/defn- set-metadata-provider!
   "Create a new metadata provider and save it."
@@ -187,23 +218,19 @@
 ;;;; DEPRECATED STUFF
 ;;;;
 
-(defn ->legacy-metadata
+(mu/defn ->legacy-metadata
   "For compatibility: convert MLv2-style metadata as returned by [[metabase.lib.metadata.protocols]]
   or [[metabase.lib.metadata]] functions
   (with `kebab-case` keys and `:lib/type`) to legacy QP/application database style metadata (with `snake_case` keys
   and Toucan 2 model `:type` metadata).
 
-  Try to avoid using this, we would like to remove this in the near future."
+  Try to avoid using this, we would like to remove this in the near future.
+
+  (Note: it is preferable to use [[metabase.lib.core/lib-metadata-column->legacy-metadata-column]] instead of this
+  function if you REALLY need to do this sort of conversion.)"
   {:deprecated "0.48.0"}
-  [mlv2-metadata]
-  (let [model (case (:lib/type mlv2-metadata)
-                :metadata/database :model/Database
-                :metadata/table    :model/Table
-                :metadata/column   :model/Field)]
-    (-> mlv2-metadata
-        (dissoc :lib/type)
-        (update-keys u/->snake_case_en)
-        (vary-meta assoc :type model)
-        ;; TODO: This is converting a freestanding field ref into legacy form. Then again, the `:field_ref` on MLv2
-        ;; metadata is already in legacy form.
-        (m/update-existing :field_ref lib/->legacy-MBQL))))
+  [lib-metadata-col :- [:map
+                        [:lib/type [:= :metadata/column]]]]
+  (-> lib-metadata-col
+      lib/lib-metadata-column->legacy-metadata-column
+      (vary-meta assoc :type :metadata/column)))

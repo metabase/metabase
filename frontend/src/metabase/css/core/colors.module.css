@@ -2,6 +2,7 @@
  * NOTE: KEEP SYNCHRONIZED WITH:
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/lib/colors/palette.ts
+ * frontend/src/metabase/lib/colors/colors.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
  * frontend/src/metabase/styled-components/theme/css-variables.ts
  */
@@ -19,290 +20,18 @@
  * colors in this file.
 */
 
-:root {
-  /* Semantic colors */
-  --mb-color-brand: var(--mb-base-color-blue-40);
-  --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
-  --mb-color-brand-lighter: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
-  --mb-color-brand-alpha-04: color-mix(
-    in srgb,
-    var(--mb-color-brand) 4%,
-    transparent
-  );
-  --mb-color-brand-alpha-88: color-mix(
-    in srgb,
-    var(--mb-color-brand) 88%,
-    transparent
-  );
-  --mb-color-border-alpha-30: color-mix(
-    in srgb,
-    var(--mb-color-border) 30%,
-    transparent
-  );
-  --mb-color-text-white-alpha-85: color-mix(
-    in srgb,
-    var(--mb-color-text-white) 85%,
-    transparent
-  );
-  --mb-color-bg-black-alpha-60: color-mix(
-    in srgb,
-    var(--mb-color-bg-black) 60%,
-    transparent
-  );
-  --mb-color-bg-white-alpha-15: color-mix(
-    in srgb,
-    var(--mb-color-bg-white) 15%,
-    transparent
-  );
-  --mb-color-success: #84bb4c;
-  --mb-color-summarize: #88bf4d;
-  --mb-color-error: var(--mb-base-color-lobster-50);
-  --mb-color-danger: var(--mb-base-color-lobster-50);
-  --mb-color-text-dark: #4c5773;
-  --mb-color-text-medium: #696e7b;
-  --mb-color-text-light: #949aab;
-  --mb-color-bg-black: #2e353b;
-  --mb-color-bg-dark: #93a1ab;
-  --mb-color-bg-medium: #edf2f5;
-  --mb-color-bg-light: var(--mb-base-color-gray-5);
-  --mb-color-bg-white: var(--mb-base-color-white);
-  --mb-color-bg-error: var(--mb-base-color-lobster-10);
-  --mb-color-bg-night: #42484e;
-  --mb-color-shadow: rgba(0, 0, 0, 0.13);
-  --mb-color-border: #eeecec;
-  --mb-color-filter: #7172ad;
-  --mb-color-focus: var(--mb-base-color-blue-20);
-  --mb-color-warning: #f9cf48;
-  --mb-color-text-primary: var(--mb-color-text-dark);
-  --mb-color-text-secondary: var(--mb-color-text-medium);
-  --mb-color-text-secondary-inverse: #b7bcbf;
-  --mb-color-text-tertiary: var(--mb-color-text-light);
-  --mb-color-text-selected: var(--mb-base-color-white);
-  --mb-color-text-hover: var(--mb-base-color-brand-40);
-  --mb-color-text-disabled: var(--mb-base-color-gray-50);
-  --mb-color-text-brand: var(--mb-base-color-brand-40);
-  --mb-color-text-white: var(--mb-base-color-white);
-  --mb-color-background: var(--mb-base-color-white);
-  --mb-color-background-info: var(--mb-base-color-gray-5);
-  --mb-color-background-selected: var(--mb-base-color-brand-40);
-  --mb-color-background-hover: var(--mb-base-color-brand-10);
-  --mb-color-background-disabled: var(--mb-base-color-gray-10);
-  --mb-color-background-inverse: var(--mb-color-bg-black);
-  --mb-color-background-brand: var(--mb-base-color-brand-40);
-  --mb-color-background-light: var(--mb-base-color-orion-5);
-  /* The primary color is still `bg-error` not `background-error` */
-  --mb-color-background-error-secondary: var(--mb-base-color-lobster-5);
-  --mb-color-icon-primary: var(--mb-base-color-brand-40);
-  --mb-color-icon-primary-disabled: var(--mb-base-color-gray-30);
-  --mb-color-icon-secondary: var(--mb-base-color-brand-20);
-  --mb-color-icon-secondary-disabled: var(--mb-base-color-gray-10);
-  --mb-color-tooltip-text: var(--mb-color-text-white);
-  --mb-color-tooltip-text-secondary: var(--mb-color-text-light);
-  --mb-color-tooltip-background: var(--mb-color-background-inverse);
-  --mb-color-tooltip-background-focused: color-mix(
-    in srgb,
-    var(--mb-color-tooltip-background) 50%,
-    #000
-  );
-  --mb-color-syntax-parameters: var(--mb-base-color-mango-40);
-  --mb-color-syntax-parameters-active: var(--mb-base-color-mango-10);
-  --mb-color-switch-off: var(--mb-base-color-orion-10);
-
-  /**
-    * Base colors
-    *
-    * @see https://www.figma.com/design/YxiDXi1DzmXJCTMCuqXaaY/Applying-the-updated-colors?node-id=4001-16486&node-type=FRAME&t=Iwv4nAfH8QF1J5QG-0
-  */
-
-  --mb-base-color-white: #fff;
-
-  /* Brand */
-  --mb-base-color-brand-70: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    black 50%
-  );
-  --mb-base-color-brand-60: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    black 25%
-  );
-  /*   brand */
-  --mb-base-color-brand-40: var(--mb-color-brand);
-  --mb-base-color-brand-30: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    white 45%
-  );
-  --mb-base-color-brand-20: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    white 70%
-  );
-  --mb-base-color-brand-10: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    white 90%
-  );
-
-  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
-  --mb-color-saturated-blue: #2d86d4;
-  --mb-color-saturated-green: #70a63a;
-  --mb-color-saturated-purple: #885ab1;
-  --mb-color-saturated-red: #ed6e6e;
-  --mb-color-saturated-yellow: #f9cf48;
-
-  /* @deprecated Blue */
-  --mb-base-color-blue-100: #00172b;
-  --mb-base-color-blue-90: #042746;
-  --mb-base-color-blue-80: #0a3b67;
-  --mb-base-color-blue-70: #105490;
-  --mb-base-color-blue-60: #1871bf;
-  --mb-base-color-blue-50: #358cd9;
-  --mb-base-color-blue-40: #509ee3; /* brand */
-  --mb-base-color-blue-30: #8dc0ed;
-  --mb-base-color-blue-20: #cbe2f7; /* focus */
-  --mb-base-color-blue-10: #eef6fd; /* baby blue */
-  --mb-base-color-blue-5: #f8fbfe;
-
-  /* @deprecated Gray */
-  --mb-base-color-gray-100: #121619; /* bg-black */
-  --mb-base-color-gray-90: #20272b;
-  --mb-base-color-gray-80: #313b42;
-  --mb-base-color-gray-70: #47545e;
-  --mb-base-color-gray-60: #657079;
-  --mb-base-color-gray-50: #808991;
-  --mb-base-color-gray-40: #929aa1;
-  --mb-base-color-gray-30: #b4bcc3;
-  --mb-base-color-gray-20: #dbdfe3;
-  --mb-base-color-gray-10: #f3f5f7;
-  --mb-base-color-gray-5: #fafbfc;
-
-  /* Orion */
-  --mb-base-color-orion-100: hsla(204, 66%, 8%, 1);
-  --mb-base-color-orion-90: hsla(204, 34%, 14%, 1);
-  --mb-base-color-orion-80: hsla(205, 19%, 23%, 1);
-  --mb-base-color-orion-70: hsla(204, 12%, 32%, 1);
-  --mb-base-color-orion-60: hsla(205, 8%, 43%, 1);
-  --mb-base-color-orion-50: hsla(203, 5%, 53%, 1);
-  --mb-base-color-orion-40: hsla(205, 6%, 60%, 1);
-  --mb-base-color-orion-30: hsla(203, 6%, 73%, 1);
-  --mb-base-color-orion-20: hsla(195, 6%, 87%, 1);
-  --mb-base-color-orion-10: hsla(240, 4%, 95%, 1);
-  --mb-base-color-orion-5: hsla(240, 11%, 98%, 1);
-
-  /* Orion Alpha */
-  --mb-base-color-orion-alpha-100: hsla(205, 68%, 8%, 1);
-  --mb-base-color-orion-alpha-90: hsla(204, 66%, 8%, 0.93);
-  --mb-base-color-orion-alpha-80: hsla(204, 66%, 8%, 0.84);
-  --mb-base-color-orion-alpha-70: hsla(204, 66%, 8%, 0.74);
-  --mb-base-color-orion-alpha-60: hsla(204, 66%, 8%, 0.62);
-  --mb-base-color-orion-alpha-50: hsla(204, 66%, 8%, 0.51);
-  --mb-base-color-orion-alpha-40: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-30: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-20: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-10: hsla(204, 66%, 8%, 0.44);
-  --mb-base-color-orion-alpha-5: hsla(204, 66%, 8%, 0.44);
-
-  /* Lobster */
-  --mb-base-color-lobster-100: hsla(0, 81%, 11%, 1);
-  --mb-base-color-lobster-90: hsla(1, 75%, 17%, 1);
-  --mb-base-color-lobster-80: hsla(1, 71%, 26%, 1);
-  --mb-base-color-lobster-70: hsla(1, 69%, 37%, 1);
-  --mb-base-color-lobster-60: hsla(1, 67%, 49%, 1);
-  --mb-base-color-lobster-50: hsla(358, 71%, 62%, 1);
-  --mb-base-color-lobster-40: hsla(1, 84%, 69%, 1);
-  --mb-base-color-lobster-30: hsla(1, 85%, 81%, 1);
-  --mb-base-color-lobster-20: hsla(2, 67%, 90%, 1);
-  --mb-base-color-lobster-10: hsla(0, 76%, 97%, 1);
-  --mb-base-color-lobster-5: hsla(0, 100%, 99%, 1);
-
-  /* Flamingo */
-  --mb-base-color-flamingo-100: hsla(334, 75%, 10%, 1);
-  --mb-base-color-flamingo-90: hsla(334, 79%, 17%, 1);
-  --mb-base-color-flamingo-80: hsla(334, 72%, 26%, 1);
-  --mb-base-color-flamingo-70: hsla(334, 71%, 36%, 1);
-  --mb-base-color-flamingo-60: hsla(334, 69%, 48%, 1);
-  --mb-base-color-flamingo-50: hsla(334, 67%, 60%, 1);
-  --mb-base-color-flamingo-40: hsla(334, 80%, 68%, 1);
-  --mb-base-color-flamingo-30: hsla(334, 79%, 80%, 1);
-  --mb-base-color-flamingo-20: hsla(335, 79%, 91%, 1);
-  --mb-base-color-flamingo-10: hsla(335, 67%, 96%, 1);
-  --mb-base-color-flamingo-5: hsla(330, 67%, 99%, 1);
-
-  /* Mango */
-  --mb-base-color-mango-100: hsla(26, 89%, 7%, 1);
-  --mb-base-color-mango-90: hsla(26, 79%, 13%, 1);
-  --mb-base-color-mango-80: hsla(25, 73%, 20%, 1);
-  --mb-base-color-mango-70: hsla(26, 70%, 29%, 1);
-  --mb-base-color-mango-60: hsla(26, 69%, 39%, 1);
-  --mb-base-color-mango-50: hsla(26, 68%, 48%, 1);
-  --mb-base-color-mango-40: hsla(26, 79%, 54%, 1);
-  --mb-base-color-mango-30: hsla(26, 84%, 70%, 1);
-  --mb-base-color-mango-20: hsla(26, 88%, 87%, 1);
-  --mb-base-color-mango-10: hsla(25, 100%, 95%, 1);
-  --mb-base-color-mango-5: hsla(30, 100%, 98%, 1);
-
-  /* Dubloon */
-  --mb-base-color-dubloon-100: hsla(30, 100%, 98%, 1);
-  --mb-base-color-dubloon-90: hsla(46, 88%, 10%, 1);
-  --mb-base-color-dubloon-80: hsla(46, 82%, 15%, 1);
-  --mb-base-color-dubloon-70: hsla(46, 79%, 22%, 1);
-  --mb-base-color-dubloon-60: hsla(46, 76%, 30%, 1);
-  --mb-base-color-dubloon-50: hsla(46, 76%, 37%, 1);
-  --mb-base-color-dubloon-40: hsla(46, 75%, 44%, 1);
-  --mb-base-color-dubloon-30: hsla(46, 81%, 52%, 1);
-  --mb-base-color-dubloon-20: hsla(46, 94%, 74%, 1);
-  --mb-base-color-dubloon-10: hsla(46, 96%, 90%, 1);
-  --mb-base-color-dubloon-5: hsla(46, 96%, 90%, 1);
-
-  /* Palm */
-  --mb-base-color-palm-100: hsla(94, 85%, 5%, 1);
-  --mb-base-color-palm-90: hsla(92, 62%, 10%, 1);
-  --mb-base-color-palm-80: hsla(89, 54%, 16%, 1);
-  --mb-base-color-palm-70: hsla(89, 50%, 24%, 1);
-  --mb-base-color-palm-60: hsla(89, 48%, 32%, 1);
-  --mb-base-color-palm-50: hsla(89, 48%, 40%, 1);
-  --mb-base-color-palm-40: hsla(89, 47%, 45%, 1);
-  --mb-base-color-palm-30: hsla(90, 47%, 60%, 1);
-  --mb-base-color-palm-20: hsla(91, 51%, 81%, 1);
-  --mb-base-color-palm-10: hsla(92, 65%, 92%, 1);
-  --mb-base-color-palm-5: hsla(93, 73%, 97%, 1);
-
-  /* Seafoam */
-  --mb-base-color-seafoam-100: hsla(180, 84%, 5%, 1);
-  --mb-base-color-seafoam-90: hsla(180, 34%, 12%, 1);
-  --mb-base-color-seafoam-80: hsla(180, 80%, 14%, 1);
-  --mb-base-color-seafoam-70: hsla(180, 70%, 21%, 1);
-  --mb-base-color-seafoam-60: hsla(180, 44%, 33%, 1);
-  --mb-base-color-seafoam-50: hsla(180, 74%, 34%, 1);
-  --mb-base-color-seafoam-40: hsla(180, 42%, 46%, 1);
-  --mb-base-color-seafoam-30: hsla(180, 47%, 60%, 1);
-  --mb-base-color-seafoam-20: hsla(180, 55%, 81%, 1);
-  --mb-base-color-seafoam-10: hsla(180, 68%, 93%, 1);
-  --mb-base-color-seafoam-5: hsla(180, 69%, 97%, 1);
-
-  /* Octopus */
-  --mb-base-color-octopus-100: hsla(240, 7%, 9%, 1);
-  --mb-base-color-octopus-90: hsla(240, 7%, 9%, 1);
-  --mb-base-color-octopus-80: hsla(240, 43%, 33%, 1);
-  --mb-base-color-octopus-70: hsla(240, 40%, 46%, 1);
-  --mb-base-color-octopus-60: hsla(240, 46%, 58%, 1);
-  --mb-base-color-octopus-50: hsla(240, 65%, 69%, 1);
-  --mb-base-color-octopus-40: hsla(240, 69%, 74%, 1);
-  --mb-base-color-octopus-30: hsla(240, 49%, 81%, 1);
-  --mb-base-color-octopus-20: hsla(240, 66%, 92%, 1);
-  --mb-base-color-octopus-10: hsla(240, 100%, 97%, 1);
-  --mb-base-color-octopus-5: hsla(240, 100%, 99%, 1);
-}
-
 .textDefault {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .textBrand,
 .textBrandHover:hover {
   color: var(--mb-color-brand);
+}
+
+/** Non-whitelabeled Metabase brand color */
+.textMetabaseBrand {
+  color: var(--mb-color-metabase-brand);
 }
 
 .textSuccess {
@@ -321,29 +50,29 @@
 }
 
 .bgErrorInput {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .textSlate {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .textSlateLight {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .textLight {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 }
 
 .textMedium,
 .textMediumHover:hover {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .textDark,
 .textDarkHover:hover {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 }
 
 .textPrimary {
@@ -358,38 +87,35 @@
   color: var(--mb-color-text-tertiary);
 }
 
+.bgBrandLighter,
+.bgBrandLighterHover:hover {
+  background-color: var(--mb-color-brand-lighter);
+}
+
 .bgLight,
 .bgLightHover:hover {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }
 
 .bgMedium,
 .bgMediumHover:hover {
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
 }
 
 /* white  - move to bottom for specificity since its often used on hovers, etc */
 .textWhite,
 .textWhiteHover:hover {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .bgWhite {
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
 }
 
 .bgLightBlue {
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
 }
 
-.DashboardNight .bgLight {
-  background-color: var(--mb-color-bg-black);
-}
-
-.DashboardNight .bgMedium {
-  background-color: #596269;
-}
-
-.DashboardNight .textDark {
-  color: var(--mb-color-bg-light);
+.textTooltipSecondary {
+  color: var(--mb-color-tooltip-text-secondary);
 }

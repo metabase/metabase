@@ -479,32 +479,36 @@ describe("issue 17160", () => {
     assertMultipleValuesFilterState();
   });
 
-  it.skip("should pass multiple filter values to public questions and dashboards (metabase#17160-2)", () => {
-    // FIXME: setup public dashboards
-    setup();
+  it(
+    "should pass multiple filter values to public questions and dashboards (metabase#17160-2)",
+    { tags: "@skip" },
+    () => {
+      // FIXME: setup public dashboards
+      setup();
 
-    // 1. Check click behavior connected to a public question
-    visitPublicSourceDashboard();
+      // 1. Check click behavior connected to a public question
+      visitPublicSourceDashboard();
 
-    cy.findAllByText("click-behavior-question-label").eq(0).click();
+      cy.findAllByText("click-behavior-question-label").eq(0).click();
 
-    cy.url().should("include", "/public/question");
+      cy.url().should("include", "/public/question");
 
-    assertMultipleValuesFilterState();
+      assertMultipleValuesFilterState();
 
-    // 2. Check click behavior connected to a publicdashboard
-    visitPublicSourceDashboard();
+      // 2. Check click behavior connected to a publicdashboard
+      visitPublicSourceDashboard();
 
-    cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
+      cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
 
-    cy.url().should("include", "/public/dashboard");
-    cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
+      cy.url().should("include", "/public/dashboard");
+      cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(TARGET_DASHBOARD_NAME);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(TARGET_DASHBOARD_NAME);
 
-    assertMultipleValuesFilterState();
-  });
+      assertMultipleValuesFilterState();
+    },
+  );
 });
 
 describe("issue 18454", () => {
@@ -796,7 +800,7 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 33;
+        const expectedWidth = 47;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
@@ -822,17 +826,6 @@ describe("issue 31628", () => {
     { size_x: 2, size_y, row: 0, col: 18 },
   ];
 
-  const CARDS_SIZE_1X = {
-    cards: [
-      ...createCardsRow({ size_y: 1 }),
-      { size_x: 1, size_y: 1, row: 0, col: 20 },
-      { size_x: 1, size_y: 2, row: 1, col: 20 },
-      { size_x: 1, size_y: 4, row: 3, col: 20 },
-      { size_x: 1, size_y: 3, row: 7, col: 20 },
-    ],
-    name: "cards 1 cell high or wide",
-  };
-
   const VIEWPORTS = [
     // { width: 375, height: 667, openSidebar: false },
     // { width: 820, height: 800, openSidebar: true },
@@ -856,7 +849,6 @@ describe("issue 31628", () => {
     { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
     { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
     { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
-    CARDS_SIZE_1X,
   ];
 
   const SMART_SCALAR_QUESTION = {
@@ -967,16 +959,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover({ position: "bottom" });
 
         cy.findByRole("tooltip").findByText("18,760").should("exist");
-
-        cy.log("should show ellipsis icon with question name in tooltip");
-        cy.findByTestId("scalar-title-icon").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should not show description");
-        cy.findByTestId("scalar-description").should("not.exist");
       });
     });
 
@@ -999,24 +981,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log("should truncate title and show title tooltip on hover");
-        scalarTitle().then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.description)
-          .should("exist");
       });
     });
 
@@ -1039,22 +1003,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log(
-          "should not truncate title and should not show title tooltip on hover",
-        );
-        scalarTitle().then(($element) => H.assertIsNotEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        H.tooltip().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
   });
@@ -1129,7 +1077,7 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
-          cy.contains("• vs. previous month: 527").should("exist");
+          cy.contains("vs. previous month: 527").should("exist");
         });
 
         cy.log(
@@ -1137,7 +1085,7 @@ describe("issue 31628", () => {
         );
         previousValue()
           .should("contain", "35%")
-          .and("not.contain", "• vs. previous month: 527");
+          .and("not.contain", "vs. previous month: 527");
 
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
@@ -1150,7 +1098,7 @@ describe("issue 31628", () => {
         previousValue()
           .should("contain", "35%")
           .and("not.contain", "34.72%")
-          .and("not.contain", "• vs. previous month: 527");
+          .and("not.contain", "vs. previous month: 527");
 
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
@@ -1162,7 +1110,7 @@ describe("issue 31628", () => {
 
         previousValue()
           .findByText("35%")
-          .then(($element) => H.assertIsEllipsified($element[0]));
+          .should(($element) => H.assertIsEllipsified($element[0]));
       });
     });
 
@@ -1210,7 +1158,7 @@ describe("issue 31628", () => {
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "34.72%")
-          .and("contain", "• vs. previous month: 527");
+          .and("contain", "vs. previous month: 527");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
@@ -1265,7 +1213,7 @@ describe("issue 31628", () => {
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "34.72%")
-          .and("contain", "• vs. previous month: 527");
+          .and("contain", "vs. previous month: 527");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
@@ -1575,5 +1523,99 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 });
 
 const scalarContainer = () => cy.findByTestId("scalar-container");
-const scalarTitle = () => cy.findByTestId("scalar-title");
 const previousValue = () => cy.findByTestId("scalar-previous-value");
+
+describe("issue 63416", () => {
+  const questionDetails = {
+    name: "63416 Question",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2024-01-01"],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const textFilter = createMockParameter({
+      name: "Text",
+      slug: "string",
+      id: "5aefc726",
+      type: "string/=",
+      sectionId: "string",
+    });
+
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [textFilter],
+      },
+      questions: [questionDetails],
+    }).then(({ dashboard, questions }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: questions[0].id,
+            parameter_mappings: [
+              {
+                parameter_id: textFilter.id,
+                card_id: questions[0].id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    PRODUCTS.CATEGORY,
+                    {
+                      "base-type": "type/Text",
+                      "source-field": ORDERS.PRODUCT_ID,
+                    },
+                  ],
+                  { "stage-number": 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
+    H.editDashboard();
+
+    H.showDashcardVisualizerModalSettings(0, {
+      isVisualizerCard: false,
+    });
+    H.modal()
+      .findByLabelText("Description")
+      .type("Make this a visualizer card");
+
+    H.saveDashcardVisualizerModal();
+
+    H.saveDashboard();
+
+    H.toggleFilterWidgetValues(["Doohickey"]);
+
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      downloadMethod: "POST",
+      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
+    });
+  });
+});

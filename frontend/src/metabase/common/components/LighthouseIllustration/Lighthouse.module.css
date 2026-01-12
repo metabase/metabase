@@ -1,0 +1,24 @@
+.LighthouseContainer {
+  overflow: hidden;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  container-type: inline-size;
+}
+
+.LighthouseColors {
+  --illustration-primary: var(--mb-color-brand);
+  --illustration-secondary: var(--mb-color-brand-light);
+  --illustration-background: var(--mb-color-background-primary);
+}
+
+.LighthouseImage {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.LighthouseThumbnail {
+  transform: scale(4);
+}

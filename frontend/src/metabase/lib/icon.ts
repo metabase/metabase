@@ -1,15 +1,27 @@
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import type { IconName } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
 import type {
-  CardDisplayType,
+  CardType,
   Collection,
   CollectionItemModel,
+  CollectionType,
   SearchModel,
+  VisualizationDisplay,
 } from "metabase-types/api";
 
-export type IconModel = SearchModel | CollectionItemModel | "schema";
+import type { ColorName } from "./colors/types";
+
+export type IconModel =
+  | SearchModel
+  | CollectionItemModel
+  | "model"
+  | "schema"
+  | "timeline"
+  | "question"
+  | "transform"
+  | "user";
 
 export type ObjectWithModel = {
   id?: unknown;
@@ -17,9 +29,13 @@ export type ObjectWithModel = {
   authority_level?: "official" | string | null;
   collection_authority_level?: "official" | string | null;
   moderated_status?: "verified" | string | null;
-  display?: CardDisplayType | null;
-  type?: Collection["type"];
+  display?: VisualizationDisplay | null;
+  type?: CollectionType | CardType;
+  collection_type?: CollectionType;
+  location?: Collection["location"];
+  effective_location?: Collection["location"];
   is_personal?: boolean;
+  is_remote_synced?: boolean;
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {
@@ -27,19 +43,25 @@ export const modelIconMap: Record<IconModel, IconName> = {
   database: "database",
   table: "table",
   dataset: "model",
-  schema: "folder",
+  schema: "folder_database",
   action: "bolt",
   "indexed-entity": "index",
   dashboard: "dashboard",
-  card: "table",
+  question: "table2",
+  model: "model",
+  card: "table2",
   segment: "segment",
   metric: "metric",
   snippet: "unknown",
+  document: "document",
+  timeline: "calendar",
+  transform: "transform",
+  user: "person",
 };
 
 export type IconData = {
   name: IconName;
-  color?: string;
+  color?: ColorName;
 };
 
 /** get an Icon for any entity object, doesn't depend on the entity system */
@@ -52,16 +74,43 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "group" };
   }
 
-  if (item.model === "collection" && item.is_personal) {
+  if (
+    item.model === "collection" &&
+    item.is_personal &&
+    item.location === "/"
+  ) {
     return { name: "person" };
+  }
+
+  if (item.model === "collection" && item.id === "databases") {
+    return { name: "database" };
+  }
+
+  if (item.model === "collection") {
+    switch (
+      PLUGIN_DATA_STUDIO.getLibraryCollectionType(item.type as CollectionType)
+    ) {
+      case "root":
+        return { name: "repository" };
+      case "data":
+        return { name: "table" };
+      case "metrics":
+        return { name: "metric" };
+    }
   }
 
   return { name: modelIconMap?.[item.model] ?? "unknown" };
 };
-
-export const getIcon = (item: ObjectWithModel) => {
+/**
+ * relies mainly on the `model` property to determine the icon to return
+ * also handle special collection icons and visualization types for cards
+ */
+export const getIcon = (
+  item: ObjectWithModel,
+  { isTenantUser = false }: { isTenantUser?: boolean } = {},
+): IconData => {
   if (PLUGIN_COLLECTIONS) {
-    return PLUGIN_COLLECTIONS.getIcon(item);
+    return PLUGIN_COLLECTIONS.getIcon(item, { isTenantUser });
   }
   return getIconBase(item);
 };

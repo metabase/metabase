@@ -5,8 +5,8 @@ type HelperTypes = typeof H;
 
 declare global {
   namespace Cypress {
-    interface Chainable extends HelperTypes {
-      H: typeof H;
+    interface Chainable {
+      H: HelperTypes;
     }
   }
 }

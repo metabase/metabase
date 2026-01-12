@@ -140,7 +140,7 @@ describe("issue 35954", () => {
           );
           H.editDashboard();
 
-          cy.findByTestId("fixed-width-filters").icon("gear").click();
+          H.filterWidget({ isEditing: true }).click();
           H.getDashboardCard().should("contain", "Unknown Field");
 
           H.snapshot("35954");
@@ -155,7 +155,8 @@ describe("issue 35954", () => {
       it("should be able to remove the broken connection and connect the filter to the GUI question", function () {
         H.visitDashboard(this.dashboardId);
         H.editDashboard();
-        openFilterSettings();
+
+        H.filterWidget({ isEditing: true }).click();
         H.getDashboardCard().findByLabelText("Disconnect").click();
         connectFilterToColumn("Rating");
         H.saveDashboard();
@@ -208,9 +209,10 @@ describe("issue 35954", () => {
         H.updateSetting("show-static-embed-terms", false);
 
         H.visitDashboard(id);
-        H.openSharingMenu("Embed");
-
-        H.modal().findByText("Static embedding").click();
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: id,
+        });
 
         cy.findByTestId("embedding-preview").within(() => {
           cy.intercept("GET", "api/preview_embed/dashboard/**").as(
@@ -292,10 +294,6 @@ function connectFilterToColumn(column, index = 0) {
     // eslint-disable-next-line no-unsafe-element-filtering
     cy.findAllByText(column).eq(index).click();
   });
-}
-
-function openFilterSettings() {
-  cy.findByTestId("fixed-width-filters").icon("gear").click();
 }
 
 function assertFilterIsDisconnected() {

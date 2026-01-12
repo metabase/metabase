@@ -6,6 +6,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupMostRecentlyViewedDashboard,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
@@ -235,6 +236,7 @@ const setup = async ({
   setupRecentViewsAndSelectionsEndpoints([]);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
+  setupDatabasesEndpoints([]);
 
   collections.forEach((collection) => {
     setupCollectionItemsEndpoint({
@@ -549,7 +551,7 @@ describe("AddToDashSelectDashModal", () => {
       await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
-      const call = fetchMock.lastCall("path:/api/search");
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({
@@ -579,7 +581,7 @@ describe("AddToDashSelectDashModal", () => {
       await waitForLoaderToBeRemoved();
       await screen.findAllByTestId("result-item");
 
-      const call = fetchMock.lastCall("path:/api/search");
+      const call = fetchMock.callHistory.lastCall("path:/api/search");
       const urlObject = new URL(checkNotNull(call?.request?.url));
       expect(urlObject.pathname).toEqual("/api/search");
       expect(Object.fromEntries(urlObject.searchParams.entries())).toEqual({

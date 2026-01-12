@@ -1,37 +1,42 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
-import _ from "underscore";
 
+import {
+  skipToken,
+  useGetCardQuery,
+  useGetCollectionQuery,
+  useGetTableQueryMetadataQuery,
+} from "metabase/api";
 import DateTime from "metabase/common/components/DateTime";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   Description,
   EmptyDescription,
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
-import Collections from "metabase/entities/collections";
-import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
+import { useSelector } from "metabase/lib/redux";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-import type Table from "metabase-lib/v1/metadata/Table";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/v1/urls";
-import type { Collection } from "metabase-types/api/collection";
-import type { State } from "metabase-types/store";
+import type { CardId } from "metabase-types/api";
 
-import FieldList from "../FieldList";
+import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
 
 import S from "./QuestionPane.module.css";
 
-interface QuestionPaneProps {
+type QuestionItem = {
+  id: CardId;
+};
+
+type QuestionPaneProps = {
+  question: QuestionItem;
   onItemClick: (type: string, item: unknown) => void;
   onBack: () => void;
   onClose: () => void;
-  question: Question;
-  table: Table;
-  collection: Collection | null;
-}
+};
 
 const getIcon = (question: Question): IconName => {
   return match(question.type())
@@ -42,14 +47,44 @@ const getIcon = (question: Question): IconName => {
     .exhaustive();
 };
 
-const QuestionPane = ({
-  onItemClick,
-  question,
-  table,
-  collection,
+export const QuestionPane = ({
+  question: { id },
   onBack,
+  onItemClick,
   onClose,
 }: QuestionPaneProps) => {
+  const {
+    data: card,
+    isLoading: isLoadingCard,
+    error: cardError,
+  } = useGetCardQuery({
+    id,
+  });
+  const { isLoading: isLoadingTable, error: tableError } =
+    useGetTableQueryMetadataQuery({
+      id: getQuestionVirtualTableId(id),
+    });
+  const {
+    data: collection,
+    isLoading: isLoadingCollection,
+    error: collectionError,
+  } = useGetCollectionQuery(
+    card ? { id: card.collection_id ?? "root" } : skipToken,
+  );
+  const isLoading = isLoadingCard || isLoadingTable || isLoadingCollection;
+  const error = cardError ?? tableError ?? collectionError;
+  const metadata = useSelector(getMetadata);
+
+  if (isLoading || error != null) {
+    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  }
+
+  const question = metadata.question(id);
+  const table = metadata.table(getQuestionVirtualTableId(id));
+  if (question == null || table == null) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
   return (
     <SidebarContent
       title={question.displayName() || undefined}
@@ -65,12 +100,7 @@ const QuestionPane = ({
             <EmptyDescription>{t`No description`}</EmptyDescription>
           )}
         </Box>
-        <Flex
-          color="var(--mb-color-text-medium)"
-          align="center"
-          p="0.25rem 0.5rem"
-          fw={700}
-        >
+        <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <a
             className={S.QuestionPaneDetailLink}
             href={ML_Urls.getUrl(question)}
@@ -81,12 +111,7 @@ const QuestionPane = ({
             <NodeListTitleText>{t`See it`}</NodeListTitleText>
           </a>
         </Flex>
-        <Flex
-          color="var(--mb-color-text-medium)"
-          align="center"
-          p="0.25rem 0.5rem"
-          fw={700}
-        >
+        <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="label" />
           <Box
             component="span"
@@ -94,12 +119,7 @@ const QuestionPane = ({
             fw="normal"
           >{t`ID #${question.id()}`}</Box>
         </Flex>
-        <Flex
-          color="var(--mb-color-text-medium)"
-          align="center"
-          p="0.25rem 0.5rem"
-          fw={700}
-        >
+        <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <Icon className={S.QuestionPaneIcon} name="collection" />
           <Box component="span" ml="sm" fw="normal">
             {collection?.name ?? t`Our analytics`}
@@ -107,7 +127,7 @@ const QuestionPane = ({
         </Flex>
         {question.lastEditInfo() && (
           <Flex
-            color="var(--mb-color-text-medium)"
+            color="text-secondary"
             align="center"
             p="0.25rem 0.5rem"
             fw={700}
@@ -134,21 +154,3 @@ const QuestionPane = ({
     </SidebarContent>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Questions.load({
-    id: (_state: State, props: QuestionPaneProps) => props.question.id,
-  }),
-  Tables.load({
-    id: (_state: State, props: QuestionPaneProps) =>
-      getQuestionVirtualTableId(props.question.id()),
-    fetchType: "fetchMetadataDeprecated",
-    requestType: "fetchMetadataDeprecated",
-  }),
-  Collections.load({
-    id: (_state: State, props: QuestionPaneProps) =>
-      props.question.collectionId(),
-    loadingAndErrorWrapper: false,
-  }),
-)(QuestionPane);

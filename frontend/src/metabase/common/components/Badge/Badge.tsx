@@ -21,8 +21,8 @@ type BadgeProps = PropsWithChildren<{
   to?: string;
   onClick?: () => void;
   icon?: IconName | IconProps;
-  inactiveColor?: string;
-  activeColor?: string;
+  inactiveColor?: string; // Color values may already be resolved by parent components
+  activeColor?: string; // Color values may already be resolved by parent components
   isSingleLine?: boolean;
   className?: string;
   classNames?: {
@@ -35,7 +35,7 @@ export const Badge = ({
   className,
   to,
   icon,
-  inactiveColor = "text-medium",
+  inactiveColor = "text-secondary",
   activeColor = "brand",
   isSingleLine = false,
   onClick,

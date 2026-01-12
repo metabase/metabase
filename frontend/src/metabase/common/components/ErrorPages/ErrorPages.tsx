@@ -9,7 +9,6 @@ import type { ErrorDetailsProps } from "metabase/common/components/ErrorDetails/
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { color } from "metabase/lib/colors";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
 import { Button, Icon, Tooltip } from "metabase/ui";
 
@@ -118,13 +117,11 @@ export const SmallGenericError = forwardRef<
     <ErrorPageRoot bordered={bordered} {...props} ref={ref}>
       <Tooltip label={tooltipMessage}>
         {isEmbeddingIframe ? (
-          <Icon name="warning" size={32} color={color("text-light")} />
+          <Icon name="warning" size={32} c="text-tertiary" />
         ) : (
           <Button
-            leftSection={
-              <Icon name="warning" size={32} color={color("text-light")} />
-            }
-            color="text-light"
+            leftSection={<Icon name="warning" size={32} c="text-tertiary" />}
+            color="text-tertiary"
             onClick={openModal}
             variant="subtle"
           />

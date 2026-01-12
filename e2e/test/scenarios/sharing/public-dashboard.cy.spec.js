@@ -306,6 +306,25 @@ describe("scenarios > public > dashboard", () => {
       expect(element.href).to.eq("https://metabase.com/");
     });
   });
+
+  it("should support #theme=dark (metabase#65731)", () => {
+    const dashboardName = "Dashboard Theme Test";
+    H.createDashboardWithQuestions({
+      dashboardName,
+      questions: [],
+    }).then(({ dashboard }) => {
+      H.visitPublicDashboard(dashboard.id, {
+        hash: {
+          theme: "dark",
+        },
+      });
+    });
+
+    cy.log("dark theme should have white text");
+    cy.findByRole("heading", {
+      name: dashboardName,
+    }).should("have.css", "color", "rgba(255, 255, 255, 0.95)");
+  });
 });
 
 describe("scenarios [EE] > public > dashboard", () => {
@@ -345,5 +364,58 @@ describe("scenarios [EE] > public > dashboard", () => {
     }).should("exist");
 
     cy.url().should("include", "locale=de");
+  });
+
+  it("should disable background via `#background=false` hash parameter when rendered inside an iframe (metabase#62391)", () => {
+    cy.get("@dashboardId").then((id) => {
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+        onBeforeLoad: (window) => {
+          window.overrideIsWithinIframe = true;
+        },
+      });
+    });
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+
+    cy.window().then((win) => {
+      delete win.overrideIsWithinIframe;
+    });
+  });
+
+  it("should not disable background via `#background=false` hash parameter when rendered without an iframe", () => {
+    cy.get("@dashboardId").then((id) => {
+      H.visitPublicDashboard(id, {
+        hash: { background: "false" },
+      });
+    });
+
+    cy.findByTestId("embed-frame").should("exist");
+
+    cy.get("body.mb-wrapper").should(
+      "not.have.css",
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+  });
+
+  it("should handle /api/session/properties incorrect response (metabase#62501)", () => {
+    cy.intercept("/api/session/properties", {
+      statusCode: 200,
+      headers: {},
+      body: "<html><body><h1>Those aren't the droids you're looking for</h1></body></html>",
+    });
+
+    cy.get("@dashboardId").then(H.visitPublicDashboard);
+
+    cy.findByTestId("embed-frame").within(() => {
+      cy.findByText("Test Dashboard").should("exist");
+    });
   });
 });

@@ -26,7 +26,7 @@
   [Metrics] TODO:
   At some point in 2024, there was an attempt to add `metric` to the list of recent-view models. This
   was never completed, and the code has not been hooked up. There is no query for metrics, despite there being a
-  `:metric` model in the `models-of-interest` list. This is a TODO to complete this work."
+  `:metric` model in the `rv-models` list. This is a TODO to complete this work."
   (:require
    [clojure.set :as set]
    [colorize.core :as colorize]
@@ -61,7 +61,7 @@
 
 (def ^:dynamic *recent-views-stored-per-user-per-model*
   "The number of recently viewed items to keep per user per model. This is used to keep the most recent views of each
-  model type in [[models-of-interest]]."
+  model type in [[rv-models]]."
   20)
 
 (defn- duplicate-model-ids
@@ -78,20 +78,20 @@
                        (map :id)))))
 
 (def rv-models
-  "These are models for which we will retrieve recency."
-  [:card :dataset :metric
-   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
-   ;; needed to distinguish between them.
-   :dashboard :table :collection])
+  "Keywords representing entity types that can be returned as recent views."
+  ;; n.b.: `:card`, `metric` and `:dataset` are stored in recent_views as "card", and a join with report_card is
+  ;; needed to distinguish between them. `:dataset` is an alias for `:model/Card` with type "model".
+  [:card :dataset :metric :dashboard :table :collection :document])
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (get {:dataset    :model/Card
-        :card       :model/Card
-        :dashboard  :model/Dashboard
-        :table      :model/Table
-        :collection :model/Collection}
+  (get {:dataset :model/Card
+        :card :model/Card
+        :dashboard :model/Dashboard
+        :table :model/Table
+        :collection :model/Collection
+        :document :model/Document}
        rvm))
 
 (defn- ids-to-prune-for-user+model [user-id model context]
@@ -131,7 +131,7 @@
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
   [user-id :- [:maybe ms/PositiveInt]
-   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
+   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection :model/Document]
    model-id :- ms/PositiveInt
    context :- [:enum :view :selection]]
   (when user-id
@@ -159,6 +159,16 @@
     :left-join [[:report_dashboard :d]
                 [:= :recent_views.model_id :d.id]]}))
 
+(def ^:private card-type->rv-model
+  "Mapping from report_card.type to rv-model keyword."
+  {"model"    :dataset
+   "question" :card
+   "metric"   :metric})
+
+(def ^:private rv-model->card-type
+  "Mapping from rv-model keyword to report_card.type string."
+  (set/map-invert card-type->rv-model))
+
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
   (mc/schema
@@ -172,7 +182,7 @@
      [:id [:int {:min 1}]]
      [:name :string]
      [:description [:maybe :string]]
-     [:model [:enum :dataset :card :metric :dashboard :collection :table]]
+     [:model [:enum :dataset :card :metric :dashboard :collection :table :document]]
      [:can_write :boolean]
      [:timestamp :string]]
     ;; database_id was commented out below because this schema was not actually being used correctly
@@ -206,7 +216,9 @@
      [:collection [:map
                    [:parent_collection ::pc]
                    [:effective_location :string]
-                   [:authority_level ::official]]]]]))
+                   [:authority_level ::official]]]
+     [:document [:map
+                 [:parent_collection ::pc]]]]]))
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object, returns [[Item]].
@@ -218,7 +230,7 @@
   exists). In these cases we simply do not include the value in the recent views response."
   {:arglists '([recent-view])}
   (fn [{:keys [model #_model_id #_timestamp card_type]}]
-    (or (get {"model" :dataset "question" :card "metric" :metric} card_type)
+    (or (card-type->rv-model card_type)
         (keyword model))))
 
 (defmethod fill-recent-view-info :default [m] (throw (ex-info "Unknown model" {:model m})))
@@ -400,7 +412,7 @@
     (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
-                                           :archived :location]
+                                           :archived :location :type]
                                   :where [:and
                                           [:in :id collection-ids]
                                           [:= :archived false]]})]
@@ -419,6 +431,7 @@
      :can_write (mi/can-write? collection)
      :timestamp (str timestamp)
      :authority_level (some-> (:authority_level collection) name)
+     :collection_type (some-> (:type collection) name)
      :effective_location (:effective_location collection)
      :parent_collection (or (:effective_parent collection) (root-coll))}))
 
@@ -431,7 +444,7 @@
              {:select [:t.id :t.name :t.description
                        :t.display_name :t.active :t.visibility_type :t.schema
                        [:db.name :database-name]
-                       [:db.id :database-id]
+                       [:db.id :db_id]
                        [:db.initial_sync_status :initial-sync-status]]
               :from [[:metabase_table :t]]
               :where (let [base-condition [:or
@@ -457,7 +470,7 @@
        :can_write (mi/can-write? table)
        :timestamp (str timestamp)
        :table_schema (:schema table)
-       :database {:id (:database-id table)
+       :database {:id (:db_id table)
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))
 
@@ -465,37 +478,59 @@
   {:views      "view"
    :selections "selection"})
 
-(defn ^:private do-query [user-id context]
+(defn- rv-models->db-models
+  "Convert rv-model keywords to database model strings.
+  Note: :card, :dataset, and :metric all map to \"card\" in the database,
+  distinguished by report_card.type."
+  [models]
+  (when (seq models)
+    (distinct
+     (map (fn [model]
+            (case model
+              (:card :dataset :metric) "card"
+              (name model)))
+          models))))
+
+(defn ^:private do-query [user-id context models]
   (when-not (seq context)
     (throw (ex-info "context must be non-empty" {:context context})))
-  (t2/select :model/RecentViews {:select    [:rv.* [:rc.type :card_type]]
-                                 :from      [[:recent_views :rv]]
-                                 :where     [:and
-                                             [:= :rv.user_id user-id]
-                                             [:in :rv.context (map query-context->recent-context context)]
-                                             ;; include non-collections, or collections without a namespace/type.
-                                             [:or
-                                              [:= :coll.id nil]
-                                              [:and
-                                               ;; trash collection is never returned
-                                               [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
-                                               ;; collections in a different namespace can't interact with collections
-                                               ;; in the normal NULL namespace.
-                                               [:= nil :coll.namespace]
-                                               ;; exclude instance analytics for selects
-                                               (when (contains? (set context) :selections)
-                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
-                                 :left-join [[:report_card :rc]
-                                             [:and
-                                              ;; only want to join on card_type if it's a card
-                                              [:= :rv.model "card"]
-                                              [:= :rc.id :rv.model_id]]
+  (let [db-models (rv-models->db-models models)]
+    (t2/select :model/RecentViews {:select    [:rv.* [:rc.type :card_type]]
+                                   :from      [[:recent_views :rv]]
+                                   :where     [:and
+                                               [:= :rv.user_id user-id]
+                                               [:in :rv.context (map query-context->recent-context context)]
+                                               (when (seq db-models)
+                                                 [:in :rv.model db-models])
+                                               ;; Additionally filter by card type to distinguish questions/models/metrics
+                                               (let [card-types (keep rv-model->card-type models)]
+                                                 (when (seq card-types)
+                                                   [:or
+                                                    [:!= :rv.model "card"]
+                                                    [:in :rc.type (map h2x/literal card-types)]]))
+                                               ;; include non-collections, or collections without a namespace/type.
+                                               [:or
+                                                [:= :coll.id nil]
+                                                [:and
+                                                 ;; trash collection is never returned
+                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
+                                                 ;; collections in a different namespace can't interact with collections
+                                                 ;; in the normal NULL namespace.
+                                                 [:= nil :coll.namespace]
+                                                 ;; exclude instance analytics for selects
+                                                 (when (contains? (set context) :selections)
+                                                   [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
+                                   :left-join [[:report_card :rc]
+                                               [:and
+                                                ;; only want to join on card_type if it's a card
+                                                [:= :rv.model "card"]
+                                                [:= :rc.id :rv.model_id]]
 
-                                             [:collection :coll]
-                                             [:and
-                                              [:= :rv.model "collection"]
-                                              [:= :coll.id :rv.model_id]]]
-                                 :order-by  [[:rv.timestamp :desc]]}))
+                                               [:collection :coll]
+                                               [:and
+                                                [:= :rv.model "collection"]
+                                                [:= :coll.id :rv.model_id]]]
+                                   :order-by  [[:rv.timestamp :desc]]})))
 
 (mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
@@ -513,17 +548,43 @@
           (cond-> processed-item
             (not (:include-metadata? options)) (dissoc :result_metadata)))))))
 
+;; ================== Recent Documents ==================
+
+(defn- document-recents
+  "Query to select recent document data. Returns documents with their collection information
+  for use in recent views display."
+  [document-ids]
+  (if-not (seq document-ids)
+    []
+    (let [documents (t2/select :model/Document
+                               {:select [:d.id
+                                         :d.name
+                                         :d.archived
+                                         [:d.collection_id :entity-coll-id]
+                                         [:c.id :collection_id]
+                                         [:c.name :collection_name]
+                                         [:c.authority_level :collection_authority_level]]
+                                :from [[:document :d]]
+                                :where [:in :d.id document-ids]
+                                :left-join [[:collection :c]
+                                            [:and
+                                             [:= :c.id :d.collection_id]
+                                             [:= :c.archived false]]]})]
+      documents)))
+
 (defn- get-entity->id->data [views]
   (let [{card-ids       :card
          dashboard-ids  :dashboard
          collection-ids :collection
-         table-ids      :table} (as-> views views
-                                  (group-by (comp keyword :model) views)
-                                  (update-vals views #(mapv :model_id %)))]
+         table-ids :table
+         document-ids :document} (as-> views views
+                                   (group-by (comp keyword :model) views)
+                                   (update-vals views #(mapv :model_id %)))]
     {:card       (m/index-by :id (card-recents card-ids))
      :dashboard  (m/index-by :id (dashboard-recents dashboard-ids))
      :collection (m/index-by :id (collection-recents collection-ids))
-     :table      (m/index-by :id (table-recents table-ids))}))
+     :table      (m/index-by :id (table-recents table-ids))
+     :document   (m/index-by :id (document-recents document-ids))}))
 
 (def ^:private ItemValidator (mr/validator Item))
 
@@ -539,20 +600,29 @@
                   (me/humanize (mr/explain Item item))))))
 
 (mu/defn get-recents
-  "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[models-of-interest]], per context.
+  "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[rv-models]], per context.
 
   Returns: [:map [:recents [:sequential Item]]]
 
   [[do-query]] can return nils, and we remove them here becuase there can be recent views for deleted entities, and we
   don't want to show those in the recent views.
 
+  Options:
+  - `:include-metadata?` - Include result_metadata in the response (default: false)
+  - `:models` - Filter to specific model types from [[rv-models]] (default: all models)
+
   Returns a sequence of [[Item]]s. The reason this isn't a `mu/defn`, is that error-avoider validates each Item in the
   sequence, so there's no need to do it twice."
   ([user-id] (get-recents user-id [:views :selections]))
   ([user-id context :- [:sequential [:enum :views :selections]]]
    (get-recents user-id context {}))
-  ([user-id context :- [:sequential [:enum :views :selections]] options]
-   (let [recent-items (do-query user-id context)
+  ([user-id
+    context :- [:sequential [:enum :views :selections]]
+    options :- [:map
+                [:include-metadata? {:optional true} [:maybe :boolean]]
+                [:models {:optional true} [:maybe [:sequential (into [:enum] rv-models)]]]]]
+   (let [models (:models options)
+         recent-items (do-query user-id context models)
          entity->id->data (get-entity->id->data recent-items)
          view-items (into []
                           (comp

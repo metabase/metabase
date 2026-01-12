@@ -1,0 +1,209 @@
+.container {
+  position: relative;
+  border: 1px solid var(--mb-color-border);
+  box-shadow: var(--mantine-shadow-xs);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-radius: var(--mantine-spacing-sm);
+  z-index: 1;
+  width: 100%;
+
+  &.readonly {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+
+    .submitBtn {
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+
+  &:not(.active) {
+    border: 1px solid var(--mb-color-border);
+    box-shadow: none;
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+
+    .submitBtn {
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+
+  &:not(.active):focus-within {
+    .submitBtn {
+      visibility: visible;
+      pointer-events: auto;
+    }
+  }
+
+  &:not(.readonly) {
+    .content {
+      max-height: 12rem;
+      overflow: auto;
+      scrollbar-width: thin;
+    }
+  }
+}
+
+.contentWrapper {
+  width: 100%;
+  height: 100%;
+}
+
+/* ProseMirror area */
+.content {
+  position: relative;
+}
+
+.content :global(.ProseMirror) {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  outline: none;
+  width: 100%;
+  height: 100%;
+  min-height: 1.25rem;
+  line-height: 1.5;
+  color: var(--mb-color-text-primary);
+  font-size: var(--mantine-font-size-md);
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.content :global(.ProseMirror p) {
+  margin: 0;
+}
+
+/* Code */
+
+.content
+  :global(.ProseMirror)
+  :global(pre):not(:global(.editor-style-boundary) *) {
+  background-color: var(--mb-color-background-secondary);
+  color: var(--mb-color-text-primary);
+  padding: 0.5rem;
+  border-radius: var(--mantine-radius-xs);
+  overflow-x: auto;
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+  border: 1px solid var(--mb-color-border);
+}
+
+.content
+  :global(.ProseMirror)
+  :global(pre code):not(:global(.editor-style-boundary) *) {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border: none;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(code):not(:global(.editor-style-boundary) *) {
+  background-color: var(--mb-color-background-secondary);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--mantine-radius-xs);
+  font-family: var(--mb-default-monospace-font-family, monospace);
+  font-size: 0.875rem;
+  color: var(--mb-color-text-primary);
+  border: 1px solid var(--mb-color-border);
+}
+
+/* Blockquote styling */
+.content
+  :global(.ProseMirror)
+  :global(blockquote):not(:global(.editor-style-boundary) *) {
+  border-left: 3px solid var(--mb-color-border-strong);
+  margin: 0 0 0.5rem 0;
+  color: var(--mb-color-text-secondary);
+  font-style: italic;
+  background-color: var(--mb-color-background-secondary);
+  padding: 0.5rem;
+  padding-left: 0.75rem;
+  border-radius: var(--mantine-radius-xs);
+}
+
+/* List styling */
+.content
+  :global(.ProseMirror)
+  :where(:global(ul), :global(ol)):not(:global(.editor-style-boundary) *) {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ul):not(:global(.editor-style-boundary) *) {
+  list-style-type: disc;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ol):not(:global(.editor-style-boundary) *) {
+  list-style-type: decimal;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(li):not(:global(.editor-style-boundary) *) {
+  margin: 0 0 0.25rem 0;
+  line-height: 1.5;
+  display: list-item;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ul ul):not(:global(.editor-style-boundary) *) {
+  list-style-type: circle;
+  margin-top: 0.25rem;
+}
+
+.content
+  :global(.ProseMirror)
+  :global(ul ul ul):not(:global(.editor-style-boundary) *) {
+  list-style-type: square;
+}
+
+.content
+  :global(.ProseMirror)
+  :where(:global(li > ul), :global(li > ol)):not(
+    :global(.editor-style-boundary) *
+  ) {
+  margin-top: 0.25rem;
+}
+
+/* Placeholder styling */
+.content :global(.is-empty:first-child:before) {
+  color: var(--mb-color-text-tertiary);
+  content: attr(data-placeholder);
+  height: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.submitBtn {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  margin-top: auto;
+  border: none;
+  transition: color ease 200ms;
+
+  &.canSubmit,
+  &.canSubmit:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.bubbleMenu {
+  position: fixed;
+  z-index: 1;
+}

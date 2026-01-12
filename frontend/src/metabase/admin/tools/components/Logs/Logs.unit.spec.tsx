@@ -57,7 +57,6 @@ describe("Logs", () => {
 
     afterEach(() => {
       utilSpy.mockClear();
-      fetchMock.restore();
       jest.useRealTimers();
     });
 
@@ -150,7 +149,7 @@ describe("Logs", () => {
     });
 
     it("should display server error message if an error occurs", async () => {
-      const errMsg = `An unexpected error occured.`;
+      const errMsg = `An unexpected error occurred.`;
       fetchMock.get("path:/api/logger/logs", {
         status: 500,
         body: { message: errMsg },

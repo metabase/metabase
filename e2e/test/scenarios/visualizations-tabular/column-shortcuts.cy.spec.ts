@@ -81,7 +81,7 @@ const URL_CASES = [
   },
 ];
 
-H.describeWithSnowplow("extract shortcut", () => {
+describe("extract shortcut", () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
@@ -347,7 +347,7 @@ function extractColumnAndCheck({
   }
 }
 
-H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
+describe("scenarios > visualizations > combine shortcut", () => {
   function combineColumns({
     columns,
     example,
@@ -472,7 +472,7 @@ H.describeWithSnowplow("scenarios > visualizations > combine shortcut", () => {
             [
               "field",
               PRODUCTS.CATEGORY,
-              { "base-type": "type/text", "source-field": ORDERS.PRODUCT_ID },
+              { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
             ],
           ],
         },

@@ -1,34 +1,49 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { SMTPConnectionCard } from "metabase/admin/settings/components/Email/SMTPConnectionCard/SMTPConnectionCard";
-import type { TokenFeatures } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { SettingKey, TokenFeatures } from "metabase-types/api";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   isHosted?: boolean;
   smtpOverrideEnabled?: boolean;
 }
 
 export function setup({
   tokenFeatures = {},
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   isHosted = true,
   smtpOverrideEnabled = false,
 }: SetupOpts = {}) {
-  const settings = mockSettings({
+  const settings = {
     "token-features": createMockTokenFeatures(tokenFeatures),
     "is-hosted?": isHosted,
     "smtp-override-enabled": smtpOverrideEnabled,
-  });
+  };
 
-  const state = createMockState({ settings });
+  setupPropertiesEndpoints(createMockSettings(settings));
+  setupSettingsEndpoints(
+    Object.entries(settings).map(([key, value]) =>
+      createMockSettingDefinition({ key: key as SettingKey, value }),
+    ),
+  );
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  const state = createMockState({ settings: mockSettings(settings) });
+
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   renderWithProviders(<SMTPConnectionCard />, {

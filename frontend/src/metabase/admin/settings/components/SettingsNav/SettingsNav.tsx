@@ -8,8 +8,9 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
-import { useHasTokenFeature } from "metabase/common/hooks";
+import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex } from "metabase/ui";
 
@@ -19,16 +20,21 @@ const NavDivider = () => <Divider my="sm" />;
 
 export function SettingsNav() {
   const hasHosting = useHasTokenFeature("hosting");
-  const hasEmbedding = useHasTokenFeature("embedding");
   const hasWhitelabel = useHasTokenFeature("whitelabel");
   const hasSaml = useHasTokenFeature("sso_saml");
   const hasJwt = useHasTokenFeature("sso_jwt");
   const hasScim = useHasTokenFeature("scim");
+  const hasPythonTransforms = useHasTokenFeature("transforms-python");
+  const isHosted = useSetting("is-hosted?");
 
   return (
     <AdminNavWrapper>
       <SettingsNavItem path="general" label={t`General`} icon="gear" />
-      <SettingsNavItem label={t`Authentication`} path="auth" icon="lock">
+      <SettingsNavItem
+        label={t`Authentication`}
+        icon="lock"
+        folderPattern="auth"
+      >
         <SettingsNavItem path="authentication" label={t`Overview`} />
         {hasScim && (
           <SettingsNavItem
@@ -42,6 +48,7 @@ export function SettingsNav() {
         {hasSaml && <SettingsNavItem path="authentication/saml" label="SAML" />}
         {hasJwt && <SettingsNavItem path="authentication/jwt" label="JWT" />}
       </SettingsNavItem>
+      <PLUGIN_REMOTE_SYNC.LibraryNav />
       <NavDivider />
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem
@@ -58,7 +65,8 @@ export function SettingsNav() {
       />
       <SettingsNavItem path="maps" label={t`Maps`} icon="pinmap" />
       <SettingsNavItem
-        path="whitelabel"
+        path={!hasWhitelabel ? "whitelabel" : undefined}
+        folderPattern="whitelabel"
         label={
           <Flex gap="sm" align="center">
             <span>{t`Appearance`}</span>
@@ -83,31 +91,19 @@ export function SettingsNav() {
       </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="uploads" label={t`Uploads`} icon="upload" />
+      {/* Python Runner settings are managed by Metabase Cloud for hosted instances */}
+      {hasPythonTransforms && !isHosted && (
+        <SettingsNavItem
+          path="python-runner"
+          label={t`Python Runner`}
+          icon="snippet"
+        />
+      )}
       <SettingsNavItem
         path="public-sharing"
         label={t`Public sharing`}
         icon="share"
       />
-      <SettingsNavItem path="embedding" label={t`Embedding`} icon="embed">
-        <SettingsNavItem
-          path="embedding-in-other-applications"
-          label={t`Overview`}
-        />
-        <SettingsNavItem
-          path="embedding-in-other-applications/standalone"
-          label={t`Static embedding`}
-        />
-        {hasEmbedding && (
-          <SettingsNavItem
-            path="embedding-in-other-applications/full-app"
-            label={t`Interactive embedding`}
-          />
-        )}
-        <SettingsNavItem
-          path="embedding-in-other-applications/sdk"
-          label={t`Embedding SDK`}
-        />
-      </SettingsNavItem>
       <NavDivider />
       <SettingsNavItem path="license" label={t`License`} icon="store" />
       <SettingsNavItem
@@ -130,13 +126,17 @@ const hasActiveChild = (children: ReactElement[], pathname: string) =>
     (child) => child?.props?.path && pathname.includes(child.props.path),
   );
 
-export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
+export function SettingsNavItem({
+  path,
+  folderPattern,
+  ...navItemProps
+}: AdminNavItemProps) {
   const children = React.Children.toArray(
     navItemProps.children,
   ) as ReactElement[];
   const currentPath: string = useSelector(getLocation)?.pathname ?? "";
   const [isOpen, { toggle: toggleOpen }] = useDisclosure(
-    currentPath.includes(path),
+    folderPattern ? currentPath.includes(folderPattern) : false,
   );
 
   const showActive =
@@ -146,7 +146,8 @@ export function SettingsNavItem({ path, ...navItemProps }: AdminNavItemProps) {
   return (
     <AdminNavItem
       data-testid={`settings-sidebar-link`}
-      path={`/admin/settings/${path}`}
+      path={path ? `/admin/settings/${path}` : ""}
+      folderPattern={folderPattern}
       opened={isOpen}
       active={showActive}
       onClick={toggleOpen}

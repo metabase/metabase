@@ -7,6 +7,10 @@ import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
+import type {
+  NativeQuestionDetails,
+  QuestionDetails,
+} from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";
 
@@ -48,10 +52,8 @@ describe("scenarios > notebook > link to data source", () => {
 
     cy.log("Normal click on the data source still opens the entity picker");
     H.getNotebookStep("data").findByText("Reviews").click();
-    cy.findByTestId("entity-picker-modal").within(() => {
-      cy.findByText("Pick your starting data").should("be.visible");
-      cy.findByLabelText("Close").click();
-    });
+    H.miniPicker().should("exist");
+    H.miniPicker().findByText("Reviews").click(); // close miniPicker
 
     cy.log("Meta/Ctrl click on the fields picker behaves as a regular click");
     H.getNotebookStep("data").findByTestId("fields-picker").click(clickConfig);
@@ -214,7 +216,7 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the source model from a nested question where the source is native model", () => {
-      const source: H.NativeQuestionDetails = {
+      const source: NativeQuestionDetails = {
         name: "Native source",
         native: {
           query: "select 1 as foo",
@@ -305,7 +307,7 @@ describe("scenarios > notebook > link to data source", () => {
     });
 
     it("should open the underlying native model", () => {
-      const model: H.NativeQuestionDetails = {
+      const model: NativeQuestionDetails = {
         name: "Native model",
         native: {
           query: "select 1 as foo",
@@ -423,12 +425,11 @@ describe("scenarios > notebook > link to data source", () => {
           "Even if user opens the notebook link directly, they should not see the source question. We open the entity picker instead",
         );
         cy.visit(`/question/${nestedQuestion.id}/notebook`);
-        cy.findByTestId("entity-picker-modal").within(() => {
-          cy.findByText("Pick your starting data").should("be.visible");
-          cy.findByLabelText("Close").click();
-        });
 
-        H.getNotebookStep("data").should("contain", "Pick your starting data");
+        H.getNotebookStep("data")
+          .findByPlaceholderText("Search for tables and more...")
+          .should("exist");
+        H.miniPicker().should("be.visible");
 
         cy.log(
           "The same should be true for a user that additionally doesn't have write query permissions",
@@ -440,12 +441,10 @@ describe("scenarios > notebook > link to data source", () => {
           .should("not.exist");
 
         cy.visit(`/question/${nestedQuestion.id}/notebook`);
-        cy.findByTestId("entity-picker-modal").within(() => {
-          cy.findByText("Pick your starting data").should("be.visible");
-          cy.findByLabelText("Close").click();
-        });
-
-        H.getNotebookStep("data").should("contain", "Pick your starting data");
+        cy.url().should("include", "/unauthorized");
+        H.main()
+          .findByText("Sorry, you don’t have permission to see that.")
+          .should("be.visible");
       });
     });
 
@@ -462,7 +461,7 @@ describe("scenarios > notebook > link to data source", () => {
           .icon("notebook")
           .should("not.exist");
 
-        // TODO update the following once metabase##46398 is fixed
+        // TODO update the following once metabase#46398 is fixed
         // cy.visit(`/question/${nestedQuestion.id}/notebook`);
       });
     });
@@ -479,7 +478,6 @@ describe("scenarios > notebook > link to data source", () => {
           },
         });
 
-        // @ts-expect-error - Non-trivial types in `sandboxTable` that should be addressed separately
         cy.sandboxTable({
           table_id: ORDERS_ID,
           attribute_remappings: {
@@ -515,8 +513,8 @@ describe("scenarios > notebook > link to data source", () => {
 
         H.openProductsTable({ mode: "notebook" });
         cy.findByTestId("action-buttons").button("Join data").click();
-        H.entityPickerModal().within(() => {
-          H.entityPickerModalTab("Tables").click();
+        H.miniPicker().within(() => {
+          cy.findByText("Sample Database").click();
           cy.findByText("Orders").click();
         });
 
@@ -538,7 +536,7 @@ describe("scenarios > notebook > link to data source", () => {
   });
 
   context("joins", () => {
-    const getQuery = (id: number) => {
+    const getQuery = (id: number): QuestionDetails => {
       return {
         dataset_query: {
           database: SAMPLE_DB_ID,

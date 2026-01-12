@@ -17,7 +17,7 @@ const setupPremium = (opts?: SetupOpts) => {
       official_collections: true,
       collection_cleanup: true,
     }),
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["collections", "clean_up"],
   });
 };
 
@@ -128,7 +128,7 @@ describe("CollectionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.calls(
+        fetchMock.callHistory.calls(
           "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
@@ -150,7 +150,7 @@ describe("CollectionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.calls(
+        fetchMock.callHistory.calls(
           "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/collection-menu",
           { method: "PUT" },
         ),
@@ -183,12 +183,14 @@ describe("CollectionMenu", () => {
       });
 
       await waitFor(() =>
-        expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(1),
+        expect(
+          fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
+        ).toHaveLength(1),
       );
 
       await waitFor(() =>
         expect(
-          fetchMock.calls(
+          fetchMock.callHistory.calls(
             "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
             { method: "GET" },
           ),
@@ -196,7 +198,7 @@ describe("CollectionMenu", () => {
       );
       await waitFor(() =>
         expect(
-          fetchMock.calls(
+          fetchMock.callHistory.calls(
             "http://localhost/api/user-key-value/namespace/user_acknowledgement/key/clean-stale-items",
             { method: "GET" },
           ),
@@ -207,7 +209,7 @@ describe("CollectionMenu", () => {
       await userEvent.click(getIcon("ellipsis"));
 
       expect(
-        fetchMock.calls(
+        fetchMock.callHistory.calls(
           "http://localhost/api/user-key-value/namespace/indicator-menu/key/collection-menu",
           { method: "PUT" },
         ),
@@ -230,8 +232,12 @@ describe("CollectionMenu", () => {
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(fetchMock.calls("path:/api/collection/1/items")).toHaveLength(0);
-      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/1/items"),
+      ).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
+      ).toHaveLength(0);
 
       expect(
         screen.queryByRole("menuitem", { name: /Clear out unused items/ }),
@@ -249,7 +255,9 @@ describe("CollectionMenu", () => {
       await assertIndicatorHidden();
       await userEvent.click(getIcon("ellipsis"));
 
-      expect(fetchMock.calls("express:/api/ee/stale/:id")).toHaveLength(0);
+      expect(
+        fetchMock.callHistory.calls("express:/api/ee/stale/:id"),
+      ).toHaveLength(0);
 
       expect(
         screen.queryByRole("menuitem", { name: /Clear out unused items/ }),

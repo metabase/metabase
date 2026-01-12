@@ -7,7 +7,7 @@ show_title_breadcrumb: true
 category: "Cloud"
 layout: new-docs
 redirect_from:
-- /cloud/docs/ip-addresses-to-whitelist
+  - /cloud/docs/ip-addresses-to-whitelist
 ---
 
 # IP addresses to whitelist
@@ -38,6 +38,14 @@ Here are the IP addresses we use in each region.
 54.179.42.215
 3.1.176.8
 18.139.48.211
+```
+
+## Asia Pacific (Sydney)
+
+```sh
+13.238.131.1
+3.105.237.132
+54.252.39.14
 ```
 
 ## South America (São Paulo)

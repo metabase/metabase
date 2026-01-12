@@ -21,7 +21,8 @@
 /*.mv.db
 /*.trace.db
 /.babel_cache
-/.env
+/.env*
+!/.env.example
 /.envrc
 /.lein-env
 /.lein-failures
@@ -51,6 +52,7 @@ cypress.env.json
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
+/logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/
@@ -60,7 +62,9 @@ cypress.env.json
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
 /resources/frontend_client/app/embed.js
-/resources/frontend_client/tmp-embed-js/
+/resources/frontend_client/app/embedding-sdk.js
+/resources/frontend_client/app/embedding-sdk.js.map
+/resources/frontend_client/tmp-*/
 /resources/frontend_client/embed.html
 /resources/frontend_client/embed-sdk.html
 /resources/frontend_client/index.html
@@ -95,12 +99,22 @@ xcuserdata
 dev/src/dev/nocommit/
 dev/serialization_deltas/
 *~
+
+# TypeScript compilation artifacts
+/build/
+*.tsbuildinfo
+/trace-output/
+/temp-types/
+/frontend/src/metabase-types/openapi
+/resources/openapi/openapi.json
+
 **/cypress_sample_database.json
 **/cypress_sample_instance_data.json
 /frontend/src/cljs
 /frontend/src/cljs_release
 .shadow-cljs
 .clerk
+mise.local.toml
 
 # lsp: ignore all but the config file
 .lsp/*
@@ -152,3 +166,5 @@ CLAUDE.local.md
 .eslintcache
 
 /logs
+/.clojure-mcp
+

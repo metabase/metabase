@@ -20,6 +20,8 @@ To start using alerts, an administrator will need to have set up at least one of
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
 
+Only admins and people with [settings access](../permissions/application.md#settings-access) can use webhooks.
+
 ## Creating an alert
 
 ![Get alerts](./images/get-alerts-about-this.png)
@@ -27,13 +29,16 @@ To start using alerts, an administrator will need to have set up at least one of
 To create an alert:
 
 1. Save your question.
-2. Click on the sharing icon in the top-right of the screen.
+2. Click on the **three dots** in the top-right of the screen.
 3. Select **Create an alert**.
-4. Select what you want to be alerted about. The alert options will depend on the question's visualization. See [types of alerts](#types-of-alerts).
-5. Select when you want Metabase to check the results. Metabase can check for results by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
-6. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md).
-7. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
-8. Click **Done**.
+4. Select what you want to be alerted about (options depend on the question type):
+    - [When a question returns a result](#results-alerts) - for any question.
+    - [When a time series crosses a goal line](#goal-line-alerts) - for a line, bar, or area chart displaying a time series.
+    - [When a progress bar reaches or goes below its goal](#progress-bar-alerts) - for progress bars.
+6. Select when you want Metabase to check the results: by the minute, hourly, daily, weekly, monthly, or on a custom schedule that you set using the Quartz [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html).
+7. Select the alert's destination: [email](../configuring-metabase/email.md), [Slack](../configuring-metabase/slack.md), or to a [webhook](../configuring-metabase/webhooks.md) (only admins and people with [settings access](../permissions/application.md#settings-access) can create and send to webhooks).
+8. Configure any other options (like [only sending the alert once](#send-a-one-time-alert)).
+9. Click **Done**.
 
 ## Send a one-time alert
 
@@ -44,12 +49,6 @@ When setting up an alert, if you select the option to **Only send the alert once
 To test the alert, first make sure that the question returns results (if the question doesn't return any results, Metabase won't send the alert).
 
 Then hit the **Send now** button to trigger the alert.
-
-## Types of alerts
-
-- [Results alerts](#results-alerts): when a question returns any result.
-- [Goal line alerts](#goal-line-alerts) when a time series crosses a goal line.
-- [Progress bar alerts](#progress-bar-alerts): when a progress bar reaches or goes below its goal.
 
 ## Results alerts
 
@@ -67,27 +66,22 @@ _Requires a [bar, line, or area chart](./visualizations/line-bar-and-area-charts
 
 Goal line alerts are useful when you're doing things like tracking daily active users (DAU) and you want to know when you reach a certain number of DAU, or when you're tracking orders per week and you want to know whenever the number of orders ever goes below a certain threshold.
 
-To start, you'll need a line, area, or bar chart displaying a number over time.
+To create an alert when a time series crosses a goal line:
 
-Next, you need to set up a goal line on your chart. Open up the visualization settings by clicking the **gear** icon in the bottom-left. Then click on the **Display** tab, and turn on the **Show goal** setting. Choose a value for your goal (and optionally a label) and click Done.
+1. Create a line, area, or bar chart displaying a number over time.
+2. Open up the visualization settings by clicking the **gear** icon in the bottom-left.
+3. In the **Display** tab, turn on the **Show goal** setting.
+4. Choose a value for your goal (and optionally a label) and click Done.
+5. Save the question.
+6. Click the **three dots** icon in top and select "Create alert"
 
-You can choose:
+    You can choose:
+    
+    - Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
+    - Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
+    - How often you want Metabase to check to see if the goal line has been crossed.
 
-- Whether you want Metabase to alert you when the time series goes above the goal line or when it goes below the goal line.
-- Whether you want Metabase to alert you every time the time series crosses a goal line, or only the first time it crosses the goal line.
-- How often you want Metabase to check to see if the goal line has been crossed.
-
-Click Done, and your alert will be all set up!
-
-If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that admins might have added you to.
-
-Metabase will email you when:
-
-- You set up an alert
-- You've been unsubscribed from an alert
-- One of your alerts has stopped working
-- You unsubscribed from an alert
-- An admin added you to an alert
+7. Select the schedule and recipients for the alert, and click "Done"
 
 ## Progress bar alerts
 
@@ -95,11 +89,11 @@ _Requires the [progress bar visualization](./visualizations/progress-bar.md)._
 
 If you want to set up an alert when a single number reaches a goal, you can use a progress bar visualization.
 
-1. Create a question that returns a single number as its result,
-2. Choose the Progress Bar chart type,
-3. In Visualization settings, select a goal value
-4. Save your question,
-5. Create an alert by clicking on the Sharing icon in top right
+1. Create a question that returns a single number as its result.
+2. Choose the Progress Bar chart type.
+3. In Visualization settings, select a goal value.
+4. Save your question.
+5. Create an alert by clicking the **three dots** in top right.
 
 You'll see the options for when you want to get alerts about this progress bar:
 
@@ -107,9 +101,9 @@ You'll see the options for when you want to get alerts about this progress bar:
 - Whether to alert only the first time the progress bar reaches the goal line, or every time
 - How often you want Metabase to check to see if the goal has been reached.
 
-## Editing and deleting alerts
+## Editing, deleting, and unsubscribing from alerts
 
-To edit or delete alerts on a question, click on the Sharing icon in the top right corner. What you can edit depends on whether you're an admin.
+To edit or delete alerts on a question, click on the **three dots** icon in the top right corner and select **Edit alerts**. What you can edit depends on whether you're an admin.
 
 Everyone:
 
@@ -121,6 +115,14 @@ Admins:
 - Admins can edit and delete any alert. This can't be undone, so be careful!
 - Admins can add or remove recipients on any alert, even ones that they didn't create themselves.
 - Admins can bulk manage alerts per person from the [People menu in Admin settings](../people-and-groups/managing.md#unsubscribe-from-all-subscriptions-and-alerts).
+
+Metabase will email you when:
+
+- You set up an alert
+- You've been unsubscribed from an alert
+- One of your alerts has stopped working
+- You unsubscribed from an alert
+- An admin added you to an alert
 
 ## Avoid changing the name of the alerted channel in Slack
 

@@ -1,8 +1,13 @@
+import Color from "color";
+
 import { color } from "./palette";
 import { getColorScale } from "./scales";
 
 describe("scales", () => {
-  const colors = [color("bg-white"), color("bg-black")];
+  const colors = [
+    Color(color("background-primary")).hex(),
+    Color(color("background-primary-inverse")).hex(),
+  ];
 
   it("should interpolate colors by default", () => {
     const scale = getColorScale([0, 1], colors);

@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
 import { lighten } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
 export const EmptyFormPlaceholderWrapper = styled.div`
@@ -15,14 +14,14 @@ export const EmptyFormPlaceholderWrapper = styled.div`
 `;
 
 export const ExplainerTitle = styled.h3`
-  margin-bottom: ${space(1)};
+  margin-bottom: var(--mantine-spacing-sm);
 `;
 
 export const ExplainerText = styled.div`
   font-weight: 400;
   line-height: 1.5rem;
-  color: var(--mb-color-text-medium);
-  margin: ${space(1)} 0 0 0;
+  color: var(--mb-color-text-secondary);
+  margin: var(--mantine-spacing-sm) 0 0 0;
 `;
 
 export const ExplainerList = styled.ul`
@@ -32,14 +31,14 @@ export const ExplainerList = styled.ul`
   li {
     font-weight: 400;
     line-height: 24px;
-    color: var(--mb-color-text-medium);
+    color: var(--mb-color-text-secondary);
     margin: 0;
   }
 `;
 
 export const ExplainerLink = styled(ExternalLink)`
   font-weight: 700;
-  margin-top: ${space(2)};
+  margin-top: var(--mantine-spacing-md);
   color: var(--mb-color-brand);
 
   &:hover {

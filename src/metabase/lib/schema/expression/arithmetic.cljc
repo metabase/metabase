@@ -1,5 +1,6 @@
 (ns metabase.lib.schema.expression.arithmetic
   "Arithmetic expressions like `:+`."
+  (:refer-clojure :exclude [every? some #?(:clj doseq)])
   (:require
    [medley.core :as m]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -8,7 +9,8 @@
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
    [metabase.types.core :as types]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every? some #?(:clj doseq)]]))
 
 (defn- valid-interval-for-type? [[_tag _opts _n unit :as _interval] expr-type]
   (let [unit-schema (cond

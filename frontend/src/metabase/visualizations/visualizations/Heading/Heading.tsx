@@ -188,7 +188,6 @@ export function Heading({
           <CollapsibleDashboardParameterList
             isCollapsed={shouldCollapseList}
             parameters={inlineParameters}
-            widgetsVariant="subtle"
             ref={parameterListRef}
           />
         )}
@@ -216,7 +215,6 @@ export function Heading({
         <CollapsibleDashboardParameterList
           isCollapsed={shouldCollapseList}
           parameters={inlineParameters}
-          widgetsVariant="subtle"
           ref={parameterListRef}
         />
       )}

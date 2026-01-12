@@ -37,7 +37,11 @@ const ChartCaption = ({
   width,
   titleMenuItems,
 }: ChartCaptionProps) => {
-  const title = settings["card.title"] ?? series?.[0].card.name ?? "";
+  const title =
+    settings["card.title"] ??
+    series?.[0].card.visualization_settings["card.title"] ??
+    series?.[0].card.name ??
+    "";
   const description = settings["card.description"];
   const data =
     visualizerRawSeries ?? (series as TransformedSeries)._raw ?? series;

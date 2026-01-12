@@ -6,7 +6,6 @@
    [mb.hawk.assert-exprs.approximately-equal :as =?]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.hierarchy :as lib.hierarchy]
@@ -24,6 +23,8 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]))
 
+;;; TODO (Cam 7/18/25) -- update the tests in this namespace to use mock metadata providers instead of with-temp
+
 (def ^:private counter (atom 2000))
 
 (defn- add-aggregation-options
@@ -38,7 +39,7 @@
   [metadata-provider]
   (loop []
     (let [id (swap! counter inc)]
-      (if (seq (lib.metadata.protocols/metadatas metadata-provider :metadata/card #{id}))
+      (if (seq (lib.metadata.protocols/metadatas metadata-provider {:lib/type :metadata/card, :id #{id}}))
         (recur)
         id))))
 
@@ -369,8 +370,7 @@
                                          ;; Empty stage added by resolved-source-cards to nest join
                                          (=?/exactly {:lib/type                 :mbql.stage/mbql
                                                       :qp/stage-had-source-card (:id question)
-                                                      :source-query/model?      false
-                                                      :source-query/entity-id   (:entity-id question)})]}]}]}
+                                                      :source-query/model?      false})]}]}]}
             (adjust query)))))
 
 (defn- model-based-metric-question
@@ -496,112 +496,132 @@
               (adjust query))))))
 
 (deftest ^:parallel e2e-source-metric-results-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :price)) 3))
-                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :name "new_metric"
-                                              :type :metric}]
-      (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
-        (is (=
-             (mt/rows (qp/process-query source-query))
-             (mt/rows (qp/process-query query))))))))
+                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))
+        mp           (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [{:id            1
+                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :database-id   (mt/id)
+                                :name          "new_metric"
+                                :type          :metric}]})
+        query        (lib/query mp (lib.metadata/card mp 1))]
+    (is (= (mt/rows (qp/process-query source-query))
+           (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel e2e-source-table-results-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
                          (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :price)) 30))
-                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :name "new_metric"
-                                              :type :metric}]
-      (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                      (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :rating)) 3))
-                      (lib/aggregate (lib.metadata/metric mp (:id source-metric))))]
-        (is (=
-             (mt/rows (qp/process-query (-> source-query
-                                            (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :rating)) 3)))))
-             (mt/rows (qp/process-query query))))))))
+                         (lib/aggregate (lib/avg (lib.metadata/field mp (mt/id :products :rating)))))
+        mp           (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [{:id            1
+                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :database-id   (mt/id)
+                                :name          "new_metric"
+                                :type          :metric}]})
+        query        (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                         (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :rating)) 3))
+                         (lib/aggregate (lib.metadata/metric mp 1)))]
+    (is (= (mt/rows (qp/process-query (-> source-query
+                                          (lib/filter (lib/< (lib.metadata/field mp (mt/id :products :rating)) 3)))))
+           (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel e2e-source-card-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                         (lib/aggregate (lib/count)))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :name "new_metric"
-                                              :type :metric}]
-      (let [query (as-> (lib/query mp (lib.metadata/card mp (:id source-metric))) $q
-                    (lib/remove-clause $q (first (lib/aggregations $q)))
-                    (lib/limit $q 1))]
-        (is (=?
-             (mt/rows
-              (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                    (lib/limit 1))))
-             (mt/rows
-              (qp/process-query query))))))))
+                         (lib/aggregate (lib/count)))
+        mp           (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [{:id            1
+                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :database-id   (mt/id)
+                                :name          "new_metric"
+                                :type          :metric}]})
+        query        (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                       (lib/remove-clause $q (first (lib/aggregations $q)))
+                       (lib/limit $q 1))]
+    (is (=? (mt/rows
+             (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                   (lib/limit 1))))
+            (mt/rows
+             (qp/process-query query))))))
 
 (deftest ^:parallel execute-single-stage-metric
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                         (lib/aggregate (lib/count)))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :name "new_metric"
-                                              :type :metric}
-                   :model/Card next-metric {:dataset_query (-> (lib/query mp (lib.metadata/card mp (:id source-metric)))
-                                                               (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Gadget")))
-                                            :database_id (mt/id)
-                                            :name "new_metric"
-                                            :type :metric}]
-      (let [query (lib/query mp (lib.metadata/card mp (:id next-metric)))]
-        (is (=? (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                               (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Gadget"))
-                                               (lib/aggregate (lib/count)))))
-                (mt/rows (qp/process-query query))))))))
+                         (lib/aggregate (lib/count)))
+        mp           (as-> mp $mp
+                       (lib.tu/mock-metadata-provider
+                        $mp
+                        {:cards [{:id            1
+                                  :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                  :database-id   (mt/id)
+                                  :name          "new_metric"
+                                  :type          :metric}]})
+                       (lib.tu/mock-metadata-provider
+                        $mp
+                        {:cards [{:id            2
+                                  :dataset-query (-> (lib/query mp (lib.metadata/card $mp 1))
+                                                     (lib/filter (lib/= (lib.metadata/field $mp (mt/id :products :category)) "Gadget")))
+                                  :database-id   (mt/id)
+                                  :name          "new_metric"
+                                  :type          :metric}]}))
+        query        (lib/query mp (lib.metadata/card mp 2))]
+    (is (=? (mt/rows (qp/process-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                                           (lib/filter (lib/= (lib.metadata/field mp (mt/id :products :category)) "Gadget"))
+                                           (lib/aggregate (lib/count)))))
+            (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel available-metrics-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                         (lib/aggregate (lib/count)))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :table_id (mt/id :products)
-                                              :name "new_metric"
-                                              :type :metric}
-                   ;; Two stage queries should not be available
-                   :model/Card _             {:dataset_query (-> source-query
-                                                                 lib/append-stage
-                                                                 (lib/aggregate (lib/count))
-                                                                 lib.convert/->legacy-MBQL)
-                                              :database_id (mt/id)
-                                              :table_id (mt/id :products)
-                                              :name "new_metric"
-                                              :type :metric}]
-      (let [query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
-        (is (=? [(lib.metadata/metric mp (:id source-metric))]
-                (lib/available-metrics query)))))))
+                         (lib/aggregate (lib/count)))
+        mp           (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [{:id            1
+                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :database-id   (mt/id)
+                                :table-id      (mt/id :products)
+                                :name          "new_metric"
+                                :type          :metric}
+                               ;; Two stage queries should not be available
+                               {:id            2
+                                :dataset-query (-> source-query
+                                                   lib/append-stage
+                                                   (lib/aggregate (lib/count))
+                                                   lib.convert/->legacy-MBQL)
+                                :database-id   (mt/id)
+                                :table-id      (mt/id :products)
+                                :name          "new_metric"
+                                :type          :metric}]})
+        query        (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+    (is (=? [(lib.metadata/metric mp 1)]
+            (lib/available-metrics query)))))
 
 (deftest ^:parallel custom-aggregation-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/expression "total2" (lib// (lib.metadata/field mp (mt/id :orders :total)) 2))
-                         (as-> $q (lib/aggregate $q (lib/sum (m/find-first (comp #{"total2"} :name) (lib/visible-columns $q))))))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :name "new_metric"
-                                              :type :metric}]
-      (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
-        (is (=? (mt/rows (qp/process-query source-query))
-                (mt/rows (qp/process-query query))))))))
+                         (as-> $q (lib/aggregate $q (lib/sum (m/find-first (comp #{"total2"} :name) (lib/visible-columns $q))))))
+        mp           (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [{:id            1
+                                :dataset-query (lib.convert/->legacy-MBQL source-query)
+                                :database-id   (mt/id)
+                                :name          "new_metric"
+                                :type          :metric}]})
+        query        (lib/query mp (lib.metadata/card mp 1))]
+    (is (=? (mt/rows (qp/process-query source-query))
+            (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel default-metric-names-test
   (let [[source-metric mp] (mock-metric)]
     (is (=?
-         {:stages [{:aggregation [[:avg {:display-name complement :name "avg"} some?]]}]}
+         {:stages [{:aggregation [[:avg {:display-name (symbol "nil #_\"key is not present.\""), :name "avg"} some?]]}]}
          (adjust (-> (lib/query mp (meta/table-metadata :products))
                      (lib/aggregate (lib.metadata/metric mp (:id source-metric)))))))))
 
@@ -628,7 +648,8 @@
             {:segments [{:id         1
                          :name       "Segment 1"
                          :table-id   (meta/id :venues)
-                         :definition {:filter [:= [:field (meta/id :venues :name) nil] "abc"]}}]})
+                         :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                         (lib/filter (lib/= (meta/field-metadata :venues :name) "abc")))}]})
         [source-metric mp] (mock-metric mp (-> (basic-metric-query)
                                                (lib/filter (lib.metadata/segment mp 1))))]
     ;; Segments are handled further in the pipeline when the source is a metric
@@ -758,132 +779,156 @@
               (adjust query))))))
 
 (deftest ^:parallel model-based-metric-with-implicit-join-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        model-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-    (mt/with-temp [:model/Card model {:dataset_query (lib.convert/->legacy-MBQL model-query)
-                                      :database_id (mt/id)
-                                      :name "Orders model"
-                                      :type :model}
-                   :model/Card metric {:dataset_query
-                                       (as-> (lib/query mp (lib.metadata/card mp (:id model))) $q
-                                         (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
-                                                                        (lib/breakoutable-columns $q)))
-                                         (lib/aggregate $q (lib/count))
-                                         (lib.convert/->legacy-MBQL $q))
-                                       :database_id (mt/id)
-                                       :name "Orders model metric"
-                                       :type :metric}]
-      (let [metric-query (lib/query mp (lib.metadata/card mp (:id metric)))
-            etalon-query (as-> (lib/query mp (lib.metadata/card mp (:id model))) $q
-                           (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
-                                                          (lib/breakoutable-columns $q)))
-                           (lib/aggregate $q (lib/count)))]
-        (is (=? (mt/rows (qp/process-query etalon-query))
-                (mt/rows (qp/process-query metric-query))))))))
+  (let [mp           (mt/metadata-provider)
+        model-query  (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        mp           (as-> mp $mp
+                       (lib.tu/mock-metadata-provider
+                        $mp
+                        {:cards [{:id            1
+                                  :dataset-query (lib.convert/->legacy-MBQL model-query)
+                                  :database-id   (mt/id)
+                                  :name          "Orders model"
+                                  :type          :model}]})
+                       (lib.tu/mock-metadata-provider
+                        $mp
+                        {:cards [{:id          2
+                                  :dataset-query
+                                  (as-> (lib/query $mp (lib.metadata/card $mp 1)) $q
+                                    (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
+                                                                   (lib/breakoutable-columns $q)))
+                                    (lib/aggregate $q (lib/count))
+                                    (lib.convert/->legacy-MBQL $q))
+                                  :database-id (mt/id)
+                                  :name        "Orders model metric"
+                                  :type        :metric}]}))
+        metric-query (lib/query mp (lib.metadata/card mp 2))
+        etalon-query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                       (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
+                                                      (lib/breakoutable-columns $q)))
+                       (lib/aggregate $q (lib/count)))]
+    (is (=? (mt/rows (qp/process-query etalon-query))
+            (mt/rows (qp/process-query metric-query))))))
 
 (deftest ^:parallel metric-with-explicit-join-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (let [mp           (mt/metadata-provider)
         metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
                          (lib/join (lib/join-clause (lib.metadata/table mp (mt/id :people))
                                                     [(lib/=
                                                       (lib.metadata/field mp (mt/id :orders :user_id))
                                                       (lib.metadata/field mp (mt/id :people :id)))]))
                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
-                         (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))]
-    (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
-                                       :database_id (mt/id)
-                                       :name "Orders Total Sum metric"
-                                       :type :metric}]
-      (let [query (lib/query mp (lib.metadata/card mp (:id metric)))]
-        (is (=? (mt/rows (qp/process-query metric-query))
-                (mt/rows (qp/process-query query))))))))
+                         (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))
+        mp           (lib.tu/mock-metadata-provider
+                      mp
+                      {:cards [{:id            1
+                                :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                :database-id   (mt/id)
+                                :name          "Orders Total Sum metric"
+                                :type          :metric}]})
+        query        (lib/query mp (lib.metadata/card mp 1))]
+    (is (=? (mt/rows (qp/process-query metric-query))
+            (mt/rows (qp/process-query query))))))
 
 (deftest ^:parallel filtered-metric-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
-    (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
-                                       :database_id (mt/id)
-                                       :name "Orders Total Sum metric"
-                                       :type :metric}]
-      (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                      (lib/aggregate (lib.metadata/metric mp (:id metric)))
-                      (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
-                      (lib/append-stage)
-                      (lib/limit 3))
-            metric-column (second (lib/returned-columns query))
-            query (lib/filter query (lib/> metric-column 53))]
-        (is (=? [["2016-05-01T00:00:00Z" 1265]
-                 ["2016-06-01T00:00:00Z" 2072]
-                 ["2016-07-01T00:00:00Z" 3734]]
-                (mt/format-rows-by
-                 [u.date/temporal-str->iso8601-str int]
-                 (mt/rows (qp/process-query query)))))))))
+  (let [mp            (mt/metadata-provider)
+        metric-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
+        mp            (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id            1
+                                 :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                 :database-id   (mt/id)
+                                 :name          "Orders Total Sum metric"
+                                 :type          :metric}]})
+        query         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib.metadata/metric mp 1))
+                          (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
+                          (lib/append-stage)
+                          (lib/limit 3))
+        metric-column (second (lib/returned-columns query))
+        query         (lib/filter query (lib/> metric-column 53))]
+    (is (=? [["2016-05-01T00:00:00Z" 1265]
+             ["2016-06-01T00:00:00Z" 2072]
+             ["2016-07-01T00:00:00Z" 3734]]
+            (mt/format-rows-by
+             [u.date/temporal-str->iso8601-str int]
+             (mt/rows (qp/process-query query)))))))
 
 (deftest ^:parallel metric-in-offset-test
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                         (lib/aggregate (lib/count)))]
-    (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
-                                       :database_id (mt/id)
-                                       :name "Orders, Count"
-                                       :type :metric}]
-      (let [metric-meta (lib.metadata/metric mp (:id metric))
-            metric-offset #(lib/offset metric-meta -1)
-            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                      (lib/aggregate metric-meta)
-                      (lib/aggregate (metric-offset))
-                      (lib/aggregate (lib/- (lib// metric-meta (metric-offset)) 1))
-                      (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
-                      (lib/limit 5))]
-        (is (=? [["2016-04-01T00:00:00Z" 1 nil nil]
-                 ["2016-05-01T00:00:00Z" 19 1 18.0]
-                 ["2016-06-01T00:00:00Z" 37 19 0.947]
-                 ["2016-07-01T00:00:00Z" 64 37 0.73]
-                 ["2016-08-01T00:00:00Z" 79 64 0.234]]
-                (mt/format-rows-by
-                 [u.date/temporal-str->iso8601-str int int 3.0]
-                 (mt/rows (qp/process-query query)))))))))
+  (let [mp            (mt/metadata-provider)
+        metric-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate (lib/count)))
+        mp            (lib.tu/mock-metadata-provider
+                       mp
+                       {:cards [{:id            1
+                                 :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                 :database-id   (mt/id)
+                                 :name          "Orders, Count"
+                                 :type          :metric}]})
+        metric-meta   (lib.metadata/metric mp 1)
+        metric-offset #(lib/offset metric-meta -1)
+        query         (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                          (lib/aggregate metric-meta)
+                          (lib/aggregate (metric-offset))
+                          (lib/aggregate (lib/- (lib// metric-meta (metric-offset)) 1))
+                          (lib/breakout (lib/with-temporal-bucket (lib.metadata/field mp (mt/id :orders :created_at)) :month))
+                          (lib/limit 5))]
+    (is (=? [["2016-04-01T00:00:00Z" 1 nil nil]
+             ["2016-05-01T00:00:00Z" 19 1 18.0]
+             ["2016-06-01T00:00:00Z" 37 19 0.947]
+             ["2016-07-01T00:00:00Z" 64 37 0.73]
+             ["2016-08-01T00:00:00Z" 79 64 0.234]]
+            (mt/format-rows-by
+             [u.date/temporal-str->iso8601-str int int 3.0]
+             (mt/rows (qp/process-query query)))))))
 
 (deftest ^:parallel expressions-from-metrics-are-spliced-to-correct-stage-test
   (testing "Integration test: Expression is spliced into correct stage during metric expansion (#48722)"
-    (mt/with-temp [:model/Card source-model {:dataset_query (mt/mbql-query orders {})
-                                             :database_id (mt/id)
-                                             :name "source model"
-                                             :type :model}
-                   :model/Card metric {:dataset_query
-                                       (mt/mbql-query
-                                         orders
-                                         {:source-table (str "card__" (:id source-model))
-                                          :expressions {"somedays" [:datetime-diff
-                                                                    [:field "CREATED_AT" {:base-type :type/DateTime}]
-                                                                    (t/offset-date-time 2024 10 16 0 0 0)
-                                                                    :day]}
-                                          :aggregation [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
-                                       :database_id (mt/id)
-                                       :name "somedays median"
-                                       :type :metric}]
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-            query (-> (lib/query mp (lib.metadata/card mp (:id source-model)))
-                      (lib/aggregate (lib.metadata/metric mp (:id metric))))]
-        (is (= 2162
-               (ffirst (mt/rows (qp/process-query query)))))))))
+    (let [mp    (as-> (mt/metadata-provider) $mp
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [{:id            1
+                             :dataset-query (mt/mbql-query orders {})
+                             :database-id   (mt/id)
+                             :name          "source model"
+                             :type          :model}]})
+                  (lib.tu/mock-metadata-provider
+                   $mp
+                   {:cards [{:id            2
+                             :dataset-query (mt/mbql-query
+                                              orders
+                                              {:source-table "card__1"
+                                               :expressions  {"somedays" [:datetime-diff
+                                                                          [:field "CREATED_AT" {:base-type :type/DateTime}]
+                                                                          (t/offset-date-time 2024 10 16 0 0 0)
+                                                                          :day]}
+                                               :aggregation  [[:median [:expression "somedays" {:base-type :type/Integer}]]]})
+                             :database-id   (mt/id)
+                             :name          "somedays median"
+                             :type          :metric}]}))
+          query (-> (lib/query mp (lib.metadata/card mp 1))
+                    (lib/aggregate (lib.metadata/metric mp 2)))]
+      (is (= 2162
+             (ffirst (mt/rows (qp/process-query query))))))))
 
 (deftest ^:parallel fetch-referenced-metrics-test
-  (testing "Metric's aggregation `:name` is used in expanded aggregation (#48625)"
-    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+  (testing "Metric's Card `:name` is NOT set in aggregation options (#48625)"
+    (let [mp           (mt/metadata-provider)
           metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
-      (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
-                                         :database_id (mt/id)
-                                         :name "Orders, Count"
-                                         :type :metric}]
-        (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                        (lib/aggregate (lib.metadata/metric mp (:id metric))))
-              stage (get-in query [:stages 0])]
-          (is (=  "sum"
-                  (get-in (#'metrics/fetch-referenced-metrics query stage)
-                          [(:id metric) :aggregation 1 :name]))))))))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))
+          mp           (lib.tu/mock-metadata-provider
+                        mp
+                        {:cards [{:id            1
+                                  :dataset-query (lib.convert/->legacy-MBQL metric-query)
+                                  :database-id   (mt/id)
+                                  :name          "Orders, Count"
+                                  :type          :metric}]})
+          query        (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib.metadata/metric mp 1)))
+          stage        (get-in query [:stages 0])]
+      (is (=? [:sum {:name (symbol "nil #_\"key is not present.\"")} [:field {} pos-int?]]
+              (get-in (#'metrics/fetch-referenced-metrics query stage)
+                      [1 :aggregation]))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;
@@ -897,7 +942,7 @@
     (lib/aggregate query (f (m/find-first (comp #{"Total"} :display-name)
                                           (lib/visible-columns query))))))
 
-(def tested-aggregations
+(def ^:private tested-aggregations
   "Sequence of maps containing :mbql-fn keyword :feature-flag (optional) and :aggregate for testing."
   [;; NO FEATURE FLAG
    ;; nullary
@@ -969,125 +1014,122 @@
 
 (defmethod driver/database-supports? [:starburst :test/inaccurate-approx-percentile] [_ _ _] true)
 
-(deftest metric-comparison-test
+(deftest ^:parallel metric-comparison-test
   (doseq [{:keys [feature operator aggregate]} tested-aggregations]
-    (mt/test-drivers
-      (if (some? feature)
-        (mt/normal-drivers-with-feature feature)
-        (mt/normal-drivers))
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-        (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
-          (let [base-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                             (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
-                                                                      (lib/filterable-columns $))
-                                                        "2017-04-01"
-                                                        "2018-03-31"))
-                             (lib/breakout $ (lib/with-temporal-bucket
-                                               (m/find-first (comp #{"Created At"} :display-name)
-                                                             (lib/breakoutable-columns $))
-                                               :month)))
-                metric-query (-> base-query
-                                 aggregate
-                                 (lib.util/update-query-stage -1 update-in [:aggregation 0] lib.options/update-options
-                                                              merge {:name "metric_aggregation"
-                                                                     :display-name "Metric Aggregation"}))]
-            (mt/with-temp
-              [:model/Card
-               metric-card
-               {:type :metric
-                :dataset_query (lib.convert/->legacy-MBQL metric-query)}]
-              (let [query (-> base-query
-                              aggregate)
-                    result (qp/process-query query)
-                    metric-query (-> base-query
-                                     (lib/aggregate (lib.metadata/metric mp (:id metric-card))))
-                    metric-result (qp/process-query metric-query)
-                    breakout-val->ag-val (into {} (mt/rows metric-result))
-                    results-combined (mapv (fn [[breakout-val _ag-val :as row]]
-                                             (conj row (get breakout-val->ag-val breakout-val)))
-                                           (mt/rows result))]
-                (is (every? (fn [[_ aggregation-value metric-value]]
-                              (< (abs (- aggregation-value metric-value))
-                                 (if (and (#{:percentile :median} operator)
-                                          (driver/database-supports? driver/*driver* :test/inaccurate-approx-percentile nil))
-                                   3
-                                   0.01)))
-                            results-combined))))))))))
+    (mt/test-drivers (if (some? feature)
+                       (mt/normal-drivers-with-feature feature)
+                       (mt/normal-drivers))
+      (testing (format "Result of aggregation with filter is same as of metric with filter for %s" operator)
+        (let [mp                   (mt/metadata-provider)
+              base-query           (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                                     (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                              (lib/filterable-columns $))
+                                                                "2017-04-01"
+                                                                "2018-03-31"))
+                                     (lib/breakout $ (lib/with-temporal-bucket
+                                                       (m/find-first (comp #{"Created At"} :display-name)
+                                                                     (lib/breakoutable-columns $))
+                                                       :month)))
+              metric-query         (-> base-query
+                                       aggregate
+                                       (lib.util/update-query-stage -1 update-in [:aggregation 0] lib.options/update-options
+                                                                    merge {:name         "metric_aggregation"
+                                                                           :display-name "Metric Aggregation"}))
+              mp                   (lib.tu/mock-metadata-provider
+                                    mp
+                                    {:cards [{:id            1
+                                              :type          :metric
+                                              :dataset-query metric-query}]})
+              query                (-> base-query
+                                       aggregate)
+              result               (qp/process-query query)
+              metric-query         (-> (lib/query mp base-query)
+                                       (lib/aggregate (lib.metadata/metric mp 1)))
+              metric-result        (qp/process-query metric-query)
+              breakout-val->ag-val (into {} (mt/rows metric-result))
+              results-combined     (mapv (fn [[breakout-val _ag-val :as row]]
+                                           (conj row (get breakout-val->ag-val breakout-val)))
+                                         (mt/rows result))]
+          (is (every? (fn [[_ aggregation-value metric-value]]
+                        (< (abs (- aggregation-value metric-value))
+                           (if (and (#{:percentile :median} operator)
+                                    (driver/database-supports? driver/*driver* :test/inaccurate-approx-percentile nil))
+                             3
+                             0.01)))
+                      results-combined)))))))
 
-(deftest next-stage-reference-test
+(deftest ^:parallel next-stage-reference-test
   (doseq [{:keys [feature operator aggregate]} tested-aggregations]
-    (mt/test-drivers
-      (if (some? feature)
-        (mt/normal-drivers-with-feature feature)
-        (mt/normal-drivers))
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))]
-        (testing (format "Next stage reference works for %s" operator)
-          (mt/with-temp
-            [:model/Card
-             metric-card
-             {:type :metric
-              :dataset_query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                               (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
-                                                                        (lib/filterable-columns $))
-                                                          "2017-04-01"
-                                                          "2018-03-31"))
-                               (aggregate $))}]
-            (let [query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
-                          (lib/aggregate $ (lib.metadata/metric mp (:id metric-card)))
-                          (lib/breakout $ (lib/with-temporal-bucket
-                                            (m/find-first (comp #{"Created At"} :display-name)
-                                                          (lib/breakoutable-columns $))
-                                            :month))
-                          (lib/append-stage $)
-                          (lib/filter $ (lib/> (let [aggregation-uuids (set (map (comp :lib/uuid lib.options/options)
-                                                                                 (lib/aggregations $ 0)))]
-                                                 (m/find-first (comp aggregation-uuids :lib/source-uuid)
-                                                               (lib/filterable-columns $)))
-                                               0)))]
-              (is (=? {:status :completed}
-                      (qp/process-query query))))))))))
-
-(deftest metrics-with-conflicting-filters-produce-meaningful-result-test
-  (doseq [{:keys [_ operator aggregate]} tested-aggregations]
-    (testing operator
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-            filter #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
-                                                     (lib/filterable-columns %1))
-                                       "2018-04-01"))
-            breakout #(lib/breakout % (lib/with-temporal-bucket
+    (mt/test-drivers (if (some? feature)
+                       (mt/normal-drivers-with-feature feature)
+                       (mt/normal-drivers))
+      (testing (format "Next stage reference works for %s" operator)
+        (let [mp    (mt/metadata-provider)
+              mp    (lib.tu/mock-metadata-provider
+                     mp
+                     {:cards [{:id            1
+                               :type          :metric
+                               :dataset-query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                                                (lib/filter $ (lib/between (m/find-first (comp #{"Created At"} :display-name)
+                                                                                         (lib/filterable-columns $))
+                                                                           "2017-04-01"
+                                                                           "2018-03-31"))
+                                                (aggregate $))}]})
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id :orders))) $
+                      (lib/aggregate $ (lib.metadata/metric mp 1))
+                      (lib/breakout $ (lib/with-temporal-bucket
                                         (m/find-first (comp #{"Created At"} :display-name)
-                                                      (lib/breakoutable-columns %))
-                                        :month))]
-        (mt/with-temp
-          [:model/Card
-           first-metric-card
-           {:type :metric
-            :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                               (filter lib/<)
-                               (aggregate))}
-           :model/Card
-           second-metric-card
-           {:type :metric
-            :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                               (filter lib/>=)
-                               (aggregate))}]
-          (let [metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                 breakout
-                                 (lib/aggregate (lib.metadata/metric mp (:id first-metric-card)))
-                                 (lib/aggregate (lib.metadata/metric mp (:id second-metric-card))))
-                plain-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                                breakout
-                                aggregate)
-                metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-query))
-                plain-rows (mt/formatted-rows [str 3.0] (qp/process-query plain-query))]
-            (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
-                          (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
-                            (< d 0.01)))
-                        (map vector metric-rows plain-rows)))))))))
+                                                      (lib/breakoutable-columns $))
+                                        :month))
+                      (lib/append-stage $)
+                      (lib/filter $ (lib/> (let [aggregation-uuids (set (map (comp :lib/uuid lib.options/options)
+                                                                             (lib/aggregations $ 0)))]
+                                             (m/find-first (comp aggregation-uuids :lib/source-uuid)
+                                                           (lib/filterable-columns $)))
+                                           0)))]
+          (is (=? {:status :completed}
+                  (qp/process-query query))))))))
+
+(deftest ^:parallel metrics-with-conflicting-filters-produce-meaningful-result-test
+  (let [mp       (mt/metadata-provider)
+        filter   #(lib/filter %1 (%2 (m/find-first (comp #{"Created At"} :display-name)
+                                                   (lib/filterable-columns %1))
+                                     "2018-04-01"))
+        breakout #(lib/breakout % (lib/with-temporal-bucket
+                                    (m/find-first (comp #{"Created At"} :display-name)
+                                                  (lib/breakoutable-columns %))
+                                    :month))]
+    (doseq [{:keys [_ operator aggregate]} tested-aggregations]
+      (testing operator
+        (let [mp           (lib.tu/mock-metadata-provider
+                            mp
+                            {:cards [{:id            1
+                                      :type          :metric
+                                      :dataset-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                         (filter lib/<)
+                                                         aggregate)}
+                                     {:id            2
+                                      :type          :metric
+                                      :dataset-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                         (filter lib/>=)
+                                                         aggregate)}]})
+              metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               breakout
+                               (lib/aggregate (lib.metadata/metric mp 1))
+                               (lib/aggregate (lib.metadata/metric mp 2)))
+              plain-query  (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                               breakout
+                               aggregate)
+              metric-rows  (mt/formatted-rows [str 3.0 3.0] (qp/process-query metric-query))
+              plain-rows   (mt/formatted-rows [str 3.0] (qp/process-query plain-query))]
+          (is (every? (fn [[[_ metric-col-1 metric-col-2] [_ plain-ag-col]]]
+                        (let [d (- plain-ag-col (or metric-col-1 0) (or metric-col-2 0))]
+                          (< d 0.01)))
+                      (map vector metric-rows plain-rows))))))))
 
 (deftest ^:parallel all-available-aggregations-covered-test
   (testing "All available aggregations are tested for filter expansion in metric"
     (is (empty? (set/difference
                  (disj (descendants @lib.hierarchy/hierarchy :metabase.lib.schema.aggregation/aggregation-clause-tag)
-                       :aggregation :metric :offset)
+                       :aggregation :metric :measure :offset)
                  (set (map :operator tested-aggregations)))))))

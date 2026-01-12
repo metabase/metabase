@@ -1,92 +1,55 @@
 .editor {
+  --change: var(--mb-color-success);
+  --change-light: color-mix(in srgb, var(--change) 11%, transparent);
+  --remove: var(--mb-color-danger);
+  --remove-mid: color-mix(in srgb, var(--remove) 25%, transparent);
+  --remove-light: color-mix(in srgb, var(--remove) 11%, transparent);
+
   width: 100%;
   min-width: 0;
   max-width: 100%;
   flex-shrink: 1;
   height: 100%;
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-secondary);
 
   :global {
-    .cm-tooltip-autocomplete {
-      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.08);
-      border-radius: 4px;
-      background-color: white;
-      color: var(--mb-color-text-dark);
-      border: 1px solid var(--mb-color-border);
-      max-width: 520px;
+    /* merge view styles */
+    .cm-collapsedLines {
+      background: var(--mb-color-background-secondary) !important;
+      color: var(--mb-color-text-tertiary);
 
-      ul li {
-        color: inherit;
-        padding: 0 8px !important;
-        display: flex;
-        justify-content: space-between;
+      &:before,
+      &:after {
+        content: "-";
+        color: var(--mb-color-text-tertiary);
+      }
+    }
 
-        &:first-child {
-          margin-top: 4px;
-        }
+    .cm-merge-b .cm-changedLineGutter {
+      background: var(--change);
+    }
 
-        &:last-child {
-          margin-bottom: 4px;
-        }
+    .cm-deletedLineGutter {
+      background: var(--remove);
+    }
 
-        &:hover,
-        &[aria-selected="true"] {
-          color: inherit;
-          background-color: var(--mb-color-focus);
-        }
+    .cm-deletedChunk {
+      background: var(--remove-light);
+    }
+
+    .cm-deletedText {
+      background: var(--remove-mid);
+    }
+
+    .cm-merge-b {
+      .cm-changedText {
+        background: linear-gradient(var(--change), var(--change)) bottom / 100%
+          2px no-repeat;
       }
 
-      @supports (grid-template-columns: subgrid) {
-        ul:has(.cm-completionLabel) {
-          display: grid;
-          gap: 0 1rem;
-          grid-template-columns: 1fr;
-
-          &:has(.cm-completionDetail) {
-            grid-template-columns: max-content 1fr;
-          }
-
-          li {
-            display: grid;
-            grid-column: 1 / span 2;
-            grid-template-columns: subgrid;
-          }
-
-          .cm-completionLabel {
-            grid-column: 1;
-          }
-
-          .cm-completionDetail {
-            grid-column: 2;
-          }
-        }
-      }
-
-      .cm-completionIcon {
-        display: none;
-      }
-
-      .cm-completionMatchedText {
-        text-decoration: none;
-        font-weight: bold;
-        color: var(--mb-color-brand);
-      }
-
-      .cm-completionLabel {
-        display: block;
-        max-width: 18rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-weight: bold;
-      }
-
-      .cm-completionDetail {
-        color: var(--mb-color-text-light);
-        font-style: normal;
-        text-align: right;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .cm-changedLine {
+        background: var(--change-light);
       }
     }
   }

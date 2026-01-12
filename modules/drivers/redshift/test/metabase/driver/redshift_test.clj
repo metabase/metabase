@@ -190,7 +190,7 @@
 
 (defn- execute! [format-string & args]
   (let [sql  (apply format format-string args)
-        spec (sql-jdbc.conn/connection-details->spec :redshift @redshift.tx/db-connection-details)]
+        spec (sql-jdbc.conn/connection-details->spec :redshift (tx/dbdef->connection-details :redshift))]
     (log/info (u/format-color 'blue "[redshift] %s" sql))
     (try
       (jdbc/execute! spec sql)
@@ -514,8 +514,52 @@
                                          ["float(10)" :type/Float]
                                          ["datetime" :type/DateTime]
                                          ["year" :type/Integer]
+                                         ;; Iceberg table types https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+                                         ["string" :type/Text]
+                                         [:string :type/Text]
+                                         [:STRING :type/Text]
+                                         ["boolean" :type/Boolean]
+                                         ["int" :type/Integer]
+                                         ["long" :type/BigInteger]
+                                         ["double" :type/Float]
+                                         ["decimal(2, 10)" :type/Decimal]
+                                         ["binary" :type/*]
+                                         ["date" :type/Date]
+                                         ["time" nil]
+                                         ["timestamp" :type/DateTime]
+                                         ["timestamptz" :type/DateTimeWithTZ]
+
+                                         ;; MySQL federated table enum types
+                                         ["enum('A','B')" :type/Text]
+                                         ["enum('open','closed')" :type/Text]
+                                         ["enum('active','inactive')" :type/Text]
                                          ;; nonsense
                                          ["fadlsjfldskajfl" nil]]]
     (testing (format "database-type %s" (pr-str database-type))
       (is (= exp-base-type
              (sql-jdbc.sync/database-type->base-type :redshift database-type))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct Redshift types"
+    (are [base-type expected] (= expected (driver/type->database-type :redshift base-type))
+      :type/TextLike           [[:varchar 65535]]
+      :type/Text               [[:varchar 65535]]
+      :type/Integer            [:integer]
+      :type/Float              [(keyword "double precision")]
+      :type/Number             [:bigint]
+      :type/Boolean            [:boolean]
+      :type/Date               [:date]
+      :type/DateTime           [:timestamp]
+      :type/DateTimeWithTZ     [:timestamp-with-time-zone]
+      :type/Time               [:time])))
+
+(deftest ^:parallel alternate-config-options-test
+  (testing "Can configure with either db or dbname"
+    (let [options {:host "test.example.com"}]
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :db "test-db"))))
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-db"))))
+      (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
+             (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
+          ":db should take precedence"))))

@@ -1,4 +1,4 @@
-import produce from "immer";
+import { produce } from "immer";
 import { useState } from "react";
 import { t } from "ttag";
 
@@ -70,10 +70,13 @@ export function VisualizationCanvas({ className }: VisualizationCanvasProps) {
       <Center h="100%" w="100%" mx="auto" className={className}>
         <Flex direction="column" align="center" gap={12}>
           <Image src={metabot} mb={10} h={96} w={96} />
-          <Title size="h3" c="text">{t`Start by selecting a dataset`}</Title>
+          <Title
+            size="h3"
+            c="text-primary"
+          >{t`Start by selecting a dataset`}</Title>
           <Title
             size="h5"
-            c="text-light"
+            c="text-tertiary"
           >{t`Find something to visualize in the column on the left.`}</Title>
         </Flex>
       </Center>

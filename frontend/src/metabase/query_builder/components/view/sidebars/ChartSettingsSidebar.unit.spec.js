@@ -38,7 +38,7 @@ describe("ChartSettingsSidebar", () => {
     // see options header with sections
     expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
-    expect(screen.getByText("Display")).toBeInTheDocument();
+    expect(screen.getByText("Ranges")).toBeInTheDocument();
 
     // click on formatting section
     fireEvent.click(screen.getByText("Formatting"));
@@ -49,7 +49,7 @@ describe("ChartSettingsSidebar", () => {
     // but the sections and back title are unchanged
     expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
-    expect(screen.getByText("Display")).toBeInTheDocument();
+    expect(screen.getByText("Ranges")).toBeInTheDocument();
   });
 
   it("should not hide the title when showSidebarTitle is false", () => {

@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import Alert from "metabase/common/components/Alert";
 import { ButtonLink } from "metabase/common/components/ExternalLink";
-import { getStoreUrl } from "metabase/selectors/settings";
+import { useStoreUrl } from "metabase/common/hooks";
 import { Anchor, Box, Icon, Text } from "metabase/ui";
 import type { BillingInfo as IBillingInfo } from "metabase-types/api";
 
@@ -46,7 +46,7 @@ const BillingInfoError = () => {
       <SettingHeader id="billing" title={t`Billing`} />
       <Box mt="1rem" data-testid="billing-info-error">
         <Alert variant="error" icon="warning">
-          <Text c="text-medium">
+          <Text c="text-secondary">
             {t`An error occurred while fetching information about your billing.`}
             <br />
             <strong>{t`Need help?`}</strong>{" "}
@@ -65,7 +65,7 @@ const BillingInfoError = () => {
 };
 
 const BillingGoToStore = () => {
-  const url = getStoreUrl();
+  const url = useStoreUrl();
 
   return (
     <>

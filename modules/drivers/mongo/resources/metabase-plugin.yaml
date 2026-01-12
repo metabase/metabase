@@ -11,25 +11,28 @@ driver:
       type: section
       default: false
     - name: conn-uri
-      type: string
+      type: password
       display-name: Paste your connection string
       placeholder: 'mongodb://[username:password@]host1[:port1][,...hostN[:portN]][/[dbname][?options]]'
       required: true
       visible-if:
         use-conn-uri: true
-    - merge:
-        - host
-        - visible-if:
-            use-conn-uri: false
-          required: true
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - merge:
+              - host
+              - visible-if:
+                  use-conn-uri: false
+                required: true
+          - merge:
+              - port
+              - placeholder: 27017
+                visible-if:
+                  use-conn-uri: false
     - merge:
         - dbname
         - visible-if:
-            use-conn-uri: false
-    - merge:
-        - port
-        - placeholder: 27017
-          visible-if:
             use-conn-uri: false
     - merge:
         - user
@@ -81,6 +84,7 @@ driver:
           placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
           visible-if:
             use-conn-uri: false
+            advanced-options: true
     - name: use-srv
       type: boolean
       default: false

@@ -2,15 +2,16 @@
   "Settings related to embedding Metabase in other applications."
   (:require
    [clojure.string :as str]
-   [crypto.random :as crypto-random]
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2]))
 
 (defsetting embedding-secret-key
@@ -42,6 +43,14 @@
   :doc false
   :export? true)
 
+(defsetting show-simple-embed-terms
+  (deferred-tru "Check if admin should see the simple embedding terms popup")
+  :type    :boolean
+  :default true
+  :can-read-from-env? false
+  :doc false
+  :export? true)
+
 (mu/defn- make-embedding-toggle-setter
   "Creates a boolean setter for various boolean embedding-enabled flavors, all tracked by snowplow."
   [setting-key :- :keyword event-name :- :string]
@@ -51,14 +60,16 @@
         (when (not= new-value old-value)
           (setting/set-value-of-type! :boolean setting-key new-value)
           (when (and new-value (str/blank? (embedding-secret-key)))
-            (embedding-secret-key! (crypto-random/hex 32)))
+            (embedding-secret-key! (u.random/secure-hex 32)))
           (analytics/track-event! :snowplow/embed_share
                                   {:event                      (keyword (str event-name (if new-value "-enabled" "-disabled")))
                                    :embedding-app-origin-set   (boolean
                                                                 (or (setting/get-value-of-type :string :embedding-app-origin)
                                                                     (setting/get-value-of-type :string :embedding-app-origins-interactive)
                                                                     (let [sdk-origins (setting/get-value-of-type :string :embedding-app-origins-sdk)]
-                                                                      (and sdk-origins (not= "localhost:*" sdk-origins)))))
+                                                                      ;; Don't track "localhost:*" as a meaningful origin since it was
+                                                                      ;; the old default and may still exist in migrated instances
+                                                                      (and sdk-origins (not (str/blank? sdk-origins)) (not= "localhost:*" sdk-origins)))))
                                    :number-embedded-questions  (t2/count :model/Card :enable_embedding true)
                                    :number-embedded-dashboards (t2/count :model/Dashboard :enable_embedding true)}))))))
 
@@ -93,6 +104,15 @@
   :export?    false
   :audit      :getter
   :setter     (make-embedding-toggle-setter :enable-embedding-sdk "sdk-embedding"))
+
+(defsetting enable-embedding-simple
+  (deferred-tru "Allow admins to embed Metabase via modular embedding?")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :setter     (make-embedding-toggle-setter :enable-embedding-simple "simple-embedding"))
 
 (defsetting enable-embedding-interactive
   (deferred-tru "Allow admins to embed Metabase via interactive embedding?")
@@ -130,24 +150,33 @@
        (str/join " ")
        str/trim))
 
-(mu/defn- add-localhost :- :string [s :- [:maybe :string]]
-  (->> s ignore-localhost (str "localhost:* ") str/trim))
-
 (defn- -embedding-app-origins-sdk []
-  (add-localhost (setting/get-value-of-type :string :embedding-app-origins-sdk)))
+  (setting/get-value-of-type :string :embedding-app-origins-sdk))
+
+(defn- validate-no-localhost-when-disabled
+  "Throws an exception if localhost origins are present when disable-cors-on-localhost is enabled."
+  [origins-string]
+  (when (and (server.settings/disable-cors-on-localhost)
+             (seq origins-string)
+             (re-find #"localhost" origins-string))
+    (throw (ex-info
+            "Localhost is not allowed because DISABLE_CORS_ON_LOCALHOST is set."
+            {:status-code 400}))))
 
 (defn- -embedding-app-origins-sdk!
   "The setter for [[embedding-app-origins-sdk]].
 
-  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly."
+  Checks that we have SDK embedding feature and that it's enabled, then sets the value accordingly.
+  Also validates that localhost origins are not added when disable-cors-on-localhost is enabled."
   [new-value]
-  (add-localhost ;; return the same value that is returned from the getter
-   (->> new-value
-        ignore-localhost
-        ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
-        ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
-        ;; should not store localhost:port, since it's covered by localhost:* (which is the minumum value).
-        (setting/set-value-of-type! :string :embedding-app-origins-sdk))))
+  ;; Validate before processing if disable-cors-on-localhost is enabled
+  (validate-no-localhost-when-disabled new-value)
+  (let [processed-value (->> new-value
+                             ignore-localhost)]
+    ;; Why ignore-localhost?, because localhost:* will always be allowed, so we don't need to store it, if we
+    ;; were to store it, and the value was set N times, it would have localhost:* prefixed N times. Also, we
+    ;; should not store localhost:port, since it's covered by localhost:* (which is the minimum value).
+    (setting/set-value-of-type! :string :embedding-app-origins-sdk processed-value)))
 
 (defsetting embedding-app-origins-sdk
   (deferred-tru "Allow Metabase SDK access to these space delimited origins.")
@@ -155,7 +184,7 @@
   :export?    false
   :visibility :public
   :feature    :embedding-sdk
-  :default    "localhost:*"
+  :default    ""
   :encryption :no
   :audit      :getter
   :getter     #'-embedding-app-origins-sdk
@@ -241,7 +270,8 @@
    #_{:clj-kondo/ignore [:deprecated-var]} (enable-embedding)
    (enable-embedding-static)
    (enable-embedding-interactive)
-   (enable-embedding-sdk)))
+   (enable-embedding-sdk)
+   (enable-embedding-simple)))
 
 ;; settings for the embedding homepage
 (defsetting embedding-homepage
@@ -264,3 +294,21 @@
   :default    false
   :export?    true
   :visibility :admin)
+
+(defsetting embedding-hub-test-embed-snippet-created
+  (deferred-tru "Indicates if a test embed snippet has been created for tracking in the embedding hub")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin
+  :can-read-from-env? false
+  :doc false)
+
+(defsetting embedding-hub-production-embed-snippet-created
+  (deferred-tru "Indicates if a production embed snippet has been created for tracking in the embedding hub")
+  :type       :boolean
+  :default    false
+  :export?    true
+  :visibility :admin
+  :can-read-from-env? false
+  :doc false)

@@ -170,10 +170,6 @@ export const getDashboard = createSelector(
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
-export const getDashcardList = createSelector([getDashcards], (dashcards) =>
-  Object.values(dashcards),
-);
-
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
@@ -221,6 +217,11 @@ export const getDashboardComplete = createSelector(
       }
     );
   },
+);
+
+export const getCurrentDashcards = createSelector(
+  [getDashboardComplete],
+  (dashboard) => dashboard?.dashcards || [],
 );
 
 export const getDashcardHref = createSelector(
@@ -443,9 +444,8 @@ export const getParameters = createSelector(
 );
 
 export const getDashboardHeaderParameters = createSelector(
-  [getDashcards, getParameters],
-  (dashcards, parameters) => {
-    const dashcardList = Object.values(dashcards);
+  [getCurrentDashcards, getParameters],
+  (dashcardList, parameters) => {
     return parameters.filter(
       (parameter) => !isDashcardInlineParameter(parameter.id, dashcardList),
     );
@@ -511,9 +511,19 @@ export const getQuestionByCard = createCachedSelector(
 });
 
 export const getDashcardParameterMappingOptions = createCachedSelector(
-  [getQuestionByCard, getEditingParameter, getCard, getDashCard],
-  (question, parameter, card, dashcard) => {
-    return _getParameterMappingOptions(question, parameter, card, dashcard);
+  [getQuestionByCard, getEditingParameter, getCard, getDashCard, getDashcards],
+  (question, parameter, card, dashcard, dashcards) => {
+    const parameterDashcard =
+      parameter != null
+        ? findDashCardForInlineParameter(parameter.id, Object.values(dashcards))
+        : null;
+    return _getParameterMappingOptions(
+      question,
+      parameter,
+      card,
+      dashcard,
+      parameterDashcard,
+    );
   },
 )((state, props) => {
   return props.card.id ?? props.dashcard.id;
@@ -690,13 +700,6 @@ export const getParameterMappingsBeforeEditing = createSelector(
 
     return map;
   },
-);
-
-export const getDisplayTheme = (state: State) => state.dashboard.theme;
-
-export const getIsNightMode = createSelector(
-  [getDisplayTheme],
-  (theme) => theme === "night",
 );
 
 export const getHasModelActionsEnabled = createSelector(

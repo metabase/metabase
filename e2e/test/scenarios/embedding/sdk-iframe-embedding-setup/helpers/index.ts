@@ -1,6 +1,10 @@
 import { match } from "ts-pattern";
 
-import { entityPickerModal } from "e2e/support/helpers";
+import {
+  embedModalEnableEmbedding,
+  entityPickerModal,
+  modal,
+} from "e2e/support/helpers";
 import type { Dashboard, RecentItem } from "metabase-types/api";
 
 type RecentActivityIntercept = {
@@ -11,21 +15,44 @@ type DashboardIntercept = {
   response: Cypress.Response<Dashboard>;
 };
 
-export const getEmbedSidebar = () => cy.findByRole("complementary");
+export const getEmbedSidebar = () =>
+  modal()
+    .first()
+    .within(() => cy.findByRole("complementary"));
 
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = () => {
+export const visitNewEmbedPage = (
+  { waitForResource } = { waitForResource: true },
+) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-  cy.visit("/embed-iframe");
-  cy.wait("@dashboard");
 
-  cy.get("#iframe-embed-container").should(
-    "have.attr",
-    "data-iframe-loaded",
-    "true",
-  );
+  cy.visit("/admin/embedding");
+
+  cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+    .first()
+    .within(() => {
+      cy.findByText("New embed").click();
+    });
+
+  cy.get("body").then(($body) => {
+    const isEmbeddingDisabled =
+      $body.find('[data-testid="enable-embedding-card"]').length > 0;
+
+    if (isEmbeddingDisabled) {
+      embedModalEnableEmbedding();
+    }
+
+    if (waitForResource) {
+      cy.wait("@dashboard");
+
+      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+        "have.length",
+        1,
+      );
+    }
+  });
 };
 
 export const assertRecentItemName = (
@@ -49,41 +76,58 @@ export const assertDashboard = ({ id, name }: { id: number; name: string }) => {
 };
 
 type NavigateToStepOptions =
-  | { experience: "exploration"; resourceName?: never }
-  | ({ experience: "dashboard" | "chart" } & (
-      | { resourceName: string; skipResourceSelection?: never }
-      | { skipResourceSelection: true }
-    ));
+  | {
+      experience: "exploration" | "metabot";
+      resourceName?: never;
+      preselectSso?: boolean;
+    }
+  | {
+      experience: "dashboard" | "chart" | "browser";
+      resourceName: string;
+      preselectSso?: boolean;
+    };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience } = options;
+  const { experience, preselectSso } = options;
 
   visitNewEmbedPage();
 
   cy.log("select an experience");
 
-  if (experience === "chart") {
-    cy.findByText("Chart").click();
-  } else if (experience === "exploration") {
-    cy.findByText("Exploration").click();
+  const isQuestionOrDashboardExperience =
+    experience === "chart" || experience === "dashboard";
+  const hasEntitySelection =
+    experience !== "exploration" && experience !== "metabot";
+
+  if (preselectSso || !isQuestionOrDashboardExperience) {
+    cy.findByLabelText("Metabase account (SSO)").click();
   }
 
-  // exploration template does not have the entity selection step
-  if (experience !== "exploration") {
+  const labelByExperience = match(experience)
+    .with("chart", () => "Chart")
+    .with("exploration", () => "Exploration")
+    .with("browser", () => "Browser")
+    .with("metabot", () => "Metabot")
+    .otherwise(() => undefined);
+
+  if (labelByExperience) {
+    cy.findByText(labelByExperience).click();
+  }
+
+  // exploration and metabot experience does not have the entity selection step
+  if (hasEntitySelection && options.resourceName) {
     cy.log("navigate to the entity selection step");
+
     getEmbedSidebar().within(() => {
       cy.findByText("Next").click(); // Entity selection step
     });
-  }
-
-  if (experience !== "exploration" && !options.skipResourceSelection) {
-    const { resourceName } = options;
 
     const resourceType = match(experience)
       .with("dashboard", () => "Dashboards")
       .with("chart", () => "Questions")
+      .with("browser", () => "Collections")
       .otherwise(() => "");
 
     cy.log(`searching for ${resourceType} via the picker modal`);
@@ -93,12 +137,17 @@ export const navigateToEntitySelectionStep = (
 
     entityPickerModal().within(() => {
       cy.findByText(resourceType).click();
-      cy.findAllByText(resourceName).first().click();
+      cy.findAllByText(options.resourceName).first().click();
+
+      // Collection picker requires an explicit confirmation.
+      if (experience === "browser") {
+        cy.findByText("Select").click();
+      }
     });
 
     cy.log(`${resourceType} title should be visible by default`);
     getEmbedSidebar().within(() => {
-      cy.findByText(resourceName).should("be.visible");
+      cy.findByText(options.resourceName).should("be.visible");
     });
   }
 };
@@ -117,7 +166,16 @@ export const navigateToGetCodeStep = (options: NavigateToStepOptions) => {
 
   cy.log("navigate to get code step");
   getEmbedSidebar().within(() => {
-    cy.findByText("Get Code").click(); // Get code step
+    cy.findByText("Get code").click(); // Get code step
+  });
+};
+
+export const completeWizard = (options: NavigateToStepOptions) => {
+  navigateToGetCodeStep(options);
+
+  cy.log("complete wizard");
+  getEmbedSidebar().within(() => {
+    cy.findByText("Done").click();
   });
 };
 

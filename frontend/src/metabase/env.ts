@@ -29,11 +29,6 @@ export const isTest = tryOrDefault(
   false,
 );
 
-export const isJest = tryOrDefault(
-  () => process.env.JEST_WORKER_ID !== undefined,
-  false,
-);
-
 export const shouldLogAnalytics = tryOrDefault(
   () => process.env.MB_LOG_ANALYTICS === "true",
   false,

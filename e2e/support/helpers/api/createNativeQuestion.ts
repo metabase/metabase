@@ -1,5 +1,5 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type { Card, DatasetQuery, NativeQuery } from "metabase-types/api";
+import type { Card, LegacyDatasetQuery, NativeQuery } from "metabase-types/api";
 
 import {
   type Options,
@@ -12,7 +12,7 @@ export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
   /**
    * Defaults to SAMPLE_DB_ID.
    */
-  database?: DatasetQuery["database"];
+  database?: LegacyDatasetQuery["database"];
   native: NativeQuery;
 };
 

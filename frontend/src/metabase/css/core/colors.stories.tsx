@@ -13,16 +13,16 @@ const COLOR_NAMES = [
   "--mb-color-summarize",
   "--mb-color-error",
   "--mb-color-danger",
-  "--mb-color-text-dark",
-  "--mb-color-text-medium",
-  "--mb-color-text-light",
-  "--mb-color-bg-black",
-  "--mb-color-bg-dark",
-  "--mb-color-bg-medium",
-  "--mb-color-bg-light",
-  "--mb-color-bg-white",
-  "--mb-color-bg-error",
-  "--mb-color-bg-night",
+  "--mb-color-text-primary",
+  "--mb-color-text-secondary",
+  "--mb-color-text-tertiary",
+  "--mb-color-background-primary-inverse",
+  "--mb-color-background-tertiary-inverse",
+  "--mb-color-background-tertiary",
+  "--mb-color-background-secondary",
+  "--mb-color-background-primary",
+  "--mb-color-background-error",
+  "--mb-color-background-error",
   "--mb-color-shadow",
   "--mb-color-border",
   "--mb-color-filter",
@@ -34,19 +34,18 @@ const COLOR_NAMES = [
   "--mb-color-text-tertiary",
   "--mb-color-text-selected",
   "--mb-color-text-brand",
-  "--mb-color-text-white",
-  "--mb-color-background",
+  "--mb-color-text-primary-inverse",
+  "--mb-color-background-primary",
   "--mb-color-background-selected",
   "--mb-color-background-disabled",
-  "--mb-color-background-inverse",
-  "--mb-color-background-brand",
+  "--mb-color-background-primary-inverse",
   // other colors from css-variables.ts
   "--mb-color-brand-alpha-04",
   "--mb-color-brand-alpha-88",
-  "--mb-color-border-alpha-30",
-  "--mb-color-text-white-alpha-85",
-  "--mb-color-bg-black-alpha-60",
-  "--mb-color-bg-white-alpha-15",
+  "--mb-color-border",
+  "--mb-color-text-primary-inverse",
+  "--mb-color-overlay",
+  "--mb-color-background-primary-alpha-15",
 ];
 
 export function Default() {
@@ -55,6 +54,7 @@ export function Default() {
       {COLOR_NAMES.map((colorName) => {
         return (
           <Card
+            // @ts-expect-error story file
             bg={`var(${colorName})`}
             key={colorName}
             withBorder
@@ -62,7 +62,8 @@ export function Default() {
               flexBasis: "24%",
             }}
           >
-            <Text color="black">{colorName}</Text>
+            {/* @ts-expect-error story file */}
+            <Text c="black">{colorName}</Text>
           </Card>
         );
       })}

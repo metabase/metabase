@@ -7,7 +7,10 @@ import { defaultUser, setup } from "./setup";
 
 describe("EditUserModal - enterprise", () => {
   it("can add a user attribute", async () => {
-    setup({ userData: defaultUser, hasEnterprisePlugins: true });
+    setup({
+      userData: defaultUser,
+      enterprisePlugins: ["sandboxes"],
+    });
 
     const submitButton = await screen.findByText("Update");
     const addAttributeButton = await screen.findByText("Add an attribute");
@@ -25,7 +28,9 @@ describe("EditUserModal - enterprise", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.lastCall("path:/api/user/97", { method: "PUT" });
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
+      method: "PUT",
+    });
     const req = await call?.request?.json();
 
     expect(req).toEqual({
@@ -46,7 +51,7 @@ describe("EditUserModal - enterprise", () => {
         first_name: null,
         last_name: null,
       },
-      hasEnterprisePlugins: true,
+      enterprisePlugins: ["sandboxes"],
     });
 
     const submitButton = await screen.findByText("Update");
@@ -65,7 +70,9 @@ describe("EditUserModal - enterprise", () => {
 
     await userEvent.click(submitButton);
 
-    const call = fetchMock.lastCall("path:/api/user/97", { method: "PUT" });
+    const call = fetchMock.callHistory.lastCall("path:/api/user/97", {
+      method: "PUT",
+    });
     const req = await call?.request?.json();
 
     expect(req).toEqual({

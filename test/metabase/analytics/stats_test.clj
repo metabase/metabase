@@ -8,7 +8,6 @@
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.app-db.core :as mdb]
    [metabase.channel.settings :as channel.settings]
-   [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -89,7 +88,7 @@
 
 (deftest anonymous-usage-stats-test
   (with-redefs [channel.settings/email-configured? (constantly false)
-                slack/slack-configured? (constantly false)]
+                channel.settings/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
@@ -127,7 +126,7 @@
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
     (with-redefs [channel.settings/email-configured? (constantly false)
-                  slack/slack-configured? (constantly false)]
+                  channel.settings/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
@@ -178,6 +177,20 @@
          (let [system-stats (get-in (legacy-anonymous-usage-stats) [:stats :system])]
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
+
+(deftest metrics-anonymous-usage-stats-test
+  (testing "should report the metric count"
+    (mt/with-temp [:model/Card _ {:type :metric}
+                   :model/Card _ {:type :metric :archived true}]
+      (is (=?
+           {:stats {:metric {:metrics 1}}}
+           (legacy-anonymous-usage-stats)))))
+  (testing "should correctly check for the card type"
+    (mt/with-temp [:model/Card _ {:type :question}
+                   :model/Card _ {:type :model}]
+      (is (=?
+           {:stats {:metric {:metrics 0}}}
+           (legacy-anonymous-usage-stats))))))
 
 (defn- bin-large-number
   "Return large bin number. Assumes positive inputs."
@@ -341,41 +354,44 @@
 
 (deftest question-metrics-test
   (testing "Returns metrics for cards using a single sql query"
-    (mt/with-temp [:model/User      u {}
-                   :model/Dashboard d {:creator_id (u/the-id u)}
-                   :model/Card      _ {}
-                   :model/Card      _ {:query_type "native"}
-                   :model/Card      _ {:query_type "gui"}
-                   :model/Card      _ {:public_uuid (str (random-uuid))}
-                   :model/Card      _ {:dashboard_id (u/the-id d)}
-                   :model/Card      _ {:enable_embedding true}
-                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
-                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
-                                       :embedding_params {:category_name "locked" :name_category "disabled"}}
-                   :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
-                                       :dataset_query {:native {:template-tags {:param {:name "param" :display-name "Param" :type :string}}}}
-                                       :embedding_params {:category_name "enabled" :name_category "enabled"}}]
-      (testing "reported metrics for all app db types"
-        (is (malli= [:map
-                     [:questions [:map
-                                  [:total [:= 8]]
-                                  [:native [:= 1]]
-                                  [:gui [:= 1]]
-                                  [:is_dashboard_question [:= 1]]]]
-                     [:public [:map
-                               [:total [:= 3]]]]
-                     [:embedded [:map
-                                 [:total [:= 3]]]]]
-                    (#'stats/question-metrics))))
-      (when (contains? #{:mysql :postgres} (mdb/db-type))
-        (testing "reports json column derived-metrics"
-          (let [reported (#'stats/question-metrics)]
-            (is (= 2 (get-in reported [:questions :with_params])))
-            (is (= 2 (get-in reported [:public :with_params])))
-            (is (= 2 (get-in reported [:embedded :with_params])))
-            (is (= 1 (get-in reported [:embedded :with_enabled_params])))
-            (is (= 1 (get-in reported [:embedded :with_locked_params])))
-            (is (= 1 (get-in reported [:embedded :with_disabled_params])))))))))
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/User      u {}
+                     :model/Dashboard d {:creator_id (u/the-id u)}
+                     :model/Card      _ {}
+                     :model/Card      _ {:query_type "native"}
+                     :model/Card      _ {:query_type "gui"}
+                     :model/Card      _ {:public_uuid (str (random-uuid))}
+                     :model/Card      _ {:dashboard_id (u/the-id d)}
+                     :model/Card      _ {:enable_embedding true}
+                     :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                         :dataset_query    {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query         "SELECT *"
+                                                                       :template-tags {:param {:name "param" :display-name "Param" :type :number}}}}
+                                         :embedding_params {:category_name "locked" :name_category "disabled"}}
+                     :model/Card      _ {:enable_embedding true :public_uuid (str (random-uuid))
+                                         :dataset_query    {:database (mt/id)
+                                                            :type     :native
+                                                            :native   {:query         "SELECT *"
+                                                                       :template-tags {:param {:name "param" :display-name "Param" :type :text}}}}
+                                         :embedding_params {:category_name "enabled" :name_category "enabled"}}]
+        (testing "reported metrics for all app db types"
+          (is (=? {:questions {:total                 8
+                               :native                3
+                               :gui                   1
+                               :is_dashboard_question 1}
+                   :public    {:total 3}
+                   :embedded  {:total 3}}
+                  (#'stats/question-metrics))))
+        (when (contains? #{:mysql :postgres} (mdb/db-type))
+          (testing "reports json column derived-metrics"
+            (let [reported (#'stats/question-metrics)]
+              (is (= 2 (get-in reported [:questions :with_params])))
+              (is (= 2 (get-in reported [:public :with_params])))
+              (is (= 2 (get-in reported [:embedded :with_params])))
+              (is (= 1 (get-in reported [:embedded :with_enabled_params])))
+              (is (= 1 (get-in reported [:embedded :with_locked_params])))
+              (is (= 1 (get-in reported [:embedded :with_disabled_params]))))))))))
 
 (deftest internal-content-metrics-test
   (testing "Internal content doesn't contribute to stats"
@@ -541,14 +557,20 @@
   #{:audit-app ;; tracked under :mb-analytics
     :collection-cleanup
     :development-mode
+    :data-studio
     :embedding
     :embedding-sdk
-    :embedding-iframe-sdk
+    :embedding-simple
+    :embedding-hub
     :enhancements
+    :etl-connections
+    :etl-connections-pg
     :llm-autodescription
     :query-reference-validation
     :cloud-custom-smtp
-    :session-timeout-config})
+    :session-timeout-config
+    :offer-metabase-ai
+    :offer-metabase-ai-tiered})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"
@@ -605,3 +627,21 @@
         (is (= "metabase" (get-in snowplow-settings [3 :value]))))
       (testing "converts boolean changed? to string"
         (is (= "default" (get-in snowplow-settings [4 :value])))))))
+
+(deftest document-metrics-test
+  (mt/with-empty-h2-app-db!
+    (testing "with no documents"
+      (is (=? {:documents {}}
+              (#'stats/document-metrics))))
+    (testing "with documents"
+      (mt/with-temp [:model/Document _ {}
+                     :model/Document _ {:archived true}]
+        (is (=? {:documents {:total 2
+                             :archived 1}}
+                (#'stats/document-metrics)))))))
+
+(deftest transform-metrics-test
+  (testing "ee-transform-metrics should return zeros for OSS"
+    (mt/with-empty-h2-app-db!
+      (is (= {:transforms 0, :transform_runs_last_24h 0}
+             (stats/ee-transform-metrics))))))

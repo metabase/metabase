@@ -56,6 +56,12 @@
                      {:auto_cruft_tables :auto-cruft-tables
                       :auto_cruft_columns :auto-cruft-columns}))
 
+(defn- strip-attached-dwh-update-ks
+  "When using the MB Cloud attached DWH, we don't want all config keys to be set on every restart
+  because the customer might have changed some of them meanwhile."
+  [database]
+  (dissoc database :uploads_enabled :uploads_schema_name :uploads_table_prefix))
+
 (defn- init-from-config-file!
   [database]
   (if (contains? database :delete)
@@ -74,7 +80,8 @@
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
       (if-let [existing-database-id (t2/select-one-pk :model/Database :engine (:engine database), :name (:name database))]
-        (do
+        (let [database (cond-> database
+                         (:is_attached_dwh database) strip-attached-dwh-update-ks)]
           (log/info (u/format-color :blue "Updating Database %s %s" (:engine database) (pr-str (:name database))))
           (t2/update! :model/Database existing-database-id (normalize-settings database)))
         (do

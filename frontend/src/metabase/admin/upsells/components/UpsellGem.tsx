@@ -1,7 +1,13 @@
 import { Icon, type IconProps } from "metabase/ui";
 
-import S from "./Upsells.module.css";
+import S from "./UpsellGem.module.css";
 
 export const UpsellGem = (props: Omit<IconProps, "name" | "color">) => (
-  <Icon size={16} name="gem" className={S.UpsellGem} {...props} />
+  <Icon
+    data-testid="upsell-gem"
+    size={16}
+    name="gem"
+    className={S.UpsellGem}
+    {...props}
+  />
 );

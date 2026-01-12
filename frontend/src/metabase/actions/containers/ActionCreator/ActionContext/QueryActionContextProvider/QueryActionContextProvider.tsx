@@ -194,7 +194,10 @@ function QueryActionContextProvider({
 
   const handleQueryChange = useCallback((nextQuery: NativeQuery) => {
     const nextQuestion = nextQuery.question();
-    const parameters = getTemplateTagParametersFromCard(nextQuestion.card());
+    const parameters = getTemplateTagParametersFromCard(
+      nextQuestion.card(),
+      nextQuestion.metadata(),
+    );
     setQuestion(nextQuestion.setParameters(parameters));
   }, []);
 

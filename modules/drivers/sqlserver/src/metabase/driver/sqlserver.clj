@@ -1,13 +1,15 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
+  (:refer-clojure :exclude [mapv get-in])
   (:require
-   [clojure.data.xml :as xml]
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [clojure.walk :as walk]
+   [clojure.xml :as xml]
    [honey.sql :as sql]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql :as driver.sql]
@@ -16,29 +18,25 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.boolean-to-comparison :as sql.qp.boolean-to-comparison]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [mapv get-in]])
   (:import
-   (java.sql
-    Connection
-    PreparedStatement
-    ResultSet
-    Time)
-   (java.time
-    LocalDate
-    LocalDateTime
-    LocalTime
-    OffsetDateTime
-    OffsetTime
-    ZonedDateTime)
+   (java.sql Connection DatabaseMetaData PreparedStatement ResultSet Time)
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
-   [java.util UUID]))
+   (java.util UUID)
+   (net.sf.jsqlparser.schema Table)
+   (net.sf.jsqlparser.statement.select PlainSelect Select)))
 
 (set! *warn-on-reflection* true)
 
@@ -46,24 +44,30 @@
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
+                              :connection-impersonation-requires-role true
                               :uuid-type                              true
                               :convert-timezone                       true
+                              :rename                                 true
                               :datetime-diff                          true
                               :expression-literals                    true
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
                               :now                                    true
                               :regex                                  false
-                              :test/jvm-timezone-setting              false}]
+                              :test/jvm-timezone-setting              false
+                              :metadata/table-existence-check         true
+                              :transforms/python                      true
+                              :transforms/table                       true
+                              :transforms/index-ddl                   true
+                              :jdbc/statements                        false
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
-(defmethod driver/database-supports? [:sqlserver :connection-impersonation-requires-role]
-  [_driver _feature db]
-  (= (u/lower-case-en (-> db :details :user)) "sa"))
-
-(defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
-  [_ _ db]
-  (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
+(mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
+  [_ _ db :- ::lib.schema.metadata/database]
+  (let [major-version (get-in db [:dbms-version :semantic-version 0] 0)]
     (when (zero? major-version)
       (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
@@ -116,6 +120,28 @@
     :xml              :type/*
     (keyword "int identity") :type/Integer} column-type)) ; auto-incrementing integer (ie pk) field
 
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for SQL Server that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/Boolean [_] [:bit])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:datetime2])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:datetimeoffset])
+(defmethod type->database-type :type/Decimal [_] [:decimal])
+(defmethod type->database-type :type/Float [_] [:float])
+(defmethod type->database-type :type/Integer [_] [:int])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Text [_] [:text])
+(defmethod type->database-type :type/Time [_] [:time])
+(defmethod type->database-type :type/UUID [_] [:uniqueidentifier])
+
+(defmethod driver/type->database-type :sqlserver
+  [_driver base-type]
+  (type->database-type base-type))
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlserver
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
@@ -133,7 +159,7 @@
        ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
        :loginTimeout       10
        ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
-       ;; to specifying them seperately as with jTDS see also:
+       ;; to specifying them separately as with jTDS see also:
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
        :user               (str (when domain (str domain "\\"))
                                 user)
@@ -261,7 +287,7 @@
   [_driver _unit expr]
   (date-part :dayofyear expr))
 
-;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to orignal type
+;; Subtract the number of days needed to bring us to the first day of the week, then convert to back to original type
 (defn- trunc-week
   [expr]
   (let [original-type (if (= "datetimeoffset" (h2x/type-info->db-type (h2x/type-info expr)))
@@ -317,12 +343,60 @@
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
 
+;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
+;; integer overflow errors (especially for millisecond timestamps).
+;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
+;;
+;; NOTE: In SQL Server 2025 (17.x) + this is no longer
+;; true (https://learn.microsoft.com/en-us/sql/t-sql/functions/dateadd-transact-sql?view=sql-server-ver17):
+;;
+;; > In SQL Server 2025 (17.x) Preview, Azure SQL Database, Azure SQL Managed Instance and SQL database in Microsoft
+;; > Fabric Preview, number can be expressed as a bigint. This feature is in preview.
+
+(defn- supports-bigint-date-add? []
+  (some-> (driver-api/metadata-provider)
+          driver-api/database
+          :dbms-version
+          :semantic-version
+          first
+          (>= 17)))
+
+(def ^:private nineteen-seventy (h2x/cast :datetime2 (h2x/literal "1970-01-01 00:00:00.000")))
+
+(defn- unix-timestamp->honeysql [expr unit num-per-minute]
+  (if (supports-bigint-date-add?)
+    (date-add unit expr nineteen-seventy)
+    (->> nineteen-seventy
+         (date-add :minute (h2x// expr num-per-minute))
+         (date-add unit (h2x/mod expr num-per-minute)))))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
-  [_ _ expr]
-  ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
-  ;; integer overflow errors (especially for millisecond timestamps).
-  ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
-  (date-add :minute (h2x// expr 60) (h2x/literal "1970-01-01")))
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :second 60))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :milliseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :millisecond (* 60 1000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :microseconds]
+  [_driver _precision expr]
+  (unix-timestamp->honeysql expr :microsecond (* 60 1000 1000)))
+
+;;; 60 ✕ 10^9 is still larger than `Integer/MAX_VALUE` (i.e., the max value for a 32-bit integer) so it STILL results
+;;; in integer overflows even if we modulo by the number per minute... we actually have to split this up into three
+;;; parts to avoid the overflow.
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :nanoseconds]
+  [_driver _precision expr]
+  (if (supports-bigint-date-add?)
+    (date-add :nanosecond expr nineteen-seventy)
+    (let [num-per-minute (* 60 1000 1000 1000)
+          num-per-second (* 1000 1000 1000)]
+      (->> nineteen-seventy
+           (date-add :minute (h2x// expr num-per-minute))
+           (date-add :second (-> expr
+                                 (h2x/mod num-per-minute)
+                                 (h2x// num-per-second)))
+           (date-add :nanosecond (h2x/mod expr num-per-second))))))
 
 (defmethod sql.qp/float-dbtype :sqlserver
   [_]
@@ -332,7 +406,7 @@
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
   [parsed]
-  (walk/postwalk
+  (perf/postwalk
    (fn [x]
      (if (and (map? x)
               (contains? x :content)
@@ -347,7 +421,7 @@
              I.e {\"Asia/Tokyo\" \"Tokyo Standard Time\"}"}
   zone-id->windows-zone
   (let [parsed (-> (io/resource "timezones/windowsZones.xml")
-                   io/reader
+                   io/input-stream
                    xml/parse)
         sanitized (sanitize-contents parsed)
         data (-> sanitized :content second :content first :content)]
@@ -361,7 +435,8 @@
 (defmethod sql.qp/->honeysql [:sqlserver :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr            (sql.qp/->honeysql driver arg)
-        datetimeoffset? (h2x/is-of-type? expr "datetimeoffset")]
+        datetimeoffset? (or (sql.qp.u/field-with-tz? arg)
+                            (h2x/is-of-type? expr "datetimeoffset"))]
     (sql.u/validate-convert-timezone-args datetimeoffset? target-timezone source-timezone)
     (-> (if datetimeoffset?
           expr
@@ -545,7 +620,7 @@
         (update :order-by distinct))))
 
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :filter]
-  [driver _ honeysql-form query]
+  [driver _k honeysql-form query]
   (let [parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :filter])]
     (->> (update query :filter sql.qp.boolean-to-comparison/boolean->comparison)
          (parent-method driver :filter honeysql-form))))
@@ -774,7 +849,7 @@
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
     (driver-api/replace inner-query
-      ;; remove order by and then recurse in case we need to do more tranformations at another level
+      ;; remove order by and then recurse in case we need to do more transformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))
 
@@ -785,11 +860,6 @@
   [driver inner-query]
   (let [parent-method (get-method sql.qp/preprocess :sql)]
     (fix-order-bys (parent-method driver inner-query))))
-
-;; In order to support certain native queries that might return results at the end, we have to use only prepared
-;; statements (see #9940)
-(defmethod sql-jdbc.execute/statement-supported? :sqlserver [_]
-  false)
 
 ;; SQL server only supports setting holdability at the connection level, not the statement level, as per
 ;; https://docs.microsoft.com/en-us/sql/connect/jdbc/using-holdability?view=sql-server-ver15
@@ -911,7 +981,7 @@
 (defmethod sql.qp/->integer :sqlserver
   [driver value]
   ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
+  ;; if it's a float, conversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (h2x/maybe-cast (sql.qp/integer-dbtype driver)
                   [:round (sql.qp/->float driver value) 0]))
@@ -924,7 +994,7 @@
 (defmethod driver.sql/default-database-role :sqlserver
   [_driver database]
   ;; Use a "role" (sqlserver user) if it exists. Do not fall back to the user
-  ;; field automatically, as it represents the login user which may not be a 
+  ;; field automatically, as it represents the login user which may not be a
   ;; valid database user for impersonation (see issue #60665).
   (let [{:keys [role]} (:details database)]
     role))
@@ -933,3 +1003,77 @@
   [_driver role]
   ;; REVERT to handle the case where the users role attribute has changed
   (format "REVERT; EXECUTE AS USER = '%s';" role))
+
+(defmethod sql-jdbc/impl-table-known-to-not-exist? :sqlserver
+  [_ e]
+  (= (sql-jdbc/get-sql-state e) "S0002"))
+
+(defmethod driver/insert-from-source! [:sqlserver :jsonl-file]
+  [driver db-id {:keys [columns] :as table-definition} {:keys [file]}]
+  (with-open [rdr (io/reader file)]
+    (let [lines (line-seq rdr)
+          data-rows (map (fn [line]
+                           (let [m (json/decode line)]
+                             (mapv (fn [column]
+                                     (let [value (get m (:name column))]
+                                       (if (boolean? value)
+                                         (if value 1 0)
+                                         value)))
+                                   columns)))
+                         lines)]
+      (driver/insert-from-source! driver db-id table-definition {:type :rows :data data-rows}))))
+
+(defmethod driver/compile-transform :sqlserver
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        ^Select parsed-query (macaw/parsed-query sql-query)
+        ^PlainSelect select-body (.getSelectBody parsed-query)]
+    (.setIntoTables select-body [(Table. table-name)])
+    [(str parsed-query) sql-params]))
+
+(defmethod driver/compile-insert :sqlserver
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
+    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+
+(defmethod driver/table-exists? :sqlserver
+  [driver database {:keys [schema name] :as _table}]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [^DatabaseMetaData metadata (.getMetaData conn)
+             ;; SQL Server doesn't have a special escape method, but we should still handle nil
+           schema-name (some->> schema (driver/escape-entity-name-for-metadata driver))
+           table-name (some->> name (driver/escape-entity-name-for-metadata driver))
+             ;; SQL Server uses the database name from the connection, not as a parameter
+           db-name nil]
+       (with-open [rs (.getTables metadata db-name schema-name table-name (into-array String ["TABLE"]))]
+         (.next rs))))))
+
+(defmethod driver/create-schema-if-needed! :sqlserver
+  [driver conn-spec schema]
+  (let [sql [[(format "IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') EXEC('CREATE SCHEMA [%s];');" schema schema)]]]
+    (driver/execute-raw-queries! driver conn-spec sql)))
+
+(defmethod driver/rename-table! :sqlserver
+  [_driver db-id old-table-name new-table-name]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
+      (let [sql (format "EXEC sp_rename '%s', '%s';" (name old-table-name) (name new-table-name))]
+        (.execute stmt sql)))))
+
+(defmethod driver/table-name-length-limit :sqlserver
+  [_driver]
+  ;; https://learn.microsoft.com/en-us/previous-versions/sql/sql-server-2008-r2/ms191240(v=sql.105)#sysname
+  128)
+
+(defmethod sql-jdbc/drop-index-sql :sqlserver [_ schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :sqlserver)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name))
+            (if schema
+              (str (quote-identifier (name schema)) "." (quote-identifier (name table-name)))
+              (quote-identifier (name table-name))))))

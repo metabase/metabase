@@ -41,5 +41,6 @@ export function getIsCompatible(parameters: CompatibilityParameters) {
     datasets,
     fields,
   );
+
   return Object.keys(columnSettingMapping).length > 0;
 }

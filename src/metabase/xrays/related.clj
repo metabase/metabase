@@ -4,11 +4,14 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.models.interface :as mi]
    [metabase.query-processor.util :as qp.util]
+   [metabase.segments.schema :as segments.schema]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [toucan2.core :as t2]))
 
 (def ^:private ^Long max-best-matches        3)
@@ -16,28 +19,22 @@
 (def ^:private ^Long max-matches             (+ max-best-matches
                                                 max-serendipity-matches))
 
-(def ^:private ContextBearingForm
+(mr/def ::context-bearing-form
   [:cat
    [:and
     [:or :string :keyword]
     [:fn
      {:error/message "field, metric, or segment"}
      (comp #{:field :metric :segment}
-           qp.util/normalize-token)]]
+           keyword)]]
    [:* :any]])
-
-(defn- strip-idents [clause]
-  (cond-> clause
-    (mbql.u/is-clause? :field clause) (update 2 dissoc :ident)))
 
 (defn- collect-context-bearing-forms
   [form]
-  (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
-    (into #{}
-          (comp (filter (mr/validator ContextBearingForm))
-                (map #(update % 0 qp.util/normalize-token))
-                (map strip-idents))
-          (tree-seq sequential? identity form))))
+  (into #{}
+        (comp (filter (mr/validator ::context-bearing-form))
+              (map #(update % 0 qp.util/normalize-token)))
+        (tree-seq sequential? identity form)))
 
 (defmulti definition
   "Return the relevant parts of a given entity's definition. Relevant parts are those that carry semantic meaning, and
@@ -45,24 +42,23 @@
   {:arglists '([instance])}
   mi/model)
 
-(defmethod definition :xrays/Metric
-  [metric]
-  (-> metric :definition ((juxt :aggregation :filter))))
+(mu/defmethod definition :xrays/Metric
+  [metric :- ::ads/metric]
+  (-> metric :xrays/aggregation))
 
 (defmethod definition :model/Card
   [card]
   (-> card
       :dataset_query
-      :query
-      ((juxt :breakout :aggregation :expressions :fields))))
+      ((juxt lib/breakouts lib/aggregations lib/expressions lib/fields))))
 
-(defmethod definition :model/Segment
-  [segment]
-  (-> segment :definition :filter))
+(mu/defmethod definition :model/Segment
+  [segment :- [:map [:definition ::segments.schema/segment]]]
+  (-> segment :definition :stages first :filters not-empty))
 
 (defmethod definition :model/Field
   [field]
-  [[:field-id (:id field)]])
+  [[:field {:lib/uuid (str (random-uuid))} (:id field)]])
 
 (defn- similarity
   "How similar are entities `a` and `b` based on a structural comparison of their
@@ -73,9 +69,9 @@
    (more context-bearing forms), so we just check if the less specifc form is a
    subset of the more specific one."
   [a b]
-  (let [context-a (-> a definition collect-context-bearing-forms)
-        context-b (-> b definition collect-context-bearing-forms)
-        overlap (set/intersection context-a context-b)
+  (let [context-a (-> a definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
+        context-b (-> b definition collect-context-bearing-forms lib.schema.util/remove-lib-uuids)
+        overlap (set/intersection (set context-a) (set context-b))
         min-overlap (min (count context-a) (count context-b))]
     (/ (count overlap)
        (max min-overlap 1))))

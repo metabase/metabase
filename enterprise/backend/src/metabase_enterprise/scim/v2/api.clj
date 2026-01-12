@@ -9,7 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.users.models.user :as user]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
@@ -68,7 +68,9 @@
    [:Operations
     [:sequential [:map
                   [:op ms/NonBlankString]
-                  [:value [:or ms/NonBlankString ms/BooleanValue]]]]]])
+                  [:value [:or [:map-of [:or :keyword :string]
+                                [:or ms/NonBlankString ms/BooleanValue]]
+                           ms/NonBlankString ms/BooleanValue]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."
@@ -169,7 +171,7 @@
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
 
-(mu/defn ^:private scim-user->mb :- user/NewUser
+(mu/defn ^:private scim-user->mb :- users.schema/NewUser
   "Given a SCIM user, returns a Metabase user."
   [user]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
@@ -199,6 +201,10 @@
       [:= :%lower.email (u/lower-case-en match)]
       (throw-scim-error 400 (format "Unsupported filter parameter: %s" filter-parameter)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/Users"
   "Fetch a list of users."
   [_route-params
@@ -228,6 +234,10 @@
                           :Resources    (map mb-user->scim hydrated-users)}]
       (scim-response result))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Users/:id" :id #"[^/]+"]
   "Fetch a single user."
   [{:keys [id]} :- [:map
@@ -237,6 +247,10 @@
         (t2/hydrate :scim_user_group_memberships)
         mb-user->scim)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/Users"
   "Create a single user."
   [_route-params
@@ -248,12 +262,16 @@
       (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
         (throw-scim-error 409 "Email address is already in use"))
       (let [new-user (t2/with-transaction [_]
-                       (user/insert-new-user! mb-user)
+                       (t2/insert! :model/User mb-user)
                        (-> (t2/select-one (cons :model/User user-cols)
                                           :email (u/lower-case-en email))
                            mb-user->scim))]
         (scim-response new-user 201)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Users/:id" :id #"[^/]+"]
   "Update a user."
   [{:keys [id]}
@@ -280,6 +298,22 @@
                                :status      400
                                :status-code 400})))))))))
 
+(defn- patch->user-updates
+  [acc path value]
+  (if (and (nil? path) (map? value))
+    (reduce-kv patch->user-updates acc value)
+    (let [path-str (some-> path name)]
+      (case path-str
+        "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
+        "userName"        (assoc acc :email value)
+        "name.givenName"  (assoc acc :first_name value)
+        "name.familyName" (assoc acc :last_name value)
+        (throw-scim-error 400 (format "Unsupported path: %s" path-str))))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :patch ["/Users/:id" :id #"[^/]+"]
   "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
   [{:keys [id]} :- [:map
@@ -292,14 +326,8 @@
             updates (reduce
                      (fn [acc operation]
                        (let [{:keys [op path value]} operation]
-                         (if (= (u/lower-case-en op) "replace")
-                           (case path
-                             "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
-                             "userName"        (assoc acc :email value)
-                             "name.givenName"  (assoc acc :first_name value)
-                             "name.familyName" (assoc acc :last_name value)
-                             (throw-scim-error 400 (format "Unsupported path: %s" path)))
-                           acc)))
+                         (cond-> acc
+                           (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
         (t2/update! :model/User (u/the-id user) updates)
@@ -364,6 +392,10 @@
       (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
                                                       :status-code 400})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/Groups"
   "Fetch a list of groups."
   [_route-params
@@ -395,6 +427,10 @@
                           :Resources    (map mb-group->scim groups)}]
       (scim-response result))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get ["/Groups/:id" :id #"[^/]+"]
   "Fetch a single group."
   [{:keys [id]} :- [:map
@@ -409,12 +445,16 @@
   any existing members."
   [group-id user-entity-ids]
   (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
-    (when-let [memberships (map
-                            (fn [user-id] {:group group-id :user user-id})
-                            user-ids)]
+    (when-let [memberships (not-empty (map
+                                       (fn [user-id] {:group group-id :user user-id})
+                                       user-ids))]
       (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
       (perms/add-users-to-groups! memberships))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/Groups"
   "Create a single group, and populates it if necessary."
   [_route-params
@@ -434,6 +474,10 @@
               mb-group->scim
               (scim-response 201)))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put ["/Groups/:id" :id #"[^/]+"]
   "Update a group."
   [{:keys [id]}
@@ -452,6 +496,10 @@
               mb-group->scim
               scim-response))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete ["/Groups/:id" :id #"[^/]+"]
   "Delete a group."
   [{:keys [id]} :- [:map

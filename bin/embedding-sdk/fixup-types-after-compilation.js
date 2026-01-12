@@ -19,23 +19,28 @@ const REPLACES_MAP = {
   "metabase-lib": "frontend/src/metabase-lib",
   "metabase-types": "frontend/src/metabase-types",
   metabase: "frontend/src/metabase",
-  "embedding-sdk": "enterprise/frontend/src/embedding-sdk",
+  "embedding-sdk-package": "enterprise/frontend/src/embedding-sdk-package",
+  "embedding-sdk-bundle": "frontend/src/embedding-sdk-bundle",
+  "embedding-sdk-shared": "frontend/src/embedding-sdk-shared",
+  "embedding-sdk-ee": "enterprise/frontend/src/embedding-sdk-ee",
   cljs: "target/cljs_release",
 };
 
 const API_EXTRACTOR_CONFIG_PATH = path.join(
   __dirname,
-  "../../enterprise/frontend/src/embedding-sdk/embedding-sdk-api-extractor.json",
+  "../../enterprise/frontend/src/embedding-sdk-package/embedding-sdk-api-extractor.json",
 );
 
 const getLogger = (prefix) => {
+  const verbose = process.env.SDK_FIXUP_VERBOSE_LOGS === "true";
   return {
+    verbose: (message) => verbose && console.log(`[${prefix}] ${message}`),
     log: (message) => console.log(`[${prefix}] ${message}`),
     error: (message) => console.error(`[${prefix}] ${message}`),
   };
 };
 
-const { log } = getLogger("dts fixup");
+const { log, verbose } = getLogger("dts fixup");
 
 const getRelativePath = (fromPath, toPath) => {
   const relativePath = path.relative(path.dirname(fromPath), toPath);
@@ -65,7 +70,7 @@ const replaceAliasedImports = (filePath) => {
   });
 
   fs.writeFileSync(filePath, fileContent, { encoding: "utf-8" });
-  log(`Edited file: ${filePath}`);
+  verbose(`Edited file: ${filePath}`);
 };
 
 const removeUnresolvedReexports = (filePath) => {
@@ -92,7 +97,7 @@ const removeUnresolvedReexports = (filePath) => {
         !fs.existsSync(`${path.resolve(dirPath, target)}.d.ts`);
 
       if (isUnresolved) {
-        log(`Removing unresolved re-export: ${line}`);
+        verbose(`Removing unresolved re-export: ${line}`);
         isModified = true;
       }
 
@@ -115,7 +120,7 @@ const fixupTypesAfterCompilation = ({ isWatchMode }) => {
     removeUnresolvedReexports(filePath);
   });
 
-  log("Done!");
+  console.log("[dts fixup] Done!");
 
   if (!isWatchMode) {
     generateDtsRollup();
@@ -131,7 +136,7 @@ const generateDtsRollup = () => {
   const dtsRollupEntryPointPath = path.resolve(
     path.join(
       __dirname,
-      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk/index.d.ts",
+      "../../resources/embedding-sdk/dist/enterprise/frontend/src/embedding-sdk-package/index.d.ts",
     ),
   );
   const dtsRollupEntryPointPathExist = fs.existsSync(dtsRollupEntryPointPath);
@@ -174,7 +179,7 @@ const generateDtsRollup = () => {
     });
   });
 
-  log("Dts rollup done!");
+  console.log("[dts rollup] Dts rollup done!");
 };
 
 const watchFilesAndFixThem = () => {

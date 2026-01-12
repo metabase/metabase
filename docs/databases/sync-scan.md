@@ -13,7 +13,7 @@ Metabase periodically runs different types of queries on your data warehouse to 
 
 ## Initial sync, scan, and fingerprinting
 
-When Metabase first connects to your database, it performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/field-types.md).
+When Metabase first connects to your database, it performs a [sync](#how-database-syncs-work) to determine the metadata of the columns in your tables and automatically assign each column a [semantic type](../data-modeling/semantic-types.md).
 
 You can follow the progress of these queries from **Gear icon** >**Admin settings** > **Tools** > **Tasks** and filtering by the various sync tasks.
 
@@ -48,9 +48,9 @@ Options include:
 
 - **Regularly, on a schedule** allows you to run [scan queries](#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when someone adds a new filter widget to a dashboard or SQL question (i.e., they add a parameter to their SQL query).
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never really have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large or which never have new values added. Use the [Re-scan field values](#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
-Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#changing-the-filter-widget), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for fourteen days) to populate that dropdown; otherwise, it will re-scan that field for the most up-to-date values.
+Regardless of which option you pick, if you [set a field to use a dropdown list in filter widgets](../data-modeling/metadata-editing.md#filtering), Metabase will need to get values for that dropdown. Whenever someone uses that filter widget, Metabase will first look for cached values (valid for fourteen days) to populate that dropdown; otherwise, it will re-scan that field for the most up-to-date values.
 
 ## Manually syncing tables and columns
 
@@ -115,7 +115,7 @@ To use this endpoint, you must pass a string via the `MB_API_KEY` environment va
 
 We created the `notify` endpoint so that people could tell their Metabase to sync after an [ETL operation](https://www.metabase.com/learn/grow-your-data-skills/data-landscape/etl-landscape) finishes.
 
-See our [API docs](/docs/latest/api.html).
+See our [API docs](../api.html).
 
 ## How database syncs work
 
@@ -133,7 +133,7 @@ LIMIT 0
 
 By default, this query runs against your database during setup and again every hour. This scanning query is fast with most relational databases but can be slower with MongoDB and some [community-built database drivers](../developers-guide/community-drivers.md). Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
-Here's the kind of data that syncs get and why:
+Here's the kind of data that gets synced and why:
 
 | What             | Why                                          |
 | ---------------- | -------------------------------------------- |
@@ -165,15 +165,15 @@ Cached column values are displayed in filter dropdown menus. If people type in t
 
 A scan is more intensive than a sync query, so it only runs once during setup and again once a day by default. If you [disable scans](#scanning-for-filter-values) entirely, you'll need to bring things up to date by running [manual scans](#manually-scanning-column-values).
 
-To reduce the number of tables and fields Metabase needs to scan in order to stay current with your connected database, Metabase will only scan values for fields that someone has used in the last fourteen days.
+To reduce the number of tables and fields Metabase needs to scan to stay current with your connected database, Metabase will only scan values for fields that someone has used in the last fourteen days.
 
 Here's the kind of data that scans get and why:
 
-| What                                           | Why                                      |
-| ---------------------------------------------- | ---------------------------------------- |
-| Distinct values for category fields            | Dropdown filter UI instead of text entry |
-| Cached values for active fields                | Improves filter UI experience            |
-| Advanced field values (with filtering context) | Values when the data is sandboxed        |
+| What                                           | Why                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| Distinct values for category fields            | Dropdown filter UI instead of text entry                     |
+| Cached values for active fields                | Improves filter UI experience                                |
+| Advanced field values (with filtering context) | Values when the data is restricted by row or column security |
 
 ## Periodically refingerprint tables
 

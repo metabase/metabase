@@ -5,7 +5,7 @@ import {
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { createThunkAction } from "metabase/lib/redux";
 import { CardApi } from "metabase/services";
 import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-behavior";

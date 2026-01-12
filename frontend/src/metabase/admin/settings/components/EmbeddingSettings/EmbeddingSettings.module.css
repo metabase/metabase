@@ -1,0 +1,9 @@
+.SectionCard {
+  border-radius: 8px;
+  border: 1px solid var(--mb-color-border);
+  background: var(--mb-color-background-primary);
+}
+
+.CardLinksSection {
+  border-top: 1px solid var(--mb-color-border);
+}

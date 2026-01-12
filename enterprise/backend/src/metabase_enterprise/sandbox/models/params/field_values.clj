@@ -1,8 +1,7 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require
    [metabase-enterprise.sandbox.api.table :as table]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
-    :as row-level-restrictions]
+   [metabase-enterprise.sandbox.query-processor.middleware.sandboxing :as sandboxing]
    [metabase.api.common :as api]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -19,20 +18,20 @@
   ;; back to fetching it manually with `field/table`
   (table/only-sandboxed-perms? (or table (field/table field))))
 
-(defn- table-id->gtap
+(defn- table-id->sandbox
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
   (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        gtaps     (t2/select :model/GroupTableAccessPolicy
+        sandboxes (t2/select :model/Sandbox
                              :group_id [:in group-ids]
                              :table_id table-id)]
-    (when gtaps
-      (row-level-restrictions/assert-one-gtap-per-table gtaps)
-      ;; there shold be only one gtap per table and we only need one table here
+    (when sandboxes
+      (sandboxing/assert-one-sandbox-per-table sandboxes)
+      ;; there should be only one gtap per table and we only need one table here
       ;; see docs in [[metabase.permissions.models.permissions]] for more info
-      (t2/hydrate (first gtaps) :card))))
+      (t2/hydrate (first sandboxes) :card))))
 
-(defn- field->gtap-attributes-for-current-user
+(defn- field->sandbox-attributes-for-current-user
   "Returns the gtap attributes for current user that applied to `field`.
 
   The gtap-attributes is a list with 2 elements:
@@ -52,14 +51,14 @@
 
   ;; (field-id->gtap-attributes-for-current-user (t2/select-one Field :id 3))
   ;; -> [1, {\"State\" \"CA\"}]"
-  [{:keys [table_id] :as _field}]
-  (when-let [gtap (table-id->gtap table_id)]
-    (let [login-attributes     (:login_attributes @api/*current-user*)
-          attribute_remappings (:attribute_remappings gtap)
-          field-ids            (t2/select-fn-set :id :model/Field :table_id table_id)]
-      [(:card_id gtap)
-       (-> gtap :card :updated_at)
-       (if (= :native (get-in gtap [:card :query_type]))
+  [{table-id :table_id, :as _field}]
+  (when-let [sandbox (table-id->sandbox table-id)]
+    (let [login-attributes     (api/current-user-attributes)
+          attribute_remappings (:attribute_remappings sandbox)
+          field-ids            (t2/select-fn-set :id :model/Field :table_id table-id)]
+      [(:card_id sandbox)
+       (-> sandbox :card :updated_at)
+       (if (= :native (get-in sandbox [:card :query_type]))
          ;; For sandbox that uses native query, we can't narrow down to the exact attribute
          ;; that affect the current table. So we just hash the whole login-attributes of users.
          ;; This makes hashing a bit less efficient but it ensures that user get a new hash
@@ -80,4 +79,4 @@
   :feature :sandboxes
   [field]
   (when (field-is-sandboxed? field)
-    {:sandbox-attributes (field->gtap-attributes-for-current-user field)}))
+    {:sandbox-attributes (field->sandbox-attributes-for-current-user field)}))

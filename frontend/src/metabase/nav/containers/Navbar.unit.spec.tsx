@@ -117,14 +117,12 @@ describe("nav > containers > Navbar > Core App", () => {
     expect(screen.queryByTestId("main-navbar-root")).not.toBeInTheDocument();
   });
 
-  ["question/1", "model/1", "dashboard/1", "embed-iframe"].forEach(
-    (pathname) => {
-      it(`should be hidden on initial load for a ${pathname}`, async () => {
-        await setup({ pathname: `/${pathname}` });
-        await expectNavbarClosed();
-      });
-    },
-  );
+  ["question/1", "model/1", "dashboard/1"].forEach((pathname) => {
+    it(`should be hidden on initial load for a ${pathname}`, async () => {
+      await setup({ pathname: `/${pathname}` });
+      await expectNavbarClosed();
+    });
+  });
 
   it("should hide when visiting a question", async () => {
     const store = await setup({ pathname: "/" });

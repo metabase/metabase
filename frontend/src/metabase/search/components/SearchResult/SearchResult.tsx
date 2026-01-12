@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import { useDispatch } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { modelToUrl } from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import type { WrappedResult } from "metabase/search/types";
@@ -35,6 +36,9 @@ export function SearchResult({
   className,
   index,
   context = "search-app",
+  searchEngine,
+  searchRequestId,
+  searchTerm,
 }: {
   result: WrappedResult;
   compact?: boolean;
@@ -44,6 +48,9 @@ export function SearchResult({
   className?: string;
   index: number;
   context?: SearchContext;
+  searchEngine?: string;
+  searchRequestId?: string;
+  searchTerm?: string;
 }) {
   const { name, model, description, moderated_status }: WrappedResult = result;
 
@@ -84,8 +91,17 @@ export function SearchResult({
       onClick(result);
       return;
     }
-    trackSearchClick("item", index, context);
-    onChangeLocation(result.getUrl());
+    trackSearchClick({
+      itemType: "item",
+      position: index,
+      context,
+      searchEngine: searchEngine || "unknown",
+      requestId: searchRequestId,
+      entityModel: result.model,
+      entityId: typeof result.id === "number" ? result.id : null,
+      searchTerm,
+    });
+    onChangeLocation(modelToUrl(result));
   };
 
   return (
@@ -113,7 +129,7 @@ export function SearchResult({
             role="heading"
             data-testid="search-result-item-name"
             truncate
-            href={!onClick ? result.getUrl() : undefined}
+            href={!onClick ? modelToUrl(result) : undefined}
           >
             {name}
           </ResultTitle>

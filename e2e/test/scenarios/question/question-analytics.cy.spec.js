@@ -1,6 +1,6 @@
 const { H } = cy;
 
-H.describeWithSnowplow("scenarios > question > snowplow", () => {
+describe("scenarios > question > snowplow", () => {
   describe("chart_generated", () => {
     const generateNonTableVisualization = () => {
       cy.visit("/");

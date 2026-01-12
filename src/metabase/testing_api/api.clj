@@ -47,6 +47,10 @@
     (jdbc/query {:datasource (mdb/app-db)} ["SCRIPT TO ?" path]))
   :ok)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/snapshot/:name"
   "Snapshot the database for testing purposes."
   [{snapshot-name :name} :- [:map
@@ -118,15 +122,23 @@
           (mdb/migrate! (mdb/app-db) :up)))))
   :ok)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/restore/:name"
   "Restore a database snapshot for testing purposes."
   [{snapshot-name :name} :- [:map
                              [:name ms/NonBlankString]]]
   (.clear ^Queue @#'search.ingestion/queue)
   (restore-snapshot! snapshot-name)
-  (search/reindex!)
+  (search/reindex! {:async? false})
   nil)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/echo"
   "Simple echo hander. Fails when you POST with `?fail=true`."
   [_route-params
@@ -139,6 +151,10 @@
     {:status 200
      :body body}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/set-time"
   "Make java-time see world at exact time."
   [_route-params
@@ -156,6 +172,10 @@
     {:result (if clock :set :reset)
      :time   (t/instant)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/echo"
   "Simple echo hander. Fails when you GET with `?fail=true`."
   [_route-params
@@ -168,6 +188,10 @@
     {:status 200
      :body (json/decode+kw body)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/mark-stale"
   "Mark the card or dashboard as stale"
   [_route-params
@@ -188,6 +212,10 @@
       "card"      (t2/update! :model/Card :id id {:last_used_at date})
       "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/stats"
   "Triggers a send of instance usage stats"
   []
@@ -199,6 +227,10 @@
   metabase-enterprise.cache.task.refresh-cache-configs
   [])
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/refresh-caches"
   "Manually triggers the cache refresh task, if Enterprise code is available."
   []

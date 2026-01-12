@@ -1,0 +1,29 @@
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* +1 for DataGrid `headerContainer` (which has z-index: 2) */
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  color: var(--mb-color-brand);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-background-primary) 75%,
+    transparent
+  );
+  transition:
+    opacity 0.5s,
+    background-color 0.5s;
+}
+
+.message {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--mb-color-brand);
+}

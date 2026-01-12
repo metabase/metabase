@@ -1,10 +1,10 @@
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 
+import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import { BodyCell } from "metabase/data-grid/components/BodyCell/BodyCell";
 import { reactNodeToHtmlString } from "metabase/lib/react-to-html";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { ThemeProvider } from "metabase/ui";
 
 import { DEFAULT_FONT_SIZE } from "../constants";
 import type { DataGridTheme } from "../types";
@@ -29,6 +29,7 @@ export const useCellMeasure = (
     return (
       <div
         ref={rootRef}
+        data-element-id="data-grid-measure-root"
         style={{
           position: "absolute",
           top: "-9999px",
@@ -98,11 +99,7 @@ export const useBodyCellMeasure = (theme?: DataGridTheme) => {
   } = useCellMeasure(bodyCellToMeasure, "[data-grid-cell-content]");
 
   const measureRoot = useMemo(
-    () => (
-      <EmotionCacheProvider>
-        <ThemeProvider>{measureBodyCellRoot}</ThemeProvider>
-      </EmotionCacheProvider>
-    ),
+    () => createPortal(measureBodyCellRoot, getPortalRootElement()),
     [measureBodyCellRoot],
   );
 

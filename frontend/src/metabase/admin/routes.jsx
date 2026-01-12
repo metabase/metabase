@@ -1,14 +1,15 @@
 import { Fragment } from "react";
-import { IndexRedirect, IndexRoute, Redirect } from "react-router";
+import { IndexRedirect, IndexRoute, Redirect, Route } from "react-router";
 import { t } from "ttag";
 
 import AdminApp from "metabase/admin/app/components/AdminApp";
-import { DatabaseConnectionModal } from "metabase/admin/databases/containers/DatabaseConnectionModal";
 import { DatabaseEditApp } from "metabase/admin/databases/containers/DatabaseEditApp";
 import { DatabaseListApp } from "metabase/admin/databases/containers/DatabaseListApp";
+import { DatabasePage } from "metabase/admin/databases/containers/DatabasePage";
 import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
 import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
 import SegmentListApp from "metabase/admin/datamodel/containers/SegmentListApp";
+import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -20,6 +21,11 @@ import { UserPasswordResetModal } from "metabase/admin/people/containers/UserPas
 import { UserSuccessModal } from "metabase/admin/people/containers/UserSuccessModal";
 import { PerformanceApp } from "metabase/admin/performance/components/PerformanceApp";
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
+import {
+  EmbeddingSecuritySettings,
+  EmbeddingSettings,
+  GuestEmbedsSettings,
+} from "metabase/admin/settings/components/EmbeddingSettings";
 import { Help } from "metabase/admin/tools/components/Help";
 import { JobInfoApp } from "metabase/admin/tools/components/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tools/components/JobTriggersModal";
@@ -32,15 +38,19 @@ import {
 import { TaskModal } from "metabase/admin/tools/components/TaskModal";
 import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
+import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
-import { DataModel } from "metabase/metadata/pages/DataModel";
+import { isEEBuild } from "metabase/lib/utils";
+import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
+  PLUGIN_SUPPORT,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -48,11 +58,15 @@ import { StrategyEditorForDatabases } from "./performance/components/StrategyEdi
 import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
+import {
+  RedirectToAllowedSettings,
+  createAdminRouteGuard,
+  createTenantsRouteGuard,
+} from "./utils";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route path="/admin" component={CanAccessSettings}>
-    <Route title={t`Admin`} component={AdminApp}>
+    <Route component={AdminApp}>
       <IndexRoute component={RedirectToAllowedSettings} />
       <Route
         path="databases"
@@ -60,37 +74,39 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         component={createAdminRouteGuard("databases")}
       >
         <IndexRoute component={DatabaseListApp} />
-        <Route component={DatabaseListApp}>
-          <Route component={IsAdmin}>
-            <ModalRoute path="create" modal={DatabaseConnectionModal} noWrap />
-          </Route>
+        <Route component={IsAdmin}>
+          <Route path="create" component={DatabasePage} />
         </Route>
+        <Route path=":databaseId/edit" component={DatabasePage} />
         <Route path=":databaseId" component={DatabaseEditApp}>
-          <ModalRoute path="edit" modal={DatabaseConnectionModal} noWrap />
           {PLUGIN_DB_ROUTING.getDestinationDatabaseRoutes(IsAdmin)}
         </Route>
       </Route>
       <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Table Metadata`}>
           <IndexRedirect to="database" />
-          <Route path="database" component={DataModel} />
-          <Route path="database/:databaseId" component={DataModel} />
+          <Route path="database" component={DataModelV1} />
+          <Route path="database/:databaseId" component={DataModelV1} />
           <Route
             path="database/:databaseId/schema/:schemaId"
-            component={DataModel}
+            component={DataModelV1}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId"
-            component={DataModel}
+            component={DataModelV1}
           />
           <Route
             path="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-            component={DataModel}
+            component={DataModelV1}
           />
-          <Route component={DataModel}>
+          <Route component={DataModelV1}>
             <Route path="segments" component={SegmentListApp} />
-            <Route path="segment/create" component={SegmentApp} />
-            <Route path="segment/:id" component={SegmentApp} />
+            <Route path="segment/create" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
+            <Route path="segment/:id" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
             <Route
               path="segment/:id/revisions"
               component={RevisionHistoryApp}
@@ -117,8 +133,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <Route path=":groupId" component={GroupDetailApp} />
           </Route>
 
+          {/* Tenants */}
+          <Route path="tenants" component={createTenantsRouteGuard()}>
+            {PLUGIN_TENANTS.tenantsRoutes}
+          </Route>
+
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />
+            {PLUGIN_TENANTS.userStrategyRoute}
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
@@ -134,6 +156,65 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           </Route>
         </Route>
       </Route>
+
+      {/* EMBEDDING */}
+      <Route path="embedding" component={createAdminRouteGuard("embedding")}>
+        <Route title={t`Embedding`} component={AdminEmbeddingApp}>
+          <IndexRoute component={EmbeddingSettings} />
+
+          <Route
+            path="setup-guide"
+            title={t`Setup guide`}
+            component={EmbeddingHubAdminSettingsPage}
+          />
+
+          {isEEBuild() && (
+            <>
+              <Route
+                path="guest"
+                title={t`Unauthenticated embeds`}
+                component={GuestEmbedsSettings}
+              />
+
+              <Route
+                path="security"
+                title={t`Security`}
+                component={EmbeddingSecuritySettings}
+              />
+            </>
+          )}
+        </Route>
+      </Route>
+
+      {/* EE has all embedding settings on the same page */}
+      {!isEEBuild() && (
+        <>
+          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
+
+          <Redirect from="/admin/embedding/security" to="/admin/embedding" />
+        </>
+      )}
+
+      {/* Backwards compatibility for embedding settings */}
+      <Redirect from="/admin/embedding/modular" to="/admin/embedding" />
+      <Redirect from="/admin/embedding/interactive" to="/admin/embedding" />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications"
+        to="/admin/embedding"
+      />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications/full-app"
+        to="/admin/embedding"
+      />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications/standalone"
+        to="/admin/embedding/guest"
+      />
+      <Redirect
+        from="/admin/settings/embedding-in-other-applications/sdk"
+        to="/admin/embedding"
+      />
+
       {/* SETTINGS */}
       <Route path="settings" component={createAdminRouteGuard("settings")}>
         {getSettingsRoutes()}
@@ -142,6 +223,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
       </Route>
+
       {/* PERFORMANCE */}
       <Route
         path="performance"
@@ -166,7 +248,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
         </Route>
       </Route>
-      {PLUGIN_METABOT.AdminRoute}
+      {PLUGIN_METABOT.getAdminRoutes()}
       <Route path="tools" component={createAdminRouteGuard("tools")}>
         <Route title={t`Tools`} component={ToolsApp}>
           <IndexRedirect to="help" />
@@ -185,7 +267,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           >
             <ModalRoute path=":jobId" modal={ModelCacheRefreshJobModal} />
           </Route>
-          <Route path="help" component={Help} />
+          <Route path="help" component={Help}>
+            {PLUGIN_SUPPORT.isEnabled && (
+              <ModalRoute
+                modal={PLUGIN_SUPPORT.GrantAccessModal}
+                path="grant-access"
+              />
+            )}
+          </Route>
           <Route path="tasks" component={TasksApp}>
             <ModalRoute
               path=":taskId"
@@ -213,6 +302,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               }}
             />
           </Route>
+          {PLUGIN_DEPENDENCIES.isEnabled && (
+            <Route
+              path="dependencies"
+              component={PLUGIN_DEPENDENCIES.DependencyGraphPage}
+            />
+          )}
         </Route>
       </Route>
     </Route>

@@ -9,6 +9,7 @@ import type {
   Card,
   ConcreteFieldReference,
   Join,
+  LegacyDatasetQuery,
   NativeDatasetQuery,
   StructuredDatasetQuery,
   TemplateTag,
@@ -58,7 +59,7 @@ import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
-type TestCard = Card | UnsavedCard;
+type TestCard = Card<LegacyDatasetQuery> | UnsavedCard<LegacyDatasetQuery>;
 
 type SetupOpts = {
   card: TestCard;
@@ -104,7 +105,7 @@ function getModelVirtualTable(card: Card) {
     db_id: SAVED_QUESTIONS_DB.id,
     name: card.name,
     display_name: card.name,
-    fields: card.result_metadata,
+    fields: card.result_metadata ?? [],
   });
 }
 
@@ -185,7 +186,6 @@ async function setup({
 
 const REVIEW_JOIN_CLAUSE: Join = {
   alias: "Products",
-  ident: "gxyP-LOf7Zn96z8IWueoH",
   condition: [
     "=",
     ["field", ORDERS.ID, null],

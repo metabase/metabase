@@ -3,11 +3,10 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
@@ -54,12 +53,29 @@
              :query    {:source-query {:source-table 1}
                         :fields       [[:field 2 nil]
                                        [:field 3 {:temporal-unit :month}]]
-                        :aggregation  [[:count]]}}))))
+                        :aggregation  [[:count]]}})))))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-2
   (testing ":field clause"
     (are [clause expected] (=? expected
                                (lib.convert/->pMBQL (lib.convert/->pMBQL clause)))
       [:field 2 nil]                     [:field {:lib/uuid string?} 2]
       [:field 3 {:temporal-unit :month}] [:field {:lib/uuid string?, :temporal-unit :month} 3])))
+
+(deftest ^:parallel ->pMBQL-idempotency-test-3
+  (testing "Calling ->pMBQL on something already MBQL 5 should no-op instead of adding duplicate options maps"
+    (let [clause [[:=
+                   {:lib/uuid "1cb124b0-757f-4717-b8ee-9cf12a7c3f62"}
+                   [:field
+                    {:lib/uuid "a2eb96a0-420b-4465-817d-f3c9f789eff4"}
+                    (meta/id :users :id)]
+                   [:field
+                    {:base-type  :type/Integer
+                     :join-alias "checkins_by_user"
+                     :lib/uuid   "b23a769d-774a-4eb5-8fb8-1f6a33c9a8d5"}
+                    "USER_ID"]]]]
+      (is (= clause
+             (lib.convert/->pMBQL clause))))))
 
 (deftest ^:parallel ->pMBQL-joins-test
   (is (=? {:lib/type :mbql/query
@@ -71,7 +87,6 @@
                        :joins       [{:lib/type    :mbql/join
                                       :lib/options {:lib/uuid string?}
                                       :alias       "CATEGORIES__via__CATEGORY_ID"
-                                      :ident       string?
                                       :conditions  [[:=
                                                      {:lib/uuid string?}
                                                      [:field
@@ -90,7 +105,6 @@
             :query    {:source-table (meta/id :categories)
                        :fields [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                        :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                                 :ident        (u/generate-nano-id)
                                  :source-table (meta/id :venues)
                                  :condition    [:=
                                                 [:field (meta/id :venues :category-id) nil]
@@ -122,13 +136,11 @@
                   :type     :query
                   :query    {:source-table (meta/id :categories)
                              :joins        [{:source-table (meta/id :venues)
-                                             :ident        "lc83lcERitfJeaWZ_KIjl"
                                              :condition    [:=
                                                             [:field (meta/id :venues :category-id) nil]
                                                             [:field (meta/id :categories :id) nil]]
                                              :strategy     :left-join}
                                             {:source-table (meta/id :checkins)
-                                             :ident        "SaMKTxObUc0lg3ea4MTlK"
                                              :condition    [:=
                                                             [:field (meta/id :venues :id) nil]
                                                             [:field (meta/id :checkins :venue-id) nil]]
@@ -139,7 +151,6 @@
                          :joins    [{:lib/type    :mbql/join
                                      :lib/options {:lib/uuid string?}
                                      :alias       "__join"
-                                     :ident       "lc83lcERitfJeaWZ_KIjl"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
                                                     [:field
@@ -154,7 +165,6 @@
                                     {:lib/type    :mbql/join
                                      :lib/options {:lib/uuid string?}
                                      :alias       "__join_2"
-                                     :ident       "SaMKTxObUc0lg3ea4MTlK"
                                      :conditions  [[:=
                                                     {:lib/uuid string?}
                                                     [:field
@@ -175,7 +185,6 @@
     (is (=? {:lib/type :mbql/query
              :stages   [{:lib/type     :mbql.stage/mbql
                          :joins        [{:alias       "Cat"
-                                         :ident       "wVMxAr29_-JXf2hByuPOt"
                                          :fields      [[:field {:lib/uuid string?, :join-alias "Cat"} 1]]
                                          :conditions  [[:=
                                                         {:lib/uuid string?}
@@ -193,7 +202,6 @@
               :type     :query
               :query    {:joins        [{:source-table 3
                                          :alias        "Cat"
-                                         :ident        "wVMxAr29_-JXf2hByuPOt"
                                          :condition    [:= [:field 2 nil] [:field 2 nil]]
                                          :fields       [[:field 1 {:join-alias "Cat"}]]}]
                          :limit        1
@@ -276,11 +284,11 @@
     (is (= original
            (lib.convert/->legacy-MBQL (lib.convert/->pMBQL original))))))
 
-(defn- test-round-trip [query]
-  (testing (str "original =\n" (u/pprint-to-str query))
-    (let [converted (lib.convert/->pMBQL query)]
-      (testing (str "\npMBQL =\n" (u/pprint-to-str converted))
-        (is (= query
+(defn- test-round-trip [x]
+  (testing (str "original =\n" (u/pprint-to-str x))
+    (let [converted (lib.convert/->pMBQL x)]
+      (testing (str "\nMBQL 5 =\n" (u/pprint-to-str converted))
+        (is (= x
                (lib.convert/->legacy-MBQL converted)))))))
 
 (deftest ^:parallel round-trip-test
@@ -337,7 +345,6 @@
      :query    {:source-table 224
                 :fields [[:field 23101 {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                 :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
-                          :ident        (u/generate-nano-id)
                           :source-table 23040
                           :condition    [:=
                                          [:field 23402 nil]
@@ -354,7 +361,6 @@
      :type     :query
      :query    {:joins        [{:source-table 3
                                 :alias        "Cat"
-                                :ident        (u/generate-nano-id)
                                 :condition    [:= [:field 2 nil] [:field 2 nil]]
                                 :fields       [[:field 1 {:join-alias "Cat"}]]}]
                 :limit        1
@@ -396,8 +402,7 @@
     {:database 1
      :type     :query
      :query    {:source-table 224
-                :expressions {"a" [:value 1 {:base_type :type/Integer}]}
-                :expression-idents {"a" (u/generate-nano-id)}}}
+                :expressions {"a" [:value 1 {:base_type :type/Integer}]}}}
 
     ;; card__<id> source table syntax.
     {:database 1
@@ -418,17 +423,14 @@
                                                       [[[:= [:expression "Additional Information Capture"] "None"]
                                                         "No"]]
                                                       {:default "Yes"}]}
-             :expression-idents {"Additional Information Capture" (u/generate-nano-id)
-                                 "Additional Info Present"        (u/generate-nano-id)}
              :filter [:= [:field 518086 nil] "active"]
              :aggregation [[:aggregation-options
                             [:share [:= [:expression "Additional Info Present"] "Yes"]]
-                            {:name "Additional Information", :display-name "Additional Information"}]]
-             :aggregation-idents {0 (u/generate-nano-id)}}}))
+                            {:name "Additional Information", :display-name "Additional Information"}]]}}))
 
 (deftest ^:parallel round-trip-literal-expression-test
   ;; Some cases of literal expressions are already covered in round-trip-test, above.
-  (are [query] (test-round-trip query)
+  (are [x] (test-round-trip x)
     [:value false {:base_type :type/Boolean}]
 
     [:value true nil]
@@ -458,13 +460,9 @@
              :source-card-id 1301
              :source-query {:source-table 224
                             :expressions {"a" [:value 1 nil]
-                                          "b" [:value false nil]}
-                            :expression-idents {"a" (u/generate-nano-id)
-                                                "b" (u/generate-nano-id)}}
+                                          "b" [:value false nil]}}
              :expressions {"c" [:value "cee" nil]
-                           "d" [:value 1.23 nil]}
-             :expression-idents {"c" (u/generate-nano-id)
-                                 "d" (u/generate-nano-id)}}
+                           "d" [:value 1.23 nil]}}
      :type :query}
 
     {:database 1
@@ -476,14 +474,7 @@
                               "d" [:value false nil]
                               "e" [:value 2.71828 nil]
                               "f" [:value "foo" nil]
-                              "g" [:value "" nil]}
-                :expression-idents {"a" (u/generate-nano-id)
-                                    "b" (u/generate-nano-id)
-                                    "c" (u/generate-nano-id)
-                                    "d" (u/generate-nano-id)
-                                    "e" (u/generate-nano-id)
-                                    "f" (u/generate-nano-id)
-                                    "g" (u/generate-nano-id)}}}
+                              "g" [:value "" nil]}}}
 
     {:type :query
      :database 5
@@ -501,22 +492,16 @@
                                                  [[[:expression "literal expression"]
                                                    "No"]]
                                                  {:default "Yes"}]}
-             :expression-idents {"literal expression" (u/generate-nano-id)
-                                 "coalesce"           (u/generate-nano-id)
-                                 "case expression 1"  (u/generate-nano-id)
-                                 "case expression 2"  (u/generate-nano-id)}
              :filter [:= [:field 518086 nil] [:expression "literal expression"]]
              :aggregation [[:aggregation-options
                             [:share [:= [:expression "literal expression"] true]]
-                            {:name "Additional Information", :display-name "Additional Information"}]]
-             :aggregation-idents {0 (u/generate-nano-id)}}}))
+                            {:name "Additional Information", :display-name "Additional Information"}]]}}))
 
 (deftest ^:parallel round-trip-literal-expression-test-2
   (are [literal] (test-round-trip {:database 1
                                    :type     :query
                                    :query    {:source-table 224
-                                              :expressions {"a" [:value literal nil]}
-                                              :expression-idents {"a" (u/generate-nano-id)}}})
+                                              :expressions {"a" [:value literal nil]}}})
     true
     false
     0
@@ -536,9 +521,7 @@
                          :query    (merge {:source-table 224
                                            :filter       filter-expression}
                                           (when (seq expressions)
-                                            {:expressions expressions
-                                             :expression-idents (update-vals expressions
-                                                                             (fn [_] (u/generate-nano-id)))}))})
+                                            {:expressions expressions}))})
     {} [:value true nil]
 
     {} [:value false nil]
@@ -570,8 +553,7 @@
                                      [:= [:field 1972 nil] "Run Query"]
                                      [:time-interval [:field 1974 nil] -30 :day]
                                      [:!= [:field 1973 nil] "(not set)" "url"]]
-                            :breakout [[:field 1973 nil]]
-                            :breakout-idents {0 (u/generate-nano-id)}}}))
+                            :breakout [[:field 1973 nil]]}}))
 
 (deftest ^:parallel round-trip-aggregation-options-test
   (testing ":aggregation-options on a non-aggregate expression with an inner aggregate"
@@ -580,21 +562,16 @@
       :query {:aggregation [[:aggregation-options
                              [:- [:sum [:field 1677 nil]] 41]
                              {:name "Sum-41"}]]
-              :aggregation-idents {0 (u/generate-nano-id)}
               :breakout [[:field 1677 nil]]
-              :breakout-idents {0 (u/generate-nano-id)}
               :source-table 517}
       :type :query}))
-
   (testing ":aggregation-options nested, not at the top level under :aggregation"
     (test-round-trip
      {:database 194
       :query {:aggregation [[:- [:aggregation-options
                                  [:sum [:field 1677 nil]]
                                  {:name "Sum-41"}] 41]]
-              :aggregation-idents {0 (u/generate-nano-id)}
               :breakout [[:field 1677 nil]]
-              :breakout-idents {0 (u/generate-nano-id)}
               :source-table 517}
       :type :query}))
 
@@ -610,7 +587,6 @@
                             :metabase.query-processor.util.add-alias-info/desired-alias "avg"
                             :metabase.query-processor.util.add-alias-info/position 1
                             :metabase.query-processor.util.add-alias-info/source-alias "avg"}]]
-            :aggregation-idents {0 (u/generate-nano-id)}
             :source-table 224}
     :type :query}))
 
@@ -618,55 +594,54 @@
   (test-round-trip
    {:database 1
     :type     :query
-    :query    {:source-table       2
-               :aggregation        [[:count]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :breakout           [[:field 14 {:temporal-unit :month}]]
-               :breakout-idents    {0 (u/generate-nano-id)}
-               :order-by           [[:asc [:aggregation 0]]]}}))
+    :query    {:source-table 2
+               :aggregation  [[:count]]
+               :breakout     [[:field 14 {:temporal-unit :month}]]
+               :order-by     [[:asc [:aggregation 0]]]}}))
 
 (deftest ^:parallel round-trip-aggregation-with-case-test
   (test-round-trip
    {:database 2762
     :type     :query
-    :query    {:aggregation        [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :breakout           [[:field 139658 nil]]
-               :breakout-idents    {0 (u/generate-nano-id)}
-               :limit              4
-               :source-table       33674}}))
+    :query    {:aggregation  [[:sum [:case [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+               :breakout     [[:field 139658 nil]]
+               :limit        4
+               :source-table 33674}}))
 
 (deftest ^:parallel round-trip-aggregation-with-if-test
   (test-round-trip
    {:database 2762
     :type     :query
-    :query    {:aggregation        [[:sum [:if [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :breakout           [[:field 139658 nil]]
-               :breakout-idents    {0 (u/generate-nano-id)}
-               :limit              4
-               :source-table       33674}}))
+    :query    {:aggregation  [[:sum [:if [[[:< [:field 139657 nil] 2] [:field 139657 nil]]] {:default 0}]]]
+               :breakout     [[:field 139658 nil]]
+               :limit        4
+               :source-table 33674}}))
 
 (deftest ^:parallel round-trip-in-test
   (test-round-trip
    {:database 2762
     :type     :query
-    :query    {:expressions        {"a" [:case [[[:in [:field 1 nil] 1 2], "A"]] {:default "B"}]}
-               :expression-idents  {"a" (u/generate-nano-id)}
-               :filter             [:not-in [:field 2 nil] 3 4]
-               :aggregation        [[:sum-where
-                                     [:field 3 nil]
-                                     [:in [:field 4 nil] 5 6]]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :limit              4
-               :source-table       33674}}))
+    :query    {:expressions  {"a" [:case [[[:in [:field 1 nil] 1 2], "A"]] {:default "B"}]}
+               :filter       [:not-in [:field 2 nil] 3 4]
+               :aggregation  [[:sum-where
+                               [:field 3 nil]
+                               [:in [:field 4 nil] 5 6]]]
+               :limit        4
+               :source-table 33674}}))
 
 (deftest ^:parallel round-trip-aggregation-with-metric-test
   (test-round-trip
    {:database 1
-    :query    {:aggregation        [[:+ [:metric 82] 1]]
-               :aggregation-idents {0 (u/generate-nano-id)}
-               :source-table       1}
+    :query    {:aggregation  [[:+ [:metric 82] 1]]
+               :source-table 1}
+    :type     :query}))
+
+;; TODO (Tamas 2026-01-05): Remove this test once FE tests switch to using MBQL5
+(deftest ^:parallel round-trip-aggregation-with-measure-test
+  (test-round-trip
+   {:database 1
+    :query    {:aggregation  [[:+ [:measure 82] 1]]
+               :source-table 1}
     :type     :query}))
 
 (deftest ^:parallel unclean-stage-round-trip-test
@@ -675,7 +650,6 @@
             [{:database 7
               :type :query
               :query {:joins [{:alias "__join"
-                               :ident (u/generate-nano-id)
                                :strategy :left-join
                                :condition [:= [:field 388 nil] 1]
                                :source-table 44}]
@@ -693,7 +667,7 @@
               :query {:limit 2
                       :fields [[:field 350 {:base-type :type/Text :join-alias "Card 2 - Category"}]
                                [:field "count" {:base-type :type/Integer}]
-                               [:field 350 {:join-alias "Card 2 - Category"}]]
+                               [:field 351 {:join-alias "Card 2 - Category"}]]
                       :joins [{:fields [[:field 350 {:join-alias "Card 2 - Category"}]]
                                :source-metadata [{:semantic_type :type/Category
                                                   :table_id 45
@@ -711,7 +685,6 @@
                                                                                    :average-length 6.375}}}
                                                   :base_type :type/Text}]
                                :alias "Card 2 - Category"
-                               :ident (u/generate-nano-id)
                                :strategy :left-join
                                :source-query/model? false
                                :qp/stage-had-source-card 2
@@ -720,7 +693,6 @@
                                            [:field 350 {:base-type :type/Text, :join-alias "Card 2 - Category"}]]
                                :source-query {:source-table 45
                                               :breakout [[:field 350 {:base-type :type/Text}]]
-                                              :breakout-idents {0 (u/generate-nano-id)}
                                               :qp/stage-is-from-source-card 2
                                               :order-by [[:asc [:field 350 {:base-type :type/Text}]]]}}]
                       :source-query {:qp/stage-had-source-card 1
@@ -729,13 +701,10 @@
                                               [:field "count" {:base-type :type/Integer}]]
                                      :source-query {:source-table 42
                                                     :breakout [[:field 350 {:base-type :type/Text, :join-alias "Products"}]]
-                                                    :breakout-idents {0 (u/generate-nano-id)}
                                                     :aggregation [[:count]]
-                                                    :aggregation-idents {0 (u/generate-nano-id)}
                                                     :qp/stage-is-from-source-card 1
                                                     :order-by [[:asc [:field 350 {:base-type :type/Text, :join-alias "Products"}]]]
                                                     :joins [{:alias "Products"
-                                                             :ident (u/generate-nano-id)
                                                              :strategy :left-join
                                                              :condition [:=
                                                                          [:field 382 {:base-type :type/Integer}]
@@ -743,7 +712,6 @@
                                                                                       :join-alias "Products"}]]
                                                              :source-table 45}
                                                             {:alias "People - User"
-                                                             :ident (u/generate-nano-id)
                                                              :strategy :left-join
                                                              :condition [:=
                                                                          [:field 381 {:base-type :type/Integer}]
@@ -830,13 +798,10 @@
           {:database 1
            :type :query
            :query {:expressions       {"CC" [:+ 1 1]}
-                   :expression-idents {"CC" "exuIJ7he_3lxD2CrB_OHJ"}
                    :limit 10
                    :source-query {:source-table 2
                                   :aggregation [aggregation-options-clause]
-                                  :aggregation-idents {0 "kqEYvcz6DgjWt7pAEEn2L"}
-                                  :breakout [[:field 15 {:temporal-unit :month}]]
-                                  :breakout-idents {0 "XGXJEWDAONPUw_dgVtLuR"}}}
+                                  :breakout [[:field 15 {:temporal-unit :month}]]}}
            :parameters []}
           pmbql-aggregation-options-clause
           (lib.convert/->pMBQL aggregation-options-clause)]
@@ -865,7 +830,7 @@
                               :display_name    "ID"
                               :base_type       :type/Integer}]}
 
-                 :metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/original-metadata
+                 :metabase-enterprise.sandbox.query-processor.middleware.sandboxing/original-metadata
                  [{:base-type       :type/Text
                    :semantic-type   :type/Category
                    :table-id        32600
@@ -879,7 +844,7 @@
                    :field-ref       [:field 134551 {:source-field 134534}]
                    :fk-field-id     134534
                    :fingerprint     {:global {:distinct-count 4, :nil% 0.0}
-                                     :type   {:type/text {:percent-json   0.0
+                                     :type   {:type/Text {:percent-json   0.0
                                                           :percent-url    0.0
                                                           :percent-email  0.0
                                                           :percent-state  0.0
@@ -940,7 +905,6 @@
   (is (nil? (-> {:database 5
                  :type :query
                  :query {:joins [{:source-table 3
-                                  :ident        "9GV0U_XzEn3x6ukpT-SGW"
                                   ;; Invalid condition makes the join invalid
                                   :condition [:= [:field 2 nil] [:xfield 2 nil]]}]
                          :source-table 4}}
@@ -949,7 +913,6 @@
   (is (nil? (-> {:database 5
                  :type :query
                  :query {:joins [{:source-table 3
-                                  :ident        "9GV0U_XzEn3x6ukpT-SGW"
                                   :condition [:= [:field 2 nil] [:field 2 nil]]
                                   ;; Invalid field, the join is still valid
                                   :fields [[:xfield 2 nil]]}]
@@ -1068,7 +1031,6 @@
                  :query    {:aggregation  [[:aggregation-options
                                             [:sum [:field 100 {:source-table 12, :source-alias "TOTAL"}]]
                                             {:name "sum"}]]
-                            :aggregation-idents {0 (u/generate-nano-id)}
                             :order-by     [[:asc [:aggregation 0 {:desired-alias "sum", :position 1}]]
                                            [:asc
                                             [:field 99 {:source-table  12
@@ -1155,73 +1117,43 @@
       {:lib/uuid "d5149080-5e1c-4643-9264-bf4a82116abd", :name "my_offset"})))
 
 (deftest ^:parallel cumulative-count-test
-  (is (=? (m/dissoc-in (lib.tu.macros/mbql-query
-                         venues
-                         {:source-table $$venues
-                          :aggregation [[:aggregation-options
-                                         [:cum-count [:field %id {:base-type :type/BigInteger}]]
-                                         {:name "count"}]]})
-                       [:query :aggregation-idents])
-          (m/dissoc-in (lib.convert/->legacy-MBQL
-                        (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                            (lib/aggregate (lib.options/update-options
-                                            (lib/cum-count (meta/field-metadata :venues :id))
-                                            assoc :name "count"))))
-                       [:query :aggregation-idents]))))
+  (is (=? (lib.tu.macros/mbql-query
+            venues
+            {:source-table $$venues
+             :aggregation [[:aggregation-options
+                            [:cum-count [:field %id {:base-type :type/BigInteger}]]
+                            {:name "count"}]]})
+          (lib.convert/->legacy-MBQL
+           (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+               (lib/aggregate (lib.options/update-options
+                               (lib/cum-count (meta/field-metadata :venues :id))
+                               assoc :name "count")))))))
 
 (deftest ^:parallel cumulative-aggregations-in-expression-test
-  (is (=?  (m/dissoc-in (lib.tu.macros/mbql-query
-                          venues
-                          {:source-table $$venues
-                           :aggregation [[:aggregation-options
-                                          [:+
-                                           [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
-                                           [:aggregation-options [:cum-count] {:name "b"}]]
-                                          {:name "xixix"}]]})
-                        [:query :aggregation-idents])
-           (m/dissoc-in (lib.convert/->legacy-MBQL
-                         (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
-                             (lib/aggregate (lib.options/update-options
-                                             (lib/+ (lib.options/update-options
-                                                     (lib/cum-sum (meta/field-metadata :venues :id))
-                                                     assoc :name "a")
-                                                    (lib.options/update-options
-                                                     (lib/cum-count)
-                                                     assoc :name "b"))
-                                             assoc :name "xixix"))))
-                        [:query :aggregation-idents]))))
-
-(deftest ^:parallel blank-queries-test
-  (testing "minimal legacy"
-    (testing "native queries"
-      (let [query {:type :native}]
-        (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
-        (testing "pass the pMBQL schema after conversion"
-          (is (nil? (->> query
-                         lib.convert/->pMBQL
-                         (mr/explain ::lib.schema/query)))))
-        (testing "round trip to pMBQL and back with small changes"
-          (is (= query
-                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))
-    (testing "MBQL queries"
-      (let [query {:type :query}]
-        (testing "pass the legacy schema"
-          (is (mbql.s/valid-query? query)))
-        (testing "pass the pMBQL schema after conversion"
-          (is (nil? (->> query
-                         lib.convert/->pMBQL
-                         (mr/explain ::lib.schema/query)))))
-        (testing "round trip to pMBQL and back with small changes"
-          (is (= query
-                 (lib.convert/->legacy-MBQL (lib.convert/->pMBQL query)))))))))
+  (is (=?  (lib.tu.macros/mbql-query
+             venues
+             {:source-table $$venues
+              :aggregation [[:aggregation-options
+                             [:+
+                              [:aggregation-options [:cum-sum [:field %id {:base-type :type/BigInteger}]] {:name "a"}]
+                              [:aggregation-options [:cum-count] {:name "b"}]]
+                             {:name "xixix"}]]})
+           (lib.convert/->legacy-MBQL
+            (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                (lib/aggregate (lib.options/update-options
+                                (lib/+ (lib.options/update-options
+                                        (lib/cum-sum (meta/field-metadata :venues :id))
+                                        assoc :name "a")
+                                       (lib.options/update-options
+                                        (lib/cum-count)
+                                        assoc :name "b"))
+                                assoc :name "xixix")))))))
 
 (deftest ^:parallel round-trip-expression-literal-test
   (are [literal] (test-round-trip {:database 1
                                    :type     :query
                                    :query    {:source-table 224
-                                              :expressions {"a" [:value literal nil]}
-                                              :expression-idents {"a" (u/generate-nano-id)}}})
+                                              :expressions {"a" [:value literal nil]}}})
     true
     false
     0
@@ -1241,7 +1173,6 @@
                   :query    {:source-table (meta/id :categories)
                              :fields       [[:field (meta/id :categories :name) {:join-alias "CATEGORIES__via__CATEGORY_ID"}]]
                              :joins        [{:alias           "CATEGORIES__via__CATEGORY_ID"
-                                             :ident           (u/generate-nano-id)
                                              :source-table    (meta/id :venues)
                                              :condition       [:=
                                                                [:field (meta/id :venues :category-id) nil]
@@ -1287,6 +1218,26 @@
   (is (=? [:datetime {:lib/uuid string?} ""]
           (lib.convert/->pMBQL [:datetime ""]))))
 
+(deftest ^:parallel ->pMBQL-relative-datetime-test
+  (testing "Convert legacy relative-datetime with string unit to pMBQL with keyword unit"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :quarter]
+            (lib.convert/->pMBQL [:relative-datetime -1 "quarter"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :month]
+            (lib.convert/->pMBQL [:relative-datetime -1 "month"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} 0 :day]
+            (lib.convert/->pMBQL [:relative-datetime 0 "day"]))))
+  (testing "Convert legacy relative-datetime with keyword unit to pMBQL"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1 :quarter]
+            (lib.convert/->pMBQL [:relative-datetime -1 :quarter]))))
+  (testing "Convert legacy relative-datetime without unit to pMBQL"
+    (is (=? [:relative-datetime {:lib/uuid string?} -1]
+            (lib.convert/->pMBQL [:relative-datetime -1]))))
+  (testing "Convert legacy relative-datetime with :current amount"
+    (is (=? [:relative-datetime {:lib/uuid string?} :current :month]
+            (lib.convert/->pMBQL [:relative-datetime :current "month"])))
+    (is (=? [:relative-datetime {:lib/uuid string?} :current]
+            (lib.convert/->pMBQL [:relative-datetime :current])))))
+
 (deftest ^:parallel ->legacy-MBQL-test
   (is (= [:datetime 10 {:mode :unix-seconds}]
          (lib.convert/->legacy-MBQL [:datetime {:mode :unix-seconds, :lib/uuid "5016882d-8dbf-4271-ab60-4dc96a595ca9"} 10])))
@@ -1304,3 +1255,422 @@
         legacy-query (lib.convert/->legacy-MBQL query)]
     (is (= legacy-query
            (-> legacy-query lib.convert/->pMBQL lib.convert/->legacy-MBQL)))))
+
+(deftest ^:parallel join-native-source-query->legacy-test
+  (testing "join :source-query should rename :query to :native for native stages"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/mbql
+                             :joins    [{:lib/type   :mbql/join
+                                         :alias      "c"
+                                         :conditions [[:=
+                                                       {:lib/uuid "43813e7b-ebf7-4278-8ab4-af23be9ffc0d"}
+                                                       [:field
+                                                        {:lib/uuid "b8ad483b-1ff8-4979-bb3e-c006fe5caf46"}
+                                                        61325]
+                                                       [:field
+                                                        {:base-type :type/BigInteger, :join-alias "c", :lib/uuid "3000ef3f-a190-4f47-88df-404150748352"}
+                                                        "ID"]]]
+                                         :stages     [{:lib/type :mbql.stage/native
+                                                       :query    "SELECT * FROM categories WHERE name = ?;"
+                                                       :params   ["BBQ"]}
+                                                      {:lib/type :mbql.stage/mbql}]}]}]}]
+      (is (=? {:type  :query
+               :query {:joins [{:alias        "c"
+                                :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
+                                :source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                               :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel do-not-do-nasty-stuff-to-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33030
+                                         :expressions  {"date-column"   [:field 33302 nil]
+                                                        "number-column" [:field 33300 nil]}
+                                         :parameters   [{:type   :date/range
+                                                         :value  "2019-09-29~2023-09-29"
+                                                         :target [:dimension [:expression "date-column"]]}
+                                                        {:type   :category
+                                                         :value  1
+                                                         :target [:dimension [:expression "number-column"]]}]}}}]
+    (is (=? {:lib/type :mbql/query
+             :stages   [{:lib/type    :mbql.stage/mbql
+                         :expressions [[:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "date-column"}
+                                        pos-int?]
+                                       [:field
+                                        {:lib/uuid            string?
+                                         :lib/expression-name "number-column"}
+                                        pos-int?]]
+                         :parameters  [{:type :date/range, :value "2019-09-29~2023-09-29", :target [:dimension [:expression "date-column"]]}
+                                       {:type :category, :value 1, :target [:dimension [:expression "number-column"]]}]}
+                        {:lib/type :mbql.stage/mbql}]}
+            (lib/->pMBQL query)))
+    (is (=? query
+            (-> query lib/->pMBQL lib/->legacy-MBQL)))))
+
+;;; TODO (Cam 8/8/25) -- mentioned in `->pMBQL` for `:mbql/join` but we don't even actually ever attach `:parameters`
+;;; to a join's top-level IRL, so this not something we ACTUALLY need to support.
+(deftest ^:parallel join-parameters-test
+  (let [query {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-table 33010
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]
+                                          :parameters   [{:type   :category
+                                                          :target [:field 33101 nil]
+                                                          :value  "BBQ"}]}]}}]
+    (is (=? {:stages   [{:source-table 33040}
+                        {:joins [{:alias      "c"
+                                  :parameters (symbol "nil #_\"key is not present.\"")
+                                  :conditions [[:=
+                                                {}
+                                                [:field {} 33402]
+                                                [:field {:join-alias "c"} 33100]]]
+                                  :lib/type   :mbql/join
+                                  :stages     [{:lib/type     :mbql.stage/mbql
+                                                :source-table 33010
+                                                :parameters   [{:type   :category
+                                                                :target [:field 33101 nil]
+                                                                :value  "BBQ"}]}]}]}]
+             :database 33001}
+            (lib/->pMBQL query)))
+    (testing "round-trip to legacy should leave join parameters in the :source-query"
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:source-query {:source-table 33040}
+                          :aggregation  [[:count]]
+                          :joins        [{:source-query {:source-table 33010
+                                                         :parameters   [{:type   :category
+                                                                         :target [:field 33101 nil]
+                                                                         :value  "BBQ"}]}
+                                          :alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 nil]
+                                                         [:field 33100 {:join-alias "c"}]]}]}}
+              (-> query lib/->pMBQL lib/->legacy-MBQL))))))
+
+(deftest ^:parallel join-parameters-test-2
+  (testing "If join has top-level :parameters and its source query has :parameters, splice them together"
+    (let [query {:database 33001
+                 :type     :query
+                 :query    {:aggregation  [[:count]]
+                            :joins        [{:source-query {:source-table 33010
+                                                           :parameters   [{:name "id", :type :category, :target [:field 33100 nil], :value 5}]}
+                                            :alias        "c"
+                                            :condition    [:= [:field 33402 nil] [:field 33100 {:join-alias "c"}]]
+                                            :parameters   [{:type "category", :target [:field 33101 nil], :value "BBQ"}]}]
+                            :source-table 33040}}]
+      (is (=? {:stages [{:joins [{:alias      "c"
+                                  :stages     [{:parameters [{:name "id", :type :category, :target [:field 33100 nil], :value 5}
+                                                             {:type :category, :target [:field 33101 nil], :value "BBQ"}]}]
+                                  :parameters (symbol "nil #_\"key is not present.\"")}]}]}
+              (lib/->pMBQL query))))))
+
+(deftest ^:parallel convert-join-with-filters-test
+  (testing "A join whose sole stage has :filters should get converted to a join with a :source-query (QUE-1566)"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :joins        [{:alias      "c"
+                                             :conditions [[:=
+                                                           {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                           [:field
+                                                            {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                             :base-type :type/Integer}
+                                                            33402]
+                                                           [:field
+                                                            {:join-alias "c"
+                                                             :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                             :base-type  :type/BigInteger}
+                                                            33100]]]
+                                             :lib/type   :mbql/join
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 33010
+                                                           :filters      [[:=
+                                                                           {:lib/uuid "cba9a408-5f66-4ae2-83a9-bdaca23ef878"}
+                                                                           [:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]
+                                                                           "BBQ"]]}]}]
+                             :source-table 33040}]
+                 :database 33001}]
+      (is (=? {:database 33001
+               :type     :query
+               :query    {:joins        [{:alias        "c"
+                                          :condition    [:=
+                                                         [:field 33402 {:base-type :type/Integer}]
+                                                         [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                          :source-query {:source-table 33010
+                                                         :filter       [:= [:field 33101 nil] "BBQ"]}
+                                          :source-table (symbol "nil #_\"key is not present.\"")
+                                          :filter       (symbol "nil #_\"key is not present.\"")}]
+                          :source-table 33040}}
+              (lib/->legacy-MBQL query))))))
+
+(deftest ^:parallel convert-join-with-fields-test
+  (let [query {:lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :joins        [{:alias      "c"
+                                           :conditions [[:=
+                                                         {:lib/uuid "4822482b-727b-471b-8d18-973d87861522"}
+                                                         [:field
+                                                          {:lib/uuid  "c68f5bbf-a45a-4a28-b235-a60dcb2d73be"
+                                                           :base-type :type/Integer}
+                                                          33402]
+                                                         [:field
+                                                          {:join-alias "c"
+                                                           :lib/uuid   "d0f55447-6941-4c7a-a192-a37d87ea0111"
+                                                           :base-type  :type/BigInteger}
+                                                          33100]]]
+                                           :lib/type   :mbql/join
+                                           :stages     [{:lib/type     :mbql.stage/mbql
+                                                         :source-table 33010
+                                                         :fields       [[:field {:lib/uuid "7d4cb0c9-f7ec-4712-8fe7-4d06e9a3944a"} 33101]]}]}]
+                           :source-table 33040}]
+               :database 33001}]
+    (is (=? {:database 33001
+             :type     :query
+             :query    {:joins        [{:alias        "c"
+                                        :condition    [:=
+                                                       [:field 33402 {:base-type :type/Integer}]
+                                                       [:field 33100 {:join-alias "c", :base-type :type/BigInteger}]]
+                                        :source-query {:source-table 33010
+                                                       :fields       [[:field 33101 nil]]}}]
+                        :source-table 33040}}
+            (lib/->legacy-MBQL query)))))
+
+(deftest ^:parallel join-native-source-query->legacy-test-2
+  (testing "join :source-query should rename :query to :native for native stages"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type :mbql.stage/mbql
+                             :joins    [{:lib/type   :mbql/join
+                                         :alias      "c"
+                                         :conditions [[:=
+                                                       {:lib/uuid "43813e7b-ebf7-4278-8ab4-af23be9ffc0d"}
+                                                       [:field
+                                                        {:lib/uuid "b8ad483b-1ff8-4979-bb3e-c006fe5caf46"}
+                                                        61325]
+                                                       [:field
+                                                        {:base-type :type/BigInteger, :join-alias "c", :lib/uuid "3000ef3f-a190-4f47-88df-404150748352"}
+                                                        "ID"]]]
+                                         :stages     [{:lib/type :mbql.stage/native
+                                                       :native   "SELECT * FROM categories WHERE name = ?;"
+                                                       :params   ["BBQ"]}]}]}]}]
+      (is (=? {:type  :query
+               :query {:joins [{:alias        "c"
+                                :condition    [:= [:field 61325 nil] [:field "ID" {:base-type :type/BigInteger, :join-alias "c"}]]
+                                :source-query {:native "SELECT * FROM categories WHERE name = ?;"
+                                               :params ["BBQ"]}}]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel metadata-roundtrip-test
+  (testing "Do not convert lib keys to snake_case when converting metadata"
+    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                              lib/append-stage)
+          columns         (lib/returned-columns query)
+          test-cases      [{:mbql-5-path  [:stages 0 :lib/stage-metadata :columns]
+                            :mbql-4-path  [:query :source-metadata]
+                            :mbql-4-shape :legacy}
+                           {:mbql-5-path  [:info :metadata/model-metadata]
+                            :mbql-4-path  [:info :metadata/model-metadata]
+                            :mbql-4-shape :lib}
+                           {:mbql-5-path  [:info :pivot/result-metadata]
+                            :mbql-4-path  [:info :pivot/result-metadata]
+                            :mbql-4-shape :lib}]
+          expected-shapes {:legacy [{:name                     "ID"
+                                     :base_type                :type/BigInteger
+                                     :lib/desired-column-alias "ID"}
+                                    {:name                     "NAME"
+                                     :base_type                :type/Text
+                                     :lib/desired-column-alias "NAME"
+                                     :fingerprint              {:global {}
+                                                                :type   {:type/Text {}}}}]
+                           :lib    [{:name                     "ID"
+                                     :base-type                :type/BigInteger
+                                     :lib/desired-column-alias "ID"}
+                                    {:name                     "NAME"
+                                     :base-type                :type/Text
+                                     :lib/desired-column-alias "NAME"
+                                     :fingerprint              {:global {}
+                                                                :type   {:type/Text {}}}}]}]
+      (testing "5 => 4"
+        (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
+          (testing (pr-str mbql-5-path)
+            (let [query (assoc-in query mbql-5-path columns)]
+              (is (=? (assoc-in {} mbql-4-path (expected-shapes mbql-4-shape))
+                      (lib.convert/->legacy-MBQL query)))))))
+      (testing "4 => 5"
+        (doseq [{:keys [mbql-5-path mbql-4-path mbql-4-shape]} test-cases]
+          (testing (pr-str mbql-4-path)
+            (let [query (-> {:database 1, :type :query, :query {:source-query {}}}
+                            (assoc-in mbql-4-path (case mbql-4-shape
+                                                    :lib    columns
+                                                    :legacy (#'lib.convert/stage-metadata->legacy-metadata {:columns columns}))))]
+              (is (=? (assoc-in {:stages [{} {}]} mbql-5-path (expected-shapes :lib))
+                      (lib.convert/->pMBQL query))))))))))
+
+(deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test
+  (testing "converting a join whose last stage has :fields to legacy should not stomp on join :field (QUE-1603)"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :joins        [{:lib/type :mbql/join
+                                             :alias    "J"
+                                             :stages   [{:lib/type     :mbql.stage/mbql
+                                                         :source-table 2
+                                                         :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                        [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :fields   [[:field {:lib/uuid "00000000-0000-0000-0000-000000000003", :join-alias "J"} 1]]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000004"} 1 2]]}]}]}]
+      (is (= {:type  :query
+              :query {:source-table 1
+                      :joins        [{:alias        "J"
+                                      :source-query {:source-table 2
+                                                     :fields       [[:field 1 nil]
+                                                                    [:field 2 nil]]}
+                                      :fields       [[:field 1 {:join-alias "J"}]]
+                                      :condition    [:= 1 2]}]}}
+             (lib.convert/->legacy-MBQL query)
+             ;; make sure roundtripping doesn't introduce extra stages.
+             (-> query
+                 lib.convert/->legacy-MBQL
+                 lib.convert/->pMBQL
+                 lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel join-with-fields-in-last-stage-to-legacy-test-2
+  (testing "converting a join whose last stage has :fields to legacy should put :fields in :source-query even if join does not have :fields"
+    (let [query {:lib/type :mbql/query
+                 :stages   [{:lib/type     :mbql.stage/mbql
+                             :source-table 1
+                             :joins        [{:lib/type   :mbql/join
+                                             :alias      "J"
+                                             :stages     [{:lib/type     :mbql.stage/mbql
+                                                           :source-table 2
+                                                           :fields       [[:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} 1]
+                                                                          [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 2]]}]
+                                             :conditions [[:= {:lib/uuid "00000000-0000-0000-0000-000000000003"} 1 2]]}]}]}]
+      (is (= {:type  :query
+              :query {:source-table 1
+                      :joins        [{:alias        "J"
+                                      :source-query {:source-table 2
+                                                     :fields       [[:field 1 nil]
+                                                                    [:field 2 nil]]}
+                                      :condition    [:= 1 2]}]}}
+             (lib.convert/->legacy-MBQL query)
+             ;; make sure roundtripping doesn't introduce extra stages.
+             (-> query
+                 lib.convert/->legacy-MBQL
+                 lib.convert/->pMBQL
+                 lib.convert/->legacy-MBQL))))))
+
+(deftest ^:parallel do-not-add-extra-stages-to-join-test
+  (is (=? {:stages [{:source-table 45060
+                     :joins        [{:alias  "PRODUCTS__via__PRODUCT_ID"
+                                     :stages [{:source-table 45050
+                                               :fields       [[:field {:base-type :type/BigInteger} 45500]
+                                                              [:field {:base-type :type/Text} 45507]]}]}]}]}
+          (lib.convert/->pMBQL {:database 45001
+                                :type     :query
+                                :query    {:source-table 45060
+                                           :joins        [{:strategy     :left-join
+                                                           :alias        "PRODUCTS__via__PRODUCT_ID"
+                                                           :fk-field-id  45607
+                                                           :condition    [:=
+                                                                          [:field 45607 nil]
+                                                                          [:field 45500 {:join-alias "PRODUCTS__via__PRODUCT_ID"}]]
+                                                           :source-query {:source-table 45050
+                                                                          :fields       [[:field 45500 {:base-type :type/BigInteger}]
+                                                                                         [:field 45507 {:base-type :type/Text}]]}}]}}))))
+
+(deftest ^:parallel mongo-native-query->legacy-test
+  (testing "Don't fail if we run into MongoDB :projections that sorta look like aggregation clauses"
+    (let [query {:lib/type     :mbql/query
+                 :stages       [{:lib/type    :mbql.stage/native
+                                 :projections [:count]
+                                 :collection  "venues"
+                                 :native      [{"$project" {"price" "$price"}}
+                                               {"$match" {"price" {"$eq" 1}}}
+                                               {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                               {"$sort" {"_id" 1}}
+                                               {"$project" {"_id" false, "count" true}}]}]
+                 :database     (meta/id)
+                 :lib/metadata meta/metadata-provider}]
+      (is (=? {:native {:projections [:count]}}
+              (lib.convert/->legacy-MBQL query))))))
+
+(deftest ^:parallel between-with-options->legacy-test
+  (is (= [:between
+          [:field 72922 {:base-type :type/Text}]
+          [:relative-datetime -15 :day]
+          [:relative-datetime 0 :day]]
+         (lib.convert/->legacy-MBQL [:between
+                                     {:include-current true,
+                                      :lib/uuid        "b8991b40-d452-4922-8768-b07f6f2b1918"}
+                                     [:field
+                                      {:base-type :type/Text
+                                       :lib/uuid  "408cebeb-4511-4e3f-87c4-bc9d9cb84eca"}
+                                      72922]
+                                     [:relative-datetime
+                                      {:lib/uuid "4eeca5bb-1614-48d1-8bfd-30c91dd4f546"}
+                                      -15
+                                      :day]
+                                     [:relative-datetime
+                                      {:lib/uuid "85a69d68-a2df-4c22-8a45-2203c837d3bf"}
+                                      0
+                                      :day]]))))
+
+(deftest ^:parallel and-or-with-options->legacy-test
+  (doseq [tag [:and :or]]
+    (is (= [tag
+            [:starts-with [:field 243 {:base-type :type/Text}] "B" {:case-sensitive false}]
+            [:starts-with [:field 243 {:base-type :type/Text}] "C" {:case-sensitive false}]]
+           (lib.convert/->legacy-MBQL
+            [tag
+             {:lib/uuid "fd823910-ffc9-4508-a6af-fa37fe29514d", :case-sensitive false}
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "dc413cb8-429d-4103-aaa4-06e3d3bf0a4d"}
+              [:field {:base-type :type/Text, :lib/uuid "b94a285d-32a5-45ad-a261-d4c67f1af8db", :effective-type :type/Text} 243]
+              "B"]
+             [:starts-with
+              {:case-sensitive false, :lib/uuid "92c8ee03-6bc6-45c9-865c-57d0c5d53e23"}
+              [:field {:base-type :type/Text, :lib/uuid "044811f6-9e30-4c42-b5b6-6afde5031675", :effective-type :type/Text} 243]
+              "C"]])))))
+
+(deftest ^:parallel field-name-ref-to-legacy-never-remove-base-type-test
+  (testing "never remove :base-type from a :field name ref regardless of :metabase.lib.query/transformation-added-base-type"
+    (is (= [:field "USER_ID" {:base-type :type/Integer, :join-alias "ord1"}]
+           (lib.convert/->legacy-MBQL [:field {:lib/uuid                                          "47afe974-396c-4213-8736-859399ba5e7e"
+                                               :base-type                                         :type/Integer
+                                               :join-alias                                        "ord1"
+                                               :metabase.lib.query/transformation-added-base-type true}
+                                       "USER_ID"])))))
+
+(deftest ^:parallel dimension->mbql5-test
+  (is (=? [:dimension
+           {:stage-number 0, :lib/uuid string?}
+           [:field {:base-type :type/BigInteger, :lib/uuid string?} 49]]
+          (lib.convert/->pMBQL [:dimension [:field 49 {:base-type :type/BigInteger}] {:stage-number 0}]))))
+
+(deftest ^:parallel ->legacy-MBQL-idempotence-test
+  (let [query {:database 1493
+               :type     :query
+               :query    {:aggregation  [[:count]]
+                          :breakout     [[:field 76313 {:source-field 76299}]]
+                          :source-table 11759
+                          :expressions  {"TestColumn" [:+ 1 1]}}}]
+    (is (= query
+           (lib.convert/->legacy-MBQL query)))))
+
+(deftest ^:parallel case-schema-aggregation-test
+  (is (= [:aggregation-options
+          [:case
+           [[[:< [:aggregation 0 {:base-type :type/Float}] 0.591] "60%"]]]
+          {:name "A", :display-name "B"}]
+         (mbql.normalize/normalize :metabase.legacy-mbql.schema/aggregation-options
+                                   ["aggregation-options"
+                                    ["case"
+                                     [[["<" ["aggregation" 0 {"base-type" "type/Float"}] 0.591] "60%"]]]
+                                    {"name" "A", "display-name" "B"}]))))

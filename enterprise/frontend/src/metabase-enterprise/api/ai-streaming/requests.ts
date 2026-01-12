@@ -9,12 +9,21 @@ import type { JSONValue } from "./types";
 // places in the app w/o passing references to the abort controller directly
 export const inflightAiStreamingRequests = new Map<
   string,
-  { abortController: AbortController }
+  {
+    sourceId?: string;
+    abortController: AbortController;
+  }
 >();
 
-export const getInflightRequestsForUrl = (url: string) => {
+export const findMatchingInflightAiStreamingRequests = (
+  url: string,
+  sourceId?: string,
+) => {
   return [...inflightAiStreamingRequests.entries()]
-    .filter(([reqId]) => reqId.startsWith(`${url}-`))
+    .filter(
+      ([reqId, req]) =>
+        reqId.startsWith(`${url}-`) && (!sourceId || sourceId === req.sourceId),
+    )
     .map(([_reqId, reqInfo]) => reqInfo);
 };
 
@@ -27,6 +36,7 @@ export async function aiStreamingQuery(
     url: string;
     signal?: AbortSignal | null | undefined;
     body: JSONValue;
+    sourceId?: string;
   },
   config: AIStreamingConfig = {},
 ) {
@@ -41,9 +51,13 @@ export async function aiStreamingQuery(
         inflightAiStreamingRequests.delete(reqId);
       });
     }
-    inflightAiStreamingRequests.set(reqId, { abortController });
+    inflightAiStreamingRequests.set(reqId, {
+      sourceId: req.sourceId,
+      abortController,
+    });
 
-    const response = await fetch(req.url, {
+    // The basename is needed to work within the Embedding SDK
+    const response = await fetch(`${api.basename}${req.url}`, {
       method: "POST",
       headers: {
         ...api.getClientHeaders(),

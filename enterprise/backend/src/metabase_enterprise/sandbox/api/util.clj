@@ -39,12 +39,15 @@
 
   WARNING: This should NOT be used directly for sandboxing enforcement. Use `*sandboxes-for-user*` or
   `enforced-sandboxes-for-tables` below, so that the cache is used."
-  :feature :sandboxes
+  ;; This needs to be `:none` because we need to be able to decide whether sandboxing is *configured* for a user, even
+  ;; if the feature isn't actually available to be enforced. (This way, we can block all requests that *would
+  ;; otherwise be* sandboxed when sandboxing is turned off.)
+  :feature :none
   [user-id]
   (when user-id
     (let [user-group-ids           (user/group-ids user-id)
           sandboxes-with-group-ids (t2/hydrate
-                                    (t2/select :model/GroupTableAccessPolicy
+                                    (t2/select :model/Sandbox
                                                {:select [[:pgm.group_id :group_id]
                                                          [:s.*]]
                                                 :from [[:permissions_group_membership :pgm]]
@@ -70,8 +73,9 @@
   "Given collection of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A
   sandbox is not enforced if the user is in a different permissions group that grants full access to the table."
   [table-ids]
-  (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
-    (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user)))
+  (when-not *is-superuser?*
+    (let [enforced-sandboxes-for-user (perms/sandboxes-for-user)]
+      (filter #((set table-ids) (:table_id %)) enforced-sandboxes-for-user))))
 
 (defn sandboxed-user-for-db?
   "Returns true if the currently logged in user has any enforced sandboxes for the provided database. Throws an

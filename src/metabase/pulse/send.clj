@@ -50,9 +50,10 @@
   [pulse-channel]
   (let [channel      (pc->channel pulse-channel)
         channel-type (:type channel)]
-    {:channel_type channel-type
-     :channel      channel
-     :recipients   (channel-recipients pulse-channel)}))
+    {:channel_type    channel-type
+     :channel         channel
+     :recipients      (channel-recipients pulse-channel)
+     :attachment_only (boolean (get-in pulse-channel [:details :attachment_only]))}))
 
 (defn- maybe-name [x] (some-> x name))
 
@@ -66,6 +67,7 @@
                               :dashboard_id                     (:id dashboard)
                               :parameters                       (:parameters pulse)
                               :skip_if_empty                    (:skip_if_empty pulse)
+                              :disable_links                    (:disable_links pulse)
                               :dashboard_subscription_dashcards (map
                                                                  #(merge {:card_id (:id %)
                                                                           :dashboard_card_id (:dashboard_card_id %)}

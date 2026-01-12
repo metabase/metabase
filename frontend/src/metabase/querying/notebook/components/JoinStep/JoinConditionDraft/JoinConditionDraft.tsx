@@ -109,8 +109,8 @@ export function JoinConditionDraft({
 
   return (
     <Flex className={S.JoinConditionRoot}>
-      <Flex align="center" gap="xs" mih="47px" p="xs">
-        <Box ml={!lhsExpression ? "xs" : undefined}>
+      <Flex align="center" gap="xs" p="sm">
+        <Box>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}
@@ -134,7 +134,7 @@ export function JoinConditionDraft({
           isConditionComplete={false}
           onChange={setOperator}
         />
-        <Box mr={!rhsExpression ? "xs" : undefined}>
+        <Box>
           <JoinConditionColumnPicker
             query={query}
             stageIndex={stageIndex}

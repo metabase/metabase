@@ -13,8 +13,8 @@
 
 button.newButton {
   width: 50%;
-  color: var(--mb-color-text-dark);
-  border-color: var(--mb-base-color-gray-10);
+  color: var(--mb-color-text-primary);
+  border-color: var(--mb-color-border);
 
   &:hover {
     color: var(--mb-color-brand);

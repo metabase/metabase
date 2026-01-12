@@ -23,11 +23,13 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -169,9 +171,7 @@
              (= (mc/type route-params-schema) :map))
     (some (fn [[k _options v-schema]]
             (when (= k route-param)
-              (or
-               (:api/regex (mc/properties v-schema))
-               (second (metabase.api.common.internal/->matching-regex v-schema)))))
+              (second (metabase.api.common.internal/->matching-regex v-schema))))
           (mc/children route-params-schema))))
 
 (mu/defn- inferred-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
@@ -305,7 +305,8 @@
    (mtx/string-transformer)
    (mtx/json-transformer)
    (mtx/default-value-transformer)
-   {:name :api}))
+   {:name :api}
+   {:name :normalize}))
 
 (def ^:private encode-transformer
   (mtx/transformer
@@ -350,16 +351,26 @@
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
-(defn- invalid-params-errors [schema explanation specific-errors]
-  (or (when (and (map? specific-errors)
-                 (= (mc/type schema) :map))
-        (into {}
-              (let [specific-error-keys (set (keys specific-errors))]
-                (keep (fn [child]
-                        (when (contains? specific-error-keys (first child))
-                          [(first child) (umd/describe (last child))]))))
-              (mc/children schema)))
-      (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
+(defn- invalid-params-errors [{:keys [schema], :as explanation}]
+  (reduce
+   (fn [m {:keys [path in], :as _explanation}]
+     (let [error-path (remove integer? in)]
+       ;; if there is already an error here keep the existing one, this is usually something like an `[:and x y]`
+       ;; where `x` has already failed so it's preferable to return the error for that than the `y` one, which
+       ;; probably won't make any sense (for some weird reason Malli `:and` schemas don't short-circut)
+       (if (get-in m error-path)
+         m
+         (let [nice-path     (loop [path (vec path)]
+                               (if (integer? (last path))
+                                 (recur (pop path))
+                                 path))
+               nested-schema (loop [path nice-path]
+                               (when (seq path)
+                                 (or (malli.util/get-in schema path)
+                                     (recur (pop path)))))]
+           (assoc-in m error-path (umd/describe nested-schema))))))
+   {}
+   (:errors explanation)))
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -375,7 +386,7 @@
                                              :body  "body"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors schema explanation specific-errors)]
+                            errors          (invalid-params-errors explanation)]
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
                                              :schema      (mc/form schema)
@@ -698,7 +709,15 @@
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
-         (-> metadata update-info rebuild-handler))))))
+         (-> metadata update-info rebuild-handler))))
+    ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
+    (when config/is-dev?
+      (try
+        (events/publish-event! :event/api-handler-update
+                               {:api.docs/request-rebuild
+                                (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
+        (catch Throwable e
+          (log/debug e "Failed to publish api-handler-update event"))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in
@@ -724,7 +743,12 @@
   motivation behind it.
 
   REPL Tip: use [[call-core-fn]] to call the core-fn directly."
-  {:added "0.53.0"}
+  {:added "0.53.0", :arglists '([method
+                                 route
+                                 docstring?
+                                 metadata?
+                                 [route-params? query-params? body-params? request? respond? raise?]
+                                 & body])}
   [& args]
   (let [parsed (parse-args args)]
     `(let [core-fn#  (endpoint-core-fn ~parsed)

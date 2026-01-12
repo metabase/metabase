@@ -1,10 +1,10 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const StepDescription = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin: 0.875rem 0;
 `;
 
@@ -35,19 +35,21 @@ interface LocaleContainerProps {
 export const LocaleButton = styled.span<LocaleContainerProps>`
   display: block;
   padding: 0.5rem;
-  color: ${(props) => color(props.checked ? "text-white" : "text-dark")};
+  color: ${(props) =>
+    color(props.checked ? "text-primary-inverse" : "text-primary")};
   border-radius: 0.25rem;
   background-color: ${(props) =>
-    props.checked ? color("brand") : color("bg-white")};
+    props.checked ? color("brand") : color("background-primary")};
   font-weight: 700;
+  border: 2px solid var(--mb-color-white);
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus + & {
-    outline: 2px solid var(--mb-color-focus);
+    outline: 2px solid var(--mb-color-brand);
   }
 
   ${LocaleInput}:focus:not(:focus-visible) + & {

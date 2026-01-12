@@ -16,7 +16,7 @@ You can download the JDBC driver from [Vertica's JDBC driver downloads page](htt
 Head to this page, log in to your account, accept the license agreement, and download `vertica-jdbc-8.0.0-0.jar` (for Vertica DB version 8.0)
 or whatever driver version most closely matches the version of Vertica you're running.
 
-It's very important to make sure you use the correct version of the JDBC driver; version
+It's important to make sure you use the correct version of the JDBC driver; version
 8.0 of the driver won't work with Vertica version 7.2; version 7.2 of the driver won't work with Vertica version 7.1, and so forth. If in doubt,
 consult Vertica's documentation to find the correct version of the JDBC driver for your version of Vertica.
 

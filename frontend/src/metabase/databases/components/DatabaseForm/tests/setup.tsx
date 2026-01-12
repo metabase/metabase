@@ -1,10 +1,17 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { Engine, Settings } from "metabase-types/api";
+import type {
+  DatabaseData,
+  Engine,
+  EngineKey,
+  Settings,
+} from "metabase-types/api";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseForm } from "../DatabaseForm";
+
+import { postgresFormConfig } from "./postgres-form-config.mock";
 
 export const TEST_ENGINES: Record<string, Engine> = {
   h2: {
@@ -85,31 +92,48 @@ export const TEST_ENGINES: Record<string, Engine> = {
     ],
     "driver-name": "H2",
     "superseded-by": null,
+    "extra-info": null,
   },
+  postgres: postgresFormConfig,
 };
 
 export interface SetupOpts {
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   engines?: Record<string, Engine>;
+  initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
+  isAdvanced?: boolean;
 }
 
 export const setup = ({
   settings,
-  hasEnterprisePlugins,
+  enterprisePlugins,
   engines = TEST_ENGINES,
+  initialValues = {},
+  isAdvanced = true,
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({ ...settings, engines }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   const onSubmit = jest.fn();
+
   renderWithProviders(
-    <DatabaseForm config={{ isAdvanced: true }} onSubmit={onSubmit} />,
+    <DatabaseForm
+      initialValues={{
+        engine: "h2",
+        ...initialValues,
+      }}
+      config={{ isAdvanced }}
+      onSubmit={onSubmit}
+      location="admin"
+    />,
     {
       storeInitialState: state,
     },

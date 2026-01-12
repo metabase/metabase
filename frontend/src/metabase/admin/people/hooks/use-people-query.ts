@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import type { UserTenancy } from "metabase-types/api";
 
-import { USER_STATUS, type UserStatus } from "../constants";
+import { ACTIVE_STATUS, type ActiveStatus } from "../constants";
 
 const MIN_SEARCH_LENGTH = 2;
 
@@ -11,10 +12,10 @@ const MIN_SEARCH_LENGTH = 2;
 // it is not the best place to store pagination state since we might want to
 // change it from the ancestors, for instance, when we change list filter props.
 // If users change any filters, we should reset the page state.
-export const usePeopleQuery = (pageSize: number) => {
+export const usePeopleQuery = (pageSize: number, tenancy: UserTenancy) => {
   const { handleNextPage, handlePreviousPage, setPage, page } = usePagination();
 
-  const [status, setStatus] = useState<UserStatus>(USER_STATUS.active);
+  const [status, setStatus] = useState<ActiveStatus>(ACTIVE_STATUS.active);
   const [searchInputValue, setSearchInputValue] = useState("");
 
   const [searchText, setSearchText] = useState("");
@@ -31,10 +32,13 @@ export const usePeopleQuery = (pageSize: number) => {
     return () => clearTimeout(timerId);
   }, [searchInputValue, setPage]);
 
-  const updateStatus = (status: UserStatus) => {
-    setPage(0);
-    setStatus(status);
-  };
+  const updateStatus = useCallback(
+    (status: ActiveStatus) => {
+      setPage(0);
+      setStatus(status);
+    },
+    [setPage],
+  );
 
   const query = useMemo(
     () => ({
@@ -42,8 +46,9 @@ export const usePeopleQuery = (pageSize: number) => {
       searchText,
       page,
       pageSize,
+      tenancy,
     }),
-    [status, searchText, page, pageSize],
+    [status, searchText, page, pageSize, tenancy],
   );
 
   return {

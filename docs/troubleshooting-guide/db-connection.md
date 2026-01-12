@@ -18,7 +18,7 @@ If your database connection is successful, but the tables aren't showing up in t
 
    - If Metabase is taking a long time to sync, go to [Troubleshooting syncs and scans](./sync-fingerprint-scan.md).
 
-2. Go to **Admin** > **Troubleshooting** > **Logs** to check if Metabase failed to sync [due to an error](#common-database-connection-errors).
+2. Go to **Admin** > **Tools** > **Logs** to check if Metabase failed to sync [due to an error](#common-database-connection-errors).
 
    - If the logs feel overwhelming, check out [How to read the server logs](./server-logs.md).
 
@@ -52,7 +52,7 @@ If you see this error message in the Metabase interface, go to [Troubleshooting 
 
 ### Connections cannot be acquired from the underlying database
 
-If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Troubleshooting** > **Logs**):
+If you see this error messages in the [logs](./server-logs.md) (**Admin** > **Tools** > **Logs**):
 
 1. Go to **Admin** > **Databases** and select your database.
 2. Go to **Advanced options** > **Additional JDBC connection string options** and add `trustServerCertificate=true`.
@@ -105,6 +105,16 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
    ```sql
    SELECT 1
    ```
+
+## Snowflake error when running via JAR file
+
+If you're connecting to Snowflake and encounter an error like, `JDBC driver internal error: exception creating result` and are running from the JAR file, add `--add-opens java.base/java.nio=ALL-UNNAMED` to your `java` command:
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+```
+
+See the docs on [running the Metabase jar file](../installation-and-operation/running-the-metabase-jar-file.md).
 
 ## Related problems
 

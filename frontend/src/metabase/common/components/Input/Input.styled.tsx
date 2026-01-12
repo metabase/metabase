@@ -10,8 +10,9 @@ import {
   inputPadding,
   inputTypography,
 } from "metabase/common/style/input";
-import { color } from "metabase/lib/colors";
-import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import type { ColorName } from "metabase/lib/colors/types";
+import { monospaceFontFamily } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 import type { InputSize } from "../../style/types";
 
@@ -23,7 +24,7 @@ interface InputProps {
   hasLeftIcon?: boolean;
   hasRightIcon?: boolean;
   hasClearButton?: boolean;
-  colorScheme: string;
+  colorScheme: ColorName;
 }
 
 interface InputRootProps {
@@ -61,11 +62,11 @@ export const InputField = styled.input<InputProps>`
   font-family: inherit;
   color: var(--mb-color-text-primary);
   border: 1px solid var(--mb-color-border);
-  border-radius: ${space(1)};
+  border-radius: var(--mantine-spacing-sm);
   background-color: ${(props) =>
     props.readOnly
       ? "var(--mb-color-background-disabled)"
-      : "var(--mb-color-background)"};
+      : "var(--mb-color-background-primary)"};
   outline: none;
   text-align: inherit;
 
@@ -77,7 +78,7 @@ export const InputField = styled.input<InputProps>`
 
   &:disabled {
     cursor: default;
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 
   ${(props) => focusOutlineStyle(props.colorScheme)};
@@ -124,7 +125,7 @@ type InputButtonProps = {
 const InputButton = styled(IconButtonWrapper)<InputButtonProps>`
   position: absolute;
   color: ${(props) =>
-    color(props.onClick != null ? "text-dark" : "text-light")};
+    color(props.onClick != null ? "text-primary" : "text-tertiary")};
   padding: ${(props) => (props.size === "small" ? "0.5rem" : "0.75rem")};
   border-radius: 50%;
   bottom: ${(props) => (props.size === "large" ? "0.125rem" : 0)};
@@ -154,7 +155,7 @@ export const InputResetButton = styled(InputButton, {
 `;
 
 export const InputSubtitle = styled.div`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   position: absolute;
   top: 1.25em;
   left: 1.25em;

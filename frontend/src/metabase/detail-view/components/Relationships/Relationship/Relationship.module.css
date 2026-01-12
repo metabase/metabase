@@ -1,0 +1,9 @@
+.clickable {
+  color: var(--mb-color-text-primary) !important;
+
+  &:hover {
+    .text {
+      color: var(--mb-color-brand) !important;
+    }
+  }
+}

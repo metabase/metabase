@@ -8,7 +8,12 @@ import type {
 
 import type { Card } from "./card";
 import type { DatabaseId } from "./database";
-import type { FieldFingerprint, FieldId, FieldVisibilityType } from "./field";
+import type {
+  Field,
+  FieldFingerprint,
+  FieldId,
+  FieldVisibilityType,
+} from "./field";
 import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
@@ -69,15 +74,13 @@ export interface DatasetColumn {
   binning_info?: BinningMetadata | null;
   settings?: Record<string, any>;
   fingerprint?: FieldFingerprint | null;
-  ident?: string;
-  "model/inner_ident"?: string;
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
 }
 
 export interface ResultsMetadata {
-  columns: DatasetColumn[];
+  columns: Field[];
 }
 
 export interface DatasetData {
@@ -100,7 +103,7 @@ export interface DatasetData {
 }
 
 export type JsonQuery = DatasetQuery & {
-  parameters?: unknown[];
+  parameters?: Parameter[];
   "cache-strategy"?: CacheStrategy & {
     /** An ISO 8601 date */
     "invalidated-at"?: string;
@@ -138,6 +141,7 @@ export type DatasetError =
 export type DatasetErrorType =
   | "invalid-query"
   | "missing-required-parameter"
+  | "missing-required-permissions"
   | string;
 
 export interface EmbedDatasetData {
@@ -178,10 +182,21 @@ export type SingleSeries = {
    * COLUMN_2, etc.) to their original values (count, avg, etc.).
    */
   columnValuesMapping?: Record<string, VisualizerColumnValueSource[]>;
-} & Pick<Dataset, "data" | "error" | "started_at">;
+} & Pick<Dataset, "error" | "started_at" | "data" | "json_query">;
+
+export type SingleSeriesWithTranslation = SingleSeries & {
+  data: Dataset["data"] & {
+    /**
+     * The original, untranslated rows for this series (if any).
+     * Undefined if no translation occurred.
+     */
+    untranslatedRows?: RowValues[];
+  };
+};
 
 export type RawSeries = SingleSeries[];
 export type TransformedSeries = RawSeries & { _raw: Series };
+export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
 export type TemplateTagId = string;
@@ -191,7 +206,8 @@ export type TemplateTagType =
   | "text"
   | "number"
   | "date"
-  | "temporal-unit" // e.g. for mb.time_grouping()
+  | "boolean"
+  | "temporal-unit"
   | "dimension"
   | "snippet";
 
@@ -200,11 +216,8 @@ export interface TemplateTag {
   name: TemplateTagName;
   "display-name": string;
   type: TemplateTagType;
-  dimension?: LocalFieldReference;
-  "widget-type"?: string;
   required?: boolean;
   default?: string | null;
-  options?: ParameterOptions;
 
   // Card template specific
   "card-id"?: number;
@@ -212,6 +225,14 @@ export interface TemplateTag {
   // Snippet specific
   "snippet-id"?: number;
   "snippet-name"?: string;
+
+  // Field filter and time grouping specific
+  dimension?: LocalFieldReference;
+  alias?: string;
+
+  // Field filter specific
+  "widget-type"?: string;
+  options?: ParameterOptions;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

@@ -1,13 +1,14 @@
 (ns metabase.lib.drill-thru-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [malli.error :as me]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.field :as-alias lib.field]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -16,6 +17,8 @@
    [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (def ^:private orders-query
   (lib/query meta/metadata-provider (meta/table-metadata :orders)))
@@ -865,7 +868,7 @@
           metadata-provider (lib.tu/metadata-provider-with-mock-card card)
           query (lib/query metadata-provider card)
           lib-col  (-> (m/find-first #(= (:name %) "CREATED_AT") (lib/returned-columns query))
-                       (dissoc :lib/deduplicated-name :lib/original-name))
+                       (dissoc :lib/deduplicated-name :lib/original-name :lib/desired-column-alias))
           card-col (m/find-first #(= (:name %) "CREATED_AT") (:result-metadata card))
           context {:column     card-col
                    :column-ref (lib/ref card-col)
@@ -921,6 +924,210 @@
                 :stage-number -1
                 :value        (meta/id :products :id)}]
               (lib/available-drill-thrus query -1 context))))))
+
+(deftest ^:parallel geographic-breakout-available-drill-thrus-test
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [{:id             1
+                                      :table-id       (meta/id :people)
+                                      :name           "COUNTRY"
+                                      :base-type      :type/Text
+                                      :effective-type :type/Text
+                                      :semantic-type  :type/Country}]})
+        query (as-> (lib/query metadata-provider (meta/table-metadata :people)) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (lib.metadata/field metadata-provider 1))
+                (lib/breakout $ (meta/field-metadata :people :state))
+                (lib/breakout $ (meta/field-metadata :people :city))
+                (lib/breakout $ (let [field (meta/field-metadata :people :latitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field))))
+                (lib/breakout $ (let [field (meta/field-metadata :people :longitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lat-col (m/find-first #(= (:id %) (meta/id :people :latitude))
+                              (lib/returned-columns query))
+        lon-col (m/find-first #(= (:id %) (meta/id :people :longitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for country breakout"
+      (let [country-col (m/find-first #(= (:id %) 1)
+                                      (lib/returned-columns query))]
+        (is (some? country-col))
+        (let [context {:column     country-col
+                       :column-ref (lib/ref country-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type    :drill-thru/zoom-in.geographic
+                    :subtype :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                    :display-name "Zoom in: Country"}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for state breakout"
+      (let [state-col (m/find-first #(= (:id %) (meta/id :people :state))
+                                    (lib/returned-columns query))]
+        (is (some? state-col))
+        (let [context {:column     state-col
+                       :column-ref (lib/ref state-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type    :drill-thru/zoom-in.geographic
+                    :subtype :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                    :display-name "Zoom in: State"}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for city breakout"
+      (let [city-col (m/find-first #(= (:id %) (meta/id :people :city))
+                                   (lib/returned-columns query))]
+        (is (some? city-col))
+        (let [context {:column     city-col
+                       :column-ref (lib/ref city-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type    :drill-thru/zoom-in.geographic
+                    :subtype :drill-thru.zoom-in.geographic/country-state-city->binned-lat-lon
+                    :display-name "Zoom in: City"}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))
+    (testing "Drills for latitude breakout"
+      (is (some? lat-col))
+      (let [context {:column     lat-col
+                     :column-ref (lib/ref lat-col)
+                     :value      2
+                     :row        [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      10}
+                                  {:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}
+                 {:type    :drill-thru/zoom-in.geographic
+                  :subtype :drill-thru.zoom-in.geographic/binned-lat-lon->binned-lat-lon
+                  :display-name "Zoom in: Lat/Lon"}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))
+    (testing "Drills for longitude breakout"
+      (is (some? lon-col))
+      (let [context {:column     lon-col
+                     :column-ref (lib/ref lon-col)
+                     :value      2
+                     :row        [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      10}
+                                  {:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))))
+
+(deftest ^:parallel only-lat-available-drill-thrus-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :people)) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (let [field (meta/field-metadata :people :latitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lat-col (m/find-first #(= (:id %) (meta/id :people :latitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for latitude breakout with no longitude"
+      (is (some? lat-col))
+      (let [context {:column     lat-col
+                     :column-ref (lib/ref lat-col)
+                     :value      2
+                     :row        [{:column     lat-col
+                                   :column-ref (lib/ref lat-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}
+                 {:type :drill-thru/zoom-in.binning}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))))
+
+(deftest ^:parallel only-lon-available-drill-thrus-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :people)) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (let [field (meta/field-metadata :people :longitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lon-col (m/find-first #(= (:id %) (meta/id :people :longitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for longitude breakout with no latitude"
+      (is (some? lon-col))
+      (let [context {:column     lon-col
+                     :column-ref (lib/ref lon-col)
+                     :value      2
+                     :row        [{:column     lon-col
+                                   :column-ref (lib/ref lon-col)
+                                   :value      10}]}]
+        (is (=? [{:type :drill-thru/quick-filter}
+                 {:type :drill-thru/zoom-in.binning}]
+                (lib/available-drill-thrus query -1 context)))
+        (test-drill-applications query context)))))
+
+(deftest ^:parallel regular-binning-with-lat-lon-available-drill-thrus-test
+  (let [query (as-> (lib/query meta/metadata-provider (meta/table-metadata :people)) $
+                (lib/join $ (-> (lib/join-clause (meta/table-metadata :orders)
+                                                 [(lib/=
+                                                   (meta/field-metadata :people :id)
+                                                   (-> (meta/field-metadata :orders :user-id)
+                                                       (lib/with-join-alias "Orders")))])
+                                (lib/with-join-alias "Orders")
+                                (lib/with-join-strategy :left-join)))
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (let [field (meta/field-metadata :people :latitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field))))
+                (lib/breakout $ (let [field (meta/field-metadata :people :longitude)]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field))))
+                (lib/breakout $ (let [field (-> (meta/field-metadata :orders :subtotal)
+                                                (lib/with-join-alias "Orders"))]
+                                  (->> (lib/available-binning-strategies $ field)
+                                       first
+                                       (lib/with-binning field)))))
+        lat-col (m/find-first #(= (:id %) (meta/id :people :latitude))
+                              (lib/returned-columns query))
+        lon-col (m/find-first #(= (:id %) (meta/id :people :longitude))
+                              (lib/returned-columns query))]
+    (testing "Drills for numeric breakout when lat/lon exist"
+      (let [subtotal-col (m/find-first #(= (:id %) (meta/id :orders :subtotal))
+                                       (lib/returned-columns query))]
+        (is (some? subtotal-col))
+        (let [context {:column     subtotal-col
+                       :column-ref (lib/ref subtotal-col)
+                       :value      2
+                       :row        [{:column     lat-col
+                                     :column-ref (lib/ref lat-col)
+                                     :value      10}
+                                    {:column     lon-col
+                                     :column-ref (lib/ref lon-col)
+                                     :value      10}]}]
+          (is (=? [{:type :drill-thru/quick-filter}
+                   {:type :drill-thru/zoom-in.binning}]
+                  (lib/available-drill-thrus query -1 context)))
+          (test-drill-applications query context))))))
 
 (deftest ^:parallel primary-key?-test
   (let [orders+products-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))

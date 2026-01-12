@@ -1,6 +1,9 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -10,10 +13,10 @@
   (mt/test-driver :clickhouse
     (mt/dataset
       (mt/dataset-definition "mbt"
-                             ["decimals"
-                              [{:field-name "my_money"
-                                :base-type {:native "Decimal(12,4)"}}]
-                              [[1.0] [23.1337] [42.0] [42.0]]])
+                             [["decimals"
+                               [{:field-name "my_money"
+                                 :base-type {:native "Decimal(12,4)"}}]
+                               [[1.0] [23.1337] [42.0] [42.0]]]])
       (testing "simple division"
         (is
          (= 21.0
@@ -39,10 +42,10 @@
        (= "[foo, bar]"
           (-> (mt/dataset
                 (mt/dataset-definition "metabase_tests_array_string"
-                                       ["test-data-array-string"
-                                        [{:field-name "my_array"
-                                          :base-type {:native "Array(String)"}}]
-                                        [[(into-array (list "foo" "bar"))]]])
+                                       [["test-data-array-string"
+                                         [{:field-name "my_array"
+                                           :base-type {:native "Array(String)"}}]
+                                         [[(into-array (list "foo" "bar"))]]]])
                 (mt/run-mbql-query test-data-array-string {:limit 1}))
               mt/first-row
               last)))))
@@ -53,10 +56,10 @@
        (= "[23, 42]"
           (-> (mt/dataset
                 (mt/dataset-definition "metabase_tests_array_uint"
-                                       ["test-data-array-uint64"
-                                        [{:field-name "my_array"
-                                          :base-type {:native "Array(UInt64)"}}]
-                                        [[(into-array (list 23 42))]]])
+                                       [["test-data-array-uint64"
+                                         [{:field-name "my_array"
+                                           :base-type {:native "Array(UInt64)"}}]
+                                         [[(into-array (list 23 42))]]]])
                 (mt/run-mbql-query test-data-array-uint64 {:limit 1}))
               mt/first-row
               last)))))
@@ -69,10 +72,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_arrays"
-                                                  ["test-data-array-of-arrays"
-                                                   [{:field-name "my_array_of_arrays"
-                                                     :base-type {:native "Array(Array(String))"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-arrays"
+                                                    [{:field-name "my_array_of_arrays"
+                                                      :base-type {:native "Array(Array(String))"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-arrays {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
@@ -83,10 +86,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_low_cardinality_array"
-                                                  ["test-data-low-cardinality-array"
-                                                   [{:field-name "my_low_card_array"
-                                                     :base-type {:native "Array(LowCardinality(String))"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-low-cardinality-array"
+                                                    [{:field-name "my_low_card_array"
+                                                      :base-type {:native "Array(LowCardinality(String))"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-low-cardinality-array {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[foo, bar]"], ["[]"]] result)))))
@@ -97,10 +100,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_nullables"
-                                                  ["test-data-array-of-nullables"
-                                                   [{:field-name "my_array_of_nullables"
-                                                     :base-type {:native "Array(Nullable(String))"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-nullables"
+                                                    [{:field-name "my_array_of_nullables"
+                                                      :base-type {:native "Array(Nullable(String))"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-nullables {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[foo, null, bar]"], ["[]"]] result)))))
@@ -111,10 +114,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_booleans"
-                                                  ["test-data-array-of-booleans"
-                                                   [{:field-name "my_array_of_booleans"
-                                                     :base-type {:native "Array(Boolean)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-booleans"
+                                                    [{:field-name "my_array_of_booleans"
+                                                      :base-type {:native "Array(Boolean)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-booleans {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[true, false, true]"], ["[]"]] result)))))
@@ -125,10 +128,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_nullable_booleans"
-                                                  ["test-data-array-of-booleans"
-                                                   [{:field-name "my_array_of_nullable_booleans"
-                                                     :base-type {:native "Array(Nullable(Boolean))"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-booleans"
+                                                    [{:field-name "my_array_of_nullable_booleans"
+                                                      :base-type {:native "Array(Nullable(Boolean))"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-booleans {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[true, false, null]"], ["[]"]] result)))))
@@ -139,10 +142,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_uint8"
-                                                  ["test-data-array-of-uint8"
-                                                   [{:field-name "my_array_of_uint8"
-                                                     :base-type {:native "Array(UInt8)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-uint8"
+                                                    [{:field-name "my_array_of_uint8"
+                                                      :base-type {:native "Array(UInt8)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-uint8 {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[42, 100, 2]"], ["[]"]] result)))))
@@ -153,10 +156,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_floats"
-                                                  ["test-data-array-of-floats"
-                                                   [{:field-name "my_array_of_floats"
-                                                     :base-type {:native "Array(Float64)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-floats"
+                                                    [{:field-name "my_array_of_floats"
+                                                      :base-type {:native "Array(Float64)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-floats {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
@@ -171,10 +174,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_dates"
-                                                  ["test-data-array-of-dates"
-                                                   [{:field-name "my_array_of_dates"
-                                                     :base-type {:native "Array(Date)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-dates"
+                                                    [{:field-name "my_array_of_dates"
+                                                      :base-type {:native "Array(Date)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-dates {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[2022-12-06T00:00Z[UTC], 2021-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
@@ -188,10 +191,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_date32"
-                                                  ["test-data-array-of-date32"
-                                                   [{:field-name "my_array_of_date32"
-                                                     :base-type {:native "Array(Date32)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-date32"
+                                                    [{:field-name "my_array_of_date32"
+                                                      :base-type {:native "Array(Date32)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-date32 {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[2122-12-06T00:00Z[UTC], 2099-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
@@ -205,10 +208,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_datetime"
-                                                  ["test-data-array-of-datetime"
-                                                   [{:field-name "my_array_of_datetime"
-                                                     :base-type {:native "Array(DateTime)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-datetime"
+                                                    [{:field-name "my_array_of_datetime"
+                                                      :base-type {:native "Array(DateTime)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-datetime {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[2022-12-06T18:28:31Z[UTC], 2021-10-19T13:12:44Z[UTC]]"], ["[]"]] result)))))
@@ -222,10 +225,10 @@
             row2 (into-array nil)
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_datetime64"
-                                                  ["test-data-array-of-datetime64"
-                                                   [{:field-name "my_array_of_datetime64"
-                                                     :base-type {:native "Array(DateTime64(3))"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-datetime64"
+                                                    [{:field-name "my_array_of_datetime64"
+                                                      :base-type {:native "Array(DateTime64(3))"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-datetime64 {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[2022-12-06T18:28:31.123Z[UTC], 2021-10-19T13:12:44.456Z[UTC]]"], ["[]"]] result)))))
@@ -236,10 +239,10 @@
             row2 nil
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_decimals"
-                                                  ["test-data-array-of-decimals"
-                                                   [{:field-name "my_array_of_decimals"
-                                                     :base-type {:native "Array(Decimal(18, 9))"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-decimals"
+                                                    [{:field-name "my_array_of_decimals"
+                                                      :base-type {:native "Array(Decimal(18, 9))"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-decimals {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
@@ -335,6 +338,73 @@
                     array_of_tuples_test
                     {})))))))))
 
+(deftest ^:parallel uuid-filtering-test
+  (mt/test-driver :clickhouse
+    (mt/dataset
+      (mt/dataset-definition
+       "nullable_uuids_dataset"
+       [["nullable_uuids"
+         [{:field-name "uuid1", :base-type {:native "Nullable(UUID)"}}]
+         [[#uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+          [#uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+          [nil]]]])
+      (let [mp (mt/metadata-provider)
+            uuid-field (lib.metadata/field mp (mt/id :nullable_uuids :uuid1))
+            filter-rows (fn [filter]
+                          (-> (lib/query mp (lib.metadata/table mp (mt/id :nullable_uuids)))
+                              (lib/filter filter)
+                              mt/process-query
+                              mt/rows))]
+        (testing "can filter nullable uuids with equals and not equals"
+          (are [filter-fn exp-rows]
+               (= exp-rows (filter-rows (filter-fn uuid-field "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")))
+            lib/=  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            lib/!= [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                    [3 nil]]))
+        (testing "can filter nullable uuids with empty and not empty"
+          (are [filter-fn exp-rows]
+               (= exp-rows (filter-rows (filter-fn uuid-field)))
+            lib/is-empty  [[3 nil]]
+            lib/not-empty [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                           [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]))
+        (testing "can filter nullable uuids with contains"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/contains uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        (testing "can filter nullable uuids with does not contain"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/does-not-contain uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "aaa" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "AAA" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                         [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]
+            "AAA" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+                         [3 nil]]))
+        (testing "can filter nullable uuids with starts with"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/starts-with uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        (testing "can filter nullable uuids with ends with"
+          (are [filter-str case-sensitive exp-rows]
+               (= exp-rows (filter-rows (-> (lib/ends-with uuid-field filter-str)
+                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
+            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+            "AAA" true  []
+            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))))))
+
 #_(deftest ^:parallel clickhouse-array-of-uuids
     (mt/test-driver :clickhouse
       (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
@@ -342,10 +412,10 @@
             row2 nil
             query-result (mt/dataset
                            (mt/dataset-definition "metabase_tests_array_of_uuids"
-                                                  ["test-data-array-of-uuids"
-                                                   [{:field-name "my_array_of_uuids"
-                                                     :base-type {:native "Array(UUID)"}}]
-                                                   [[row1] [row2]]])
+                                                  [["test-data-array-of-uuids"
+                                                    [{:field-name "my_array_of_uuids"
+                                                      :base-type {:native "Array(UUID)"}}]
+                                                    [[row1] [row2]]]])
                            (mt/run-mbql-query test-data-array-of-uuids {}))
             result (ctd/rows-without-index query-result)]
         (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
@@ -367,9 +437,9 @@
     (mt/dataset
       (mt/dataset-definition
        "metabase_tests_nullable_strings"
-       ["test-data-nullable-strings"
-        [{:field-name "mystring" :base-type :type/Text}]
-        [["foo"] ["bar"] ["   "] [""] [nil]]])
+       [["test-data-nullable-strings"
+         [{:field-name "mystring" :base-type :type/Text}]
+         [["foo"] ["bar"] ["   "] [""] [nil]]]])
       (testing "null strings count"
         (is (= 2M
                (-> (mt/run-mbql-query test-data-nullable-strings
@@ -419,10 +489,10 @@
           row3 "2022-03-03 03:03:03"
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_datetime64"
-                                                ["test-data-datetime64"
-                                                 [{:field-name "milli_sec"
-                                                   :base-type {:native "DateTime64(3)"}}]
-                                                 [[row1] [row2] [row3]]])
+                                                [["test-data-datetime64"
+                                                  [{:field-name "milli_sec"
+                                                    :base-type {:native "DateTime64(3)"}}]
+                                                  [[row1] [row2] [row3]]]])
                          (mt/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
           result (ctd/rows-without-index query-result)]
       (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
@@ -434,10 +504,10 @@
           row3 "2022-03-03 03:03:05"
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_datetime"
-                                                ["test-data-datetime"
-                                                 [{:field-name "second"
-                                                   :base-type {:native "DateTime"}}]
-                                                 [[row1] [row2] [row3]]])
+                                                [["test-data-datetime"
+                                                  [{:field-name "second"
+                                                    :base-type {:native "DateTime"}}]
+                                                  [[row1] [row2] [row3]]]])
                          (mt/run-mbql-query test-data-datetime {:filter [:= $second "2022-03-03T03:03:04Z"]}))
           result (ctd/rows-without-index query-result)]
       (is (= [["2022-03-03T03:03:04Z"]] result)))))
@@ -447,12 +517,12 @@
     (let [[row1 row2 row3 row4] [["#1" true] ["#2" false] ["#3" false] ["#4" true]]
           query-result (mt/dataset
                          (mt/dataset-definition "metabase_tests_booleans"
-                                                ["test-data-booleans"
-                                                 [{:field-name "name"
-                                                   :base-type :type/Text}
-                                                  {:field-name "is_active"
-                                                   :base-type :type/Boolean}]
-                                                 [row1 row2 row3 row4]])
+                                                [["test-data-booleans"
+                                                  [{:field-name "name"
+                                                    :base-type :type/Text}
+                                                   {:field-name "is_active"
+                                                    :base-type :type/Boolean}]
+                                                  [row1 row2 row3 row4]]])
                          (mt/run-mbql-query test-data-booleans {:filter [:= $is_active false]}))
           rows (mt/rows query-result)
           result (map #(drop 1 %) rows)] ; remove db "index" which is the first column in the result set
@@ -591,17 +661,8 @@
                   unsigned_int_types
                   {}))))))))
 
-;; FIXME: blocked by https://github.com/ClickHouse/clickhouse-java/issues/2218
-#_(deftest ^:parallel clickhouse-fixed-strings
-    (mt/test-driver
-      :clickhouse
-      (is (= [["val1" "val2" "val3" "val4"]]
-             (qp.test/formatted-rows
-              [str str str str]
-              :format-nil-values
-              (ctd/do-with-test-db
-               (fn [db]
-                 (data/with-db db
-                   (data/run-mbql-query
-                    fixed_strings
-                    {})))))))))
+(deftest ^:parallel clickhouse-fixed-strings
+  (mt/test-driver :clickhouse
+    (mt/dataset metabase_test
+      (is (= [[1 "val1" "val2" "val3" "val4"]]
+             (mt/rows (mt/run-mbql-query fixed_strings)))))))

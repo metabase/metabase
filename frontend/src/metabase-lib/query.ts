@@ -1,9 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
+import { metadataProvider } from "metabase-lib/metadata";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   CardType,
-  DatabaseId,
   DatasetQuery,
+  LegacyDatasetQuery,
+  OpaqueDatasetQuery,
   TableId,
 } from "metabase-types/api";
 
@@ -13,25 +16,13 @@ import type {
   ClauseType,
   ColumnMetadata,
   Join,
+  MeasureMetadata,
   MetadataProvider,
   MetricMetadata,
   Query,
   SegmentMetadata,
   TableMetadata,
 } from "./types";
-
-export function fromLegacyQuery(
-  databaseId: DatabaseId | null,
-  metadataProvider: MetadataProvider,
-  datasetQuery: DatasetQuery,
-): Query {
-  return ML.query(databaseId, metadataProvider, datasetQuery);
-}
-
-// Returns a NanoID string for a card and query to use.
-export function randomIdent(): string {
-  return ML.random_ident();
-}
 
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
@@ -44,7 +35,7 @@ export function queryFromTableOrCardMetadata(
   return ML.query(metadataProvider, tableOrCardMetadata);
 }
 
-export function toLegacyQuery(query: Query): DatasetQuery {
+export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
 }
 
@@ -99,7 +90,13 @@ export function replaceClause(
   query: Query,
   stageIndex: number,
   targetClause: Clause | Join,
-  newClause: Clause | ColumnMetadata | MetricMetadata | SegmentMetadata | Join,
+  newClause:
+    | Clause
+    | ColumnMetadata
+    | MeasureMetadata
+    | MetricMetadata
+    | SegmentMetadata
+    | Join,
 ): Query {
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
@@ -140,4 +137,22 @@ export function previewQuery(
   clauseIndex: number | null,
 ): Query | null {
   return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
+}
+
+export function fromJsQuery(
+  metadataProvider: MetadataProvider,
+  jsQuery: OpaqueDatasetQuery | DatasetQuery,
+): Query {
+  return ML.from_js_query(metadataProvider, jsQuery);
+}
+
+export function fromJsQueryAndMetadata(
+  metadata: Metadata,
+  jsQuery: OpaqueDatasetQuery | DatasetQuery,
+): Query {
+  return fromJsQuery(metadataProvider(jsQuery.database, metadata), jsQuery);
+}
+
+export function toJsQuery(query: Query): OpaqueDatasetQuery {
+  return ML.to_js_query(query);
 }

@@ -12,6 +12,10 @@ Fill out the fields for that database, and click **Save changes** at the bottom.
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -42,7 +46,7 @@ The password for the username that you use to connect to the database.
 
 ### Use a secure connection (SSL)
 
-Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
+Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we recommend keeping SSL turned on to keep your data secure.
 
 ### Use SSL certificate?
 
@@ -89,6 +93,12 @@ See [syncs and scans](../sync-scan.md#choose-when-syncs-and-scans-happen).
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
+
+## Database routing
+
+With database routing, an admin can build a question once using one database (data catalog), and the question will run its query against a different data catalog with the same schema depending on who is viewing the question.
+
+See [Database routing](../../permissions/database-routing.md).
 
 ## Danger zone
 

@@ -38,6 +38,7 @@ export function CollectionInstanceAnalyticsIcon({
   return (
     <Icon
       {...iconProps}
+      flex="0 0 auto"
       name={collectionType.icon}
       tooltip={t`This is a read-only Usage Analytics ${collectionIconTooltipNameMap[entity]}.`}
       data-testid="instance-analytics-collection-marker"

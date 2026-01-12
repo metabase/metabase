@@ -1,15 +1,15 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDatabaseListEndpoint,
   setupGdriveGetFolderEndpoint,
   setupGdrivePostFolderEndpoint,
   setupGdriveServiceAccountEndpoint,
+  setupTokenStatusEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type { GdrivePayload, TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
@@ -28,7 +28,7 @@ interface SetupOpts {
   canUpload?: boolean;
   canManageSettings?: boolean;
   isHosted?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
   enableGoogleSheets?: boolean;
   status?: GdrivePayload["status"];
@@ -42,18 +42,18 @@ export const setup = ({
   canUpload = true,
   canManageSettings = false,
   isHosted = false,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   tokenFeatures = {},
   enableGoogleSheets = false,
   status,
   adminEmail = "admin@metabase.test",
 }: SetupOpts = {}) => {
-  const user = {
+  const user = createMockUser({
     is_superuser: isAdmin,
-  };
+  });
 
   if (canManageSettings) {
-    (user as UserWithApplicationPermissions).permissions = {
+    user.permissions = {
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,
@@ -89,12 +89,16 @@ export const setup = ({
         schema_name: "uploads",
         table_prefix: "uploaded_",
       },
+      "store-url": "https://store.metabase.com",
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
+  setupTokenStatusEndpoint({ valid: true });
 
   setupDatabaseListEndpoint(databases);
 
@@ -117,7 +121,7 @@ export const setup = ({
 export const setupAdvancedPermissions = (opts: Partial<SetupOpts>) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
+    enterprisePlugins: ["application_permissions"],
     tokenFeatures: { advanced_permissions: true },
   });
 };
@@ -126,8 +130,8 @@ export const setupHostedInstance = (opts: Partial<SetupOpts>) => {
   return setup({
     ...opts,
     isHosted: true,
-    hasEnterprisePlugins: true,
     tokenFeatures: { hosting: true, ...opts.tokenFeatures },
+    enterprisePlugins: ["upload_management"],
   });
 };
 

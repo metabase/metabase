@@ -24,8 +24,9 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
       className,
 
       parameters,
-      question,
-      dashboard,
+      linkedFilterParameters = parameters,
+      cardId,
+      dashboardId,
       editingParameter,
 
       isSortable = true,
@@ -40,7 +41,6 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
       setParameterIndex,
       setEditingParameter,
       enableParameterRequiredBehavior,
-      widgetsVariant = "default",
       widgetsWithinPortal,
       widgetsPopoverPosition,
 
@@ -72,7 +72,6 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
     }: RenderItemProps<Parameter>) => (
       <ParameterWidget
         key={`sortable-${id}`}
-        variant={widgetsVariant}
         fullWidth={vertical}
         withinPortal={widgetsWithinPortal}
         popoverPosition={widgetsPopoverPosition}
@@ -80,9 +79,9 @@ export const ParametersList = forwardRef<HTMLDivElement, ParametersListProps>(
         isEditing={isEditing}
         isFullscreen={isFullscreen}
         parameter={valuePopulatedParameter}
-        parameters={parameters}
-        question={question}
-        dashboard={dashboard}
+        parameters={linkedFilterParameters}
+        cardId={cardId}
+        dashboardId={dashboardId}
         editingParameter={editingParameter}
         setEditingParameter={setEditingParameter}
         setValue={

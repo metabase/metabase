@@ -7,7 +7,10 @@ import {
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockDocument,
+} from "metabase-types/api/mocks";
 
 const { admin } = USERS;
 
@@ -30,6 +33,12 @@ const TAB_4 = {
   id: 4,
   name: "Tab 4",
 };
+
+/**
+ * When keys are pressed too fast redux won't have enough time to update the state,
+ * so conditions in subsequently called event handlers may not have been updated yet.
+ */
+const REAL_PRESS_DELAY = 1;
 
 describe("command palette", () => {
   beforeEach(() => {
@@ -60,9 +69,10 @@ describe("command palette", () => {
 
     //Request to have an item in the recents list
     cy.request(`/api/dashboard/${ORDERS_DASHBOARD_ID}`);
+
     cy.visit("/");
 
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
     H.commandPalette().should("be.visible");
     cy.findByRole("option", { name: "Orders in a dashboard" }).should(
       "have.attr",
@@ -77,12 +87,12 @@ describe("command palette", () => {
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist");
 
-      cy.log("limit to 5 basic actions");
-      cy.findByText("New question");
-      cy.findByText("New SQL query");
-      cy.findByText("New dashboard");
-      cy.findByText("New collection");
-      cy.findByText("New model");
+      cy.log("does not show actions if there is no search query");
+      cy.findByText("New question").should("not.exist");
+      cy.findByText("New SQL query").should("not.exist");
+      cy.findByText("New dashboard").should("not.exist");
+      cy.findByText("New collection").should("not.exist");
+      cy.findByText("New model").should("not.exist");
       cy.findByText("New metric").should("not.exist");
 
       cy.log("Should show recent items");
@@ -144,14 +154,28 @@ describe("command palette", () => {
       .findByRole("option", { name: "Orders in a dashboard" })
       .should("have.attr", "aria-selected", "true");
 
-    H.pressPageDown();
+    H.commandPaletteInput().type("New");
+    H.commandPalette()
+      .findByText(/loading/i)
+      .should("not.exist");
+    H.commandPalette().findByText("No results for “New”").should("be.visible");
 
     H.commandPalette()
-      .findByRole("option", { name: "New dashboard" })
+      .findByRole("option", { name: "New question" })
+      .should("have.attr", "aria-selected", "true");
+
+    cy.wait(100); // pressing page down too fast does nothing
+    H.pressPageDown();
+    H.commandPalette()
+      .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
 
     H.pressPageDown();
+    H.commandPalette()
+      .findByRole("option", { name: 'Search documentation for "New"' })
+      .should("have.attr", "aria-selected", "true");
 
+    H.pressPageUp();
     H.commandPalette()
       .findByRole("option", { name: "New model" })
       .should("have.attr", "aria-selected", "true");
@@ -162,21 +186,20 @@ describe("command palette", () => {
       .should("have.attr", "aria-selected", "true");
 
     H.pressEnd();
-
     H.commandPalette()
-      .findByRole("option", { name: "New model" })
+      .findByRole("option", { name: 'Search documentation for "New"' })
       .should("have.attr", "aria-selected", "true");
 
     H.pressHome();
     H.commandPalette()
-      .findByRole("option", { name: "Orders in a dashboard" })
+      .findByRole("option", { name: "New question" })
       .should("have.attr", "aria-selected", "true");
   });
 
   it("should display search results in the order returned by the API", () => {
     cy.visit("/");
 
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
     cy.intercept("/api/search?*").as("searchData");
 
     H.commandPalette().within(() => {
@@ -187,14 +210,38 @@ describe("command palette", () => {
       cy.get("@searchData").then(({ response }) => {
         const results = response.body.data;
 
-        results.forEach((result, index) => {
-          // eslint-disable-next-line no-unsafe-element-filtering
-          cy.findAllByRole("option")
-            .eq(index + 2)
-            .should("contain.text", result.name);
-        });
+        cy.findAllByRole("option")
+          // filter out unrelated items, keep only options with data
+          .invoke("slice", 1, -2)
+          .should("have.length", results.length)
+          .each(($option, index) => {
+            cy.wrap($option).should("contain", results[index].name);
+          });
       });
     });
+  });
+
+  // Making this a separate test for now because it requires the bleeding edge token, which
+  // Enables a bunch of other stuff and messes up the "Renders a searchable command palette"
+  // test. In the future, this can be integrated into the test above, or moved to a BE test
+  it("should display collection names for documents in recents", () => {
+    //Create a document so that it appears in the recents list
+    cy.request(
+      "POST",
+      "/api/document",
+      createMockDocument({ collection_id: ADMIN_PERSONAL_COLLECTION_ID }),
+    );
+
+    cy.visit("/");
+
+    cy.findByRole("button", { name: /search/i }).click();
+    H.commandPalette().should("be.visible");
+
+    // UXW-1786
+    cy.findByRole("option", { name: "Test Document" }).should(
+      "contain.text",
+      "Bobby Tables's Personal Collection",
+    );
   });
 
   describe("admin settings links", () => {
@@ -368,7 +415,7 @@ describe("command palette", () => {
 
   it("Should have a new metric item", () => {
     cy.visit("/");
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Me");
@@ -378,18 +425,53 @@ describe("command palette", () => {
     });
   });
 
-  it("should show the 'Report an issue' command palette item", () => {
+  it("should show the 'Download diagnostics' command palette item", () => {
     cy.visit("/");
-    cy.findByRole("button", { name: /Search/ }).click();
+    cy.findByRole("button", { name: /search/i }).click();
 
     H.commandPalette().within(() => {
       H.commandPaletteInput().should("exist").type("Issue");
-      cy.findByText("Report an issue").should("be.visible");
+      cy.findByText("Download diagnostics").should("be.visible");
+    });
+  });
+
+  it("should allow searching personal collections if no results and user is admin", () => {
+    cy.visit("/");
+    cy.findByRole("button", { name: /search/i }).click();
+    cy.realType("asdf");
+    H.commandPalette()
+      .get("#search-results-metadata")
+      .should("contain", "Search everything");
+  });
+
+  describe("ee", () => {
+    beforeEach(() => {
+      H.activateToken("bleeding-edge");
+    });
+
+    it("should show the 'New embed' command palette item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/i }).click();
+
+      H.commandPalette().within(() => {
+        H.commandPaletteInput().should("exist").type("new embed");
+        cy.findByText("New embed").should("be.visible");
+      });
+    });
+
+    it("should have a 'New document' item", () => {
+      cy.visit("/");
+      cy.findByRole("button", { name: /search/i }).click();
+      H.commandPalette().within(() => {
+        H.commandPaletteInput().should("be.visible").type("new document");
+        cy.findByText("New document").should("be.visible").click();
+        cy.location("pathname").should("eq", "/document/new");
+      });
     });
   });
 });
 
-H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
+describe("shortcuts", { tags: ["@actions"] }, () => {
   beforeEach(() => {
     H.resetSnowplow();
     H.restore();
@@ -430,6 +512,7 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "create-new-collection",
     });
     H.openCommandPalette();
+    H.commandPaletteInput().should("be.visible").type("new dashboard");
     H.commandPalette().findByRole("option", { name: "New dashboard" }).click();
     cy.findByRole("dialog", { name: /dashboard/i }).should("exist");
     cy.realPress("Escape");
@@ -529,9 +612,9 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
 
     cy.findByTestId("site-name-setting").should("exist");
     cy.location("pathname").should("contain", "/admin/settings");
-    cy.realPress("3");
+    cy.realPress("4");
     cy.location("pathname").should("contain", "/admin/datamodel");
-    cy.realPress("7");
+    cy.realPress("8");
     cy.location("pathname").should("contain", "/admin/tools");
   });
 
@@ -569,11 +652,11 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     cy.realPress("o");
     H.openNavigationSidebar();
     H.navigationSidebar()
-      .findByRole("tab", { name: /bookmarks/i })
+      .findByRole("section", { name: "Bookmarks" })
       .should("contain.text", "Test Dashboard");
     cy.realPress("o");
     H.navigationSidebar()
-      .findByRole("tab", { name: /bookmarks/i })
+      .findByRole("section", { name: "Bookmarks" })
       .should("not.exist");
 
     cy.realPress("e");
@@ -639,12 +722,14 @@ H.describeWithSnowplow("shortcuts", { tags: ["@actions"] }, () => {
     // Sidesheet
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("exist");
+    cy.wait(REAL_PRESS_DELAY);
     cy.realPress("]");
     cy.findByRole("dialog", { name: "Info" }).should("not.exist");
 
     // Viz Settings
     cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("exist");
+    cy.wait(REAL_PRESS_DELAY);
     cy.realPress("y");
     cy.findByTestId("chartsettings-sidebar").should("not.exist");
 

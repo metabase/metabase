@@ -86,26 +86,29 @@
 
   Known issue: does not currently generate automatic type hints the way [[schema.core/defn]] does, nor does it attempt
   to preserve them if you specify them manually. We can fix this in the future."
+  {:style/indent [:defn]}
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
         cosmetic-name    (gensym (munge (str fn-name)))
         {attr-map :meta} (:values parsed)
+        docstring        (annotated-docstring parsed)
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
                            :schema   (mu.fn/fn-schema parsed {:target :target/metadata})}
-                          attr-map)
-        docstring        (annotated-docstring parsed)
+                          attr-map
+                          ;; Don't include docstrings in CLJS to prevent them slipping into release build and
+                          ;; inflating the bundle.
+                          (macros/case
+                            :clj  {:doc docstring}
+                            :cljs nil))
         instrument?      (mu.fn/instrument-ns? *ns*)]
-    (if-not instrument?
-      `(def ~(vary-meta fn-name merge attr-map)
-         ~docstring
-         ~(mu.fn/deparameterized-fn-form parsed))
-      `(def ~(vary-meta fn-name merge attr-map)
-         ~docstring
-         ~(macros/case
+    `(def ~(vary-meta fn-name merge attr-map)
+       ~(if instrument?
+          (macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
                     (mu.fn/instrumented-fn-form error-context parsed cosmetic-name))
-            :cljs (mu.fn/deparameterized-fn-form parsed cosmetic-name))))))
+            :cljs (mu.fn/deparameterized-fn-form parsed cosmetic-name))
+          (mu.fn/deparameterized-fn-form parsed)))))
 
 (defmacro defn-
   "Same as defn, but creates a private def."

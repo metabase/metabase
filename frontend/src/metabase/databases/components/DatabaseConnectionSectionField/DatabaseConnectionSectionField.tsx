@@ -2,7 +2,7 @@ import { useField } from "formik";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/forms";
 import { Box, Radio } from "metabase/ui";
 
 export interface DatabaseConnectionSectionFieldProps {
@@ -23,7 +23,7 @@ export const DatabaseConnectionSectionField = ({
   return (
     <FormField>
       <Box
-        bg="var(--mb-color-background-info)"
+        bg="background-info"
         p="lg"
         style={{ borderRadius: "var(--default-border-radius)" }}
       >

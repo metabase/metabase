@@ -7,9 +7,7 @@ on:
       - release-x.*
     tags:
       - v*
-      - nightly-*
       - latest-*
-      - beta-*
   workflow_dispatch:
     inputs:
       version:
@@ -49,7 +47,7 @@ jobs:
         with:
           script: | # js
             const {
-              getVersionFromReleaseBranch,
+              getMajorVersionFromRef,
               getMajorVersion,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
@@ -62,14 +60,15 @@ jobs:
             }
 
             // otherwise, get the version from the release branch name
-            const branch = context.payload.ref;
-            const version = getVersionFromReleaseBranch(branch);
-            const majorVersion = getMajorVersion(version);
+            const ref = context.payload.ref;
+            const majorVersion = getMajorVersionFromRef(ref);
 
-            console.log({ branch, version, majorVersion });
+            console.log({ ref, majorVersion });
             core.exportVariable('VERSION', majorVersion);
 
       - name: generate release Log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
       - name: generate release channel log
         run: cd release && tsx ./src/release-channel-log.ts > channels.html

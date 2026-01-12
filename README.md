@@ -2,7 +2,7 @@
 
 [Metabase](https://www.metabase.com) is the easy, open-source way for everyone in your company to ask questions and learn from data.
 
-![Metabase Product Screenshot](docs/images/metabase-product-screenshot.png)
+![Metabase Product Screenshot](https://www.metabase.com/images/metabase-product-screenshot-updated.png)
 
 [![Latest Release](https://img.shields.io/github/release/metabase/metabase.svg?label=latest%20release)](https://github.com/metabase/metabase/releases)
 [![codecov](https://codecov.io/gh/metabase/metabase/branch/master/graph/badge.svg)](https://codecov.io/gh/metabase/metabase)
@@ -12,28 +12,29 @@
 
 The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase) Metabase at any time (or vice versa).
 
-## Features
+## Key Features
 
-- [Set up in five minutes](https://www.metabase.com/docs/latest/setting-up-metabase.html) (we're not kidding).
+- [Set up in five minutes](https://www.metabase.com/docs/latest/configuring-metabase/setting-up-metabase) (we're not kidding).
 - Let anyone on your team [ask questions](https://www.metabase.com/docs/latest/questions/introduction) without knowing SQL.
 - Use the [SQL editor](https://www.metabase.com/docs/latest/questions/native-editor/writing-sql) for more complex queries.
-- Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/users-guide/07-dashboards.html) with filters, auto-refresh, fullscreen, and custom click behavior.
+- Build handsome, interactive [dashboards](https://www.metabase.com/docs/latest/dashboards/introduction) with filters, auto-refresh, fullscreen, and custom click behavior.
 - Create [models](https://www.metabase.com/learn/metabase-basics/getting-started/models) that clean up, annotate, and/or combine raw tables.
-- Define canonical [segments and metrics](https://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use.
-- Send data to Slack or email on a schedule with [dashboard subscriptions](https://www.metabase.com/docs/latest/users-guide/dashboard-subscriptions).
-- Set up [alerts](https://www.metabase.com/docs/latest/users-guide/15-alerts.html) to have Metabase notify you when your data changes.
-- [Embed charts and dashboards](https://www.metabase.com/docs/latest/administration-guide/13-embedding.html) in your app, or even [your entire Metabase](https://www.metabase.com/docs/latest/enterprise-guide/full-app-embedding.html).
+- Define canonical [segments and metrics](https://www.metabase.com/docs/latest/data-modeling/metrics) for your team to use.
+- Send data to Slack or email on a schedule with [dashboard subscriptions](https://www.metabase.com/docs/latest/dashboards/subscriptions).
+- Set up [alerts](https://www.metabase.com/docs/latest/questions/alerts) to have Metabase notify you when your data changes.
+- [Embed charts and dashboards](https://www.metabase.com/docs/latest/embedding/introduction) in your app, or even [your entire Metabase](https://www.metabase.com/docs/latest/embedding/interactive-embedding).
+- Build with the [Embedded Analytics SDK for React](https://www.metabase.com/docs/latest/embedding/sdk/introduction) to embed standalone components with custom styling that matches your app's design.
 
-Take a [tour of Metabase](https://www.metabase.com/learn/getting-started/tour-of-metabase).
+Take a [tour of Metabase](https://www.metabase.com/learn/metabase-basics/overview/tour-of-metabase).
 
 ## Supported databases
 
 - [Officially supported databases](./docs/databases/connecting.md#connecting-to-supported-databases)
-- [Community drivers](./docs/developers-guide/partner-and-community-drivers.md)
+- [Community drivers](./docs/developers-guide/community-drivers.md)
 
 ## Installation
 
-Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/operations-guide/installing-metabase).
+Metabase can be run just about anywhere. Check out our [Installation Guides](https://www.metabase.com/docs/latest/installation-and-operation/installing-metabase).
 
 ## Contributing
 
@@ -43,7 +44,7 @@ In order to spin up a development environment, you need to start the front end a
 
 ### Frontend quick setup
 
-The following command will install the Javascript dependencies:
+The following command will install the JavaScript dependencies:
 
 ```bash
 yarn install
@@ -63,7 +64,7 @@ yarn build-hot
 
 ### Backend  quick setup
 
-In order to run the backend, you'll need to build the drivers first, and then start the backend:
+To run the backend, you'll need to build the drivers first, and then start the backend:
 
 ```bash
 ./bin/build-drivers.sh
@@ -78,13 +79,13 @@ We want Metabase to be available in as many languages as possible. See which tra
 
 ## Extending Metabase
 
-Hit our Query API from Javascript to integrate analytics. Metabase enables your application to:
+Hit our Query API from JavaScript to integrate analytics. Metabase enables your application to:
 
 - Build moderation interfaces.
 - Export subsets of your users to third party marketing automation software.
 - Provide a custom customer lookup application for the people in your company.
 
-Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/administration/metabase-api).
+Check out our guide, [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).
 
 ## Security Disclosure
 
@@ -96,8 +97,16 @@ This repository contains the source code for both the Open Source edition of Met
 
 See [LICENSE.txt](./LICENSE.txt) for details.
 
-Unless otherwise noted, all files © 2025 Metabase, Inc.
+Unless otherwise noted, all files © 2026 Metabase, Inc.
 
-## [Metabase Experts](https://www.metabase.com/partners/)
+## Community
+
+- [Discourse](https://discourse.metabase.com/)
+- [Twitter](https://x.com/metabase)
+- [LinkedIn](https://www.linkedin.com/company/metabase/)
+- [YouTube](https://www.youtube.com/@metabasedata)
+- [Reddit](https://www.reddit.com/r/Metabase/)
+
+## Metabase Experts
 
 If you’d like more technical resources to set up your data stack with Metabase, connect with a [Metabase Expert](https://www.metabase.com/partners/?utm_source=readme&utm_medium=metabase-expetrs&utm_campaign=readme).

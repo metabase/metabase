@@ -1,6 +1,7 @@
 const { H } = cy;
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -244,8 +245,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
     // Build a new question off that grouping by City
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.contains("CA People").click();
     });
 
@@ -274,7 +275,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it.skip("should drill through a with date filter (metabase#12496)", () => {
+  it("should drill through a with date filter (metabase#12496)", () => {
     H.createQuestion({
       name: "Orders by Created At: Week",
       query: {
@@ -285,79 +286,67 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       display: "line",
     });
 
-    // Load the question up
     cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Orders by Created At: Week").click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January 2025");
+    cy.findAllByTestId("collection-entry-name")
+      .contains("Orders by Created At: Week")
+      .click();
 
+    H.echartsContainer().contains("January 2025");
     // drill into a recent week
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy.get(".dot").eq(-4).click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("See these Orders").click();
+    H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
+
+    H.popover().contains("See these Orders").click();
 
     // check that filter is applied and rows displayed
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Showing 127 rows");
+    H.assertQueryBuilderRowCount(127);
 
     cy.log("Filter should show the range between two dates");
     // Now click on the filter widget to see if the proper parameters got passed in
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains(/^Created At is .*–/).click(); // en-dash to detect date range
+    cy.findByTestId("filter-pill")
+      .contains(/^Created At: Week is .*–/)
+      .click(); // en-dash to detect date range
   });
 
-  it.skip("should drill-through on filtered aggregated results (metabase#13504)", () => {
+  it("should drill-through on filtered aggregated results (metabase#13504)", () => {
     H.openOrdersTable({ mode: "notebook" });
     H.summarize({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Count of rows").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Pick a column to group by").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Created At").click();
-
-    // add filter: Count > 1
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Filter").click();
-    H.popover().within(() => {
-      cy.findByText("Count").click();
-      cy.findByText("Equal to").click();
+    H.popover().contains("Count of rows").click();
+    cy.findByTestId("breakout-step")
+      .contains("Pick a column to group by")
+      .click();
+    H.popover().contains("Created At").click();
+    cy.findByTestId("step-summarize-0-0").within(() => {
+      cy.icon("filter").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").click().type("1");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Add filter").click();
-
+    H.popover().within(() => {
+      cy.contains("Count").click();
+      cy.contains("Between").click();
+    });
+    H.popover()
+      .should("have.length", 2)
+      .last()
+      .contains("Greater than")
+      .click();
+    H.popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").click().type("1");
+      cy.button("Add filter").click();
+    });
     H.visualize();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Visualization").click();
+    cy.button("Visualization").click();
     cy.icon("line").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Done").click();
+    cy.button("Done").click();
     cy.log("Mid-point assertion");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count by Created At: Month");
     // at this point, filter is displaying correctly with the name
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count is greater than 1");
+    cy.findByTestId("filter-pill").contains("Count is greater than 1");
 
     // drill-through
-    cy.get(".dot")
-      .eq(10) // random dot
-      .click({ force: true });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("See these Orders").click();
+    H.cartesianChartCircle().should("have.length.gte", 10).eq(10).click();
+
+    H.clickActionsPopover().contains("See these Orders").click();
 
     cy.log("Reproduced on 0.34.3, 0.35.4, 0.36.7 and 0.37.0-rc2");
     // when the bug is present, filter is missing a name (showing only "is 256")
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("Count is equal to 256");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("There was a problem with your question").should("not.exist");
+    H.assertQueryBuilderRowCount(256);
   });
 
   it("should display correct value in a tooltip for unaggregated data (metabase#11907)", () => {
@@ -491,7 +480,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
+  it("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
     // Restrict "normal user" (belongs to the DATA_GROUP) from writing native queries
     cy.log("Fetch permissions graph");
     cy.request("GET", "/api/permissions/graph", {}).then(
@@ -551,10 +540,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         H.visitQuestion(QUESTION_ID);
 
         // Initial visualization has rendered and we can now drill-through
-        cy.findByTestId("query-visualization-root")
-          .get(".bar")
+        H.chartPathWithFillColor("#509EE3")
+          .should("have.length.gte", 4)
           .eq(4)
-          .click({ force: true });
+          .click();
         cy.findByText("See these People").click();
 
         // We should see the resulting dataset of that drill-through
@@ -854,7 +843,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     cy.findByTestId("click-actions-popover-content-for-Count").within(() => {
       cy.findByText("See these People").should("be.visible");
-      cy.findByText("Zoom in").should("be.visible");
+      cy.findByText("Zoom in: State").should("be.visible");
 
       cy.findByText("Break out by…").should("be.visible");
       cy.findByText("Automatic insights…").should("be.visible");
@@ -863,6 +852,96 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("<").should("be.visible");
       cy.findByText("=").should("be.visible");
       cy.findByText("≠").should("be.visible");
+    });
+  });
+
+  describe("chart click actions analytics", () => {
+    beforeEach(() => {
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    // This list is not exhaustive. It only covers the events that were defined in a ticket defined by Product.
+    // The full list can be found in frontend/src/metabase/visualizations/types/click-actions.ts
+    // See: `type ClickActionSection`
+    it("should track clicks on action sections", () => {
+      H.visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+
+      H.popover()
+        .findByText(/^See these/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "records",
+      });
+
+      cy.go("back");
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^See this year/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "zoom",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Break out by/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "breakout",
+      });
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover().findByText(">").click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "filter",
+      });
+
+      cy.go("back");
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Automatic insights/)
+        .click();
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "click_action",
+        triggered_from: "auto",
+      });
+
+      H.popover().findByText("X-ray").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_automatic_insights_clicked",
+        event_detail: "x-ray",
+      });
+
+      cy.go("back");
+
+      H.cartesianChartCircle().eq(1).should("be.visible").click();
+      H.popover()
+        .findByText(/^Automatic insights/)
+        .click();
+      H.popover().findByText("Compare to the rest").click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_automatic_insights_clicked",
+        event_detail: "compare_to_rest",
+      });
     });
   });
 });

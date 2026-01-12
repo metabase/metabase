@@ -5,7 +5,6 @@ import { Panel } from "metabase/admin/performance/components/StrategyEditorForDa
 import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CacheConfig } from "metabase-types/api";
 
@@ -48,7 +47,10 @@ export const StrategyFormLauncherPanel = ({
   });
 
   return (
-    <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
+    <Panel
+      role="group"
+      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
+    >
       <StrategyFormLauncherPanelBox>
         <StrategyFormLauncher
           forId={rootId}

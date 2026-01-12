@@ -1,0 +1,12 @@
+built_in_type: hourly
+created_at: '2025-09-23T12:20:31.215628Z'
+description: Executes transforms tagged with 'hourly' every hour
+entity_id: RognTgBT2fXaxoQh4ws7z
+job_tags: []
+name: Hourly job
+schedule: 0 0 * * * ? *
+ui_display_type: cron/builder
+serdes/meta:
+- id: RognTgBT2fXaxoQh4ws7z
+  label: hourly_job
+  model: TransformJob

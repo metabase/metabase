@@ -25,8 +25,7 @@
                                                             {:query-params (m/remove-vals
                                                                             str/blank?
                                                                             {"instance" (version.settings/site-uuid-for-version-info-fetching)
-                                                                             "current-version" (:tag config/mb-version-info)
-                                                                             "channel" (version.settings/update-channel)})})))]
+                                                                             "current-version" (:tag config/mb-version-info)})})))]
     (when (not= status 200)
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/decode+kw body)))

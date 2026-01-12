@@ -16,7 +16,7 @@ export const fkDetailsDrill: Drill<Lib.FKDetailsDrillThruInfo> = ({
       section: "details",
       title: t`View details`,
       buttonType: "horizontal",
-      icon: "expand",
+      icon: "sidebar_open",
       default: true,
       question: () => applyDrill(drill, objectId).setDefaultDisplay(),
       ...(!isManyPks ? { extra: () => ({ objectId }) } : {}),

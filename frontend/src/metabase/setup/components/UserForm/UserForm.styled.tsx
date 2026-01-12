@@ -1,12 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Form } from "metabase/forms";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
-
-export const UserFormRoot = styled(Form)`
-  margin-top: 1rem;
-`;
 
 export const UserFieldGroup = styled.div`
   ${breakpointMinSmall} {

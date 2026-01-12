@@ -8,7 +8,7 @@ redirect_from:
 
 > To get fast, reliable, and secure deployment with none of the work or hidden costs that come with self-hosting, check out [Metabase Cloud](https://www.metabase.com/cloud/).
 
-Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.
+Metabase provides an official Docker image via Docker Hub that can be used for deployments on any system that is running Docker.
 
 If you're trying to upgrade your Metabase version on Docker, check out these [upgrading instructions](upgrading-metabase.md).
 
@@ -117,7 +117,7 @@ If you've already been running Metabase with the default application database (H
 
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
-> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+> This is an example file and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
 
 ```yml
 services:
@@ -144,13 +144,15 @@ services:
       timeout: 5s
       retries: 5
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres
     hostname: postgres
     environment:
       POSTGRES_USER: metabase
       POSTGRES_DB: metabaseappdb
       POSTGRES_PASSWORD: mysecretpassword
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
     networks:
       - metanet1
 networks:
@@ -298,6 +300,8 @@ services:
       MB_DB_USER_FILE: /run/secrets/db_user
       MB_DB_PASS_FILE: /run/secrets/db_password
       MB_DB_HOST: postgres
+    logging:
+      driver: local
     networks:
       - metanet1
     secrets:
@@ -343,7 +347,7 @@ We currently support the following [environment variables](../configuring-metaba
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 
-> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+> This is an example file and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 ## Troubleshooting
 

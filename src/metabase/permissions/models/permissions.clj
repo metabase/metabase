@@ -57,7 +57,7 @@
     Segmented permissions allow a User to run ad-hoc MBQL queries against the Table in question; regardless of whether
     they have relevant Collection permissions, queries against the sandboxed Table are rewritten to replace the Table
     itself with a special type of nested query called a
-    [[metabase-enterprise.sandbox.models.group-table-access-policy]], or _GTAP_. Note that segmented permissions are
+    [[metabase-enterprise.sandbox.models.sandbox]], or _GTAP_. Note that segmented permissions are
     both additive and subtractive -- they are additive because they grant (sandboxed) ad-hoc query access for a Table,
     but subtractive in that any access thru a Saved Question will now be sandboxed as well.
 
@@ -68,7 +68,7 @@
     * Only one GTAP may defined per-Group per-Table (this is an application-DB-level constraint). A User may have
       multiple applicable GTAPs if they are members of multiple groups that have sandboxed anti-perms for that Table; in
       that case, the QP signals an error if multiple GTAPs apply to a given Table for the current User (see
-      [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions/assert-one-gtap-per-table]]).
+      [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing/assert-one-gtap-per-table]]).
 
     * Segmented (sandboxing) permissions and GTAPs are tied together, and a Group should be given both (or both
       should be deleted) at the same time. This is *not* currently enforced as a hard application DB constraint, but is
@@ -77,12 +77,11 @@
 
     * Segmented permissions can also be used to enforce column-level permissions -- any column not returned by the
       underlying GTAP query is not allowed to be referenced by the parent query thru other means such as filter clauses.
-      See [[metabase-enterprise.sandbox.query-processor.middleware.column-level-perms-check]].
 
     * GTAPs are not allowed to add columns not present in the original Table, or change their effective type to
       something incompatible (this constraint is in place so we other things continue to work transparently regardless
       of whether the Table is swapped out.) See
-      [[metabase-enterprise.sandbox.models.group-table-access-policy/check-columns-match-table]]
+      [[metabase-enterprise.sandbox.models.sandbox/check-columns-match-table]]
 
   * *block \"anti-permissions\"* are per-Group, per-Table grants that tell Metabase to disallow running Saved
     Questions unless the User has data permissions (in other words, disregard Collection permissions). These are
@@ -114,7 +113,7 @@
   Users would still be prevented from poking around things on their own, however.
 
   The Query Processor middleware in [[metabase.query-processor.middleware.permissions]],
-  [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions]], and
+  [[metabase-enterprise.sandbox.query-processor.middleware.sandboxing]], and
   [[metabase-enterprise.advanced-permissions.models.permissions.block-permissions]] determines whether the current
   User has permissions to run the current query. Permissions are as follows:
 
@@ -141,7 +140,7 @@
 
   ### Known Permissions Paths
 
-  See [[path-regex-v1]] for an always-up-to-date list of permissions paths.
+  See [[metabase.permissions.util/path-regex-v1]] for an always-up-to-date list of permissions paths.
 
     /collection/:id/                                ; read-write perms for a Coll and its non-Coll children
     /collection/:id/read/                           ; read-only  perms for a Coll and its non-Coll children
@@ -170,6 +169,8 @@
    [metabase.permissions.user :as permissions.user]
    [metabase.permissions.util :as perms.u]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
@@ -278,7 +279,28 @@
 
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (perms-objects-set-for-parent-collection instance read-or-write))
+  (if (or (= read-or-write :read)
+          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+    (perms-objects-set-for-parent-collection instance read-or-write)
+    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
+    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
+    #{"___no-remote-sync-access"}))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
+  [_model k models]
+  (mi/instances-with-hydrated-data
+   models k
+   #(into {}
+          (map (juxt :id mi/can-write?))
+          (t2/hydrate (remove nil? models) :collection))
+   :id
+   {:default false}))
+
+(defmethod mi/can-create? :perms/use-parent-collection-perms
+  [_model m]
+  (if-let [collection-id (:collection_id m)]
+    (mi/can-write? (t2/select-one :model/Collection :id collection-id))
+    (mi/can-write? (var-get (requiring-resolve 'metabase.collections.models.collection/root-collection)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
@@ -385,12 +407,18 @@
 
 ;;;; Audit Permissions helper fns
 
-(defn audit-namespace-clause
+(defn namespace-clause
   "SQL clause to filter namespaces depending on if audit app is enabled or not, and if the namespace is the default one."
-  [namespace-keyword namespace-val]
-  (if (and (nil? namespace-val) (premium-features/enable-audit-app?))
-    [:or [:= namespace-keyword nil] [:= namespace-keyword "analytics"]]
-    [:= namespace-keyword namespace-val]))
+  [namespace-keyword namespace-val & [include-tenant-namespaces?]]
+  [:or
+   [:= namespace-keyword namespace-val]
+   (when (and (nil? namespace-val)
+              (premium-features/enable-audit-app?))
+     [:= namespace-keyword "analytics"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "shared-tenant-collection"])
+   (when (and include-tenant-namespaces? (nil? namespace-val) (setting/get :use-tenants))
+     [:= namespace-keyword "tenant-specific"])])
 
 ;;; TODO -- this is a predicate function that returns truthy or falsey, it should end in a `?` -- Cam
 (mu/defn can-read-audit-helper
@@ -416,15 +444,21 @@
 (defn grant-application-permissions!
   "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (when (perms-group/is-tenant-group? group-or-id)
+  (when (and (perms-group/is-tenant-group? group-or-id)
+             (not= perm-type :subscription))
     (throw (ex-info (tru "Cannot grant application permission to a tenant group.") {})))
   (grant-permissions! group-or-id (permissions.path/application-perms-path perm-type)))
 
+;; TODO: We really have to figure out a better solution to these circular dependencies than this
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-personal-collection-or-descendant-of-one?) collection))
 
 (defn- is-trash-or-descendant? [collection]
   ((requiring-resolve 'metabase.collections.models.collection/is-trash-or-descendant?) collection))
+
+(defn- tenant-collection?
+  [collection]
+  ((requiring-resolve 'metabase.collections.models.collection/shared-tenant-collection?) collection))
 
 (defn- ^:private collection-or-id->collection
   [collection-or-id]
@@ -462,16 +496,17 @@
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
   (when (perms-group/is-tenant-group? group-or-id)
-    (throw (ex-info (tru "Tenant Groups cannot have write access to any collections.") {})))
+    (throw (ex-info (tru "Tenant groups cannot have write access to any collections.") {})))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-readwrite-path collection-or-id)))
 
 (mu/defn grant-collection-read-permissions!
   "Grant read access to a Collection, which means a user can view all Cards in the Collection."
   [group-or-id :- permissions.path/MapOrID collection-or-id :- permissions.path/MapOrID]
   (check-is-modifiable-collection collection-or-id)
-  (when (and (perms-group/is-tenant-group? group-or-id)
-             (audit/is-collection-id-audit? (u/the-id collection-or-id)))
-    (throw (ex-info (tru "Tenant Groups cannot receive any access to the audit collection.") {})))
+  (let [collection (collection-or-id->collection collection-or-id)]
+    (when (and (not (tenant-collection? collection))
+               (perms-group/is-tenant-group? group-or-id))
+      (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {}))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
 (defenterprise current-user-has-application-permissions?

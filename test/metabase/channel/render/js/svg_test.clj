@@ -6,14 +6,10 @@
   the svg png renderer does not understand nested html elements so we ensure that there are no divs, spans, etc in the
   resulting svg."
   (:require
-   [clojure.set :as set]
    [clojure.test :refer :all]
-   [metabase.channel.render.js.engine :as js.engine]
-   [metabase.channel.render.js.svg :as js.svg]
-   [metabase.util.json :as json])
+   [metabase.channel.render.js.svg :as js.svg])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument)
-   (org.graalvm.polyglot Value)
    (org.w3c.dom Element Node)))
 
 (set! *warn-on-reflection* true)
@@ -51,49 +47,6 @@
     (is (.hasAttribute line "fill-opacity"))
     (is (= "0.0"
            (.getAttribute line "fill-opacity")))))
-
-(defn- document-tag-seq [^SVGOMDocument document]
-  (map #(.getNodeName ^Node %)
-       (tree-seq #(instance? Element %)
-                 (fn [^Node node]
-                   (let [children (.getChildNodes node)]
-                     (reduce (fn [cs i] (conj cs (.item children i)))
-                             [] (range (.getLength children)))))
-                 (.getDocumentElement document))))
-
-(defn- normal-svg-elements [tag-set]
-  (set/subset? #{"svg" "g"} tag-set))
-
-(defn- no-html-elements [tag-set]
-  (= #{} (set/intersection #{"div" "span" "p"} tag-set)))
-
-(defn- validate-svg-string [chart svg-string]
-  (let [tag-seq    (-> svg-string parse-svg document-tag-seq)
-        tag-set    (set tag-seq)]
-    (testing (str chart " String is valid")
-      (is (string? svg-string) "Svg did not return a string"))
-    (testing " String contains normal svg elements"
-      (is (normal-svg-elements tag-set) "Did not contain normal svg elements #{svg g line}"))
-    (testing (str chart "String cannot contain html elements as svg renderer errors")
-      (is (no-html-elements tag-set) (str "Contained html elements: "
-                                          (set/intersection #{"div" "span" "p"}))))))
-
-(deftest ^:parallel progress-test
-  (let [value    1234
-        goal     1337
-        settings {:color "#333333"}]
-    (testing "It returns bytes"
-      (let [svg-bytes (js.svg/progress value goal settings)]
-        (is (bytes? svg-bytes))))
-    (js.svg/with-static-viz-context context
-      (let [svg-string (.asString ^Value (js.engine/execute-fn-name
-                                          context
-                                          "progress"
-                                          (json/encode {:value value :goal goal})
-                                          (json/encode settings)
-                                          (json/encode {})
-                                          (json/encode {})))]
-        (validate-svg-string :progress svg-string)))))
 
 (deftest ^:parallel parse-svg-sanitizes-characters-test
   (testing "Characters discouraged or not permitted by the xml 1.0 specification are removed. (#"

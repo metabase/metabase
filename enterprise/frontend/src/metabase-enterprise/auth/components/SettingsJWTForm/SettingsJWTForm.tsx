@@ -136,14 +136,26 @@ export const SettingsJWTForm = () => {
                       settingDetails?.["jwt-attribute-lastname"],
                     )}
                   />
+                  <FormTextInput
+                    name="jwt-attribute-groups"
+                    label={t`Group assignment attribute`}
+                    {...getExtraFormFieldProps(
+                      settingDetails?.["jwt-attribute-groups"],
+                    )}
+                  />
+                  {settingValues["use-tenants"] && (
+                    <FormTextInput
+                      name="jwt-attribute-tenant"
+                      label={t`Tenant assignment attribute`}
+                      {...getExtraFormFieldProps(
+                        settingDetails?.["jwt-attribute-tenant"],
+                      )}
+                    />
+                  )}
                 </Stack>
               </FormSection>
-              <FormSection
-                title={"Group Schema"}
-                data-testid="jwt-group-schema"
-              >
+              <FormSection title={"Group Sync"} data-testid="jwt-group-schema">
                 <GroupMappingsWidget
-                  isFormik
                   setting={{ key: "jwt-group-sync" }}
                   onChange={handleSubmit}
                   settingValues={settingValues}
@@ -175,9 +187,12 @@ const getFormValues = (
     "jwt-user-provisioning-enabled?",
     "jwt-identity-provider-uri",
     "jwt-shared-secret",
+    "jwt-group-sync",
     "jwt-attribute-email",
     "jwt-attribute-firstname",
     "jwt-attribute-lastname",
+    "jwt-attribute-groups",
+    "jwt-attribute-tenant",
   ]);
 
   if (jwtSettings["jwt-user-provisioning-enabled?"] == null) {

@@ -1,6 +1,7 @@
 import type {
   CollectionId,
   CollectionItemModel,
+  CollectionNamespace,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 
@@ -20,9 +21,23 @@ export const isFolderFactory =
 
 export const getParentCollectionId = (
   location?: string | null,
+  namespace?: CollectionNamespace | null,
+  type?: string | null,
 ): CollectionId => {
   const parentCollectionId = location?.split("/").filter(Boolean).reverse()[0];
-  return parentCollectionId ? Number(parentCollectionId) : "root";
+  if (parentCollectionId) {
+    return Number(parentCollectionId);
+  }
+
+  if (namespace === "shared-tenant-collection") {
+    return "tenant";
+  }
+
+  if (type === "tenant-specific-root-collection") {
+    return "tenant-specific";
+  }
+
+  return "root";
 };
 
 export const getPathLevelForItem = (
@@ -37,9 +52,18 @@ export const getPathLevelForItem = (
     return 0;
   }
 
+  if (item.model === "table") {
+    // we can ignore this, it's not actually in the collection hierarchy
+    return 0;
+  }
+
   const parentCollectionId =
     item.collection_id ??
-    getParentCollectionId(item?.effective_location ?? item?.location);
+    getParentCollectionId(
+      item?.effective_location ?? item?.location,
+      item?.namespace,
+      item?.type,
+    );
 
   // set selected item at the correct level
   const pathLevel = path.findIndex(

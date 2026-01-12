@@ -1,0 +1,135 @@
+.listViewContainer {
+  width: 100%;
+  height: 100%;
+}
+
+.listContainer {
+  --item-padding: 1.4rem;
+
+  height: 100%;
+}
+
+.listHeader {
+  width: 100%;
+  padding-block: 0.75rem;
+  padding-inline: var(--item-padding);
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.listBody {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  gap: 0;
+  overflow: auto;
+}
+
+.listItem {
+  width: 100%;
+  height: 4rem;
+  border-bottom: 1px solid var(--mb-color-border-subtle);
+  background: var(--mb-color-background-primary);
+  padding-inline: var(--item-padding, var(--mantine-spacing-md));
+
+  &:hover {
+    background-color: var(--mb-color-brand-lighter);
+  }
+
+  /* Columns rendering */
+  .badge {
+    cursor: inherit;
+    padding-inline: var(--mantine-spacing-sm);
+    color: var(--mb-color-text-secondary);
+    border-color: var(--mb-color-border);
+  }
+}
+
+.listItemVirtualized {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.listHeader,
+.listItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(var(--grid-columns), 14%);
+  gap: var(--mantine-spacing-md);
+  align-items: center;
+
+  &.withIcon {
+    grid-template-columns: 32px minmax(0, 1fr) repeat(var(--grid-columns), 14%);
+  }
+}
+
+.categoryValue {
+  padding: 4px 8px;
+  border-radius: 100px;
+  border: 1px solid var(--mb-color-border);
+  max-width: 100%;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listViewConfigurationInputs {
+  display: grid;
+  grid-template-columns: 3rem minmax(calc(30% - 3rem - 0.75rem), 1fr) calc(
+      70% - 0.75rem
+    );
+  gap: var(--mantine-spacing-sm);
+  align-items: start;
+  border: 1px solid var(--mb-color-border);
+  border-radius: var(--mantine-radius-md);
+  background: var(--mb-color-background-primary);
+  padding: var(--mantine-spacing-md);
+}
+
+.listEntityIcon {
+  color: var(--mb-color-text-tertiary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.iconMenuButtonContainer {
+  width: 3rem;
+  height: 3rem;
+  background: var(--mb-color-background-hover-light);
+  justify-content: center;
+  align-items: center;
+  border: 1px dashed var(--mb-color-saturated-blue);
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 0.5rem;
+}
+
+.iconMenuButton {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--mb-color-border);
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconColorButton {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+}
+
+.imageColumn {
+  outline: 1px solid var(--mb-color-border);
+}
+
+.selected {
+  outline-offset: 0.125rem;
+  outline: 1px solid var(--mb-color-brand);
+}

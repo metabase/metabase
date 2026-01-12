@@ -38,40 +38,36 @@ describe("AddDataModal", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should have csv tab selected by default", () => {
-    setup();
-
-    const csvTab = screen.getByRole("tab", { name: /CSV$/ });
-    expect(csvTab).toHaveAttribute("data-active", "true");
-  });
-
-  it("should allow to change tabs", async () => {
+  it("should have database tab selected by default but allow to change tabs", async () => {
     setup();
 
     const databaseTab = screen.getByRole("tab", { name: /Database$/ });
-    const csvTab = screen.getByRole("tab", { name: /CSV$/ });
+    const csvTab = await screen.findByRole("tab", { name: /CSV$/ });
 
-    expect(csvTab).toHaveAttribute("data-active", "true");
-    await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
-    expect(csvTab).not.toHaveAttribute("data-active");
     expect(databaseTab).toHaveAttribute("data-active", "true");
+    await userEvent.click(csvTab);
+    expect(databaseTab).not.toHaveAttribute("data-active");
+    expect(csvTab).toHaveAttribute("data-active", "true");
   });
 
   it("should maintain the tab selection state", async () => {
     setup();
 
-    const csvTab = screen.getByRole("tab", { name: /CSV$/ });
-    expect(csvTab).toHaveAttribute("data-active", "true");
+    const databaseTab = await screen.findByRole("tab", { name: /Database$/ });
+    expect(databaseTab).toHaveAttribute("data-active", "true");
 
-    await userEvent.click(csvTab);
+    await userEvent.click(databaseTab);
     // Tab should remain selected after clicking
-    expect(csvTab).toHaveAttribute("data-active", "true");
+    expect(databaseTab).toHaveAttribute("data-active", "true");
   });
 
   describe("database panel", () => {
     it("should show database panel for admin users", async () => {
       setup({ isAdmin: true });
 
+      expect(
+        await screen.findByRole("tab", { name: /CSV$/ }),
+      ).toBeInTheDocument();
       await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
@@ -88,6 +84,9 @@ describe("AddDataModal", () => {
     it("should show limited view for non-admin users", async () => {
       setup({ isAdmin: false });
 
+      expect(
+        await screen.findByRole("tab", { name: /CSV$/ }),
+      ).toBeInTheDocument();
       await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
@@ -117,12 +116,16 @@ describe("AddDataModal", () => {
     it("doesn't show admin email when there isn't one", async () => {
       setup({ isAdmin: false, adminEmail: null });
 
+      expect(
+        await screen.findByRole("tab", { name: /CSV$/ }),
+      ).toBeInTheDocument();
+
       await userEvent.click(screen.getByRole("tab", { name: /Database$/ }));
 
       const alert = screen.getByRole("alert");
       expect(alert).toBeInTheDocument();
       expect(
-        within(alert).getByText(
+        await within(alert).findByText(
           "To add a new database, please contact your administrator.",
         ),
       ).toBeInTheDocument();
@@ -136,7 +139,8 @@ describe("AddDataModal", () => {
     it("should show CSV panel for admin users", async () => {
       setup({ isAdmin: true, uploadsEnabled: true });
 
-      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
 
       expect(
         await screen.findByText("Drag and drop a file here"),
@@ -151,7 +155,8 @@ describe("AddDataModal", () => {
     it("should prompt the admin to enable uploads", async () => {
       setup({ isAdmin: true, uploadsEnabled: false });
 
-      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
       expect(
         screen.getByRole("heading", { name: "Upload CSV files" }),
       ).toBeInTheDocument();
@@ -168,17 +173,21 @@ describe("AddDataModal", () => {
     it("should prompt the admin to enable uploads with an upsell on a hosted instance", async () => {
       setup({ isAdmin: true, uploadsEnabled: false, isHosted: true });
 
-      expect(screen.getByText("Manage uploads")).toBeInTheDocument();
-      expect(screen.getByText("Enable uploads")).toBeInTheDocument();
-      expect(screen.getByText("Add Metabase Storage")).toBeInTheDocument();
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
+      expect(await screen.findByText("Manage uploads")).toBeInTheDocument();
+      expect(await screen.findByText("Enable uploads")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Add Metabase Storage"),
+      ).toBeInTheDocument();
     });
 
     it("regular user should be instructed to contact their admin in order to enable uploads", async () => {
       setup({ isAdmin: false, uploadsEnabled: false, canUpload: true });
 
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
       expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Upload CSV files" }),
+        await screen.findByRole("heading", { name: "Upload CSV files" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -200,9 +209,10 @@ describe("AddDataModal", () => {
     it("regular user should be instructed to contact their admin in order to gain upload permissions", async () => {
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: false });
 
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
       expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Upload CSV files" }),
+        await screen.findByRole("heading", { name: "Upload CSV files" }),
       ).toBeInTheDocument();
       expect(
         screen.getByText(
@@ -224,6 +234,7 @@ describe("AddDataModal", () => {
     it("should show CSV panel for a regular user with sufficient permissions", async () => {
       setup({ isAdmin: false, uploadsEnabled: true, canUpload: true });
 
+      await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
       expect(screen.queryByText("Manage uploads")).not.toBeInTheDocument();
 
       expect(
@@ -389,14 +400,16 @@ describe("AddDataModal", () => {
   });
 
   describe("Google Sheets panel", () => {
-    it("should not exist in OSS binaries", () => {
+    it("should not exist in OSS binaries", async () => {
       // Hosting is a premium feature
       setup({ isHosted: false });
 
       expect(
         screen.getByRole("tab", { name: /Database$/ }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("tab", { name: /CSV$/ })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("tab", { name: /CSV$/ }),
+      ).toBeInTheDocument();
       expect(
         screen.queryByRole("tab", { name: /Google Sheets$/ }),
       ).not.toBeInTheDocument();
@@ -405,6 +418,7 @@ describe("AddDataModal", () => {
 });
 
 async function inputUpload(fileorFiles: File | File[]) {
+  await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
   const input: HTMLInputElement = await screen.findByTestId(
     "add-data-modal-upload-csv-input",
   );
@@ -413,6 +427,7 @@ async function inputUpload(fileorFiles: File | File[]) {
 }
 
 async function dropUpload(files: File[]) {
+  await userEvent.click(await screen.findByRole("tab", { name: /CSV$/ }));
   const dropzone = await screen.findByTestId("add-data-modal-csv-dropzone");
   expect(dropzone).toBeInTheDocument();
   const dropEvent = {

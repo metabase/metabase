@@ -7,7 +7,7 @@ import {
   CANCEL_EDITING_DASHBOARD,
   INITIALIZE,
 } from "metabase/dashboard/actions/core";
-import Dashboards from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
 import { checkNotNull } from "metabase/lib/types";
 import { addUndo } from "metabase/redux/undo";
@@ -219,7 +219,6 @@ export function getPrevDashAndTabs({
   filterRemovedTabs?: boolean;
 }) {
   const dashId = state.dashboardId;
-  // @ts-expect-error - possibly infinite type error
   const prevDash = dashId ? state.dashboards[dashId] : null;
   const prevTabs =
     prevDash?.tabs?.filter((t) => !filterRemovedTabs || !t.isRemoved) ?? [];

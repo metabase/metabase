@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import NoResults from "assets/img/metrics_bot.svg";
-import { skipToken, useListDatabasesQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import EmptyState from "metabase/common/components/EmptyState";
 import Link, { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -11,9 +11,12 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import { useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_CONTENT_VERIFICATION } from "metabase/plugins";
-import { getHasDataAccess } from "metabase/selectors/data";
+import {
+  PLUGIN_CONTENT_VERIFICATION,
+  PLUGIN_DATA_STUDIO,
+} from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import { canUserCreateQueries } from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -45,7 +48,6 @@ const {
 } = PLUGIN_CONTENT_VERIFICATION;
 
 export function BrowseMetrics() {
-  const { data } = useListDatabasesQuery();
   const [metricFilters, setMetricFilters] = useMetricFilterSettings();
   const { isLoading, error, metrics, hasVerifiedMetrics } =
     useFilteredMetrics(metricFilters);
@@ -53,13 +55,18 @@ export function BrowseMetrics() {
   const isEmpty = !isLoading && !error && !metrics?.length;
   const titleId = useMemo(() => _.uniqueId("browse-metrics"), []);
 
+  const libraryMetricCollection =
+    PLUGIN_DATA_STUDIO.useGetLibraryChildCollectionByType({
+      type: "library-metrics",
+    });
+
   const newMetricLink = Urls.newQuestion({
     mode: "query",
     cardType: "metric",
+    collectionId: libraryMetricCollection?.id,
   });
 
-  const databases = data?.data ?? [];
-  const hasDataAccess = getHasDataAccess(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const canCreateMetric = !isEmbeddingIframe && hasDataAccess;
@@ -75,13 +82,9 @@ export function BrowseMetrics() {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-dark" id={titleId}>
+            <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="metric"
-                />
+                <Icon size={24} c="icon-primary" name="metric" />
                 {t`Metrics`}
               </Group>
             </Title>

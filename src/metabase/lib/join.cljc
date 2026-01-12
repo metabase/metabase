@@ -1,6 +1,8 @@
 (ns metabase.lib.join
   "Functions related to manipulating EXPLICIT joins in MBQL."
+  (:refer-clojure :exclude [mapv run! some empty? not-empty get-in #?(:clj for)])
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [inflections.core :as inflections]
    [medley.core :as m]
@@ -12,11 +14,9 @@
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.filter.operator :as lib.filter.operator]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.ident :as lib.ident]
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
@@ -26,14 +26,17 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.stage.util :as lib.stage.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))
@@ -103,7 +106,7 @@
     (let [[operator opts lhs rhs] condition]
       [operator opts lhs (apply f rhs args)])))
 
-(mu/defn- with-join-alias-update-join-conditions :- lib.join.util/PartialJoin
+(mu/defn- with-join-alias-update-join-conditions :- ::lib.join.util/partial-join
   "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for inside the `:conditions` of the
   join.
 
@@ -114,9 +117,9 @@
   [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
   with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
   were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
-  [join      :- lib.join.util/PartialJoin
-   old-alias :- [:maybe ::lib.schema.common/non-blank-string]
-   new-alias :- [:maybe ::lib.schema.common/non-blank-string]]
+  [join      :- ::lib.join.util/partial-join
+   old-alias :- [:maybe ::lib.schema.join/alias]
+   new-alias :- [:maybe ::lib.schema.join/alias]]
   (cond
     (empty? (:conditions join))
     join
@@ -141,6 +144,7 @@
 
 (defn- with-join-alias-update-join
   "Impl for [[with-join-alias]] for a join."
+  {:style/indent [:form]}
   [join new-alias]
   (let [old-alias (lib.join.util/current-join-alias join)]
     (-> join
@@ -148,11 +152,17 @@
         (with-join-alias-update-join-fields new-alias)
         (with-join-alias-update-join-conditions old-alias new-alias))))
 
-(mu/defn with-join-alias :- lib.join.util/FieldOrPartialJoin
+(mu/defn with-join-alias :- [:or
+                             [:map
+                              [:lib/type [:enum :metadata/column :mbql/join]]]
+                             [:ref :mbql.clause/field]]
   "Add OR REMOVE a specific `join-alias` to `field-or-join`, which is either a `:field`/Field metadata, or a join map.
   Does not recursively update other references (yet; we can add this in the future)."
   {:style/indent [:form]}
-  [field-or-join :- lib.join.util/FieldOrPartialJoin
+  [field-or-join :- [:or
+                     [:map
+                      [:lib/type [:enum :metadata/column :mbql/join]]]
+                     [:ref :mbql.clause/field]]
    join-alias    :- [:maybe ::lib.schema.common/non-blank-string]]
   (case (lib.dispatch/dispatch-value field-or-join)
     :field
@@ -217,7 +227,7 @@
   [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]
   (or
    (when source-table
-     (:display-name (lib.metadata/table query source-table)))
+     ((some-fn :display-name :name) (lib.metadata/table query source-table)))
    (when source-card
      (if-let [card-metadata (lib.metadata/card query source-card)]
        (lib.metadata.calculation/display-name query 0 card-metadata)
@@ -235,23 +245,40 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn- column-from-join :- ::lib.metadata.calculation/column-metadata-with-source
+(mu/defn column-from-join :- [:map
+                              [:lib/type [:= :metadata/column]]]
   "For a column that comes from a join, add or update metadata as needed, e.g. include join name in the display name."
-  [query           :- ::lib.schema/query
-   stage-number    :- :int
-   column-metadata :- ::lib.schema.metadata/column
-   join-alias      :- ::lib.schema.common/non-blank-string]
-  ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two keys for
-  ;; join aliases.
-  (let [column-metadata (assoc column-metadata
-                               :source-alias            join-alias
-                               :lib/original-join-alias join-alias)
-        col             (-> (assoc column-metadata
-                                   :display-name (lib.metadata.calculation/display-name query stage-number column-metadata)
-                                   :lib/source   :source/joins)
-                            (with-join-alias join-alias))]
-    (assert (= (lib.join.util/current-join-alias col) join-alias))
-    col))
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   col          :- [:map
+                    [:lib/type [:= :metadata/column]]]
+   join-alias   :- ::lib.schema.join/alias]
+  (-> col
+      (assoc
+       ;; TODO (Cam 6/19/25) -- we need to get rid of `:source-alias` it's just causing confusion; don't need two
+       ;; keys for join aliases.
+       :source-alias              join-alias
+       :lib/original-join-alias   join-alias
+       :lib/source                :source/joins
+       ::join-alias               join-alias
+       :lib/original-name         ((some-fn :lib/original-name :name) col)
+       :lib/original-display-name (or (:lib/original-display-name col)
+                                      (lib.metadata.calculation/display-name query stage-number (dissoc col ::join-alias :lib/original-join-alias :source-alias))))
+      (set/rename-keys {:lib/expression-name :lib/original-expression-name})
+      (as-> $col (assoc $col :display-name (lib.metadata.calculation/display-name query stage-number $col)))))
+
+(defn- HACK-column-from-incomplete-join
+  "Hack until I can figure out a better way to fix this. Once I made `::join-alias` required for columns with
+  `:source/join`, [[metabase.lib.column-group/column-group-info-method]] in combination
+  with [[join-condition-rhs-columns]] when joining Cards stopped working, because it relies on columns coming back
+  with `:source/joins` even tho the join does not yet have an alias.
+
+  `::HACK-from-incomplete-join?` is used to disable the requirement that this column have a join alias."
+  [col]
+  (-> col
+      (assoc :lib/source                  :source/joins
+             ::HACK-from-incomplete-join? true)
+      (set/rename-keys {:lib/expression-name :lib/original-expression-name})))
 
 (defmethod lib.metadata.calculation/display-name-method :option/join.strategy
   [_query _stage-number {:keys [strategy]} _style]
@@ -267,90 +294,138 @@
            :display-name (lib.metadata.calculation/display-name query stage-number option)}
     default (assoc :default true)))
 
-(mu/defn- adjust-ident :- :map
-  [join :- [:map
-            [:ident
-             {:error/message "Join must have an ident to determine column idents"
-              :optional true}
-             ::lib.schema.common/non-blank-string]]
-   col  :- :map]
-  (cond-> col
-    (:ident join)
-    (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))))
-
-;;; this returns ALL the columns 'visible' within the join, regardless of `:fields` ! `:fields` is only the list of
+;;; this returns ALL the columns made 'visible' by the join, regardless of `:fields` ! `:fields` is only the list of
 ;;; things to get added to the parent stage `:fields`! See QUE-1380
 ;;;
 ;;; If you want just the stuff in `:fields`, use [[join-fields-to-add-to-parent-stage]] instead.
-(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- [:maybe ::lib.metadata.calculation/returned-columns]
-  [query                                         :- ::lib.schema/query
-   stage-number                                  :- :int
-   {:keys [stages], join-alias :alias, :as join} :- ::lib.schema.join/join
-   options                                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
-  (let [join-query (assoc query :stages stages)
-        cols       (lib.metadata.calculation/returned-columns
-                    join-query -1 (lib.util/query-stage join-query -1)
-                    options)]
-    (into []
-          (comp (map #(column-from-join query stage-number % join-alias))
-                (map #(adjust-ident join %))
-                (lib.field.util/add-source-and-desired-aliases-xform query))
-          cols)))
+;;;
+;;; returned columns for a join == returned columns from the join's last stage.
+;;;
+;;; THIS METADATA IS RELATIVE TO THE JOIN! IT DOES NOT INCLUDE THE JOIN ALIAS OR UPDATED SOURCE/DESIRED ALIASES AS
+;;; THEY WOULD APPEAR IN THE PARENT STAGE!!! USE [[join-returned-columns-relative-to-parent-stage]] if that's what you
+;;; want instead.
+(mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- ::lib.metadata.calculation/returned-columns
+  [query                       :- ::lib.schema/query
+   _stage-number               :- :int
+   {:keys [stages], :as _join} :- ::lib.schema.join/join
+   options                     :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+  (let [join-query (assoc query :stages stages)]
+    (lib.metadata.calculation/returned-columns join-query -1 -1 options)))
+
+;;; TODO (Cam 9/5/25) -- rename this to `join-last-stage-returned-columns-relative-to-parent-stage` to make it's clear
+;;; it's talking about the columns returned by the join's last stage and has nothing to do with the join's `:fields`
+(mu/defn join-returned-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+  "All columns made 'visible' by the join (regardless of `:fields`) -- i.e., the columns returned by the last stage of
+  the join -- updated so their metadata is relative to the parent stage.
+
+  E.g. the desired column alias from the last stage of the join needs to become the new source column alias in the
+  join's parent stage e.g. if the last stage of the join `Q2` returns `P2__CATEGORY` then the ultimate source alias in
+  the parent stage of this join should be `P2__CATEGORY`, and the desired alias should be `Q2__P2__CATEGORY`.
+  See [[metabase.lib.metadata.calculation-test/join-source-query-join-test]] for a concrete example of this.
+
+  Note that a join's `:fields` is effectively relative to the parent stage of the join, rather than the join's last
+  stage, since they include `:join-alias`; if you want to resolve these refs, you should use this function as opposed
+  to `returned-columns`."
+  ([query stage-number join]
+   (join-returned-columns-relative-to-parent-stage query stage-number join nil))
+
+  ([query                         :- ::lib.schema/query
+    stage-number                  :- :int
+    {join-alias :alias, :as join} :- ::lib.schema.join/join
+    options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   (into []
+         (comp
+          (map lib.field.util/update-keys-for-col-from-previous-stage)
+          (map #(column-from-join query stage-number % join-alias))
+          (if-let [fk-field-id (:fk-field-id join)]
+            (map (fn [col]
+                   (assoc col :fk-field-id fk-field-id)))
+            identity))
+         (lib.metadata.calculation/returned-columns query stage-number join options))))
 
 (mu/defn join-fields-to-add-to-parent-stage :- [:maybe [:sequential ::lib.metadata.calculation/column-metadata-with-source]]
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
   [query
    stage-number
-   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join}
-   options :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
+   options                                                                  :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (when-not (= fields :none)
-    (let [cols   (lib.metadata.calculation/returned-columns query stage-number join options)
-          cols'  (if (= fields :all)
-                   cols
-                   (for [field-ref fields
-                         :let      [match (or (lib.equality/find-matching-column field-ref cols)
-                                              (log/warnf "Failed to find matching column in join %s for ref %s, found:\n%s"
+    (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
+          cols' (if (= fields :all)
+                  cols
+                  (for [field-ref fields
+                        ;; ignore `:source-field` in field refs... join `:fields` probably shouldn't be adding
+                        ;; implicitly joined columns anyway (this is not something you can do in the UI at any rate).
+                        ;; It might possibly be getting incorrectly propagated somewhere,
+                        ;; see [[metabase.query-processor.remapping-test/explicit-join-with-fields-and-implicitly-joined-remaps-test]]
+                        ;; for an example of where this happens. Having it here will cause `lib.equality` to fail to
+                        ;; find a match.
+                        ;;
+                        ;; TODO (Cam 8/29/25) -- investigate how this is happening and consider whether Join `:fields`
+                        ;; should disallow refs with `:source-field`/remove it automatically.
+                        :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
+                                   match (or (lib.equality/find-matching-column field-ref cols)
+                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (assoc query :stages (:stages join))
+                                                                                                        lib.stage.util/append-stage)
+                                                                                                    (with-join-alias field-ref nil))]
+                                               (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
+                                                 resolved))
+                                             (log/debugf "Failed to find matching column in join %s for ref %s, found:\n%s"
                                                          (pr-str join-alias)
                                                          (pr-str field-ref)
-                                                         (u/pprint-to-str cols)))]
-                         :when     match]
-                     (assoc match :lib/source-uuid (lib.options/uuid field-ref))))
+                                                         (pr-str (map (juxt :id :metabase.lib.join/join-alias :lib/source-column-alias) cols))))]
+
+                        :when     (and match
+                                       (not (false? (:active match))))]
+                    (-> match
+                        (assoc :lib/source-uuid (lib.options/uuid field-ref))
+                        ;; if the ref in join `:fields` is bucketed then we need to propagate this, since the
+                        ;; bucketing will actually take place in the parent stage. Note that this unit can differ
+                        ;; from bucketing done in the last stage of the join --
+                        ;; see [[metabase.lib.join-test/do-not-incorrectly-propagate-temporal-unit-in-returned-columns-test-2]]
+                        (m/assoc-some :metabase.lib.field/temporal-unit (lib.temporal-bucket/raw-temporal-bucket field-ref)))))
           ;; If there was a `:fields` clause but none of them matched the `join-cols` then pretend it was `:fields :all`
           ;; instead. That can happen if a model gets reworked and an old join clause remembers the old fields.
-          cols'  (if (empty? cols') cols cols')
+          cols' (if (empty? cols') cols cols')
           ;; add any remaps for the fields as needed.
-          cols'' (concat
+          cols' (concat
+                 cols'
+                 (lib.metadata.calculation/remapped-columns
+                  (assoc query :stages stages)
+                  0
                   cols'
-                  (lib.metadata.calculation/remapped-columns
-                   (assoc query :stages stages)
-                   0
-                   cols'
-                   options))]
-      (into []
-            (comp (map #(column-from-join query stage-number % join-alias))
-                  (map #(adjust-ident join %)))
-            cols''))))
+                  options))]
+      ;; TODO (Cam 8/1/25) -- doesn't [[join-returned-columns-relative-to-parent-stage]] already
+      ;; call [[column-from-join]] ???
+      (mapv #(column-from-join query stage-number % join-alias)
+            cols'))))
 
-(defmethod lib.metadata.calculation/visible-columns-method :mbql/join
-  [query stage-number join options]
-  (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all) options))
+;;; VISIBLE COLUMNS FOR A JOIN ARE RELATIVE TO THE LAST STAGE OF A JOIN!!!! IF YOU WANT THEM WITH APPROPRIATE METADATA
+;;; RELATIVE TO THE PARENT STAGE OF A QUERY, USE [[join-visible-columns-relative-to-parent-stage]] INSTEAD!!!
 
-(mu/defn all-joins-visible-columns :- ::lib.metadata.calculation/visible-columns
+(mu/defn- join-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
   "Convenience for calling [[lib.metadata.calculation/visible-columns]] on all of the joins in a query stage."
+  [query                         :- ::lib.schema/query
+   stage-number                  :- :int
+   {join-alias :alias, :as join} :- ::lib.schema.join/join
+   options                       :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
+  (into []
+        (comp (map lib.field.util/update-keys-for-col-from-previous-stage)
+              (map #(column-from-join query stage-number % join-alias)))
+        (lib.metadata.calculation/returned-columns query stage-number join options)))
+
+(mu/defn all-joins-visible-columns-relative-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+  "Convenience for calling [[join-visible-columns-relative-to-parent-stage]] on all of the joins in a query stage."
   [query          :- ::lib.schema/query
    stage-number   :- :int
-   options        :- ::lib.metadata.calculation/visible-columns.options]
+   options        :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
   (into []
         (mapcat (fn [join]
-                  (lib.metadata.calculation/visible-columns
-                   query stage-number join
-                   (-> options
-                       (select-keys [:include-remaps?]) ; WHY
-                       (assoc :include-implicitly-joinable? false)))))
+                  (join-visible-columns-relative-to-parent-stage query stage-number join options)))
         (:joins (lib.util/query-stage query stage-number))))
 
-(mu/defn all-joins-fields-to-add-to-parent-stage :- ::lib.metadata.calculation/returned-columns
-  "Convenience for calling [[lib.metadata.calculation/returned-columns-method]] on all the joins in a query stage."
+(mu/defn all-joins-fields-to-add-to-parent-stage :- ::lib.metadata.calculation/visible-columns
+  "Convenience for calling [[join-fields-to-add-to-parent-stage]] on all the joins in a query stage."
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/returned-columns.options]]
@@ -416,19 +491,19 @@
                                                               (with-join-alias field join-alias)))))
           conditions)))
 
-(mu/defn with-join-conditions :- lib.join.util/PartialJoin
+(mu/defn with-join-conditions :- ::lib.join.util/partial-join
   "Update the `:conditions` (filters) for a Join clause."
   {:style/indent [:form]}
-  [a-join     :- lib.join.util/PartialJoin
+  [a-join     :- ::lib.join.util/partial-join
    conditions :- [:maybe [:sequential [:or ::lib.schema.expression/boolean ::lib.schema.common/external-op]]]]
   (let [conditions (-> (mapv lib.common/->op-arg conditions)
                        (with-join-conditions-add-alias-to-rhses (lib.join.util/current-join-alias a-join)))]
     (u/assoc-dissoc a-join :conditions (not-empty conditions))))
 
-(mu/defn with-join-fields :- lib.join.util/PartialJoin
+(mu/defn with-join-fields :- ::lib.join.util/partial-join
   "Update a join (or a function that will return a join) to include `:fields`, either `:all`, `:none`, or a sequence of
   references."
-  [joinable :- lib.join.util/PartialJoin
+  [joinable :- ::lib.join.util/partial-join
    fields   :- [:maybe [:or [:enum :all :none] [:sequential some?]]]]
   (let [fields (cond
                  (keyword? fields) fields
@@ -537,16 +612,17 @@
       condition)))
 
 (defn- generate-unique-name [base-name taken-names]
-  (let [generator (lib.util/unique-name-generator)]
+  (let [generator (lib.util.unique-name-generator/unique-name-generator)]
     (run! generator taken-names)
     (generator base-name)))
 
 (defn default-alias
   "Generate a default `:alias` for a join clause. home-cols should be visible columns for the stage"
   ([query stage-number a-join]
-   (let [stage (lib.util/query-stage query stage-number)
-         home-cols (lib.metadata.calculation/visible-columns query stage-number stage)]
+   (let [stage     (lib.util/query-stage query stage-number)
+         home-cols (lib.metadata.calculation/visible-columns query stage-number)]
      (default-alias query stage-number a-join stage home-cols)))
+
   ([query _stage-number a-join stage home-cols]
    (let [home-cols   home-cols
          cond-fields (into []
@@ -565,7 +641,7 @@
   new one."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   a-join       :- lib.join.util/JoinWithOptionalAlias]
+   a-join       :- ::lib.join.util/join-with-optional-alias]
   (if (and (contains? a-join :alias) (not (contains? a-join ::replace-alias)))
     ;; if the join clause comes with an alias and doesn't need a new one, keep it and assume that the condition fields
     ;; have the right join-aliases too
@@ -577,7 +653,7 @@
                                                             (dissoc % :alias)
                                                             %)
                                                          joins))))
-          home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
+          home-cols   (lib.metadata.calculation/visible-columns query stage-number)
           join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
@@ -604,12 +680,12 @@
 
 (mu/defn join-conditions :- [:maybe ::lib.schema.join/conditions]
   "Get all join conditions for the given join"
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/partial-join]
   (:conditions a-join))
 
 (mu/defn join-fields :- [:maybe ::lib.schema.join/fields]
   "Get all join conditions for the given join"
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/partial-join]
   (:fields a-join))
 
 (defn- raw-join-strategy->strategy-option [raw-strategy]
@@ -622,18 +698,18 @@
 (mu/defn raw-join-strategy :- ::lib.schema.join/strategy
   "Get the raw keyword strategy (type) of a given join, e.g. `:left-join` or `:right-join`. This is either the value
   of the optional `:strategy` key or the default, `:left-join`, if `:strategy` is not specified."
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/partial-join]
   (get a-join :strategy :left-join))
 
 (mu/defn join-strategy :- ::lib.schema.join/strategy.option
   "Get the strategy (type) of a given join, as a `:option/join.strategy` map. If `:stategy` is unspecified, returns
   the default, left join."
-  [a-join :- lib.join.util/PartialJoin]
+  [a-join :- ::lib.join.util/partial-join]
   (raw-join-strategy->strategy-option (raw-join-strategy a-join)))
 
-(mu/defn with-join-strategy :- lib.join.util/PartialJoin
+(mu/defn with-join-strategy :- ::lib.join.util/partial-join
   "Return a copy of `a-join` with its `:strategy` set to `strategy`."
-  [a-join   :- lib.join.util/PartialJoin
+  [a-join   :- ::lib.join.util/partial-join
    strategy :- [:or ::lib.schema.join/strategy ::lib.schema.join/strategy.option]]
   ;; unwrap the strategy to a raw keyword if needed.
   (assoc a-join :strategy (cond-> strategy
@@ -654,13 +730,12 @@
                (map raw-join-strategy->strategy-option))
          [:left-join :right-join :inner-join :full-join])))
 
-(mu/defn join-clause :- lib.join.util/PartialJoin
+(mu/defn join-clause :- ::lib.join.util/partial-join
   "Create an MBQL join map from something that can conceptually be joined against. A `Table`? An MBQL or native query? A
   Saved Question? You should be able to join anything, and this should return a sensible MBQL join map. Uses a left join
   by default."
   ([joinable]
    (-> (join-clause-method joinable)
-       (u/assoc-default :ident (lib.ident/random-ident))
        (u/assoc-default :fields :all)))
 
   ([joinable conditions]
@@ -683,7 +758,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    a-join       :- [:or lib.join.util/PartialJoin Joinable]]
+    a-join       :- [:or ::lib.join.util/partial-join Joinable]]
    (let [a-join              (join-clause a-join)
          suggested-conditions (when (empty? (join-conditions a-join))
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))
@@ -699,7 +774,7 @@
 (mu/defn joined-thing :- [:maybe Joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   a-join                :- lib.join.util/PartialJoin]
+   a-join                :- ::lib.join.util/partial-join]
   (let [origin (-> a-join :stages first)]
     (cond
       (:source-card origin)  (lib.metadata/card metadata-providerable (:source-card origin))
@@ -801,24 +876,22 @@
                                       (comp (map lib.join.util/current-join-alias)
                                             (drop-while #(not= % existing-join-alias)))
                                       (joins query stage-number))]
-     (->> (lib.metadata.calculation/visible-columns query stage-number
-                                                    (lib.util/query-stage query stage-number)
-                                                    {:include-expressions?         false
-                                                     :include-implicitly-joinable? false})
+     (->> (lib.metadata.calculation/visible-columns query stage-number {:include-implicitly-joinable? false})
           (remove (fn [col]
                     (when-let [col-join-alias (lib.join.util/current-join-alias col)]
                       (contains? join-aliases-to-ignore col-join-alias))))
           (mark-selected-column query
                                 stage-number
-                                (when (lib.util/field-clause? lhs-expression-or-nil)
+                                (when (or (lib.util/clause-of-type? lhs-expression-or-nil :field)
+                                          (lib.util/clause-of-type? lhs-expression-or-nil :expression))
                                   lhs-expression-or-nil))
           sort-join-condition-columns))))
 
 (mu/defn join-condition-rhs-columns :- [:sequential ::lib.schema.metadata/column]
   "Get a sequence of columns that can be used as the right-hand-side (target column) in a join condition. This column
   is the one that belongs to the thing being joined, `join-or-joinable`, which can be something like a
-  Table ([[metabase.lib.metadata/TableMetadata]]), Saved Question/Model ([[metabase.lib.metadata/CardMetadata]]),
-  another query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
+  Table (`:metabase.lib.schema.metadata/table`), Saved Question/Model (`:metabase.lib.schema.metadata/card`), another
+  query, etc. -- anything you can pass to [[join-clause]]. You can also pass in an existing join.
 
   If the left-hand-side column has already been chosen (they can be chosen in any order in the Query Builder UI),
   pass in the chosen LHS column. In the future, this may be used to restrict results to compatible columns. (See #31174)
@@ -841,16 +914,18 @@
    (let [joinable          (if (join? join-or-joinable)
                              (joined-thing query join-or-joinable)
                              join-or-joinable)
-         join-alias        (when (join? join-or-joinable)
-                             (lib.join.util/current-join-alias join-or-joinable))
+         join-alias        (if (join? join-or-joinable)
+                             (lib.join.util/current-join-alias join-or-joinable)
+                             (::join-alias join-or-joinable))
          rhs-column-or-nil (when (lib.util/field-clause? rhs-expression-or-nil)
                              (cond-> rhs-expression-or-nil
                                ;; Drop the :join-alias from the RHS if the joinable doesn't have one either.
                                (not join-alias) (lib.options/update-options dissoc :join-alias)))]
-     (->> (lib.metadata.calculation/visible-columns query stage-number joinable {:include-implicitly-joinable? false})
+     (->> (lib.metadata.calculation/returned-columns query stage-number joinable)
           (map (fn [col]
-                 (cond-> (assoc col :lib/source :source/joins)
-                   join-alias (with-join-alias join-alias))))
+                 (if join-alias
+                   (column-from-join query stage-number col join-alias)
+                   (HACK-column-from-incomplete-join col))))
           (mark-selected-column query stage-number rhs-column-or-nil)
           sort-join-condition-columns))))
 
@@ -875,16 +950,26 @@
                                      ::lib.schema.metadata/column
                                      [:map
                                       [::target ::lib.schema.metadata/column]]]]]
-  "Find FK columns in `source` pointing at a column in `target`. Includes the target column under the `::target` key."
+  "Find FK columns in `source` pointing at a column in `target`. Includes the target column under the `::target` key.
+
+  `source` and `target` are `::current-stage` and a [[Joinable]], in either order; `::current-stage` means use the
+  stage in `query` at `stage-number`."
   [query        :- ::lib.schema/query
    stage-number :- :int
-   source
-   target]
-  (let [target-columns (delay
-                         (lib.metadata.calculation/visible-columns
-                          query stage-number target
-                          {:include-implicitly-joinable?                 false
-                           :include-implicitly-joinable-for-source-card? false}))]
+   source       :- [:or
+                    [:= ::current-stage]
+                    Joinable]
+   target       :- [:or
+                    [:= ::current-stage]
+                    Joinable]]
+  (let [current-stage-cols (fn []
+                             (let [opts {:include-implicitly-joinable?                 false
+                                         :include-implicitly-joinable-for-source-card? false}]
+                               (lib.metadata.calculation/visible-columns query stage-number opts)))
+        target-columns     (delay
+                             (if (= target ::current-stage)
+                               (current-stage-cols)
+                               (lib.metadata.calculation/returned-columns query stage-number target)))]
     (not-empty
      (into []
            (keep (fn [{:keys [fk-target-field-id], :as col}]
@@ -895,9 +980,9 @@
                                                                  (:id target-column)))
                                                             @target-columns)]
                        (assoc col ::target target-column)))))
-           (lib.metadata.calculation/visible-columns query stage-number source
-                                                     {:include-implicitly-joinable?                 false
-                                                      :include-implicitly-joinable-for-source-card? false})))))
+           (if (= source ::current-stage)
+             (current-stage-cols)
+             (lib.metadata.calculation/returned-columns query stage-number source))))))
 
 (mu/defn suggested-join-conditions :- [:maybe [:sequential {:min 1} ::lib.schema.expression/boolean]] ; i.e., a filter clause
   "Return suggested default join conditions when constructing a join against `joinable`, e.g. a Table, Saved
@@ -923,8 +1008,7 @@
                       (lib.util/update-query-stage query stage-number
                                                    u/assoc-dissoc :joins new-joins))
                     ;; If this is a new joinable, use the entire current query.
-                    query)
-         stage    (lib.util/query-stage unjoined stage-number)]
+                    query)]
      (letfn [;; only keep one FK to each target column e.g. for
              ;;
              ;;    messages (sender_id REFERENCES user(id),  recipient_id REFERENCES user(id))
@@ -939,13 +1023,13 @@
                (lib.filter/filter-clause (lib.filter.operator/operator-def :=) x y))]
        (or
         ;; find cases where we have FK(s) pointing to joinable. Our column goes on the LHS.
-        (when-let [fks (fks stage joinable)]
+        (when-let [fks (fks ::current-stage joinable)]
           (mapv (fn [fk]
                   (filter-clause fk (::target fk)))
                 fks))
         ;; find cases where the `joinable` has FK(s) pointing to us. Note our column is the target this time around --
         ;; keep in on the LHS.
-        (when-let [fks (fks joinable stage)]
+        (when-let [fks (fks joinable ::current-stage)]
           (mapv (fn [fk]
                   (filter-clause (::target fk) fk))
                 fks)))))))
@@ -995,13 +1079,19 @@
 
 (defn- join-lhs-display-name-from-condition-lhs
   [query stage-number join-or-joinable condition-lhs-or-nil]
-  (when-let [lhs-column-ref (or condition-lhs-or-nil
-                                (when (join? join-or-joinable)
-                                  (when-let [lhs (standard-join-condition-lhs (first (join-conditions join-or-joinable)))]
-                                    (when (lib.util/field-clause? lhs)
-                                      lhs))))]
-    (let [display-info (lib.metadata.calculation/display-info query stage-number lhs-column-ref)]
-      (get-in display-info [:table :display-name]))))
+  (when-let [lhs-column-refs (cond
+                               condition-lhs-or-nil [condition-lhs-or-nil]
+                               (join? join-or-joinable) (->> (join-conditions join-or-joinable)
+                                                             (keep #(let [lhs (standard-join-condition-lhs %)]
+                                                                      (when (and lhs (lib.util/field-clause? lhs))
+                                                                        lhs)))
+                                                             seq))]
+    (let [table-names (into #{}
+                            (map #(-> (lib.metadata.calculation/display-info query stage-number %)
+                                      (get-in [:table :display-name])))
+                            lhs-column-refs)]
+      (when (= (count table-names) 1)
+        (first table-names)))))
 
 (defn- first-join?
   "Whether a `join-or-joinable` is (or will be) the first join in a stage of a query.

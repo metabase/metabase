@@ -1,5 +1,6 @@
 .DashboardBody {
   flex: 1 0 auto;
+  background-color: var(--mb-color-background-secondary);
 
   &.isEditingOrSharing {
     flex-basis: 0;
@@ -19,30 +20,27 @@
 .DashboardHeaderContainer {
   position: relative;
   z-index: 2;
-  border-bottom: 2px solid var(--mb-color-border);
   transition: var(--transition-theme-change);
 
+  &:not(.noBorder) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+
   &:not(.isEmbeddingSdk) {
-    background-color: var(--mb-color-background);
+    background-color: var(--mb-color-background-primary);
   }
 
   &.isFullscreen {
     background-color: transparent;
     border-color: transparent;
   }
-
-  &.isNightMode {
-    color: var(--mb-color-text-white);
-
-    --mb-color-border: var(--mb-color-text-medium);
-  }
 }
 
 .DashboardLoadingAndErrorWrapper {
   min-height: 100%;
   height: 1px;
-  /* prevents header from scrolling so we can have a fixed sidebar */
 
+  /* prevents header from scrolling so we can have a fixed sidebar */
   &.isFullHeight {
     height: 100%;
   }

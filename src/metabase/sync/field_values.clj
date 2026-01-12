@@ -26,11 +26,11 @@
   (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
     (cond
       (not field-values)
-      (log/infof "Field %s does not have FieldValues. Skipping..."
+      (log/infof "%s does not have FieldValues. Skipping..."
                  (sync-util/name-for-logging field))
 
       (field-values/inactive? field-values)
-      (log/infof "Field %s has not been used since %s. Skipping..."
+      (log/infof "%s has not been used since %s. Skipping..."
                  (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
 
       :else
@@ -82,7 +82,7 @@
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
     (let [conditions [:field_id   (:id field)
                       :type       [:in field-values/advanced-field-values-types]
-                      :created_at [:< ((requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                      :created_at [:< ((requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                                        (mdb/db-type)
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))

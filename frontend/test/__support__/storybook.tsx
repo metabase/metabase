@@ -4,7 +4,7 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryFn } from "@storybook/react";
 import { useEffect, useMemo } from "react";
 
-import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { mainReducers } from "metabase/reducers-main";
@@ -34,11 +34,13 @@ export const ReduxProvider = ({
 
 export const VisualizationWrapper = ({
   theme,
+  displayTheme,
   children,
   initialStore = createMockState(),
 }: {
   children: React.ReactElement;
   theme?: MantineThemeOverride;
+  displayTheme?: "light" | "dark";
   initialStore?: State;
 }) => {
   const store = getStore(mainReducers, initialStore);
@@ -49,7 +51,9 @@ export const VisualizationWrapper = ({
       withRouter={false}
       withKBar={false}
       theme={theme}
+      displayTheme={displayTheme}
       withDND
+      withCssVariables
     >
       {children}
     </TestWrapper>
@@ -112,6 +116,7 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
+    // @ts-expect-error story file
     <Box w={1000} h={600} bg={theme?.colors?.background}>
       <VisualizationWrapper>
         <SdkThemeProvider theme={theme}>

@@ -1,5 +1,4 @@
 import { shallowEqual } from "@mantine/hooks";
-import Fuse from "fuse.js";
 import { getIn } from "icepick";
 import { type ReactNode, isValidElement } from "react";
 import { isFragment } from "react-is";
@@ -137,7 +136,6 @@ export function isReactNode(x: unknown): x is ReactNode {
 type FilterOptions<TItem extends Item, TSection extends Section<TItem>> = {
   sections: TSection[];
   searchProp?: SearchProps<TItem>;
-  fuzzySearch?: boolean;
   searchText: string;
 };
 
@@ -163,13 +161,11 @@ export function searchFilter<
   sections,
   searchText,
   searchProp = ["name", "displayName"] as unknown as SearchProps<TItem>,
-  fuzzySearch = false,
 }: FilterOptions<TItem, TSection>) {
   const strategy = searchStrategy({
     sections,
     searchText,
     searchProp,
-    fuzzySearch,
   });
   const items = getSearchItems<TItem, TSection>(sections);
   const scores = strategy({ items, searchText, searchProp });
@@ -190,12 +186,9 @@ const getSearchItems = memoize(function <
  */
 function searchStrategy<TItem extends Item, TSection extends Section<TItem>>({
   searchText,
-  fuzzySearch,
 }: FilterOptions<TItem, TSection>): SearchStrategy<TItem> {
   if (searchText === "") {
     return alwaysMatch;
-  } else if (fuzzySearch) {
-    return searchFuzzy;
   } else {
     return searchSubstring;
   }
@@ -203,7 +196,7 @@ function searchStrategy<TItem extends Item, TSection extends Section<TItem>>({
 
 /**
  * alwaysMatch is a SearchStrategy that returns all the items with a score of 0.
- * It performs no work to see if an item acutally matches the search text.
+ * It performs no work to see if an item actually matches the search text.
  */
 const alwaysMatch = function <TItem extends Item>(): ItemScores<TItem> {
   return {
@@ -213,29 +206,6 @@ const alwaysMatch = function <TItem extends Item>(): ItemScores<TItem> {
     },
   };
 };
-
-/**
- * searchFuzzy is a SearchStrategy that use Fuse.js to perform fuzzy search.
- */
-const searchFuzzy = memoize(function <TItem extends Item>({
-  items,
-  searchText,
-  searchProp,
-}: SearchOptions<TItem>): ItemScores<TItem> {
-  const searchIndex = getFuzzySearchIndex({ items, searchProp });
-  const results = searchIndex.search(searchText, { limit: 50 });
-
-  const scores = new Map<TItem, number>();
-  for (const result of results) {
-    scores.set(result.item, result.score ?? 1);
-  }
-  return {
-    threshold: SEARCH_SCORE_THRESHOLD,
-    score(item: TItem) {
-      return scores.get(item) ?? 1;
-    },
-  };
-});
 
 /**
  * searchSubstring is a SearchStrategy that performs a simple (lowercase) substring
@@ -312,31 +282,11 @@ function sortAndFilterItems<TItem extends Item>(
 }
 
 /**
- * Build the Fuse.js index for fuzzy search.
- *
- * This is memoized to avoid rebuilding the index for every keystroke.
- */
-const getFuzzySearchIndex = memoize(function <TItem extends Item>({
-  items,
-  searchProp,
-}: {
-  items: TItem[];
-  searchProp: SearchProps<TItem>;
-}) {
-  const keys = Array.isArray(searchProp) ? searchProp : [searchProp];
-  return new Fuse<TItem>(items, {
-    keys,
-    includeScore: true,
-    isCaseSensitive: false,
-  });
-});
-
-/**
  * Memoizes a function based on shallow equality of its argument.
  *
  * This basically acts as a LRU cache with just one cache entry.
  *
- * We use this over _.memoize because we rely on object identiy to memoize
+ * We use this over _.memoize because we rely on object identity to memoize
  * the search index, and _.memoize use string hashing for equality.
  */
 function memoize<T extends object, R>(fn: (t: T) => R): (t: T) => R {

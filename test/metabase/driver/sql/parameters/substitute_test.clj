@@ -4,17 +4,19 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
-   [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.malli :as mu]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -316,9 +318,16 @@
 
 (deftest ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
-    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
-      (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: symbol_is_A")]]
+      (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+              (substitute query {"snippet: symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+
+(deftest ^:parallel substitute-recursive-native-query-snippets-test
+  (testing "Recursive native query snippet substitution"
+    (let [query ["SELECT * FROM test_scores WHERE " (param "snippet: outer")]]
+      (is (=? ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
+              (substitute query {"snippet: outer" (params/->ReferencedQuerySnippet 123 "{{snippet:symbol_is_A}}")
+                                 "snippet: symbol_is_A" (params/->ReferencedQuerySnippet 124 "symbol = 'A'")}))))))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
@@ -473,13 +482,23 @@
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
-(defn- expand**
+(mu/defn- expand**
   "Expand parameters inside a top-level native `query`. Not recursive."
-  [{:keys [parameters], inner :native, :as query}]
+  [{:keys [parameters], :as query} :- [:map
+                                       [:native [:map
+                                                 [:query some?]]]]]
   (driver/with-driver :h2
-    (mt/with-metadata-provider meta/metadata-provider
-      (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
-        (assoc query :native inner')))))
+    (let [mp meta/metadata-provider]
+      (-> (lib/query
+           mp
+           (merge {:database (meta/id)
+                   :type     :native}
+                  query))
+          (lib/update-query-stage 0 (fn [stage]
+                                      (-> stage
+                                          (update :parameters concat parameters)
+                                          (->> (qp.native/expand-stage mp)))))
+          lib/->legacy-MBQL))))
 
 (defn- expand* [query]
   (-> (expand** (mbql.normalize/normalize query))
@@ -493,36 +512,41 @@
           :params []}
          (expand* {:native     {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
                                 :template-tags {"id" {:name "id", :display-name "ID", :type :number}}}
-                   :parameters []})))
+                   :parameters []}))))
 
+(deftest ^:parallel expand-variables-test-2
   (testing "unspecified *required* param"
     (is (thrown?
          Exception
          (expand** {:native     {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
                                  :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true}}}
-                    :parameters []}))))
+                    :parameters []})))))
 
+(deftest ^:parallel expand-variables-test-3
   (testing "default value"
     (is (= {:query  "SELECT * FROM orders WHERE id = 100;"
             :params []}
            (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}};"
                                   :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
-                     :parameters []}))))
+                     :parameters []})))))
 
+(deftest ^:parallel expand-variables-test-4
   (testing "specified param (numbers)"
     (is (= {:query  "SELECT * FROM orders WHERE id = 2;"
             :params []}
            (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}};"
                                   :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
-                     :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]}))))
+                     :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]})))))
 
+(deftest ^:parallel expand-variables-test-5
   (testing "specified param (date/single)"
     (is (= {:query  "SELECT * FROM orders WHERE created_at > ?;"
             :params [#t "2016-07-19"]}
            (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
                                   :template-tags {"created_at" {:name "created_at", :display-name "Created At", :type "date"}}}
-                     :parameters [{:type :date/single, :target [:variable [:template-tag "created_at"]], :value "2016-07-19"}]}))))
+                     :parameters [{:type :date/single, :target [:variable [:template-tag "created_at"]], :value "2016-07-19"}]})))))
 
+(deftest ^:parallel expand-variables-test-6
   (testing "specified param (text)"
     (is (= {:query  "SELECT * FROM products WHERE category = ?;"
             :params ["Gizmo"]}
@@ -539,8 +563,7 @@
   ([sql field-filter-param]
    ;; TIMEZONE FIXME
    (mt/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
-     (-> {:native     {:query
-                       sql
+     (-> {:native     {:query         sql
                        :template-tags {"date" {:name         "date"
                                                :display-name "Checkin Date"
                                                :type         :dimension
@@ -903,7 +926,7 @@
 (defn- process-native [& {:as query}]
   (qp/process-query
    (merge
-    (mt/native-query nil)
+    {:database (mt/id), :type :native}
     query)))
 
 (deftest ^:parallel e2e-basic-test
@@ -1254,3 +1277,18 @@
                 {:card-id 1
                  :query   "SELECT * FROM table WHERE x LIKE ?"
                  :params  ["G%"]})}))))))
+
+(deftest ^:parallel offset-as-filter-variable-value-test
+  (let [query "select 1 where {{variable}} is not null"]
+    (is (= [[1]]
+           (mt/rows
+            (qp/process-query
+             {:database (mt/id)
+              :type :native
+              :native {:query query
+                       :template-tags {"variable" {:name         "variable"
+                                                   :display_name "Variable"
+                                                   :type         "text"}}}
+              :parameters [{:type   :string/=
+                            :value  ["offset"]
+                            :target [:variable [:template-tag "variable"]]}]}))))))

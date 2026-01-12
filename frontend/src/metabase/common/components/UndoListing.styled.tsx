@@ -5,12 +5,11 @@ import styled from "@emotion/styled";
 
 import Card from "metabase/common/components/Card";
 import Link from "metabase/common/components/Link";
-import { alpha, color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
+import { alpha } from "metabase/lib/colors";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
 
-const LIST_H_MARGINS = space(2);
+const LIST_H_MARGINS = "var(--mantine-spacing-md)";
 
 export const UndoList = styled.ul`
   position: fixed;
@@ -27,10 +26,11 @@ export const ToastCard = styled(Card)<{
   color?: string;
   noBorder?: boolean;
 }>`
-  padding: 10px ${space(2)};
-  margin-top: ${space(1)};
+  padding: 10px var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-sm);
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  background-color: var(--mb-color-background-inverse);
+  background-color: var(--mb-color-background-primary-inverse);
+  color: var(--mb-color-text-secondary-inverse);
   ${({ noBorder }) =>
     noBorder &&
     css`
@@ -56,7 +56,7 @@ export const ControlsCardContent = styled(CardContentSide)`
 ` as unknown as typeof Box;
 
 export const CardIcon = styled(Icon)`
-  margin-right: ${space(1)};
+  margin-right: var(--mantine-spacing-sm);
   flex-shrink: 0;
 `;
 
@@ -66,18 +66,19 @@ export const DefaultText = styled.span`
 
 export const UndoButton = styled(Link)`
   font-weight: bold;
-  background-color: ${() => alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha("background-primary", 0.1)};
   padding: 4px 12px;
-  margin-left: ${space(1)};
+  margin-left: var(--mantine-spacing-sm);
   border-radius: 8px;
+  white-space: nowrap; /* Prevents button from truncating message */
 
   :hover {
-    background-color: ${() => alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha("background-primary", 0.3)};
   }
 `;
 
 export const DismissIcon = styled(Icon)<{ color?: string }>`
-  margin-left: ${space(2)};
+  margin-left: var(--mantine-spacing-md);
   cursor: pointer;
 
   :hover {

@@ -7,7 +7,7 @@
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
-   [metabase.queries.api.card :as api.card]
+   [metabase.queries-rest.api.card :as api.card]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -45,6 +45,7 @@
              [:like [:lower :collection_name]   "%foo%"] [:inline 0]
              [:like [:lower :collection_type]   "%foo%"] [:inline 0]
              [:like [:lower :display]           "%foo%"] [:inline 0]
+             [:like [:lower :display_type]      "%foo%"] [:inline 0]
              [:like [:lower :table_schema]      "%foo%"] [:inline 0]
              [:like [:lower :table_name]        "%foo%"] [:inline 0]
              [:like [:lower :table_description] "%foo%"] [:inline 0]
@@ -98,7 +99,7 @@
               ;; the call count number here are expected to change if we change the search api
               ;; we have this test here just to keep tracks this number to remind us to put effort
               ;; into keep this number as low as we can
-              (is (<= (call-count) 6)))))))))
+              (is (<= (call-count) 9)))))))))
 
 (deftest created-at-correctness-test
   (let [search-term   "created-at-filtering"

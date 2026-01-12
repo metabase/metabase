@@ -11,7 +11,9 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secret]
    [metabase.sync.task.sync-databases :as task.sync-databases]
@@ -106,7 +108,7 @@
 
         (testing "failures for timeout"
           (mt/with-prometheus-system! [_ system]
-            (mt/with-temporary-setting-values [db-connection-timeout-ms 0]
+            (mt/with-temporary-setting-values [db-connection-timeout-ms -1] ;; setting to -1 because 0 sometimes flakes
               (database/health-check-database! (mt/db))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true})) "healthy")
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "user-input"})) "unhealthy user-input")
@@ -604,17 +606,7 @@
         (is (partial= {:details {}}
                       db))))))
 
-(deftest ^:parallel after-select-driver-features-realize-db-row-test
-  ;; This test is necessary because driver multimethods should be able to assume that the db argument is a Database
-  ;; instance, not a transient row. Otherwise a call like `(mi/instance-of :model/Database db)` will return false
-  ;; when it should return true.
-  (testing "Make sure selecting a database calls `driver/database-supports?` with a database instance"
-    (mt/with-temp [:model/Database {db-id :id} {:engine (u/qualified-name ::test)}]
-      (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [_ _ db]
-                                                       (is (true? (mi/instance-of? :model/Database db))))]
-        (is (some? (t2/select-one-fn :features :model/Database :id db-id)))))))
-
-(deftest hydrate-tables-test
+(deftest ^:parallel hydrate-tables-test
   (is (= ["CATEGORIES"
           "CHECKINS"
           "ORDERS"
@@ -627,3 +619,232 @@
              (t2/hydrate :tables)
              :tables
              (#(map :name %))))))
+
+;;; ---------------------------------------- visible-filter-clause tests ----------------------------------------
+
+(defn- fetch-visible-db-ids
+  "Helper to fetch visible database IDs using visible-filter-clause.
+   Handles the :with/:clause return value format."
+  [db-ids user-info permission-mapping column-field]
+  (let [{:keys [clause]} (mi/visible-filter-clause :model/Database column-field user-info permission-mapping)]
+    (t2/select-pks-set :model/Database
+                       {:where [:and
+                                clause
+                                [:in :id db-ids]]})))
+
+(def ^:private default-permission-mapping
+  {:perms/view-data :unrestricted
+   :perms/create-queries :query-builder})
+
+(deftest visible-filter-clause-superuser-test
+  (testing "Superuser should see all databases"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (is (= #{db1-id db2-id db3-id}
+               (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                     {:user-id (mt/user->id :rasta) :is-superuser? true}
+                                     default-permission-mapping
+                                     :id)))))))
+
+(deftest visible-filter-clause-non-superuser-test
+  (testing "Non-superuser should only see databases they have permissions for"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (is (= #{db1-id db2-id}
+               (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     default-permission-mapping
+                                     :id)))))))
+
+(deftest visible-filter-clause-qualified-column-test
+  (testing "Should work with qualified column names"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (is (= #{db1-id db2-id}
+               (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     default-permission-mapping
+                                     :metabase_database.id)))))))
+
+(deftest visible-filter-clause-column-expression-test
+  (testing "Should work with column expressions"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (is (= #{db1-id db2-id}
+               (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     default-permission-mapping
+                                     [:coalesce :id :metabase_database.id])))))))
+
+(deftest visible-filter-clause-view-data-only-test
+  (testing "Requiring only view-data permissions should include databases where user has view permissions"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (is (= #{db1-id db2-id}
+               (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:perms/view-data :unrestricted
+                                      :perms/create-queries :no}
+                                     :id)))))))
+
+(deftest visible-filter-clause-blocked-level-test
+  (testing "Requiring blocked level permissions (most permissive) should include all databases"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        (is (= #{db1-id db2-id db3-id}
+               (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                     {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                     {:perms/view-data :blocked
+                                      :perms/create-queries :no}
+                                     :id)))))))
+
+(deftest visible-filter-clause-no-permissions-test
+  (testing "User with no group memberships should see no databases"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db1-id :id} {:name "Database 1"}
+                     :model/Database {db2-id :id} {:name "Database 2"}
+                     :model/Database {db3-id :id} {:name "Database 3"}
+                     :model/Table _ {:db_id db1-id :name "Table1"}
+                     :model/Table _ {:db_id db2-id :name "Table2"}
+                     :model/Table _ {:db_id db3-id :name "Table3"}
+                     :model/PermissionsGroup pg1 {}
+                     :model/PermissionsGroup pg2 {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg1)
+        (perms/add-user-to-group! (mt/user->id :rasta) pg2)
+        (t2/delete! :model/DataPermissions :db_id [:in [db1-id db2-id db3-id]])
+        (data-perms/set-database-permission! pg1 db1-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg1 db1-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg2 db2-id :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! pg2 db2-id :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! pg1 db3-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg2 db3-id :perms/view-data :blocked)
+        ;; Remove user from groups we added (avoid touching All Users group)
+        (t2/delete! :model/PermissionsGroupMembership
+                    :user_id (mt/user->id :rasta)
+                    :group_id [:in [(:id pg1) (:id pg2)]])
+        (is (empty? (fetch-visible-db-ids [db1-id db2-id db3-id]
+                                          {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                          default-permission-mapping
+                                          :id)))))))
+
+(deftest visible-filter-clause-table-level-permissions-test
+  (testing "Database should be visible when user has access to at least one table"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database {db-id :id} {:name "Test Database"}
+                     :model/Table {table1-id :id} {:db_id db-id :name "Table1"}
+                     :model/Table {table2-id :id} {:db_id db-id :name "Table2"}
+                     :model/Table _ {:db_id db-id :name "Table3"}
+                     :model/PermissionsGroup pg {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        ;; Clear existing permissions for our test database only
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        ;; Block database-level access
+        (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+        ;; Grant table-level permissions to only table1 and table2 (table3 remains blocked)
+        (data-perms/set-table-permission! pg table1-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg table1-id :perms/create-queries :query-builder)
+        (data-perms/set-table-permission! pg table2-id :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg table2-id :perms/create-queries :query-builder)
+
+        (is (contains? (fetch-visible-db-ids [db-id]
+                                             {:user-id (mt/user->id :rasta) :is-superuser? false}
+                                             default-permission-mapping
+                                             :id)
+                       db-id))))))

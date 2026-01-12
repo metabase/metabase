@@ -1,5 +1,6 @@
+import { Route } from "react-router";
+
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { Route } from "metabase/hoc/Title";
 
 import HelpModal from "./components/HelpModal";
 import { DeleteAlertModal } from "./containers/ArchiveAlertModal";

@@ -6,6 +6,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
 
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/" :- permission-debug.impl/DebuggerSchema
   "This endpoint expects a `user_id`, a `model_id` to debug permissions against, and `action_type`.
   The type of model we are debugging against is inferred by the `action_type`.

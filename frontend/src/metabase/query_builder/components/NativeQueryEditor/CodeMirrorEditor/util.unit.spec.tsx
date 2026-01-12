@@ -178,16 +178,16 @@ describe("getPlaceholderText", () => {
   describe("metabot is enabled", () => {
     beforeAll(() => {
       const tokenFeatures = createMockTokenFeatures({
-        ai_sql_generation: true,
+        metabot_v3: true,
       });
 
       mockSettings({ "token-features": tokenFeatures });
-      setupEnterpriseOnlyPlugin("ai-sql-generation");
+      setupEnterpriseOnlyPlugin("metabot");
     });
 
     it("should return metabot placeholder text for sql", () => {
       expect(getPlaceholderText("sql")).toBe(
-        "Write and select text to generate SQL with Metabot, or type SQL directly",
+        "Write your SQL here, or press Ctrl + Shift + i to have SQL generated for you.",
       );
     });
 

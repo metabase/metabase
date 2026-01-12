@@ -9,6 +9,12 @@
   display: none;
 }
 
+.WarningIcon {
+  position: absolute;
+  top: 13px;
+  left: 19px;
+}
+
 .RemoveButton {
   display: none;
 }
@@ -35,7 +41,7 @@
 
 .DatasetsListItemSelected,
 .DatasetsListItemSelected:hover {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background-color: var(--mb-color-brand);
 }
 
@@ -47,5 +53,5 @@
 }
 
 .AddButton[data-variant="inverse"] {
-  --button-color: var(--mb-color-text-light);
+  --button-color: var(--mb-color-text-tertiary);
 }

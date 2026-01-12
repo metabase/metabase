@@ -19,6 +19,7 @@ import type { PieChartModel, SliceTreeNode } from "../pie/model/types";
 import { getArrayFromMapValues } from "../pie/util";
 
 export const TOOLTIP_POINTER_MARGIN = 10;
+export const ECHARTS_TOOLTIP_CONTAINER_CLASS = "echarts-tooltip-container";
 
 export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
@@ -72,7 +73,7 @@ export const getTooltipBaseOption = (
     enterable: true,
     className: TooltipStyles.ChartTooltipRoot,
     appendTo: () => {
-      const echartsTooltipContainerSelector = ".echarts-tooltip-container";
+      const echartsTooltipContainerSelector = `.${ECHARTS_TOOLTIP_CONTAINER_CLASS}`;
       const containerSelector = !isEmbeddingSdk()
         ? echartsTooltipContainerSelector
         : `#${EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID} ${echartsTooltipContainerSelector}`;
@@ -83,7 +84,7 @@ export const getTooltipBaseOption = (
 
       if (!container) {
         container = document.createElement("div");
-        container.classList.add("echarts-tooltip-container");
+        container.classList.add(ECHARTS_TOOLTIP_CONTAINER_CLASS);
         container.style.setProperty("overflow", "hidden");
         container.style.setProperty("position", "fixed");
         container.style.setProperty("inset", "0");

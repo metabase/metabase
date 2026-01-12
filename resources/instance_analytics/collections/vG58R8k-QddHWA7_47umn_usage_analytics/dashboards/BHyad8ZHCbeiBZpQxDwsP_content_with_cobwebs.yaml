@@ -16,17 +16,14 @@ show_in_getting_started: false
 caveats: null
 points_of_interest: null
 parameters:
-- default:
-  - 90
+- default: [90]
   id: bdcf71b1
   name: Days since last view (greater than)
   sectionId: number
   slug: days_since_last_view_(greater_than)
   type: number/>=
 serdes/meta:
-- id: BHyad8ZHCbeiBZpQxDwsP
-  label: content_with_cobwebs
-  model: Dashboard
+- {id: BHyad8ZHCbeiBZpQxDwsP, label: content_with_cobwebs, model: Dashboard}
 archived_directly: false
 dashcards:
 - entity_id: mO1Hmv7RPBY81C-HiGBVl
@@ -38,22 +35,19 @@ dashcards:
   size_y: 8
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: -fFVxT-GLz6WO41bvw-Ar
     parameter_id: bdcf71b1
     target:
     - dimension
-    - - expression
-      - Days since last view
-    - stage-number: 0
+    - [expression, Days since last view]
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: BHyad8ZHCbeiBZpQxDwsP
-    model: Dashboard
-  - id: mO1Hmv7RPBY81C-HiGBVl
-    model: DashboardCard
+  - {id: BHyad8ZHCbeiBZpQxDwsP, model: Dashboard}
+  - {id: mO1Hmv7RPBY81C-HiGBVl, model: DashboardCard}
 - entity_id: mxTQVlyG8xLO1U3c0miCm
   card_id: UEK1JfYa3ZBp6W7F-Ui5i
   created_at: '2023-11-01T11:54:12.111068Z'
@@ -63,22 +57,19 @@ dashcards:
   size_y: 8
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: UEK1JfYa3ZBp6W7F-Ui5i
     parameter_id: bdcf71b1
     target:
     - dimension
-    - - expression
-      - Days since last view
-    - stage-number: 0
+    - [expression, Days since last view]
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: BHyad8ZHCbeiBZpQxDwsP
-    model: Dashboard
-  - id: mxTQVlyG8xLO1U3c0miCm
-    model: DashboardCard
+  - {id: BHyad8ZHCbeiBZpQxDwsP, model: Dashboard}
+  - {id: mxTQVlyG8xLO1U3c0miCm, model: DashboardCard}
 - entity_id: LWnMbIRc4ei2M70S-ow37
   card_id: YxCC6fQfHOPVvBtUkjFCN
   created_at: '2023-11-01T11:56:53.296305Z'
@@ -88,22 +79,20 @@ dashcards:
   size_y: 8
   action_id: null
   dashboard_tab_id: null
+  inline_parameters: []
   parameter_mappings:
   - card_id: YxCC6fQfHOPVvBtUkjFCN
     parameter_id: bdcf71b1
     target:
     - dimension
-    - - expression
-      - Days since last view
-    - stage-number: 0
+    - [expression, Days since last view]
+    - {stage-number: 0}
   series: []
-  visualization_settings:
-    column_settings: null
+  visualization_settings: {column_settings: null}
   serdes/meta:
-  - id: BHyad8ZHCbeiBZpQxDwsP
-    model: Dashboard
-  - id: LWnMbIRc4ei2M70S-ow37
-    model: DashboardCard
+  - {id: BHyad8ZHCbeiBZpQxDwsP, model: Dashboard}
+  - {id: LWnMbIRc4ei2M70S-ow37, model: DashboardCard}
+embedding_type: null
 initially_published_at: null
 tabs: []
 width: full

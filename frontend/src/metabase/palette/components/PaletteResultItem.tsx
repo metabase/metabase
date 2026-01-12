@@ -1,9 +1,7 @@
-import { t } from "ttag";
-
 import ExternalLink from "metabase/common/components/ExternalLink";
 import Link from "metabase/common/components/Link";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Box, Flex, Icon, Text } from "metabase/ui";
+import { Box, Flex, Group, Icon, Stack, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
 import {
@@ -18,8 +16,7 @@ interface PaletteResultItemProps {
 }
 
 export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
-  const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
-
+  const icon = item.icon ? getCommandPaletteIcon(item) : null;
   const subtext = item.extra?.subtext;
 
   const content = (
@@ -28,21 +25,19 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       mx="1.5rem"
       miw="0"
       align="start"
-      justify="space-between"
       gap="0.5rem"
-      fw={700}
       style={{
         cursor: item.disabled ? "default" : "pointer",
         borderRadius: "0.5rem",
         flexGrow: 1,
         flexBasis: 0,
       }}
-      bg={active ? "var(--mb-color-brand)" : undefined}
-      c={active ? "var(--mb-color-text-white)" : "var(--mb-color-text-dark)"}
+      bg={active ? "background-hover" : undefined}
+      c="text-primary"
       aria-label={item.name}
       aria-disabled={item.disabled ? true : false}
+      wrap="nowrap"
     >
-      {/** Icon Container */}
       {icon && (
         <Icon
           {...icon}
@@ -51,82 +46,58 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           }}
         />
       )}
-      {/**Text container */}
-      <Flex
-        direction="column"
-        style={{
-          flexGrow: 1,
-          flexBasis: 0,
-          overflowX: "hidden",
-        }}
-      >
-        <Box
-          component="span"
-          style={{
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-          }}
-        >
-          <Text component="span" c="inherit" lh="1rem">
-            {item.name}
-          </Text>
-          {item.extra?.moderatedStatus && (
-            <PLUGIN_MODERATION.ModerationStatusIcon
-              status={item.extra.moderatedStatus}
-              filled
-              size={14}
-              color={
-                active ? "var(--mb-color-text-white)" : "var(--mb-color-brand)"
-              }
-              style={{
-                verticalAlign: "text-bottom",
-              }}
-              ml="0.5rem"
-            />
-          )}
+
+      <Stack gap="xs" flex="1" style={{ overflow: "hidden" }}>
+        <Flex align="center" gap="md" justify="space-between" wrap="nowrap">
+          <Group align="center" gap="sm" wrap="nowrap">
+            <Text c="inherit" component="span" lh="1rem" lineClamp={1} miw={0}>
+              {item.name}
+            </Text>
+
+            {item.extra?.moderatedStatus && (
+              <PLUGIN_MODERATION.ModerationStatusIcon
+                status={item.extra.moderatedStatus}
+                filled
+                size={14}
+                color="brand"
+                style={{
+                  verticalAlign: "text-bottom",
+                }}
+              />
+            )}
+          </Group>
+
           {subtext && (
-            <Text
-              component="span"
-              ml="0.25rem"
-              c={
-                active
-                  ? "var(--mb-color-brand-light)"
-                  : "var(--mb-color-text-light)"
-              }
+            <Flex
+              flex="0 0 auto"
+              c={active ? "text-secondary" : "text-tertiary"}
               fz="0.75rem"
               lh="1rem"
-              fw="normal"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-              }}
+              maw="40%"
+              gap="xs"
+              justify="end"
+              align="center"
             >
-              — {subtext}
-            </Text>
+              {subtext}
+            </Flex>
           )}
-        </Box>
-        <Text
-          component="span"
-          color={
-            active ? "var(--mb-color-text-white)" : "var(--mb-color-text-light)"
-          }
-          fw="normal"
-          style={{
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {item.subtitle}
-        </Text>
-      </Flex>
-      {/** Active container */}
-      {active && (
-        <Flex aria-hidden gap="0.5rem" fw={400}>
-          {t`Open`} <Icon name="enter_or_return" />
         </Flex>
-      )}
+
+        {item.subtitle && (
+          <Text
+            c={active ? "text-secondary" : "text-tertiary"}
+            component="span"
+            lh="1rem"
+            style={{
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.subtitle}
+          </Text>
+        )}
+      </Stack>
     </Flex>
   );
   if (item.extra?.href) {

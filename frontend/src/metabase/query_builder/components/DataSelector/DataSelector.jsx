@@ -8,15 +8,15 @@ import _ from "underscore";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
-import Schemas from "metabase/entities/schemas";
-import Search from "metabase/entities/search";
-import Tables from "metabase/entities/tables";
+import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
+import { Schemas } from "metabase/entities/schemas";
+import { Search } from "metabase/entities/search";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { canUserCreateQueries } from "metabase/selectors/user";
 import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -155,12 +155,14 @@ export class UnconnectedDataSelector extends Component {
     useOnlyAvailableSchema: PropTypes.bool,
     isInitiallyOpen: PropTypes.bool,
     tableFilter: PropTypes.func,
+    fieldFilter: PropTypes.func,
     canChangeDatabase: PropTypes.bool,
     containerClassName: PropTypes.string,
     canSelectModel: PropTypes.bool,
     canSelectTable: PropTypes.bool,
     canSelectMetric: PropTypes.bool,
     canSelectSavedQuestion: PropTypes.bool,
+    databaseIsDisabled: PropTypes.func,
 
     // from search entity list loader
     allError: PropTypes.bool,
@@ -218,7 +220,7 @@ export class UnconnectedDataSelector extends Component {
   // asynchronously loaded
   //
   _getComputedState(props, state) {
-    const { metadata, tableFilter } = props;
+    const { metadata, tableFilter, fieldFilter } = props;
     const {
       selectedDatabaseId,
       selectedSchemaId,
@@ -292,6 +294,10 @@ export class UnconnectedDataSelector extends Component {
 
     if (tables && tableFilter) {
       tables = tables.filter(tableFilter);
+    }
+
+    if (fields && fieldFilter) {
+      fields = fields.filter(fieldFilter);
     }
 
     return {
@@ -531,7 +537,7 @@ export class UnconnectedDataSelector extends Component {
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
   skipSteps() {
-    const { readOnly } = this.props;
+    const { readOnly, databaseIsDisabled } = this.props;
     const { activeStep } = this.state;
 
     if (readOnly) {
@@ -544,8 +550,11 @@ export class UnconnectedDataSelector extends Component {
       this.props.selectedDatabaseId == null
     ) {
       const databases = this.getDatabases();
-      if (databases && databases.length === 1) {
-        this.onChangeDatabase(databases[0]);
+      const enabledDatabases = databases.filter(
+        (db) => !databaseIsDisabled?.(db),
+      );
+      if (enabledDatabases.length >= 1) {
+        this.onChangeDatabase(enabledDatabases[0]);
       }
     }
     if (
@@ -614,7 +623,7 @@ export class UnconnectedDataSelector extends Component {
     if (!nextStep) {
       await this.setStateWithComputedState({
         ...stateChange,
-        isPopoverOpen: !this.state.isPopoverOpen,
+        isPopoverOpen: false,
       });
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
@@ -895,6 +904,7 @@ export class UnconnectedDataSelector extends Component {
       onBack: hasPreviousStep ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: true,
+      databaseIsDisabled: this.props.databaseIsDisabled,
     };
 
     switch (this.state.activeStep) {
@@ -1076,7 +1086,7 @@ const DataSelector = _.compose(
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
         entityQuery: { include: "tables" },
       }),
-      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
+      hasDataAccess: canUserCreateQueries(state),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
       selectedQuestion: Questions.selectors.getObject(state, {
         entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),

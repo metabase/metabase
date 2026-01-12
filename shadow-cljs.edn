@@ -15,10 +15,10 @@
    :dev        {:output-dir "target/cljs_dev/"
                 :compiler-options {:reader-features #{:cljs-dev}}}
    :compiler-options {:reader-features #{:cljs-release}
-                      :source-map      true}
+                      :source-map      true
+                      :warnings        {:fn-deprecated false}}
    :closure-defines {goog.debug.LOGGING_ENABLED true}
    :entries    [metabase.dashboards.constants
-                metabase.legacy-mbql.js
                 metabase.lib.column-group
                 metabase.lib.js
                 metabase.lib.limit
@@ -31,8 +31,6 @@
                 metabase.util.devtools
                 metabase.util.formatting.constants
                 metabase.util.formatting.date
-                metabase.util.formatting.numbers
-                metabase.util.formatting.time
                 metabase.util.time
                 metabase.xrays.domain-entities.queries.util]}
 
@@ -40,4 +38,5 @@
   {:target           :node-test
    :output-to        "target/node-tests.js"
    :ns-regexp        "-test$"
-   :compiler-options {:reader-features #{:cljs-test}}}}}
+   :compiler-options {:reader-features #{:cljs-test}
+                      :warnings        {:fn-deprecated false}}}}}

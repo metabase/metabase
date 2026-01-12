@@ -1,4 +1,4 @@
-import { DashCardQuestionDownloadButton } from "metabase/dashboard/components/DashCard/DashCardQuestionDownloadButton";
+import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
 import {
@@ -45,7 +45,7 @@ export const PublicOrEmbeddedDashboard = ({
         isQuestionCard(dashcard.card) &&
         !!result?.data &&
         !result?.error && (
-          <DashCardQuestionDownloadButton result={result} dashcard={dashcard} />
+          <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
         ))
     }
     dashboardActions={({ downloadsEnabled }) =>

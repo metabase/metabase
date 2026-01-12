@@ -32,12 +32,10 @@
     (into serdes.models/data-model)
 
     (not (:no-settings opts))
-    (conj "Setting")))
+    (conj "Setting")
 
-(defn targets-of-type
-  "Returns target seq filtered on given model name"
-  [targets model-name]
-  (filter #(= (first %) model-name) targets))
+    (not (:no-transforms opts))
+    (conj "Transform" "TransformTag" "TransformJob")))
 
 (defn make-targets-of-type
   "Returns a targets seq with model type and given ids"
@@ -69,27 +67,57 @@
       (format "%d: %s" coll-id names))
     "[no collection]"))
 
-(defn- card-label [card-id]
-  (let [card (t2/select-one [:model/Card :collection_id :name] :id card-id)]
-    (format "Card %d (%s from collection %s)" card-id (:name card) (collection-label (:collection_id card)))))
+(defn- entity-label [{:keys [model id]}]
+  (let [entity (t2/select-one [model :collection_id :name] :id id)]
+    (format "%s %d (%s from collection %s)" (name model) id (:name entity) (collection-label (:collection_id entity)))))
 
 (defn- parse-target [[model-name id :as target]]
   (if (string? id)
     [model-name (serdes/eid->id model-name id)]
     target))
 
-(defn- escape-analysis [{colls "Collection" cards "Card"} nodes]
+(defn- analytics-collection-ids
+  "Returns a set of collection IDs that are in the 'analytics' namespace (internal analytics collections).
+   These collections are intentionally excluded from serialization."
+  []
+  (let [analytics-roots (t2/select :model/Collection {:where [:= :namespace "analytics"]})]
+    (into (set (map :id analytics-roots))
+          (mapcat collection/descendant-ids)
+          analytics-roots)))
+
+(defn- escape-analysis
+  "Analyzes the dependency graph to find cards that are outside the collection set (escapees).
+   Returns a map with:
+   - :reportable-escaped - escapees that should trigger warnings (non-analytics)
+   - :analytics-card-ids - card IDs in analytics collections (should be removed from extraction but not block export)
+
+   Cards that depend on analytics cards are allowed to be exported - the references will be converted
+   to entity_ids during export and resolved on import since analytics cards have stable entity_ids."
+  [{colls "Collection" cards "Card" :as _by-model} nodes]
   (log/tracef "Running escape analysis for %d colls and %d cards" (count colls) (count cards))
   (when-let [colls (-> colls set not-empty)]
-    (let [known-cards (t2/select-pks-set :model/Card {:where [:or
-                                                              [:in :collection_id colls]
-                                                              (when (contains? colls nil)
-                                                                [:= :collection_id nil])]})
-          escaped     (->> (set/difference (set cards) known-cards)
-                           (mapv (fn [id]
-                                   (-> (get nodes ["Card" id])
-                                       (assoc :escapee id)))))]
-      escaped)))
+    (let [clause           {:where [:or
+                                    [:in :collection_id colls]
+                                    (when (contains? colls nil)
+                                      [:= :collection_id nil])]}
+          possible-pks     (t2/select-pks-set :model/Card clause)
+          escaped-card-ids (set/difference (set cards) possible-pks)]
+      (when (seq escaped-card-ids)
+        ;; Analytics cards have stable entity_ids across instances, so cards that depend on them
+        ;; can still be exported: the references will be resolved on import
+        (let [analytics-colls      (analytics-collection-ids)
+              escaped-in-analytics (if (seq analytics-colls)
+                                     (t2/select-pks-set :model/Card {:where [:and
+                                                                             [:in :id escaped-card-ids]
+                                                                             [:in :collection_id analytics-colls]]})
+                                     #{})
+              reportable-escaped   (set/difference escaped-card-ids escaped-in-analytics)]
+          {:reportable-escaped (->> reportable-escaped
+                                    (mapv (fn [id]
+                                            (-> (get nodes ["Card" id])
+                                                (assoc :escapee {:model :model/Card
+                                                                 :id    id})))))
+           :analytics-card-ids escaped-in-analytics})))))
 
 (defn- log-escape-report! [escaped]
   (let [dashboards (group-by #(get % "Dashboard") escaped)]
@@ -97,15 +125,28 @@
       (log/warnf "Failed to export Dashboard %d (%s) containing Card saved outside requested collections: %s"
                  dash-id
                  (t2/select-one-fn :name :model/Dashboard :id dash-id)
-                 (str/join ", " (map #(card-label (:escapee %)) escapes))))
+                 (str/join ", " (map #(entity-label (:escapee %)) escapes))))
     (when-let [other (not-empty (get dashboards nil))]
       (log/warnf "Failed to export Cards based on questions outside requested collections: %s"
                  (str/join ", " (for [item other]
                                   (format "%s -> %s"
                                           (if (get item "Card")
-                                            (card-label (get item "Card"))
+                                            (entity-label {:model :model/Card :id (get item "Card")})
                                             (dissoc item :escapee))
-                                          (card-label (:escapee item)))))))))
+                                          (entity-label (:escapee item)))))))))
+
+(defn- resolve-targets
+  "Returns all targets (for either supplied initial `targets` or for supplied `user-id`)."
+  [{:keys [targets] :as opts} user-id]
+  (let [initial-targets (if (seq targets)
+                          (mapv parse-target targets)
+                          (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
+        ;; a map of `{[model-name id] {source-model source-id ...}}`
+        targets         (u/traverse initial-targets #(serdes/descendants (first %) (second %) opts))]
+    ;; due to traverse argument we'd lose original source entities, lets track them
+    (merge-with into
+                targets
+                (u/traverse (map key targets) #(serdes/required (first %) (second %))))))
 
 (defn- extract-subtrees
   "Extracts the targeted entities and all their descendants into a reducible stream of extracted maps.
@@ -122,26 +163,29 @@
   `opts` are passed down to [[serdes/extract-all]] for each model."
   [{:keys [targets user-id] :as opts}]
   (log/tracef "Extracting subtrees with options: %s" (pr-str opts))
-  (let [inner-targets (if (seq targets)
-                        (mapv parse-target targets)
-                        (mapv vector (repeat "Collection") (collection-set-for-user user-id)))
-        ;; nodes are a map of `{[model-name id] {dep-model dep-id ...}}`
-        nodes         (set/union
-                       (u/traverse inner-targets #(serdes/ascendants (first %) (second %)))
-                       (u/traverse inner-targets #(serdes/descendants (first %) (second %))))
+  (let [nodes    (resolve-targets opts user-id)
         ;; by model is a map of `{model-name [ids ...]}`
-        by-model      (u/group-by first second (keys nodes))
-        escaped       (escape-analysis by-model nodes)]
-    (if (seq escaped)
-      (log-escape-report! escaped)
-      (let [models         (model-set opts)
-            coll-set       (get by-model "Collection")
-            by-model       (select-keys by-model models)
-            extract-by-ids (fn [[model ids]]
-                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                    :where          [:in :id ids]})))
-            extract-all    (fn [model]
-                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]
+        by-model (u/group-by first second (keys nodes))
+        {:keys [reportable-escaped analytics-card-ids]} (escape-analysis by-model nodes)]
+    (if (seq reportable-escaped)
+      (log-escape-report! reportable-escaped)
+      (let [models          (model-set opts)
+            coll-set        (get by-model "Collection")
+            ;; When targets are specified, also include Tables found via descendants
+            ;; (published tables in target collections). These are extracted by ID, not all.
+            targeted-tables (when (seq targets) (get by-model "Table"))
+            by-model        (cond-> (select-keys by-model models)
+                              ;; Add Tables back if they were found in descendants
+                              (seq targeted-tables) (assoc "Table" targeted-tables)
+                              ;; Remove analytics cards from extraction - they have stable entity_ids across instances
+                              ;; so cards that reference them can still be exported and imported correctly
+                              (and analytics-card-ids (contains? by-model "Card"))
+                              (update "Card" (fn [ids] (vec (remove analytics-card-ids ids)))))
+            extract-by-ids  (fn [[model ids]]
+                              (serdes/extract-all model (merge opts {:collection-set coll-set
+                                                                     :where          [:in :id ids]})))
+            extract-all     (fn [model]
+                              (serdes/extract-all model (assoc opts :collection-set coll-set)))]
         (eduction cat
                   [(if (seq targets)
                      (eduction (map extract-by-ids) cat by-model)
@@ -159,6 +203,6 @@
   (def nodes (let [colls (mapv vector (repeat "Collection") (collection-set-for-user nil))]
                (merge
                 (u/traverse colls #(serdes/ascendants (first %) (second %)))
-                (u/traverse colls #(serdes/descendants (first %) (second %))))))
+                (u/traverse colls #(serdes/descendants (first %) (second %) {})))))
   (def escaped (escape-analysis (u/group-by first second (keys nodes)) nodes))
   (log-escape-report! escaped))

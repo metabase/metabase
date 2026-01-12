@@ -11,31 +11,36 @@ interface DataReferenceButtonProps {
   className?: string;
   isShowingDataReference: boolean;
   size: number;
+  onClick?: () => void;
 }
 
 export const DataReferenceButton = ({
   className,
   isShowingDataReference,
   size,
+  onClick,
 }: DataReferenceButtonProps) => {
   const dispatch = useDispatch();
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      dispatch(toggleDataReference());
+    }
+  };
 
   return (
     <Tooltip label={t`Learn about your data`}>
       <Box
+        aria-label={t`Learn about your data`}
         component="a"
         h={size}
         className={cx(className, DataReferenceButtonS.ButtonRoot, {
           [DataReferenceButtonS.isSelected]: isShowingDataReference,
         })}
       >
-        <Icon
-          name="reference"
-          size={size}
-          onClick={() => {
-            dispatch(toggleDataReference());
-          }}
-        />
+        <Icon name="reference" size={size} onClick={handleClick} />
       </Box>
     </Tooltip>
   );

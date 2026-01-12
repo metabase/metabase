@@ -16,12 +16,12 @@
    [metabase.core.init]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.model-persistence.test-util]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.request.core]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -71,7 +71,7 @@
   driver/keep-me
   i18n.tu/keep-me
   initialize/keep-me
-  lib.metadata.jvm/keep-me
+  lib-be/keep-me
   mb.hawk.init/keep-me
   mdb.test-util/keep-me
   metabase.channel.email-test/keep-me
@@ -101,7 +101,7 @@
   u.random/keep-me)
 
 ;; Add more stuff here as needed
-#_{:clj-kondo/ignore [:discouraged-var]}
+#_{:clj-kondo/ignore [:discouraged-var :deprecated-var]}
 (p/import-vars
  [actions.test-util
   with-actions
@@ -120,7 +120,6 @@
   driver-select
   format-name
   id
-  ident
   mbql-query
   metadata-provider
   native-query
@@ -148,6 +147,7 @@
   received-email-body?
   received-email-subject?
   regex-email-bodies
+  email-subjects
   reset-inbox!
   summarize-multipart-email
   summarize-multipart-single-email
@@ -168,7 +168,7 @@
  [initialize
   initialize-if-needed!]
 
- [lib.metadata.jvm
+ [lib-be
   application-database-metadata-provider]
 
  [metabase.util.log.capture
@@ -245,6 +245,7 @@
   user->id
   user-descriptor
   user-http-request
+  user-http-request-full-response
   user-real-request
   with-group
   with-group-for-user
@@ -263,7 +264,10 @@
   file->bytes
   file-path->bytes
   bytes->base64-data-uri
+  format-env-key
+  priv-key->base64-uri
   latest-audit-log-entry
+  all-entries-for
   let-url
   metric-value
   obj->json->obj
@@ -289,6 +293,7 @@
   with-all-users-data-perms-graph!
   with-anaphora
   with-prometheus-system!
+  with-random-premium-token!
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -297,7 +302,7 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards!
+  with-verified!
   works-after]
 
  [tu.async
@@ -329,6 +334,7 @@
   arbitrary-select-query
   count-with-template-tag-query
   count-with-field-filter-query
+  make-alias
   dataset-definition
   db-qualified-table-name
   db-test-env-var
@@ -338,15 +344,13 @@
   defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
-  field-reference
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag
   sorts-nil-first?]
 
  [tx.env
-  set-test-drivers!
-  with-test-drivers]
+  set-test-drivers!]
 
  [schema-migrations-test.impl
   with-temp-empty-app-db])

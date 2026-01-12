@@ -5,6 +5,7 @@ import type {
 
 import type { EmbedDisplayParams } from "./types";
 
+export const DASHBOARD_NAME_MAX_LENGTH = 254;
 export const DASHBOARD_DESCRIPTION_MAX_LENGTH = 1500;
 
 export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
@@ -47,7 +48,6 @@ export const INITIAL_DASHBOARD_STATE: DashboardState = {
     toastDashboardId: null,
   },
   tabDeletions: {},
-  theme: "light",
 };
 
 export const DASHBOARD_SLOW_TIMEOUT = 15 * 1000;
@@ -68,6 +68,8 @@ export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
   font: null,
   theme: "light",
   downloadsEnabled: { pdf: true, results: true },
+  // TODO: (Kelvin 2025-11-17) this will be removed when I work on EMB-1025
+  withSubscriptions: true,
   withFooter: true,
   getClickActionMode: undefined,
 };

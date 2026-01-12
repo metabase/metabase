@@ -1,9 +1,10 @@
 (ns metabase.lib.field-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [are deftest is testing use-fixtures]]
+   [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.convert.metadata-to-legacy :as lib.convert.metadata-to-legacy]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.field :as lib.field]
@@ -11,7 +12,6 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
@@ -30,8 +30,32 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(use-fixtures :each (fn [thunk]
-                      (thunk)))
+(deftest ^:parallel ref-test
+  (is (=? [:field
+           {:base-type      :type/DateTime
+            :effective-type :type/Integer
+            :temporal-unit  :year
+            :lib/uuid       string?}
+           "CREATED_AT"]
+          (lib/ref {:base-type                                  :type/DateTime
+                    :database-type                              "TIMESTAMP"
+                    :display-name                               "CREATED_AT: Year"
+                    :effective-type                             :type/DateTime
+                    :inherited-temporal-unit                    :year
+                    :name                                       "CREATED_AT_2"
+                    :remapped-from-index                        nil
+                    :remapping                                  nil
+                    :semantic-type                              :type/CreationTimestamp
+                    :lib/breakout?                              true
+                    :lib/card-id                                1
+                    :lib/deduplicated-name                      "CREATED_AT_2"
+                    :lib/desired-column-alias                   "CREATED_AT_2"
+                    :lib/original-name                          "CREATED_AT"
+                    :lib/source-column-alias                    "CREATED_AT"
+                    :lib/type                                   :metadata/column
+                    :metabase.lib.field/original-effective-type :type/DateTime
+                    :metabase.lib.field/original-temporal-unit  :year
+                    :metabase.lib.field/temporal-unit           :year}))))
 
 (defn grandparent-parent-child-id [field]
   (+ (meta/id :venues :id)
@@ -46,21 +70,18 @@
                      :name         "grandparent"
                      :display-name "Grandparent"
                      :id           (grandparent-parent-child-id :grandparent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         parent      {:lib/type     :metadata/column
                      :name         "parent"
                      :display-name "Parent"
                      :parent-id    (grandparent-parent-child-id :grandparent)
                      :id           (grandparent-parent-child-id :parent)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}
         child       {:lib/type     :metadata/column
                      :name         "child"
                      :display-name "Child"
                      :parent-id    (grandparent-parent-child-id :parent)
                      :id           (grandparent-parent-child-id :child)
-                     :ident        (u/generate-nano-id)
                      :base-type    :type/Text}]
     (lib.tu/mock-metadata-provider
      {:database meta/database
@@ -76,9 +97,13 @@
     (testing  "simple queries"
       (doseq [query [base (lib/append-stage base)]
               :let  [cols (lib/visible-columns query)]]
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query %) cols)))
-        (is (= ["Grandparent: Parent: Child" "Grandparent" "Grandparent: Parent"]
+        (is (= ["Grandparent: Parent: Child"
+                "Grandparent"
+                "Grandparent: Parent"]
                (map #(lib/display-name query -1 % :long) cols)))
         (is (=? [{:display-name      "Grandparent: Parent: Child"
                   :long-display-name "Grandparent: Parent: Child"}
@@ -86,7 +111,10 @@
                   :long-display-name "Grandparent"}
                  {:display-name      "Grandparent: Parent"
                   :long-display-name "Grandparent: Parent"}]
-                (map #(lib/display-info query -1 %) cols)))))
+                (map #(lib/display-info query -1 %) cols)))))))
+
+(deftest ^:parallel nested-field-display-name-test-2
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "breakout"
       (is (=? [{:display-name      "Grandparent: Parent: Child"
                 :long-display-name "Grandparent: Parent: Child"}]
@@ -96,7 +124,10 @@
                    (lib/breakout base)
                    lib/append-stage
                    lib/visible-columns
-                   (map #(lib/display-info base -1 %))))))
+                   (map #(lib/display-info base -1 %))))))))
+
+(deftest ^:parallel nested-field-display-name-test-3
+  (let [base (lib/query grandparent-parent-child-metadata-provider (meta/table-metadata :venues))]
     (testing "join"
       (let [join-column (second (lib/visible-columns base))
             base        (-> base
@@ -440,7 +471,6 @@
                                                  :condition    [:=
                                                                 [:field (meta/id :venues :category-id) nil]
                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]
-                                                 :ident        "khQz-1AxQ4MVUfynQFnUw"
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -553,22 +583,22 @@
 
 (deftest ^:parallel fieldable-columns-test
   (testing "query with no :fields"
-    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
-             {:lib/desired-column-alias "NAME", :selected? true}
-             {:lib/desired-column-alias "CATEGORY_ID", :selected? true}
-             {:lib/desired-column-alias "LATITUDE", :selected? true}
-             {:lib/desired-column-alias "LONGITUDE", :selected? true}
-             {:lib/desired-column-alias "PRICE", :selected? true}]
+    (is (=? [{:lib/source-column-alias "ID", :selected? true}
+             {:lib/source-column-alias "NAME", :selected? true}
+             {:lib/source-column-alias "CATEGORY_ID", :selected? true}
+             {:lib/source-column-alias "LATITUDE", :selected? true}
+             {:lib/source-column-alias "LONGITUDE", :selected? true}
+             {:lib/source-column-alias "PRICE", :selected? true}]
             (lib/fieldable-columns (lib.tu/venues-query))))))
 
 (deftest ^:parallel fieldable-columns-query-with-fields-test
   (testing "query with :fields"
-    (is (=? [{:lib/desired-column-alias "ID", :selected? true}
-             {:lib/desired-column-alias "NAME", :selected? true}
-             {:lib/desired-column-alias "CATEGORY_ID", :selected? false}
-             {:lib/desired-column-alias "LATITUDE", :selected? false}
-             {:lib/desired-column-alias "LONGITUDE", :selected? false}
-             {:lib/desired-column-alias "PRICE", :selected? false}]
+    (is (=? [{:lib/source-column-alias "ID", :selected? true}
+             {:lib/source-column-alias "NAME", :selected? true}
+             {:lib/source-column-alias "CATEGORY_ID", :selected? false}
+             {:lib/source-column-alias "LATITUDE", :selected? false}
+             {:lib/source-column-alias "LONGITUDE", :selected? false}
+             {:lib/source-column-alias "PRICE", :selected? false}]
             (-> (lib.tu/venues-query)
                 (lib/with-fields [(meta/field-metadata :venues :id)
                                   (meta/field-metadata :venues :name)])
@@ -593,7 +623,7 @@
              :semantic-type :type/Name
              :lib/source :source/previous-stage
              :effective-type :type/Text
-             :lib/desired-column-alias "Categories__NAME"}
+             :lib/source-column-alias "Categories__NAME"}
             joined-col))
     (testing "Metadata should not contain inherited join information"
       (is (not-any? :metabase.lib.join/join-alias (lib/returned-columns query))))
@@ -839,7 +869,6 @@
                   (-> query
                       (lib/add-field -1 (nth implicit-columns 6))
                       fields-of)))))
-
       (testing "with explicit :fields list"
         (let [field-query (->> table-columns
                                (take 4)
@@ -867,6 +896,17 @@
                       (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                       (lib/append-stage))
           columns (lib/fieldable-columns query)]
+      (is (=? [{:name                    "CREATED_AT"
+                :lib/source-column-alias "CREATED_AT"
+                :inherited-temporal-unit :year}
+               {:name                    "CREATED_AT"
+                :lib/source-column-alias "CREATED_AT_2"
+                :inherited-temporal-unit :month}
+               {:name "count"}]
+              columns))
+      (testing (str "Sanity check: initial query should have no `:fields` in the last stage (i.e., it should return"
+                    " everything from the stage before that)")
+        (is (nil? (fields-of query))))
       (testing "removing the column coming from the first breakout"
         (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
                 (-> query
@@ -1004,9 +1044,14 @@
           viz-columns      (lib/visible-columns query)
           table-columns    (lib/fieldable-columns query -1)
           implicit-columns (filter #(= (:lib/source %) :source/implicitly-joinable) viz-columns)
+          _                (is (>= (count implicit-columns) 2)
+                               "Not sure how many it should have but it should have at least the two we use")
           implied-query    (-> query
                                (lib/add-field -1 (first implicit-columns))
                                (lib/add-field -1 (second implicit-columns)))
+          _                (is (= 11
+                                  (count (get-in implied-query [:stages 0 :fields])))
+                               "Sanity check: implied-query should now have 11 :fields")
           table-fields     (map clean-ref table-columns)
           implied1         (clean-ref (first implicit-columns))
           implied2         (clean-ref (second implicit-columns))]
@@ -1182,7 +1227,7 @@
                      (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
                      lib/append-stage)
           stage1 (lib.util/query-stage query 1)
-          [created-at sum] (lib/visible-columns query 1 stage1)]
+          [created-at sum] (lib/visible-columns query 1)]
       (testing "populating :fields"
         (is (nil? (:fields stage1)))
         (is (=? [[:field {} "CREATED_AT"]
@@ -1222,8 +1267,7 @@
                               (lib/remove-field native-query -1 (first native-columns)))))
       (testing "with MBQL stage"
         (let [query   (lib/append-stage native-query)
-              stage1  (lib.util/query-stage query 1)
-              columns (lib/visible-columns query 1 stage1)]
+              columns (lib/visible-columns query 1)]
           (testing "removing each field"
             (is (=? [[:field {} "sum"]]
                     (-> query
@@ -1265,8 +1309,10 @@
             col (lib/visible-columns query)
             :let [col-ref (lib/ref col)]]
       (testing (str "ref " col-ref " of " (symbol query-var))
-        (is (= (dissoc col :lib/source-uuid)
-               (dissoc (lib/find-visible-column-for-ref query col-ref) :lib/source-uuid)))))))
+        (is (= (-> col
+                   (dissoc :lib/source-uuid))
+               (-> (lib/find-visible-column-for-ref query col-ref)
+                   (dissoc :lib/source-uuid))))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test-2
   (testing "reference by ID instead of name"
@@ -1285,7 +1331,6 @@
                :lib/source-column-alias "USER_ID"
                :effective-type :type/Integer
                :id (meta/id :checkins :user-id)
-               :lib/desired-column-alias "USER_ID"
                :display-name "User ID"}
               (lib/find-visible-column-for-ref query col-ref))))))
 
@@ -1310,14 +1355,12 @@
                         :table-id                 (meta/id :orders)
                         :id                       (meta/id :orders :id)
                         :lib/source               :source/table-defaults
-                        :lib/desired-column-alias "ID"
                         :display-name             "ID"}
           exp-src-tax  {:lib/type                 :metadata/column
                         :lib/source-column-alias  "TAX"
                         :table-id                 (meta/id :orders)
                         :id                       (meta/id :orders :tax)
                         :lib/source               :source/table-defaults
-                        :lib/desired-column-alias "TAX"
                         :display-name             "Tax"}
           exp-join-id  {:lib/type                     :metadata/column
                         :lib/source-column-alias      "ID"
@@ -1325,7 +1368,6 @@
                         :table-id                     (meta/id :orders)
                         :id                           (meta/id :orders :id)
                         :lib/source                   :source/joins
-                        :lib/desired-column-alias     "Orders__ID"
                         :metabase.lib.join/join-alias "Orders"
                         :display-name                 "ID"}
           exp-join-tax {:lib/type                     :metadata/column
@@ -1333,18 +1375,18 @@
                         :table-id                     (meta/id :orders)
                         :id                           (meta/id :orders :tax)
                         :lib/source                   :source/joins
-                        :lib/desired-column-alias     "Orders__TAX"
                         :metabase.lib.join/join-alias "Orders"
                         :display-name                 "Tax"}
           columns      (lib.metadata.calculation/returned-columns query)]
       (is (=? [exp-src-id exp-src-tax exp-join-id exp-join-tax]
               (lib.metadata.calculation/returned-columns query)))
-      (doseq [[label column-alias] [["original ID column"  "ID"]
-                                    ["original TAX column" "TAX"]
-                                    ["joined ID column"    "Orders__ID"]
-                                    ["joined TAX column"   "Orders__TAX"]]]
+      (doseq [[label join-alias column-alias] [["original ID column"  nil      "ID"]
+                                               ["original TAX column" nil      "TAX"]
+                                               ["joined ID column"    "Orders" "ID"]
+                                               ["joined TAX column"   "Orders" "TAX"]]]
         (testing (str "when hiding the " label)
-          (let [col-pred   #(= (:lib/desired-column-alias %) column-alias)
+          (let [col-pred   #(and (= (:metabase.lib.join/join-alias %) join-alias)
+                                 (= (:lib/source-column-alias %) column-alias))
                 to-hide    (first (filter col-pred columns))
                                         ;_ (prn "to hide" to-hide)
                                         ;_ (prn "query" query)
@@ -1450,19 +1492,15 @@
           join-cols      [(-> (meta/field-metadata :products :category)
                               (assoc :lib/source :source/card
                                      :source-alias "Products")
-                              (update :ident lib.metadata.ident/explicitly-joined-ident (:ident join))
                               (dissoc :id :table-id))]
           implicit-cols  (for [col (meta/fields :people)]
                            (-> (meta/field-metadata :people col)
-                               (update :ident lib.metadata.ident/implicitly-joined-ident (meta/ident :orders :user-id))
                                (assoc :lib/source :source/implicitly-joinable)))
           sorted         #(sort-by (juxt :name :join-alias :id :table-id) %)]
-      (is (=? (map #(dissoc % :ident)
-                   (sorted (concat order-cols join-cols)))
+      (is (=? (sorted (concat order-cols join-cols))
               (sorted (lib.metadata.calculation/returned-columns query))))
       (testing "visible-columns returns implicitly joinable People, but does not return two copies of Product.CATEGORY"
-        (is (=? (map #(dissoc % :ident)
-                     (sorted (concat order-cols join-cols implicit-cols)))
+        (is (=? (sorted (concat order-cols join-cols implicit-cols))
                 (sorted (lib.metadata.calculation/visible-columns query))))))))
 
 (deftest ^:parallel nested-query-implicit-join-fields-test
@@ -1497,20 +1535,21 @@
 (deftest ^:parallel expression-ref-when-metadata-has-expression-name-test
   (testing "column metadata with :expression-name should generate :expression refs. Prefer :expression-name over :name (#34957)"
     (let [metadata (-> (meta/field-metadata :venues :name)
-                       (assoc :lib/expression-name "Custom Venue Name", :lib/source :source/expressions))]
+                       (assoc :lib/expression-name "Custom Venue Name"
+                              :lib/source          :source/expressions
+                              :lib/source-uuid     "00000000-0000-0000-0000-000000000000"))]
       (is (=? [:expression {} "Custom Venue Name"]
               (lib/ref metadata))))))
 
 (deftest ^:parallel resolve-field-metadata-test
   (testing "Make sure fallback name for a Field ref makes sense"
     (mu/disable-enforcement
-      (binding [lib.metadata.ident/*enforce-idents-present* false]
-        (is (=? {:lib/type        :metadata/column
-                 :lib/source-uuid string?
-                 :name            "Unknown Field"
-                 :display-name    "Unknown Field"}
-                (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
-                                                   [:field {:lib/uuid (str (random-uuid))} 12345])))))))
+      (is (=? {:lib/type        :metadata/column
+               :lib/source-uuid string?
+               :name            "Unknown Field"
+               :display-name    "Unknown Field"}
+              (lib.metadata.calculation/metadata (lib.tu/venues-query) -1
+                                                 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
   (testing "type/PK field remapped to a type/Name field within the same table"
@@ -1635,7 +1674,6 @@
                             {:lib/type :metadata/column
                              :id 1
                              :name "search"
-                             :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                              :display-name "Search"
                              :base-type :type/Text})
                  lib/visible-columns
@@ -1650,7 +1688,6 @@
                            {:lib/type :metadata/column
                             :id 1
                             :name "num"
-                            :ident "pu_Pfm-Oe2cnFTsRgmYM3"
                             :display-name "Random number"
                             :base-type :type/Integer})
                 lib/visible-columns
@@ -1754,11 +1791,9 @@
                    meta/metadata-provider
                    (lib.tu.macros/mbql-query products
                      {:joins  [{:source-query    q1
-                                :source-metadata (for [col (lib/returned-columns
-                                                            (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1}))]
-                                                   (-> col
-                                                       (dissoc :lib/type)
-                                                       (update-keys u/->snake_case_en)))
+                                :source-metadata (map lib.convert.metadata-to-legacy/lib-metadata-column->legacy-metadata-column
+                                                      (lib/returned-columns
+                                                       (lib/query meta/metadata-provider {:database (meta/id), :type :query, :query q1})))
                                 :alias           "Question 54"
                                 :condition       [:= $id [:field %orders.id {:join-alias "Question 54"}]]
                                 :fields          [[:field %orders.id {:join-alias "Question 54"}]
@@ -1790,7 +1825,7 @@
         (is (=? ["Created At: Year" "Count"]
                 (mapv :display-name (lib/returned-columns query))))))))
 
-;;; adapted from [[metabase.query-processor-test.model-test/model-self-join-test]]
+;;; adapted from [[metabase.query-processor.model-test/model-self-join-test]]
 (deftest ^:parallel model-self-join-test-display-name-test
   (binding [lib.metadata.calculation/*display-name-style* :long]
     (let [mp       meta/metadata-provider
@@ -1891,7 +1926,7 @@
               (lib/aggregate (lib/count))
               (lib.tu.notebook/add-breakout {:name "QB Binning"} {:display-name "People → Birth Date"} {}))))))
 
-;;; adapted from [[metabase.query-processor-test.remapping-test/remapped-columns-in-joined-source-queries-test]]
+;;; adapted from [[metabase.query-processor.remapping-test/remapped-columns-in-joined-source-queries-test]]
 (deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test
   (testing "Remapped columns in joined source queries should work (#15578)"
     (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
@@ -1909,11 +1944,37 @@
                     :fields   [$title $category]
                     :order-by [[:asc $id]]
                     :limit    3}))]
-      (is (= [["TITLE"    "Title"]                         ; products.title
-              ["CATEGORY" "Category"]                      ; products.category
-              ["TITLE_2"  "Orders → Title"]                ; orders.title
-              ["sum"      "Orders → Sum of Quantity"]]     ; sum(orders.quantity)
+      (is (= [["TITLE"    "Title"]                     ; products.title
+              ["CATEGORY" "Category"]                  ; products.category
+              ["TITLE_2"  "Orders → Title"]            ; orders.title
+              ["sum"      "Orders → Sum of Quantity"]] ; sum(orders.quantity)
              (map (juxt :lib/deduplicated-name :display-name)
+                  (lib.metadata.result-metadata/returned-columns query)))))))
+
+(deftest ^:parallel remapped-columns-in-joined-source-queries-display-names-test-2
+  (testing "if :fields already includes a column from the join make sure the display name is still calculated correctly"
+    (let [mp    (lib.tu/remap-metadata-provider meta/metadata-provider (meta/id :orders :product-id) (meta/id :products :title))
+          query (lib/query
+                 mp
+                 (lib.tu.macros/mbql-query products
+                   {:joins    [{:source-query {:source-table $$orders
+                                               :breakout     [$orders.product-id]
+                                               :aggregation  [[:sum $orders.quantity]]}
+                                :alias        "Orders"
+                                :condition    [:= $id &Orders.orders.product-id]
+                                ;; we can get products.title since orders.product-id is remapped to title
+                                :fields       [&Orders.title
+                                               &Orders.*sum/Integer]}]
+                    :fields   [$title
+                               $category
+                               [:field "sum" {:base-type :type/Integer, :join-alias "Orders"}]]
+                    :order-by [[:asc $id]]
+                    :limit    3}))]
+      (is (= [[nil      "TITLE"    "Title"]                    ; products.title
+              [nil      "CATEGORY" "Category"]                 ; products.category
+              ["Orders" "sum"      "Orders → Sum of Quantity"] ; sum(orders.quantity)
+              ["Orders" "TITLE"    "Orders → Title"]]          ; orders.product-id remap to products.title
+             (map (juxt :metabase.lib.join/join-alias :lib/source-column-alias :display-name)
                   (lib.metadata.result-metadata/returned-columns query)))))))
 
 (deftest ^:parallel propagate-binning-display-names-test
@@ -2128,10 +2189,35 @@
                                 refs))
               "expected ref should be present")
           (is (=? [:field {:join-alias "question b - Product"} "TITLE"]
-                  (lib.equality/find-matching-ref b-title refs {:match-type ::lib.equality/match-type.same-stage}))
+                  (lib.equality/find-matching-ref b-title refs))
               "should find match"))))
     (is (=? {:stages [{:joins [{:alias  "question b - Product"
                                 :fields (for [col   (map :name b-cols)
                                               :when (not= col "TITLE")]
                                           [:field {} col])}]}]}
             (lib.field/remove-field query -1 b-title)))))
+
+(deftest ^:parallel find-stage-index-and-clause-by-uuid-test
+  (let [query {:database 1
+               :lib/type :mbql/query
+               :stages   [{:lib/type     :mbql.stage/mbql
+                           :source-table 2
+                           :aggregation  [[:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]}
+                          {:lib/type :mbql.stage/mbql
+                           :filters  [[:=
+                                       {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+                                       [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+                                       "wow"]]}]}]
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000001")))
+    (is (= [0 [:count {:lib/uuid "00000000-0000-0000-0000-000000000001"}]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query 0 "00000000-0000-0000-0000-000000000001")))
+    (is (= [1 [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query 1 "1cb2a996-6ba1-45fb-8101-63dc3105c311")))
+    (is (= [1 [:=
+               {:lib/uuid "a1898aa6-4928-4e97-837d-e440ce21085e"}
+               [:field {:lib/uuid "1cb2a996-6ba1-45fb-8101-63dc3105c311"} 3]
+               "wow"]]
+           (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "a1898aa6-4928-4e97-837d-e440ce21085e")))
+    (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query -1 "00000000-0000-0000-0000-000000000002")))
+    (is (nil? (#'lib.field/find-stage-index-and-clause-by-uuid query 0  "a1898aa6-4928-4e97-837d-e440ce21085e")))))

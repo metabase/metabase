@@ -1,0 +1,54 @@
+.card {
+  /* Card styling handled by Mantine Card props */
+}
+
+.table {
+  table-layout: fixed;
+  background-color: var(--mb-color-background-primary);
+  border: none;
+
+  th {
+    padding-block: var(--mantine-spacing-sm);
+    width: 50px;
+  }
+
+  td {
+    padding: var(--mantine-spacing-sm) var(--mantine-spacing-md)
+      var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  }
+
+  tr:last-child td {
+    border-bottom-color: transparent;
+  }
+}
+
+.row {
+  cursor: pointer;
+
+  &:hover {
+    .action {
+      visibility: visible;
+    }
+  }
+}
+
+.rowEditor {
+  td {
+    padding-top: 0;
+    padding-bottom: 4px;
+    line-height: 1.2;
+  }
+
+  &:hover {
+    background-color: transparent !important;
+  }
+}
+
+.action {
+  visibility: hidden;
+}
+
+.input {
+  border: none;
+  padding-inline: 0 !important;
+}

@@ -6,9 +6,9 @@ import _ from "underscore";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
 import CS from "metabase/css/core/index.css";
-import Search from "metabase/entities/search";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
+import { Search } from "metabase/entities/search";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { Snippets } from "metabase/entities/snippets";
 import { connect } from "metabase/lib/redux";
 import {
   PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
@@ -27,6 +27,14 @@ import { SnippetSidebarEmptyState } from "./SnippetSidebarEmptyState";
 
 const MIN_SNIPPETS_FOR_SEARCH = 1;
 
+/**
+ * @typedef {import("metabase/plugins").SnippetSidebarProps} SnippetSidebarProps
+ * @typedef {import("metabase/plugins").SnippetSidebarState} SnippetSidebarState
+ */
+
+/**
+ * @extends {React.Component<SnippetSidebarProps, SnippetSidebarState>}
+ */
 class SnippetSidebarInner extends React.Component {
   state = {
     showSearch: false,
@@ -93,14 +101,15 @@ class SnippetSidebarInner extends React.Component {
         )
       : _.sortBy(search, "model"); // relies on "collection" sorting before "snippet";
 
-    const hasParentCollection = snippetCollection.parent_id !== null;
     const onSnippetCollectionBack = () => {
+      const parentCollectionId = snippetCollection.parent_id ?? "root";
+
       // if this collection's parent isn't in the list,
       // we don't have perms to see it, return to the root instead
       const hasPermissionToSeeParent = snippetCollections.some(
         (collection) =>
           canonicalCollectionId(collection.id) ===
-          canonicalCollectionId(snippetCollection.parent_id),
+          canonicalCollectionId(parentCollectionId),
       );
 
       const targetId = hasPermissionToSeeParent
@@ -151,9 +160,7 @@ class SnippetSidebarInner extends React.Component {
                   ) : (
                     <SidebarHeader
                       title={snippetCollection.name}
-                      onBack={
-                        hasParentCollection ? onSnippetCollectionBack : null
-                      }
+                      onBack={onSnippetCollectionBack}
                     />
                   )}
 

@@ -1,27 +1,31 @@
 import { t } from "ttag";
 
 import ExternalLink from "metabase/common/components/ExternalLink";
+import type { Plan } from "metabase/common/utils/plan";
 import { color } from "metabase/lib/colors";
 import { Box, Button, Flex, Icon, Text } from "metabase/ui";
 import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import { LargeIconContainer, MigrationCard } from "./CloudPanel.styled";
-import { getMigrationEventTime } from "./utils";
+import { getMigrationEventTime, getMigrationUrl } from "./utils";
 
 interface MigrationSuccessProps {
+  storeUrl: string;
+  plan: Plan;
   migration: CloudMigration;
   restartMigration: () => void;
   isRestarting: boolean;
-  checkoutUrl: string;
 }
 
 export const MigrationSuccess = ({
+  storeUrl,
+  plan,
   migration,
   restartMigration,
   isRestarting,
-  checkoutUrl,
 }: MigrationSuccessProps) => {
   const uploadedAt = getMigrationEventTime(migration.updated_at);
+  const migrationUrl = getMigrationUrl(storeUrl, plan, migration);
 
   return (
     <>
@@ -41,7 +45,7 @@ export const MigrationSuccess = ({
             </Text>
 
             <Box mt="1.5rem">
-              <ExternalLink href={checkoutUrl}>
+              <ExternalLink href={migrationUrl}>
                 <Button variant="filled">{t`Go to Metabase Store`}</Button>
               </ExternalLink>
             </Box>

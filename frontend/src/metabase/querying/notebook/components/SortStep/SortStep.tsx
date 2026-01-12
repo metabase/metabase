@@ -71,19 +71,22 @@ export function SortStep({
         <SortDisplayName
           displayInfo={Lib.displayInfo(query, stageIndex, clause)}
           onToggleSortDirection={() => handleToggleOrderByDirection(clause)}
+          disabled={readOnly}
         />
       )}
-      renderPopover={({ item: orderBy, index, onClose }) => (
-        <SortPopover
-          query={query}
-          stageIndex={stageIndex}
-          orderBy={orderBy}
-          orderByIndex={index}
-          onAddOrderBy={handleAddOrderBy}
-          onUpdateOrderByColumn={handleUpdateOrderByColumn}
-          onClose={onClose}
-        />
-      )}
+      renderPopover={({ item: orderBy, index, onClose }) =>
+        readOnly ? null : (
+          <SortPopover
+            query={query}
+            stageIndex={stageIndex}
+            orderBy={orderBy}
+            orderByIndex={index}
+            onAddOrderBy={handleAddOrderBy}
+            onUpdateOrderByColumn={handleUpdateOrderByColumn}
+            onClose={onClose}
+          />
+        )
+      }
       onReorder={handleReorderOrderBy}
       onRemove={handleRemoveOrderBy}
     />
@@ -130,7 +133,7 @@ const SortPopover = ({
       query={query}
       stageIndex={stageIndex}
       columnGroups={columnGroups}
-      color="text-dark"
+      color="text-primary"
       checkIsColumnSelected={(item) => checkColumnSelected(item, orderByIndex)}
       onSelect={(column: Lib.ColumnMetadata) => {
         const isUpdate = orderBy != null;
@@ -158,11 +161,13 @@ const checkColumnSelected = (
 interface SortDisplayNameProps {
   displayInfo: Lib.OrderByClauseDisplayInfo;
   onToggleSortDirection: () => void;
+  disabled?: boolean;
 }
 
 function SortDisplayName({
   displayInfo,
   onToggleSortDirection,
+  disabled,
 }: SortDisplayNameProps) {
   const icon = displayInfo.direction === "asc" ? "arrow_up" : "arrow_down";
   return (
@@ -173,6 +178,7 @@ function SortDisplayName({
         event.stopPropagation();
         onToggleSortDirection();
       }}
+      disabled={disabled}
     >
       <Icon name={icon} />
       <span>{displayInfo.longDisplayName}</span>

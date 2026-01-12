@@ -12,7 +12,6 @@ export interface NewTimelineModalProps {
   collection: Collection;
   onSubmit: (values: TimelineData, collection: Collection) => void;
   onSubmitSuccess?: () => void;
-  onCancel: () => void;
   onClose?: () => void;
 }
 
@@ -20,7 +19,6 @@ const NewTimelineModal = ({
   collection,
   onSubmit,
   onSubmitSuccess,
-  onCancel,
   onClose,
 }: NewTimelineModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
@@ -40,7 +38,7 @@ const NewTimelineModal = ({
       <TimelineForm
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        onCancel={onCancel}
+        onCancel={onClose}
       />
     </ModalContent>
   );

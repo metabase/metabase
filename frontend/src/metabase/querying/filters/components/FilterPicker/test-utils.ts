@@ -29,8 +29,12 @@ const SEGMENT_1 = createMockSegment({
   name: "Discounted",
   description: "Discounted",
   definition: {
-    "source-table": ORDERS_ID,
-    filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
+    type: "query",
+    database: 1,
+    query: {
+      "source-table": ORDERS_ID,
+      filter: ["not-null", ["field", ORDERS.DISCOUNT, null]],
+    },
   },
 });
 
@@ -40,8 +44,12 @@ const SEGMENT_2 = createMockSegment({
   name: "Many items",
   description: "Orders with more than 5 items",
   definition: {
-    "source-table": ORDERS_ID,
-    filter: [">", ["field", ORDERS.QUANTITY, null], 20],
+    type: "query",
+    database: 1,
+    query: {
+      "source-table": ORDERS_ID,
+      filter: [">", ["field", ORDERS.QUANTITY, null], 20],
+    },
   },
 });
 

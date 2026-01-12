@@ -48,3 +48,9 @@ export const DATE_PICKER_UNITS = [
   ...DATE_PICKER_TRUNCATION_UNITS,
   ...DATE_PICKER_EXTRACTION_UNITS,
 ];
+
+export const DATE_PICKER_DIRECTIONS = [
+  "past" as const,
+  "current" as const,
+  "future" as const,
+];

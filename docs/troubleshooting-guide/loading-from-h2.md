@@ -18,7 +18,7 @@ You've installed Metabase, but:
 
 **Steps to take:**
 
-1. To check what you're using as the app database, go to **Admin Panel**, open the **Troubleshooting** tab, scroll down to "Diagnostic Info", and look for the `application-database` key in the JSON it displays.
+1. To check what you're using as the app database, go to **Admin Panel**, open the **Tools** tab, scroll down to "Diagnostic Info", and look for the `application-database` key in the JSON it displays.
 2. See [Migrating from H2](../installation-and-operation/migrating-from-h2.md) for instructions on how to migrate to a more robust app database.
 
 ## Are you trying to migrate the application database from H2 to something else?

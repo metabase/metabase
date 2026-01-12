@@ -35,24 +35,27 @@
         (is (thrown? Exception
                      (t2/delete! :model/PermissionsGroupMembership :user_id id, :group_id (u/the-id (perms-group/admin)))))))))
 
-(deftest tenant-users-and-groups
-  ;; This will need to get fixed once we have actual tenants - right now the `tenant_id` doesn't actually connect to
-  ;; anything.
-  (mt/with-temp [:model/User {tenant-user :id} {:tenant_id 1}
-                 :model/User {normal-user :id} {}
-                 :model/PermissionsGroup {tenant-group :id} {:is_tenant_group true}
-                 :model/PermissionsGroup {normal-group :id} {:is_tenant_group false}]
-    (testing "A tenant user"
-      (testing "cannot be added to a normal group"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms/add-user-to-group! tenant-user normal-group))))
-      (testing "can be added to tenant groups"
-        (perms/add-user-to-group! tenant-user tenant-group)))
-    (testing "A normal user"
-      (testing "cannot be added to a tenant group"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Cannot add non-tenant user to tenant-group or vice versa"
-                              (perms/add-user-to-group! normal-user tenant-group))))
-      (testing "can be added to a normal group"
-        (perms/add-user-to-group! normal-user normal-group)))))
+(deftest permissions-group-membership-audit-add-test
+  (testing "PermissionsGroupMembership audit events"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/PermissionsGroup {group-id :id} {:name "Test Group"}]
+        (let [initial-audit-count (t2/count :model/AuditLog)]
+          (testing "adding user to group is audited"
+            (perms/add-user-to-group! user-id group-id)
+            (is (> (t2/count :model/AuditLog) initial-audit-count))
+            (let [audit-entry (t2/select-one :model/AuditLog :topic "group-membership-create" {:order-by [[:id :desc]]})]
+              (is (some? audit-entry))
+              (is (= "PermissionsGroupMembership" (:model audit-entry)))
+              (is (= user-id (get-in audit-entry [:details :user_id])))
+              (is (= group-id (get-in audit-entry [:details :group_id])))))
+
+          (testing "removing user from group is audited"
+            (let [before-remove-count (t2/count :model/AuditLog)]
+              (perms/remove-user-from-group! user-id group-id)
+              (is (> (t2/count :model/AuditLog) before-remove-count))
+              (let [audit-entry (t2/select-one :model/AuditLog :topic "group-membership-delete" {:order-by [[:id :desc]]})]
+                (is (some? audit-entry))
+                (is (= "PermissionsGroupMembership" (:model audit-entry)))
+                (is (= user-id (get-in audit-entry [:details :user_id])))
+                (is (= group-id (get-in audit-entry [:details :group_id])))))))))))

@@ -14,7 +14,6 @@ import {
   getSection,
   selectUsageReason,
   setup,
-  skipLanguageStep,
   skipTokenStep,
   skipWelcomeScreen,
   submitUserInfoStep,
@@ -28,7 +27,7 @@ jest.mock("../analytics", () => ({
 const setupEnterprise = (opts?: SetupOpts) => {
   return setup({
     ...opts,
-    hasEnterprisePlugins: true,
+    enterprisePlugins: "*", // we need the license and currently it's enabled at import time with setupEnterprisePlugins :/,
   });
 };
 
@@ -36,19 +35,14 @@ const sampleToken = "a".repeat(64);
 const airgapToken = "airgap_toucan";
 
 describe("setup (EE build, but no token)", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
   it("default step order should be correct, with the license step and data usage steps", async () => {
     await setupEnterprise();
     await skipWelcomeScreen();
-    expectSectionToHaveLabel("What's your preferred language?", "1");
-    expectSectionToHaveLabel("What should we call you?", "2");
-    expectSectionToHaveLabel("What will you use Metabase for?", "3");
-    expectSectionToHaveLabel("Add your data", "4");
-    expectSectionToHaveLabel("Activate your commercial license", "5");
-    expectSectionToHaveLabel("Usage data preferences", "6");
+    expectSectionToHaveLabel("What should we call you?", "1");
+    expectSectionToHaveLabel("What will you use Metabase for?", "2");
+    expectSectionToHaveLabel("Add your data", "3");
+    expectSectionToHaveLabel("Activate your commercial license", "4");
+    expectSectionToHaveLabel("Usage data preferences", "5");
 
     expectSectionsToHaveLabelsInOrder();
   });
@@ -57,7 +51,6 @@ describe("setup (EE build, but no token)", () => {
     async function setupForLicenseStep() {
       await setupEnterprise();
       await skipWelcomeScreen();
-      await skipLanguageStep();
       await submitUserInfoStep();
       await selectUsageReason("embedding"); // to skip the db connection step
       await clickNextStep();
@@ -181,6 +174,8 @@ const submit = async () => {
   await userEvent.click(await submitBtn());
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
-  await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));
-  return fetchMock.lastCall(settingEndpoint);
+  await waitFor(() =>
+    expect(fetchMock.callHistory.done(settingEndpoint)).toBe(true),
+  );
+  return fetchMock.callHistory.lastCall(settingEndpoint);
 };

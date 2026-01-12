@@ -1,0 +1,28 @@
+.card {
+  min-width: 15rem;
+
+  &:hover,
+  &.selected {
+    border-color: var(--mb-color-brand);
+  }
+}
+
+.card,
+.handle {
+  visibility: hidden;
+
+  &.initialized {
+    visibility: visible;
+  }
+}
+
+.pill {
+  color: var(--mb-color-text-primary);
+  background-color: var(--mb-color-background-tertiary);
+
+  &:hover,
+  &.selected {
+    color: var(--mb-color-white);
+    background-color: var(--mb-color-brand);
+  }
+}

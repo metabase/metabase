@@ -9,13 +9,13 @@
    [metabase.channel.email :as email]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]
+   [metabase.notification.send :as notification.send]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.test-util :as premium-features.test-util]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
-   [metabase.util.retry-test :as rt]
    [postal.core :as postal]
    [postal.message :as message]
    [throttle.core :as throttle])
@@ -75,7 +75,9 @@
     (reset-inbox!)
     (tu/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                        email-smtp-port 587]
-      (f))))
+      (binding [notification.send/*default-options* (assoc notification.send/*default-options*
+                                                           :notification/sync? true)]
+        (f)))))
 
 ;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -138,6 +140,11 @@
   (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map :subject emails)))))
+
+(defn email-subjects
+  [user-or-email]
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))]
+    (into #{} (map :subject) (get @inbox address))))
 
 (defn received-email-body?
   "Indicate whether a user received an email whose body matches the `regex`. First argument should be a keyword
@@ -287,20 +294,16 @@
         (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
         (is (= 0.0 (tu/metric-value system :metabase-email/message-errors)))))
     (testing "error metrics collection"
-      (let [retry-config (assoc (#'retry/retry-configuration)
-                                :max-attempts 1
-                                :initial-interval-millis 1)
-            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-        (tu/with-prometheus-system! [_ system]
-          (with-redefs [retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                        email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+      (tu/with-prometheus-system! [_ system]
+        (binding [retry/*test-time-config-hook* #(assoc % :max-retries 0)]
+          (with-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
              :recipients   ["test@test.com"]
              :message-type :html
-             :message      "101. Metabase will make you a better person"))
-          (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
-          (is (= 1.0 (tu/metric-value system :metabase-email/message-errors))))))
+             :message      "101. Metabase will make you a better person")))
+        (is (= 1.0 (tu/metric-value system :metabase-email/messages)))
+        (is (= 1.0 (tu/metric-value system :metabase-email/message-errors)))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

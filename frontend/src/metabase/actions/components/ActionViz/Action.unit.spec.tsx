@@ -133,7 +133,7 @@ async function setup({
 
   if (getActionIsEnabledInDatabase(dashcard)) {
     fetchMock.get(ACTION_EXEC_MOCK_PATH, {});
-    fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": [1] });
+    fetchMock.post(ACTION_EXEC_MOCK_PATH, { "rows-updated": 1 });
 
     // for ActionCreator modal (action edit modal)
     setupDatabasesEndpoints([database]);
@@ -303,10 +303,10 @@ describe("Actions > ActionViz > Action", () => {
       );
 
       await waitFor(async () => {
-        expect(fetchMock.called(ACTION_EXEC_MOCK_PATH)).toBe(true);
+        expect(fetchMock.callHistory.called(ACTION_EXEC_MOCK_PATH)).toBe(true);
       });
 
-      const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
+      const call = fetchMock.callHistory.lastCall(ACTION_EXEC_MOCK_PATH);
       expect(await call?.request?.json()).toEqual({
         modelId: ACTION_MODEL_ID,
         parameters: {
@@ -375,16 +375,12 @@ describe("Actions > ActionViz > Action", () => {
       const updatedTitle = "Test action title";
       await setup();
 
-      fetchMock.putOnce(
-        `path:/api/action/${ACTION.id}`,
-        {
+      fetchMock.modifyRoute(`action-${ACTION.id}-put`, {
+        response: {
           ...ACTION,
           name: updatedTitle,
         },
-        {
-          overwriteRoutes: true,
-        },
-      );
+      });
 
       await userEvent.click(screen.getByText("Click me"));
 
@@ -401,7 +397,9 @@ describe("Actions > ActionViz > Action", () => {
 
       await userEvent.click(within(editorModal).getByText("Update"));
 
-      expect(fetchMock.called(`path:/api/action/${ACTION.id}`)).toBe(true);
+      expect(
+        fetchMock.callHistory.called(`path:/api/action/${ACTION.id}`),
+      ).toBe(true);
 
       await waitFor(() => {
         expect(screen.queryByTestId("action-creator")).not.toBeInTheDocument();
@@ -478,7 +476,7 @@ describe("Actions > ActionViz > Action", () => {
       await userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
+        const call = fetchMock.callHistory.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
     });
@@ -505,7 +503,7 @@ describe("Actions > ActionViz > Action", () => {
       await userEvent.click(screen.getByRole("button", { name: ACTION.name }));
 
       await waitFor(async () => {
-        const call = fetchMock.lastCall(ACTION_EXEC_MOCK_PATH);
+        const call = fetchMock.callHistory.lastCall(ACTION_EXEC_MOCK_PATH);
         expect(await call?.request?.json()).toEqual(expectedBody);
       });
     });

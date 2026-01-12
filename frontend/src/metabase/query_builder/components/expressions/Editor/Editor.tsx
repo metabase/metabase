@@ -12,18 +12,18 @@ import {
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
 import { useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import type * as Lib from "metabase-lib";
 import {
   type DefinedClauseName,
   type ExpressionError,
   diagnoseAndCompile,
   format,
   getClauseDefinition,
-} from "metabase-lib/v1/expressions";
-import { tokenAtPos } from "metabase-lib/v1/expressions/complete/util";
-import { COMMA, GROUP } from "metabase-lib/v1/expressions/pratt";
+} from "metabase/querying/expressions";
+import { tokenAtPos } from "metabase/querying/expressions";
+import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
+import { getMetadata } from "metabase/selectors/metadata";
+import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
+import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
 import { FunctionBrowser } from "../FunctionBrowser";
@@ -43,11 +43,13 @@ import { hasActiveSnippet, useInitialClause } from "./utils";
 type EditorProps = {
   id?: string;
   clause?: Lib.Expressionable | null;
+  initialClause?: Lib.Expressionable | null;
   query: Lib.Query;
   stageIndex: number;
   expressionMode: Lib.ExpressionMode;
   expressionIndex?: number;
   availableColumns: Lib.ColumnMetadata[];
+  availableMetrics?: Lib.MetricMetadata[];
   reportTimezone?: string;
   readOnly?: boolean;
   error?: ExpressionError | Error | null;
@@ -73,6 +75,7 @@ export function Editor(props: EditorProps) {
     stageIndex,
     query,
     availableColumns,
+    availableMetrics,
     readOnly,
     error,
     reportTimezone,
@@ -124,6 +127,7 @@ export function Editor(props: EditorProps) {
     query,
     stageIndex,
     availableColumns,
+    availableMetrics,
     metadata,
     extensions: [customTooltip],
   });
@@ -252,8 +256,10 @@ function useExpression({
   expressionIndex,
   query,
   availableColumns,
+  availableMetrics,
   metadata,
   onChange,
+  initialClause,
 }: EditorProps & {
   metadata: Metadata;
 }) {
@@ -323,6 +329,7 @@ function useExpression({
         expressionIndex,
         metadata,
         availableColumns,
+        availableMetrics,
       });
       if (immediate || errorRef.current) {
         debouncedOnChange.cancel();
@@ -340,13 +347,14 @@ function useExpression({
       handleChange,
       debouncedOnChange,
       availableColumns,
+      availableMetrics,
     ],
   );
 
   useMount(() => {
     // format the source when the component mounts
     formatExpression({
-      initial: true,
+      initial: clause === initialClause,
     });
   });
 

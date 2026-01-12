@@ -1,4 +1,4 @@
-import { useKBar } from "kbar";
+import { VisualState, useKBar } from "kbar";
 import { useEffect } from "react";
 import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
@@ -12,6 +12,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
+import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import type { RecentItem, Settings } from "metabase-types/api";
 import {
@@ -21,6 +22,7 @@ import {
   createMockRecentCollectionItem,
   createMockTokenFeatures,
   createMockUser,
+  createMockUserPermissions,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
@@ -33,16 +35,28 @@ import { PaletteResults } from "../../PaletteResults";
 const TestComponent = withRouter(
   ({ q, ...props }: WithRouterProps & { q?: string; isLoggedIn: boolean }) => {
     useCommandPaletteBasicActions(props);
+    const { searchRequestId, searchResults, searchTerm } = useCommandPalette({
+      disabled: false,
+      locationQuery: props.location.query,
+    });
 
     const { query } = useKBar();
 
     useEffect(() => {
+      query.setVisualState(VisualState.showing);
       if (q) {
         query.setSearch(q);
       }
     }, [q, query]);
 
-    return <PaletteResults />;
+    return (
+      <PaletteResults
+        locationQuery={props.location.query}
+        searchRequestId={searchRequestId}
+        searchResults={searchResults}
+        searchTerm={searchTerm}
+      />
+    );
   },
 );
 
@@ -129,6 +143,10 @@ export const commonSetup = ({
     settings: mockSettings({ ...settings, "token-features": TOKEN_FEATURES }),
     currentUser: createMockUser({
       is_superuser: isAdmin,
+      permissions: createMockUserPermissions({
+        can_create_queries: true,
+        can_create_native_queries: true,
+      }),
     }),
   });
 

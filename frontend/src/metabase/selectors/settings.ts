@@ -33,7 +33,7 @@ export const isSsoEnabled = (state: State) =>
   getSetting(state, "saml-enabled") ||
   getSetting(state, "other-sso-enabled?");
 
-type StorePaths =
+export type StorePaths =
   /** store main page */
   | ""
   /** checkout page */
@@ -43,11 +43,21 @@ type StorePaths =
   /** development instance specific upsell */
   | "account/new-dev-instance"
   /** redirects to the specific instance storage management page */
-  | "account/storage";
+  | "account/storage"
+  /** EE, self-hosted upsell that communicates back with the instance */
+  | "checkout/upgrade/self-hosted";
 
-export const getStoreUrl = (path: StorePaths = "") => {
-  return `https://store.metabase.com/${path}`;
-};
+const DEFAULT_STORE_URL = "https://store.metabase.com/";
+
+export function getStoreUrl(state: State, path: StorePaths = "") {
+  try {
+    const storeUrl = getSetting(state, "store-url");
+    const url = new URL(path, storeUrl);
+    return url.toString();
+  } catch {
+    return DEFAULT_STORE_URL;
+  }
+}
 
 export const migrateToCloudGuideUrl = () =>
   "https://www.metabase.com/cloud/docs/migrate/guide";
@@ -194,3 +204,6 @@ export const getIsPaidPlan = createSelector(
     return tokenStatus != null && tokenStatus.valid;
   },
 );
+
+export const getTokenStatus = (state: State): TokenStatus | null =>
+  getSetting(state, "token-status");

@@ -7,6 +7,7 @@ import {
   updateSetting,
   updateSettings,
 } from "metabase/admin/settings/settings";
+import { userApi } from "metabase/api";
 import { loadLocalization } from "metabase/lib/i18n";
 import { createAsyncThunk } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -24,7 +25,6 @@ import {
 } from "./analytics";
 import {
   getAvailableLocales,
-  getInvite,
   getIsEmbeddingUseCase,
   getLocale,
   getNextStep,
@@ -32,7 +32,7 @@ import {
   getUsageReason,
 } from "./selectors";
 import type { SetupStep } from "./types";
-import { getDefaultLocale, getLocales, getUserToken } from "./utils";
+import { getDefaultLocale, getLocales } from "./utils";
 
 interface ThunkConfig {
   state: State;
@@ -46,18 +46,6 @@ export const goToNextStep = createAsyncThunk(
     dispatch(selectStep(nextStep));
     if (nextStep === "completed") {
       dispatch(setEmbeddingHomepageFlags());
-    }
-  },
-);
-
-export const LOAD_USER_DEFAULTS = "metabase/setup/LOAD_USER_DEFAULTS";
-export const loadUserDefaults = createAsyncThunk(
-  LOAD_USER_DEFAULTS,
-  async (): Promise<UserInfo | undefined> => {
-    const token = getUserToken();
-    if (token) {
-      const defaults = await SetupApi.user_defaults({ token });
-      return defaults.user;
     }
   },
 );
@@ -80,7 +68,6 @@ export const LOAD_DEFAULTS = "metabase/setup/LOAD_DEFAULTS";
 export const loadDefaults = createAsyncThunk<void, void, ThunkConfig>(
   LOAD_DEFAULTS,
   (_, { dispatch }) => {
-    dispatch(loadUserDefaults());
     dispatch(loadLocaleDefaults());
   },
 );
@@ -103,14 +90,12 @@ export const submitUser = createAsyncThunk<void, UserInfo, ThunkConfig>(
   "metabase/setup/SUBMIT_USER_INFO",
   async (user: UserInfo, { dispatch, getState, rejectWithValue }) => {
     const token = getSetupToken(getState());
-    const invite = getInvite(getState());
     const locale = getLocale(getState());
 
     try {
       await SetupApi.create({
         token,
         user,
-        invite,
         prefs: {
           site_name: user.site_name,
           site_locale: locale?.code,
@@ -175,8 +160,20 @@ export const skipDatabase = createAsyncThunk(
 export const SUBMIT_USER_INVITE = "metabase/setup/SUBMIT_USER_INVITE";
 export const submitUserInvite = createAsyncThunk(
   SUBMIT_USER_INVITE,
-  (_: InviteInfo, { dispatch }) => {
-    dispatch(goToNextStep());
+  async (inviteInfo: InviteInfo, { dispatch, rejectWithValue }) => {
+    try {
+      await dispatch(
+        userApi.endpoints.createUser.initiate({
+          email: inviteInfo.email,
+          first_name: inviteInfo.first_name || undefined,
+          last_name: inviteInfo.last_name || undefined,
+          source: "setup",
+        }),
+      ).unwrap();
+      dispatch(goToNextStep());
+    } catch (error) {
+      return rejectWithValue(error);
+    }
   },
 );
 

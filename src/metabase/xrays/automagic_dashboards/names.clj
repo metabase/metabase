@@ -2,12 +2,17 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor.util :as qp.util]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.aggregation :as lib.schema.aggregation]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
+   [metabase.util.malli :as mu]
    [metabase.util.time :as u.time]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]))
 
 ;; TODO - rename "minumum" to "minimum". Note that there are internationalization string implications
@@ -23,57 +28,83 @@
    :cum-count (deferred-tru "cumulative count")
    :cum-sum   (deferred-tru "cumulative sum")})
 
-(defn metric-name
+(mu/defn metric-name :- ::ads/string-or-18n-string
   "Return the name of the metric or name by describing it."
-  [[op & args :as metric]]
-  (if (magic.util/adhoc-metric? metric)
-    (-> op qp.util/normalize-token op->name)
-    (second args)))
+  [database-id           :- [:maybe :int]
+   [tag opts :as metric] :- vector?]
+  (cond
+    (lib/clause-of-type? metric :measure)
+    (or (:display-name opts)
+        (when-let [measure-id (when (int? (nth metric 2 nil))
+                                (nth metric 2))]
+          (when database-id
+            (let [mp (lib-be/application-database-metadata-provider database-id)]
+              (some-> (lib.metadata/measure mp measure-id) :name))))
+        (tru "[Unknown Measure]"))
 
-(defn- join-enumeration
+    (magic.util/adhoc-metric? metric)
+    (-> tag keyword op->name)
+
+    (lib/clause-of-type? metric :field)
+    (lib/field-ref-name metric)
+
+    :else
+    (throw (ex-info (format "Don't know how to get the name of %s" (pr-str metric))
+                    {:metric metric}))))
+
+(mu/defn- join-enumeration :- ::ads/string-or-18n-string
   "Join a sequence as [1 2 3 4] to \"1, 2, 3 and 4\""
-  [xs]
+  [xs :- [:sequential :any]]
   (if (next xs)
     (tru "{0} and {1}" (str/join ", " (butlast xs)) (last xs))
-    (first xs)))
+    (str (first xs))))
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the source of a given root object."
   (comp (some-fn :display_name :name) :source))
 
-(defn metric->description
+(mu/defn metric->description :- [:or :string [:fn {:error/message "localized string"} i18n/localized-string?]]
   "Return a description for the metric."
-  [root aggregation-clause]
-  (join-enumeration
-   (for [metric (if (sequential? (first aggregation-clause))
-                  aggregation-clause
-                  [aggregation-clause])]
-     (if (magic.util/adhoc-metric? metric)
-       (tru "{0} of {1}" (metric-name metric) (or (some->> metric
-                                                           second
-                                                           (magic.util/->field root)
-                                                           :display_name)
-                                                  (source-name root)))
-       (metric-name metric)))))
+  [root               :- ::ads/root
+   aggregation-clause :- [:or
+                          ::lib.schema.aggregation/aggregation
+                          ::lib.schema.aggregation/aggregations]]
+  (let [database-id (:database root)]
+    (join-enumeration
+     (for [metric (if (sequential? (first aggregation-clause))
+                    aggregation-clause
+                    [aggregation-clause])]
+       (if (magic.util/adhoc-metric? metric)
+         (tru "{0} of {1}" (metric-name database-id metric) (or (when (> (count metric) 2)
+                                                                  (->> (nth metric 2) ; icky
+                                                                       (magic.util/->field root)
+                                                                       :display_name))
+                                                                (source-name root)))
+         (metric-name database-id metric))))))
 
-(defn question-description
+(mu/defn question-description
   "Generate a description for the question."
-  [root question]
-  (let [aggregations (->> (get-in question [:dataset_query :query :aggregation])
+  [root     :- ::ads/root
+   question :- [:map
+                [:dataset_query ::ads/query]]]
+  (let [aggregations (->> (lib/aggregations (:dataset_query question))
                           (metric->description root))
-        dimensions   (->> (get-in question [:dataset_query :query :breakout])
-                          (mapcat magic.util/collect-field-references)
-                          (map (comp :display_name
-                                     (partial magic.util/->field root)))
+        field-ids    (into
+                      #{}
+                      (mapcat lib/all-field-ids)
+                      (lib/breakouts (:dataset_query question)))
+        dimensions   (->> field-ids
+                          (mapv (partial magic.util/->field root))
+                          (mapv :display_name)
                           join-enumeration)]
     (if dimensions
       (tru "{0} by {1}" aggregations dimensions)
       aggregations)))
 
 (defmulti ^:private humanize-filter-value
-  {:arglists '([fieldset [op & args]])}
-  (fn [_ [op & _args]]
-    (qp.util/normalize-token op)))
+  {:arglists '([root mbql-clause])}
+  (fn [_root mbql-clause]
+    (lib/dispatch-value mbql-clause)))
 
 (def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
                                 :hour-of-day     (deferred-tru "hour")
@@ -84,27 +115,23 @@
                                 :month-of-year   (deferred-tru "month")
                                 :quarter-of-year (deferred-tru "quarter")
                                 :year            (deferred-tru "year")}
-                               qp.util/normalize-token))
+                               keyword))
 
-(defn item-reference->field
+(mu/defn- item-reference->field :- [:map
+                                    [:item-name :string]]
   "Turn a field reference into a field."
-  [root [item-type :as item-reference]]
-  (case item-type
-    (:field "field") (let [normalized-field-reference (mbql.normalize/normalize item-reference)
-                           temporal-unit              (lib.util.match/match-one normalized-field-reference
-                                                        [:field _ (opts :guard :temporal-unit)]
-                                                        (:temporal-unit opts))
-                           {:keys [display_name] :as field-record} (cond-> (->> normalized-field-reference
-                                                                                magic.util/collect-field-references
-                                                                                first
-                                                                                (magic.util/->field root))
-                                                                     temporal-unit
-                                                                     (assoc :unit temporal-unit))
-                           item-name                  (cond->> display_name
-                                                        (some-> temporal-unit u.date/extract-units)
-                                                        (tru "{0} of {1}" (unit-name temporal-unit)))]
-                       (assoc field-record :item-name item-name))
-    (:expression "expression") {:item-name (second item-reference)}
+  [root                    :- ::ads/root
+   [tag _opts x :as a-ref] :- ::lib.schema.ref/ref]
+  (case tag
+    :field      (let [temporal-unit                           (lib/raw-temporal-bucket a-ref)
+                      {:keys [display_name] :as field-record} (cond-> (magic.util/->field root a-ref)
+                                                                temporal-unit
+                                                                (assoc :unit temporal-unit))
+                      item-name                               (cond->> display_name
+                                                                (some-> temporal-unit u.date/extract-units)
+                                                                (tru "{0} of {1}" (unit-name temporal-unit)))]
+                  (assoc field-record :item-name item-name))
+    :expression {:item-name x}
     {:item-name "item"}))
 
 (defn item-name
@@ -118,7 +145,7 @@
    (cond->> display_name
      (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
-(defn pluralize
+(defn- pluralize
   "Add appropriate pluralization suffixes for integer numbers."
   [x]
   ;; the `int` cast here is to fix performance warnings if `*warn-on-reflection*` is enabled
@@ -128,7 +155,7 @@
     3 (tru "{0}rd" x)
     (tru "{0}th" x)))
 
-(defn humanize-datetime
+(defn- humanize-datetime
   "Convert a time data type into a human friendly string."
   [t unit]
   (let [dt (if (integer? t)
@@ -156,68 +183,85 @@
        :day-of-year
        :week-of-year)  (u.date/extract dt unit))))
 
-(defmethod humanize-filter-value :=
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :=
+  [root                            :- ::ads/root
+   [_ _opts field-reference value] :- :mbql.clause/=]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is {1}" item-name (humanize-datetime value unit))
       (tru "{0} is {1}" item-name value))))
 
-(defmethod humanize-filter-value :>=
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :>=
+  [root                            :- ::ads/root
+   [_ _opts field-reference value] :- :mbql.clause/>=]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is not before {1}" item-name (humanize-datetime value unit))
       (tru "{0} is at least {1}" item-name value))))
 
-(defmethod humanize-filter-value :>
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :>
+  [root                            :- ::ads/root
+   [_ _opts field-reference value] :- :mbql.clause/>]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is after {1}" item-name (humanize-datetime value unit))
       (tru "{0} is greater than {1}" item-name value))))
 
-(defmethod humanize-filter-value :<=
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :<=
+  [root                            :- ::ads/root
+   [_ _opts field-reference value] :- :mbql.clause/<=]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is not after {1}" item-name (humanize-datetime value unit))
       (tru "{0} is no more than {1}" item-name value))))
 
-(defmethod humanize-filter-value :<
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :<
+  [root                            :- ::ads/root
+   [_ _opts field-reference value] :- :mbql.clause/<]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} is before {1}" item-name (humanize-datetime value unit))
       (tru "{0} is less than {1}" item-name value))))
 
-(defmethod humanize-filter-value :between
-  [root [_ field-reference min-value max-value]]
-  (tru "{0} is between {1} and {2}" (item-name root field-reference) min-value max-value))
+(mu/defmethod humanize-filter-value :between
+  [root                                          :- ::ads/root
+   [_ _opts field-reference min-value max-value] :- :mbql.clause/between]
+  (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
+    (or (when (isa? (or effective_type base_type) :type/Temporal)
+          (let [humanized-min (humanize-datetime min-value unit)
+                humanized-max (humanize-datetime max-value unit)]
+            (when (= humanized-min humanized-max)
+              (tru "{0} is {1}" item-name humanized-min))))
+        (tru "{0} is between {1} and {2}" item-name min-value max-value))))
 
-(defmethod humanize-filter-value :inside
-  [root [_ lat-reference lon-reference lat-max lon-min lat-min lon-max]]
+(mu/defmethod humanize-filter-value :inside
+  [root                                                                  :- ::ads/root
+   [_ _opts lat-reference lon-reference lat-max lon-min lat-min lon-max] :- :mbql.clause/inside]
   (tru "{0} is between {1} and {2}; and {3} is between {4} and {5}"
        (item-name root lon-reference) lon-min lon-max
        (item-name root lat-reference) lat-min lat-max))
 
-(defmethod humanize-filter-value :and
-  [root [_ & clauses]]
+(mu/defmethod humanize-filter-value :and
+  [root                :- ::ads/root
+   [_ _opts & clauses] :- :mbql.clause/and]
   (->> clauses
        (map (partial humanize-filter-value root))
        join-enumeration))
 
-(defmethod humanize-filter-value :default
-  [root [_ field-reference value]]
+(mu/defmethod humanize-filter-value :default
+  [root                      :- ::ads/root
+   [_ field-reference value] :- ::lib.schema.expression/boolean]
   (let [{:keys [item-name effective_type base_type unit]} (item-reference->field root field-reference)]
     (if (isa? (or effective_type base_type) :type/Temporal)
       (tru "{0} relates to {1}" item-name (humanize-datetime value unit))
       (tru "{0} relates to {1}" item-name value))))
 
-(defn cell-title
+(mu/defn cell-title :- :string
   "Return a cell title given a root object and a cell query."
-  [root cell-query]
-  (str/join " " [(if-let [aggregation (get-in root [:entity :dataset_query :query :aggregation])]
+  [root       :- ::ads/root
+   cell-query :- ::ads/root.cell-query]
+  (str/join " " [(if-let [aggregation (-> (get-in root [:entity :dataset_query])
+                                          lib/aggregations)]
                    (metric->description root aggregation)
                    (:full-name root))
                  (tru "where {0}" (humanize-filter-value root cell-query))]))

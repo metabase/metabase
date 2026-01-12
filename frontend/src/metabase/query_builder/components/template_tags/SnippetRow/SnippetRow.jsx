@@ -4,8 +4,9 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import Snippets from "metabase/entities/snippets";
+import { Snippets } from "metabase/entities/snippets";
 import { Flex, Icon } from "metabase/ui";
 
 import SnippetRowS from "./SnippetRow.module.css";
@@ -42,6 +43,7 @@ class SnippetRowInner extends Component {
             CS.hoverParent,
             CS.hoverDisplay,
           )}
+          style={{ minWidth: 0 }}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <Flex
@@ -54,20 +56,28 @@ class SnippetRowInner extends Component {
                     insertSnippet(snippet);
                   }
             }
+            miw={0}
           >
             <Icon
               name="snippet"
-              className={cx(CS.hoverChildHidden, CS.textLight)}
+              className={cx(
+                CS.hoverChildHidden,
+                CS.textLight,
+                SnippetRowS.SnippetIcon,
+              )}
             />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-              className={CS.hoverChild}
+              className={cx(CS.hoverChild, SnippetRowS.SnippetIcon)}
             />
-            <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
+            <Ellipsified className={cx(CS.ml1)}>{snippet.name}</Ellipsified>
           </Flex>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            className={cx({ [CS.hoverChild]: !isOpen })}
+            className={cx(
+              { [CS.hoverChild]: !isOpen },
+              SnippetRowS.SnippetIcon,
+            )}
           />
         </div>
         {isOpen && (

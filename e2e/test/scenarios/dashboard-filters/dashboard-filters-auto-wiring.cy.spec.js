@@ -430,7 +430,10 @@ describe("dashboard filters auto-wiring", () => {
 
       goToFilterMapping();
 
-      H.findDashCardAction(H.getDashboardCard(1), "Replace").click();
+      H.getDashboardCard(1)
+        .realHover({ scrollBehavior: "bottom" })
+        .findByLabelText("Replace")
+        .click();
 
       H.modal().findByText("Orders, Count").click();
 
@@ -499,13 +502,13 @@ describe("dashboard filters auto-wiring", () => {
       goToFilterMapping("ID");
 
       H.undoToastList()
-        .findByText("Auto-connect “Orders Question” to “ID”?")
+        .contains("Auto-connect “Orders Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
         .click();
 
       H.undoToastList()
-        .findByText("Auto-connect “Reviews Question” to “ID”?")
+        .contains("Auto-connect “Reviews Question” to “ID”?")
         .closest("[data-testid='toast-undo']")
         .findByRole("button", { name: "Auto-connect" })
         .click();

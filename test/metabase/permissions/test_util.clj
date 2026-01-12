@@ -4,6 +4,7 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.permissions.schema :as permissions.schema]
    [metabase.test.data :as data]
    [metabase.test.initialize :as initialize]
    [metabase.util :as u]
@@ -15,7 +16,7 @@
   ;; Select sandboxes _before_ permissions.
   (let [original-perms     (t2/select :model/Permissions)
         original-sandboxes (if config/ee-available?
-                             (t2/select :model/GroupTableAccessPolicy)
+                             (t2/select :model/Sandbox)
                              [])]
     (try
       (thunk)
@@ -23,12 +24,12 @@
         (binding [perms/*allow-root-entries* true
                   perms/*allow-admin-permissions-changes* true]
           (when config/ee-available?
-            (t2/delete! :model/GroupTableAccessPolicy))
+            (t2/delete! :model/Sandbox))
           (t2/delete! :model/Permissions)
           ;; Insert perms _before_ sandboxes because of a foreign key constraint on sandboxes.permission_id
           (t2/insert! :model/Permissions original-perms)
           (when config/ee-available?
-            (t2/insert! :model/GroupTableAccessPolicy original-sandboxes)))))))
+            (t2/insert! :model/Sandbox original-sandboxes)))))))
 
 (defmacro with-restored-perms!
   "Runs `body`, and restores permissions and sandboxes to their original state afterwards."
@@ -83,7 +84,7 @@
   ;; force creation of test-data if it is not already created
   (data/db)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] permissions.schema/data-permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id
@@ -101,8 +102,10 @@
   "Implementation of `with-full-data-perms-for-all-users`. Sets every data permission for all databases to the
   most permissive value for the All Users permission group for the duration of the test."
   [thunk]
+  ;; make sure app DB is set up and test users are created
+  (initialize/initialize-if-needed! :db :test-users)
   (with-restored-data-perms-for-group! (u/the-id (perms-group/all-users))
-    (doseq [[perm-type _] data-perms/Permissions
+    (doseq [[perm-type _] permissions.schema/data-permissions
             db-id         (t2/select-pks-set :model/Database)]
       (data-perms/set-database-permission! (perms-group/all-users)
                                            db-id

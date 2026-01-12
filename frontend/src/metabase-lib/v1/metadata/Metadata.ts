@@ -5,6 +5,8 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
+  MeasureId,
+  NativeQuerySnippet,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -16,6 +18,7 @@ import type Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";
+import type Measure from "./Measure";
 import type Schema from "./Schema";
 import type Segment from "./Segment";
 import type Table from "./Table";
@@ -28,6 +31,7 @@ interface MetadataOpts {
   tables?: Record<string, Table>;
   fields?: Record<string, Field>;
   segments?: Record<string, Segment>;
+  measures?: Record<string, Measure>;
   questions?: Record<string, Question>;
   settings?: Settings;
 }
@@ -44,7 +48,9 @@ class Metadata {
   tables: Record<string, Table> = {};
   fields: Record<string, Field> = {};
   segments: Record<string, Segment> = {};
+  measures: Record<string, Measure> = {};
   questions: Record<string, Question> = {};
+  snippets: Record<string, NativeQuerySnippet> = {};
   settings?: Settings;
 
   constructor(opts?: MetadataOpts) {
@@ -88,6 +94,20 @@ class Metadata {
    */
   segment(segmentId: SegmentId | undefined | null): Segment | null {
     return (segmentId != null && this.segments[segmentId]) || null;
+  }
+
+  /**
+   * @deprecated load data via RTK Query - useListMeasuresQuery
+   */
+  measuresList(): Measure[] {
+    return Object.values(this.measures);
+  }
+
+  /**
+   * @deprecated load data via RTK Query - useGetMeasureQuery
+   */
+  measure(measureId: MeasureId | undefined | null): Measure | null {
+    return (measureId != null && this.measures[measureId]) || null;
   }
 
   /**
@@ -141,8 +161,21 @@ class Metadata {
   /**
    * @deprecated load data via RTK Query - useGetCardQuery
    */
-  question(cardId: CardId | undefined | null): Question | null {
-    return (cardId != null && this.questions[cardId]) || null;
+  question(cardId: CardId | string | undefined | null): Question | null {
+    if (typeof cardId === "number") {
+      return this.questions[cardId];
+    }
+
+    // TODO: move loadCard in QB to use RTK Query
+    if (typeof cardId === "string") {
+      for (const numericId in this.questions) {
+        if (this.questions[numericId]._card?.entity_id === cardId) {
+          return this.questions[numericId];
+        }
+      }
+    }
+
+    return null;
   }
 
   setting<T extends SettingKey>(key: T): Settings[T] | null {

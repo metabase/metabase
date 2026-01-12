@@ -13,7 +13,6 @@
               :joins        [{:fields       :all
                               :source-table (meta/id :products)
                               :alias        "Products"
-                              :ident        "sLMFVLAFxuPQp1Q387KOv"
                               :condition    [:=
                                              [:field (meta/id :orders :product-id) nil]
                                              [:field (meta/id :products :id) {:join-alias "Products"}]]}]}})
@@ -30,12 +29,15 @@
 
 (defn query-with-legacy-source-card
   "An MLv2 query that has a `:source-card` that has a legacy query, and legacy metadata."
-  [has-result-metadata?]
-  (let [metadata-provider (lib.tu/mock-metadata-provider
-                           meta/metadata-provider
-                           {:cards [(cond-> {:id            1
-                                             :database-id   (meta/id)
-                                             :name          "Card 1"
-                                             :dataset-query legacy-card-query}
-                                      has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})]
-    (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))
+  ([has-result-metadata?]
+   (query-with-legacy-source-card has-result-metadata? :question))
+  ([has-result-metadata? card-type]
+   (let [metadata-provider (lib.tu/mock-metadata-provider
+                            meta/metadata-provider
+                            {:cards [(cond-> {:id            1
+                                              :database-id   (meta/id)
+                                              :name          "Card 1"
+                                              :type          card-type
+                                              :dataset-query legacy-card-query}
+                                       has-result-metadata? (assoc :result-metadata (legacy-card-metadata)))]})]
+     (lib/query metadata-provider (lib.metadata/card metadata-provider 1)))))

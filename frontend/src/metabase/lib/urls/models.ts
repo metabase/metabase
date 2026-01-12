@@ -32,7 +32,7 @@ export function modelDetail(card: CardOrSearchResult, tab = "") {
 }
 
 type ModelEditorUrlBuilderOpts = {
-  type?: "query" | "metadata";
+  type?: "query" | "columns" | "metadata";
 };
 
 export function modelEditor(

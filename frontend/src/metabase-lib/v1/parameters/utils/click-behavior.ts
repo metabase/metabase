@@ -33,7 +33,7 @@ import type {
   Parameter,
   ParameterValueOrArray,
   QuestionDashboardCard,
-  UserAttribute,
+  UserAttributeMap,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
@@ -66,7 +66,7 @@ export function getDataFromClicked({
   extraData?: {
     dashboard?: Dashboard;
     parameterValuesBySlug?: Record<string, ParameterValueOrArray>;
-    userAttributes?: Record<UserAttribute, UserAttribute> | null;
+    userAttributes?: UserAttributeMap | null;
   };
   dimensions?: DimensionType[];
   data?: (ClickObjectDataRow & {
@@ -240,6 +240,7 @@ function getTargetsForVariables(legacyNativeQuery: NativeQuery): Target[] {
           text: TYPE.Text,
           number: TYPE.Number,
           date: TYPE.Temporal,
+          boolean: TYPE.Boolean,
         }[type]
       : undefined;
 
@@ -414,7 +415,9 @@ export function formatSourceForTarget(
 
       if (
         typeof sourceDateUnit === "string" &&
-        ["week", "month", "quarter", "year"].includes(sourceDateUnit)
+        ["week", "month", "quarter", "year", "hour", "minute"].includes(
+          sourceDateUnit,
+        )
       ) {
         return formatDateToRangeForParameter(datum.value, sourceDateUnit);
       }
@@ -454,6 +457,9 @@ function formatDateForParameterType(
   } else if (parameterType === "date/quarter-year") {
     return m.format("[Q]Q-YYYY");
   } else if (parameterType === "date/single") {
+    if (unit === "hour" || unit === "minute") {
+      return m.format("YYYY-MM-DDTHH:mm");
+    }
     return m.format("YYYY-MM-DD");
   } else if (parameterType === "date/all-options") {
     return formatDateTimeForParameter(value, unit);

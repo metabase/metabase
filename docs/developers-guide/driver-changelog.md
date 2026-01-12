@@ -4,6 +4,89 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.59.0
+
+- Added `sql-jdbc.execute/db-type-name` multimethod. Override this if something more than the default is needed in your sql-jdbc-based driver. See the `:mysql` implementation as an example.
+
+## Metabase 0.58.0
+
+- Added a `:collate` feature for drivers that support collation settings on text fields
+
+- Added `metabase.driver/compile-insert` to implement incremental transforms.
+
+- All tests in `metabase.query-processor-test.*` namespaces have been moved to `metabase.query-processor.*` (This is
+  only relevant if you run individual test namespaces as part of your development workflow).
+
+- Added `metabase.driver/create-index!`, `metabase.driver/drop-index!` multimethods.
+  For JDBC databases, a default implementation is provided - and `metabase.driver.sql-jdbc/create-index-sql`,
+  `metabase.driver.sql-jdbc/drop-index-sql` can be used to specialize the DDL.
+  Creating indexes can accelerate the `MAX` queries that incremental transforms use to determine watermark position.
+  These methods run only when the `:transforms/index-ddl` feature is enabled, making them opt-in.
+
+## Metabase 0.57.7
+
+- Added the new `:regex/lookaheads-and-lookbehinds` driver feature flag; by default this is true for all drivers that
+  support `:regex` and false for all drivers that do not. If your driver supports regular expressions but does not
+  support lookaheads or lookbehinds, add a `metabase.driver/database-supports?` method implementation -- see the
+  `:bigquery-cloud-sdk` driver for example.
+
+## Metabase 0.57.0
+
+- `driver/field-reference-mlv2` is now deprecated, and is no longer used. Please remove your implementations.
+
+- The key `metabase.driver-api.core/qp.add.nfc-path` is now more consistently populated; other `qp.add.*` keys no
+  longer include parent column names for drivers like MongoDB -- use `qp.add.nfc-path` instead to qualify the
+  `qp.add.source-column-alias` with parent column names as needed.
+
+- Added metabase.driver/compile-transform, metabase.driver/compile-drop-table, metabase.driver/execute-raw-queries!,
+  metabase.driver/run-transform!, metabase.driver/drop-transform-target!, metabase.driver/native-query-deps,
+  metabase.driver/connection-spec, metabase.driver/table-exists?, metabase.driver.sql/normalize-name,
+  and metabase.driver.sql/default-schema to implement sql transforms.
+
+- Added `metabase.driver/rename-tables!*` multimethod for atomic table renaming operations. Takes a map of {from-table to-table}
+  pairs that has been topologically sorted.
+
+- Added `metabase.driver/rename-table!` multimethod for table renaming operations. Takes a single from-table to-table pair.
+  Fallbacks to singleton call to `rename-tables!*` if available.
+
+- Added the driver multi-methods `metabase.driver/schema-exists?` and `metabase.driver/create-schema-if-needed!`
+  which should be implemented by drivers that support `:schemas` and `:transforms/table`.
+
+- Added `metabase.driver/type->database-type` multimethod that returns the database type for a given Metabase
+  type (from the type hierarchy) as a HoneySQL spec. This method handles general Metabase base types.
+
+- Added driver multimethods driver/native-result-metadata, driver/validate-native-query-fields, driver.sql/resolve-field, driver.sql.normalize-unquoted-name, driver.sql.normalize/reserved-literal, driver.sql.references/find-used-fields, driver.sql.references/find-returned-fields, and driver.sql.references/field-references-impl for use with the :dependencies/native feature.
+
+- Added `metabase.driver/insert-from-source!` multimethod that abstracts data insertion from various sources
+  into existing tables. This multimethod dispatches on both the driver and the data source type
+  (`:rows` or `:jsonl-file`). It allows drivers to optimize based on the data source type and returns the number
+  of rows inserted. Default implementations are provided for both `:rows` and `:jsonl-file` source types.
+
+- Added `metabase.driver/insert-col->val` multimethod to parse values for insertion based on driver, data source type
+  and column definition. Drivers should implement this when their insertion mechanism needs values converted to proper types.
+
+- `metabase.driver/humanize-connection-error-message` now takes a list of all messages in the exception chain,
+  instead of just the top-level message as a string.
+
+- Removed `driver/set-database-used`. Drivers should set default databases in their connection specs instead.
+
+- `metabase.driver.common.table-rows-sample/table-rows-sample`'s optional `:order-by` option should now be something
+  you can pass to [[metabase.lib.core/order-by]] -- for example a Lib `:metadata/column` or an [MBQL 5]
+  `metabase.driver-api.core/order-by-clause`.
+
+- `metabase.driver-api.core/nest-query` no longer automatically calls `metabase.driver-api.core/add-alias-info` on its
+  results, but it also no longer expect its input to have this information. If you were using both of these tools in
+  your driver, make change the order in which the are applied so `nest-query` happens first, followed by
+  `add-alias-info`. Note that drivers deriving from `:sql` do not need to make any changes, since this is done by the
+  base `:sql` driver implementation.
+
+## Metabase 0.56.3
+
+- Added the driver multi-method `driver/describe-database*` that drivers should now implement instead of `driver/describe-database`.
+  This provides automatic resilient connection handling for better error recovery when database connections are closed
+  during metadata sync operations. Existing drivers implementing `describe-database` will continue to work but should
+  migrate to `describe-database*` to benefit from the resilient connection handling.
+
 ## Metabase 0.56.0
 
 - Add the testing multi-method `tx/track-dataset` for shared cloud dbs to track loaded datasets for more efficient sharing.
@@ -20,9 +103,20 @@ title: Driver interface changelog
   replace existing keys like `:alias`, `:join-alias`, or `:name`; make sure you use `driver-api/qp.add.alias`,
   `driver-api/qp.add.source-table`, and `driver-api/qp.add.source-alias` respectively.
 
+- Added the driver multi-method `driver/extra-info` for drivers to provide info such as db routing configuration details
+  from their `metabase-plugin.yaml` file.
+
 - Extend `datetime()` to accept UTF-8 encoded binary and numbers (unix timestamps) in addition to strings.
 
 - Added a feature `:expressions/today` for drivers that support generating a date for the current day.
+
+- Added the driver multi-method `driver/set-database-used!` for drivers to set a database on the connection with statements like `USE DATABASE`.
+
+- Added the driver feature `:transforms/table` for drivers that supports transforms with table as target
+
+## Metabase 0.55.9
+
+- Add multi-method `driver/do-with-resilient-connection` for executing functions in a context where closed connections may be automatically reopened
 
 ## Metabase 0.55.0
 
@@ -38,7 +132,7 @@ title: Driver interface changelog
 
 - Added a feature `:multi-level-schema` for drivers that support hierarchical levels between database and schema. Such as databricks' catalog. Defaults to false.
 
-- Added the multi-method `adjust-schema-qualification` that allows drivers to to qualify, or unqualify table schemas based on enabling or disabling multi-level-schema support. Drivers may need to implement `sql.qp/->honeysql [driver ::h2x/identifier]` to properly quote fully qualified schemas.
+- Added the multi-method `adjust-schema-qualification` that allows drivers to qualify, or unqualify table schemas based on enabling or disabling multi-level-schema support. Drivers may need to implement `sql.qp/->honeysql [driver ::h2x/identifier]` to properly quote fully qualified schemas.
 
 - Added the multi-method `float-dbtype` which returns the name of the float type we coerce to for coercion strategies and the `float()` custom expression function.
 
@@ -51,7 +145,6 @@ title: Driver interface changelog
   `metabase.driver/upload-type->database-type` or `metabase.driver/allowed-promotions` -- make sure you use
   `:metabase.upload/varchar-255` rather than something like `::upload/varchar-255`.
 
-- Added the multi-method `metabase.driver.sql.parameters.substitution/time-grouping->replacement-snippet-info`.  This is effectively `->replacement-snippet-info` for the new native query time grouping feature, but is its own separate multimethod because it needs an extra parameter.
 - The `metabase.models.secret` namespace has been replaced with `metabase.secrets.core`; if you were using it please
   update your usages.
 
@@ -88,17 +181,15 @@ title: Driver interface changelog
 
 - The function `metabase.driver.sql-jdbc.sync/describe-table-fields-xf` now takes a table instead of a database
 
-
 ## Metabase 0.54.11
 
-- The multimethods `metabase.driver.sql-jdbc.sync.interface/active-tables` and `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas`, aswell as the functions
-`metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
+- The multimethods `metabase.driver.sql-jdbc.sync.interface/active-tables` and `metabase.driver.sql-jdbc.sync.interface/filtered-syncable-schemas`, as well as the functions
+  `metabase.driver.sql-jdbc.sync.describe_database/fast-active-tables`, `metabase.driver.sql-jdbc.sync.describe_database/have-select-privilege-fn` and `metabase.driver.sql-jdbc.sync.describe_database/db-tables` now take a database spec instead of a `java.sql.Connection` object.
 
 ## Metabase 0.54.10
 
 - Add `metabase.driver/table-known-to-not-exist?` for drivers to test if an exception is due to a query on a table that no longer exists
-- Add `metabase.driver.sql-jdbc/impl-table-known-to-not-exist?` for JDBC drivers. This is the implemenation of table-known-to-not-exist for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
-
+- Add `metabase.driver.sql-jdbc/impl-table-known-to-not-exist?` for JDBC drivers. This is the implementation of table-known-to-not-exist for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
 
 ## Metabase 0.54.0
 
@@ -130,7 +221,7 @@ title: Driver interface changelog
 ## Metabase 0.53.12
 
 - Add `metabase.driver/query-canceled?` for drivers to test if an exception is due to a query being canceled due to user action
-- Add `metabase.driver.sql-jdbc/impl-query-canceled?` for JDBC drivers. This is the implemenation of query-canceled for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
+- Add `metabase.driver.sql-jdbc/impl-query-canceled?` for JDBC drivers. This is the implementation of query-canceled for jdbc and allows testing directly against `java.sql.SQLException` throwables without worrying about the exception cause chain.
 
 ## Metabase 0.53.10
 
@@ -182,7 +273,7 @@ title: Driver interface changelog
   for better performance when saving Questions. Refer to the method docstring for more information and where to find
   an example implementation.
 
-- Prior to 0.51.0, to generate SQL queries with inline parameters, Metabase would generate a parameterized SQL string,
+- Before 0.51.0, to generate SQL queries with inline parameters, Metabase would generate a parameterized SQL string,
   then attempt to parse the SQL replace and replace `?` placeholders with inline values from the driver method
   `metabase.driver.sql.util.unprepare/unprepare-value`. In 0.51.0+, Metabase instead generates these queries using
   Honey SQL 2's `:inline` option, eliminating the need to parse and replace `?` placeholders. As such, the
@@ -260,7 +351,7 @@ title: Driver interface changelog
 - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` and helper functions like
   `metabase.test.data.sql-jdbc.execute/sequentially-execute-sql!` are now called with a `java.sql.Connection`
   instead of both a `DatabaseDefinition` and either `:server` or `:db` _context_; the appropriate connection type is
-  created automatically and passed in in the calling code. Update your method implementations and usages
+  created automatically and passed in the calling code. Update your method implementations and usages
   accordingly.
 
 - Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
@@ -393,7 +484,7 @@ title: Driver interface changelog
 - New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
   column names that contains a space character. Defaults to `false`.
 
-- New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
+- New feature `:uuid-type` has been added to indicate that this database can distinguish and filter against UUIDs.
   Only a few database support native UUID types. The default is `false`.
 
 ## Metabase 0.49.22
@@ -517,7 +608,7 @@ title: Driver interface changelog
   new function takes a Field as returned by `lib.metadata/field`, i.e. a `kebab-case` map.
 
 - Tests should try to avoid using any of the `with-temp` helpers or application database objects; instead, use the
-  metadata functions above and and the helper _metadata providers_ in `metabase.lib`, `metabase.lib.test-util`, and
+  metadata functions above and the helper _metadata providers_ in `metabase.lib`, `metabase.lib.test-util`, and
   `metabase.query-processor.test-util` for mocking them, such as `mock-metadata-provider`,
   `metabase-provider-with-cards-for-queries`, `remap-metadata-provider`, and `merged-mock-metadata-provider`.
 
@@ -576,7 +667,7 @@ title: Driver interface changelog
   to be assigned to specific database roles which are set before any queries are executed, so that access to tables can
   be restricted at the database level instead of (or in conjunction with) Metabase's built-in permissions system.
 
-- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instea
+- The multimethod `metabase.driver.sql-jdbc.sync.describe-table/get-table-pks` is changed to return a vector instead
   of a set.
 
 - The function `metabase.query-processor.timezone/report-timezone-id-if-supported` has been updated to take an additional
@@ -772,10 +863,10 @@ differences between the library versions.
 
 #### Breaking Changes in 0.46.0 related to the Honey SQL 2 transition
 
-**Note: these breaking changes will hopefully be fixed before 0.46.0 ships. This will be updated if they are.**
+**Note: we expect these breaking changes to be fixed before 0.46.0 ships. This will be updated if they are.**
 
-The classes `metabase.util.honeysql_extensions.Identifer` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
-have been moved to `metabase.util.honey_sql_1.Identifer` and `metabase.util.honey_sql_1.TypedHoneySQLForm`,
+The classes `metabase.util.honeysql_extensions.Identifier` and `metabase.util.honeysql_extensions.TypedHoneySQLForm`
+have been moved to `metabase.util.honey_sql_1.Identifier` and `metabase.util.honey_sql_1.TypedHoneySQLForm`,
 respectively. On the off chance that your driver directly referencing these class names, you may need to update things
 to use the new class names.
 

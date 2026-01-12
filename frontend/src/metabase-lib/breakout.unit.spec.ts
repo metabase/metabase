@@ -21,7 +21,9 @@ describe("breakout", () => {
       const breakouts = Lib.breakouts(nextQuery, 0);
 
       expect(breakouts).toHaveLength(1);
-      expect(Lib.displayName(nextQuery, breakouts[0])).toBe("Title");
+      expect(Lib.displayInfo(nextQuery, 0, breakouts[0]).displayName).toBe(
+        "Title",
+      );
     });
 
     it("should preserve breakout positions between v1-v2 roundtrip", () => {
@@ -39,7 +41,7 @@ describe("breakout", () => {
       });
 
       const roundtripQuery = createQuery({
-        query: Lib.toLegacyQuery(nextQuery),
+        query: Lib.toJsQuery(nextQuery),
       });
       const roundtripQueryColumns = Lib.breakoutableColumns(roundtripQuery, 0);
       const roundtripTaxColumn = columnFinder(
@@ -117,7 +119,9 @@ describe("breakout", () => {
         productCategory,
       );
       const nextBreakouts = Lib.breakouts(nextQuery, 0);
-      expect(Lib.displayName(nextQuery, nextBreakouts[0])).toBe("Category");
+      expect(Lib.displayInfo(nextQuery, 0, nextBreakouts[0]).displayName).toBe(
+        "Category",
+      );
       expect(breakouts[0]).not.toEqual(nextBreakouts[0]);
     });
   });

@@ -13,7 +13,7 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.core :as lib]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -43,7 +43,7 @@
   [:enum :card/read :card/query :card/download-data])
 
 (def DebuggerArguments
-  "Arguements for the Debugger function. The model type being operated on is infered by the requested action type"
+  "Arguments for the Debugger function. The model type being operated on is inferred by the requested action type"
   [:map
    [:user-id pos-int?]
    [:model-id :string]
@@ -98,8 +98,8 @@
 
 (mu/defn- merge-permission-check :- DebuggerSchema
   "Merges n permissions responses with right most wins semantics. model-type and model-id must match across
-  permissions respones. If the decision is denied that should that precendence over limited which should be
-  prefered over allowed when merging."
+  permissions responses. If the decision is denied that should take precedence over limited which should be
+  preferred over allowed when merging."
   [& responses :- [:sequential DebuggerSchema]]
   (when (seq responses)
     (let [first-response (first responses)
@@ -176,7 +176,7 @@
    {[db-name schema table-name] #{group-name-1 group-name-2}}"
   [user-id card permissions-blocking permissions-granting]
   (let [query (-> card :dataset_query qp.preprocess/preprocess)
-        query-tables (-> query :query lib.util/collect-source-tables)
+        query-tables (lib/all-source-table-ids query)
         native? (boolean (lib.util.match/match-one query (m :guard (every-pred map? :native))))]
     (->>
      (cond

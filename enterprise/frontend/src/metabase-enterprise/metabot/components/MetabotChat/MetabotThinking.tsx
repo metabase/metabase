@@ -1,4 +1,5 @@
 import cx from "classnames";
+import { useMemo } from "react";
 
 import { Loader, Stack, Text, Transition } from "metabase/ui";
 import type { MetabotToolCall } from "metabase-enterprise/metabot/state";
@@ -21,9 +22,9 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
   const slots = new Array(toolCalls.length + 2).fill(null);
 
   return (
-    <Stack gap={0} className={S.toolCalls}>
+    <Stack gap={0} mb="sm" className={S.toolCalls}>
       {slots.map((_, i) => {
-        const tc = toolCalls[i];
+        const tc: MetabotToolCall | undefined = toolCalls[i];
         return (
           <Transition
             key={i}
@@ -34,9 +35,9 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
             {(styles) => (
               <Text
                 style={styles}
-                className={cx(tc.status === "started" && S.toolCallStarted)}
+                className={cx(tc?.status === "started" && S.toolCallStarted)}
               >
-                {tc.message}
+                {tc?.message}
               </Text>
             )}
           </Transition>
@@ -48,22 +49,22 @@ const ThoughtProcess = ({ toolCalls }: { toolCalls: MetabotToolCall[] }) => {
 
 export const MetabotThinking = ({
   toolCalls,
-  hideLoader = false,
 }: {
   toolCalls: MetabotToolCall[];
-  hideLoader: boolean;
 }) => {
+  const toolCallsWithMsgs = useMemo(() => {
+    return toolCalls.filter((tc) => !!tc.message);
+  }, [toolCalls]);
+
   return (
     <Stack gap="xs">
-      <ThoughtProcess toolCalls={toolCalls} />
-      {!hideLoader && (
-        <Loader
-          color="brand"
-          type="dots"
-          size="lg"
-          data-testid="metabot-response-loader"
-        />
-      )}
+      <ThoughtProcess toolCalls={toolCallsWithMsgs} />
+      <Loader
+        color="brand"
+        type="dots"
+        size="lg"
+        data-testid="metabot-response-loader"
+      />
     </Stack>
   );
 };

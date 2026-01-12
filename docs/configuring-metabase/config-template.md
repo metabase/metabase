@@ -4,7 +4,7 @@ title: "Metabase config file template"
 
 # Metabase config file template
 
-You can generate the following config file template by changing into the top-level Metabase directory and running:
+You can generate this doc page by changing into the top-level Metabase directory and running:
 
 ```
 clojure -M:doc:ee config-template
@@ -69,7 +69,6 @@ config:
   settings:
     admin-email: null
     aggregated-query-row-limit: null
-    ai-service-base-url: http://localhost:8000
     allowed-iframe-hosts: |-
       youtube.com,
       youtu.be,
@@ -103,9 +102,11 @@ config:
     application-name: Metabase
     attachment-row-limit: null
     attachment-table-row-limit: 20
+    audit-max-retention-days: null
     bcc-enabled: true
     breakout-bin-width: 10.0
     breakout-bins-num: 8
+    can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
     custom-formatting: {}
@@ -117,25 +118,30 @@ config:
     db-connection-timeout-ms: 10000
     db-query-timeout-minutes: 20
     default-maps-enabled: true
+    disable-cors-on-localhost: false
     download-row-limit: null
-    ee-ai-features-enabled: false
-    ee-openai-api-key: null
-    ee-openai-model: gpt-4-turbo-preview
     email-from-address: notifications@metabase.com
+    email-from-address-override: notifications@metabase.com
     email-from-name: null
     email-max-recipients-per-second: null
     email-reply-to: null
     email-smtp-host: null
+    email-smtp-host-override: null
     email-smtp-password: null
+    email-smtp-password-override: null
     email-smtp-port: null
+    email-smtp-port-override: null
     email-smtp-security: none
+    email-smtp-security-override: ssl
     email-smtp-username: null
+    email-smtp-username-override: null
     embedding-app-origins-interactive: null
-    embedding-app-origins-sdk: localhost:*
+    embedding-app-origins-sdk: ''
     embedding-homepage: hidden
     embedding-secret-key: null
     enable-embedding-interactive: false
     enable-embedding-sdk: false
+    enable-embedding-simple: false
     enable-embedding-static: false
     enable-password-login: true
     enable-pivoted-exports: true
@@ -150,12 +156,18 @@ config:
     health-check-logging-enabled: true
     help-link: metabase
     help-link-custom-destination: https://www.metabase.com/help/premium
+    hide-stacktraces: false
+    http-channel-host-strategy: external-only
     humanization-strategy: simple
+    index-update-thread-count: 2
+    install-analytics-database: true
     jdbc-data-warehouse-max-connection-pool-size: 15
+    jdbc-network-timeout-ms: 1800000
     jwt-attribute-email: email
     jwt-attribute-firstname: first_name
     jwt-attribute-groups: groups
     jwt-attribute-lastname: last_name
+    jwt-attribute-tenant: '@tenant'
     jwt-enabled: false
     jwt-group-mappings: {}
     jwt-group-sync: false
@@ -180,10 +192,12 @@ config:
     ldap-security: none
     ldap-sync-user-attributes: true
     ldap-sync-user-attributes-blacklist: userPassword,dn,distinguishedName
+    ldap-timeout-seconds: 15.0
     ldap-user-base: null
     ldap-user-filter: (&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
     ldap-user-provisioning-enabled: true
     license-token-missing-banner-dismissal-timestamp: []
+    load-analytics-content: true
     loading-message: doing-science
     login-page-illustration: default
     login-page-illustration-custom: null
@@ -198,6 +212,7 @@ config:
     not-behind-proxy: false
     notification-link-base-url: null
     notification-system-event-thread-pool-size: 5
+    notification-temp-file-size-max-bytes: 10485760
     notification-thread-pool-size: 3
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
@@ -205,18 +220,22 @@ config:
     query-caching-max-kb: 2000
     query-caching-max-ttl: 3024000.0
     redirect-all-requests-to-https: false
+    remote-sync-auto-import: false
+    remote-sync-auto-import-rate: 5
+    remote-sync-task-time-limit-ms: 300000
     report-timezone: null
     reset-token-ttl-hours: 48
     retry-initial-interval: 500
-    retry-max-attempts: 7
+    retry-jitter-factor: 0.1
     retry-max-interval-millis: 30000
+    retry-max-retries: 6
     retry-multiplier: 2.0
-    retry-randomization-factor: 0.1
     saml-application-name: Metabase
     saml-attribute-email: null
     saml-attribute-firstname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
     saml-attribute-group: null
     saml-attribute-lastname: http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
+    saml-attribute-tenant: null
     saml-enabled: false
     saml-group-mappings: {}
     saml-group-sync: false
@@ -231,9 +250,9 @@ config:
     saml-user-provisioning-enabled: true
     scim-enabled: null
     sdk-encryption-validation-key: null
-    search-engine: appdb
     search-language: null
     search-typeahead-enabled: true
+    send-email-on-first-login-from-new-device: true
     send-new-sso-user-admin-email: null
     session-cookie-samesite: lax
     session-cookies: null
@@ -241,26 +260,26 @@ config:
     setup-embedding-autoenabled: false
     setup-license-active-at-setup: false
     show-database-syncing-modal: null
+    show-google-sheets-integration: null
     show-homepage-data: true
     show-homepage-xrays: true
     show-metabase-links: true
-    show-metabot: true
     show-static-embed-terms: true
     site-locale: en
     site-name: Metabase
     site-url: null
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
+    smtp-override-enabled: false
     source-address-header: X-Forwarded-For
     sql-jdbc-fetch-size: 500
     ssh-heartbeat-interval-sec: 180
     start-of-week: sunday
     subscription-allowed-domains: null
     surveys-enabled: true
+    sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     unaggregated-query-row-limit: null
-    update-channel: latest
     uploads-settings: null
-    use-tenants: false
     user-visibility: all
 ```

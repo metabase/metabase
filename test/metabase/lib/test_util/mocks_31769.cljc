@@ -3,7 +3,7 @@
 
   * [[metabase.lib.card-test/returned-columns-31769-test]]
   * [[metabase.lib.join-test/join-source-card-with-in-previous-stage-with-joins-test]]
-  * [[metabase.query-processor-test.explicit-joins-test/test-31769]]"
+  * [[metabase.query-processor.explicit-joins-test/test-31769]]"
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -16,7 +16,9 @@
 
 (mu/defn card-1-query :- ::lib.schema/query
   "For reproducing #31769: create a query against `orders` with a join against `products` and another against `people`,
-  with a breakout on `products.category` and a `count` aggregation."
+  with a breakout on `products.category` and a `count` aggregation.
+
+  Should return two columns (`Products__CATEGORY` and `count`)"
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    id-fn             :- fn?]
   (let [orders (lib.metadata/table metadata-provider (id-fn :orders))]
@@ -36,7 +38,9 @@
 
 (mu/defn card-2-query :- ::lib.schema/query
   "For reproducing #31769: create a query against `products` with a breakout on `products.category` and a `count`
-  aggregation."
+  aggregation.
+
+  Should return one column (`CATEGORY`)"
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    id-fn             :- fn?]
   (let [products (lib.metadata/table metadata-provider (id-fn :products))]
@@ -68,7 +72,9 @@
 
 (mu/defn query :- ::lib.schema/query
   "For reproducing #31769: create a query using a `:source-card` with [[card-1-query]] as its source, joining a Card
-  with [[card-2-query]]."
+  with [[card-2-query]].
+
+  Should return 3 columns (`Products__CATEGORY` and `count` from Card 1, and `Card 2__CATEGORY` from Card 2)."
   ([]
    (query (mock-metadata-provider meta/metadata-provider meta/id)))
 

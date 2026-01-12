@@ -56,7 +56,7 @@ Metabase uses database column metadata to populate values for linked filters, wh
 
 - You can't create linked filters on custom columns.
 
-- Native/SQL questions must have a [field filter](../questions/native-editor/sql-parameters.md#the-field-filter-variable-type) variable in order to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
+- Native/SQL questions must have a [field filter](../questions/native-editor/field-filters.md) variable to be linked. Basic SQL variables aren't connected to database columns, so they won't work for linked filters.
 
 - You can't link filters that use "Custom List" or "From another model or question" as their value's source.
 

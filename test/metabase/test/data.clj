@@ -39,13 +39,13 @@
    [colorize.core :as colorize]
    [mb.hawk.init :as hawk.init]
    [metabase.app-db.core :as mdb]
-   [metabase.app-db.schema-migrations-test.impl
-    :as schema-migrations-test.impl]
+   [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
-   [metabase.lib.metadata :as lib.metadata]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
@@ -53,7 +53,6 @@
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.mbql-query-impl :as mbql-query-impl]
-   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [next.jdbc]))
@@ -160,9 +159,7 @@
    (as-> inner-query <>
      (mbql-query-impl/parse-tokens table-name <>)
      (mbql-query-impl/maybe-add-source-table <> table-name)
-     (mbql-query-impl/wrap-populate-idents <>)
-     (mbql-query-impl/wrap-inner-query <>)
-     (vary-meta <> assoc :type :mbql-query))))
+     (mbql-query-impl/wrap-inner-query <>))))
 
 (defmacro query
   "Like `mbql-query`, but operates on an entire 'outer' query rather than the 'inner' MBQL query. Like `mbql-query`,
@@ -175,21 +172,20 @@
   ([table-name outer-query]
    {:pre [(map? outer-query)]}
    (merge
-    ^{:type :mbql-query}
     {:database `(id)
      :type     :query}
     (cond-> (mbql-query-impl/parse-tokens table-name outer-query)
-      (not (:native outer-query)) (-> (update :query mbql-query-impl/maybe-add-source-table table-name)
-                                      (update :query mbql-query-impl/wrap-populate-idents))))))
+      (not (:native outer-query)) (update :query mbql-query-impl/maybe-add-source-table table-name)))))
 
 (declare id)
 
-(defn native-query
+(mu/defn native-query :- ::mbql.s/Query
   "Like `mbql-query`, but for native queries."
-  [inner-native-query]
+  [inner-native-query :- :map]
+  #_{:clj-kondo/ignore [:deprecated-var]}
   {:database (id)
    :type     :native
-   :native   inner-native-query})
+   :native   (mbql.normalize/normalize ::mbql.s/NativeQuery inner-native-query)})
 
 (defn run-mbql-query* [query]
   ;; catch the Exception and rethrow with the query itself so we can have a little extra info for debugging if it fails.
@@ -204,8 +200,7 @@
   "Like `mbql-query`, but runs the query as well."
   {:style/indent :defn}
   [table-name & [query]]
-  `(run-mbql-query* (-> (mbql-query ~table-name ~(or query {}))
-                        (assoc-in [:info :card-entity-id] (u/generate-nano-id)))))
+  `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
 (def ^:private FormattableName
   [:or
@@ -241,12 +236,7 @@
 (defn metadata-provider
   "Get a metadata-provider for the current database."
   []
-  (lib.metadata.jvm/application-database-metadata-provider (id)))
-
-(defn ident
-  "Get the ident for a field. Arguments are the same as for `(mt/id :table :field)`."
-  [table-key field-key]
-  (:ident (lib.metadata/field (metadata-provider) (id table-key field-key))))
+  (lib-be/application-database-metadata-provider (id)))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
@@ -317,7 +307,7 @@
      (mdb/finish-db-setup!)
      ~@body))
 
-;; Non-"normal" timeseries drivers are tested in [[metabase.timeseries-query-processor-test]] and elsewhere
+;; Non-"normal" timeseries drivers are tested in [[metabase.query-processor.timeseries-test]] and elsewhere
 (def timeseries-drivers
   "Drivers that are so weird that we can't use the standard dataset loading against them."
   #{:druid :druid-jdbc})

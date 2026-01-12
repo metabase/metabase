@@ -24,6 +24,7 @@
   clear!
   connection-pool-info
   inc!
+  observe!
   set!
   setup!
   shutdown!]
@@ -34,6 +35,7 @@
 
  [metabase.analytics.sdk
 
+  embedding-context?
   embedding-mw
   include-sdk-info
   with-client! get-client

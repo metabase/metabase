@@ -500,7 +500,7 @@ describe("Static Embed Setup phase", () => {
 
         expect(
           screen.getByText(
-            "The “Powered by Metabase” banner appears on all static embeds created with your current version. Upgrade to remove it (and customize a lot more)",
+            "The “Powered by Metabase” banner appears on all guest embeds created with your current version. Upgrade to remove it (and customize a lot more)",
           ),
         ).toBeVisible();
 
@@ -700,7 +700,7 @@ describe("Static Embed Setup phase", () => {
     );
 
     await userEvent.click(
-      within(await screen.findByRole("grid")).getByText("Locked"),
+      within(await screen.findByRole("tree")).getByText("Locked"),
     );
 
     expect(
@@ -714,7 +714,7 @@ describe("Static Embed Setup phase", () => {
     );
 
     await userEvent.click(
-      within(await screen.findByRole("grid")).getByText("Disabled"),
+      within(await screen.findByRole("tree")).getByText("Disabled"),
     );
 
     expect(
@@ -735,6 +735,6 @@ async function selectServerCodeLanguage({
   await userEvent.click(screen.getByText(currentLanguage));
 
   await userEvent.click(
-    within(await screen.findByRole("grid")).getByText(newLanguage),
+    within(await screen.findByRole("tree")).getByText(newLanguage),
   );
 }

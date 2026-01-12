@@ -2,18 +2,21 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/common/components/Link";
-import { alpha, color, darken } from "metabase/lib/colors";
+import { alpha, darken } from "metabase/lib/colors";
 import {
   breakpointMaxLarge,
   breakpointMaxMedium,
 } from "metabase/styled-components/theme";
+import { color } from "metabase/ui/utils/colors";
 
 import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`
+  --mb-color-text-primary-inverse: var(--mantine-color-white);
+
   padding: 0.5rem 1rem;
   background: ${() => color("admin-navbar")};
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   font-size: 0.85rem;
   height: ${ADMIN_NAVBAR_HEIGHT};
   display: flex;
@@ -64,22 +67,57 @@ export const AdminMobileNavBarItems = styled.ul`
   overflow-y: auto;
 `;
 
+export const AdminButtons = styled.div`
+  margin-inline-start: auto;
+  display: flex;
+  gap: 0.5rem;
+`;
+
+export const AdminActionButton = styled.button`
+  border: 1px solid ${() => alpha("background-primary", 0.2)};
+  height: 2.625rem;
+  width: 2.625rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 5px;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 200ms;
+  color: var(--mb-color-text-primary-inverse);
+  white-space: nowrap;
+  text-align: center;
+
+  &:disabled {
+    color: ${() => alpha("background-primary", 0.2)};
+  }
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: ${() => darken("admin-navbar")};
+    border-color: ${() => darken("admin-navbar")};
+
+    &:disabled {
+      color: ${() => alpha("background-primary", 0.2)};
+    }
+  }
+`;
+
 export const AdminExitLink = styled(Link)`
-  border: 1px solid ${() => alpha("bg-white", 0.2)};
+  border: 1px solid ${() => alpha("background-primary", 0.2)};
   padding: 12px 18px;
   border-radius: 5px;
   font-weight: 700;
   font-size: 13px;
   transition: all 200ms;
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   white-space: nowrap;
   text-align: center;
-  margin-inline-start: auto;
 
   &:hover {
-    color: var(--mb-color-text-white);
-    background-color: ${() => darken(color("filter"))};
-    border-color: ${() => darken(color("filter"))};
+    color: var(--mb-color-text-primary-inverse);
+    background-color: ${() => darken("admin-navbar")};
+    border-color: ${() => darken("admin-navbar")};
   }
 `;
 

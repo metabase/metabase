@@ -109,13 +109,13 @@
                             count)))))))
 
 (deftest user-invited-email-content-test
-  (let [check (fn [sent-from-setup? expected-subject regexes]
+  (let [check (fn [sent-from-setup? expected-subject regexes invitor-name]
                 (let [email (mt/with-temporary-setting-values
                               [site-url  "https://metabase.com"
                                site-name "SuperStar"]
                               (-> (notification.tu/with-captured-channel-send!
                                     (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
-                                                                 {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                                 {:first_name invitor-name :email "ngoc@metabase.com"}
                                                                  sent-from-setup?))
                                   :channel/email first))]
                   (is (= {:recipients     #{"crowberto@metabase.com"}
@@ -124,32 +124,49 @@
                           :message        [(zipmap (map str regexes) (repeat true))]
                           :recipient-type :cc}
                          (apply mt/summarize-multipart-single-email email regexes)))))]
-    (testing "sent from invite page"
+    (testing "sent from people page"
       (check false
              "You're invited to join SuperStar's Metabase"
-             [#"Crowberto's happiness and productivity over time"
-              #"Ngoc wants you to join them on Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"])
+             [#"Ngoc wants you to join them on Metabase"
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+             "Ngoc")
 
       (testing "with sso enabled"
         (with-redefs [sso.settings/sso-enabled? (constantly true)
                       session.settings/enable-password-login (constantly false)]
           (check false
                  "You're invited to join SuperStar's Metabase"
-                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]))))
+                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]
+                 "Ngoc")))
+
+      (testing "with invitor's first_name not defined"
+        (check false
+               "You're invited to join SuperStar's Metabase"
+               [#"You are invited to join Metabase"
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+               nil)))
 
     (testing "subject is translated"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"You''re invited to join {0}''s {1}"
                                                     "Estás invitado a unirte al {0} de {1}"}}}
         (mt/with-temporary-setting-values [site-locale "es"]
-          (check false "Estás invitado a unirte al SuperStar de Metabase" []))))
+          (check false "Estás invitado a unirte al SuperStar de Metabase" [] "Ngoc"))))
 
     (testing "sent from setup page"
       (check true
              "You're invited to join SuperStar's Metabase"
-             [#"Crowberto's happiness and productivity over time"
-              #"Ngoc could use your help setting up Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
+             [#"Kratos could use your help setting up Metabase"
+              #"Your Metabase is up and running, but Kratos needs you to connect your data. You'll probably need:"
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
+             "Kratos")
+
+      (testing "with invitor's first_name not defined"
+        (check true
+               "You're invited to join SuperStar's Metabase"
+               [#"You are invited to help setting up Metabase"
+                #"Your Metabase is up and running, but your help is needed to connect data. You'll probably need:"
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
+               nil)))))
 
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]

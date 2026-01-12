@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { automagicDashboardsApi } from "metabase/api/automagic-dashboards";
 import {
   dashboardApi,
   useGetDashboardQuery,
@@ -20,29 +19,15 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
-import {
-  compose,
-  withAction,
-  withNormalize,
-  withRequestState,
-} from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls/dashboards";
+import { compose, withAction, withRequestState } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
-import {
-  DashboardSchema,
-  DatabaseSchema,
-  FieldSchema,
-  QuestionSchema,
-  TableSchema,
-} from "metabase/schema";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
-const FETCH_METADATA = "metabase/entities/dashboards/FETCH_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-const Dashboards = createEntity({
+export const Dashboards = createEntity({
   name: "dashboards",
   nameOne: "dashboard",
   path: "/api/dashboard",
@@ -178,45 +163,6 @@ const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
-
-    fetchMetadata: compose(
-      withAction(FETCH_METADATA),
-      withNormalize({
-        databases: [DatabaseSchema],
-        tables: [TableSchema],
-        fields: [FieldSchema],
-        cards: [QuestionSchema],
-        dashboards: [DashboardSchema],
-      }),
-    )(
-      ({ id, ...params }) =>
-        (dispatch) =>
-          entityCompatibleQuery(
-            { id, ...params },
-            dispatch,
-            dashboardApi.endpoints.getDashboardQueryMetadata,
-            { forceRefetch: false },
-          ),
-    ),
-
-    fetchXrayMetadata: compose(
-      withAction(FETCH_METADATA),
-      withNormalize({
-        databases: [DatabaseSchema],
-        tables: [TableSchema],
-        fields: [FieldSchema],
-        cards: [QuestionSchema],
-        dashboards: [DashboardSchema],
-      }),
-    )(
-      ({ entity, entityId, dashboard_load_id }) =>
-        (dispatch) =>
-          entityCompatibleQuery(
-            { entity, entityId, dashboard_load_id },
-            dispatch,
-            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
-          ),
-    ),
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -228,10 +174,8 @@ const Dashboards = createEntity({
 
   objectSelectors: {
     getName: (dashboard) => dashboard && dashboard.name,
-    getUrl: (dashboard) => dashboard && Urls.dashboard(dashboard),
     getCollection: (dashboard) =>
       dashboard && normalizedCollection(dashboard.collection),
-    getIcon: () => ({ name: "dashboard" }),
     getColor: () => color("dashboard"),
   },
 
@@ -240,5 +184,3 @@ const Dashboards = createEntity({
     return type && `collection=${type}`;
   },
 });
-
-export default Dashboards;

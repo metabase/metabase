@@ -35,14 +35,16 @@
   :default    false
   :type       :boolean
   :audit      :getter
-  :visibility :public)
+  :visibility :public
+  :export?    true)
 
 (defsetting custom-homepage-dashboard
   (deferred-tru "ID of dashboard to use as a homepage")
   :encryption :no
   :type       :integer
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :export?    true)
 
 (defn- coerce-to-relative-url
   "Get the path of a given URL if the URL contains an origin.
@@ -208,7 +210,8 @@ See [fonts](../configuring-metabase/fonts.md).")
   :type       :boolean
   :audit      :getter
   :feature    :whitelabel
-  :default    true)
+  :default    true
+  :doc        false)
 
 (defsetting login-page-illustration
   (deferred-tru "Options for displaying the illustration on the login page.")
@@ -340,6 +343,23 @@ See [fonts](../configuring-metabase/fonts.md).")
   :audit      :getter
   :feature    :whitelabel)
 
+(def avaialable-number-separators
+  "Number separators that are available to use in uploads csv parsing. Values match what is implemented
+  `metabase.upload.types` namespace, specifically e.g. [[metabase.upload.types/int-regex]]."
+  #{"."
+    ".,"
+    ",."
+    ", "
+    ".’"})
+
+(defn- validate-custom-formatting!
+  [new-value]
+  (when-some [separators (some-> new-value :type/Number :number_separators)]
+    (when-not (avaialable-number-separators separators)
+      (throw (ex-info (tru "Invalid number separators.")
+                      {:separators separators
+                       :available-separators avaialable-number-separators})))))
+
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
   :encryption :no
@@ -347,7 +367,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :default    {}
   :visibility :public
-  :audit      :getter)
+  :audit      :getter
+  :setter     (fn [new-value]
+                (validate-custom-formatting! new-value)
+                (setting/set-value-of-type! :json :custom-formatting new-value)))
 
 (defsetting show-homepage-data
   (deferred-tru

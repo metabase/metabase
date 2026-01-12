@@ -2,12 +2,12 @@
 import PropTypes from "prop-types";
 import { useCallback } from "react";
 
-import DatabasePane from "./DatabasePane";
+import { DatabasePane } from "./DatabasePane";
 import FieldPane from "./FieldPane";
 import MainPane from "./MainPane";
-import QuestionPane from "./QuestionPane";
+import { QuestionPane } from "./QuestionPane";
 import SchemaPane from "./SchemaPane";
-import TablePane from "./TablePane";
+import { TablePane } from "./TablePane";
 
 const PANES = {
   database: DatabasePane, // lists schemas, tables and models of a database

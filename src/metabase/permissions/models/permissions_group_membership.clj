@@ -1,7 +1,9 @@
 (ns metabase.permissions.models.permissions-group-membership
   (:require
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.events.core :as events]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -22,11 +24,23 @@
   but enable it when adding or deleting users."
   false)
 
+(def ^:dynamic *allow-changing-all-external-users-group-members*
+  "Should we allow people to be added to or removed from the All tenant users permissions group? By default, this is
+  `false`, but enable it when adding or deleting users."
+  false)
+
 (defmacro allow-changing-all-users-group-members
   "Allow people to be added to or removed from the All Users permissions group? By default, this is disallowed."
   {:style/indent 0}
   [& body]
   `(binding [*allow-changing-all-users-group-members* true]
+     ~@body))
+
+(defmacro allow-changing-all-external-users-group-members
+  "Allow users to be added to or removed from the All tenant users permissions group? By default, this is disallowed."
+  {:style/indent 0}
+  [& body]
+  `(binding [*allow-changing-all-external-users-group-members* true]
      ~@body))
 
 (defn- check-not-all-users-group
@@ -35,6 +49,14 @@
   (when (= group-id (:id (perms-group/all-users)))
     (when-not *allow-changing-all-users-group-members*
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
+                      {:status-code 400})))))
+
+(defn- check-not-all-external-users-group
+  "Throw an Exception if we're trying to add or remove a user to the All Users group."
+  [group-id]
+  (when (= group-id (:id (perms-group/all-external-users)))
+    (when-not *allow-changing-all-external-users-group-members*
+      (throw (ex-info (tru "You cannot add or remove users to/from the ''All tenant users'' group.")
                       {:status-code 400})))))
 
 (defn- admin-count
@@ -62,6 +84,7 @@
 (t2/define-before-delete :model/PermissionsGroupMembership
   [{:keys [group_id user_id]}]
   (check-not-all-users-group group_id)
+  (check-not-all-external-users-group group_id)
   ;; Otherwise if this is the Admin group...
   (when (= group_id (:id (perms-group/admin)))
     ;; ...and this is the last membership, throw an exception
@@ -147,6 +170,7 @@
           user-id->tenant? (t2/select-pk->fn (comp (complement nil?) :tenant_id)
                                              [:model/User :id :tenant_id]
                                              :id [:in user-ids])
+
           bad-user-group-pairs (->> (keys user-id-group-id->is-group-manager?)
                                     (keep (fn [[user-id group-id]]
                                             (when (not= (group-id->tenant? group-id)
@@ -156,10 +180,17 @@
                                                :user-is-tenant? (user-id->tenant? user-id)
                                                :group-is-tenant? (group-id->tenant? group-id)}))))
           _ (doseq [group-id group-ids]
-              (check-not-all-users-group group-id))
+              (check-not-all-users-group group-id)
+              (check-not-all-external-users-group group-id))
+          _ (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
+              (when (and is-group-manager? (user-id->tenant? user-id))
+                (throw (ex-info (tru "Tenant users cannot be made group managers")
+                                {:bad-user-group-pair [user-id group-id]
+                                 :status-code 400}))))
           _ (when (seq bad-user-group-pairs)
               (throw (ex-info (tru "Cannot add non-tenant user to tenant-group or vice versa")
-                              {:bad-user-group-pairs bad-user-group-pairs})))
+                              {:bad-user-group-pairs bad-user-group-pairs
+                               :status-code 400})))
 
           new-admin-ids (->> user-id-group-id->is-group-manager?
                              keys
@@ -176,7 +207,15 @@
           ;; number of inserted rows is correct - if not, throw an exception and we'll roll back.
           (throw (ex-info (tru "Error inserting Permissions Group Membership") {})))
         (when (seq new-admin-ids)
-          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))))))
+          (t2/update! :model/User :id [:in new-admin-ids] {:is_superuser true}))
+        ;; Publish events for each new membership
+        (doseq [[[user-id group-id] is-group-manager?] user-id-group-id->is-group-manager?]
+          (events/publish-event! :event/group-membership-create
+                                 {:user-id api/*current-user-id*
+                                  :object (t2/instance :model/PermissionsGroupMembership
+                                                       {:user_id user-id
+                                                        :group_id group-id
+                                                        :is_group_manager is-group-manager?})}))))))
 
 (defn add-user-to-groups!
   "Add a user to multiple groups"
@@ -196,7 +235,17 @@
   "Removes a user from groups."
   [user-id-or-user group-ids-or-groups]
   (when (seq group-ids-or-groups)
-    (t2/delete! :model/PermissionsGroupMembership :user_id (u/the-id user-id-or-user) :group_id [:in (map u/the-id group-ids-or-groups)])))
+    (let [user-id (u/the-id user-id-or-user)
+          group-ids (map u/the-id group-ids-or-groups)
+          ;; Get the memberships that will be deleted for event publishing
+          memberships (t2/select :model/PermissionsGroupMembership
+                                 :user_id user-id
+                                 :group_id [:in group-ids])]
+      ;; Delete the memberships (this will trigger the before-delete hooks)
+      (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids])
+      (doseq [membership memberships]
+        (events/publish-event! :event/group-membership-delete {:object membership
+                                                               :user-id api/*current-user-id*})))))
 
 (defn remove-user-from-group!
   "Removes a user from a group."

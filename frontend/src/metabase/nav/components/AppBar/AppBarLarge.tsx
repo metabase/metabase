@@ -1,29 +1,31 @@
 import { t } from "ttag";
 
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { Nav as DetailViewNav } from "metabase/detail-view/components";
+import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
+import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
+import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
 import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
-import {
-  AppBarInfoContainer,
-  AppBarLeftContainer,
-  AppBarProfileLinkContainer,
-  AppBarRightContainer,
-  AppBarRoot,
-} from "./AppBarLarge.styled";
+import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
+  detailView: DetailViewState | null;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
+  isDocumentSidebarOpen?: boolean;
+  isCommentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
@@ -32,14 +34,16 @@ export interface AppBarLargeProps {
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarLarge = ({
+  detailView,
   collectionId,
   isNavBarOpen,
   isNavBarEnabled,
   isMetabotVisible,
+  isDocumentSidebarOpen,
+  isCommentSidebarOpen,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
@@ -48,13 +52,21 @@ const AppBarLarge = ({
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
-  onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const { isVisible: isGitSyncVisible } =
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
 
   return (
-    <AppBarRoot hasSidebarOpen={isNavBarVisible || isMetabotVisible}>
-      <AppBarLeftContainer>
+    <AppBarRoot
+      hasSidebarOpen={
+        isNavBarVisible ||
+        isMetabotVisible ||
+        isDocumentSidebarOpen ||
+        isCommentSidebarOpen
+      }
+    >
+      <Flex align="center" miw="5rem" flex="1 1 auto">
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}
           isNavBarOpen={isNavBarOpen}
@@ -63,32 +75,43 @@ const AppBarLarge = ({
         <AppBarLogo
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
+          isGitSyncVisible={isGitSyncVisible}
         />
+        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
-          {isQuestionLineageVisible ? (
+          {detailView ? (
+            <DetailViewNav
+              ml={DETAIL_VIEW_PADDING_LEFT - 125}
+              rowName={detailView.rowName}
+              table={detailView.table}
+            />
+          ) : isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
-      </AppBarLeftContainer>
+      </Flex>
       {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
-        <AppBarRightContainer>
+        <Flex
+          align="center"
+          gap="sm"
+          justify="flex-end"
+          maw="32.5rem"
+          flex="1 1 auto"
+        >
           {isSearchVisible &&
-            (isEmbeddingIframe ? (
-              <SearchBar />
-            ) : (
-              <PLUGIN_METABOT.SearchButton />
-            ))}
+            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
+          {!isEmbeddingIframe && <PLUGIN_METABOT.MetabotAppBarButton />}
           {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
-              <ProfileLink onLogout={onLogout} />
-            </AppBarProfileLinkContainer>
+            <Box c="text-primary" aria-label={t`Settings menu`}>
+              <ProfileLink />
+            </Box>
           )}
-        </AppBarRightContainer>
+        </Flex>
       )}
     </AppBarRoot>
   );

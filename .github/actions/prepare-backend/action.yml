@@ -1,4 +1,7 @@
 name: Prepare back-end environment
+description: |
+  Prepare the backend. Installs jdk, Clojure, and fetches the cache for m2.
+  The CI config fetches `ci-test-config.json` from master and lets us ignore tests at the var level if they are flaking.
 inputs:
   java-version:
     required: true
@@ -6,10 +9,6 @@ inputs:
   clojure-version:
     required: true
     default: '1.12.0.1488'
-  m2-cache-key:
-    description: 'Key to cache M2 packages from Maven Central'
-    required: true
-    default: 'm2'
 
 runs:
   using: "composite"
@@ -21,20 +20,19 @@ runs:
         distribution: 'temurin'
     - name: Install Clojure CLI
       shell: bash
+      continue-on-error: true
       run: |
         curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
         sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
-    - name: Check to see if dependencies should be cached
-      if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
-      run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
-      shell: bash
-    - name: Get M2 cache
-      uses: actions/cache@v4
-      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
+
+    - name: Get M2 cache key
+      uses: ./.github/actions/get-cache-keys
+      id: get-cache-keys
+
+    - name: Restore M2 cache
+      uses: actions/cache/restore@v4
       with:
         path: |
           ~/.m2
           ~/.gitlibs
-        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
+        key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}

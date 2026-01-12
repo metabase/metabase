@@ -1,12 +1,12 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 43075", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
       aggregation: [["count"]],
@@ -37,7 +37,7 @@ describe("issue 43075", () => {
 });
 
 describe("issue 41133", () => {
-  const questionDetails: H.StructuredQuestionDetails = {
+  const questionDetails: StructuredQuestionDetails = {
     query: {
       "source-table": PRODUCTS_ID,
     },
@@ -493,5 +493,128 @@ describe("issue 54755", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
     cy.icon("warning").should("not.exist");
     cy.findByTestId("visualization-placeholder").should("be.visible");
+  });
+});
+
+describe("issue 63026", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltips with reasonable width for pie charts with long text labels (metabase#63026)", () => {
+    const query = `select '${"a".repeat(1000)}' as category, 45 as count
+union all select 'Short name', 25 as count
+union all select 'Medium length category', 30 as count`;
+
+    H.visitQuestionAdhoc({
+      display: "pie",
+      dataset_query: {
+        type: "native",
+        native: {
+          query,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      visualization_settings: {
+        "pie.show_labels": true,
+      },
+    });
+
+    H.chartPathWithFillColor("#88BF4D").trigger("mousemove");
+
+    cy.get("[data-testid='echarts-tooltip']")
+      .should("be.visible")
+      .then(($tooltip) => {
+        const width = $tooltip.width();
+        expect(width).to.be.lte(550);
+      });
+  });
+});
+
+describe("issue 55853", () => {
+  const questionDetails = {
+    name: "55853",
+    database: WRITABLE_DB_ID,
+    native: {
+      query: `select 'Category A' as category, 0.0001 as value union all
+        select 'Category B' as category, 0.0002 as value union all
+        select 'Category C' as category, 0.00015 as value union all
+        select 'Category D' as category, 0.00025 as value`,
+      "template-tags": {},
+    },
+    display: "bar",
+    visualization_settings: {
+      "graph.dimensions": ["category"],
+      "graph.metrics": ["value"],
+      column_settings: {
+        '["name","value"]': {
+          number_style: "percent",
+        },
+      },
+    },
+  };
+
+  beforeEach(() => {
+    H.restore("postgres-12");
+    cy.signInAsAdmin();
+  });
+
+  it("should not have y-axis labels colliding with very low percentages (metabase#55853)", () => {
+    H.createNativeQuestion(questionDetails, { visitQuestion: true });
+
+    cy.log("Verify that the chart renders successfully");
+    H.echartsContainer().should("be.visible");
+    H.echartsContainer().get("text").should("contain", "%");
+    H.chartPathWithFillColor("#88BF4D").should("have.length", 4);
+
+    cy.log("Check that axis labels and title don't overlap");
+    H.echartsContainer()
+      .get("text")
+      .then(($texts) => {
+        const percentTexts: Array<{ text: string; element: HTMLElement }> = [];
+        const axisTitle: Array<{ text: string; element: HTMLElement }> = [];
+
+        $texts.each((i, el) => {
+          const text = (el as HTMLElement).textContent?.trim() || "";
+          if (text.includes("%") && text !== "value") {
+            percentTexts.push({ text, element: el as HTMLElement });
+          }
+          if (text === "value") {
+            axisTitle.push({ text, element: el as HTMLElement });
+          }
+        });
+
+        cy.log("Verify we have percentage labels");
+        expect(percentTexts.length).to.be.greaterThan(0);
+
+        cy.log("Check that axis labels and title don't overlap");
+        if (axisTitle.length > 0 && percentTexts.length > 0) {
+          const titleRect = axisTitle[0].element.getBoundingClientRect();
+
+          percentTexts.forEach(({ text, element }) => {
+            const labelRect = element.getBoundingClientRect();
+
+            expect(
+              labelRect.left - titleRect.right,
+              `Label "${text}" should not overlap with axis title "${axisTitle[0].text}"`,
+            ).to.be.greaterThan(5);
+          });
+        }
+      });
+
+    cy.log(
+      "Verify tooltips show correct percentage values (not incorrectly rounded)",
+    );
+    H.chartPathWithFillColor("#88BF4D").first().realHover();
+    H.assertEChartsTooltip({
+      header: "Category A",
+      rows: [
+        {
+          name: "value",
+          value: "0.01%",
+        },
+      ],
+    });
   });
 });

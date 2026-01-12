@@ -157,23 +157,21 @@ describe("WhatsNewNotification", () => {
       dismissButton.click();
 
       await waitFor(() => {
-        expect(fetchMock.called(LAST_ACK_SETTINGS_URL)).toBe(true);
+        expect(fetchMock.callHistory.called(LAST_ACK_SETTINGS_URL)).toBe(true);
       });
 
       await waitFor(() => {
-        const fetchOptions = fetchMock.lastOptions(LAST_ACK_SETTINGS_URL);
-        expect(fetchOptions?.method).toBe("PUT");
+        const calls = fetchMock.callHistory.calls(LAST_ACK_SETTINGS_URL);
+        const lastCall = calls[calls.length - 1];
+        expect(lastCall?.request?.method).toBe("PUT");
       });
 
       await waitFor(async () => {
-        const fetchOptions = fetchMock.lastOptions(LAST_ACK_SETTINGS_URL);
-        expect(
-          JSON.parse(await (fetchOptions?.body as Promise<string>)),
-        ).toEqual({ value: currentVersionTag });
+        const lastCall = fetchMock.callHistory.lastCall(LAST_ACK_SETTINGS_URL);
+        expect(JSON.parse(lastCall?.options?.body as string)).toEqual({
+          value: currentVersionTag,
+        });
       });
-
-      // Clean up fetchMock after the test
-      fetchMock.reset();
     });
 
     it("should link the most recent eligible release notes", async () => {

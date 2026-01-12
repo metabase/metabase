@@ -5,18 +5,12 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch we want to release the SDK from"
+        description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
         type: choice
         required: true
         default: "master"
         options:
           - master
-          - release-x.51.x
-          - release-x.52.x
-          - release-x.53.x
-          - release-x.54.x
-          - release-x.55.x
-          - esbuild-main
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -177,41 +171,39 @@ jobs:
     outputs:
       sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
       major_version: ${{ fromJson(steps.new-sdk-version.outputs.result).majorVersion }}
+      pre_release_label: ${{ fromJson(steps.new-sdk-version.outputs.result).preReleaseLabel }}
     steps:
       - name: Check out the code using the provided branch
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
 
+      - name: Prepare build scripts
+        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+
       - name: Get current SDK version
         id: current-sdk-version
         run: |
-          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk/package.template.json)
+          VERSION=$(jq -r .version ./enterprise/frontend/src/embedding-sdk-package/package.template.json)
           echo "sdk_current_version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Get next SDK patch version
+      - name: Get next SDK patch or pre-release version
         id: new-sdk-version
         uses: actions/github-script@v7
         with:
-          script: |
-            const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
-            const [currentVersionWithoutSuffix, suffix] = currentVersion.split("-");
-            const versionParts = currentVersionWithoutSuffix.split(".");
-            versionParts[versionParts.length - 1] = parseInt(versionParts.at(-1)) + 1;
-            const newVersion = versionParts.join(".");
-            const [_, majorVersion] = versionParts
+          script: | #js
+            const { getNextSdkVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            if (!suffix) {
-              return {
-                version: newVersion,
-                majorVersion
-              };
-            }
+            const branch = "${{ inputs.branch }}";
+            const currentVersion = "${{ steps.current-sdk-version.outputs.sdk_current_version }}";
+
+            const result = getNextSdkVersion(branch, currentVersion);
 
             return {
-              version: `${newVersion}-${suffix}`,
-              majorVersion
-            }
+              version: result.version,
+              preReleaseLabel: result.preReleaseLabel,
+              majorVersion: result.majorVersion
+            };
 
       - name: Append workflow summary
         run: |
@@ -262,8 +254,6 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "release-sdk"
 
       - name: Run unit tests
         run: yarn embedding-sdk:test-unit
@@ -285,20 +275,14 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "release-sdk"
 
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
-      - name: Update changelog
-        run: |
-          yarn embedding-sdk:generate-changelog -o changelog-diff
-
-      - name: Build SDK bundle
-        run: yarn run build-embedding-sdk
+      - name: Build SDK package
+        run: yarn run build-embedding-sdk-package
 
       - name: Generate SDK package.json in the build directory
         run: yarn run embedding-sdk:generate-package
@@ -308,12 +292,6 @@ jobs:
         with:
           name: metabase-sdk
           path: ./resources/embedding-sdk
-
-      - name: Upload changelog diff
-        uses: actions/upload-artifact@v4
-        with:
-          name: sdk-changelog-diff
-          path: ./changelog-diff
 
   publish-npm:
     needs: [build-sdk, determine-sdk-version]
@@ -335,6 +313,7 @@ jobs:
           git config --global user.name "Metabase Automation"
 
       - name: Update readme
+        if: inputs.branch != 'master'
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_readme ${{ env.sdk_version }}
 
@@ -342,31 +321,33 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
-      - name: Retrieve SDK changelog diff
-        uses: actions/download-artifact@v4
-        with:
-          name: sdk-changelog-diff
-
-      - name: Update changelog
-        run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk/CHANGELOG.md
-
-      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
+      - name: Create a PR updating readme + published version (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
-          git commit -a -m 'Update Readme version references and published npm version to ${{ env.sdk_version }}'
+
+          if [ "${{ inputs.branch }}" = "master" ]; then
+            COMMIT_MSG="chore(sdk): Update published npm version to ${{ env.sdk_version }}"
+            PR_TITLE="chore(sdk): Update SDK version to ${{ env.sdk_version }}"
+            PR_BODY="Update published npm package version to ${{ env.sdk_version }}"
+          else
+            COMMIT_MSG="docs(sdk): Update Readme version references and published npm version to ${{ env.sdk_version }}"
+            PR_TITLE="docs(sdk): Update SDK version to ${{ env.sdk_version }}"
+            PR_BODY="Update Readme version references and published npm package version to ${{ env.sdk_version }}"
+          fi
+
+          git commit -a -m "$COMMIT_MSG"
           git push origin HEAD
-          gh pr create --base ${{ inputs.branch }}\
-                       --assignee "${GITHUB_ACTOR}"\
-                       --title "docs(sdk): Update SDK version to ${{ env.sdk_version }}"\
-                       --body "Update Readme version references and published npm package version to ${{ env.sdk_version }}"
+          gh pr create --base "${{ inputs.branch }}" \
+                       --assignee "${GITHUB_ACTOR}" \
+                       --title "$PR_TITLE" \
+                       --body "$PR_BODY"
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
-          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
+          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
@@ -388,18 +369,30 @@ jobs:
           name: metabase-sdk
           path: sdk
 
+      - name: Compute master tag
+        id: compute-tag
+        run: |
+          if [ -n "${{ needs.determine-sdk-version.outputs.pre_release_label }}" ]; then
+            echo "masterTag=${{ needs.determine-sdk-version.outputs.pre_release_label }}" >> $GITHUB_OUTPUT
+          else
+            echo "masterTag=nightly" >> $GITHUB_OUTPUT
+          fi
+
       - name: Publish to NPM
         working-directory: sdk
         run: |
           echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
-          # Please keep the value in sync with `inputs.branch`'s release branch
-          npm publish --tag ${{fromJson('{"master": "nightly", "release-x.51.x": "51-stable", "release-x.52.x": "52-stable", "release-x.53.x": "53-stable", "release-x.54.x": "54-stable", "release-x.55.x": "55-stable", "esbuild-main": "56-esbuild"}')[inputs.branch]}}
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.55.x' }}
-        working-directory: sdk
-        run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+          TAG="${{ steps.compute-tag.outputs.masterTag }}"
+          echo "Resolved npm tag: $TAG"
+          npm publish --tag "$TAG"
+
+      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
+      # Only uncomment this when the new release branch becomes stable (gold).
+      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+      #   working-directory: sdk
+      #   run: |
+      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]

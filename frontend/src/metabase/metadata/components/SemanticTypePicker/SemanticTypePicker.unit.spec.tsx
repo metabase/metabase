@@ -99,7 +99,7 @@ const setup = ({
 };
 
 describe("SemanticTypePicker", () => {
-  describe("depreacted semantic types", () => {
+  describe("deprecated semantic types", () => {
     it("does not show deprecated semantic types", async () => {
       setup({ fieldId: TEMPORAL_FIELD.id });
 
@@ -140,11 +140,11 @@ describe("SemanticTypePicker", () => {
     });
   });
 
-  it("shows Category semantic type for boolean field's", async () => {
+  it("hides Category semantic type for boolean field's", async () => {
     setup({ fieldId: BOOLEAN_FIELD.id });
 
     await assertSemanticTypesVisibility({
-      visibleTypes: ["Category"],
+      hiddenTypes: ["Category"],
     });
   });
 

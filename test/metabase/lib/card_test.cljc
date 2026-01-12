@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
@@ -97,13 +96,11 @@
   (for [col cols]
     (assoc col :lib/source src)))
 
-(defn- implicitly-joined [fk cols]
-  (for [col (from :source/implicitly-joinable cols)]
-    (update col :ident lib.metadata.ident/implicitly-joined-ident (:ident fk))))
+(defn- implicitly-joined [cols]
+  (from :source/implicitly-joinable cols))
 
-(defn- explicitly-joined [join-ident cols]
-  (for [col (from :source/joins cols)]
-    (update col :ident lib.metadata.ident/explicitly-joined-ident join-ident)))
+(defn- explicitly-joined [cols]
+  (from :source/joins cols))
 
 (defn- cols-of [table]
   (for [col (meta/fields table)]
@@ -122,10 +119,9 @@
       (is (=? (->> (cols-of :orders)
                    sort-cols)
               (sort-cols (get-in (lib.tu/mock-cards) [:orders :result-metadata]))))
-
       (is (=? (->> (concat (from :source/card (cols-of :orders))
-                           (implicitly-joined (meta/field-metadata :orders :user-id)    (cols-of :people))
-                           (implicitly-joined (meta/field-metadata :orders :product-id) (cols-of :products)))
+                           (implicitly-joined (cols-of :people))
+                           (implicitly-joined (cols-of :products)))
                    sort-cols)
               (sort-cols (lib/visible-columns venues-query)))))))
 
@@ -201,13 +197,13 @@
                                               (lib/ref (meta/field-metadata :products :id)))])
           query      (lib/join base join)]
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
-                           (explicitly-joined (:ident join) (cols-of :products)))
+                           (explicitly-joined (cols-of :products)))
                    sort-cols
-                   (map #(dissoc % :ident :name)))
+                   (map #(dissoc % :name)))
               (->> query lib.metadata.calculation/returned-columns sort-cols)))
       (is (=? (->> (concat (from :source/table-defaults (cols-of :orders))
-                           (explicitly-joined (:ident join) (cols-of :products))
-                           (implicitly-joined (meta/field-metadata :orders :user-id) (cols-of :people)))
+                           (explicitly-joined (cols-of :products))
+                           (implicitly-joined (cols-of :people)))
                    sort-cols)
               (->> query lib.metadata.calculation/visible-columns sort-cols)))
       ;; TODO: Currently if the source-card has an explicit join for a table, those fields will also be duplicated as
@@ -237,8 +233,10 @@
           rhs (m/find-first (comp #{"ID"} :name) (lib/join-condition-rhs-columns query 0 people-card nil nil))
           join-clause (lib/join-clause people-card [(lib/= lhs rhs)])
           query (lib/join query join-clause)
-          filter-col (m/find-first (comp #{"Mock people card__ID"} :lib/desired-column-alias)
+          filter-col (m/find-first #(and (= (:metabase.lib.join/join-alias %) "Mock people card")
+                                         (= (:lib/source-column-alias %) "ID"))
                                    (lib/filterable-columns query))
+          _ (assert (some? filter-col) "Failed to find filter column")
           query (-> query
                     (lib/filter (lib/= filter-col 1))
                     (lib/aggregate (lib/distinct filter-col))
@@ -360,7 +358,7 @@
                    :dataset-query   query
                    :result-metadata (result-metadata-fn (lib/query mp query))})]}))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
     (doseq [result-metadata-style [::mlv2-returned-columns ::mlv2-expected-columns ::legacy-snake-case-qp]]
@@ -462,12 +460,12 @@
                                      (lib/expression query "ID" 1)
                                      (lib/with-fields query [(lib/expression-ref query "ID")]))))))))))))))))))
 
-(deftest ^:parallel source-model-cols-test
-  (testing "source-model-cols should not fail in FE usage where Card metadata may not have a query"
+(deftest ^:parallel source-model-card-test
+  (testing "source-model-card should not fail in FE usage where Card metadata may not have a query"
     (let [mp (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :name "Card 1", :database-id (meta/id)}]})]
-      (is (nil? (#'lib.card/source-model-cols mp (lib.metadata/card mp 1)))))))
+      (is (nil? (#'lib.card/source-model-card mp (lib.metadata/card mp 1)))))))
 
 (deftest ^:parallel do-not-include-join-aliases-in-original-display-names-test
   (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true)]
@@ -480,20 +478,18 @@
                                             %)
                :effective-type            :type/Text}
               (m/find-first #(= (:name %) "CATEGORY")
-                            (lib/returned-columns query))))
-      (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
-        (let [mp    (lib.tu/merged-mock-metadata-provider
-                     (lib.metadata/->metadata-provider query)
-                     {:cards [{:id 1, :type :model}]})
-              query (lib/query mp query)]
-          (is (=? {:name                   "CATEGORY"
-                   :display-name           "Products → Category"
-                   :lib/model-display-name "Products → Category"
-                   :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
-                                                  "Category"} %)
-                   :effective-type         :type/Text}
-                  (m/find-first #(= (:name %) "CATEGORY")
-                                (lib/returned-columns query)))))))))
+                            (lib/returned-columns query))))))
+  (testing "If the source card was a model, then propagate its display name as :lib/model-display-name"
+    (let [query (lib.tu.mocks-31368/query-with-legacy-source-card true :model)]
+      (binding [lib.metadata.calculation/*display-name-style* :long]
+        (is (=? {:name                   "CATEGORY"
+                 :display-name           "Products → Category"
+                 :lib/model-display-name "Products → Category"
+                 :lib/original-display-name #(#{(symbol "nil #_\"key is not present.\"")
+                                                "Category"} %)
+                 :effective-type         :type/Text}
+                (m/find-first #(= (:name %) "CATEGORY")
+                              (lib/returned-columns query))))))))
 
 (deftest ^:parallel do-not-propagate-lib-expression-names-from-cards-test
   (testing "Columns coming from a source card should not propagate :lib/expression-name"
@@ -513,14 +509,11 @@
                                   :database-id (meta/id)
                                   :fields      q1-cols}]})
           card         (lib.metadata/card mp 1)
-          q2           (lib/query mp card)]
-      (doseq [f [#'lib/returned-columns
-                 #'lib/visible-columns]
-              :let [double-price (lib.tu.notebook/find-col-with-spec q2 (f q2 card) {} {:display-name "double-price"})]]
-        (testing f
-          (testing "metadata should not include :lib/expression-name"
-            (is (=? {:lib/expression-name (symbol "nil #_\"key is not present.\"")}
-                    double-price))))))))
+          q2           (lib/query mp card)
+          double-price (lib.tu.notebook/find-col-with-spec q2 (lib/returned-columns q2 card) {} {:display-name "double-price"})]
+      (testing "metadata should not include :lib/expression-name"
+        (is (=? {:lib/expression-name (symbol "nil #_\"key is not present.\"")}
+                double-price))))))
 
 (deftest ^:parallel card-with-join-visible-columns-test
   (let [q1   (lib.tu.macros/mbql-query reviews
@@ -529,30 +522,29 @@
                                :alias        "Products"
                                :fields       :all}]
                 :aggregation [[:distinct &Products.products.id]]
-                :breakout    [&Products.!month.created-at]})
+                :breakout    [&Products.!month.products.created-at]})
         mp   (lib.tu/mock-metadata-provider
               meta/metadata-provider
               {:cards [{:id 1, :dataset-query q1}]})
-        q2   (lib/query mp (meta/table-metadata :reviews))
-        card (lib.metadata/card mp 1)]
-    (doseq [f [#'lib/returned-columns
-               #'lib/visible-columns]]
-      (testing (str f " for a card should NEVER return `:metabase.lib.join/join-alias`, because the join happened within the Card itself.")
-        (is (=? [{:name                             "CREATED_AT"
-                  :display-name                     "Created At: Month"
-                  :lib/card-id                      1
-                  :lib/source                       :source/card
-                  :lib/original-join-alias          "Products"
-                  :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")
-                  :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
-                  :inherited-temporal-unit          :month}
-                 {:name                         "count"
-                  :display-name                 "Distinct values of ID"
-                  :lib/card-id                  1
-                  :lib/source                   :source/card
-                  :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
-                  :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
-                (f q2 card)))))))
+        card (lib.metadata/card mp 1)
+        q2   (lib/query mp card)]
+    (testing (str "returned-columns for a card should NEVER return `:metabase.lib.join/join-alias`, because the join"
+                  " happened within the Card itself.")
+      (is (=? [{:name                             "CREATED_AT"
+                :display-name                     "Created At: Month"
+                :lib/card-id                      1
+                :lib/source                       :source/card
+                :lib/original-join-alias          "Products"
+                :metabase.lib.join/join-alias     (symbol "nil #_\"key is not present.\"")
+                :metabase.lib.field/temporal-unit (symbol "nil #_\"key is not present.\"")
+                :inherited-temporal-unit          :month}
+               {:name                         "count"
+                :display-name                 "Distinct values of ID"
+                :lib/card-id                  1
+                :lib/source                   :source/card
+                :lib/original-join-alias      (symbol "nil #_\"key is not present.\"")
+                :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")}]
+              (lib/returned-columns q2 card))))))
 
 (deftest ^:parallel do-not-propagate-breakout?-test
   (is (=? [{:name          "USER_ID"
@@ -562,3 +554,73 @@
             :lib/source    :source/card
             :lib/breakout? false}]
           (lib/returned-columns (lib.tu/query-with-source-card)))))
+
+(deftest ^:parallel propagate-crazy-long-identifiers-from-card-metadata-test
+  (testing "respect crazy-long identifiers in card metadata (we need to use these to refer to native columns in the second stage) (#47584)"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              {:cards [{:id              1
+                        :dataset-query   {:type     :native
+                                          :database (meta/id)
+                                          :native   {:query "SELECT *"}}
+                        :result-metadata [{:base_type             :type/Text
+                                           :database_type         "CHARACTER VARYING"
+                                           :display_name          "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                           :effective_type        :type/Text
+                                           :name                  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                                           :lib/source            :source/native}]}]})
+          query (-> (lib/query mp (lib.metadata/card mp 1))
+                    lib/append-stage)]
+      (testing "card returned columns"
+        (is (=? [{:lib/source               :source/card
+                  :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                  :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}]
+                (lib/returned-columns query (lib.metadata/card mp 1)))))
+      (testing "first stage returned columns"
+        (is (=? [{:lib/source               :source/card
+                  :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                  :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}]
+                (lib/returned-columns query 0))))
+      (testing "second stage returned columns"
+        (is (=? [{:lib/source               :source/previous-stage
+                  :lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_00028d48"
+                  :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_00028d48"}]
+                (lib/returned-columns query 1)))))))
+
+(deftest ^:parallel card-returned-columns-propagate-inactive-test
+  (let [card-query (lib/query
+                    meta/metadata-provider
+                    (lib.tu.macros/mbql-query orders
+                      {:fields [$id $subtotal $tax $total $created-at $quantity]
+                       :joins  [{:source-table $$products
+                                 :alias        "Product"
+                                 :condition    [:=
+                                                $orders.product-id
+                                                [:field %products.id {:join-alias "Product"}]]
+                                 :fields       [[:field %products.id {:join-alias "Product"}]
+                                                [:field %products.title {:join-alias "Product"}]
+                                                [:field %products.vendor {:join-alias "Product"}]
+                                                [:field %products.price {:join-alias "Product"}]
+                                                [:field %products.rating {:join-alias "Product"}]]}]}))
+        mp         (-> meta/metadata-provider
+                       (lib.tu/mock-metadata-provider
+                        {:cards [{:id              1
+                                  :dataset-query   card-query
+                                  :result-metadata (lib/returned-columns card-query)}]})
+                       (lib.tu/merged-mock-metadata-provider
+                        {:fields (for [field-id [(meta/id :orders :tax) (meta/id :products :vendor)]]
+                                   {:id field-id, :active false})}))
+        query      (lib/query mp (lib.metadata/card mp 1))]
+    (is (= [["ID"              true]
+            ["SUBTOTAL"        true]
+            ["TAX"             false]
+            ["TOTAL"           true]
+            ["CREATED_AT"      true]
+            ["QUANTITY"        true]
+            ["Product__ID"     true]
+            ["Product__TITLE"  true]
+            ["Product__VENDOR" false]
+            ["Product__PRICE"  true]
+            ["Product__RATING" true]]
+           (map (juxt :lib/desired-column-alias :active)
+                (lib/returned-columns query))))))

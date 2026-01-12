@@ -10,7 +10,7 @@ const DEBOUNCE_PERIOD = 300;
 
 /**
  * This component prevents children elements from being rerendered while it's being resized (currently hard-coded debounce period of 250ms)
- * Useful for rendering components that maybe take a long time to render but you still wnat to allow their container to be resized fluidly
+ * Useful for rendering components that maybe take a long time to render but you still want to allow their container to be resized fluidly
  * We also fade the component out and block mouse events while it's transitioning
  */
 
@@ -19,6 +19,11 @@ class DebouncedFrame extends Component {
   // Instead manually modify the style in _updateTransitionStyle
   // There's probably a better way to block renders of children though
   _transition = false;
+
+  // Used to trigger an immediate resize (without debounce/transition) without the need for remounting.
+  // Useful if DebouncedFrame is resizing because of content loading in.
+  // Will be set to true whenever `props.resetKey` changes.
+  _queueImmediateResize = false;
 
   static defaultProps = {
     enabled: true,
@@ -68,7 +73,19 @@ class DebouncedFrame extends Component {
     this._updateTransitionStyle();
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey) {
+      this._queueImmediateResize = true;
+    }
+    if (this._queueImmediateResize) {
+      const { width, height } = this.props;
+      if (width !== this.state.width || height !== this.state.height) {
+        this.setState({ width, height });
+        this._transition = false;
+        this._queueImmediateResize = false;
+      }
+    }
+
     this._updateTransitionStyle();
   }
 
@@ -123,4 +140,7 @@ const DebouncedFrameForwardRef = forwardRef(
   },
 );
 
-export default ExplicitSize()(DebouncedFrameForwardRef);
+export default ExplicitSize({
+  // Disable ExplicitSize's debounce/throttle since DebouncedFrame has a built-in debounce
+  refreshMode: "none",
+})(DebouncedFrameForwardRef);

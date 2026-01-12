@@ -8,7 +8,7 @@
   text-decoration: none;
   padding: 0.5rem 0.75rem;
   background: transparent;
-  border: 1px solid color-mix(in srgb, var(--mb-color-border), black 5%);
+  border: 1px solid var(--mb-color-border);
   color: var(--mb-color-text-primary);
   cursor: pointer;
   font-weight: bold;
@@ -20,16 +20,13 @@
 
 .Button:hover {
   color: var(--mb-color-text-brand);
-  border-color: color-mix(in srgb, var(--mb-color-border), black 12%);
-  background: var(--mb-color-bg-light);
+  border-color: var(--mb-color-border);
+  background: var(--mb-color-background-secondary);
 }
 
-.Button:focus {
-  outline: 2px solid var(--mb-color-focus);
-}
-
-.Button:focus:not(:focus-visible) {
-  outline: none;
+.Button:focus-visible {
+  border-color: var(--mb-color-background-primary);
+  outline: 1px solid var(--mb-color-brand);
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -61,27 +58,37 @@
 }
 
 .ButtonPrimary {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background: var(--mb-color-brand);
-  border: 1px solid var(--mb-color-brand);
+  border-color: var(--mb-color-brand);
 }
 
 .ButtonPrimary:hover {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   border-color: var(--mb-color-brand);
   background-color: var(--mb-color-brand-alpha-88);
 }
 
+.ButtonPrimary:focus-visible {
+  border-color: var(--mb-color-background-primary);
+  outline-color: var(--mb-color-brand);
+}
+
 .ButtonWarning {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   background: var(--mb-color-error);
-  border: 1px solid var(--mb-color-error);
+  border-color: var(--mb-color-error);
 }
 
 .ButtonWarning:hover {
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
   border-color: var(--mb-color-error);
   background-color: var(--mb-color-error);
+}
+
+.ButtonWarning:focus-visible {
+  border-color: var(--mb-color-background-primary);
+  outline-color: var(--mb-color-error);
 }
 
 .ButtonCancel {
@@ -89,27 +96,37 @@
 }
 
 .ButtonWhite {
-  background-color: white;
-  color: var(--mb-color-text-dark);
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
   border-color: var(--mb-color-border);
 }
 
 .ButtonBorderless {
   border-color: transparent;
   background: transparent;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }
 
 .ButtonBorderless:hover {
   border-color: transparent;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
+}
+
+.ButtonBorderless:focus-visible {
+  border-color: var(--mb-color-background-primary);
+  outline-color: var(--mb-color-brand);
 }
 
 .ButtonOnlyIcon {
   border: none;
   background: transparent;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding: 0;
+}
+
+.ButtonOnlyIcon:focus-visible {
+  border: none;
+  outline-color: var(--mb-color-brand);
 }
 
 .ButtonGroup {
@@ -132,7 +149,7 @@
 
 .ButtonGroup .ButtonActive {
   background-color: var(--mb-color-success);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .ButtonGroup .Button:first-child {
@@ -146,7 +163,7 @@
 .ButtonGroupBrand .Button {
   border-color: white;
   color: var(--mb-color-brand);
-  background-color: var(--mb-color-bg-medium);
+  background-color: var(--mb-color-background-tertiary);
 }
 
 .ButtonGroupBrand .ButtonActive {
@@ -162,7 +179,7 @@
 .ButtonDanger {
   background-color: var(--mb-color-error);
   border-color: var(--mb-color-error);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .ButtonDanger:hover {
@@ -171,16 +188,26 @@
   border-color: var(--mb-color-error);
 }
 
+.ButtonDanger:focus-visible {
+  border-color: var(--mb-color-background-primary);
+  outline-color: var(--mb-color-error);
+}
+
 .ButtonSuccess {
   background-color: var(--mb-color-success);
   border-color: var(--mb-color-success);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
 }
 
 .ButtonSuccess:hover {
   background-color: var(--mb-color-success);
   border-color: var(--mb-color-success);
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.ButtonSuccess:focus-visible {
+  border-color: var(--mb-color-background-primary);
+  outline-color: var(--mb-color-success);
 }
 
 .ButtonFullWidth {

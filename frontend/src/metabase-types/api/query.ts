@@ -32,7 +32,16 @@ export interface NativeDatasetQuery {
   parameters?: UiParameter[];
 }
 
-export type DatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+export type DatasetQuery = OpaqueDatasetQuery | LegacyDatasetQuery;
+
+export type LegacyDatasetQuery = StructuredDatasetQuery | NativeDatasetQuery;
+
+declare const OpaqueDatasetQuerySymbol: unique symbol;
+export type OpaqueDatasetQuery = unknown & {
+  // TODO (AlexP 10/09/25) -- replace usages of this field with Lib.databaseID and drop it from here
+  database: DatabaseId | null;
+  _opaque: typeof OpaqueDatasetQuerySymbol;
+};
 
 interface PublicStructuredDatasetQuery {
   type: "query";
@@ -45,9 +54,11 @@ interface PublicNativeDatasetQuery {
   };
 }
 
-export type PublicDatasetQuery =
+export type LegacyPublicDatasetQuery =
   | PublicStructuredDatasetQuery
   | PublicNativeDatasetQuery;
+
+export type PublicDatasetQuery = OpaqueDatasetQuery | LegacyPublicDatasetQuery;
 
 export const dateTimeAbsoluteUnits = [
   "minute",
@@ -187,6 +198,10 @@ type CommonAggregation =
 
 export type MetricAgg = ["metric", CardId];
 
+export type MeasureAgg =
+  | ["measure", { "display-name"?: string }, CardId]
+  | ["measure", CardId];
+
 type InlineExpressionAgg = [
   "aggregation-options",
   CommonAggregation,
@@ -196,7 +211,11 @@ type InlineExpressionAgg = [
 /**
  * An aggregation MBQL clause
  */
-export type Aggregation = CommonAggregation | MetricAgg | InlineExpressionAgg;
+export type Aggregation =
+  | CommonAggregation
+  | MetricAgg
+  | MeasureAgg
+  | InlineExpressionAgg;
 
 type BreakoutClause = Breakout[];
 export type Breakout = ConcreteFieldReference;

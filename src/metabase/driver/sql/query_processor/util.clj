@@ -20,3 +20,13 @@
                               (pop)
                               (conj (first nfc-path)))]
     (apply h2x/identifier (cons :field parent-components))))
+
+(defn field-with-tz?
+  "Given a clause, possibly a `:field` ref, return true iff its type is known to have timezone information."
+  [arg]
+  (if-let [[kind _id-or-name opts] (and (vector? arg) arg)]
+    (and (= kind :field)
+         (when-let [type ((some-fn :effective-type :base-type) opts)]
+           (or (isa? type :type/DateTimeWithTZ)
+               (isa? type :type/TimeWithTZ))))
+    false))

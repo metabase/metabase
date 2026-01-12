@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Serialization" %}
 
-Once you really get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
+Once you get rolling with Metabase, it's often the case that you'll have more than one Metabase instance spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate Metabase per office or region.
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create an _export_ of the contents of a Metabase that can then be _imported_ into one or more Metabases.
 
@@ -50,6 +50,8 @@ Metabase will only export the following entities:
 - Collections (but personal collections don't get exported unless explicitly specified them through [export options](#customize-what-gets-exported))
 - Dashboards
 - Saved questions
+- Transforms (including jobs)
+- Documents (without comments)
 - Actions
 - Models
 - Metrics
@@ -61,7 +63,7 @@ Metabase will only export the following entities:
 - Events and timelines
 - Database connection strings (only if specified through [export options](#customize-what-gets-exported))
 
-All other entities—including users, groups, permissions, alerts, subscriptions—won't get exported.
+All other entities—including users, groups, permissions, alerts, subscriptions, document comments—won't get exported.
 
 Metabase will export its artifacts to a directory of YAML files. The export includes:
 
@@ -296,7 +298,7 @@ This ID refers to the collection where the question was saved. In a real export,
 
 ### Entity IDs work with embedding
 
-Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Static Embedding](../embedding/static-embedding.md), [Interactive embedding](../embedding/interactive-embedding.md), and the [Embedded Analytics SDK](../embedding/sdk/introduction.md).
+Metabase supports working with [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) for questions, dashboards, and collections in [Guest embedding](../embedding/guest-embedding.md), [Modular embedding](../embedding/modular-embedding.md), [SDK](../embedding/sdk/introduction.md), and [Full app embedding](../embedding/full-app-embedding.md).
 
 A high-level workflow for using Entity IDs when embedding Metabase in your app would look something like:
 
@@ -630,53 +632,53 @@ tar -xvf  metabase_data.tgz
 
 1. Send a `curl` request to export data:
 
-```sh
-curl \
-  -H 'x-api-key: YOUR_API_KEY' \
-  -X POST 'http://your-metabase-url/api/ee/serialization/export' \
-  -o metabase_data.tgz
-```
+    ```sh
+    curl \
+      -H 'x-api-key: YOUR_API_KEY' \
+      -X POST 'https://your-metabase-url/api/ee/serialization/export' \
+      -o metabase_data.tgz
+    ```
 
-substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
+    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
 
-> We use `POST`, not `GET`, for the `/export` endpoint.
-
-This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
+    > We use `POST`, not `GET`, for the `/export` endpoint.
+    
+    This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 
 2. Unzip the compressed file:
 
-```sh
-tar -xvf metabase_data.tgz
-```
-
-The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
+    ```sh
+    tar -xvf metabase_data.tgz
+    ```
+    
+    The extracted directory will be called something like `metabase-yyyy-MM-dd_HH-mm`, with the date and time of the export.
 
 ### Step 3: Import
 
-1. Compress the directory containing serialized Metabase application data
+1. Compress the directory containing serialized Metabase application data.
 
-Let's say you have your YAML files with Metabase application data in a directory called `metabase_data`. Before importing those files to your target Metabase, you'll need to compress those files.
+    Let's say you have your YAML files with Metabase application data in a directory called `metabase_data`. Before importing those files to your target Metabase, you'll need to compress those files.
+    
+    ```sh
+    tar -czf metabase_data.tgz metabase_data
+    ```
 
-```sh
-tar -czf metabase_data.tgz metabase_data
-```
+2. POST to `/api/ee/serialization/import`.
 
-3. POST to `/api/ee/serialization/import`.
+    From the directory where you've stored your GZIP-compressed file, run:
+    
+    ```sh
+    curl -X POST \
+      -H 'x-api-key: YOUR_API_KEY' \
+      -F 'file=@metabase_data.tgz' \
+      'https://your-metabase-url/api/ee/serialization/import' \
+      -o -
+    ```
 
-From the directory where you've stored your GZIP-compressed file, run:
+    substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with your Metabase instance URL.
+    The `-o -` option will output logs in the terminal.
 
-```sh
-curl -X POST \
-  -H 'x-api-key: YOUR_API_KEY' \
-  -F file=@metabase_data.tgz \
-  'http://your-metabase-url/api/ee/serialization/import' \
-  -o -
-```
-
-substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with your Metabase instance URL.
-The `-o -` option will output logs in the terminal.
-
-> If you import Metabase data into the same Metabase as you exported it from, you will overwrite your existing questions, dashboards, etc. See [How import works](#how-import-works).
+    > If you import Metabase data into the same Metabase as you exported it from, you will overwrite your existing questions, dashboards, etc. See [How import works](#how-import-works).
 
 ## Other uses of serialization
 

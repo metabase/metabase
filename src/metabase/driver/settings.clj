@@ -72,12 +72,12 @@
   :visibility :internal
   :export?    false
   :type       :integer
-  ;; for TESTS use a timeout time of 3 seconds. This is because we have some tests that check whether
+  ;; for TESTS use a timeout time of 5 seconds. This is because we have some tests that check whether
   ;; [[driver/can-connect?]] is failing when it should, and we don't want them waiting 10 seconds to fail.
   ;;
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
-                3000
+                5000
                 10000)
   :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
   In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value as the
@@ -100,6 +100,17 @@
   Adjusting the timeout does not impact Metabase’s frontend.
   Please be aware that other services (like Nginx) may still drop long-running queries.")
 
+;; This is normally set via the env var `MB_JDBC_NETWORK_TIMEOUT_MS`
+(defsetting jdbc-network-timeout-ms
+  "By default, this is 30 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :default    (max (if config/is-prod? 1800000 600000) (* 1000 60 (+ (db-query-timeout-minutes) 5)))
+  :doc "Timeout in milliseconds to wait for database operations to complete. This is used to free up threads that
+        are stuck waiting for a database response in a socket read. See the documentation for more details:
+        https://docs.oracle.com/javase/8/docs/api/java/sql/Connection.html#setNetworkTimeout-java.util.concurrent.Executor-int-")
+
 (defsetting jdbc-data-warehouse-max-connection-pool-size
   "Maximum size of the c3p0 connection pool."
   :visibility :internal
@@ -117,6 +128,10 @@
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
+
+(def ^:dynamic ^Long *network-timeout-ms*
+  "Maximum amount of time to wait for a response from the database, in ms."
+  (jdbc-network-timeout-ms))
 
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
@@ -177,3 +192,13 @@
   :getter     (fn []
                 ((requiring-resolve 'metabase.driver.util/available-drivers-info)))
   :doc        false)
+
+(defsetting sync-leaf-fields-limit
+  (deferred-tru
+   (str "Maximum number of leaf fields synced per collection of document database. Currently relevant for Mongo."
+        " Not to be confused with total number of synced fields. For every chosen leaf field, all intermediate fields"
+        " from root to leaf are synced as well."))
+  :visibility :internal
+  :export? true
+  :type :integer
+  :default 1000)

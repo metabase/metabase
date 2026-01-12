@@ -93,3 +93,11 @@ export const trackFirstNonTableChartGenerated = (card) => {
     event_detail: card.display,
   });
 };
+
+export const trackCardBookmarkAdded = (card) => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: card.type,
+    triggered_from: "qb_action_panel",
+  });
+};

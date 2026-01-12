@@ -1,7 +1,7 @@
 ;; -*- comment-column: 100; -*-
 {:config-paths ["macros" "src" "config"]
  :linters
- {;;
+ { ;;
   ;; enabled optional linters (these are disabled by default)
   ;;
 
@@ -25,6 +25,7 @@
   :reduce-without-init          {:level :warning}
   :redundant-call               {:level :warning}
   :redundant-fn-wrapper         {:level :warning}
+  :redundant-str-call           {:level :warning}
   :self-requiring-namespace     {:level :warning}
   :single-key-in                {:level :warning}
   :unsorted-imports             {:level :warning}
@@ -49,25 +50,29 @@
   ;; disabled linters
   ;;
 
-  :redundant-ignore {:level :off} ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
+  :redundant-ignore {:level :off}    ; lots of false positives, see https://github.com/clj-kondo/clj-kondo/issues/2414
   :unexpected-recur {:level :off} ; TODO (cam): I think we just need to tell it how to handle MBQL match and we can enable this?
 
   ;;
   ;; globally-enabled custom linters
   ;;
-  :metabase/check-defmulti-arglists                    {:level :warning}
-  :metabase/check-me-humanize                          {:level :warning}
-  :metabase/defsetting-must-specify-export             {:level :warning}
-  :metabase/defsetting-namespace                       {:level :warning}
-  :metabase/mbql-query-first-arg                       {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
-  :metabase/modules                                    {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
-  :metabase/namespace-name                             {:level :warning}
-  :metabase/require-shape-checker                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
-  :metabase/validate-logging                           {:level :warning}
-  :metabase/validate-mb-driver-tests                   {:level :warning}
-  :metabase/validate-mb-once                           {:level :warning}
+  :metabase/check-defmulti-arglists                          {:level :warning}
+  :metabase/check-me-humanize                                {:level :warning}
+  :metabase/defsetting-must-specify-export                   {:level :warning}
+  :metabase/defsetting-namespace                             {:level :warning}
+  :metabase/discourage-millis-duration                       {:level :warning}
+  :metabase/mbql-query-first-arg                             {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
+  :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
+  :metabase/namespace-name                                   {:level :warning}
+  :metabase/require-shape-checker                            {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
+  :metabase/tests-must-live-in-known-modules                 {:level :warning}
+  :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
+  :metabase/validate-defendpoint-query-params-use-kebab-case {:level :warning}
+  :metabase/validate-logging                                 {:level :warning}
+  :metabase/validate-mb-driver-tests                         {:level :warning}
+  :metabase/validate-mb-once                                 {:level :warning}
 
   :metabase/validate-deftest
   {:level :warning
@@ -172,7 +177,7 @@
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.notification.models/create-notification!
      metabase.pulse.send/send-pulse!
-     metabase.query-processor.store/store-database!
+     metabase-enterprise.transforms-python.python-runner-test/execute!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
@@ -186,7 +191,7 @@
   :metabase/disallow-hardcoded-driver-names-in-tests
   ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
   ;; middleware or compilation behavior with just H2 since it's the default.
-  {:drivers #{;; core drivers
+  {:drivers #{ ;; core drivers
               #_:h2
               :postgres
               :mysql
@@ -214,7 +219,7 @@
   ;; misc config for built-in linters
   ;;
 
-  :invalid-arity       {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+  :invalid-arity       {:skip-args [metabase.lib.util.match/match]}                    ; TODO (cam): can we fix these?
   :refer-all           {:level :warning, :exclude [clojure.test]}
   :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
 
@@ -225,10 +230,7 @@
   {:exclude
    [(build.uberjar/with-duration-ms)
     (cljs.test/is [=? malli=])
-    (clojure.core.logic/fresh)
-    (clojure.core.logic/matcha)
-    (clojure.core.logic/run)
-    (clojure.test/is [query= =? malli= qv=])
+    (clojure.test/is [=? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.server.streaming-response/streaming-response)
@@ -249,16 +251,15 @@
     (taoensso.nippy/extend-freeze)
     (taoensso.nippy/extend-thaw)]}
 
+  ;; TODO (Cam 8/22/25) -- what's the point of marking stuff deprecated if we don't have Kondo enforce it? We should
+  ;; remove all of these and add individual ignores as needed.
   :deprecated-var
   {:exclude
-   {metabase.cmd.core/dump                                                       {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
-    metabase.cmd.core/load                                                       {:namespaces ["metabase\\.cmd-test" "metabase-enterprise\\.serialization\\.cmd-test"]}
-    metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql                   {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported!                 {:namespaces ["metabase\\.driver.*"]}
-    metabase.driver/current-db-time                                              {:namespaces ["metabase.*"]}
-    metabase.driver/supports?                                                    {:namespaces ["metabase.*"]}
-    metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table {:namespaces ["metabase.*"]}
-    metabase.query-processor.util/normalize-token                                {:namespaces ["metabase.*"]}}}
+   {metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql   {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver.sql-jdbc.execute/set-time-zone-if-supported! {:namespaces ["metabase\\.driver.*"]}
+    metabase.driver/current-db-time                              {:namespaces ["metabase.*"]}
+    metabase.driver/supports?                                    {:namespaces ["metabase.*"]}
+    metabase.query-processor.util/normalize-token                {:namespaces ["metabase.*"]}}}
 
   :discouraged-var
   {clojure.core/print                                 {:message "Use metabase.util.log instead of clojure.core/print"}
@@ -273,6 +274,7 @@
    clojure.java.jdbc/with-db-connection               {:message "Use sql-jdbc.execute/do-with-connection-with-options (for drivers) or t2/with-connection (for the app DB) instead of jdbc/with-db-connection"}
    clojure.java.jdbc/with-db-metadata                 {:message "Use sql-jdbc.execute/do-with-connection-with-options + .getMetaData instead of jdbc/with-db-metadata"}
    clojure.pprint/pprint                              {:message "Use metabase.util.log instead of clojure.pprint/pprint"}
+   clojure.pprint/print-table                         {:message "Use metabase.util.log instead of printing directly to the console"}
    clojure.string/lower-case                          {:message "Use metabase.util/lower-case-en instead of clojure.string/lower-case"}
    clojure.string/upper-case                          {:message "Use metabase.util/upper-case-en instead of clojure.string/upper-case"}
    compojure.core/context                             {:message "Use metabase.api.util.handlers/route-map-handler instead of compojure.core/context, it is much faster and supports OpenAPI spec generation"}
@@ -291,7 +293,10 @@
    me.flowthing.pp/pprint                             {:message "Use metabase.util.log instead of me.flowthing.pp/pprint"}
    medley.core/random-uuid                            {:message "Use clojure.core/random-uuid instead of medley.core/random-uuid"}
    metabase.driver/database-supports?                 {:message "Use metabase.driver.util/supports? instead of metabase.driver/database-supports?"}
+   metabase.lib.convert/->legacy-MBQL                 {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
+   metabase.lib.core/->legacy-MBQL                    {:message "Conversion to legacy MBQL is discouraged, please use Lib to manipulate MBQL queries"}
    metabase.lib.equality/find-column-indexes-for-refs {:message "Use lib.equality/closest-matches-in-metadata or lib.equality/find-closest-matches-for-refs instead of lib.equality/find-column-indexes-for-refs"}
+   metabase-enterprise.transforms.interface/execute!  {:message "Use metabase-enterprise.transforms.execute/execute! instead of metabase-enterprise.transforms.interface/execute!"}
    next.jdbc/active-tx?                               {:message "Use metabase.app-db.core/in-transaction? to see if we are in a transaction"}
    toucan2.core/debug                                 {:message "Don't commit code using t2/debug"}
    toucan2.tools.debug/debug                          {:message "Don't commit code using t2/debug"}}
@@ -299,6 +304,7 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    cheshire.core          {:message "Use metabase.util.json instead of cheshire.core directly."}
+   clj-time.core          {:message "Use java-time.api or metabase.util.date-2 instead of clj-time"}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
    grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
    honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
@@ -403,14 +409,19 @@
  :lint-as
  {cljs.cache/defcache                                                                   clojure.core/deftype
   clojure.core.cache/defcache                                                           clojure.core/deftype
-  clojure.core.logic/defne                                                              clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                               clojure.test/deftest
   clojure.test.check.properties/for-all                                                 clojure.core/let
   clojurewerkz.quartzite.jobs/defjob                                                    clojure.core/defn
+  com.climate.claypoole/with-shutdown!                                                  clojure.core/let
   instaparse.core/defparser                                                             clojure.core/def
+  metabase-enterprise.action-v2.test-util/with-test-tables!                             clojure.core/let
+  metabase-enterprise.content-translation.routes-test/with-new-secret-key!              clojure.core/fn
   metabase-enterprise.serialization.test-util/with-dbs                                  clojure.core/fn
   metabase-enterprise.serialization.test-util/with-random-dump-dir                      clojure.core/let
-metabase-enterprise.content-translation.routes-test/with-new-secret-key!                clojure.core/fn
+  metabase-enterprise.transforms.api-test/with-transform-tags                           clojure.core/let
+  metabase-enterprise.transforms.api-test/with-worker-runs                              clojure.core/let
+  metabase-enterprise.transforms.test-util/with-transform-cleanup!                      clojure.core/let
+  metabase-enterprise.transforms.execute/with-transform-lifecycle                       clojure.core/let
   metabase.actions.test-util/with-actions                                               clojure.core/let
   metabase.api.common/let-404                                                           clojure.core/let
   metabase.app-db.custom-migrations.util/with-temp-scheduler!                           clojure.core/fn
@@ -439,8 +450,8 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.premium-features.settings/define-premium-feature                             clojure.core/def
   metabase.pulse.dashboard-subscription-test/with-dashboard-sub-for-card                clojure.core/let
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
-  metabase.query-processor-test.pipeline-queries-test/pmbql-query                       clojure.core/->
-  metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                   clojure.core/->
+  metabase.query-processor.pipeline-queries-test/pmbql-query                       clojure.core/->
+  metabase.query-processor.pipeline-queries-test/run-pmbql-query                   clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
@@ -469,6 +480,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.test/with-temp-file                                                          clojure.core/let
   metabase.test/with-user-in-groups                                                     clojure.core/let
   metabase.upload.impl-test/with-upload-table!                                          clojure.core/let
+  metabase.util/for-map                                                                 clojure.core/for
   metabase.util.files/with-open-path-to-resource                                        clojure.core/let
   metabase.util.malli.defn/defn                                                         schema.core/defn
   metabase.util.malli.defn/defn-                                                        schema.core/defn
@@ -478,8 +490,9 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
   metabase.util.malli/defn-                                                             schema.core/defn
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.namespaces/import-fns                                                   potemkin/import-vars
+  metabase.util.performance/doseq                                                       clojure.core/doseq
+  metabase.util.performance/for                                                         clojure.core/for
   metabase.util/with-timer-ms                                                           clojure.core/fn
-  metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
   metabuild-common.core/with-open-jar-file-system                                       clojure.core/let
   metabuild-common.files/with-open-jar-file-system                                      clojure.core/let
   monger.operators/defoperator                                                          clojure.core/def
@@ -501,6 +514,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    clojure.core/ns                                                                                                           hooks.clojure.core.ns/lint-ns
    clojure.core/require                                                                                                      hooks.clojure.core.require/lint-require
    clojure.core/requiring-resolve                                                                                            hooks.clojure.core.require/lint-requiring-resolve
+   clojure.core/-                                                                                                            hooks.metabase.util.timing/discourage-millis-duration
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
@@ -508,7 +522,10 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
+   metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
+   metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
+   metabase-enterprise.transforms-python.drivers-test/with-test-table                                                        hooks.common/with-two-bindings
    metabase.api.common.internal-test/with-jetty-server                                                                       hooks.common/with-one-binding
    metabase.api.macros/defendpoint                                                                                           hooks.metabase.api.macros/defendpoint
    metabase.app-db.schema-migrations-test.impl/test-migrations                                                               hooks.metabase.app-db.schema-migrations-test.impl/test-migrations
@@ -517,27 +534,31 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    metabase.channel.template.handlebars-test/with-temp-template!                                                             hooks.common/with-vec-first-binding
    metabase.classloader.core/require                                                                                         hooks.clojure.core.require/lint-require
    metabase.classloader.impl/require                                                                                         hooks.clojure.core.require/lint-require
-   metabase.collections.api-test/with-french-user-and-personal-collection!                                                   hooks.common/with-two-top-level-bindings
+   metabase.collections-rest.api-test/with-french-user-and-personal-collection!                                              hooks.common/with-two-top-level-bindings
    metabase.collections.models.collection-test/with-collection-hierarchy!                                                    hooks.common/let-one-with-optional-value
    metabase.collections.models.collection-test/with-personal-and-impersonal-collections                                      hooks.common/with-two-bindings
-   metabase.dashboards.api-test/with-chain-filter-fixtures                                                                   hooks.common/let-one-with-optional-value
-   metabase.dashboards.api-test/with-simple-dashboard-with-tabs                                                              hooks.common/with-one-binding
+   metabase.dashboards-rest.api-test/with-chain-filter-fixtures                                                              hooks.common/let-one-with-optional-value
+   metabase.dashboards-rest.api-test/with-simple-dashboard-with-tabs                                                         hooks.common/with-one-binding
    metabase.dashboards.models.dashboard-tab-test/with-dashtab-in-personal-collection                                         hooks.common/with-one-top-level-binding
    metabase.dashboards.models.dashboard-test/with-dash-in-collection!                                                        hooks.common/with-three-bindings
-   metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
+   metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor.expressions-test/calculate-bird-scarcity
+   metabase.driver.mongo-test/with-describe-table-for-sample                                                                 hooks.metabase.driver.mongo-test/with-describe-table-for-sample
    metabase.driver.oracle-test/with-temp-user                                                                                hooks.common/let-one-with-optional-value
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
    metabase.driver-api/defenterprise                                                                                         hooks.metabase.premium-features.defenterprise/defenterprise
-   metabase.embedding.api.embed-test/do-response-formats                                                                     hooks.common/with-two-bindings
-   metabase.embedding.api.embed-test/with-chain-filter-fixtures!                                                             hooks.common/let-one-with-optional-value
-   metabase.embedding.api.embed-test/with-temp-card                                                                          hooks.common/let-one-with-optional-value
-   metabase.embedding.api.embed-test/with-temp-dashcard                                                                      hooks.common/let-one-with-optional-value
+   metabase.embedding-rest.api.embed-test/do-response-formats                                                                hooks.common/with-two-bindings
+   metabase.embedding-rest.api.embed-test/with-chain-filter-fixtures!                                                        hooks.common/let-one-with-optional-value
+   metabase.embedding-rest.api.embed-test/with-temp-card                                                                     hooks.common/let-one-with-optional-value
+   metabase.embedding-rest.api.embed-test/with-temp-dashcard                                                                 hooks.common/let-one-with-optional-value
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
+   metabase.legacy-mbql.schema.macros/defclause*                                                                             hooks.metabase.legacy-mbql.schemas.macros/defclause*
+   metabase.legacy-mbql.schema.macros/one-of                                                                                 hooks.metabase.legacy-mbql.schemas.macros/one-of
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
+   metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
    metabase.model-persistence.api-test/with-persistence-setup!                                                               hooks.common/with-one-top-level-binding
    metabase.model-persistence.api-test/with-setup!                                                                           hooks.common/with-one-top-level-binding
@@ -548,20 +569,20 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    metabase.permissions.core/disable-perms-cache                                                                             hooks.common/do*
    metabase.premium-features.core/defenterprise                                                                              hooks.metabase.premium-features.defenterprise/defenterprise
    metabase.premium-features.defenterprise/defenterprise                                                                     hooks.metabase.premium-features.defenterprise/defenterprise
-   metabase.public-sharing.api-test/with-required-param-card!                                                                hooks.common/with-one-binding
-   metabase.public-sharing.api-test/with-temp-public-card                                                                    hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-dashboard                                                               hooks.common/let-one-with-optional-value
-   metabase.public-sharing.api-test/with-temp-public-dashboard-and-card                                                      hooks.common/with-three-bindings
+   metabase.public-sharing-rest.api-test/with-required-param-card!                                                           hooks.common/with-one-binding
+   metabase.public-sharing-rest.api-test/with-temp-public-card                                                               hooks.common/let-one-with-optional-value
+   metabase.public-sharing-rest.api-test/with-temp-public-dashboard                                                          hooks.common/let-one-with-optional-value
+   metabase.public-sharing-rest.api-test/with-temp-public-dashboard-and-card                                                 hooks.common/with-three-bindings
    metabase.pulse.api.alert-test/with-alert-in-collection!                                                                   hooks.common/with-four-bindings
    metabase.pulse.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                           hooks.common/let-second
    metabase.pulse.models.pulse-test/with-dashboard-subscription-in-collection!                                               hooks.common/with-four-bindings
    metabase.pulse.models.pulse-test/with-pulse-in-collection!                                                                hooks.common/with-four-bindings
    metabase.pulse.test-util/checkins-query-card                                                                              hooks.metabase.test.data/$ids
-   metabase.queries.api.card-test/with-card-param-values-fixtures                                                            hooks.common/let-one-with-optional-value
-   metabase.queries.api.card-test/with-temp-native-card!                                                                     hooks.common/with-two-bindings
-   metabase.queries.api.card-test/with-temp-native-card-with-params!                                                         hooks.common/with-two-bindings
-   metabase.query-processor-test.expressions-test/calculate-bird-scarcity                                                    hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
-   metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
+   metabase.queries-rest.api.card-test/with-card-param-values-fixtures                                                       hooks.common/let-one-with-optional-value
+   metabase.queries-rest.api.card-test/with-temp-native-card                                                                 hooks.common/with-two-bindings
+   metabase.queries-rest.api.card-test/with-temp-native-card-with-params                                                     hooks.common/with-two-bindings
+   metabase.query-processor.expressions-test/calculate-bird-scarcity                                                         hooks.metabase.query-processor.expressions-test/calculate-bird-scarcity
+   metabase.query-processor.filter-test/count-with-filter-clause                                                             hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache!                                                           hooks.common/with-two-bindings
    metabase.request.core/with-current-request                                                                                hooks.common/with-used-first-arg
    metabase.request.core/with-current-user                                                                                   hooks.common/with-used-first-arg
@@ -609,10 +630,11 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-persistence-enabled!                                                                                   hooks.metabase.model-persistence.test-util/with-persistence-enabled!
    metabase.test/with-prometheus-system!                                                                                     hooks.common/with-two-bindings
+   metabase.test/with-random-premium-token!                                                                                  hooks.common/with-one-binding
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   metabase.users.api-test/with-temp-user-email!                                                                              hooks.common/with-one-binding
+   metabase.users-rest.api-test/with-temp-user-email!                                                                        hooks.common/with-one-binding
    metabase.util.i18n/deferred-trs                                                                                           hooks.metabase.util.i18n/deferred-trs
    metabase.util.i18n/deferred-tru                                                                                           hooks.metabase.util.i18n/deferred-tru
    metabase.util.i18n/trs                                                                                                    hooks.metabase.util.i18n/trs
@@ -636,43 +658,43 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
 
   :macroexpand
-  {clojurewerkz.quartzite.jobs/build                                                       macros.quartz/build-job
-   clojurewerkz.quartzite.schedule.cron/schedule                                           macros.quartz/schedule
-   clojurewerkz.quartzite.schedule.simple/schedule                                         macros.quartz/simple-schedule
-   clojurewerkz.quartzite.triggers/build                                                   macros.quartz/build-trigger
-   metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                            macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
-   metabase-enterprise.impersonation.util-test/with-impersonations!                        macros.metabase-enterprise.impersonation.util-test/with-impersonations!
-   metabase-enterprise.query-reference-validation.api-test/with-test-setup!                macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
-   metabase-enterprise.sandbox.test-util/with-gtaps!                                       macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                              macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.serialization.test-util/with-world                                  macros.metabase-enterprise.serialization.test-util/with-world
-   metabase-enterprise.test/with-gtaps!                                                    macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase-enterprise.test/with-gtaps-for-user!                                           macros.metabase-enterprise.sandbox.test-util/with-gtaps!
-   metabase.collections.api-test/with-collection-hierarchy!                                macros.metabase.collections.api-test/with-collection-hierarchy!
-   metabase.collections.api-test/with-some-children-of-collection!                         macros.metabase.collections.api-test/with-some-children-of-collection!
-   metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
-   metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
-   metabase.lib.common/defop                                                               macros.metabase.lib.common/defop
-   metabase.lib.filter/deffilter                                                           macros.metabase.lib.filter/deffilter
-   metabase.parameters.chain-filter-test/chain-filter                                      macros.metabase.parameters.chain-filter-test/chain-filter
-   metabase.parameters.chain-filter-test/chain-filter-search                               macros.metabase.parameters.chain-filter-test/chain-filter
-   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-card-referencing!
-   metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
-   metabase.queries.api.card-test/with-ordered-items                                       macros.metabase.queries.api.card-test/with-ordered-items
-   metabase.query-analysis.models.query-analysis-test/with-test-setup                      macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
-   metabase.query-analysis.task.test-setup/with-test-setup!                                macros.metabase.query-analysis.task.test-setup/with-test-setup!
-   metabase.query-processor.streaming/streaming-response                                   macros.metabase.query-processor.streaming/streaming-response
-   metabase.server.statistics-handler-test/with-server                                     macros.metabase.server.statistics-handler-test/with-server
-   metabase.test.data.users/with-group-for-user                                            macros.metabase.test.data.users/with-group-for-user
-   metabase.test.util/with-temp-env-var-value!                                             macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test.util/with-temporary-raw-setting-values                                    macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.test/with-group-for-user                                                       macros.metabase.test.data.users/with-group-for-user
-   metabase.test/with-temp-env-var-value!                                                  macros.metabase.test.util/with-temp-env-var-value!
-   metabase.test/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
-   metabase.users.models.user-test/with-groups!                                            macros.metabase.users.models.user-test/with-groups!
-   metabase.util.namespaces/import-fn                                                      macros.metabase.util.namespaces/import-fn
-   metabase.xrays.domain-entities.malli/define-getters-and-setters                         macros.metabase.xrays.domain-entities.malli/define-getters-and-setters
-   metabase.xrays.related-test/with-world                                                  macros.metabase.xrays.related-test/with-world}}
+  {clojurewerkz.quartzite.jobs/build                                                            macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.calendar-interval/build                                      macros.quartz/build-job
+   clojurewerkz.quartzite.schedule.cron/schedule                                                macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule                                              macros.quartz/simple-schedule
+   clojurewerkz.quartzite.triggers/build                                                        macros.quartz/build-trigger
+   metabase-enterprise.database-routing.e2e-test/with-temp-dbs!                                 macros.metabase-enterprise.database-routing.e2e-test/with-temp-dbs!
+   metabase-enterprise.impersonation.util-test/with-impersonations!                             macros.metabase-enterprise.impersonation.util-test/with-impersonations!
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup!                     macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
+   metabase-enterprise.sandbox.test-util/with-gtaps!                                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                                   macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.serialization.test-util/with-world                                       macros.metabase-enterprise.serialization.test-util/with-world
+   metabase-enterprise.test/with-gtaps!                                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.test/with-gtaps-for-user!                                                macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase.collections-rest.api-test/with-collection-hierarchy!                                macros.metabase.collections-rest.api-test/with-collection-hierarchy!
+   metabase.collections-rest.api-test/with-some-children-of-collection!                         macros.metabase.collections-rest.api-test/with-some-children-of-collection!
+   metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing!     macros.metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-card-referencing!
+   metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing! macros.metabase.embedding-rest.api.embed-test/with-embedding-enabled-and-temp-dashcard-referencing!
+   metabase.lib.common/defop                                                                    macros.metabase.lib.common/defop
+   metabase.lib.filter/deffilter                                                                macros.metabase.lib.filter/deffilter
+   metabase.parameters.chain-filter-test/chain-filter                                           macros.metabase.parameters.chain-filter-test/chain-filter
+   metabase.parameters.chain-filter-test/chain-filter-search                                    macros.metabase.parameters.chain-filter-test/chain-filter
+   metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!        macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-card-referencing!
+   metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!    macros.metabase.public-sharing-rest.api-test/with-sharing-enabled-and-temp-dashcard-referencing!
+   metabase.queries-rest.api.card-test/with-ordered-items                                       macros.metabase.queries-rest.api.card-test/with-ordered-items
+   metabase.query-analysis.models.query-analysis-test/with-test-setup                           macros.metabase.query-analysis.models.query-analysis-test/with-test-setup
+   metabase.query-analysis.task.test-setup/with-test-setup!                                     macros.metabase.query-analysis.task.test-setup/with-test-setup!
+   metabase.query-processor.streaming/streaming-response                                        macros.metabase.query-processor.streaming/streaming-response
+   metabase.server.statistics-handler-test/with-server                                          macros.metabase.server.statistics-handler-test/with-server
+   metabase.test.data.users/with-group-for-user                                                 macros.metabase.test.data.users/with-group-for-user
+   metabase.test.util/with-temp-env-var-value!                                                  macros.metabase.test.util/with-temp-env-var-value!
+   metabase.test.util/with-temporary-raw-setting-values                                         macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.test/with-group-for-user                                                            macros.metabase.test.data.users/with-group-for-user
+   metabase.test/with-temp-env-var-value!                                                       macros.metabase.test.util/with-temp-env-var-value!
+   metabase.test/with-temporary-raw-setting-values                                              macros.metabase.test.util/with-temporary-raw-setting-values
+   metabase.users.models.user-test/with-groups!                                                 macros.metabase.users.models.user-test/with-groups!
+   metabase.util.namespaces/import-fn                                                           macros.metabase.util.namespaces/import-fn
+   metabase.xrays.related-test/with-world                                                       macros.metabase.xrays.related-test/with-world}}
 
  :config-in-comment
  {:linters {:unresolved-symbol {:level :off}}}
@@ -699,24 +721,39 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    :name    metabase-lib}
   {:pattern "^metabase\\.lib\\..*"
    :name    metabase-lib-excluding-legacy-mbql}
+  {:pattern "^metabase\\.legacy-mbql\\..*"
+   :name    legacy-mbql-namespaces}
   ;;
-  ;; QP source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`, and
-  ;; `metabase.driver.*`, excluding `-test` namespaces.
+  ;; QP and driver source namespaces: `metabase.query-processor.*`, `metabase-enterprise.sandbox.query-processor.*`,
+  ;; and `metabase.driver.*`, excluding `-test` namespaces.
   ;;
   {:pattern "metabase(?:(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.)|(?:\\.driver\\.)).*(?<!-test)$"
    :name    qp-and-driver-source-namespaces}
   ;;
-  ;; driver namespaces
+  ;; QP source namespaces
   ;;
-  {:pattern "metabase\\.driver.*$"
+  {:pattern "metabase(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.).*(?<!-test)$"
+   :name    qp-source-namespaces}
+  ;;
+  ;; driver namespaces, including tests
+  ;;
+  {:pattern "metabase\\.driver(?:-api)?.*$"
    :name    driver-namespaces}
+  ;;
+  ;; Perf-sensitive namespaces are currently the union of metabase.lib.*, driver namespaces, and QP (without tests).
+  ;;
+  {:pattern "^(?!.*-test(?:\\..*)?$)(?!.*test-util)(?!^metabase\\.test.*)^metabase\\.(lib|driver|legacy-mbql|query-processor).*"
+   :name    performance-sensitive}
   ;;
   ;; general QP tests are ones that run across multiple drivers. Anything `metabase.query-processor*-test`,
   ;; `metabase.driver.sql*-test` (excluding SQLServer and SQLite), or
   ;; `metabase-enterprise.sandbox.query-processor*-test`
   ;;
   {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
-   :name    general-qp-and-driver-test-namespaces}]
+   :name    general-qp-and-driver-test-namespaces}
+
+  {:pattern "(?:^mage.*)"
+   :name    mage-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -724,9 +761,13 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
    {:inline-def                              {:level :off}
     :missing-docstring                       {:level :off}
     :private-call                            {:level :off}
-    :discouraged-var                         {metabase.driver/database-supports? {:level :off}}
     :metabase/defsetting-must-specify-export {:level :off}
-    :metabase/defsetting-namespace           {:level :off}}
+    :metabase/defsetting-namespace           {:level :off}
+
+    :discouraged-var
+    {metabase.driver/database-supports? {:level :off}
+     metabase.lib.convert/->legacy-MBQL {:level :off}
+     metabase.lib.core/->legacy-MBQL    {:level :off}}}
 
    :hooks
    {:analyze-call
@@ -736,11 +777,24 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
 
   source-namespaces
   {:linters
-   {:metabase/validate-escaped-single-quotes-in-i18n {:level :warning}
-    :metabase/validate-string-or-str-args-to-i18n {:level :warning}
+   {:metabase/discourage-millis-duration               {:level :warning}
+    :metabase/validate-defendpoint-has-response-schema {:level :warning}
+    :metabase/validate-escaped-single-quotes-in-i18n   {:level :warning}
+    :metabase/validate-string-or-str-args-to-i18n      {:level :warning}
+
     :discouraged-var
     {clojure.core/with-redefs {:message "Don't use with-redefs outside of tests"}
-     clojure.core/eval        {:message "Don't use eval outside of tests"}}}}
+     clojure.core/eval        {:message "Don't use eval outside of tests"}}
+
+    :discouraged-namespace
+    {metabase.legacy-mbql.jvm-util       {:message "Avoid legacy MBQL utils, use Lib instead"}
+     metabase.legacy-mbql.normalize      {:message "Avoid legacy MBQL normalization, use MBQL 5 + lib/normalize instead"}
+     metabase.legacy-mbql.predicates     {:message "Avoid legacy MBQL utils, use Lib instead"}
+     metabase.legacy-mbql.schema         {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
+     metabase.legacy-mbql.schema.helpers {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
+     metabase.legacy-mbql.schema.macros  {:message "Avoid the legacy MBQL schema, use MBQL 5 + lib.schema instead"}
+     metabase.legacy-mbql.util           {:message "Avoid legacy MBQL utils, use Lib instead"}
+     metabase.query-processor.store      {:message "Please do not use the QP Store outside of legacy QP or driver code. Use MBQL 5/Lib or lib.metadata.jvm/applicaton-database-metadata-provider instead."}}}}
 
   printable-namespaces
   {:linters
@@ -752,7 +806,7 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
                              clojure.string/lower-case {:level :off}
                              clojure.string/upper-case {:level :off}}}}
 
-  ;; enable all the extra linters we haven't enabled in the core app yet in MLv2. It's all new code so we can adhere
+  ;; enable all the extra linters we haven't enabled in the core app yet in Lib. It's all new code so we can adhere
   ;; to the new stricter rules from day 1
   metabase-lib
   {:linters
@@ -765,45 +819,142 @@ metabase-enterprise.content-translation.routes-test/with-new-secret-key!        
     ;; eventually we should do this for the whole codebase, but the args are in the opposite order so switching them
     ;; all at once isn't trivial, at least we can stop using it in new code.
     :discouraged-var
-    {medley.core/map-keys    {:message "Use clojure.core/update-keys"}
-     medley.core/map-vals    {:message "Use clojure.core/update-vals"}
-     metabase.test/with-temp {:message "Don't use application database inside MLv2 code"}}
+    {medley.core/map-keys               {:message "Use metabase.util.performance/update-keys"}
+     medley.core/map-vals               {:message "Use clojure.core/update-vals"}
+     metabase.lib.convert/->legacy-MBQL {:level :off}
+     metabase.lib.core/->legacy-MBQL    {:level :off}
+     metabase.test/with-temp            {:message "Don't use application database inside Lib code"}}
 
     :discouraged-namespace
-    {metabase.driver            {:message "MLv2 code should be independent of driver code/methods"}
-     metabase.test              {:message "MLv2 tests should only use MLv2 test helpers"}
-     metabase.test.data         {:message "MLv2 tests should only use MLv2 test helpers"}
-     metabase.util.malli.schema {:message "Prefer metabase.lib.schema schemas in MLv2 code"}
-     toucan.db                  {:message "Don't use application database inside MLv2 code"}
-     toucan.models              {:message "Don't use application database inside MLv2 code"}
-     toucan.util.test           {:message "Don't use application database inside MLv2 code"}
-     toucan2.core               {:message "Don't use application database inside MLv2 code"}}}}
+    {metabase.driver            {:message "Lib code should be independent of driver code/methods"}
+     metabase.test              {:message "Lib tests should only use Lib test helpers"}
+     metabase.test.data         {:message "Lib tests should only use Lib test helpers"}
+     metabase.util.malli.schema {:message "Prefer metabase.lib.schema schemas in Lib code"}
+     toucan.db                  {:message "Don't use application database inside Lib code"}
+     toucan.models              {:message "Don't use application database inside Lib code"}
+     toucan.util.test           {:message "Don't use application database inside Lib code"}
+     toucan2.core               {:message "Don't use application database inside Lib code"}}}}
 
   metabase-lib-excluding-legacy-mbql
+  {}
+
+  legacy-mbql-namespaces
   {:linters
-   {:discouraged-var
-    {metabase.legacy-mbql.util/unique-name-generator {:message "Use metabase.lib.util/unique-name-generator or non-truncating-unique-name-generator"}}}}
+   {:discouraged-namespace
+    {metabase.legacy-mbql.jvm-util       {:level :off}
+     metabase.legacy-mbql.normalize      {:level :off}
+     metabase.legacy-mbql.predicates     {:level :off}
+     metabase.legacy-mbql.schema         {:level :off}
+     metabase.legacy-mbql.schema.helpers {:level :off}
+     metabase.legacy-mbql.schema.macros  {:level :off}
+     metabase.legacy-mbql.util           {:level :off}
+     metabase.query-processor.store      {:level :off}}
+
+    ;; the `metabase.legacy-mbql` stuff is all deprecated, so we don't need to warn inside the module about other stuff
+    ;; in the module being marked deprecated or discouraged.
+    :deprecated-namespace {:level :off}
+    :deprecated-var       {:level :off}}}
 
   driver-namespaces
   {:linters
    {:discouraged-var
-    {metabase.driver/database-supports? {:level :off}}}}
+    {metabase.driver/database-supports? {:level :off}}
+
+    ;; don't warn about the legacy MBQL namespaces being deprecated or discouraged in driver code now, we don't have a
+    ;; real alternative YET so it's not a helpful warning.
+    :discouraged-namespace
+    {metabase.legacy-mbql.jvm-util       {:level :off}
+     metabase.legacy-mbql.normalize      {:level :off}
+     metabase.legacy-mbql.predicates     {:level :off}
+     metabase.legacy-mbql.schema         {:level :off}
+     metabase.legacy-mbql.schema.helpers {:level :off}
+     metabase.legacy-mbql.schema.macros  {:level :off}
+     metabase.legacy-mbql.util           {:level :off}
+     metabase.query-processor.store      {:level :off}}
+
+    :deprecated-namespace
+    {:exclude
+     [metabase.driver.common.parameters
+      metabase.driver.common.parameters.dates
+      metabase.driver.common.parameters.operators
+      metabase.driver.common.parameters.parse
+      metabase.driver.common.parameters.values
+      metabase.legacy-mbql.jvm-util
+      metabase.legacy-mbql.normalize
+      metabase.legacy-mbql.predicates
+      metabase.legacy-mbql.schema
+      metabase.legacy-mbql.schema.helpers
+      metabase.legacy-mbql.schema.macros
+      metabase.legacy-mbql.util
+      metabase.query-processor.store]}
+
+    :deprecated-var
+    {:exclude
+     {metabase.legacy-mbql.schema.helpers/is-clause?   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.schema.helpers/mbql-clause? {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/query->source-table-id {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/aggregation-at-index   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/assoc-field-options    {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/expression-with-name   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/field-options          {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/negate-filter-clause   {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/normalize-token        {:namespaces ["metabase\\.driver.*"]}
+      metabase.legacy-mbql.util/update-field-options   {:namespaces ["metabase\\.driver.*"]}}}}}
+
+  performance-sensitive
+  {:linters
+   {:discouraged-var
+    {clojure.core/empty?          {:message "Use metabase.util.performance/empty?"}
+     clojure.core/not-empty       {:message "Use metabase.util.performance/not-empty"}
+     clojure.core/every?          {:message "Use metabase.util.performance/every?"}
+     clojure.core/mapv            {:message "Use metabase.util.performance/mapv"}
+     clojure.core/run!            {:message "Use metabase.util.performance/run!"}
+     clojure.core/get-in          {:message "Use metabase.util.performance/get-in"}
+     clojure.core/select-keys     {:message "Use metabase.util.performance/select-keys"}
+     clojure.core/some            {:message "Use metabase.util.performance/some"}
+     clojure.core/update-keys     {:message "Use metabase.util.performance/update-keys"}
+     clojure.walk/keywordize-keys {:message "Use metabase.util.performance/keywordize-keys"}
+     clojure.walk/postwalk        {:message "Use metabase.util.performance/postwalk"}
+     clojure.walk/prewalk         {:message "Use metabase.util.performance/prewalk"}
+     clojure.walk/walk            {:message "Use metabase.util.performance/walk"}
+     clojure.walk/for             {:message "Use metabase.util.performance/for"}
+     clojure.walk/doseq           {:message "Use metabase.util.performance/doseq"}}}}
 
   qp-and-driver-source-namespaces
   {:linters
    {:discouraged-namespace
-    {metabase.util.malli.schema {:message "Prefer metabase.lib.schema or metabase.legacy-mbql.schema schemas in QP/driver code"}
-     toucan.db                  {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan.models              {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan.util.test           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     toucan2.core               {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}
+    {metabase.query-processor.store {:level :off}
+     metabase.util.malli.schema     {:message "Prefer metabase.lib.schema or metabase.legacy-mbql.schema schemas in QP/driver code"}
+     toucan.db                      {:message "Don't use application database directly in QP code; use the MetadataProvider"}
+     toucan.models                  {:message "Don't use application database directly in QP code; use the MetadataProvider"}
+     toucan.util.test               {:message "Don't use application database directly in QP code; use the MetadataProvider"}
+     toucan2.core                   {:message "Don't use application database directly in QP code; use the MetadataProvider"}}
 
     :discouraged-var
-    {medley.core/map-keys                 {:message "Use clojure.core/update-keys"}
+    {medley.core/map-keys                 {:message "Use metabase.util.performance/update-keys"}
      medley.core/map-vals                 {:message "Use clojure.core/update-vals"}
-     metabase.app-db.core/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+     metabase.app-db.core/query           {:message "Don't use application database directly in QP code; use the MetadataProvider"}
+     metabase.app-db.core/reducible-query {:message "Don't use application database directly in QP code; use the MetadataProvider"}
+     metabase.lib.convert/->legacy-MBQL   {:level :off}
+     metabase.lib.core/->legacy-MBQL      {:level :off}}}}
+
+  qp-source-namespaces
+  {}
 
   general-qp-and-driver-test-namespaces
   {:linters
-   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}
+   {:discouraged-var
+    {metabase.test/with-column-remappings      {:message "Use lib.tu/remap-metadata-provider instead of with-column-remappings in QP tests"}
+     metabase.test.util/with-column-remappings {:message "Use lib.tu/remap-metadata-provider instead of with-column-remappings in QP tests"}
+     metabase.test/with-temp                   {:message "Use lib.tu/mock-metadata-provider in QP tests. Exceptions: tests for code that doesn't use MPs or models not supported by MPs"}
+     toucan2.tools.with-temp/with-temp         {:message "Use lib.tu/mock-metadata-provider in QP tests. Exceptions: tests for code that doesn't use MPs or models not supported by MPs"}}
+
+    :metabase/disallow-hardcoded-driver-names-in-tests
+    {:level :warning}}}
+
+  mage-namespaces
+  {:linters
+   {:discouraged-java-method
+    {java.lang.System {exit
+                       {:level :error
+                        :message "Don't use System/exit directly. Instead use mage.util/exit and let mage handle exiting the process"}}}}}}}

@@ -2,12 +2,12 @@ import type { ChangeEvent } from "react";
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import BookmarkToggle from "metabase/common/components/BookmarkToggle";
+import { BookmarkToggle } from "metabase/common/components/BookmarkToggle";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { UploadInput } from "metabase/common/components/upload";
-import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { PLUGIN_DATA_STUDIO } from "metabase/plugins";
 import { QuestionMoreActionsMenu } from "metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionMoreActionsMenu";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
@@ -61,9 +61,7 @@ export const QuestionActions = ({
     [isShowingQuestionInfoSidebar, isBookmarked],
   );
 
-  const infoButtonColor = isShowingQuestionInfoSidebar
-    ? color("brand")
-    : undefined;
+  const infoButtonColor = isShowingQuestionInfoSidebar ? "brand" : undefined;
 
   const hasCollectionPermissions = question.canWrite();
   const canAppend =
@@ -99,13 +97,17 @@ export const QuestionActions = ({
     }
   };
 
+  const shouldShowDataStudioLink =
+    PLUGIN_DATA_STUDIO.isEnabled &&
+    PLUGIN_DATA_STUDIO.getLibraryCollectionType(question.collection()?.type) !=
+      null;
+
   return (
     <>
       <Divider orientation="vertical" my="xs" />
       {!question.isArchived() && (
         <Box className={ViewTitleHeaderS.ViewHeaderIconButtonContainer}>
           <BookmarkToggle
-            className={ViewTitleHeaderS.ViewHeaderIconButton}
             onCreateBookmark={onToggleBookmark}
             onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
@@ -161,12 +163,15 @@ export const QuestionActions = ({
           </Box>
         </>
       )}
-      {!question.isArchived() && (
+      {!question.isArchived() && !shouldShowDataStudioLink && (
         <QuestionMoreActionsMenu
           question={question}
           onOpenModal={onOpenModal}
           onSetQueryBuilderMode={onSetQueryBuilderMode}
         />
+      )}
+      {shouldShowDataStudioLink && (
+        <PLUGIN_DATA_STUDIO.DataStudioToolbarButton question={question} />
       )}
     </>
   );

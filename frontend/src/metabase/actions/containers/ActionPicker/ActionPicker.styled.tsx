@@ -6,11 +6,9 @@ import styled from "@emotion/styled";
 import Button from "metabase/common/components/Button";
 import CollapseSection from "metabase/common/components/CollapseSection";
 import UnstyledEmptyState from "metabase/common/components/EmptyState";
-import { alpha } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 export const ModelCollapseSection = styled(CollapseSection)`
-  margin-bottom: ${space(1)};
+  margin-bottom: var(--mantine-spacing-sm);
 `;
 
 export const ActionsList = styled.ul`
@@ -25,32 +23,32 @@ export const ActionItem = styled.li<{ isSelected?: boolean }>`
   justify-content: space-between;
   padding: 0.5rem 0.75rem;
   margin-bottom: 1px;
-  border-radius: ${space(0)};
+  border-radius: var(--mantine-spacing-xs);
   cursor: pointer;
 
-  ${({ isSelected, theme }) =>
+  ${({ isSelected }) =>
     isSelected &&
     css`
-      background-color: ${alpha(theme.fn.themeColor("brand"), 0.2)};
+      background-color: var(--mb-color-background-brand);
     `}
 
   &:hover {
-    background-color: ${() => alpha("brand", 0.35)};
+    background-color: var(--mb-color-background-hover);
   }
 `;
 
 export const EmptyState = styled(UnstyledEmptyState)`
-  margin-bottom: ${space(2)};
+  margin-bottom: var(--mantine-spacing-md);
 `;
 
 export const EmptyModelStateContainer = styled.div`
-  padding: ${space(2)};
-  color: var(--mb-color-text-medium);
+  padding: var(--mantine-spacing-md);
+  color: var(--mb-color-text-secondary);
   text-align: center;
 `;
 
 export const EditButton = styled(Button)`
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   padding: 0 0.5rem;
 `;
 

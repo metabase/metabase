@@ -7,53 +7,16 @@
    [metabase.analyze.classifiers.name :as classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.analyze.fingerprint.insights :as insights]
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
-   [metabase.legacy-mbql.predicates :as mbql.preds]
-   [metabase.legacy-mbql.schema :as mbql.s]
-   [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
-   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.query-processor.schema :as query-processor.schema]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [redux.core :as redux]))
-
-(def ^:private DateTimeUnitKeywordOrString
-  "Schema for a valid datetime unit string like \"default\" or \"minute-of-hour\"."
-  [:and
-   ms/KeywordOrString
-   [:fn
-    {:error/message "Valid field datetime unit keyword or string"}
-    #(mbql.preds/DateTimeUnit? (keyword %))]])
-
-(mr/def ::MaybeUnnormalizedReference
-  [:fn
-   {:error/message "Field or aggregation reference as it comes in to the API"}
-   (fn [x]
-     (mr/validate mbql.s/Reference (mbql.normalize/normalize-tokens x)))])
-
-(mr/def ::ResultColumnMetadata
-  [:map
-   [:name         :string]
-   [:display_name :string]
-   [:base_type    ms/FieldTypeKeywordOrString]
-   [:description        {:optional true} [:maybe :string]]
-   [:semantic_type      {:optional true} [:maybe ms/FieldSemanticOrRelationTypeKeywordOrString]]
-   [:unit               {:optional true} [:maybe DateTimeUnitKeywordOrString]]
-   [:fingerprint        {:optional true} [:maybe fingerprint.schema/Fingerprint]]
-   [:id                 {:optional true} [:maybe ::lib.schema.id/field]]
-   ;; only optional because it's not present right away, but it should be present at the end.
-   [:field_ref          {:optional true} [:ref ::MaybeUnnormalizedReference]]
-   ;; the timezone in which the column was converted to using `:convert-timezone` expression
-   [:converted_timezone {:optional true} ::lib.schema.expression.temporal/timezone-id]])
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
-  ;; this schema is used for both the API and the QP, so it should handle either normalized or unnormalized values. In
-  ;; the QP, everything will be normalized.
-  [:ref ::ResultColumnMetadata])
+  [:ref ::query-processor.schema/result-metadata.column])
 
 (mr/def ::ResultsMetadata
   (mu/with-api-error-message

@@ -18,7 +18,6 @@ import {
   isQuestionDashCard,
 } from "metabase/dashboard/utils";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import type { NewParameterOpts } from "metabase/parameters/utils/dashboards";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -112,10 +111,10 @@ function DashCardInner({
     dashboard,
     slowCards,
     isEditing,
-    shouldRenderAsNightMode,
     isEditingParameter,
     navigateToNewCardFromDashboard,
     reportAutoScrolledToDashcard,
+    isGuestEmbed,
   } = useDashboardContext();
 
   const dashcardData = useSelector((state) =>
@@ -207,7 +206,10 @@ function DashCardInner({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const error = useMemo(() => getDashcardResultsError(series), [series]);
+  const error = useMemo(
+    () => getDashcardResultsError(series, !!isGuestEmbed),
+    [series, isGuestEmbed],
+  );
   const hasError = !!error;
 
   const gridSize = useMemo(
@@ -254,7 +256,7 @@ function DashCardInner({
       const iconSize = 16;
       return {
         name: opts.icon,
-        color: opts.color ? color(opts.color) : undefined,
+        color: opts.color,
         tooltip: opts.tooltips?.belonging,
         size: iconSize,
 
@@ -351,19 +353,15 @@ function DashCardInner({
           {
             [S.hasHiddenBackground]: hasHiddenBackground,
             [S.shouldForceHiddenBackground]: shouldForceHiddenBackground,
-            [S.isNightMode]: shouldRenderAsNightMode,
-            [S.isUsuallySlow]: isSlow === "usually-slow",
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
           },
           className,
         )}
         style={(theme) => {
           const { border } = theme.other.dashboard.card;
-
-          return {
-            "--slow-card-border-color": theme.fn.themeColor("accent4"),
-            ...(border && { border }),
-          };
+          if (border) {
+            return { border };
+          }
         }}
         ref={cardRootRef}
       >

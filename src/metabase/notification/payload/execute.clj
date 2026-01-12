@@ -7,6 +7,7 @@
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.models.visualization-settings :as viz-settings]
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.shared :as shared.params]
    [metabase.query-processor :as qp]
@@ -133,27 +134,18 @@
                                       tag-names)]
     (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (system/site-locale) (escape-markdown-chars? dashcard))))
 
-(def ^{:private true
-       :doc     "If a query has more than the number of rows specified here, we store the data to disk instead of in memory."}
-  rows-to-disk-threadhold
-  1000)
-
-(defn- data-rows-to-disk!
-  [qp-result]
-  (if (<= (:row_count qp-result) rows-to-disk-threadhold)
-    (do
-      (log/debugf "Less than %d rows, skip storing %d rows to disk" rows-to-disk-threadhold (:row_count qp-result))
-      qp-result)
-    (do
-      (log/debugf "Storing %d rows to disk" (:row_count qp-result))
-      (update-in qp-result [:data :rows] notification.temp-storage/to-temp-file!))))
-
 (defn- fixup-viz-settings
   "The viz-settings from :data :viz-settings might be incorrect if there is a cached of the same query.
-  See #58469.
+  See #58469 and #64687.
   TODO: remove this hack when it's fixed in QP."
   [qp-result]
-  (update-in qp-result [:data :viz-settings] merge (get-in qp-result [:json_query :viz-settings])))
+  (update-in qp-result [:data :viz-settings] merge (-> (get-in qp-result [:json_query :viz-settings])
+                                                       viz-settings/db->norm)))
+
+(def cells-to-disk-threshold
+  "Maximum cells (rows * columns) to hold in memory when running notification queries. After this, query results are
+  streamed straight to disk. See [[metabase.notification.payload.temp-storage]] for more details."
+  20000)
 
 (defn execute-dashboard-subscription-card
   "Returns subscription result for a card.
@@ -187,7 +179,12 @@
                                                              (^:once fn* [query info]
                                                                (qp
                                                                 (qp/userland-query query info)
-                                                                nil)))))})
+                                                               ;; Pass streaming rff with 2000 row threshold
+                                                                (notification.temp-storage/notification-rff
+                                                                 cells-to-disk-threshold
+                                                                 {:dashboard_id dashboard_id
+                                                                  :card_id card-id
+                                                                  :dashcard_id (u/the-id dashcard)}))))))})
               result         (result-fn card_id)
               series-results (mapv (comp result-fn :id) multi-cards)]
           (log/debugf "Dashcard has %d series" (count multi-cards))
@@ -211,11 +208,8 @@
     (:card_id dashcard)
     (log/with-context {:card_id (:card_id dashcard)}
       (let [parameters (merge-default-values parameters)]
-        ;; only do this for dashboard subscriptions but not alerts since alerts has only one card, which doesn't eat much
-        ;; memory
-        ;; TODO: we need to store series result data rows to disk too
+        ;; Streaming to disk is now handled by the query processor rff
         (-> (execute-dashboard-subscription-card dashcard parameters)
-            (m/update-existing :result data-rows-to-disk!)
             (m/update-existing :dashcard resolve-inline-parameters parameters))))
 
     (virtual-card-of-type? dashcard "iframe")
@@ -305,9 +299,12 @@
                                                                  (^:once fn* [query info]
                                                                    (qp
                                                                     (qp/userland-query query info)
-                                                                    nil))))))]
+                                                                   ;; Pass streaming rff with 2000 row threshold
+                                                                    (notification.temp-storage/notification-rff
+                                                                     cells-to-disk-threshold
+                                                                     {:card-id card-id})))))))]
 
     (log/debugf "Result has %d rows" (:row_count result))
     {:card   (t2/select-one :model/Card card-id)
-     :result (data-rows-to-disk! result)
+     :result result
      :type   :card}))

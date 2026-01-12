@@ -3,7 +3,10 @@ const path = require("path");
 
 const webpack = require("webpack");
 
-const mainConfig = require("../../webpack.config");
+const {
+  SVGO_CONFIG,
+} = require("../../frontend/build/shared/rspack/svgo-config");
+const mainConfig = require("../../rspack.main.config");
 
 const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
@@ -31,6 +34,11 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, "dist"),
   },
+  devServer: {
+    // Makes "Invalid Host/Origin header" errors go away.
+    // Cypress component tests seem to run on `127.0.0.1`
+    allowedHosts: ["localhost", "127.0.0.1"],
+  },
   module: {
     rules: [
       {
@@ -51,6 +59,7 @@ module.exports = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],

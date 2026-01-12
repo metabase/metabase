@@ -39,10 +39,12 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
     [query, stageIndex, expression],
   );
   const isEmpty = expression == null;
+  const isLiteral =
+    expression != null && Lib.isJoinConditionLHSorRHSLiteral(expression);
 
   return (
     <button
-      className={cx(S.JoinCellItem, {
+      className={cx(S.joinCellItem, {
         [S.isReadOnly]: isReadOnly,
         [S.hasColumnStyle]: !isEmpty,
         [S.noColumnStyle]: isEmpty,
@@ -53,12 +55,12 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
       onClick={onClick}
       aria-label={isLhsPicker ? t`Left column` : t`Right column`}
     >
-      {tableName != null && (
+      {tableName != null && !isLiteral && (
         <Text
           display="block"
           fz={11}
           lh={1}
-          color={isEmpty ? "brand" : "text-white"}
+          c={isEmpty ? "brand" : "text-primary-inverse"}
           ta="left"
           fw={400}
         >
@@ -66,8 +68,9 @@ export const JoinColumnButton = forwardRef(function JoinColumnTarget(
         </Text>
       )}
       <Text
+        className={S.joinCellContent}
         display="block"
-        color={isEmpty ? "brand" : "text-white"}
+        c={isEmpty ? "brand" : "text-primary-inverse"}
         ta="left"
         fw={700}
         lh={1}
@@ -85,9 +88,14 @@ function getButtonLabel(
 ) {
   if (expression == null) {
     return t`Pick a column…`;
-  } else if (Lib.isJoinConditionLHSorRHSColumn(expression)) {
-    return Lib.displayInfo(query, stageIndex, expression).displayName;
-  } else {
-    return t`Custom expression`;
   }
+
+  if (
+    Lib.isJoinConditionLHSorRHSLiteral(expression) ||
+    Lib.isJoinConditionLHSorRHSColumn(expression)
+  ) {
+    return Lib.displayInfo(query, stageIndex, expression).displayName;
+  }
+
+  return t`Custom expression`;
 }

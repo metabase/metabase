@@ -6,6 +6,7 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
   type CollectionContentTableColumn,
@@ -28,9 +29,9 @@ import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/util
 import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import Bookmarks from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections";
-import Search from "metabase/entities/search";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Collections } from "metabase/entities/collections";
+import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -171,6 +172,7 @@ const CollectionContentViewInner = ({
 
   const handleCreateBookmark = () => {
     createBookmark(collectionId.toString(), "collection");
+    trackCollectionBookmarked();
   };
 
   const handleDeleteBookmark = () => {

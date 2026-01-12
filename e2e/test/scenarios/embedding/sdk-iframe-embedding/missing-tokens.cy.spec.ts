@@ -3,7 +3,7 @@ const { H } = cy;
 describe("scenarios > embedding > sdk iframe embedding > without token features", () => {
   beforeEach(() => {
     H.prepareSdkIframeEmbedTest({
-      withTokenFeatures: false,
+      withToken: "starter",
 
       // JWT requires a valid license to use, so we expect customers to use API keys when testing.
       enabledAuthMethods: ["api-key"],
@@ -17,9 +17,18 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
 
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
+        elements: [
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: "new",
+            },
+          },
+        ],
         origin: "http://example.com",
-        template: "exploration",
-        apiKey,
+        metabaseConfig: {
+          apiKey,
+        },
       });
 
       frame
@@ -31,8 +40,17 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
   it("does not show an error if the token features are missing and the parent page is localhost", () => {
     cy.get<string>("@apiKey").then((apiKey) => {
       const frame = H.loadSdkIframeEmbedTestPage({
-        template: "exploration",
-        apiKey,
+        elements: [
+          {
+            component: "metabase-question",
+            attributes: {
+              questionId: "new",
+            },
+          },
+        ],
+        metabaseConfig: {
+          apiKey,
+        },
       });
 
       frame

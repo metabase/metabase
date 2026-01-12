@@ -18,7 +18,7 @@
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -54,7 +54,7 @@
    (select-keys
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
-     :skip_if_empty :dashboard_id :parameters])
+     :skip_if_empty :dashboard_id :parameters :disable_links])
    {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -126,7 +126,8 @@
 
            {:name  "abc"
             :cards ["abc"]}
-           default-post-card-ref-validation-error
+           {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
+                     :channels "one or more map"}}
 
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
@@ -163,7 +164,8 @@
    :archived            false
    :dashboard_id        nil
    :entity_id           true
-   :parameters          []})
+   :parameters          []
+   :disable_links       false})
 
 (def ^:private daily-email-channel
   {:enabled       true
@@ -464,7 +466,7 @@
              default-put-card-ref-validation-error
 
              {:cards ["abc"]}
-             default-put-card-ref-validation-error
+             {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
 
              {:channels 123}
              {:errors {:channels "nullable one or more map"}}
@@ -589,7 +591,7 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (=? {:message "You do not have curate permissions for this Collection."}
+          (is (=? "You don't have permissions to do that."
                   (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test
@@ -1086,44 +1088,45 @@
 (deftest send-test-alert-with-http-channel-test
   (testing "POST /api/pulse/test send test alert to a http channel"
     (notification.tu/with-send-notification-sync
-      (let [requests (atom [])
-            endpoint (channel.http-test/make-route
-                      :post "/test"
-                      (fn [req]
-                        (swap! requests conj req)
-                        {:status 200
-                         :body   "ok"}))]
-        (channel.http-test/with-server [url [endpoint]]
-          (mt/with-temp
-            [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
-             :model/Channel channel {:type    :channel/http
-                                     :details {:url         (str url "/test")
-                                               :auth-method :none}}]
-            (mt/user-http-request :rasta :post 200 "pulse/test"
-                                  {:name            (mt/random-name)
-                                   :cards           [{:id                (:id card)
-                                                      :include_csv       false
-                                                      :include_xls       false
-                                                      :dashboard_card_id nil}]
-                                   :channels        [{:enabled       true
-                                                      :channel_type  "http"
-                                                      :channel_id    (:id channel)
-                                                      :schedule_type "daily"
-                                                      :schedule_hour 12
-                                                      :schedule_day  nil
-                                                      :recipients    []}]
-                                   :alert_condition "rows"})
-            (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
-                            :alert_creator_name "Rasta Toucan"
-                            :alert_id           nil
-                            :data               {:question_id   (:id card)
-                                                 :question_name (mt/malli=? string?)
-                                                 :question_url  (mt/malli=? string?)
-                                                 :raw_data      {:cols ["count"], :rows [[18760]]},
-                                                 :type          "question"
-                                                 :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
-                            :type               "alert"}}
-                    (first @requests)))))))))
+      (mt/with-temporary-setting-values [http-channel-host-strategy :allow-all]
+        (let [requests (atom [])
+              endpoint (channel.http-test/make-route
+                        :post "/test"
+                        (fn [req]
+                          (swap! requests conj req)
+                          {:status 200
+                           :body   "ok"}))]
+          (channel.http-test/with-server [url [endpoint]]
+            (mt/with-temp
+              [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+               :model/Channel channel {:type    :channel/http
+                                       :details {:url         (str url "/test")
+                                                 :auth-method :none}}]
+              (mt/user-http-request :rasta :post 200 "pulse/test"
+                                    {:name            (mt/random-name)
+                                     :cards           [{:id                (:id card)
+                                                        :include_csv       false
+                                                        :include_xls       false
+                                                        :dashboard_card_id nil}]
+                                     :channels        [{:enabled       true
+                                                        :channel_type  "http"
+                                                        :channel_id    (:id channel)
+                                                        :schedule_type "daily"
+                                                        :schedule_hour 12
+                                                        :schedule_day  nil
+                                                        :recipients    []}]
+                                     :alert_condition "rows"})
+              (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                              :alert_creator_name "Rasta Toucan"
+                              :alert_id           nil
+                              :data               {:question_id   (:id card)
+                                                   :question_name (mt/malli=? string?)
+                                                   :question_url  (mt/malli=? string?)
+                                                   :raw_data      {:cols ["count"], :rows [[18760]]},
+                                                   :type          "question"
+                                                   :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                              :type               "alert"}}
+                      (first @requests))))))))))
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
@@ -1303,14 +1306,24 @@
   (testing "GET /api/pulse/preview_card/:id"
     (mt/with-temp [:model/Collection _ {}
                    :model/Card       card {:dataset_query (mt/mbql-query checkins {:limit 5})}]
-      (letfn [(preview [expected-status-code]
-                (client/client-full-response (mt/user->credentials :rasta)
-                                             :get expected-status-code (format "pulse/preview_card_png/%d" (u/the-id card))))]
+      (letfn [(preview [expected-status-code & [width]]
+                (let [url (str "pulse/preview_card_png/" (u/the-id card)
+                               (when width (str "?width=" width)))]
+                  (client/client-full-response (mt/user->credentials :rasta)
+                                               :get expected-status-code url)))]
         (testing "Should be able to preview a Pulse"
           (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 200)]
             (is (= "image/png"
                    Content-Type))
             (is (some? body))))
+
+        (testing "Should respect the width query parameter"
+          (let [width 600
+                resp1 (preview 200)
+                resp2 (preview 200 width)]
+            (is (= "image/png" (get-in resp2 [:headers "Content-Type"])))
+            (is (not= (:body resp1) (:body resp2))) ;; crude check: different width should yield different PNG bytes
+            (is (some? (:body resp2)))))
 
         (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
           (with-redefs [style/register-fonts-if-needed! (fn []

@@ -1,5 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import type { StructuredQuestionDetails } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
@@ -58,7 +59,7 @@ describe("issue 47058", () => {
 });
 
 describe("issue 44171", () => {
-  const METRIC_A: H.StructuredQuestionDetails = {
+  const METRIC_A: StructuredQuestionDetails = {
     name: "Metric 44171-A",
     type: "metric",
     display: "line",
@@ -75,7 +76,7 @@ describe("issue 44171", () => {
     },
   };
 
-  const METRIC_B: H.StructuredQuestionDetails = {
+  const METRIC_B: StructuredQuestionDetails = {
     name: "Metric 44171-B",
     type: "metric",
     display: "line",
@@ -136,13 +137,13 @@ describe("issue 44171", () => {
     H.sidebar().findByText("Metric 44171-A").click();
 
     H.showDashboardCardActions(0);
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset("Metric 44171-B");
+      H.selectDataset("Metric 44171-B");
       H.chartLegendItem("Metric 44171-A").should("exist");
       H.chartLegendItem("Metric 44171-B").should("exist");
     });
@@ -198,5 +199,52 @@ describe("issue 32037", () => {
     cy.get("@metricPathname").then((metricPathname) => {
       cy.location("pathname").should("eq", metricPathname);
     });
+  });
+});
+
+describe("issue 30574", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not throw when diving a metric by another metric with a custom aggregation expression with a custom name (metabase#30574)", () => {
+    cy.visit("/browse/metrics");
+
+    cy.log("create the first metric");
+    H.main().findByText("Create metric").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("edit-bar").button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("M1");
+      cy.button("Save").click();
+    });
+    H.queryBuilderHeader().should("be.visible");
+
+    cy.log("create the second metric");
+    H.openNavigationSidebar();
+    H.navigationSidebar().findByText("Metrics").click();
+    H.main().findByLabelText("Create a new metric").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
+      cy.findByText("Orders").click();
+    });
+    H.getNotebookStep("summarize").findByText("Count").click();
+    H.popover().findByText("Custom Expression").click();
+    H.enterCustomColumnDetails({
+      name: "X",
+      formula: "[M1]/[M1]",
+    });
+    H.popover().button("Update").click();
+    cy.findByTestId("edit-bar").button("Save").click();
+    H.modal().within(() => {
+      cy.findByLabelText("Name").clear().type("M2");
+      cy.button("Save").click();
+    });
+    H.queryBuilderHeader().should("be.visible");
+    H.assertQueryBuilderRowCount(1);
   });
 });

@@ -259,7 +259,7 @@ export const TagEditorHelp = ({
   );
 
   return (
-    <div className={cx(CS.px3, CS.textSpaced)}>
+    <div className={CS.textSpaced}>
       <h4>{t`What's this for?`}</h4>
       <p>
         {t`Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL.`}

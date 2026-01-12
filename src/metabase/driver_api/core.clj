@@ -1,5 +1,7 @@
 (ns metabase.driver-api.core
-  (:refer-clojure :exclude [replace compile require])
+  ;; missing docstring warnings are false positives because of Potemkin
+  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
+  (:refer-clojure :exclude [replace compile])
   (:require
    [metabase.actions.core :as actions]
    [metabase.api.common :as api]
@@ -9,11 +11,11 @@
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.database-routing.core :as database-routing]
+   [metabase.driver-api.impl]
    [metabase.events.core :as events]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
@@ -25,8 +27,8 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.logger.core :as logger]
    [metabase.models.interface :as mi]
@@ -47,7 +49,6 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.query-processor.util.nest-query :as nest-query]
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.query-processor.util.transformations.nest-breakouts :as qp.util.transformations.nest-breakouts]
    [metabase.query-processor.writeback :as qp.writeback]
@@ -56,17 +57,21 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.upload.core :as upload]
-   [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.table :as table]
    [potemkin :as p]))
 
-#_{:clj-kondo/ignore [:deprecated-var]}
+#_{:clj-kondo/ignore [:deprecated-var :discouraged-var]}
 (p/import-vars
+ actions/cached-database
+ actions/cached-database-via-table-id
+ actions/cached-table
  actions/cached-value
  actions/incorrect-value-type
  actions/perform-action!*
+ actions/violate-check-constraint
  actions/violate-foreign-key-constraint
  actions/violate-not-null-constraint
+ actions/violate-permission-constraint
  actions/violate-unique-constraint
  add/add-alias-info
  add/field-reference-mlv2
@@ -89,57 +94,69 @@
  events/publish-event!
  lib-be/start-of-week
  lib.field/json-field?
- lib.metadata.jvm/instance->metadata
+ lib-be/instance->metadata
  lib.metadata/database
  lib.metadata/field
  lib.metadata/fields
+ lib.metadata/active-fields
  lib.metadata/table
+ lib.metadata/tables
+ lib.metadata/transforms
  lib.schema.common/instance-of-class
  lib.schema.temporal-bucketing/date-bucketing-units
  lib.types.isa/temporal?
  lib.util.match/match
  lib.util.match/match-one
  lib.util.match/replace
- lib.util/truncate-alias
+ lib/truncate-alias
  lib/->legacy-MBQL
+ lib/->metadata-provider
+ lib/duplicate-column-error
+ lib/match-and-normalize-tag-name
+ lib/missing-column-error
+ lib/missing-table-alias-error
+ lib/normalize
+ lib/order-by-clause
  lib/query-from-legacy-inner-query
+ lib/raw-native-query
+ lib/syntax-error
+ lib/validation-exception-error
  limit/absolute-max-results
  limit/determine-query-max-rows
  logger/level-enabled?
- mbql.s/Join
- mbql.s/MBQLQuery
  mbql.u/aggregation-at-index
  mbql.u/assoc-field-options
  mbql.u/desugar-filter-clause
- mbql.u/dispatch-by-clause-name-or-class
  mbql.u/expression-with-name
  mbql.u/field-options
- mbql.u/is-clause?
- mbql.u/mbql-clause?
  mbql.u/negate-filter-clause
  mbql.u/normalize-token
  mbql.u/query->max-rows-limit
  mbql.u/query->source-table-id
  mbql.u/simplify-compound-filter
- mbql.u/unique-name-generator
  mbql.u/update-field-options
  mdb/clob->str
  mdb/data-source
  mdb/make-subname
  mdb/query-canceled-exception?
  mdb/spec
+ metabase.driver-api.impl/cached
+ metabase.driver-api.impl/dispatch-by-clause-name-or-class
+ metabase.driver-api.impl/is-clause?
+ metabase.driver-api.impl/mbql-clause?
+ metabase.driver-api.impl/nest-expressions
  mi/instance-of?
- nest-query/nest-expressions
  premium-features/is-hosted?
  qp.compile/compile
  qp.debug/debug>
+ ;; TODO (Cam 8/19/25) -- importing dynamic vars doesn't really work because the copies here don't pick up changes to
+ ;; the original value. We need to make these functions instead.
  qp.i/*disable-qp-logging*
  qp.preprocess/preprocess
  qp.reducible/reducible-rows
  qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
  qp.setup/with-qp-setup
  qp.store/->legacy-metadata
- qp.store/cached
  qp.store/initialized?
  qp.store/metadata-provider
  qp.store/with-metadata-provider
@@ -155,7 +172,6 @@
  qp.wrap-value-literals/wrap-value-literals-in-mbql
  qp.writeback/execute-write-sql!
  qp/process-query
- schema.metadata-queries/add-required-filters-if-needed
  secrets/clean-secret-properties-from-details
  secrets/uploaded-base-64-prefix-pattern
  setting/defsetting
@@ -173,22 +189,21 @@
   to see if the query has been canceled."
   []
   qp.pipeline/*canceled-chan*)
-
-#_{:clj-kondo/ignore [:missing-docstring]}
 ;; should use import-vars :rename once https://github.com/clj-kondo/clj-kondo/issues/2498 is fixed
-(do
-  (p/import-fn setting/get-value-of-type setting-get-value-of-type)
-  (p/import-fn secrets/value-as-string secret-value-as-string)
-  (p/import-fn secrets/value-as-file! secret-value-as-file!)
-  (p/import-fn table/database table->database)
+(p/import-fn setting/get-value-of-type setting-get-value-of-type)
+(p/import-fn secrets/value-as-string secret-value-as-string)
+(p/import-fn secrets/value-as-file! secret-value-as-file!)
+(p/import-fn table/database table->database)
 
-  (p/import-def qp.error-type/db qp.error-type.db)
-  (p/import-def qp.error-type/driver qp.error-type.driver)
-  (p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
-  (p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
-  (p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
-  (p/import-def qp.error-type/qp qp.error-type.qp)
-  (p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature))
+(p/import-fn lib/unique-name-generator-with-options unique-name-generator)
+
+(p/import-def qp.error-type/db qp.error-type.db)
+(p/import-def qp.error-type/driver qp.error-type.driver)
+(p/import-def qp.error-type/invalid-parameter qp.error-type.invalid-parameter)
+(p/import-def qp.error-type/invalid-query qp.error-type.invalid-query)
+(p/import-def qp.error-type/missing-required-parameter qp.error-type.missing-required-parameter)
+(p/import-def qp.error-type/qp qp.error-type.qp)
+(p/import-def qp.error-type/unsupported-feature qp.error-type.unsupported-feature)
 
 (def schema.common.non-blank-string
   "::lib.schema.common/non-blank-string"
@@ -218,6 +233,10 @@
   "::lib.schema.actions/row"
   ::lib.schema.actions/row)
 
+(def schema.actions.args.row
+  ":metabase.actions.args/row"
+  :metabase.actions.args/row)
+
 (def schema.expression.temporal.timezone-id
   "::lib.schema.expression.temporal/timezone-id"
   ::lib.schema.expression.temporal/timezone-id)
@@ -233,6 +252,30 @@
 (def schema.parameter.type
   "::lib.schema.parameter/type"
   ::lib.schema.parameter/type)
+
+(def schema.validate.missing-column-error
+  "::lib.schema.validate/missing-column-error"
+  ::lib.schema.validate/missing-column-error)
+
+(def schema.validate.missing-table-alias-error
+  "::lib.schema.validate/missing-table-alias-error"
+  ::lib.schema.validate/missing-table-alias-error)
+
+(def schema.validate.duplicate-column-error
+  "::lib.schema.validate/duplicate-column-error"
+  ::lib.schema.validate/duplicate-column-error)
+
+(def schema.validate.syntax-error
+  "::lib.schema.validate/syntax-error"
+  ::lib.schema.validate/syntax-error)
+
+(def schema.validate.validation-exception-error
+  "::lib.schema.validate/validation-exception-error"
+  ::lib.schema.validate/validation-exception-error)
+
+(def schema.validate.error
+  "::lib.schema.validate/error"
+  ::lib.schema.validate/error)
 
 (def mbql.schema.DateTimeValue
   "::mbql.s/DateTimeValue"
@@ -252,11 +295,11 @@
 
 (def mbql.schema.value
   "mbql.s/value"
-  mbql.s/value)
+  ::mbql.s/value)
 
 (def mbql.schema.field
   "mbql.s/field"
-  mbql.s/field)
+  ::mbql.s/field)
 
 (def mbql.schema.FieldOrExpressionDef
   "::mbql.s/FieldOrExpressionDef"
@@ -293,3 +336,15 @@
 (def qp.util.transformations.nest-breakouts.externally-remapped-field
   ":metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field"
   ::qp.util.transformations.nest-breakouts/externally-remapped-field)
+
+(def qp.compile.query-with-compiled-query
+  "Schema for the output of [[compile]]: `:metabase.query-processor.compile/query-with-compiled-query`"
+  ::qp.compile/query-with-compiled-query)
+
+(def MBQLQuery
+  "Schema for a legacy MBQL inner query."
+  ::mbql.s/MBQLQuery)
+
+(def Join
+  "Schema for a legacy MBQL join."
+  ::mbql.s/Join)

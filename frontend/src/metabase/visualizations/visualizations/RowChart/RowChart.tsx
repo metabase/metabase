@@ -14,11 +14,14 @@ import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import {
+  getBreakoutCardinality,
+  validateBreakoutSeriesCount,
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
 import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
@@ -39,6 +42,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
+  ComputedVisualizationSettings,
   RemappingHydratedChartData,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -137,7 +141,6 @@ const RowChartVisualization = ({
   const theme = useRowChartTheme(
     `${fontFamily}, Arial, sans-serif`,
     isDashboard,
-    isFullscreen,
   );
 
   const chartWarnings = useMemo(
@@ -210,12 +213,10 @@ const RowChartVisualization = ({
   };
 
   const handleSelectSeries = (event: React.MouseEvent, seriesIndex: number) => {
-    const clickData = getLegendClickData(
-      seriesIndex,
-      series,
-      settings,
-      chartColumns,
-    );
+    const clickData = {
+      ...getLegendClickData(seriesIndex, series, settings, chartColumns),
+      element: event.currentTarget,
+    };
 
     const areMultipleCards = rawMultipleSeries.length > 1;
     if (areMultipleCards) {
@@ -224,10 +225,7 @@ const RowChartVisualization = ({
     }
 
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
-      onVisualizationClick({
-        ...clickData,
-        element: event.currentTarget,
-      });
+      onVisualizationClick(clickData);
     } else if (isDashboard) {
       openQuestion();
     }
@@ -247,8 +245,8 @@ const RowChartVisualization = ({
   const canSelectTitle = !!onChangeCardAndRun;
 
   const legendItems = useMemo(
-    () => getLegendItems(series, seriesColors, settings),
-    [series, seriesColors, settings],
+    () => getLegendItems(series, seriesColors),
+    [series, seriesColors],
   );
 
   const { xLabel, yLabel } = useMemo(() => getLabels(settings), [settings]);
@@ -378,39 +376,47 @@ RowChartVisualization.settings["graph.dimensions"] = {
  */
 RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
   const [series] = originalMultipleSeries;
-  const settings: any = getComputedSettingsForSeries(originalMultipleSeries);
+  const settings: ComputedVisualizationSettings = getComputedSettingsForSeries(
+    originalMultipleSeries,
+  );
   const { card, data } = series;
 
-  if (series.card._transformed || !hasValidColumnsSelected(settings, data)) {
+  if (card._transformed || !hasValidColumnsSelected(settings, data)) {
+    return originalMultipleSeries;
+  }
+
+  const cardinality = getBreakoutCardinality(data.cols, data.rows, settings);
+  if (cardinality != null && cardinality > MAX_SERIES) {
     return originalMultipleSeries;
   }
 
   const chartColumns = getCartesianChartColumns(data.cols, settings);
-
-  const computedSeries = getSeries(
+  const seriesDefinitions = getSeries(
     data,
     chartColumns,
     getColumnValueFormatter(),
-  ).map((series) => {
-    const seriesCard = {
-      ...card,
-      name: series.seriesName,
-      _seriesKey: series.seriesKey,
-      _transformed: true,
-    };
+    settings,
+  );
 
-    const newData = {
+  const transformedSeries = seriesDefinitions.map((seriesDef) => ({
+    card: {
+      ...card,
+      name: seriesDef.seriesName,
+      _seriesKey: seriesDef.seriesKey,
+      _transformed: true,
+    },
+    data: {
       ...data,
       cols: [
-        series.seriesInfo?.dimensionColumn,
-        series.seriesInfo?.metricColumn,
+        seriesDef.seriesInfo?.dimensionColumn,
+        seriesDef.seriesInfo?.metricColumn,
       ],
-    };
+    },
+  }));
 
-    return { card: seriesCard, data: newData };
-  });
-
-  return computedSeries.length > 0 ? computedSeries : originalMultipleSeries;
+  return transformedSeries.length > 0
+    ? transformedSeries
+    : originalMultipleSeries;
 };
 
 RowChartVisualization.checkRenderable = (
@@ -418,6 +424,7 @@ RowChartVisualization.checkRenderable = (
   settings: VisualizationSettings,
 ) => {
   validateDatasetRows(series);
+  validateBreakoutSeriesCount(series, settings);
   validateChartDataSettings(settings);
   validateStacking(settings);
 };

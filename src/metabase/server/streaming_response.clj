@@ -5,6 +5,7 @@
    [compojure.response]
    [metabase.api.common.internal]
    [metabase.server.protocols :as server.protocols]
+   [metabase.server.settings :as server.settings]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
@@ -18,6 +19,7 @@
    (jakarta.servlet AsyncContext)
    (jakarta.servlet.http HttpServletResponse)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
+   (java.net SocketException)
    (java.nio ByteBuffer)
    (java.nio.channels ClosedChannelException SocketChannel)
    (java.nio.charset StandardCharsets)
@@ -42,7 +44,8 @@
       500))
 
 (defn- format-exception [e]
-  (assoc (Throwable->map e) :_status (ex-status-code e)))
+  (cond-> (assoc (Throwable->map e) :_status (ex-status-code e))
+    (server.settings/hide-stacktraces) (dissoc :via :trace)))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
@@ -67,7 +70,8 @@
                              x))
                          obj)
                         obj)
-                      (dissoc :export-format))]
+                      (dissoc :export-format)
+                      (cond-> (server.settings/hide-stacktraces) (dissoc :stacktrace :trace :via)))]
           (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
             (json/encode-to obj writer {})))
         (catch EofException _)
@@ -185,6 +189,7 @@
           false)))
     (catch InterruptedException _ false)
     (catch ClosedChannelException _ true)
+    (catch SocketException _ true)
     (catch Throwable e
       (log/error e "Error determining whether HTTP request was canceled")
       false)))
@@ -304,6 +309,7 @@
       (write-something-to-stream! os))
 
   `f` should block until it is completely finished writing to the stream, which will be closed thereafter.
+  NOTE: `canceled-chan` **IS NOT WORKING**; see `metabase.server.streaming-response-test/canceling-response-2`
   `canceled-chan` can be monitored to see if the request is canceled before results are fully written to the stream.
 
   Current options:

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.field.util :as lib.field.util]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.metadata.result-metadata :as result-metadata]
@@ -67,7 +68,10 @@
                   "display-name should include the display name of the FK field (for IMPLICIT JOINS)")
       (is (=? [{:display-name "Category → Name"
                 :source       :fields
-                :field-ref    [:field (meta/id :categories :name) {:join-alias "Category"}]}]
+                ;; sort of contrived since this is not a query we could build create IRL... even tho the join is
+                ;; technically explicit it matches the shape of an implicit one, so we should return field refs that
+                ;; act like the join isn't here yet
+                :field-ref    [:field (meta/id :categories :name) {:source-field (meta/id :venues :category-id)}]}]
               (column-info
                (lib/query
                 meta/metadata-provider
@@ -76,7 +80,7 @@
                          :fields [&Category.categories.name]
                          ;; This is a hand-rolled implicit join clause.
                          :joins  [{:alias        "Category"
-                                   :source-table $$venues
+                                   :source-table $$categories
                                    :condition    [:= $category-id &CATEGORIES__via__CATEGORY_ID.categories.id]
                                    :strategy     :left-join
                                    :fk-field-id  %category-id}]}})
@@ -96,7 +100,7 @@
                  :query {:source-table (meta/id :venues)
                          :fields [&Categories.categories.name]
                          :joins  [{:alias        "Categories"
-                                   :source-table $$venues
+                                   :source-table $$categories
                                    :condition    [:= $category-id &Categories.categories.id]
                                    :strategy     :left-join}]}})
                {:columns [:name]}))))))
@@ -200,7 +204,7 @@
                                 (lib/with-fields [(lib.metadata/field metadata-provider 3)]))]
       (is (=? {:table-id          (meta/id :venues)
                :name              "grandparent.parent.child"
-               :field-ref         [:field 3 {:base-type :type/Text}]
+               :field-ref         [:field 3 nil]
                :parent-id         2
                :id                3
                :visibility-type   :normal
@@ -722,7 +726,7 @@
                   :field-ref       [:expression "prev_month"]}]
                 (column-info query {:cols [{}]})))))))
 
-;;; adapted from [[metabase.query-processor-test.nested-queries-test/breakout-year-test]]
+;;; adapted from [[metabase.query-processor.nested-queries-test/breakout-year-test]]
 (deftest ^:parallel breakout-year-test
   (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
                 "break out a *YEAR*")
@@ -742,7 +746,7 @@
       ;; the `:year` bucketing if you used this query in another subsequent query, so the field ref doesn't
       ;; include the unit; however `:unit` is still `:year` so the frontend can use the correct formatting to
       ;; display values of the column.
-      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) {}], :unit :year)
+      (is (=? [(assoc date-col  :field-ref [:field (meta/id :checkins :date) nil], :unit :year)
                (assoc count-col :field-ref [:field "count" {:base-type :type/Integer}])]
               (result-metadata/returned-columns
                (lib/query metadata-provider (lib.metadata/card metadata-provider 1))))))))
@@ -911,8 +915,8 @@
                   :display-name                               "Created At: Year"
                   :effective-type                             :type/Integer
                   ;; additional keys in field ref are WRONG
-                  :field-ref                                  (partial = [:field "CREATED_AT" {:base-type     :type/DateTimeWithLocalTZ
-                                                                                               :temporal-unit :year}])
+                  :field-ref                                  [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
+                                                                                               :temporal-unit :year})]
                   :id                                         (meta/id :orders :created-at)
                   :inherited-temporal-unit                    :year
                   :name                                       "CREATED_AT"
@@ -961,6 +965,46 @@
                    {:name "LONGITUDE",   :description "user description", :display-name "user display name", :semantic-type :type/Cost}
                    {:name "PRICE",       :description "user description", :display-name "user display name", :semantic-type :type/Quantity}]
                   (result-metadata/returned-columns query))))))))
+
+(deftest ^:parallel model-metadata-id-preservation-test
+  (testing "Model metadata :id handling based on query type (#67680)"
+    (testing "MBQL query: stale :id from model metadata should be ignored"
+      ;; When a model's source table changes, result_metadata may have stale :id values
+      ;; pointing to the old table. These should NOT override the :id from query analysis.
+      (let [query                     (lib/query meta/metadata-provider
+                                                 {:database (meta/id)
+                                                  :type     :query
+                                                  :query    {:source-table (meta/id :venues)}})
+            ;; Get the real columns to use as a base
+            real-cols                 (result-metadata/returned-columns query)
+            real-id                   (:id (first real-cols))
+            ;; Create "stale" model metadata with wrong :id values (pointing to ORDERS instead of VENUES)
+            stale-model-metadata      (for [col real-cols]
+                                        {:name          (:name col)
+                                         :display_name  (:display-name col)
+                                         :base_type     (:base-type col)
+                                         :semantic_type (:semantic-type col)
+                                         :id            (meta/id :orders :id)
+                                         :table_id      (meta/id :orders)})
+            ;; Add stale metadata to query
+            query-with-stale-metadata (assoc-in query [:info :metadata/model-metadata] stale-model-metadata)
+            result-cols               (result-metadata/returned-columns query-with-stale-metadata)]
+        (is (= real-id (:id (first result-cols)))
+            "MBQL models should use :id from query analysis, not stale model metadata")))
+    (testing "Native query: :id from model metadata should be preserved"
+      ;; Native queries have no field references to analyze, so user-mapped :id values
+      ;; from model metadata are the only source of field linkage and must be preserved.
+      (let [native-query         (lib/native-query meta/metadata-provider "SELECT * FROM venues")
+            ;; User-mapped model metadata with explicit :id values
+            user-mapped-metadata [{:name         "ID"
+                                   :display_name "Venue ID"
+                                   :base_type    :type/BigInteger
+                                   :id           (meta/id :venues :id)
+                                   :table_id     (meta/id :venues)}]
+            query-with-metadata  (assoc-in native-query [:info :metadata/model-metadata] user-mapped-metadata)
+            result-cols          (result-metadata/returned-columns query-with-metadata)]
+        (is (= (meta/id :venues :id) (:id (first result-cols)))
+            "Native models should preserve :id from model metadata (user mappings)")))))
 
 (deftest ^:parallel propagate-binning-test
   (testing "Test this stuff the same way this stuff is tested in the Cypress e2e notebook tests"
@@ -1067,3 +1111,65 @@
       (is (=? [{:name "CREATED_AT_2", :display-name "Created At: Month", :field-ref [:field "CREATED_AT_2" {}]}
                {:name "count", :display-name "Count", :field-ref [:field "count" {}]}]
               (result-metadata/returned-columns query))))))
+
+(deftest ^:parallel deduplicate-field-refs-test
+  (testing "Don't return duplicate field refs, force deduplicated-name when they are ambiguous (QUE-1623)"
+    (let [cols [(-> (meta/field-metadata :venues :id)
+                    (assoc :lib/source :source/previous-stage
+                           :field-ref  [:field (meta/id :venues :id) nil]))
+                (-> (meta/field-metadata :venues :name)
+                    (assoc :lib/source               :source/joins
+                           :field-ref                [:field (meta/id :venues :name) nil]
+                           :metabase.lib.join/join-alias "v1"
+                           :lib/source-column-alias      "NAME"
+                           :lib/desired-column-alias     "v1__NAME"))
+                (-> (meta/field-metadata :venues :name)
+                    (assoc :lib/source               :source/joins
+                           :field-ref                [:field (meta/id :venues :name) nil]
+                           :metabase.lib.join/join-alias "v2"
+                           :lib/source-column-alias      "NAME"
+                           :lib/desired-column-alias     "v2__NAME"))]
+          cols (lib.field.util/add-deduplicated-names cols)]
+      (is (=? [[:field (meta/id :venues :id) nil]
+               [:field "NAME"   {}]
+               [:field "NAME_2" {}]]
+              (map :field-ref (#'result-metadata/deduplicate-field-refs cols)))))))
+
+(deftest ^:parallel remove-namespaced-options-test
+  (are [clause expected] (= expected
+                            (#'result-metadata/remove-namespaced-options clause))
+    [:field 1 {::namespaced true}]                [:field 1 nil]
+    [:field 1 {::namespaced true, :a 1}]          [:field 1 {:a 1}]
+    [:expression "wow"]                           [:expression "wow"]
+    [:expression "wow" {::namespaced true}]       [:expression "wow"]
+    [:expression "wow" {::namespaced true, :a 1}] [:expression "wow" {:a 1}]
+    [:aggregation 0]                              [:aggregation 0]
+    [:aggregation 0 {::namespaced true}]          [:aggregation 0]
+    [:aggregation 0 {::namespaced true, :a 1}]    [:aggregation 0 {:a 1}]))
+
+(deftest ^:parallel always-include-desired-column-alias-test
+  (testing "Populate source and desired column aliases for native queries without stage metadata"
+    (let [query        (lib/native-query meta/metadata-provider "SELECT 1;")
+          initial-cols [{:base-type :type/Integer, :name "x"}
+                        {:base-type :type/Integer, :name "y"}
+                        {:base-type :type/Integer, :name "z"}
+                        {:base-type :type/Integer, :name "x"}
+                        ;; do not truncate really long aliases coming back from native queries, if the native query
+                        ;; returned it then presumably it's ok with the database that ran the query and we need to use
+                        ;; the original name to refer back to it in subsequent stages.
+                        {:base-type :type/Integer, :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+                        {:base-type :type/Integer, :name "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}]]
+      (is (=? [{:lib/source-column-alias  "x"
+                :lib/desired-column-alias "x"}
+               {:lib/source-column-alias  "y"
+                :lib/desired-column-alias "y"}
+               {:lib/source-column-alias  "z"
+                :lib/desired-column-alias "z"}
+               {:lib/source-column-alias  "x"
+                :lib/desired-column-alias "x_2"}
+               {:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"}
+               {:lib/source-column-alias  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
+                :lib/desired-column-alias "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count_2"}]
+              (map #(select-keys % [:lib/source-column-alias :lib/desired-column-alias])
+                   (result-metadata/returned-columns query initial-cols)))))))

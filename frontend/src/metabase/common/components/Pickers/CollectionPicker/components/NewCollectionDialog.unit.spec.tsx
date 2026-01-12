@@ -37,11 +37,11 @@ describe("new collection dialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/collection");
+    const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
 
-    const [_url, options] = apiCalls[0];
-    const body = JSON.parse((await options?.body) as string);
+    const call = apiCalls[0];
+    const body = JSON.parse(call.options?.body as string);
     expect(body.parent_id).toBe(null);
   });
 
@@ -53,11 +53,11 @@ describe("new collection dialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/collection");
+    const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
 
-    const [_url, options] = apiCalls[0];
-    const body = JSON.parse((await options?.body) as string);
+    const call = apiCalls[0];
+    const body = JSON.parse(call.options?.body as string);
     expect(body.parent_id).toBe(12);
   });
 
@@ -69,11 +69,29 @@ describe("new collection dialog", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
 
-    const apiCalls = fetchMock.calls("path:/api/collection");
+    const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
     expect(apiCalls).toHaveLength(1);
 
-    const [_url, options] = apiCalls[0];
-    const body = JSON.parse((await options?.body) as string);
+    const call = apiCalls[0];
+    const body = JSON.parse(call.options?.body as string);
     expect(body.parent_id).toBe(null);
+  });
+
+  it("should show validation error when name exceeds 100 characters", async () => {
+    setup({ parentCollectionId: "root" });
+    const longName = "a".repeat(101);
+    const input = screen.getByPlaceholderText("My new collection");
+    await userEvent.type(input, longName);
+    await userEvent.tab();
+
+    expect(
+      await screen.findByText(/must be 100 characters or less/),
+    ).toBeInTheDocument();
+
+    const createButton = screen.getByRole("button", { name: "Create" });
+    expect(createButton).toBeDisabled();
+
+    const apiCalls = fetchMock.callHistory.calls("path:/api/collection");
+    expect(apiCalls).toHaveLength(0);
   });
 });

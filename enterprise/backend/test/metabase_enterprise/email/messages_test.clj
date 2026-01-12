@@ -10,11 +10,11 @@
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest admin-or-ee-monitoring-details-emails-test
-  (let [db-id (:id (mt/db))]
+  (let [db-id (mt/id)]
     (mt/with-user-in-groups [group {:name "New Group"}
                              user [group]]
       (perms/grant-application-permissions! group :monitoring)
-      (testing "Users with monitoring but no `manage-database` permission do not recieve"
+      (testing "Users with monitoring but no `manage-database` permission do not receive"
         (mt/with-premium-features #{:advanced-permissions}
           (is (= (set (#'messages/all-admin-recipients))
                  (set (#'messages/admin-or-ee-monitoring-details-emails db-id))))))

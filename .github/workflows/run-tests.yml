@@ -8,9 +8,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
   merge_group:
+  workflow_dispatch:
 
 jobs:
   files-changed:
+    if: ${{ !contains(github.event.pull_request.labels.*.name,'ci skip') && !contains(github.event.pull_request.labels.*.name,'minimal-tests') }}
     name: Check which files changed
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -22,6 +24,11 @@ jobs:
       backend_all: ${{ steps.changes.outputs.backend_all }}
       frontend_all: ${{ steps.changes.outputs.frontend_all }}
       frontend_sources: ${{ steps.changes.outputs.frontend_sources }}
+      documentation: ${{ steps.changes.outputs.documentation }}
+      embedding_documentation: ${{ steps.changes.outputs.embedding_documentation }}
+      embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
+      embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
+      embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -33,44 +40,26 @@ jobs:
           list-files: csv
           filters: .github/file-paths.yaml
 
-  static-viz-files-changed:
-    name: Check whether static-viz files changed
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    outputs:
-      static_viz: ${{ steps.static_viz.outputs.static_viz }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "files-changed"
-      - name: Build static-viz frontend
-        run: yarn build-static-viz
-        env:
-          MB_EDITION: ee
-      - name: Upload Static Viz Bundle Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
-
-      - name: Check for static viz changes
-        uses: dorny/paths-filter@v3.0.0
-        id: static_viz
-        with:
-          token: ${{ github.token }}
-          filters: .github/static-viz-sources.yaml
+  uberjar:
+    needs: [files-changed]
+    if: ${{ !cancelled() && !(needs.files-changed.outputs.documentation == 'true' && needs.files-changed.outputs.backend_all == 'false' && needs.files-changed.outputs.frontend_all == 'false' && needs.files-changed.outputs.e2e_all == 'false') }}
+    uses: ./.github/workflows/uberjar.yml
+    secrets: inherit
 
   backend-tests:
-    if: ${{ !cancelled() }}
-    needs: [files-changed, static-viz-files-changed]
+    if: ${{ !cancelled() && needs.files-changed.result == 'success' }}
+    needs: [files-changed]
     uses: ./.github/workflows/backend.yml
     secrets: inherit
     with:
-      skip: ${{ needs.files-changed.outputs.backend_all != 'true' && needs.static-viz-files-changed.outputs.static_viz != 'true' }}
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
+
+  semantic-search-tests:
+    needs: files-changed
+    uses: ./.github/workflows/semantic-search.yml
+    secrets: inherit
+    with:
+      skip: ${{ needs.files-changed.outputs.backend_all != 'true' }}
 
   app-db-tests:
     needs: files-changed
@@ -95,7 +84,8 @@ jobs:
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_specs != 'true' }}
 
   e2e-tests:
-    needs: files-changed
+    needs: [files-changed, uberjar]
+    if: always() && !cancelled() && needs.files-changed.result == 'success'
     uses: ./.github/workflows/e2e-tests.yml
     secrets: inherit
     with:
@@ -106,7 +96,73 @@ jobs:
       # list of changed specs files, then only specs are changed and we can run only those specs
       specs: ${{ needs.files-changed.outputs.e2e_all_files == needs.files-changed.outputs.e2e_specs_files && needs.files-changed.outputs.e2e_specs_files || '' }}
 
+  embedding-sdk-package:
+    needs: [files-changed]
+    if: |
+      !cancelled() &&
+      (needs.files-changed.outputs.embedding_sdk_components == 'true' ||
+      needs.files-changed.outputs.frontend_sources == 'true' ||
+      needs.files-changed.outputs.embedding_documentation == 'true' ||
+      needs.files-changed.outputs.embedding_sdk_ci == 'true')
+    uses: ./.github/workflows/embedding-sdk-package-build.yml
+    secrets: inherit
+
   sdk-tests:
-    needs: files-changed
+    needs: [uberjar, embedding-sdk-package, files-changed]
+    if: always()
     uses: ./.github/workflows/embedding-sdk.yml
+    secrets: inherit
+    with:
+      cli-snippets-type-check: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
+      docs-snippets-type-check: ${{ needs.files-changed.outputs.embedding_documentation == 'true' }}
+      documentation-validation: ${{ needs.files-changed.outputs.frontend_sources == 'true' }}
+      component-tests: ${{ needs.files-changed.outputs.embedding_sdk_components == 'true' }}
+      host-sample-apps-tests: ${{ needs.files-changed.outputs.embedding_sdk_host_sample_apps == 'true' }}
+      skip: ${{ needs.embedding-sdk-package.result != 'success' || needs.uberjar.result != 'success' }}
+
+  pr-env:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env') &&
+      !contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting') &&
+      !contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      self_hosting: false
+      analytics_dev_mode: false
+
+  pr-env-self-hosting:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env-self-hosting')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      self_hosting: true
+      analytics_dev_mode: false
+
+  pr-env-analytics-dev:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      contains(github.event.pull_request.labels.*.name, 'PR-Env-analytics-dev')
+    uses: ./.github/workflows/pr-env.yml
+    secrets: inherit
+    with:
+      self_hosting: false
+      analytics_dev_mode: true
+
+  containerize:
+    needs: [uberjar]
+    if: |
+      !cancelled() &&
+      needs.uberjar.result == 'success' &&
+      (
+        (github.event_name == 'push' && contains(fromJson('["master", "metabot-v3-main", "internal-tools"]'), github.ref_name)) ||
+        (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'build-docker-uberjar'))
+      )
+    uses: ./.github/workflows/containerize-uberjar.yml
     secrets: inherit

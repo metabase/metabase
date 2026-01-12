@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { type FocusEvent, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -32,6 +32,7 @@ export const FkTargetPicker = ({
   idFields,
   value,
   onChange,
+  onFocus,
   ...props
 }: Props) => {
   const { comparableIdFields, hasIdFields, data, optionsByFieldId } =
@@ -68,9 +69,16 @@ export const FkTargetPicker = ({
     return getRawTableFieldId(field);
   };
 
-  const handleChange = (value: string) => {
-    const fieldId = getFieldIdFromValue(value);
-    onChange(fieldId);
+  const handleChange = (value: string | null) => {
+    if (value != null) {
+      const fieldId = getFieldIdFromValue(value);
+      onChange(fieldId);
+    }
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    event.target.select();
+    onFocus?.(event);
   };
 
   return (
@@ -140,6 +148,7 @@ export const FkTargetPicker = ({
       searchable
       value={stringifyValue(value)}
       onChange={handleChange}
+      onFocus={handleFocus}
       {...props}
     />
   );
@@ -155,14 +164,14 @@ function getData(comparableIdFields: Field[], includeSchema: boolean) {
           field.table,
           includeSchema && field.table ? field.table.schema : undefined,
         ),
-        value: stringifyValue(getRawTableFieldId(field)),
+        value: stringifyValue(getRawTableFieldId(field)) ?? "",
       };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function stringifyValue(value: FieldId | null): string {
-  return value === null ? "" : JSON.stringify(value);
+function stringifyValue(value: FieldId | null): string | null {
+  return value === null ? null : JSON.stringify(value);
 }
 
 function getFkFieldPlaceholder(field: ApiField, idFields: Field[]) {

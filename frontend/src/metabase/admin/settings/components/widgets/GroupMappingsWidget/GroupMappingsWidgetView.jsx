@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
+import { useField } from "formik";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -21,9 +22,25 @@ import {
   GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
 import { MappingRow } from "./MappingRow";
-import { SettingToggle } from "./SettingToggle";
 
 const groupIsMappable = (group) => !isDefaultGroup(group);
+
+const helpText = (mappingSetting) => {
+  if (mappingSetting === "jwt-group-mappings") {
+    return t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If no mappings are defined, groups will automatically be assigned based on exactly matching names.`;
+  }
+  return t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`;
+};
+
+const noMappingText = (mappingSetting, syncSwitchValue) => {
+  if (!syncSwitchValue) {
+    return `No mappings yet, group sync is not on`;
+  }
+  if (mappingSetting === "jwt-group-mappings") {
+    return t`No mappings yet, groups will be automatically assigned by exactly matching names`;
+  }
+  return t`No mappings yet`;
+};
 
 export function GroupMappingsWidgetView({
   groupHeading,
@@ -34,7 +51,6 @@ export function GroupMappingsWidgetView({
   clearGroupMember,
   updateSetting,
   mappings,
-  isFormik,
   ...props
 }) {
   const [showAddRow, setShowAddRow] = useState(false);
@@ -81,11 +97,7 @@ export function GroupMappingsWidgetView({
     }
   };
 
-  const handleDeleteMapping = async ({
-    name,
-    onSuccess,
-    groupIdsToDelete = [],
-  }) => {
+  const handleDeleteMapping = async ({ name, onSuccess }) => {
     const mappingsMinusDeletedMapping = _.omit(mappings, name);
 
     try {
@@ -101,24 +113,22 @@ export function GroupMappingsWidgetView({
     }
   };
 
+  const [{ value: groupSyncSwitchValue }] = useField(props.setting.key);
+
   return (
     <WidgetAndErrorRoot>
       <Root>
         <Header>
           <ToggleRoot>
             <span>{t`Synchronize Group Memberships`}</span>
-            {isFormik ? ( // temporary until SettingsJWTForm and SettingsLdapForm are migrated to formik
-              <FormSwitch
-                data-testid="group-sync-switch"
-                name={props.setting.key}
-              />
-            ) : (
-              <SettingToggle {...props} hideLabel />
-            )}
+            <FormSwitch
+              data-testid="group-sync-switch"
+              name={props.setting.key}
+            />
           </ToggleRoot>
           <About>
             <Tooltip
-              label={t`Mappings allow Metabase to automatically add and remove users from groups based on the membership information provided by the directory server. If a group isn‘t mapped, its membership won‘t be synced.`}
+              label={helpText(mappingSetting)}
               position="top"
               maw="20rem"
             >
@@ -149,7 +159,10 @@ export function GroupMappingsWidgetView({
               {Object.keys(mappings).length === 0 && !showAddRow && (
                 <tr>
                   <td>&nbsp;</td>
-                  <td> {t`No mappings yet`}</td>
+                  <td>
+                    {" "}
+                    {noMappingText(mappingSetting, groupSyncSwitchValue)}
+                  </td>
                   <td>&nbsp;</td>
                 </tr>
               )}

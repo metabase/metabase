@@ -1,18 +1,20 @@
 (ns metabase.query-processor.util.transformations.nest-breakouts
+  "TODO (Cam 8/7/25) -- this is a pure-MBQL-5 high-level query transformation, and almost certainly belongs in Lib
+  rather than in QP -- we should move it there. (This also applies to [[metabase.query-processor.util.nest-query]])."
+  (:refer-clojure :exclude [mapv select-keys some not-empty])
   (:require
    [flatland.ordered.set :as ordered-set]
    [medley.core :as m]
-   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv select-keys some not-empty]]))
 
 (defn- stage-has-window-aggregation? [stage]
   (lib.util.match/match (:aggregation stage)
@@ -43,28 +45,15 @@
                       lib.util/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
-;;; TODO (Cam 7/7/25) -- update this to use [[metabase.lib.field.util/update-keys-for-col-from-previous-stage]] instead
-;;; of its own weird bespoke version of the same thing.
-(mu/defn- update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
-  "Force a `[:field {} <name>]` ref. Must manually escape field refs here, since `escape-join-aliases` mw is already run."
-  [col :- ::lib.schema.metadata/column]
-  (-> col
-      (update :lib/desired-column-alias #(driver/escape-alias driver/*driver* %))
-      (assoc :lib/source              :source/previous-stage
-             :lib/source-column-alias (driver/escape-alias driver/*driver* (:lib/desired-column-alias col)))
-      (lib/with-temporal-bucket (if (isa? ((some-fn :effective-type :base-type) col) :type/Temporal)
-                                  ;; for temporal columns: set temporal type to `:default` to
-                                  ;; prevent [[metabase.query-processor.middleware.auto-bucket-datetimes]] from
-                                  ;; trying to mess with it.
-                                  :default
-                                  ;; for other columns: remove temporal type, it should be nil anyway but remove it to
-                                  ;; be safe.
-                                  nil))
-      (lib/with-binning nil)
-      (dissoc :lib/expression-name)))
+(defn- update-temporal-bucket
+  "For temporal columns: set temporal type to `:default` to
+  prevent [[metabase.query-processor.middleware.auto-bucket-datetimes]] from trying to mess with it.
 
-(defn- copy-ident [to from]
-  (lib.options/update-options to m/assoc-some :ident (lib.options/ident from)))
+  For other columns: remove temporal type, it should be nil anyway but remove it to be safe."
+  [col]
+  (lib/with-temporal-bucket col (if (isa? ((some-fn :effective-type :base-type) col) :type/Temporal)
+                                  :default
+                                  nil)))
 
 (mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
@@ -74,31 +63,31 @@
     (if-let [col (when-not (some #{:expressions} &parents)
                    (lib.equality/find-matching-column &match first-stage-cols))]
       (-> col
-          update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage
+          lib/update-keys-for-col-from-previous-stage
+          update-temporal-bucket
           lib/ref
-          (cond-> (:lib/external-remap col) (lib.options/update-options assoc ::externally-remapped-field true))
-          (cond-> (some #{:breakout} &parents) (copy-ident &match)))
+          (cond-> (:lib/external-remap col) (lib/update-options assoc ::externally-remapped-field true)))
       (lib.util/fresh-uuids &match))))
 
 (def ^:private granularity
   {:time-unbucketed 0
-   :minute 1
-   :minute-of-hour 2
-   :hour 3
-   :hour-of-day 4
-   :day 5
+   :minute          1
+   :minute-of-hour  2
+   :hour            3
+   :hour-of-day     4
+   :day             5
    :date-unbucketed 5
-   :day-of-week 6
-   :day-of-month 7
-   :day-of-year 8
-   :week 9
-   :week-of-year 10
-   :month 11
-   :month-of-year 12
-   :quarter 13
+   :day-of-week     6
+   :day-of-month    7
+   :day-of-year     8
+   :week            9
+   :week-of-year    10
+   :month           11
+   :month-of-year   12
+   :quarter         13
    :quarter-of-year 14
-   :year 15
-   :year-of-era 16})
+   :year            15
+   :year-of-era     16})
 
 (defn- original-temporal-unit
   [temporal-attributes]
@@ -106,6 +95,7 @@
     (if (and (some? temporal-unit) (not= temporal-unit :default))
       temporal-unit
       (or (:original-temporal-unit temporal-attributes)
+          (:inherited-temporal-unit temporal-attributes)
           (:metabase.lib.field/original-temporal-unit temporal-attributes)
           temporal-unit))))
 
@@ -138,7 +128,7 @@
           (recur (next bs) (inc i) granularity     i)
           (recur (next bs) (inc i) min-granularity finest-index))))))
 
-(defn- add-implicit-breakouts
+(defn- add-implicit-breakout-order-bys
   [stage]
   (if-let [breakouts (not-empty (:breakout stage))]
     (let [finest-temp-breakout (finest-temporal-breakout-index breakouts 1)
@@ -148,12 +138,12 @@
                            breakouts)
           explicit-order-bys (vec (:order-by stage))
           explicit-order-by-exprs (set (for [[_dir _opts col-ref] explicit-order-bys]
-                                         (lib.schema.util/remove-randomized-idents col-ref)))
+                                         (lib.schema.util/remove-lib-uuids col-ref)))
           order-bys (into explicit-order-bys
-                          (comp (map lib.schema.util/remove-randomized-idents)
+                          (comp (map lib.schema.util/remove-lib-uuids)
                                 (remove explicit-order-by-exprs)
                                 (map (fn [expr]
-                                       (lib.options/ensure-uuid [:asc (lib.options/ensure-uuid expr)]))))
+                                       (lib/ensure-uuid [:asc (lib/ensure-uuid expr)]))))
                           breakout-exprs)]
       (assoc stage :order-by order-bys))
     stage))
@@ -171,7 +161,7 @@
         (dissoc :joins :source-table :source-card :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols)
         (dissoc :expressions)
-        add-implicit-breakouts)))
+        add-implicit-breakout-order-bys)))
 
 (mu/defn- nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
   [query :- ::lib.schema/query

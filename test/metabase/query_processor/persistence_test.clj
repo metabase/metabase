@@ -1,4 +1,7 @@
 (ns ^:mb/driver-tests metabase.query-processor.persistence-test
+  {:clj-kondo/config '{:linters
+                       ;; allowing with-temp in this namespace since model persistence needs to hit the app DB
+                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -8,7 +11,6 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.query-processor :as qp]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.query-processor.settings :as qp.settings]
    [metabase.system.core :as system]
    [metabase.test :as mt]
@@ -88,13 +90,12 @@
                                       :source-table (str "card__" (:id model))})]
                   (is (= [[num-rows-query]] (mt/rows (qp/process-query query-on-top)))))))))))))
 
-;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test
+;; sandbox tests in metabase-enterprise.sandbox.query-processor.middleware.sandboxing-test
 ;; impersonation tests in metabase-enterprise.advanced-permissions.driver.impersonation-test
 
-(defn- populate-metadata [{query :dataset_query, id :id, eid :entity_id :as _model}]
+(defn- populate-metadata [{query :dataset_query, id :id, :as _model}]
   (let [updater (a/thread
                   (let [metadata (-> query
-                                     (assoc-in [:info :card-entity-id] eid)
                                      #_{:clj-kondo/ignore [:deprecated-var]}
                                      (qp.metadata/legacy-result-metadata nil))]
                     (t2/update! :model/Card id {:result_metadata metadata})))]
@@ -109,8 +110,8 @@
       (mt/dataset test-data
         (doseq [[query-type query] [[:query (mt/mbql-query products)]
                                     #_[:native (mt/native-query
-                                                 (qp.compile/compile
-                                                  (mt/mbql-query products)))]]]
+                                                (qp.compile/compile
+                                                 (mt/mbql-query products)))]]]
           (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [:model/Card model {:type          :model
                                               :database_id   (mt/id)
@@ -138,10 +139,7 @@
                                :aggregation [[:count]]
                                :breakout [[:expression "adjective" nil]
                                           category-field]})
-                    results (binding [fix-bad-refs/*bad-field-reference-fn*
-                                      (fn [x]
-                                        (swap! bad-refs conj x))]
-                              (qp/process-query query))
+                    results (qp/process-query query)
                     persisted-schema (ddl.i/schema-name (mt/db) (system/site-uuid))]
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))

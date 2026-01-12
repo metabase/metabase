@@ -11,12 +11,12 @@ import {
   Flex,
   Group,
   Icon,
-  NumberInput,
   Select,
   Text,
   Tooltip,
 } from "metabase/ui";
 
+import { NumberInputWithFallbackValue } from "../../NumberInputWithFallbackValue/NumberInputWithFallbackValue";
 import type { DatePickerSubmitButtonProps } from "../../types";
 import { renderDefaultSubmitButton } from "../../utils";
 import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
@@ -48,8 +48,8 @@ export function DateIntervalPicker({
   const unitOptions = getUnitOptions(value, availableUnits);
   const dateRangeText = formatDateRange(value);
 
-  const handleIntervalChange = (inputValue: number | "") => {
-    if (inputValue !== "") {
+  const handleIntervalChange = (inputValue: number | string) => {
+    if (typeof inputValue === "number") {
       onChange(setInterval(value, inputValue));
     }
   };
@@ -73,7 +73,8 @@ export function DateIntervalPicker({
   return (
     <form onSubmit={handleSubmit}>
       <Flex p="md" align="center">
-        <NumberInput
+        <NumberInputWithFallbackValue
+          allowDecimal={false}
           value={interval}
           aria-label={t`Interval`}
           w="4rem"
@@ -93,7 +94,7 @@ export function DateIntervalPicker({
         <Tooltip label={t`Starting from…`} position="bottom">
           <Button
             aria-label={t`Starting from…`}
-            c="var(--mb-color-text-secondary)"
+            c="text-secondary"
             variant="subtle"
             leftSection={<Icon name="arrow_left_to_line" />}
             onClick={handleStartingFromClick}
@@ -105,7 +106,7 @@ export function DateIntervalPicker({
       </Flex>
       <Divider />
       <Group px="md" py="sm" justify="space-between">
-        <Group c="var(--mb-color-text-secondary)" gap="sm">
+        <Group c="text-secondary" gap="sm">
           <Icon name="calendar" />
           <Text c="inherit">{dateRangeText}</Text>
         </Group>

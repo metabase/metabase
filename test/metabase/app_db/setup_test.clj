@@ -32,7 +32,7 @@
     (letfn [(test* [data-source]
               (is (= :done
                      (mdb.setup/setup-db! :h2 data-source true true)))
-              (is (= ["Administrators" "All Users"]
+              (is (= ["Administrators" "All Users" "All tenant users"]
                      (mapv :name (jdbc/query {:datasource data-source}
                                              "SELECT name FROM permissions_group ORDER BY name ASC;")))))]
       (let [subname (fn [] (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name)))]
@@ -61,7 +61,7 @@
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
         (testing "migrations are executed in the order they are defined"
-          (is (= (mdb.test-util/all-liquibase-ids false driver/*driver*)
+          (is (= (mdb.test-util/all-liquibase-ids false driver/*driver* conn)
                  (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
 
 (deftest setup-db-no-auto-migrate-test

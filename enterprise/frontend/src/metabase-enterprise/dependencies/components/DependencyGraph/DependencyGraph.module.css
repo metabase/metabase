@@ -1,0 +1,18 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  bottom: 0;
+  pointer-events: none;
+}
+
+[data-mantine-color-scheme="dark"] {
+  .reactFlow {
+    --xy-background-color-default: transparent;
+    --xy-controls-button-background-color-default: transparent;
+
+    .controls {
+      border: 1px solid var(--mb-color-border);
+      background-color: var(--mb-color-background);
+    }
+  }
+}

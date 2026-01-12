@@ -52,8 +52,11 @@ export interface DataGridProps<TData>
     DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
+  rowsTruncated?: number;
   isColumnReorderingDisabled?: boolean;
   theme?: DataGridTheme;
+  zoomedRowIndex?: number;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const DataGrid = function DataGrid<TData>({
@@ -72,10 +75,13 @@ export const DataGrid = function DataGrid<TData>({
   getTotalHeight,
   getVisibleRows,
   isColumnReorderingDisabled,
+  zoomedRowIndex,
   onBodyCellClick,
   onHeaderCellClick,
   onAddColumnClick,
   onWheel,
+  tableFooterExtraButtons,
+  rowsTruncated,
 }: DataGridProps<TData>) {
   const {
     virtualColumns,
@@ -136,11 +142,11 @@ export const DataGrid = function DataGrid<TData>({
 
   const rowsCount = table.getRowModel().rows.length;
   const backgroundColor =
-    theme?.cell?.backgroundColor ?? "var(--mb-color-background)";
+    theme?.cell?.backgroundColor ?? "var(--mb-color-background-primary)";
   const stickyElementsBackgroundColor =
     theme?.stickyBackgroundColor ??
     (backgroundColor == null || backgroundColor === "transparent"
-      ? "var(--mb-color-background)"
+      ? "var(--mb-color-background-primary)"
       : backgroundColor);
 
   return (
@@ -235,7 +241,11 @@ export const DataGrid = function DataGrid<TData>({
                       );
 
                       return (
-                        <div key={header.id} style={style}>
+                        <div
+                          key={header.id}
+                          style={style}
+                          data-header-id={header.id}
+                        >
                           {headerContent}
                         </div>
                       );
@@ -281,6 +291,7 @@ export const DataGrid = function DataGrid<TData>({
 
                 const dataIndex =
                   virtualRow != null ? virtualRow.index : row.index;
+                const active = zoomedRowIndex === dataIndex;
 
                 return (
                   <div
@@ -291,7 +302,9 @@ export const DataGrid = function DataGrid<TData>({
                     data-index={dataIndex}
                     data-allow-page-break-after="true"
                     data-row-selected={row.getIsSelected()}
-                    className={cx(S.row, classNames?.row)}
+                    className={cx(S.row, classNames?.row, {
+                      [S.active]: active,
+                    })}
                     style={{
                       ...virtualRowStyles,
                       ...styles?.row,
@@ -321,7 +334,9 @@ export const DataGrid = function DataGrid<TData>({
                             position: "sticky",
                             left: `${virtualColumn.start}px`,
                             zIndex: PINNED_COLUMN_Z_INDEX,
-                            backgroundColor: stickyElementsBackgroundColor,
+                            backgroundColor: active
+                              ? undefined
+                              : stickyElementsBackgroundColor,
                             ...styles?.bodyCell,
                           }
                         : {
@@ -387,8 +402,10 @@ export const DataGrid = function DataGrid<TData>({
             table={table}
             enablePagination={enablePagination}
             showRowsCount={showRowsCount}
+            rowsTruncated={rowsTruncated}
             style={styles?.footer}
             className={classNames?.footer}
+            tableFooterExtraButtons={tableFooterExtraButtons}
           />
         </div>
         {measureRoot}

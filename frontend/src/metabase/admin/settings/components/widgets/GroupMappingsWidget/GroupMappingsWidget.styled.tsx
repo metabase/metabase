@@ -2,7 +2,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/common/components/Button";
-import { space } from "metabase/styled-components/theme";
 
 export const GroupMappingsWidgetAndErrorRoot = styled.div`
   display: flex;
@@ -20,13 +19,13 @@ export const GroupMappingsWidgetRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
-  background-color: var(--mb-color-bg-light);
+  background-color: var(--mb-color-background-secondary);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   display: flex;
   justify-content: space-between;
-  margin-bottom: ${space(2)};
-  padding: ${space(1)} ${space(2)};
+  margin-bottom: var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
 
   span {
     font-weight: 700;
@@ -38,20 +37,20 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
-    color: var(--mb-color-text-dark);
-    padding-right: ${space(1)};
+    color: var(--mb-color-text-primary);
+    padding-right: var(--mantine-spacing-sm);
     padding-top: 0;
   }
 `;
 
 export const GroupMappingsWidgetAbout = styled.div`
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   display: flex;
   flex-direction: row;
 
   span {
-    padding-left: ${space(1)};
+    padding-left: var(--mantine-spacing-sm);
   }
 `;
 
@@ -62,6 +61,6 @@ export const GroupMappingsWidgetAboutContentRoot = styled.div`
 
 export const AddMappingButton = styled(Button)`
   float: right;
-  margin-right: ${space(2)};
+  margin-right: var(--mantine-spacing-md);
   margin-bottom: -40px;
 `;

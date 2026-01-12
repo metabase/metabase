@@ -3,7 +3,6 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.util :as lib.field.util]
@@ -13,8 +12,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.matrix :as matrix]
-   [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
    [metabase.util.number :as u.number]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -239,7 +236,9 @@
                                                    (meta/field-metadata :checkins :venue-id)
                                                    (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
-        columns (lib/filterable-columns query)
+        columns (into []
+                      (lib.field.util/add-source-and-desired-aliases-xform query)
+                      (lib/filterable-columns query))
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
@@ -259,10 +258,7 @@
             "Venues__PRICE"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__ID"
             "CATEGORIES__via__CATEGORY_ID__via__Venues__NAME"]
-           (into []
-                 (comp (lib.field.util/add-source-and-desired-aliases-xform query)
-                       (map :lib/desired-column-alias))
-                 columns)))
+           (map :lib/desired-column-alias columns)))
     (testing "Operators are attached to proper columns"
       (is (=? {"ID" pk-operators,
                "NAME" text-operators,
@@ -421,68 +417,19 @@
         (is (=? {:stages [{:filters [[:!= {} [:field {} (meta/id :users :id)] 515]]}]}
                 query'))))))
 
-(deftest ^:parallel find-filter-for-legacy-filter-test
-  (testing "existing clauses"
-    (let [query           (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
-                              (lib/expression "expr" (lib/absolute-datetime "2020" :month)))
-          filterable-cols (lib/filterable-columns query)
-          [first-col]     filterable-cols
-          expr-col        (m/find-first #(= (:name %) "expr") (lib/filterable-columns query))
-          first-filter    (lib/filter-clause
-                           (first (lib/filterable-column-operators first-col))
-                           first-col
-                           515)
-          query           (->  query
-                               (lib/filter first-filter)
-                               (lib/filter (lib/filter-clause
-                                            (first (lib/filterable-column-operators expr-col))
-                                            expr-col
-                                            (meta/field-metadata :users :last-login))))
-          filter-clauses  (lib/filters query)]
-      (testing "existing clauses"
-        (doseq [filter-clause filter-clauses
-                :let          [legacy-clause (lib.convert/->legacy-MBQL filter-clause)]
-                legacy-clause [legacy-clause
-                               (update legacy-clause 0 u/qualified-name)]]
-          (testing (pr-str legacy-clause)
-            (is (= filter-clause
-                   (lib/find-filter-for-legacy-filter query legacy-clause))))))
-      (testing "missing clause"
-        (let [filter-clause (assoc first-filter 2 43)]
-          (is (nil? (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL filter-clause))))))
-      (testing "ambiguous match"
-        ;; don't use lib/filter because it will ignore duplicate filters.
-        (let [query (lib.util/update-query-stage query -1 update :filters conj (lib.util/fresh-uuids first-filter))]
-          (is (thrown-with-msg?
-               #?(:clj Exception :cljs :default) #"Multiple matching filters found"
-               (lib/find-filter-for-legacy-filter query (lib.convert/->legacy-MBQL (first filter-clauses))))))))))
-
-(deftest ^:parallel find-filterable-column-for-legacy-ref-test
-  (let [query (lib/filter (lib.tu/venues-query) (lib/= (meta/field-metadata :venues :name) "BBQ"))]
-    (are [legacy-ref] (=? {:name      "NAME"
-                           :id        (meta/id :venues :name)
-                           :operators seq}
-                          (lib/find-filterable-column-for-legacy-ref query legacy-ref))
-      [:field (meta/id :venues :name) nil]
-      [:field (meta/id :venues :name) {}]
-      ["field" (meta/id :venues :name) nil]
-      #?@(:cljs
-          [#js ["field" (meta/id :venues :name) nil]
-           #js ["field" (meta/id :venues :name) #js {}]]))))
-
 (def ^:private last-online-time
   (assoc (meta/field-metadata :people :birth-date)
          :display-name   "Last Online Time"
          :base-type      :type/Time
          :effective-type :type/Time
-         :semantic-type  :type/Time))
+         :semantic-type  :type/UpdatedTime))
 
 (def ^:private is-active
   (assoc (meta/field-metadata :orders :discount)
          :display-name   "Is Active"
          :base-type      :type/Boolean
          :effective-type :type/Boolean
-         :semantic-type  :type/Boolean))
+         :semantic-type  nil))
 
 (defn- check-display-names [tests]
   (let [metadata-provider (lib/composed-metadata-provider
@@ -974,3 +921,14 @@
                         {:lib/uuid "00000000-0000-0000-0000-000000000004"}
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000005"} 7 8]
                         [:= {:lib/uuid "00000000-0000-0000-0000-000000000006"} 9 10]]]]}))))
+
+(deftest ^:parallel filter-display-name-for-year-bucketing-test
+  (let [query (lib/native-query meta/metadata-provider "SELECT * FROM ORDERS;")]
+    (is (= "Created At is Jan 1 – Dec 31, 2023"
+           (lib/display-name query [:= {:lib/uuid "79e513f8-af80-4c15-96b6-e72eff7f37cc"}
+                                    [:field {:effective-type :type/DateTime
+                                             :base-type      :type/DateTime
+                                             :temporal-unit  :year
+                                             :lib/uuid       "1fe5dc66-54af-4368-9e4a-1e64a1fbe484"}
+                                     "CREATED_AT"]
+                                    "2023-01-01T00:00:00Z"])))))

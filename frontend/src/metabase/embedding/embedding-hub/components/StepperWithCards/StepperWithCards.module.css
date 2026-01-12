@@ -1,0 +1,88 @@
+.step {
+  width: 100%;
+}
+
+.stepLabel {
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+  margin-top: 0.375rem;
+}
+
+.verticalSeparator {
+  --stepper-outline-thickness: 0.0625rem;
+  --stepper-outline-color: color-mix(
+    in srgb,
+    var(--mb-color-border),
+    black 14%
+  );
+}
+
+.step:not(.stepDone) .stepIcon {
+  color: var(--mb-color-text-primary);
+  border-color: transparent;
+  background: var(--mb-color-focus);
+}
+
+.step.stepDone .stepIcon {
+  color: var(--mb-color-background-primary);
+  background: var(--mb-color-success-secondary);
+
+  /** Prevent blue border color from affecting the done icon */
+  border-color: transparent;
+}
+
+.stepWrapper {
+  margin-right: 0.5rem;
+}
+
+.stepBody {
+  display: flex;
+  width: 100%;
+}
+
+.stepDescription {
+  padding: 0.625rem 0 1.25rem 0;
+}
+
+.stepCard {
+  border: 1px solid var(--mb-color-border) !important;
+  cursor: pointer;
+  transition:
+    background-color 250ms ease,
+    border 250ms ease;
+  padding: 0.94rem 1.25rem;
+  height: 8.75rem;
+  text-align: left;
+  width: 100%;
+  box-shadow: none;
+}
+
+.stepCardLink {
+  width: 100%;
+}
+
+.lockedStepCard {
+  cursor: not-allowed;
+  background-color: var(--mb-color-background-secondary);
+}
+
+.stepCard:not(.lockedStepCard):hover {
+  background-color: var(--mb-color-background-hover-light);
+}
+
+.stepCard.nextStepCard {
+  border: 1px solid var(--mb-color-metabase-brand) !important;
+}
+
+.infoAlertWrapper {
+  align-items: flex-start;
+}
+
+.infoAlertIcon {
+  margin-right: var(--mantine-spacing-xs);
+}
+
+.infoAlertMessage {
+  white-space: pre;
+  color: var(--mb-color-text-primary);
+}

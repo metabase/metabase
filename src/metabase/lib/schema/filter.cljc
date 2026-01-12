@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.filter
   "Schemas for the various types of filter clauses that you'd pass to `:filters` or use inside something else that takes
   a boolean expression."
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -8,7 +9,8 @@
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 (defn- tuple-clause-of-comparables-schema
   "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple` and ensure that

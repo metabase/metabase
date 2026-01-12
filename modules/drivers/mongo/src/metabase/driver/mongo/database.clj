@@ -1,8 +1,10 @@
 (ns metabase.driver.mongo.database
   "This namespace contains functions for work with mongo specific database and database details."
+  (:refer-clojure :exclude [empty? not-empty])
   (:require
    [metabase.driver-api.core :as driver-api]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.performance :refer [empty? not-empty]])
   (:import
    (com.mongodb ConnectionString)))
 

@@ -9,7 +9,7 @@
    [metabase.api-keys.core :as api-key]
    [metabase.api.common
     :as api
-    :refer [*current-user-id* *current-user-permissions-set*]]
+    :refer [*current-user-id*]]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit]
    [metabase.collections.models.collection.root :as collection.root]
@@ -18,7 +18,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    ;; Trying to use metabase.search would cause a circular reference ;_;
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
@@ -45,9 +46,13 @@
    {:error/message "an instance of the root Collection"}
    #'collection.root/is-root-collection?])
 
-(def ^:private ^:const archived-directly-models #{:model/Card :model/Dashboard})
-(def ^:private ^:const collectable-models
-  (set/union archived-directly-models
+(defn- archived-directly-models
+  []
+  #{:model/Card :model/Dashboard :model/Document})
+
+(defn- collectable-models
+  []
+  (set/union (archived-directly-models)
              #{:model/Pulse :model/NativeQuerySnippet :model/Timeline}))
 
 (def ^:private ^:const collection-slug-max-length
@@ -57,6 +62,26 @@
 (def ^:constant trash-collection-type
   "The value of the `:type` field for the Trash collection that holds archived items."
   "trash")
+
+(def ^:constant library-collection-type
+  "The value of the `:type` field for library collections."
+  "library")
+
+(def ^:constant library-data-collection-type
+  "The value of the `:type` field for collections that only allow tables."
+  "library-data")
+
+(def ^:constant library-metrics-collection-type
+  "The value of the `:type` field for collections that only allow metrics."
+  "library-metrics")
+
+(def transforms-ns
+  "Namespace for transforms"
+  :transforms)
+
+(def snippets-ns
+  "Namespace for snippets"
+  :snippets)
 
 (defn- trash-collection* []
   (t2/select-one :model/Collection :type trash-collection-type))
@@ -70,6 +95,16 @@
     "Get the (memoized) trash collection"
     []
     (assoc (get-trash) :name (deferred-tru "Trash"))))
+
+(def shared-tenant-ns
+  "Namespace for shared tenant collections"
+  :shared-tenant-collection)
+
+(mu/defn shared-tenant-collection?
+  "Whether or not a collection is a tenant collection."
+  [{:keys [namespace]} :- [:or RootCollection [:map [:namespace {:optional true} [:maybe [:or :keyword :string]]]]]]
+  (= (some-> namespace name)
+     (name shared-tenant-ns)))
 
 (defn trash-collection-id
   "The ID representing the Trash collection."
@@ -94,7 +129,80 @@
 (defn is-trash-or-descendant?
   "Is this the trash collection, or a descendant of it?"
   [collection]
-  (str/starts-with? (:location collection) (trash-path)))
+  (or (is-trash? collection)
+      (and (:location collection)
+           (str/starts-with? (:location collection) (trash-path)))))
+
+(defn remote-synced-collection?
+  "Is this a remote-synced collection?
+   Returns true if the collection has is_remote_synced=true in the database."
+  [collection-or-id]
+  (cond
+    (nil? collection-or-id) false ;; the root collection is never remote-synced
+    (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
+    :else (t2/select-one-fn :is_remote_synced :model/Collection :id (u/the-id collection-or-id))))
+
+(defn- is-library?
+  "Is this the Library collection?"
+  [collection]
+  (= (:type collection) library-collection-type))
+
+(defn- is-library-data-collection?
+  "Is this the Data collection?"
+  [collection]
+  (= (:type collection) library-data-collection-type))
+
+(defn- is-library-metrics-collection?
+  "Is this the Metrics collection?"
+  [collection]
+  (= (:type collection) library-metrics-collection-type))
+
+(defn remote-synced-collection
+  "Get the remote-synced collection if it exists."
+  []
+  (t2/select-one :model/Collection :is_remote_synced true :location "/"))
+
+(defn create-remote-synced-collection!
+  "Create the remote-synced-collection"
+  []
+  (when-not (nil? (remote-synced-collection))
+    (throw (ex-info "Remote-synced collection already exists" {})))
+  (t2/insert-returning-instance! :model/Collection {:name     "Synced Collection"
+                                                    :is_remote_synced true
+                                                    :location "/"}))
+
+(defonce ^:dynamic ^:private *clearing-remote-sync* false)
+
+(defn clear-remote-synced-collection!
+  "Marks any remote-synced-collection as non-remote-synced"
+  []
+  (binding [*clearing-remote-sync* true]
+    (t2/update! :model/Collection :is_remote_synced true {:is_remote_synced false})))
+
+(defn library-collection
+  "Get the 'library' collection, if it exists."
+  []
+  (t2/select-one :model/Collection :type library-collection-type))
+
+(defn create-library-collection!
+  "Create the Library collection. Returns Created collection. Throws if it already exists."
+  []
+  (when-not (nil? (library-collection))
+    (throw (ex-info "Library already exists" {})))
+  (let [library       (t2/insert-returning-instance! :model/Collection {:name     "Library"
+                                                                        :type     library-collection-type
+                                                                        :location "/"})
+        base-location (str "/" (:id library) "/")
+        data          (t2/insert-returning-instance! :model/Collection {:name     "Data"
+                                                                        :type     library-data-collection-type
+                                                                        :location base-location})
+        metrics       (t2/insert-returning-instance! :model/Collection {:name     "Metrics"
+                                                                        :type     library-metrics-collection-type
+                                                                        :location base-location})]
+    (doseq [col [library data metrics]]
+      (t2/delete! :model/Permissions :collection_id (:id col))
+      (perms/grant-collection-read-permissions! (perms/all-users-group) col))
+    library))
 
 (methodical/defmethod t2/table-name :model/Collection [_model] :collection)
 
@@ -106,16 +214,19 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
-(defn maybe-localize-trash-name
-  "If the collection is the Trash, translate the `name`. This is a public function because we can't rely on
-  `define-after-select` in all circumstances, e.g. when searching or listing collection items (where we do a direct DB
-  query without `:model/Collection`)."
+(defn maybe-localize-system-collection-name
+  "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
+  This is a public function because we can't rely on `define-after-select` in all circumstances, e.g. when searching
+  or listing collection items (where we do a direct DB query without `:model/Collection`)."
   [collection]
   (cond-> collection
-    (is-trash? collection) (assoc :name (tru "Trash"))))
+    (is-trash? collection) (assoc :name (tru "Trash"))
+    (is-library? collection) (assoc :name (tru "Library"))
+    (is-library-data-collection? collection) (assoc :name (tru "Data"))
+    (is-library-metrics-collection? collection) (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
-  (maybe-localize-trash-name collection))
+  (maybe-localize-system-collection-name collection))
 
 (doto :model/Collection
   (derive :metabase/model)
@@ -125,20 +236,25 @@
 
 (defn- default-audit-collection?
   [{:keys [id] :as _col}]
-  (= id (:id (audit/default-audit-collection))))
+  (when-not (audit/analytics-dev-mode)
+    (= id (:id (audit/default-audit-collection)))))
 
 (defmethod mi/can-write? :model/Collection
   ([instance]
    (and (not (default-audit-collection? instance))
-        (mi/current-user-has-full-permissions? :write instance)))
+        (not (is-trash-or-descendant? instance))
+        (mi/current-user-has-full-permissions? :write instance)
+        (remote-sync/collection-editable? instance)))
   ([_model pk]
    (mi/can-write? (t2/select-one :model/Collection pk))))
 
 (mu/defmethod mi/can-read? :model/Collection
   ([instance]
-   (perms/can-read-audit-helper :model/Collection instance))
+   (or (is-trash? instance)
+       (perms/can-read-audit-helper :model/Collection instance)))
   ([_model pk :- pos-int?]
-   (mi/can-read? (t2/select-one :model/Collection :id pk))))
+   (or (is-trash? pk)
+       (mi/can-read? (t2/select-one :model/Collection :id pk)))))
 
 (def AuthorityLevel
   "Malli Schema for valid collection authority levels."
@@ -216,7 +332,7 @@
   (unchecked-location-path->ids location-path))
 
 (mu/defn location-path->parent-id :- [:maybe ms/PositiveInt]
-  "Given a `location-path` fetch the ID of the direct of a Collection.
+  "Given a `location-path` fetch the ID of the direct parent of a Collection.
 
      (location-path->parent-id \"/10/20/\") ; -> 20"
   [location-path :- LocationPath]
@@ -261,6 +377,8 @@
   Collection."
   [{:keys [location], owner-id :personal_owner_id, collection-namespace :namespace, :as collection}]
   {:pre [(contains? collection :namespace)]}
+  (when (and namespace (shared-tenant-collection? collection) (not (perms/use-tenants)))
+    (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
       (let [parent-namespace (t2/select-one-fn :namespace :model/Collection :id parent-id)]
@@ -271,6 +389,34 @@
   (when (and owner-id collection-namespace)
     (let [msg (tru "Personal Collections must be in the default namespace")]
       (throw (ex-info msg {:status-code 400, :errors {:personal_owner_id msg}})))))
+
+(defn- assert-valid-remote-synced-parent
+  "Check that if this Collection is remote-synced, its parent is either remote-synced or the root collection.
+
+  If a collection's parent is remote-synced, it must also be remote-synced."
+  [{:keys [location is_remote_synced]}]
+  (when-let [parent-id (and location (location-path->parent-id location))]
+    (let [parent-is-remote-synced? (t2/select-one-fn :is_remote_synced :model/Collection :id parent-id)]
+      (when (and (or parent-is-remote-synced? is_remote_synced)
+                 (not= parent-is-remote-synced? is_remote_synced))
+        (let [msg (if is_remote_synced
+                    (tru "A remote-synced Collection can only be placed in another remote-synced Collection or the root Collection.")
+                    (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
+          (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
+
+(defenterprise check-allowed-content
+  "Checks contents of a collection before saving it. The OSS implementation is a no-op."
+  metabase-enterprise.library.validation
+  [_model-type _collection-id]
+  true)
+
+(defenterprise check-library-update
+  "Checks that a collection of type `:library` only contains allowed changes."
+  metabase-enterprise.library.validation
+  [_collection]
+  true)
+
+;; This function is defined later after children-location is available
 
 (def ^:private CollectionWithLocationOrRoot
   [:or
@@ -367,6 +513,19 @@
   [collection]
   (first (personal-collections-with-ui-details [collection])))
 
+(defenterprise maybe-localize-tenant-collection-names
+  "For tenant root collections, localize the name to the user's locale.
+
+  OSS version: returns collections unchanged."
+  metabase-enterprise.tenants.model
+  [collections]
+  collections)
+
+(defn maybe-localize-tenant-collection-name
+  "Single-collection version of [[maybe-localize-tenant-collection-names]]."
+  [collection]
+  (first (maybe-localize-tenant-collection-names [collection])))
+
 (def ^:private CollectionWithLocationAndPersonalOwnerID
   "Schema for a Collection instance that has a valid `:location`, and a `:personal_owner_id` key *present* (but not
   neccesarily non-nil)."
@@ -389,6 +548,19 @@
                   :id                id
                   :personal_owner_id [:not= nil])))))
 
+(def ^:private CollectionWithNamespace
+  "Schema for a Collection instance that has a valid `:location`, and a `:namespace` key *present* (but not
+  necessarily non-nil)."
+  [:map
+   [:namespace [:maybe [:or :keyword :string]]]])
+
+(mu/defn is-dedicated-tenant-collection-or-descendant? :- :boolean
+  "Is `collection` a Tenant Collection, or a descendant of one?"
+  [collection :- CollectionWithNamespace]
+  (boolean
+   ;; If collection has namespace = "tenant-specific" we know it's in the dedicated tenant namespace
+   (= (some-> (:namespace collection) name) "tenant-specific")))
+
 (mu/defn user->existing-personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "For a `user-or-id`, return their personal Collection, if it already exists.
   Use [[metabase.collections.models.collection/user->personal-collection]] to fetch their personal Collection *and*
@@ -399,6 +571,7 @@
 (mu/defn user->personal-collection :- [:maybe (ms/InstanceOf :model/Collection)]
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
+  ;; API key users do not get personal collections
   (when-not (api-key/is-api-key-user? (u/the-id user-or-id))
     (or (user->existing-personal-collection user-or-id)
         (try
@@ -460,6 +633,12 @@
         (assoc user :personal_collection_id (when (contains? non-api-user-ids (u/the-id user))
                                               (or (get user-id->collection-id (u/the-id user))
                                                   (user->personal-collection-id (u/the-id user)))))))))
+
+(mi/define-simple-hydration-method is-shared-tenant-collection
+  :is_shared_tenant_collection
+  "Hydrate the `is_shared_tenant_collection` property of collections - whether or not they're a tenant coll."
+  [collection]
+  (shared-tenant-collection? collection))
 
 (mi/define-batched-hydration-method collection-is-personal
   :is_personal
@@ -566,6 +745,15 @@
     ;; we're not looking for a particular `archive_operation_id`
     (not (:archive-operation-id visibility-config)))))
 
+(def ^:private visible-union-columns
+  [:c.id
+   :c.location
+   :c.archived
+   :c.archive_operation_id
+   :c.archived_directly
+   :c.type
+   :c.namespace])
+
 (mu/defn visible-collection-query
   "Given a `CollectionVisibilityConfig`, return a HoneySQL query that selects all visible Collection IDs."
   ([visibility-config :- CollectionVisibilityConfig]
@@ -594,27 +782,31 @@
     ;; c) their personal collection and its descendants
     :from [(if is-superuser?
              [:collection :c]
-             [{:union-all (keep identity [{:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+             [{:union-all (keep identity [{:select visible-union-columns
                                            :from   [[:collection :c]]
-                                           :where [:exists {:select [1]
-                                                            :from [[:permissions :p]]
-                                                            :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
-                                                            :where [:and
-                                                                    [:= :pgm.user_id [:inline current-user-id]]
-                                                                    [:= :c.id :p.collection_id]
-                                                                    [:= :p.perm_type (h2x/literal "perms/collection-access")]
-                                                                    [:or
-                                                                     [:= :p.perm_value (h2x/literal "read-and-write")]
-                                                                     (when (= :read (:permission-level visibility-config))
-                                                                       [:= :p.perm_value (h2x/literal "read")])]]}]}
-                                          {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+                                           :where [:and [:exists {:select [1]
+                                                                  :from [[:permissions :p]]
+                                                                  :inner-join [[:permissions_group_membership :pgm] [:= :p.group_id :pgm.group_id]]
+                                                                  :where [:and
+                                                                          [:= :pgm.user_id [:inline current-user-id]]
+                                                                          [:= :c.id :p.collection_id]
+                                                                          [:= :p.perm_type (h2x/literal "perms/collection-access")]
+                                                                          [:or
+                                                                           [:= :p.perm_value (h2x/literal "read-and-write")]
+                                                                           (when (= :read (:permission-level visibility-config))
+                                                                             [:= :p.perm_value (h2x/literal "read")])]]}]]}
+                                          {:select visible-union-columns
                                            :from   [[:collection :c]]
-                                           :where  [:= :type (h2x/literal "trash")]}
+                                           :where  [:= :type (h2x/literal trash-collection-type)]}
                                           (when-let [personal-collection-and-descendant-ids
                                                      (seq (user->personal-collection-and-descendant-ids current-user-id))]
-                                            {:select [:c.id :c.location :c.archived :c.archive_operation_id :c.archived_directly]
+                                            {:select visible-union-columns
                                              :from   [[:collection :c]]
-                                             :where  [:in :id [:inline personal-collection-and-descendant-ids]]})])}
+                                             :where  [:in :id [:inline personal-collection-and-descendant-ids]]})
+                                          (when-let [tenant-collection-and-descendant-ids (seq (perms/user->tenant-collection-and-descendant-ids current-user-id))]
+                                            {:select visible-union-columns
+                                             :from [[:collection :c]]
+                                             :where [:in :id [:inline tenant-collection-and-descendant-ids]]})])}
               :c])]
     ;; The `WHERE` clause is where we apply the other criteria we were given:
     :where [:and
@@ -632,6 +824,12 @@
                [:= :c.archived true]
                ;; the trash collection is included when viewing archived-only
                [:= :id [:inline (trash-collection-id)]]])
+
+            (when-not (perms/use-tenants)
+              [:not [:exists {:select [1]
+                              :from [[:collection :sub_c]]
+                              :where [:and [:= :c.id :sub_c.id]
+                                      [:= :sub_c.namespace [:inline "shared-tenant-collection"]]]}]])
 
             ;; excluding things outside of the `archive_operation_id` you wanted...
             (when-let [op-id (:archive-operation-id visibility-config)]
@@ -959,6 +1157,191 @@
   [collection & additional-honeysql-where-clauses]
   (apply effective-children* collection additional-honeysql-where-clauses))
 
+;;; -------------------------------------------------- Remote Sync -------------------------------------------------------
+
+(defn- traverse-descendants
+  [node skip-archived]
+  (loop [to-traverse {node nil}
+         traversed   {}
+         accum       {}]
+    (let [item        (first to-traverse)
+          found       (let [[mod id] (key item)]
+                        (serdes/descendants mod id {:skip-archived skip-archived}))
+          traversed   (conj traversed item)
+          to-traverse (merge-with into
+                                  (dissoc to-traverse (key item))
+                                  (apply dissoc found (keys traversed)))
+          accum (merge-with concat accum (update-vals found vector))]
+      (if (empty? to-traverse)
+        accum
+        (recur to-traverse traversed accum)))))
+
+(defn remote-synced-dependents
+  "Finds dependents of a model that are contained in ANY remote-synced collection.
+
+  For cards, checks if there are any other queries that reference this card. For collections, checks dependents of
+  all cards in the collection or subcollections. For all other models it returns an empty seq. Only checks for
+  immediate dependents.
+
+  All remote-synced collections are treated as a unified pool - dependents in any remote-synced collection
+  (regardless of root) are returned.
+
+  Takes model (the model to check dependents for).
+
+  Returns a sequence of models immediately dependent on the provided model that are in any remote-synced collection."
+  [{:keys [id archived] :as model}]
+  (let [;; Get ALL top-level remote-synced collections
+        all-remote-synced-roots (t2/select-pks-set :model/Collection
+                                                   {:where [:and
+                                                            [:= :is_remote_synced true]
+                                                            [:= :location "/"]]})
+          ;; Traverse descendants of all remote-synced roots combined
+        all-remote-synced-descendants (reduce (fn [accum root-id]
+                                                (merge-with concat accum
+                                                            (traverse-descendants ["Collection" root-id] true)))
+                                              {}
+                                              all-remote-synced-roots)]
+    (case (t2/model model)
+      :model/Collection
+        ;; Get all descendants of the collection being moved and see if any of them are present in the
+        ;; set of all descendants across all remote-synced roots
+      (->> (traverse-descendants ["Collection" id] (not archived))
+           keys
+           (mapcat #(get all-remote-synced-descendants %)))
+
+        ;; If this is not a collection see if the provided model appears anywhere in the descendants of
+        ;; any remote-synced collection
+      (get all-remote-synced-descendants [(name (t2/model model)) id] []))))
+
+(defn non-remote-synced-dependencies
+  "Finds dependencies of a model that are not contained in ANY remote-synced collection.
+
+  Checks for dependencies that could be contained in a remote-synced collection but are not.
+  All remote-synced collections are treated as a unified pool - a dependency in any remote-synced
+  collection (regardless of root) is considered valid.
+
+  Uses serdes/descendants to list dependencies of a model.
+
+  Takes model (the model to check dependencies for).
+
+  Returns a set of model IDs for dependencies of the given model that are not in any remote-synced collection."
+  [{:keys [id] :as model}]
+  (if (t2/select-one :model/Collection :id (if (= (t2/model model) :model/Collection) (:id model) (:collection_id model)))
+    (let [descendants (u/group-by first second (keys (traverse-descendants [(name (t2/model model)) id] true)))]
+      (apply set/union (for [m (collectable-models)
+                             :let [key (name m)]]
+                         (set/difference (set (get descendants key))
+                                         (t2/select-pks-set m {:inner-join [[:collection :c]
+                                                                            [:and
+                                                                             [:= :c.id :collection_id]
+                                                                             [:= :c.is_remote_synced true]]]})))))
+    #{}))
+
+(defn check-non-remote-synced-dependencies
+  "Checks if a model has non-remote-synced-dependencies and throws if it does.
+
+  Takes model (the model to check dependencies for).
+
+  Returns the model if no non-remote-synced dependencies are found.
+
+  Throws an ex-info object with non-remote-synced-dependencies and a 400 status code if dependencies are found."
+  [model]
+  (when-let [non-remote-synced-deps (not-empty (non-remote-synced-dependencies model))]
+    (throw (ex-info (str (deferred-tru "Uses content that is not remote synced."))
+                    {:non-remote-synced-models non-remote-synced-deps
+                     :status-code 400})))
+  model)
+
+(defn check-remote-synced-dependents
+  "Checks if a model has remote-synced-dependents and throws if it does.
+
+  Takes model (the model to check dependencies for).
+
+  Returns the model if no remote-synced dependents are found.
+
+  Throws an ex-info object with remote-synced-dependencies and a 400 status code if dependents are found."
+  [model]
+  (when-let [remote-synced-deps (not-empty (remote-synced-dependents model))]
+    (throw (ex-info (str (deferred-tru "Used by remote synced content."))
+                    {:remote-synced-models remote-synced-deps
+                     :status-code 400})))
+  model)
+
+(defn moving-into-remote-synced?
+  "Tests if a move means the object is moving into a remote-synced collection from outside.
+
+  Returns true only when moving from a non-remote-synced collection into a remote-synced collection.
+  Moving between remote-synced collections (even with different roots) returns false.
+
+  Takes old-collection-id (id of the collection the object is being moved from) and new-collection-id (id of the
+  collection the object is being moved to)."
+  [old-collection-id new-collection-id]
+  (boolean
+   (and (some? new-collection-id)
+        (t2/exists? :model/Collection :id new-collection-id :is_remote_synced true)
+        (or (nil? old-collection-id)
+            (not (t2/exists? :model/Collection :id old-collection-id :is_remote_synced true))))))
+
+(defn moving-from-remote-synced?
+  "Tests if a move means the object is leaving remote-synced collections entirely.
+
+  Returns true only when moving from a remote-synced collection to a non-remote-synced collection.
+  Moving between remote-synced collections (even with different roots) returns false.
+
+  Takes old-collection-id (id of the collection the object is being moved from) and new-collection-id (id of the
+  collection the object is being moved to)."
+  [old-collection-id new-collection-id]
+  (boolean
+   (and (some? old-collection-id)
+        (t2/exists? :model/Collection :id old-collection-id :is_remote_synced true)
+        (or (nil? new-collection-id)
+            (not (t2/exists? :model/Collection :id new-collection-id :is_remote_synced true))))))
+
+(defn check-for-remote-sync-update
+  "Checks collection items for remote-sync integrity during an update transaction.
+
+  Verifies remote-sync integrity after the app database has been updated but before the transaction is committed.
+
+  Takes model-before-update (model being checked before changes have been applied, containing the updates map of
+  changes that have been applied to the database).
+
+  Returns the model with the changes applied.
+
+  Throws an ex-info object if remote-sync integrity is violated."
+  [{id :id collection-before-update :collection_id :as model-before-update}]
+  (u/prog1 (t2/select-one (t2/model model-before-update) :id id)
+    (let [{collection-after-update :collection_id :as model-after-update} <>]
+      (when (remote-synced-collection? collection-after-update)
+        (check-non-remote-synced-dependencies model-after-update)
+        (when (api/column-will-change? :archived model-before-update model-after-update)
+          (check-remote-synced-dependents model-after-update)))
+      (when (and (api/column-will-change? :collection_id model-before-update model-after-update)
+                 (moving-from-remote-synced? collection-before-update collection-after-update))
+        (check-remote-synced-dependents model-after-update)))))
+
+(methodical/defmethod t2/batched-hydrate [:default :is_remote_synced]
+  "Batch hydration for whether an item is remote synced"
+  [_model k items]
+  (mi/instances-with-hydrated-data items k
+                                   #(into {}
+                                          (map (juxt :id :is_remote_synced)
+                                               items))
+                                   :id
+                                   {:default false}))
+
+(methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :collection_namespace]
+  "Batch hydration for whether an item is remote synced"
+  [model k items]
+  (mi/instances-with-hydrated-data items k
+                                   #(into {}
+                                          (t2/select-pk->fn :namespace [model :id [:c.namespace :namespace]]
+                                                            {:where [:in (keyword (str (name (t2/table-name model)) ".id"))
+                                                                     (map :id items)]
+                                                             :join [[:collection :c]
+                                                                    [:= :collection_id :c.id]]}))
+                                   :id
+                                   {:default nil}))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -986,7 +1369,9 @@
   (set
    (for [collection-or-id (cons
                            collection
-                           (t2/select-pks-set :model/Collection :location [:like (str (children-location collection) "%")]))]
+                           (t2/select-pks-set :model/Collection
+                                              :location [:like (str (children-location collection) "%")]
+                                              :archived false))]
      (perms/collection-readwrite-path collection-or-id))))
 
 (mu/defn perms-for-archiving :- [:set perms/PathSchema]
@@ -1039,7 +1424,13 @@
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-collection-and-descendants collection))))
 
-(mu/defn- collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
+(mu/defn collection->descendant-ids :- [:maybe [:set ms/PositiveInt]]
+  "Gets the IDs of all descendant collections for a given collection.
+
+  Takes collection (a collection with location and ID or root collection) and additional-conditions (optional
+  additional conditions to filter descendants).
+
+  Returns a set of positive integers representing descendant collection IDs, or nil if none exist."
   [collection :- CollectionWithLocationAndIDOrRoot, & additional-conditions]
   (apply t2/select-pks-set :model/Collection
          :location [:like (str (children-location collection) "%")]
@@ -1052,6 +1443,8 @@
    (perms/set-has-full-permissions-for-set?
     @api/*current-user-permissions-set*
     (perms-for-archiving collection)))
+  (api/check-400
+   (not= (:type collection) "tenant-specific-root-collection"))
   (t2/with-transaction [_conn]
     (let [archive-operation-id    (str (random-uuid))
           affected-collection-ids (cons (u/the-id collection)
@@ -1069,13 +1462,16 @@
         :where  [:and
                  [:like :location (str (children-location collection) "%")]
                  [:not :archived]]})
-      (doseq [model (apply disj collectable-models archived-directly-models)]
+      (doseq [model (apply disj (collectable-models) (archived-directly-models))]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived true}))
-      (doseq [model archived-directly-models]
+      (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id    [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived true})))))
+                    {:archived true})))
+    (let [updated-collection (t2/select-one :model/Collection :id (:id collection))]
+      (when (:is_remote_synced updated-collection)
+        (check-remote-synced-dependents updated-collection)))))
 
 (mu/defn unarchive-collection!
   "Mark a collection as unarchived, along with any children that were archived along with the collection."
@@ -1095,6 +1491,7 @@
         new-parent              (if new-parent-id
                                   (t2/select-one :model/Collection :id new-parent-id)
                                   root-collection)
+        new-parent-is-remote-synced? (:is_remote_synced new-parent)
         new-location            (children-location new-parent)
         orig-children-location  (children-location collection)
         new-children-location   (children-location (assoc collection :location new-location))
@@ -1108,12 +1505,14 @@
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
                   {:location             new-location
+                   :is_remote_synced (boolean new-parent-is-remote-synced?)
                    :archive_operation_id nil
                    :archived_directly    nil
                    :archived             false})
       (t2/query-one
        {:update :collection
         :set    {:location             [:replace :location orig-children-location new-children-location]
+                 :is_remote_synced (boolean new-parent-is-remote-synced?)
                  :archive_operation_id nil
                  :archived_directly    nil
                  :archived             false}
@@ -1121,13 +1520,15 @@
                  [:like :location (str orig-children-location "%")]
                  [:= :archive_operation_id (:archive_operation_id collection)]
                  [:not= :archived_directly true]]})
-      (doseq [model (apply disj collectable-models archived-directly-models)]
+      (doseq [model (apply disj (collectable-models) (archived-directly-models))]
         (t2/update! model {:collection_id [:in affected-collection-ids]}
                     {:archived false}))
-      (doseq [model archived-directly-models]
+      (doseq [model (archived-directly-models)]
         (t2/update! model {:collection_id     [:in affected-collection-ids]
                            :archived_directly false}
-                    {:archived false})))))
+                    {:archived false}))
+      (when (:is_remote_synced collection)
+        (check-non-remote-synced-dependencies collection)))))
 
 (mu/defn archive-or-unarchive-collection!
   "Archive or un-archive a collection. When unarchiving, you may need to specify a new `parent_id`."
@@ -1142,26 +1543,37 @@
 
 (mu/defn move-collection!
   "Move a Collection and all its descendant Collections from its current `location` to a `new-location`."
-  [collection :- CollectionWithLocationAndIDOrRoot, new-location :- LocationPath]
+  [collection :- CollectionWithLocationAndIDOrRoot
+   new-location :- LocationPath
+   & [into-remote-synced? :- :boolean]]
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
-        will-be-in-trash? (str/starts-with? new-location (trash-path))]
+        will-be-in-trash? (str/starts-with? new-location (trash-path))
+        will-be-in-remote-synced? (t2/select-one-fn :is_remote_synced :model/Collection :id (parent-id* {:location new-location}))]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
                        :new-location new-location})))
+    (when (= (:type collection) "tenant-specific-root-collection")
+      (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
     ;; first move this Collection
     (log/infof "Moving Collection %s and its descendants from %s to %s"
                (u/the-id collection) (:location collection) new-location)
     (events/publish-event! :event/collection-touch {:collection-id (:id collection) :user-id api/*current-user-id*})
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
-                  {:location new-location})
+                  {:location new-location
+                   :is_remote_synced (boolean will-be-in-remote-synced?)})
       ;; we need to update all the descendant collections as well...
-      (t2/query-one
-       {:update :collection
-        :set    {:location [:replace :location orig-children-location new-children-location]}
-        :where  [:like :location (str orig-children-location "%")]}))))
+      (u/prog1 (t2/query-one
+                {:update :collection
+                 :set {:location [:replace :location orig-children-location new-children-location]
+                       :is_remote_synced (boolean will-be-in-remote-synced?)}
+                 :where [:like :location (str orig-children-location "%")]})
+        (when into-remote-synced?
+          (check-non-remote-synced-dependencies collection))
+        (when (moving-from-remote-synced? (parent-id* collection) (parent-id* {:location new-location}))
+          (check-remote-synced-dependents collection))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Toucan IModel & Perms Method Impls                                       |
@@ -1176,11 +1588,16 @@
         (throw (ex-info "Can't create a personal collection for an API key" {:user user-id}))))))
 
 (t2/define-before-insert :model/Collection
-  [{collection-name :name, :as collection}]
+  [{collection-name :name :keys [type] :as collection}]
   (assert-valid-location collection)
   (assert-not-personal-collection-for-api-key collection)
   (assert-valid-namespace (merge {:namespace nil} collection))
-  (assoc collection :slug (slugify collection-name)))
+  (check-allowed-content (:type collection) (when-let [location (:location (t2/changes collection))] (location-path->parent-id location)))
+  (u/prog1 (-> collection
+               (assoc :slug (slugify collection-name))
+               (cond->
+                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
+    (assert-valid-remote-synced-parent <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -1218,9 +1635,13 @@
   Descendants of Personal Collections, like Personal Collections themselves, cannot have permissions entries in the
   application database.
 
+  This also does *not* apply to Tenant Collections or their descendants. Like Personal Collections, they
+  cannot have permissions entries in the application database.
+
   For newly created Collections at the root-level, copy the existing permissions for the Root Collection."
   [{:keys [location id], collection-namespace :namespace, :as collection}]
   (when-not (or (is-personal-collection-or-descendant-of-one? collection)
+                (is-dedicated-tenant-collection-or-descendant? collection)
                 (is-trash-or-descendant? collection))
     (let [parent-collection-id (location-path->parent-id location)]
       (copy-collection-permissions! (or parent-collection-id (assoc root-collection :namespace collection-namespace))
@@ -1228,25 +1649,29 @@
 
 (t2/define-after-insert :model/Collection
   [collection]
-  (u/prog1 collection
-    (copy-parent-permissions! (t2.realize/realize collection))))
+  (u/prog1 (t2.realize/realize collection)
+    (copy-parent-permissions! <>)))
 
 ;;; ----------------------------------------------------- UPDATE -----------------------------------------------------
 
-(mu/defn- check-changes-allowed-for-personal-collection
-  "If we're trying to UPDATE a Personal Collection, make sure the proposed changes are allowed. Personal Collections
-  have lots of restrictions -- you can't archive them, for example, nor can you transfer them to other Users."
+(mu/defn- check-changes-allowed-for-protected-collection
+  "If we're trying to UPDATE a Personal Collection or Tenant Collection, make sure the proposed changes are
+  allowed. Personal Collections and TCs have lots of restrictions -- you can't archive them, for example, nor can you
+  transfer them to other Users."
   [collection-before-updates :- CollectionWithLocationAndIDOrRoot
    collection-updates        :- :map]
   ;; you're not allowed to change the `:personal_owner_id` of a Collection!
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
-  (let [unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a Personal Collection.")
-                      :authority_level   (tru "You are not allowed to change the authority level of a Personal Collection.")
+  (let [ctype        (if (:personal_owner_id collection-before-updates)
+                       "Personal Collection"
+                       "Tenant Collection")
+        unchangeable {:personal_owner_id (tru "You are not allowed to change the owner of a {0}." ctype)
+                      :authority_level   (tru "You are not allowed to change the authority level of a {0}." ctype)
                       ;; The checks below should be redundant because the `perms-for-moving` and `perms-for-archiving`
                       ;; functions also check to make sure you're not operating on Personal Collections. But as an extra safety net it
                       ;; doesn't hurt to check here too.
-                      :location          (tru "You are not allowed to move a Personal Collection.")
-                      :archived          (tru "You cannot archive a Personal Collection.")}]
+                      :location          (tru "You are not allowed to move a {0}." ctype)
+                      :archived          (tru "You cannot archive a {0}." ctype)}]
     (when-let [[k msg] (->> unchangeable
                             (filter (fn [[k _msg]]
                                       (api/column-will-change? k collection-before-updates collection-updates)))
@@ -1315,6 +1740,25 @@
         ;; this newly privatized Collection
         (revoke-perms-when-moving-into-personal-collection! collection-before-updates)))))
 
+(defenterprise update-perms-for-tenant-specific-namespace-change!
+  "If a Collection is moving into or out of the tenant-specific namespace, adjust the Permissions for it accordingly.
+
+  OSS version: Throws an exception if a collection attempts to cross the tenant-specific namespace boundary, as this
+  should never happen in OSS and we want to maintain the invariant that tenant-specific collections have no
+  permissions entries."
+  metabase-enterprise.tenants.permissions
+  [collection-before-updates collection-updates]
+  ;; Check if the collection is moving across the tenant-specific namespace boundary
+  (let [is-tenant-specific?      (is-dedicated-tenant-collection-or-descendant? collection-before-updates)
+        will-be-tenant-specific? (is-dedicated-tenant-collection-or-descendant? (merge collection-before-updates
+                                                                                       collection-updates))]
+    (when (not= is-tenant-specific? will-be-tenant-specific?)
+      (throw (ex-info (tru "Cannot move collections across tenant-specific namespace boundary in OSS.")
+                      {:status-code 400
+                       :collection collection-before-updates
+                       :is-tenant-specific is-tenant-specific?
+                       :will-be-tenant-specific will-be-tenant-specific?})))))
+
 ;; PUTTING IT ALL TOGETHER <3
 
 (defn- namespace-equals?
@@ -1330,7 +1774,7 @@
     (apply = (map std-fn namespaces))))
 
 (t2/define-before-update :model/Collection
-  [collection]
+  [{:keys [type] :as collection}]
   (let [collection-before-updates (t2/instance :model/Collection (t2/original collection))
         {collection-name :name
          :as collection-updates}  (or (t2/changes collection) {})]
@@ -1339,8 +1783,9 @@
      [400 "You cannot modify the Trash Collection."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
-    (when (:personal_owner_id collection-before-updates)
-      (check-changes-allowed-for-personal-collection collection-before-updates collection-updates))
+    (when (or (:personal_owner_id collection-before-updates)
+              (= (:type collection-before-updates) "tenant-specific-collection"))
+      (check-changes-allowed-for-protected-collection collection-before-updates collection-updates))
     ;; (2) make sure the location is valid if we're changing it
     (assert-valid-location collection-updates)
     ;; (3) make sure Collection namespace is valid
@@ -1349,15 +1794,26 @@
         (let [msg (tru "You cannot move a Collection to a different namespace once it has been created.")]
           (throw (ex-info msg {:status-code 400, :errors {:namespace msg}})))))
     (assert-valid-namespace (merge (select-keys collection-before-updates [:namespace]) collection-updates))
+
+    ;; (3.6) Check that the parent collection allows this collection to be there
+    (check-allowed-content (:type collection) (when-let [location (:location collection)] (location-path->parent-id location)))
+    ;; (3.7) Check if it's a semantic-library collection that can't be updated
+    (check-library-update collection)
     ;; (4) If we're moving a Collection from a location on a Personal Collection hierarchy to a location not on one,
     ;; or vice versa, we need to grant/revoke permissions as appropriate (see above for more details)
     (when (api/column-will-change? :location collection-before-updates collection-updates)
-      (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates))
+      (update-perms-when-moving-across-personal-boundry! collection-before-updates collection-updates)
+      ;; (4.5) If we're moving a Collection across the tenant-specific namespace boundary, we need to adjust
+      ;; permissions accordingly (delete when moving in, grant when moving out)
+      (update-perms-for-tenant-specific-namespace-change! collection-before-updates collection-updates))
     ;; OK, AT THIS POINT THE CHANGES ARE VALIDATED. NOW START ISSUING UPDATES
     ;; slugify the collection name in case it's changed in the output; the results of this will get passed along
     ;; to Toucan's `update!` impl
-    (cond-> collection-updates
-      collection-name (assoc :slug (slugify collection-name)))))
+    (u/prog1 (cond-> collection-updates
+               (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
+               collection-name (assoc :slug (slugify collection-name)))
+      (when-not *clearing-remote-sync*
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -1376,6 +1832,8 @@
   ;; delete all collection children
   (t2/delete! :model/Collection :location (children-location collection))
   (let [affected-collection-ids (cons (u/the-id collection) (collection->descendant-ids collection))]
+    (t2/update! :model/Table :collection_id [:in affected-collection-ids] {:collection_id nil
+                                                                           :is_published  false})
     (doseq [model [:model/Card
                    :model/Dashboard
                    :model/NativeQuerySnippet
@@ -1418,8 +1876,12 @@
   [_model & {:keys [table-alias]}]
   (let [maybe-alias #(h2x/identifier :field (some-> table-alias name) %)]
     [:and
-     [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
-     [:not= (maybe-alias :type) [:inline trash-collection-type]]
+     [:or [:= (maybe-alias :type) nil]
+      [:and
+       [:not= (maybe-alias :type) [:inline instance-analytics-collection-type]]
+       [:not= (maybe-alias :type) [:inline trash-collection-type]]]]
+     [:or [:= (maybe-alias :namespace) nil]
+      [:not= (maybe-alias :namespace) [:inline "analytics"]]]
      [:not (maybe-alias :is_sample)]]))
 
 (defn- parent-identity-hash [coll]
@@ -1436,7 +1898,7 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where skip-archived]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
                           [:not= :type trash-collection-type]]]
@@ -1444,6 +1906,7 @@
       (t2/reducible-select :model/Collection
                            {:where
                             [:and
+                             (when skip-archived [:not :archived])
                              [:or
                               [:in :id collection-set]
                               (when (some nil? collection-set) [:= :id nil])]
@@ -1452,6 +1915,7 @@
       (t2/reducible-select :model/Collection
                            {:where
                             [:and
+                             (when skip-archived [:not :archived])
                              [:= :personal_owner_id nil]
                              not-trash-clause
                              (or where true)]}))))
@@ -1464,28 +1928,48 @@
 (defmethod serdes/generate-path "Collection" [_ coll]
   (serdes/maybe-labeled "Collection" coll :slug))
 
-(defmethod serdes/ascendants "Collection" [_ id]
+(defmethod serdes/required "Collection" [_ id]
   (when id
-    (let [{:keys [location]} (t2/select-one :model/Collection :id id)]
-      ;; it would work returning just one, but why not return all if it's cheap
-      (into {} (for [parent-id (location-path->ids location)]
-                 {["Collection" parent-id] {"Collection" id}})))))
+    (let [{:keys [location]} (t2/select-one :model/Collection :id id)
+          path               (location-path->ids location)]
+      ;; we'll recurse anyway, so just return immediate parent
+      (when (seq path)
+        {["Collection" (u/last path)] {"Collection" id}}))))
 
-(defmethod serdes/descendants "Collection" [_model-name id]
+(defmethod serdes/descendants "Collection" [_model-name id {:keys [skip-archived]}]
   (let [location    (when id (t2/select-one-fn :location :model/Collection :id id))
         child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
                       (into {} (for [child-id (t2/select-pks-set :model/Collection
                                                                  {:where [:and
                                                                           [:= :location (str location id "/")]
+                                                                          (when skip-archived [:not :archived])
                                                                           [:or
                                                                            [:not= :type trash-collection-type]
                                                                            [:= :type nil]]]})]
                                  {["Collection" child-id] {"Collection" id}})))
-        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
+        dashboards  (into {} (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:and
+                                                                                        [:= :collection_id id]
+                                                                                        (when skip-archived [:not :archived])]})]
                                {["Dashboard" dash-id] {"Collection" id}}))
-        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:= :collection_id id]})]
-                               {["Card" card-id] {"Collection" id}}))]
-    (merge child-colls dashboards cards)))
+        cards       (into {} (for [card-id (t2/select-pks-set :model/Card {:where [:and
+                                                                                   [:= :collection_id id]
+                                                                                   (when skip-archived [:not :archived])]})]
+                               {["Card" card-id] {"Collection" id}}))
+        documents (when config/ee-available?
+                    (into {} (for [doc-id (t2/select-pks-set :model/Document {:where
+                                                                              [:and [:= :collection_id id]
+                                                                               (when skip-archived [:not :archived])]})]
+                               {["Document" doc-id] {"Collection" id}})))
+        timelines   (into {} (for [timeline-id (t2/select-pks-set :model/Timeline {:where [:and
+                                                                                           [:= :collection_id id]
+                                                                                           (when skip-archived [:not :archived])]})]
+                               {["Timeline" timeline-id] {"Collection" id}}))
+        tables      (into {} (for [table-id (t2/select-pks-set :model/Table {:where [:and
+                                                                                     [:= :collection_id id]
+                                                                                     [:= :is_published true]
+                                                                                     (when skip-archived [:= :archived_at nil])]})]
+                               {["Table" table-id] {"Collection" id}}))]
+    (merge child-colls dashboards cards documents timelines tables)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
@@ -1505,6 +1989,7 @@
           :authority_level
           :description
           :entity_id
+          :is_remote_synced
           :is_sample
           :name
           :namespace
@@ -1524,24 +2009,6 @@
 ;;; |                                           Perms Checking Helper Fns                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn check-write-perms-for-collection
-  "Check that we have write permissions for Collection with `collection-id`, or throw a 403 Exception. If
-  `collection-id` is `nil`, this check is done for the Root Collection."
-  [collection-or-id-or-nil]
-  (when (is-trash? collection-or-id-or-nil)
-    (throw (ex-info (tru "You cannot modify the Trash Collection.")
-                    {:status-code 400})))
-  (let [actual-perms   @*current-user-permissions-set*
-        required-perms (perms/collection-readwrite-path (if collection-or-id-or-nil
-                                                          collection-or-id-or-nil
-                                                          root-collection))]
-    (when-not (perms/set-has-full-permissions? actual-perms required-perms)
-      (throw (ex-info (tru "You do not have curate permissions for this Collection.")
-                      {:status-code    403
-                       :collection     collection-or-id-or-nil
-                       :required-perms required-perms
-                       :actual-perms   actual-perms})))))
-
 (defn check-allowed-to-change-collection
   "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
   Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
@@ -1559,9 +2026,13 @@
   ;; if collection_id is set to change...
   (when (api/column-will-change? :collection_id object-before-update object-updates)
     ;; check that we're allowed to modify the old Collection
-    (check-write-perms-for-collection (:collection_id object-before-update))
+    (if-let [coll-id (:collection_id object-before-update)]
+      (api/write-check :model/Collection coll-id)
+      (api/write-check root-collection))
     ;; check that we're allowed to modify the new Collection
-    (check-write-perms-for-collection (:collection_id object-updates))
+    (if-let [coll-id (:collection_id object-updates)]
+      (api/write-check :model/Collection coll-id)
+      (api/write-check root-collection))
     ;; check that the new location is not archived. the root can't be archived.
     (when-let [collection-id (:collection_id object-updates)]
       (api/check-400 (t2/exists? :model/Collection :id collection-id :archived false)))))
@@ -1574,7 +2045,7 @@
 
 (defmethod allowed-namespaces :default
   [_]
-  #{nil :analytics})
+  #{nil :analytics :shared-tenant-collection :tenant-specific})
 
 (defn check-collection-namespace
   "Check that object's `:collection_id` refers to a Collection in an allowed namespace (see
@@ -1769,8 +2240,9 @@
   (when (seq items)
     (for [item items]
       (assoc item :can_delete (boolean (and
-                                        (not (or (= :model/Collection (t2/model item))
-                                                 (collection.root/is-root-collection? item)))
+                                        (not (collection.root/is-root-collection? item))
+                                        (or (not (= :model/Collection (t2/model item)))
+                                            api/*is-superuser?*)
                                         (:archived item)
                                         (mi/can-write? item)))))))
 
@@ -1793,10 +2265,21 @@
                   :collection_name            :name
                   :collection_type            :type
                   :location                   true}
-   :where        [:= :namespace nil]
+   :where [:or [:= :namespace nil]
+           [:= :namespace "analytics"]
+           [:= :namespace "shared-tenant-collection"]
+           [:= :namespace "tenant-specific"]]
    ;; depends on the current user, used for rendering and ranking
    ;; TODO not sure this is what it'll look like
    :bookmark     [:model/CollectionBookmark [:and
                                              [:= :bookmark.collection_id :this.id]
                                              ;; a magical alias, or perhaps this clause can be implicit
                                              [:= :bookmark.user_id :current_user/id]]]})
+
+(defn is-library-collection?
+  "Return true if the given collection ID corresponds to a collection in the library."
+  [collection-id]
+  (when collection-id
+    (pos-int? (t2/count :model/Collection :id collection-id :type [:in [library-collection-type
+                                                                        library-data-collection-type
+                                                                        library-metrics-collection-type]]))))

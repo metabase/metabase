@@ -1,14 +1,20 @@
 import { t } from "ttag";
 
+import { UpsellCard } from "metabase/common/components/UpsellCard";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, List } from "metabase/ui";
 
-import { UpsellCard } from "./components";
 import { UPGRADE_URL } from "./constants";
 
 export const UpsellSSO = ({ location }: { location: string }) => {
+  const campaign = "sso";
+  const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
+    campaign,
+    location,
+  });
   const tokenFeatures = useSelector((state) =>
     getSetting(state, "token-features"),
   );
@@ -23,11 +29,12 @@ export const UpsellSSO = ({ location }: { location: string }) => {
   return (
     <UpsellCard
       title={t`Tired of manually managing people and groups?`}
-      campaign="sso"
+      campaign={campaign}
       buttonText={t`Try Metabase Pro`}
       buttonLink={UPGRADE_URL}
       location={location}
       style={{ maxWidth: 242 }}
+      onClick={triggerUpsellFlow}
     >
       <Box px=".5rem">
         {t`Metabase Pro and Enterprise plans include:`}

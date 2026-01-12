@@ -9,6 +9,7 @@ import {
   SettingsPageWrapper,
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
+import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import Select, { Option } from "metabase/common/components/Select";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { openSaveDialog } from "metabase/lib/dom";
@@ -26,7 +27,7 @@ import {
 interface LogsProps {
   children?: ReactNode;
   location: Location;
-  // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB isntance
+  // NOTE: fetching logs could come back from any machine if there's multiple machines backing a MB instance
   // make this frequent enough that you will most likely get every log from every machine in some reasonable
   // amount of time
   pollingDurationMs?: number;
@@ -84,7 +85,7 @@ const LogsBase = ({
                     query.length > 0 ? (
                       <Button
                         aria-label={t`Clear`}
-                        c="text-dark"
+                        c="text-primary"
                         leftSection={<Icon name="close" />}
                         size="xs"
                         variant="subtle"
@@ -143,9 +144,14 @@ const LogsBase = ({
               </Flex>
             </Flex>
 
-            <LogsContent id="logs-content" ref={scrollRef} onScroll={onScroll}>
+            <AnsiLogs
+              id="logs-content"
+              ref={scrollRef}
+              onScroll={onScroll}
+              component={LogsContent}
+            >
               {displayLogs}
-            </LogsContent>
+            </AnsiLogs>
           </LogsContainer>
         </SettingsSection>
       </SettingsPageWrapper>

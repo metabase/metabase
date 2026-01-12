@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupContentTranslationEndpoints } from "__support__/server-mocks/content-translation";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
@@ -14,7 +14,7 @@ import { createMockState } from "metabase-types/store/mocks";
 
 export interface ContentTranslationTestSetupOptions {
   localeCode?: string;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
   dictionary?: DictionaryArray;
   staticallyEmbedded?: boolean;
@@ -22,7 +22,7 @@ export interface ContentTranslationTestSetupOptions {
 
 export const setupForContentTranslationTest = ({
   localeCode = "en",
-  hasEnterprisePlugins,
+  enterprisePlugins,
   tokenFeatures = {},
   dictionary,
   staticallyEmbedded,
@@ -35,8 +35,8 @@ export const setupForContentTranslationTest = ({
     currentUser: createMockUser({ locale: localeCode }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   setupContentTranslationEndpoints({ dictionary });

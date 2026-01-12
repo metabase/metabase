@@ -1,5 +1,5 @@
+import type { ExpressionError } from "metabase/querying/expressions";
 import { Flex, Icon } from "metabase/ui";
-import type { ExpressionError } from "metabase-lib/v1/expressions";
 
 import S from "./Errors.module.css";
 

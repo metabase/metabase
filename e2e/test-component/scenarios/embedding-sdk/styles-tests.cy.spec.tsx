@@ -1,13 +1,14 @@
-import { Button, MantineProvider } from "@mantine/core";
 import {
   CreateDashboardModal,
   EditableDashboard,
   InteractiveDashboard,
   InteractiveQuestion,
   MetabaseProvider,
+  type MetabaseTheme,
   StaticQuestion,
   defineMetabaseTheme,
 } from "@metabase/embedding-sdk-react";
+import { useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -58,7 +59,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         expect(response?.statusCode).to.equal(200);
       });
 
-      getSdkRoot().children().should("have.attr", "dir", "ltr");
+      getSdkRoot().get(".mb-wrapper").should("have.attr", "dir", "ltr");
     });
   });
 
@@ -132,6 +133,42 @@ describe("scenarios > embedding-sdk > styles", () => {
         .findByText("Pick your starting data")
         .invoke("css", "color")
         .should("equal", "rgb(255, 0, 0)");
+    });
+
+    it('should be able to reset theme colors by setting it to "undefined" (EMB-696)', () => {
+      const THEME = defineMetabaseTheme({
+        colors: {
+          "text-primary": "#0000ff",
+        },
+      });
+      function TestComponent() {
+        const [theme, setTheme] = useState<MetabaseTheme | undefined>(
+          undefined,
+        );
+        return (
+          <MetabaseProvider
+            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+            theme={theme}
+          >
+            <button onClick={() => setTheme(THEME)}>Set theme</button>
+            <button onClick={() => setTheme(undefined)}>Remove theme</button>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        );
+      }
+      cy.mount(<TestComponent />);
+
+      getSdkRoot().within(() => {
+        cy.findByRole("button", { name: "Set theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          .should("equal", "rgb(0, 0, 255)");
+        cy.findByRole("button", { name: "Remove theme" }).click();
+        cy.findByText("Orders")
+          .invoke("css", "color")
+          // --mb-color-text-primary
+          .should("equal", "rgba(7, 23, 34, 0.84)");
+      });
     });
   });
 
@@ -375,6 +412,24 @@ describe("scenarios > embedding-sdk > styles", () => {
       // TODO: good place for a visual regression test
     });
 
+    it("mantine modals should render with proper position", () => {
+      cy.mount(
+        <div style={{ paddingLeft: "9999px" }}>
+          <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </MetabaseProvider>
+        </div>,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Summarize").click();
+        cy.findByText("Count of rows").click();
+        cy.findByText("Save").click();
+
+        cy.findByText("Save question").should("be.visible");
+      });
+    });
+
     describe("popover/tooltips/overlays styles", () => {
       beforeEach(() => {
         signInAsAdminAndEnableEmbeddingSdk();
@@ -423,7 +478,7 @@ describe("scenarios > embedding-sdk > styles", () => {
         );
       });
 
-      it.skip("should render legacy Popover with our styles", () => {
+      it("should render legacy Popover with our styles", () => {
         cy.get("@dashboardId").then((dashboardId) => {
           mountSdkContent(<EditableDashboard dashboardId={dashboardId} />, {
             sdkProviderProps: {
@@ -517,6 +572,36 @@ describe("scenarios > embedding-sdk > styles", () => {
     });
   });
 
+  describe("Portal root element position and size", () => {
+    it("should properly render full-page portal root element", () => {
+      mountSdkContent(
+        <>
+          <div
+            style={{
+              padding: "30%",
+            }}
+          >
+            <div style={{ overflow: "hidden", position: "relative" }}>
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+            </div>
+          </div>
+
+          <div data-testid="second-question">
+            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
+          </div>
+        </>,
+      );
+
+      cy.findByTestId("second-question").within(() => {
+        cy.findByText("Summarize").click();
+      });
+
+      getSdkRoot().within(() => {
+        cy.findByText("Count of rows").should("be.visible");
+      });
+    });
+  });
+
   describe("styles should not leak outside of the provider", () => {
     const elements = [
       { tag: "body", jsx: undefined }, // no need to render anything specific, the body tag is rendered by cypress
@@ -549,66 +634,6 @@ describe("scenarios > embedding-sdk > styles", () => {
       for (const { tag } of elements) {
         expectElementToHaveNoAppliedCssRules(tag);
       }
-    });
-
-    it("css variables should not leak outside of mb-wrapper", () => {
-      cy.mount(
-        <MantineProvider
-          theme={{ colors: { brand: colorTuple("rgb(255, 0, 255)") } }}
-        >
-          <Button color="brand">outside sdk provider</Button>
-
-          <MetabaseProvider
-            authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-            theme={{ colors: { brand: "rgb(255, 0, 0)" } }}
-          >
-            <Button color="brand">outside sdk wrapper</Button>
-
-            <InteractiveQuestion
-              questionId={ORDERS_QUESTION_ID}
-              isSaveEnabled
-            />
-          </MetabaseProvider>
-        </MantineProvider>,
-      );
-
-      cy.log(
-        "Customer's elements outside of the SDK provider should have their brand color intact",
-      );
-
-      cy.contains("button", "outside sdk provider").should(
-        "have.css",
-        "background-color",
-        "rgb(255, 0, 255)",
-      );
-
-      cy.log(
-        "Customer's elements outside of the SDK components should have their brand color intact",
-      );
-
-      cy.contains("button", "outside sdk wrapper").should(
-        "have.css",
-        "background-color",
-        "rgb(255, 0, 255)",
-      );
-
-      cy.log(
-        "SDK elements should have the brand color from the Metabase theme",
-      );
-
-      getSdkRoot().within(() => {
-        cy.get("button")
-          .contains("Filter")
-          .should("have.css", "color", "rgb(255, 0, 0)");
-
-        cy.findByTestId("notebook-button").click();
-
-        cy.findByRole("button", { name: "Visualize" }).should(
-          "have.css",
-          "background-color",
-          "rgb(255, 0, 0)",
-        );
-      });
     });
   });
 });
@@ -646,17 +671,3 @@ function wrapBrowserDefaultFont() {
     cy.wrap(fontFamily).as("defaultBrowserFontFamily");
   });
 }
-
-export const colorTuple = (value: string) =>
-  [
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-    value,
-  ] as const;

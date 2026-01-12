@@ -3,12 +3,12 @@
   warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
   dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
   instead of running like 10 separate queries? -- Cam"
+  (:refer-clojure :exclude [every? mapv some select-keys update-keys empty? not-empty get-in])
   (:require
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.equality :as lib.equality]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -18,20 +18,20 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.metadata :as qp.metadata]
-   [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+   [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf]))
+   [metabase.util.performance :as perf :refer [mapv some every? select-keys update-keys empty? not-empty get-in]]))
 
 (set! *warn-on-reflection* true)
 
@@ -383,24 +383,20 @@
         show-row-totals    (get viz-settings :pivot.show_row_totals true)
         show-column-totals (get viz-settings :pivot.show_column_totals true)
         metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                               (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
-        unique-name-fn     (lib.util/unique-name-generator)
+        unique-name-fn     (lib/unique-name-generator)
         returned-columns   (->> (lib/returned-columns query)
                                 (mapv #(update % :name unique-name-fn)))
         aggregations       (filter #(= (:lib/source %) :source/aggregations)
                                    returned-columns)
         breakouts          (filter :lib/breakout? returned-columns)
-        column-alias->index (into {}
-                                  (map-indexed (fn [i column] [(:lib/desired-column-alias column) i]))
-                                  (concat breakouts aggregations))
         column-name->index (into {}
-                                 (map-indexed (fn [i column] [(:name column) i]))
+                                 (map-indexed (fn [i column] [(:lib/deduplicated-name column) i]))
                                  (concat breakouts aggregations))
         process-columns    (fn process-columns [column-names]
                              (when (seq column-names)
-                               (into [] (keep (fn [n] (or (column-alias->index n)
-                                                          (column-name->index n)))) column-names)))
+                               (into [] (keep column-name->index) column-names)))
         pivot-opts         {:pivot-rows         (process-columns rows)
                             :pivot-cols         (process-columns columns)
                             :pivot-measures     (process-columns values)
@@ -416,7 +412,7 @@
                     [:database ::lib.schema.id/database]]
    viz-settings :- [:maybe :map]]
   (let [metadata-provider  (or (:lib/metadata query)
-                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                               (lib-be/application-database-metadata-provider (:database query)))
         query              (lib/query metadata-provider query)
         index-in-breakouts (into {}
                                  (comp (filter (some-fn :lib/breakout? #(= (:lib/source %) :source/aggregations)))
@@ -440,7 +436,7 @@
         show-row-totals    (get viz-settings "pivot.show_row_totals" true)
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
         metadata-provider             (or (:lib/metadata query)
-                                          (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                          (lib-be/application-database-metadata-provider (:database query)))
         mlv2-query                    (lib/query metadata-provider query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]
@@ -543,8 +539,8 @@
   (when (and (vector? breakout)
              (= (first breakout) :field))
     (not-empty (select-keys (second breakout)
-                            [::qp.add-dimension-projections/original-field-dimension-id
-                             ::qp.add-dimension-projections/new-field-dimension-id]))))
+                            [::qp.add-remaps/original-field-dimension-id
+                             ::qp.add-remaps/new-field-dimension-id]))))
 
 (defn- remapped-indexes
   [breakouts]
@@ -558,8 +554,8 @@
                              [{} 0]
                              breakouts))]
     (into {}
-          (map (juxt ::qp.add-dimension-projections/original-field-dimension-id
-                     ::qp.add-dimension-projections/new-field-dimension-id))
+          (map (juxt ::qp.add-remaps/original-field-dimension-id
+                     ::qp.add-remaps/new-field-dimension-id))
           (vals remap-pairs))))
 
 (mu/defn- splice-in-remap :- ::breakout-combination
@@ -607,10 +603,7 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [remapped-query          (->> query
-                                     lib/->legacy-MBQL
-                                     qp.add-dimension-projections/add-remapped-columns
-                                     (lib.query/query (qp.store/metadata-provider)))
+  (let [remapped-query          (qp.add-remaps/add-remapped-columns query)
         remap                   (remapped-indexes (lib/breakouts remapped-query))
         canonical-query         (add-pivot-group-breakout remapped-query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)
@@ -627,7 +620,7 @@
   ([query]
    (run-pivot-query query nil))
 
-  ([query :- ::qp.schema/query
+  ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
    (binding [qp.perms/*card-id* (get-in query [:info :card-id])]

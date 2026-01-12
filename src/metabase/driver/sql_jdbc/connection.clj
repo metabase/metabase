@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
+  (:refer-clojure :exclude [get-in some select-keys])
   (:require
    [clojure.java.jdbc :as jdbc]
    [metabase.driver :as driver]
@@ -12,6 +13,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in select-keys some]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -94,10 +96,10 @@
    "acquireRetryAttempts"         (if driver-api/is-test? 1 0)
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
-   "minPoolSize"                  (if (:router-database-id database)
-                                    0 1)
-   "initialPoolSize"              (if (:router-database-id database)
-                                    0 1)
+   ;; In the case of serverless databases, we don't want to periodically
+   ;; wake them up to keep a connection open (#58373).
+   "minPoolSize"                  0
+   "initialPoolSize"              0
    "maxPoolSize"                  (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
@@ -279,7 +281,7 @@
                             ;; for the audit db, we pass the datasource for the app-db. This lets us use fewer db
                             ;; connections with *application-db* and 1 less connection pool. Note: This data-source is
                             ;; not in [[database-id->connection-pool]].
-                            (:is-audit db)
+                            (or (:is-audit db) (get-in db [:details :is-audit-dev]))
                             {:datasource (driver-api/data-source)}
 
                             (= ::not-found details)
@@ -374,4 +376,8 @@
   `SELECT 1` query."
   [driver details]
   (with-connection-spec-for-testing-connection [jdbc-spec [driver details]]
-    (can-connect-with-spec? jdbc-spec)))
+    (or (:is-audit-dev details)
+        (can-connect-with-spec? jdbc-spec))))
+
+(defmethod driver/connection-spec :sql-jdbc [_driver db]
+  (db->pooled-connection-spec  db))

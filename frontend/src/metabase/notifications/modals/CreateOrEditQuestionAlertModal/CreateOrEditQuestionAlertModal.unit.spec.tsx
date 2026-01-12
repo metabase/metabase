@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupNotificationChannelsEndpoints,
   setupUserRecipientsEndpoint,
@@ -11,7 +11,6 @@ import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { CreateOrEditQuestionAlertModal } from "metabase/notifications/modals";
-import type { UserWithApplicationPermissions } from "metabase/plugins";
 import type {
   ChannelApiResponse,
   Notification,
@@ -32,14 +31,6 @@ import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 
 describe("CreateOrEditQuestionAlertModal", () => {
-  beforeEach(() => {
-    fetchMock.reset();
-  });
-
-  afterEach(() => {
-    fetchMock.restore();
-  });
-
   it("should display first available channel by default - Email", async () => {
     setup({
       isAdmin: true,
@@ -267,11 +258,11 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
-    const calls = fetchMock.calls("path:/api/notification");
+    const calls = fetchMock.callHistory.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+      const requestBody = await calls[0].options?.body;
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -312,11 +303,11 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for 8am
-    const calls = fetchMock.calls("path:/api/notification");
+    const calls = fetchMock.callHistory.calls("path:/api/notification");
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+      const requestBody = await calls[0].options?.body;
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for 8am daily
@@ -372,11 +363,13 @@ describe("CreateOrEditQuestionAlertModal", () => {
     await userEvent.click(saveButton);
 
     // Verify the API was called with the correct cron schedule for Tuesday at 2pm
-    const calls = fetchMock.calls(`path:/api/notification/${notificationId}`);
+    const calls = fetchMock.callHistory.calls(
+      `path:/api/notification/${notificationId}`,
+    );
     expect(calls.length).toBe(1);
 
     await waitFor(async () => {
-      const requestBody = await calls[0][1]?.body;
+      const requestBody = await calls[0].options?.body;
       const subscription = JSON.parse(requestBody as string).subscriptions[0];
 
       // Verify the cron schedule is for Tuesday at 2pm (day 3)
@@ -414,7 +407,8 @@ function setup({
     }),
   });
 
-  setupEnterprisePlugins();
+  setupEnterpriseOnlyPlugin("advanced_permissions");
+  setupEnterpriseOnlyPlugin("application_permissions");
 
   const mockCard = createMockCard({
     display: "line",
@@ -438,7 +432,7 @@ function setup({
   );
 
   if (userCanAccessSettings) {
-    (currentUser as UserWithApplicationPermissions).permissions = {
+    currentUser.permissions = {
       can_access_setting: true,
       can_access_monitoring: false,
       can_access_subscription: false,

@@ -489,10 +489,9 @@ describe("ObjectDetailView", () => {
 
     const modal = await screen.findByTestId("action-execute-modal");
     expect(modal).toBeInTheDocument();
-
-    expect(within(modal).getByTestId("modal-header")).toHaveTextContent(
-      "Update",
-    );
+    expect(
+      within(modal).getByRole("heading", { name: "Update" }),
+    ).toBeInTheDocument();
   });
 
   it("should show delete object modal on delete action click", async () => {
@@ -513,6 +512,44 @@ describe("ObjectDetailView", () => {
       "Are you sure you want to delete this row?",
     );
   });
+
+  describe("keyboard bindings", () => {
+    it("should be added when showControls is true", async () => {
+      const mockViewPreviousObjectDetail = jest.fn();
+      const mockViewNextObjectDetail = jest.fn();
+
+      setup({
+        question: mockQuestion,
+        showControls: true,
+        viewPreviousObjectDetail: mockViewPreviousObjectDetail,
+        viewNextObjectDetail: mockViewNextObjectDetail,
+      });
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(mockViewPreviousObjectDetail).toHaveBeenCalledTimes(1);
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(mockViewNextObjectDetail).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not be added when showControls is false", async () => {
+      const mockViewPreviousObjectDetail = jest.fn();
+      const mockViewNextObjectDetail = jest.fn();
+
+      setup({
+        question: mockQuestion,
+        showControls: false,
+        viewPreviousObjectDetail: mockViewPreviousObjectDetail,
+        viewNextObjectDetail: mockViewNextObjectDetail,
+      });
+
+      await userEvent.keyboard("{ArrowUp}");
+      expect(mockViewPreviousObjectDetail).not.toHaveBeenCalled();
+
+      await userEvent.keyboard("{ArrowDown}");
+      expect(mockViewNextObjectDetail).not.toHaveBeenCalled();
+    });
+  });
 });
 
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
@@ -524,9 +561,8 @@ async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {
 }
 
 /**
- * There is no loading state for useActionListQuery & useDatabaseListQuery
- * in ObjectDetail component, so there is no easy way to wait for relevant
- * API requests to finish. This function relies on DOM changes instead.
+ * There is no loading indicator in ObjectDetail component, so there is no easy way
+ * to wait for relevant API requests to finish. This function relies on DOM changes instead.
  */
 async function findActionsMenu() {
   try {

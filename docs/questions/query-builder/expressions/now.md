@@ -58,7 +58,7 @@ For more info about the way these data types behave in Metabase, see [Timezones]
 
 ## Limitations
 
-`now` might not actually be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/localization.md#report-timezone).
+`now` might not be _now_ (in your local time) if you don't live in the same timezone as your Metabase [report time zone](../../../configuring-metabase/localization.md#report-timezone).
 
 If you need to compare `now` to a column in a different time zone, use [convertTimezone](./converttimezone.md) to shift both columns into the same time zone. For example:
 
@@ -76,7 +76,7 @@ Different ways to do the same thing, because while you'd love to use custom expr
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query-builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
 By default, `now` uses your Metabase's [report time zone](../../../configuring-metabase/localization.md#report-timezone). If your admin hasn't set a report time zone, `now` will use your database's time zone.
 

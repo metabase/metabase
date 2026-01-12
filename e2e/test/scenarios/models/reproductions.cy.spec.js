@@ -94,8 +94,8 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText(personalCollectionName).click();
       cy.findByText(modelName);
     });
@@ -119,8 +119,8 @@ describe("issue 19737", () => {
     cy.findByText("Question").should("be.visible").click();
 
     // Open question picker (this is crucial) so the collection list are loaded.
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").click();
       cy.findByText(modelName);
     });
@@ -143,60 +143,12 @@ describe("issue 19737", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Question").should("be.visible").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
       cy.findByText("First collection").should("not.exist");
       H.entityPickerModalLevel(1).should("exist");
       H.entityPickerModalLevel(2).should("not.exist");
     });
-  });
-});
-
-// this is only testable in OSS because EE always has models from auditv2
-describe("issue 19776", { tags: "@OSS" }, () => {
-  const modelName = "Orders Model";
-  function openEllipsisMenuFor(item) {
-    cy.findByText(item).closest("tr").find(".Icon-ellipsis").click();
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should reflect archived model in the data picker without refreshing (metabase#19776)", () => {
-    cy.visit("/");
-
-    cy.findByTestId("app-bar").button("New").click();
-    H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Collections").click(); // now you see it
-    H.entityPickerModal()
-      .button(/Filter/)
-      .click();
-
-    H.popover().findByText("Models").should("exist");
-
-    H.entityPickerModal().findByLabelText("Close").click();
-
-    // navigate without a page load
-    cy.findByTestId("sidebar-toggle").click();
-    H.navigationSidebar().findByText("Our analytics").click();
-
-    // archive the only model
-    cy.findByTestId("collection-table").within(() => {
-      openEllipsisMenuFor(modelName);
-    });
-    H.popover().contains("Move to trash").click();
-    cy.findByTestId("undo-list").findByText("Trashed model");
-
-    cy.findByTestId("app-bar").button("New").click();
-    H.popover().findByText("Question").click();
-    H.entityPickerModalTab("Collections").click(); // now you don't
-    H.entityPickerModal()
-      .button(/Filter/)
-      .click();
-
-    H.popover().findByText("Models").should("not.exist");
   });
 });
 
@@ -280,7 +232,7 @@ describe("issue 20517", () => {
     H.createQuestion(modelDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/${id}/query`).as("modelQuery");
       cy.intercept("PUT", `/api/card/${id}`).as("updateModel");
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@modelQuery");
     });
   });
@@ -304,7 +256,7 @@ describe("issue 20517", () => {
   });
 });
 
-describe.skip("issue 20624", () => {
+describe("issue 20624", { tags: "@skip" }, () => {
   const renamedColumn = "TITLE renamed";
 
   const questionDetails = {
@@ -423,34 +375,38 @@ describe("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it.skip("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
-    H.openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit query definition").click();
+  it(
+    "adding or removing a column should not drop previously edited metadata (metabase#22517)",
+    { tags: "@skip" },
+    () => {
+      H.openQuestionActions();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Edit query definition").click();
 
-    // Make sure previous metadata changes are reflected in the UI
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
+      // Make sure previous metadata changes are reflected in the UI
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
 
-    // This will edit the original query and add the `SIZE` column
-    // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
-    H.NativeEditor.focus().type(
-      "{leftarrow}".repeat(" from orders".length) +
-        ", case when quantity > 4 then 'large' else 'small' end size ",
-    );
+      // This will edit the original query and add the `SIZE` column
+      // Updated query: `select *, case when quantity > 4 then 'large' else 'small' end size from orders`
+      H.NativeEditor.focus().type(
+        "{leftarrow}".repeat(" from orders".length) +
+          ", case when quantity > 4 then 'large' else 'small' end size ",
+      );
 
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
+      cy.findByTestId("native-query-editor-container").icon("play").click();
+      cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save changes").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Save changes").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Foo");
-  });
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Foo");
+    },
+  );
 });
 
 describe("issue 22518", () => {
@@ -493,7 +449,7 @@ describe("issue 22518", () => {
   });
 });
 
-describe.skip("issue 22519", () => {
+describe("issue 22519", { tags: "@skip" }, () => {
   const questionDetails = {
     query: {
       "source-table": REVIEWS_ID,
@@ -535,96 +491,72 @@ describe.skip("issue 22519", () => {
   });
 });
 
-describe(
-  "filtering based on the remapped column name should result in a correct query (metabase#22715)",
-  { tags: "@flaky" },
-  () => {
-    function mapColumnTo({ table, column } = {}) {
-      cy.findByText("Database column this maps to")
-        .parent()
-        .contains("None")
-        .click();
+describe("filtering based on the remapped column name should result in a correct query (metabase#22715)", () => {
+  beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
 
-      H.popover().findByText(table).click();
-      H.popover().findByText(column).click();
-    }
+    H.restore();
+    cy.signInAsAdmin();
 
-    beforeEach(() => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.intercept("PUT", "/api/card/*").as("updateModel");
+    H.createNativeQuestion({
+      native: {
+        query:
+          'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
+      },
+    }).then(({ body: { id } }) => {
+      // Visit the question to first load metadata
+      H.visitQuestion(id);
 
-      H.restore();
-      cy.signInAsAdmin();
+      // Turn the question into a model
+      cy.request("PUT", `/api/card/${id}`, { type: "model" });
 
-      H.createNativeQuestion({
-        native: {
-          query:
-            'select 1 as "ID", current_timestamp::datetime as "ALIAS_CREATED_AT"',
-        },
-      }).then(({ body: { id } }) => {
-        // Visit the question to first load metadata
-        H.visitQuestion(id);
+      // Let's go straight to the model metadata editor
+      cy.visit(`/model/${id}/columns`);
+      cy.findByText("Database column this maps to").should("be.visible");
 
-        // Turn the question into a model
-        cy.request("PUT", `/api/card/${id}`, { type: "model" });
+      // The first column `ID` is automatically selected
+      H.mapColumnTo({ table: "Orders", column: "ID" });
+      cy.findByText("ALIAS_CREATED_AT").click();
 
-        // Let's go straight to the model metadata editor
-        cy.visit(`/model/${id}/metadata`);
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.findByText("Database column this maps to");
-        cy.wait(5000);
+      H.mapColumnTo({ table: "Orders", column: "Created At" });
 
-        // The first column `ID` is automatically selected
-        mapColumnTo({ table: "Orders", column: "ID" });
+      // Make sure the column name updated before saving
+      cy.findByDisplayValue("Created At");
 
-        cy.findByText("ALIAS_CREATED_AT").click();
+      cy.button("Save changes").click();
+      cy.wait("@updateModel");
 
-        // Without this Cypress fails to remap the column because an element becomes detached from the DOM.
-        // This is caused by the DatasetFieldMetadataSidebar component rerendering mulitple times.
-        cy.wait(5000);
-        mapColumnTo({ table: "Orders", column: "Created At" });
-
-        // Make sure the column name updated before saving
-        cy.findByDisplayValue("Created At");
-
-        cy.button("Save changes").click();
-        cy.wait("@updateModel");
-
-        cy.visit(`/model/${id}`);
-        cy.wait("@dataset");
-      });
+      H.visitModel(id);
     });
+  });
 
-    it("when done through the column header action (metabase#22715-1)", () => {
-      H.tableHeaderClick("Created At");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+  it("when done through the column header action (metabase#22715-1)", () => {
+    H.tableHeaderClick("Created At");
+    H.popover().within(() => {
       cy.findByText("Filter by this column").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Today").click();
-
-      cy.wait("@dataset");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Today").should("not.exist");
-
-      cy.get("[data-testid=cell-data]")
-        .should("have.length", 4)
-        .and("contain", "Created At");
     });
+    cy.wait("@dataset");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Today").should("not.exist");
+    cy.get("[data-testid=cell-data]")
+      .should("have.length", 4)
+      .and("contain", "Created At");
+  });
 
-    it("when done through the filter trigger (metabase#22715-2)", () => {
-      H.filter();
-      H.popover().within(() => {
-        cy.findByText("Created At").click();
-        cy.findByText("Today").click();
-      });
-      cy.wait("@dataset");
-      cy.get("[data-testid=cell-data]")
-        .should("have.length", 4)
-        .and("contain", "Created At");
+  it("when done through the filter trigger (metabase#22715-2)", () => {
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Today").click();
     });
-  },
-);
+    cy.wait("@dataset");
+    cy.get("[data-testid=cell-data]")
+      .should("have.length", 4)
+      .and("contain", "Created At");
+  });
+});
 
 describe("issue 23024", () => {
   function addModelToDashboardAndVisit() {
@@ -705,7 +637,7 @@ describe("issue 23421", () => {
     type: "model",
   };
 
-  const hiddenColumnsQuestionDetails = {
+  const hiddenColumnsModelDetails = {
     native: {
       query,
     },
@@ -750,16 +682,17 @@ describe("issue 23421", () => {
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
-    H.createNativeQuestion(hiddenColumnsQuestionDetails, {
+    H.createNativeQuestion(hiddenColumnsModelDetails, {
       visitQuestion: true,
     });
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
     H.NativeEditor.get().should("be.visible").and("contain", query);
-    cy.findByTestId("visualization-root")
-      .findByText("Every field is hidden right now")
-      .should("be.visible");
+    H.tableInteractiveHeader().within(() => {
+      cy.findByText("id").should("be.visible");
+      cy.findByText("created_at").should("be.visible");
+    });
     cy.button("Save changes").should("be.disabled");
   });
 });
@@ -822,7 +755,6 @@ describe("issue 25537", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/collection/*/items?*").as("getCollectionContent");
   });
 
   it("should be able to pick a saved model when using a non-english locale (metabase#25537)", () => {
@@ -830,9 +762,8 @@ describe("issue 25537", () => {
     H.createQuestion(questionDetails);
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Sammlungen").click();
-      cy.wait("@getCollectionContent");
+    H.miniPicker().within(() => {
+      cy.findByText("Unsere Analysen").click();
       cy.findByText(questionDetails.name).should("exist");
     });
   });
@@ -861,8 +792,8 @@ describe("issue 26091", () => {
     cy.visit("/");
 
     startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     H.saveQuestion("New model", undefined, {
@@ -872,8 +803,8 @@ describe("issue 26091", () => {
     turnIntoModel();
 
     startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Our analytics").click();
       cy.findByText("New model").should("be.visible");
       cy.findByText("Old model").should("be.visible");
       cy.findByText("Orders Model").should("be.visible");
@@ -940,8 +871,8 @@ describe("issue 28971", () => {
 
   it("should be able to filter a newly created model (metabase#28971)", () => {
     H.startNewModel();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
     cy.findByTestId("run-button").click();
@@ -1055,7 +986,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1165,7 +1096,7 @@ describe("issue 53556 - nested question based on native model with remapped valu
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       mapModelColumnToDatabase({ table: "Orders", field: "ID" });
@@ -1364,7 +1295,7 @@ FROM
       cy.intercept("GET", `/api/database/${SAMPLE_DB_ID}/schema/PUBLIC`).as(
         "schema",
       );
-      cy.visit(`/model/${id}/metadata`);
+      cy.visit(`/model/${id}/columns`);
       cy.wait("@schema");
 
       selectModelColumn("source orders");
@@ -1458,7 +1389,7 @@ describe("issue 53604 - nested native question with multiple breakouts on same c
     );
 
     cy.findByTestId("qb-filters-panel").findByText(
-      "CREATED_AT is Jan 1 – Dec 31, 2024",
+      "CREATED_AT: Year is Jan 1 – Dec 31, 2024",
     );
 
     H.assertQueryBuilderRowCount(520);
@@ -2133,7 +2064,7 @@ describe("issue 40252", () => {
       .should("be.enabled")
       .click();
 
-    cy.url().should("not.contain", "/metadata");
+    cy.url().should("not.contain", "/columns");
 
     cy.wait("@dataset");
 

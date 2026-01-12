@@ -1,6 +1,6 @@
 import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/lib/colors";
-import { Icons } from "metabase/ui";
+import { Icons } from "metabase/ui/components/icons/Icon/icons";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
 import { TREND_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/trend-line.ts";
 import {
@@ -60,7 +60,7 @@ export function getXYTransform(element) {
 export function echartsIcon(name, isSelected = false) {
   const iconSvg = setSvgColor(
     Icons[name].source,
-    getColor(isSelected ? "brand" : "text-light"),
+    getColor(isSelected ? "brand" : "text-tertiary"),
   );
   const dataUri = svgToDataUri(iconSvg);
 
@@ -69,7 +69,7 @@ export function echartsIcon(name, isSelected = false) {
 
 export function chartGridLines() {
   return echartsContainer().find(
-    "path[stroke='var(--mb-color-border)'][fill='transparent'][stroke-dasharray='5']",
+    "path[stroke='var(--mb-color-cartesian-grid-line)'][fill='none']",
   );
 }
 

@@ -17,6 +17,7 @@ import {
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { getIcon } from "metabase/lib/icon";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
@@ -32,7 +33,7 @@ import {
 
 import { trackModelClick } from "./analytics";
 import type { ModelResult, SortColumn } from "./types";
-import { getIcon, getModelDescription, sortModels } from "./utils";
+import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
   models?: ModelResult[];
@@ -167,13 +168,13 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
 
       // do not trigger click when selecting text
       const selection = document.getSelection();
-      if (selection?.type === "Range") {
+      if (selection?.type === "Range" && selection?.toString().length > 0) {
         event.stopPropagation();
         return;
       }
 
       const { id, name } = model;
-      const url = Urls.model({ id, name });
+      const url = Urls.model({ id, name, type: "model" });
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       trackModelClick(model.id);
@@ -202,11 +203,15 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
 
 function NameCell({ model }: { model?: ModelResult }) {
   const headingId = `model-${model?.id || "dummy"}-heading`;
-  const icon = getIcon(model);
+  const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
   return (
     <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <MaybeItemLink
-        to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
+        to={
+          model
+            ? Urls.model({ id: model.id, name: model.name, type: "model" })
+            : undefined
+        }
         style={{
           // To align the icons with "Name" in the <th>
           paddingInlineStart: "1.4rem",
@@ -214,12 +219,7 @@ function NameCell({ model }: { model?: ModelResult }) {
         }}
         onClick={preventDefault}
       >
-        <Icon
-          size={16}
-          {...icon}
-          color="var(--mb-color-icon-primary)"
-          style={{ flexShrink: 0 }}
-        />
+        <Icon size={16} {...icon} c="icon-primary" style={{ flexShrink: 0 }} />
         {
           <EntityItem.Name
             name={model?.name || ""}

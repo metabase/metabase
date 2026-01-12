@@ -21,8 +21,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'kondo'
       - name: Run clj-kondo
         run: ./bin/mage kondo
 
@@ -35,8 +33,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "eastwood"
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
@@ -51,33 +47,33 @@ jobs:
         job:
           - name: Enterprise Tests
             edition: ee
-            build-static-viz: 'false'
+            test-group-name: ee
             test-args: >-
               :only '"enterprise/backend/test"'
           - name: EE App DB Tests (Part 1)
             edition: ee
-            build-static-viz: 'true'
+            test-group-name: ee-app-db-1
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 0
           - name: EE App DB Tests (Part 2)
             edition: ee
-            build-static-viz: 'true'
+            test-group-name: ee-app-db-2
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 1
           - name: OSS App DB Tests (Part 1)
             edition: oss
-            build-static-viz: 'true'
+            test-group-name: oss-app-db-1
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
               :partition/index 0
           - name: OSS App DB Tests (Part 2)
             edition: oss
-            build-static-viz: 'true'
+            test-group-name: oss-app-db-2
             test-args: >-
               :only '["test" ".clj-kondo/test"]'
               :partition/total 2
@@ -92,8 +88,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -102,26 +98,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
-        if: ${{ matrix.job.build-static-viz == 'true' }}
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: be-tests
           java-version: "${{ matrix.java-version }}"
-      # Depending on which files changed, we might either have to build static-viz
-      # from scratch or download the previously built artifact
       - name: Build static-viz frontend
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
         run: yarn build-static-viz
         env:
           MB_EDITION: ${{ matrix.job.edition }}
-      - name: Download Static Viz Bundle Artifact
-        if: ${{ matrix.job.build-static-viz == 'true' && !inputs.skip }}
-        uses: actions/download-artifact@v4
-        with:
-          name: static-viz-bundle-${{ github.sha }}
-          path: resources/frontend_client/app/dist
 
       - name: "Test Java ${{ matrix.java-version }} ${{ matrix.job.name }}"
         id: run-java-tests
@@ -129,6 +114,10 @@ jobs:
           clojure -X:dev:ci:test:${{ matrix.job.edition }}:${{ matrix.job.edition }}-dev
           :exclude-tags '[:mb/driver-tests ${{ env.__ADDITIONAL_EXCLUDED_TAG__ }}]'
           ${{ matrix.job.test-args }}
+        # Trunk Quarantine controls the final state of the run in the CI!
+        # Even if this step fails we let it pass, and then `trunk-io/analytics-uploader` determines
+        # whether to fail or to pass the whole job, based on the quarantine list.
+        continue-on-error: true
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
@@ -154,10 +143,10 @@ jobs:
           fail-on-error: false
 
       - name: Upload Logs on Failure
-        if: failure()
+        if: always() && !success()
         uses: actions/upload-artifact@v4
         with:
-          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}
+          name: test-logs-${{ matrix.java-version }}-${{ matrix.job.edition }}-${{ github.job }}-${{ matrix.job.test-group-name }}
           path: logs/test-log.json
           retention-days: 1
 
@@ -175,8 +164,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare backend
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: be-check
       # TODO -- we should probably also check WITHOUT ee -- do a check with only OSS namespaces on the classpath
       - name: Check namespaces
         run: clojure -M:ee:drivers:check
@@ -190,8 +177,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: 'cljfmt'
       - name: Run cljfmt
         run: ./bin/mage cljfmt-all --force-check
 

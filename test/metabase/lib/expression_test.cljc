@@ -14,7 +14,6 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
 
@@ -88,7 +87,6 @@
               resolved (lib.expression/resolve-expression query 0 "myexpr")]
           (testing (pr-str resolved)
             (is (mr/validate ::lib.schema/query query))
-            (is (string? (-> resolved lib.options/ident not-empty)))
             (is (= typ (lib.schema.expression/type-of resolved)))))))))
 
 (deftest ^:parallel col-info-expression-ref-test
@@ -107,8 +105,7 @@
   (let [query (lib.tu/venues-query-with-last-stage
                {:expressions [[:+
                                {:lib/uuid (str (random-uuid))
-                                :lib/expression-name "prev_month"
-                                :ident               (u/generate-nano-id)}
+                                :lib/expression-name "prev_month"}
                                (lib.tu/field-clause :users :last-login)
                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
@@ -284,19 +281,19 @@
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions-metadata))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer, :ident string?} 100]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Integer} 100]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 100)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text, :ident string?} "value"]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Text} "value"]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" "value")
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float, :ident string?} 1.23]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Float} 1.23]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" 1.23)
               (lib/expressions))))
-  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean, :ident string?} false]]
+  (is (=? [[:value {:lib/expression-name "expr", :effective-type :type/Boolean} false]]
           (-> (lib.tu/venues-query)
               (lib/expression "expr" false)
               (lib/expressions)))))
@@ -310,8 +307,8 @@
                                                            (map :lib/source-column-alias)))]
     ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
     ;; so the first two calls behave the same as the last two.
-    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
+    (is (= ["ID" "NAME" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
@@ -441,9 +438,7 @@
       (is (= "newly-named-expression"
              (lib/display-name query expr)))
       (is (not= (lib.options/uuid orig-expr)
-                (lib.options/uuid expr)))
-      (is (= (lib.options/ident orig-expr)
-             (lib.options/ident expr))))
+                (lib.options/uuid expr))))
     (testing "aggregation expressions can be renamed"
       (is (= "my count"
              (lib/display-name query agg)))
@@ -459,9 +454,7 @@
       (is (= "my count"
              (lib/display-name query agg)))
       (is (not= (lib.options/uuid orig-agg)
-                (lib.options/uuid agg)))
-      (is (= (lib.options/ident orig-expr)
-             (lib.options/ident expr))))
+                (lib.options/uuid agg))))
     (testing "filter expressions can be renamed"
       (is (= "my filter"
              (lib/display-name query new-filter)))
@@ -760,3 +753,21 @@
                               (lib/filterable-columns query))]
         (assert (some? col))
         (is (lib.types.isa/date-or-datetime? col))))))
+
+(deftest ^:parallel relative-datetime-current-test
+  (testing "Should be able to create a :relative-datetime clause with one arg (:current)"
+    (is (=? [:relative-datetime {:lib/uuid string?} :current]
+            (lib.expression/relative-datetime :current)))))
+
+(deftest ^:parallel relative-datetime-raw-temporal-bucket-test
+  (are [clause expected] (= expected
+                            (lib/raw-temporal-bucket clause))
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} 0 :month]
+    :month
+
+    [:relative-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} :current]
+    nil))
+
+(deftest ^:parallel absolute-datetime-raw-temporal-bucket-test
+  (is (= :day
+         (lib/raw-temporal-bucket [:absolute-datetime {:lib/uuid "6360380d-137a-4197-b517-9af9eebde16b"} "2025-09-08" :day]))))

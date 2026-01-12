@@ -9,7 +9,7 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - not:
-          - tableExists:
+          - tableExists: ## Have to manually check since the changest ids don't always match
               tableName: core_user
       changes:
         - sqlFile:
@@ -2362,11 +2362,6 @@ databaseChangeLog:
       validCheckSum: 8:963c0cd3a7bd2858e4dbfd4d4aad95cb
       author: noahmoss
       comment: Add foreign key constraint on sandboxes.permission_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                - foreignKeyName: fk_sandboxes_ref_permissions
       changes:
         - addForeignKeyConstraint:
             baseTableName: sandboxes
@@ -3216,11 +3211,6 @@ databaseChangeLog:
       validCheckSum: 8:05731b3e62deb09c64b60bc10031d206
       author: qnkhuat
       comment: 'Drop parameter_card.entity_id'
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: parameter_card
-            columnName: entity_id
       changes:
         - dropColumn:
             tableName: parameter_card
@@ -3281,10 +3271,6 @@ databaseChangeLog:
       validCheckSum: 8:da33cde0f1f93eed56c0f6d9ac2007df
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job_result table
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: computation_job_result
       changes:
           - dropTable:
               tableName: computation_job_result
@@ -3295,10 +3281,6 @@ databaseChangeLog:
       validCheckSum: 8:d0b1d7cc179c332b7e31f065325b7275
       author: qnkhuat
       comment: Added 0.48.0 - drop computation_job table
-      preConditions:
-        - onFail: MARK_RAN
-        - tableExists:
-            tableName: computation_job
       changes:
           - dropTable:
               tableName: computation_job
@@ -3442,7 +3424,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: Remove ON UPDATE for revision.timestamp on mysql, mariadb
       preConditions:
-          # If preconditions fail (i.e., dbms is not mysql or mariadb) then mark this migration as 'ran'
           - onFail: MARK_RAN
           - dbms:
               type: mysql,mariadb
@@ -3769,7 +3750,7 @@ databaseChangeLog:
       comment: 'No op migration'
       changes:
         - sql:
-          sql: SELECT 1;
+            sql: SELECT 1;
       rollback:
 
   - changeSet:
@@ -6458,10 +6439,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:00
       author: calherries
+      dbms: mysql,mariadb
       comment: Make metabase_field.name use case-sensitive collation for MySQL
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_field MODIFY
               name VARCHAR(254)
@@ -6469,7 +6450,6 @@ databaseChangeLog:
               COLLATE utf8mb4_bin;
       rollback:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_field MODIFY
               name VARCHAR(254)
@@ -6567,28 +6547,6 @@ databaseChangeLog:
       id: v49.2024-06-27T00:00:05
       author: calherries
       comment: Remove idx_uniq_field_table_id_parent_id_name because it is redundant with idx_unique_field
-      preConditions:
-        - onFail: MARK_RAN
-        - or:
-            - and:
-                - dbms:
-                    type: h2,postgresql
-                - uniqueConstraintExists:
-                    tableName: metabase_field
-                    constraintName: idx_uniq_field_table_id_parent_id_name
-            - and:
-                - dbms:
-                    type: mysql,mariadb
-                - sqlCheck:
-                    expectedResult: 1
-                    sql: >-
-                      SELECT EXISTS (
-                        SELECT *
-                        FROM information_schema.statistics
-                        WHERE table_schema = DATABASE()
-                          AND table_name = 'metabase_field'
-                          AND index_name = 'idx_uniq_field_table_id_parent_id_name'
-                      )
       changes:
         - dropUniqueConstraint:
             tableName: metabase_field
@@ -6602,10 +6560,10 @@ databaseChangeLog:
   - changeSet:
       id: v49.2024-06-27T00:00:06
       author: calherries
+      dbms: postgresql
       comment: Remove the idx_uniq_field_table_id_parent_id_name_2col unique index because it blocks load-from-h2
       changes:
         - sql:
-            dbms: postgresql
             sql: DROP INDEX IF EXISTS idx_uniq_field_table_id_parent_id_name_2col;
       rollback: # We deliberately don't restore this constraint because otherwise it can block downgrading to 48 after load-from-h2
 
@@ -6688,12 +6646,6 @@ databaseChangeLog:
       id: v49.2024-08-21T08:33:06
       author: johnswanson
       comment: Add permissions.perm_value
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: perm_value
       changes:
         - addColumn:
             columns:
@@ -6709,12 +6661,6 @@ databaseChangeLog:
       id: v49.2024-08-21T08:33:07
       author: johnswanson
       comment: Add permissions.perm_type
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: perm_type
       changes:
         - addColumn:
             columns:
@@ -6730,12 +6676,6 @@ databaseChangeLog:
       id: v49.2024-08-21T08:33:08
       author: johnswanson
       comment: Add permissions.collection_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: collection_id
       changes:
         - addColumn:
             tableName: permissions
@@ -6752,11 +6692,6 @@ databaseChangeLog:
       id: v49.2024-08-21T08:33:09
       author: johnswanson
       comment: Add `permissions.collection_id` foreign key constraint
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                - foreignKeyName: fk_permissions_ref_collection_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: permissions
@@ -6790,12 +6725,6 @@ databaseChangeLog:
       author: johnswanson
       comment: Create index on `permissions.collection_id`
       rollback: # deleted with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_collection_id
       changes:
         - createIndex:
             tableName: permissions
@@ -6810,12 +6739,6 @@ databaseChangeLog:
       author: johnswanson
       comment: Index on `permissions.perm_type`
       rollback: # deleted with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_perm_type
       changes:
         - createIndex:
             tableName: permissions
@@ -6829,12 +6752,6 @@ databaseChangeLog:
       author: johnswanson
       comment: Index on `permissions.perm_value`
       rollback: # deleted with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_perm_value
       changes:
         - createIndex:
             tableName: permissions
@@ -7175,12 +7092,6 @@ databaseChangeLog:
       id: v50.2024-02-26T22:15:52
       author: noahmoss
       comment: Add index on data_permissions(group_id, db_id, perm_value)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: data_permissions
-                indexName: idx_data_permissions_group_id_db_id_perm_value
       changes:
         - createIndex:
             tableName: data_permissions
@@ -7198,12 +7109,6 @@ databaseChangeLog:
       id: v50.2024-02-26T22:15:53
       author: noahmoss
       comment: Add index on data_permissions(group_id, db_id, table_id, perm_value)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: data_permissions
-                indexName: idx_data_permissions_group_id_db_id_table_id_perm_value
       changes:
         - createIndex:
             tableName: data_permissions
@@ -8254,10 +8159,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T14:05:03
       author: johnswanson
+      dbms: postgresql
       comment: Populate `archived_directly` and `archive_operation_id` (Postgres)
       changes:
         - sqlFile:
-            dbms: postgresql
             path: trash/postgres.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8265,10 +8170,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:13
       author: johnswanson
+      dbms: h2
       comment: Populate `archived_directly` and `archive_operation_id` (H2)
       changes:
         - sqlFile:
-            dbms: h2
             path: trash/h2.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8276,11 +8181,11 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:14
       author: johnswanson
+      dbms: mysql
       comment: Populate `archived_directly` and `archive_operation_id` (MySQL)
       validCheckSum: ANY
       changes:
         - sqlFile:
-            dbms: mysql
             path: trash/mysql.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8288,10 +8193,10 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-05-29T18:42:15
       author: johnswanson
+      dbms: mariadb
       comment: Populate `archived_directly` and `archive_operation_id` (MariaDB)
       changes:
         - sqlFile:
-            dbms: mariadb
             path: trash/mariadb.sql
             relativeToChangelogFile: true
       rollback: # not needed, columns will be deleted
@@ -8311,12 +8216,6 @@ databaseChangeLog:
                   defaultValue: "view"
                   constraints:
                     nullable: false
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: recent_views
-              columnName: context
 
   - changeSet:
       id: v50.2024-06-12T12:33:07
@@ -8456,7 +8355,6 @@ databaseChangeLog:
       id: v50.2024-07-09T20:04:02
       author: calherries
       comment: Add not null constraint for report_card.last_used_at
-      preConditions:
       changes:
         - addNotNullConstraint:
             tableName: report_card
@@ -8468,7 +8366,6 @@ databaseChangeLog:
       id: v50.2024-07-09T20:04:03
       author: calherries
       comment: Set default for report_card.last_used_at
-      preConditions:
       changes:
         - sql:
             dbms: postgresql,h2
@@ -8501,12 +8398,6 @@ databaseChangeLog:
       id: v50.2024-08-27T00:00:00
       author: devurandom
       comment: Add is_attached_dwh to metabase_database
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_database
-                columnName: is_attached_dwh
       changes:
         - addColumn:
             tableName: metabase_database
@@ -8531,7 +8422,6 @@ databaseChangeLog:
                   name: dataset_query_metrics_v2_migration_backup
                   remarks: The copy of dataset_query before the metrics v2 migration
                   type: ${text.type}
-      preConditions:
 
   - changeSet:
       id: v51.2024-05-13T16:00:00
@@ -8570,7 +8460,6 @@ databaseChangeLog:
                   name: session_id
               - column:
                   name: device_id
-      preConditions:
 
   - changeSet:
       id: v51.2024-06-12T18:53:03
@@ -8589,17 +8478,11 @@ databaseChangeLog:
         - dropIndex:
             tableName: login_history
             indexName: idx_user_id_device_id
-      preConditions:
 
   - changeSet:
       id: v51.2024-07-08T10:00:00
       author: qnkhuat
       comment: Create channel table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: channel
       changes:
         - createTable:
             tableName: channel
@@ -8662,12 +8545,6 @@ databaseChangeLog:
       id: v51.2024-07-08T10:00:01
       author: qnkhuat
       comment: Create pulse_channel.channel_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: pulse_channel
-                columnName: channel_id
       changes:
         - addColumn:
             tableName: pulse_channel
@@ -8681,13 +8558,6 @@ databaseChangeLog:
       id: v51.2024-07-08T10:00:02
       author: qnkhuat
       comment: Add fk constraint to pulse_channel.channel_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_pulse_channel_channel_id
-                foreignKeyTableName: pulse_channel
-
       changes:
         - addForeignKeyConstraint:
             baseTableName: pulse_channel
@@ -8713,12 +8583,6 @@ databaseChangeLog:
       id: v51.2024-07-10T12:28:10
       author: johnswanson
       comment: Add `last_viewed_at` to dashboards
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: report_dashboard
-              columnName: last_viewed_at
       changes:
         - addColumn:
             tableName: report_dashboard
@@ -8735,12 +8599,6 @@ databaseChangeLog:
       id: v51.2024-07-22T15:49:37
       author: escherize
       comment: Add embedding_client column to query_execution for metabase embedding SDK analytics
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: query_execution
-              columnName: embedding_client
       changes:
         - addColumn:
             tableName: query_execution
@@ -8756,12 +8614,6 @@ databaseChangeLog:
       id: v51.2024-07-22T15:49:38
       author: escherize
       comment: Add embedding_version column to query_execution for metabase embedding SDK analytics
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: query_execution
-              columnName: embedding_version
       changes:
         - addColumn:
             tableName: query_execution
@@ -8777,12 +8629,6 @@ databaseChangeLog:
       id: v51.2024-07-22T15:49:39
       author: escherize
       comment: Add embedding_client column to view_log for metabase embedding SDK analytics
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: view_log
-              columnName: embedding_client
       changes:
         - addColumn:
             tableName: view_log
@@ -8798,12 +8644,6 @@ databaseChangeLog:
       id: v51.2024-07-22T15:49:40
       author: escherize
       comment: Add embedding_version column to view_log for metabase embedding SDK analytics
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: view_log
-              columnName: embedding_version
       changes:
         - addColumn:
             tableName: view_log
@@ -8829,11 +8669,6 @@ databaseChangeLog:
       id: v51.2024-07-25T11:57:27
       author: crisptrutski
       comment: Add `column` column to query fields
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: query_field
-              columnName: column
       changes:
         - addColumn:
             tableName: query_field
@@ -8849,11 +8684,6 @@ databaseChangeLog:
       id: v51.2024-07-25T11:58:27
       author: crisptrutski
       comment: Add `table` column to query fields
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: query_field
-              columnName: table
       changes:
         - addColumn:
             tableName: query_field
@@ -8886,11 +8716,6 @@ databaseChangeLog:
       id: v51.2024-07-26T11:56:27
       author: crisptrutski
       comment: Add `table_id` column to query fields
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: query_field
-              columnName: table_id
       changes:
         - addColumn:
             tableName: query_field
@@ -8906,11 +8731,6 @@ databaseChangeLog:
       id: v51.2024-07-29T09:22:12
       author: crisptrutski
       comment: Add the query_analysis table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - tableExists:
-              tableName: query_analysis
       changes:
         - createTable:
             tableName: query_analysis
@@ -8954,7 +8774,6 @@ databaseChangeLog:
       author: crisptrutski
       comment: Index query_analysis.card_id
       rollback: # not necessary, will be removed with the table
-      preConditions: # linter made me add this
       changes:
         - createIndex:
             tableName: query_analysis
@@ -8967,11 +8786,6 @@ databaseChangeLog:
       id: v51.2024-07-29T09:24:13
       author: crisptrutski
       comment: Add the query_table join table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - tableExists:
-              tableName: query_table
       changes:
         - createTable:
             tableName: query_table
@@ -9033,7 +8847,6 @@ databaseChangeLog:
       author: crisptrutski
       comment: Index query_table.card_id
       rollback: # not necessary, will be removed with the table
-      preConditions: # linter made me add this
       changes:
         - createIndex:
             tableName: query_table
@@ -9047,7 +8860,6 @@ databaseChangeLog:
       author: crisptrutski
       comment: Index query_table.analysis_id
       rollback: # not necessary, will be removed with the table
-      preConditions: # linter made me add this
       changes:
         - createIndex:
             tableName: query_table
@@ -9061,7 +8873,6 @@ databaseChangeLog:
       author: crisptrutski
       comment: Index query_table.table_id
       rollback: # not necessary, will be removed with the table
-      preConditions: # linter made me add this
       changes:
         - createIndex:
             tableName: query_table
@@ -9084,11 +8895,6 @@ databaseChangeLog:
       id: v51.2024-07-29T10:04:13
       author: crisptrutski
       comment: Put Query Fields under a parent Query Analysis record
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: query_field
-              columnName: analysis_id
       changes:
         - addColumn:
             tableName: query_field
@@ -9117,7 +8923,6 @@ databaseChangeLog:
       author: crisptrutski
       comment: Index query_field.analysis_id
       rollback: # not necessary, will be removed with the table
-      preConditions: # linter made me add this
       changes:
         - createIndex:
             tableName: query_field
@@ -9130,11 +8935,6 @@ databaseChangeLog:
       id: v51.2024-08-02T11:56:27
       author: crisptrutski
       comment: Add `schema` column to query fields
-      preConditions:
-        - not:
-            - columnExists:
-                tableName: query_field
-                columnName: schema
       changes:
         - addColumn:
             tableName: query_field
@@ -9163,11 +8963,6 @@ databaseChangeLog:
       id: v51.2024-08-05T16:00:00
       author: metamben
       comment: Add source card reference to report_card to support metrics based models and questions
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: report_card
-              columnName: source_card_id
       changes:
         - addColumn:
             tableName: report_card
@@ -9181,7 +8976,6 @@ databaseChangeLog:
       id: v51.2024-08-05T16:00:01
       author: metamben
       comment: Add FK constraint to report_card.source_card_id
-      preConditions:
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
@@ -9197,11 +8991,6 @@ databaseChangeLog:
       author: metamben
       comment: Index report_card.source_card_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: report_card
-                indexName: idx_report_card_source_card_id
       changes:
         - createIndex:
             tableName: report_card
@@ -9233,11 +9022,6 @@ databaseChangeLog:
       id: v51.2024-08-26T08:53:46
       author: crisptrutski
       comment: Add a status column to track the progress and outcome of query analysis
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: query_analysis
-              columnName: status
       changes:
         - addColumn:
             tableName: query_analysis
@@ -9251,11 +9035,6 @@ databaseChangeLog:
       id: v51.2024-09-03T16:54:18
       author: adam-james
       comment: Add pivot_results to pulse_card
-      preConditions:
-        - not:
-            - columnExists:
-                tableName: pulse_card
-                columnName: pivot_results
       changes:
         - addColumn:
             tableName: pulse_card
@@ -9270,12 +9049,6 @@ databaseChangeLog:
       id: v51.2024-09-09T15:11:16
       author: johnswanson
       comment: add an index for `collection.type`
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: collection
-                indexName: idx_collection_type
       changes:
         - createIndex:
             tableName: collection
@@ -9499,10 +9272,6 @@ databaseChangeLog:
       id: v51.2024-10-24T14:24:59
       author: noahmoss
       comment: Drop foreign key constraint on persisted_info.card_id
-      preConditions:
-        - foreignKeyConstraintExists:
-            foreignKeyName: fk_persisted_info_card_id
-            foreignKeyTableName: persisted_info
       changes:
         - dropForeignKeyConstraint:
             constraintName: fk_persisted_info_card_id
@@ -9520,11 +9289,6 @@ databaseChangeLog:
       id: v51.2024-10-24T14:25:01
       author: noahmoss
       comment: Re-add nullable foreign key constraint on persisted_info.card_id
-      preConditions:
-        - not:
-            - foreignKeyConstraintExists:
-              foreignKeyName: fk_persisted_info_card_id
-              foreignKeyTableName: persisted_info
       changes:
         - addForeignKeyConstraint:
             baseTableName: persisted_info
@@ -9542,10 +9306,6 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:00
       author: qnkhuat
       comment: Create the notification table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification
       changes:
         - createTable:
             tableName: notification
@@ -9588,10 +9348,6 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:01
       author: qnkhuat
       comment: Create the notification_subscription table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification_subscription
       changes:
         - createTable:
             remarks: which type of trigger a notification is subscribed to
@@ -9638,11 +9394,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_subscription.notification_id
       rollback: # no need, will be dropped with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_subscription
-                indexName: idx_notification_subscription_notification_id
       changes:
         - createIndex:
             tableName: notification_subscription
@@ -9655,10 +9406,6 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:03
       author: qnkhuat
       comment: Create the channel_template table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: channel_template
       changes:
         - createTable:
             tableName: channel_template
@@ -9714,10 +9461,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: Create the notification_handler table
       validCheckSum: ANY
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification_handler
       changes:
         - createTable:
             tableName: notification_handler
@@ -9788,11 +9531,6 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:05
       author: qnkhuat
       comment: Add fk constraint to notification_handler.template_id
-      preConditions:
-        - not:
-          - foreignKeyConstraintExists:
-              foreignKeyName: fk_notification_handler_template_id
-              foreignKeyTableName: notification_handler
       changes:
         - addForeignKeyConstraint:
             baseTableName: notification_handler
@@ -9807,11 +9545,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_handler.notification_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_handler
-                indexName: idx_notification_handler_notification_id
       changes:
         - createIndex:
             tableName: notification_handler
@@ -9825,11 +9558,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_handler.channel_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_handler
-                indexName: idx_notification_handler_channel_id
       changes:
         - createIndex:
             tableName: notification_handler
@@ -9843,11 +9571,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_handler.template_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_handler
-                indexName: idx_notification_handler_template_id
       changes:
         - createIndex:
             tableName: notification_handler
@@ -9860,10 +9583,6 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:09
       author: qnkhuat
       comment: Create the notification_recipient table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification_recipient
       changes:
         - createTable:
             tableName: notification_recipient
@@ -9938,11 +9657,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_recipient.notification_handler_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_recipient
-                indexName: idx_notification_recipient_notification_handler_id
       changes:
         - createIndex:
             tableName: notification_recipient
@@ -9956,11 +9670,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_recipient.user_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_recipient
-                indexName: idx_notification_recipient_user_id
       changes:
         - createIndex:
             tableName: notification_recipient
@@ -9974,11 +9683,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: index on notification_recipient.permissions_group_id
       rollback: # not necessary, will be removed with the table
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: notification_recipient
-                indexName: idx_notification_recipient_permissions_group_id
       changes:
         - createIndex:
             tableName: notification_recipient
@@ -9991,11 +9695,6 @@ databaseChangeLog:
       id: v52.2024-09-05T08:00:13
       author: qnkhuat
       comment: Drop the channel_template.entity_id column
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: metabase_database
-            columnName: is_attached_dwh
       changes:
         - dropColumn:
             tableName: channel_template
@@ -10006,11 +9705,6 @@ databaseChangeLog:
       id: v52.2024-10-15T08:00:00
       author: qnkhuat
       comment: add notification_subscription.cron_schedule
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: notification_subscription
-              columnName: cron_schedule
       changes:
         - addColumn:
             tableName: notification_subscription
@@ -10056,12 +9750,6 @@ databaseChangeLog:
       id: v52.2024-12-10T10:28:16
       author: johnswanson
       comment: Add `report_card.dashboard_id`
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: report_card
-              columnName: dashboard_id
       changes:
         - addColumn:
             tableName: report_card
@@ -10077,11 +9765,6 @@ databaseChangeLog:
       id: v52.2024-12-10T10:28:21
       author: johnswanson
       comment: Make `report_card.dashboard_id` a foreign key
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - foreignKeyConstraintExists:
-            - foreignKeyName: fk_report_card_ref_dashboard_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
@@ -10096,12 +9779,6 @@ databaseChangeLog:
       author: johnswanson
       comment: Add an index for `report_card.dashboard_id`
       rollback: # will be removed with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: report_card
-                indexName: idx_report_card_dashboard_id
       changes:
         - createIndex:
             indexName: idx_report_card_dashboard_id
@@ -10114,11 +9791,6 @@ databaseChangeLog:
       id: v52.2024-12-16T09:19:00
       author: crisptrutski
       comment: Metadata about search indexes
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: search_index_metadata
       changes:
         - createTable:
             tableName: search_index_metadata
@@ -10176,12 +9848,6 @@ databaseChangeLog:
       author: crisptrutski
       comment: 'Protection against concurrent creation or promotion of indexes.'
       rollback: # will be removed with the table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: search_index_metadata
-                indexName: idx_search_index_metadata_unique_status
       changes:
         - addUniqueConstraint:
             remarks: Unique entry for each status, from any given metabase instance's perspective.
@@ -10233,7 +9899,6 @@ databaseChangeLog:
       id: v52.2025-05-28T00:00:01
       author: edpaget
       comment: set perms/download-results to no when a table has perms/view-data blocked
-      preConditions: # change is safe to run regardless
       changes:
          - sql:
             dbms: postgresql,h2
@@ -10268,11 +9933,6 @@ databaseChangeLog:
       id: v53.2024-12-02T16:21:15
       author: noahmoss
       comment: Add cache_config.refresh_automatically column
-      preConditions:
-        - not:
-            - columnExists:
-                tableName: cache_config
-                columnName: refresh_automatically
       changes:
         - addColumn:
             tableName: cache_config
@@ -10292,11 +9952,6 @@ databaseChangeLog:
         - 9:8adcf08936200cc74153d0c306452e0c
       author: noahmoss
       comment: Add query_execution.parameterized column
-      preConditions:
-        - not:
-            - columnExists:
-                tableName: query_execution
-                columnName: parameterized
       changes:
         - addColumn:
             tableName: query_execution
@@ -10312,12 +9967,6 @@ databaseChangeLog:
       id: v53.2024-12-10T10:00:00
       author: qnkhuat
       comment: add notification.internal_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - columnExists:
-              tableName: notification
-              columnName: internal_id
       changes:
         - addColumn:
             tableName: notification
@@ -10382,11 +10031,6 @@ databaseChangeLog:
       comment: >
         add a table for user-level KV. This is intended for use as a lightweight mechanism for the frontend to be able
         to mark things as seen, unseen, dismissed, etc
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: user_key_value
       changes:
         - createTable:
             tableName: user_key_value
@@ -10502,12 +10146,6 @@ databaseChangeLog:
       id: v53.2025-01-03T19:07:39
       author: noahmoss
       comment: Add `deactivated_at` column to the `core_user` table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: core_user
-                columnName: deactivated_at
       changes:
         - addColumn:
             tableName: core_user
@@ -10542,11 +10180,6 @@ databaseChangeLog:
       id: v53.2025-04-02T15:25:04
       author: edpaget
       comment: create new cluster lock table for instance coordination
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: metabase_cluster_lock
       changes:
         - createTable:
             tableName: metabase_cluster_lock
@@ -10564,7 +10197,6 @@ databaseChangeLog:
       id: v53.2025-05-06T16:03:19
       author: nvoxland
       comment: Support indexing of values with bigint ids
-      preConditions:
       changes:
         - modifyDataType:
             tableName: model_index_value
@@ -10580,12 +10212,6 @@ databaseChangeLog:
       id: v54.2025-01-30T16:10:55
       author: bshepherdson
       comment: Add `entity_id` column to the `metabase_database` table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_database
-                columnName: entity_id
       changes:
         - addColumn:
             tableName: metabase_database
@@ -10602,12 +10228,6 @@ databaseChangeLog:
       id: v54.2025-01-30T16:13:20
       author: bshepherdson
       comment: Add `entity_id` column to the `metabase_table` table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: entity_id
       changes:
         - addColumn:
             tableName: metabase_table
@@ -10624,12 +10244,6 @@ databaseChangeLog:
       id: v54.2025-01-30T16:14:02
       author: bshepherdson
       comment: Add `entity_id` column to the `metabase_field` table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_field
-                columnName: entity_id
       changes:
         - addColumn:
             tableName: metabase_field
@@ -10646,11 +10260,6 @@ databaseChangeLog:
       id: v54.2025-02-14T08:00:00
       author: qnkhuat
       comment: add notification.payload_id
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: notification
-              columnName: payload_id
       changes:
         - addColumn:
             tableName: notification
@@ -10666,10 +10275,6 @@ databaseChangeLog:
       id: v54.2025-02-14T08:01:00
       author: qnkhuat
       comment: create the notification_card table
-      preConditions:
-        - not:
-          - tableExists:
-              tableName: notification_card
       changes:
         - createTable:
             tableName: notification_card
@@ -10724,11 +10329,6 @@ databaseChangeLog:
       id: v54.2025-02-14T08:03:00
       author: qnkhuat
       comment: add notification.creator_id
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: notification
-              columnName: creator_id
       changes:
         - addColumn:
             tableName: notification
@@ -10744,11 +10344,6 @@ databaseChangeLog:
       id: v54.2025-02-14T08:04:00
       author: qnkhuat
       comment: add fk constraint to notification.creator_id
-      preConditions:
-        - not:
-          - foreignKeyConstraintExists:
-              foreignKeyName: fk_notification_creator_id
-              foreignKeyTableName: notification
       changes:
         - addForeignKeyConstraint:
             baseTableName: notification
@@ -10764,12 +10359,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: Add an index for `notification.creator_id`
       rollback: # will be removed with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: notification
-                indexName: idx_notification_creator_id
       changes:
         - createIndex:
             indexName: idx_notification_creator_id
@@ -10783,12 +10372,6 @@ databaseChangeLog:
       author: qnkhuat
       comment: Add an index for `notification_card.card_id`
       rollback: # will be removed with the column
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: notification_card
-                indexName: idx_notification_card_card_id
       changes:
         - createIndex:
             indexName: idx_notification_card_card_id
@@ -10854,7 +10437,6 @@ databaseChangeLog:
       id: v54.2025-03-06T16:55:15
       author: nvoxland
       comment: Replacing storing the session key in the "id" column in favor of storing a new hashed version
-      preConditions:
       changes:
         - addColumn:
             tableName: core_session
@@ -10871,7 +10453,6 @@ databaseChangeLog:
       id: v54.2025-03-06T16:55:16
       author: nvoxland
       comment: Creating index on the hashed session key
-      preConditions:
       changes:
         - createIndex:
             tableName: core_session
@@ -10884,11 +10465,6 @@ databaseChangeLog:
       id: v54.2025-03-11T16:00:00
       author: qnkhuat
       comment: add notification_subscription.ui_display_type
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: notification_subscription
-              columnName: ui_display_type
       changes:
         - addColumn:
             tableName: notification_subscription
@@ -10904,7 +10480,6 @@ databaseChangeLog:
       id: v54.2025-03-17T18:52:44
       author: noahmoss
       comment: Migrating zh site locales to zh_CN
-      preConditions:
       changes:
         - sql:
             dbms: postgresql
@@ -10924,7 +10499,6 @@ databaseChangeLog:
       id: v54.2025-03-17T18:52:59
       author: noahmoss
       comment: Migrating zh user locales to zh_CN
-      preConditions:
       changes:
         - sql:
             sql: >-
@@ -10936,12 +10510,6 @@ databaseChangeLog:
       author: edpaget
       comment: Add index to field_usage query_execution_id column to support faster deletes
       rollback: # cannot rollback an index on a fk in mysql
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: field_usage
-                indexName: idx_field_usage_query_execution_id
       changes:
         - createIndex:
             tableName: field_usage
@@ -11016,7 +10584,6 @@ databaseChangeLog:
       id: v54.2025-05-13T21:46:53
       author: nvoxland
       comment: Add language to index metadata
-      preConditions:
       changes:
         - addColumn:
             tableName: search_index_metadata
@@ -11034,7 +10601,6 @@ databaseChangeLog:
       id: v54.2025-05-13T21:46:54
       author: nvoxland
       comment: Preparing to replace index
-      preConditions:
       changes:
         - dropUniqueConstraint:
             tableName: search_index_metadata
@@ -11050,12 +10616,6 @@ databaseChangeLog:
       id: v54.2025-05-13T21:46:55
       author: nvoxland
       comment: 'Protection against concurrent creation or promotion of indexes.'
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: search_index_metadata
-                indexName: idx_search_index_metadata_unique_status
       changes:
         - addUniqueConstraint:
             remarks: Unique entry for each status, from any given metabase instance's perspective.
@@ -11098,11 +10658,6 @@ databaseChangeLog:
       id: v55.2025-03-24T16:28:41
       author: bshepherdson
       comment: Add report_card.card_schema
-      preConditions:
-        - not:
-          - columnExists:
-              tableName: report_card
-              columnName: card_schema
       changes:
         - addColumn:
             tableName: report_card
@@ -11119,7 +10674,6 @@ databaseChangeLog:
       id: v55.2025-03-24T16:36:19
       author: bshepherdson
       comment: Creating index on the card_schema
-      preConditions:
       changes:
         - createIndex:
             tableName: report_card
@@ -11132,11 +10686,6 @@ databaseChangeLog:
       id: v55.2025-04-01T07:17:52
       author: johnswanson
       comment: Add `db_router` table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: db_router
       changes:
         - createTable:
             tableName: db_router
@@ -11173,12 +10722,6 @@ databaseChangeLog:
       id: v55.2025-04-01T07:18:02
       author: johnswanson
       comment: Add self-referential foreign key `router_database_id` to metabase_database
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_database
-                columnName: router_database_id
       changes:
         - addColumn:
             tableName: metabase_database
@@ -11195,12 +10738,6 @@ databaseChangeLog:
       id: v55.2025-04-01T07:18:47
       author: johnswanson
       comment: add an index for `metabase_database.router_database_id`
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabase_database
-                indexName: idx_unique_metabase_database_router_database_id_name
       changes:
         - addUniqueConstraint:
             tableName: metabase_database
@@ -11211,11 +10748,6 @@ databaseChangeLog:
       id: v55.2025-04-01T07:18:52
       author: johnswanson
       comment: Add foreign key for `router_database_id`
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-          - foreignKeyConstraintExists:
-            - foreignKeyName: fk_metabase_database_metabase_database_id
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabase_database
@@ -11230,7 +10762,6 @@ databaseChangeLog:
       id: v55.2025-04-17T08:44:39
       author: johnswanson
       comment: Add permissions_group.magic_group_type
-      preConditions: # Not required
       changes:
         - addColumn:
             tableName: permissions_group
@@ -11258,7 +10789,6 @@ databaseChangeLog:
       id: v55.2025-04-22T05:42:48
       author: johnswanson
       comment: Add `permissions_group.is_tenant_group`
-      preConditions: # Not required
       changes:
         - addColumn:
             tableName: permissions_group
@@ -11275,7 +10805,6 @@ databaseChangeLog:
       id: v55.2025-04-22T05:54:51
       author: johnswanson
       comment: Add `core_user.tenant_id`
-      preConditions: #
       changes:
         - addColumn:
             tableName: core_user
@@ -11361,10 +10890,10 @@ databaseChangeLog:
       id: v55.2025-05-19T01:00:00
       validCheckSum: ANY
       author: ranquild
+      dbms: mysql,mariadb
       comment: Make metabase_table.name and schema use case-sensitive collation for MySQL
       changes:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
               `name` varchar(254)
@@ -11377,7 +10906,6 @@ databaseChangeLog:
               COLLATE utf8mb4_bin;
       rollback:
         - sql:
-            dbms: mysql,mariadb
             sql: >-
               ALTER TABLE metabase_table MODIFY
               `name` VARCHAR(254)
@@ -11394,12 +10922,6 @@ databaseChangeLog:
       validCheckSum: 9:85e9ad7b60db0cd795254ca52d6dd5a7
       author: ranquild
       comment: Add metabase_table.is_defective_duplicate
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: is_defective_duplicate
       changes:
         - addColumn:
             tableName: metabase_table
@@ -11448,12 +10970,6 @@ databaseChangeLog:
       validCheckSum: ANY
       author: ranquild
       comment: Add metabase_table.unique_table_helper to create an index that ignores EXISTING duplicates
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: metabase_table
-                columnName: unique_table_helper
       changes:
         - sql:
             dbms: postgresql
@@ -11482,12 +10998,6 @@ databaseChangeLog:
       validCheckSum: 9:848d1cb748064b5de423139fbbbc2876
       author: ranquild
       comment: Add unique constraint on metabase_table(db_id, name, unique_table_helper)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - uniqueConstraintExists:
-                tableName: metabase_table
-                constraintName: idx_unique_table
       changes:
         - addUniqueConstraint:
             tableName: metabase_table
@@ -11502,11 +11012,6 @@ databaseChangeLog:
       id: v55.2025-05-19T16:46:48
       author: edpaget
       comment: Add metabot table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: metabot
       changes:
         - createTable:
             tableName: metabot
@@ -11557,11 +11062,6 @@ databaseChangeLog:
       id: v55.2025-05-19T16:47:48
       author: edpaget
       comment: Add metabot entity table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: metabot_entity
       changes:
         - createTable:
             tableName: metabot_entity
@@ -11611,12 +11111,6 @@ databaseChangeLog:
       id: v55.2025-05-19T16:48:48
       author: edpaget
       comment: Add index on metabot_entity.metabot_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabot_entity
-                indexName: idx_metabot_entity_metabot_id
       changes:
         - createIndex:
             tableName: metabot_entity
@@ -11629,12 +11123,6 @@ databaseChangeLog:
       id: v55.2025-05-19T16:49:49
       author: edpaget
       comment: Add foreign key constraint on metabot_entity.metabot_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_metabot_entity_metabot_id
-                foreignKeyTableName: metabot_entity
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabot_entity
@@ -11693,11 +11181,6 @@ databaseChangeLog:
       validCheckSum: 9:1ed306a6b2573b7b140275e5319fae2c
       author: ranquild
       comment: Drop metabase_database.entity_id
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: metabase_database
-            columnName: entity_id
       changes:
         - dropColumn:
             tableName: metabase_database
@@ -11719,11 +11202,6 @@ databaseChangeLog:
       validCheckSum: 9:b03020b86a754abc46edca465f91eb6f
       author: ranquild
       comment: Drop metabase_table.entity_id
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: metabase_table
-            columnName: entity_id
       changes:
         - dropColumn:
             tableName: metabase_table
@@ -11745,11 +11223,6 @@ databaseChangeLog:
       validCheckSum: 9:70285cb34c7e9e4dd25f322a46e21c04
       author: ranquild
       comment: Drop metabase_field.entity_id
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: metabase_field
-            columnName: entity_id
       changes:
         - dropColumn:
             tableName: metabase_field
@@ -11770,11 +11243,6 @@ databaseChangeLog:
       id: v55.2025-06-03T16:52:38
       author: metamben
       comment: Add metabot prompt table
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - tableExists:
-                tableName: metabot_prompt
       changes:
         - createTable:
             tableName: metabot_prompt
@@ -11837,12 +11305,6 @@ databaseChangeLog:
       id: v55.2025-06-03T16:52:48
       author: metamben
       comment: Add index on metabot_prompt.metabot_entity_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabot_prompt
-                indexName: idx_metabot_prompt_metabot_entity_id
       changes:
         - createIndex:
             tableName: metabot_prompt
@@ -11855,12 +11317,6 @@ databaseChangeLog:
       id: v55.2025-06-03T16:52:58
       author: metamben
       comment: Add foreign key constraint on metabot_prompt.metabot_entity_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_metabot_prompt_metabot_entity_id
-                foreignKeyTableName: metabot_prompt
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabot_prompt
@@ -11874,12 +11330,6 @@ databaseChangeLog:
       id: v55.2025-06-03T16:53:08
       author: metamben
       comment: Add index on metabot_prompt.card_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: metabot_prompt
-                indexName: idx_metabot_prompt_card_id
       changes:
         - createIndex:
             tableName: metabot_prompt
@@ -11892,12 +11342,6 @@ databaseChangeLog:
       id: v55.2025-06-03T16:53:18
       author: metamben
       comment: Add foreign key constraint on metabot_prompt.card_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - foreignKeyConstraintExists:
-                foreignKeyName: fk_metabot_prompt_card_id
-                foreignKeyTableName: metabot_prompt
       changes:
         - addForeignKeyConstraint:
             baseTableName: metabot_prompt
@@ -11911,12 +11355,6 @@ databaseChangeLog:
       id: v55.2025-06-09T01:00:00
       author: metabase-dev
       comment: Add inline_parameters to report_dashboardcard for card-level parameter display
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: report_dashboardcard
-                columnName: inline_parameters
       changes:
         - addColumn:
             tableName: report_dashboardcard
@@ -12109,6 +11547,51 @@ databaseChangeLog:
                 WHERE pk.id = fk.fk_target_field_id
               )
               WHERE fk_target_field_id IS NOT NULL AND semantic_type = 'type/FK';
+      rollback: # not necessary
+
+  - changeSet:
+      id: v55.2025-07-04T15:00:00
+      author: qnkhuat
+      comment: fix v_alerts where cron string contains slash (#60427)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v4/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v4/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v4/h2-alerts.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: instance_analytics_views/alerts/v3/postgres-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: instance_analytics_views/alerts/v3/mysql-alerts.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: instance_analytics_views/alerts/v3/h2-alerts.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v55.2025-07-21T10:00:00
+      author: ranquild
+      comment: Remove semantic_type when base_type is type/Boolean and semantic_type is type/Category
+      changes:
+        - update:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: semantic_type
+                  value: NULL
+            where: base_type = 'type/Boolean' AND semantic_type = 'type/Category'
       rollback: # not necessary
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

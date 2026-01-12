@@ -22,6 +22,7 @@ serdes/meta:
   model: Dashboard
 archived_directly: false
 dashcards: []
+embedding_type: null
 initially_published_at: null
 tabs: []
 width: fixed

@@ -1,10 +1,10 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
+  (:refer-clojure :exclude [some mapv select-keys empty?])
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
@@ -27,7 +27,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :as perf :refer [some mapv select-keys empty?]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -155,24 +156,21 @@
   {:arglists '([field])}
   driver-api/dispatch-by-clause-name-or-class)
 
-(defn- field-name-components [{:keys [parent-id], field-name :name, :as _field}]
+(defn- col->name-components [{:keys [parent-id], field-name :name, :as _col}]
   (concat
+   ;; TODO (Cam 8/11/25) -- this should be using `:nfc-path` instead of looking this up the hard way
    (when parent-id
-     (field-name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
+     (col->name-components (driver-api/field (driver-api/metadata-provider) parent-id)))
    [field-name]))
 
 (mu/defn field->name
-  "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
-  ([field]
-   (field->name field \.))
+  "Return a single string name for column metadata `col` For nested fields, this creates a combined qualified name."
+  ([col]
+   (field->name col \.))
 
-  ([field     :- driver-api/schema.metadata.column
+  ([col       :- driver-api/schema.metadata.column
     separator :- [:or :string char?]]
-   (str/join separator (field-name-components field))))
-
-(mu/defmethod driver-api/field-reference-mlv2 :mongo
-  [_driver field-inst :- driver-api/schema.metadata.column]
-  (field->name field-inst))
+   (str/join separator (col->name-components col))))
 
 (defmacro ^:private mongo-let
   {:style/indent 1}
@@ -210,31 +208,31 @@
 (def ^:private base64-decoder "
 function(bin) {
           if (!bin) return null;
-          
+
           try {
             var base64 = bin.base64();
-            
+
             // Manual base64 decode implementation
             var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
             var result = '';
             var i = 0;
-            
+
             // Remove any padding
             base64 = base64.replace(/=+$/, '');
-            
+
             while (i < base64.length) {
               var a = chars.indexOf(base64.charAt(i++));
               var b = chars.indexOf(base64.charAt(i++));
               var c = chars.indexOf(base64.charAt(i++));
               var d = chars.indexOf(base64.charAt(i++));
-              
+
               var bitmap = (a << 18) | (b << 12) | (c << 6) | d;
-              
+
               result += String.fromCharCode((bitmap >> 16) & 255);
               if (c !== -1) result += String.fromCharCode((bitmap >> 8) & 255);
               if (d !== -1) result += String.fromCharCode(bitmap & 255);
             }
-            
+
             return result;
           } catch(e) {
             return null;
@@ -243,8 +241,10 @@ function(bin) {
 ")
 
 (defmethod ->rvalue :metadata/column
-  [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
+  [{coercion :coercion-strategy, ::keys [source-alias join-field inherited?] :as field}]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))
+        coercion   (when-not inherited?
+                     coercion)]
     (cond
       (isa? coercion :Coercion/UNIXNanoSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000000]}, :year 1970, :timezone "UTC"}}
@@ -316,13 +316,13 @@ function(bin) {
   (driver-api/aggregation-name (:query *query*) (driver-api/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name {:keys [join-alias]  :as opts} :as field]]
+  [[_ id-or-name {:keys [join-alias] :as opts} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
         (->lvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
-                         ::source-alias (get opts driver-api/qp.add.source-alias)
+                         ::source-alias (driver-api/qp.add.source-alias opts)
                          ::join-field (get-join-alias join-alias))))
-    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (get opts driver-api/qp.add.source-alias))))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) (driver-api/qp.add.source-alias opts))))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -440,14 +440,15 @@ function(bin) {
 
 (defmethod ->rvalue :field
   [[_ id-or-name {:keys [temporal-unit join-alias] :as opts} :as field]]
-  (let [join-field (get-join-alias join-alias)
-        source-alias (get opts driver-api/qp.add.source-alias)]
+  (let [join-field   (get-join-alias join-alias)
+        source-alias (driver-api/qp.add.source-alias opts)]
     (cond-> (if (integer? id-or-name)
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (->rvalue (assoc (driver-api/field (driver-api/metadata-provider) id-or-name)
                                  ::source-alias source-alias
-                                 ::join-field join-field)))
+                                 ::join-field   join-field
+                                 ::inherited?   (not (pos-int? (driver-api/qp.add.source-table opts))))))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
                 (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
@@ -1158,9 +1159,9 @@ function(bin) {
     (recur arg)
     ag))
 
-(defn- field-alias [field]
-  (or (get-in field [2 driver-api/qp.add.desired-alias])
-      (->lvalue field)))
+(defn- field-alias [[_tag _id-or-name opts, :as field-ref]]
+  (or (driver-api/qp.add.desired-alias opts)
+      (->lvalue field-ref)))
 
 (mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple driver-api/schema.common.non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
@@ -1272,9 +1273,9 @@ function(bin) {
            [(str \$ aggr-name) (assoc aggregations-seen aggr-expr aggr-name)])
 
          :else
-         (reduce (fn [[ges as] arg]
+         (reduce (fn [[ges as] arg] ; codespell:ignore
                    (let [[ge as] (extract-aggregations arg parent-name as)]
-                     [(conj ges ge) as]))
+                     [(conj ges ge) as])) ; codespell:ignore
                  [[op] aggregations-seen]
                  args)))
      [aggr-expr aggregations-seen])))
@@ -1310,7 +1311,7 @@ function(bin) {
                                   ;; are used match against `aggr-expr` where identifiers have the prefix.
                                   (map #(str \$ %)))
                             distinct-keys)]
-    [(walk/postwalk (fn [x]
+    [(perf/postwalk (fn [x]
                       (if (and (string? x)
                                (distinct-vals x))
                         {$size x}
@@ -1643,13 +1644,13 @@ function(bin) {
    (reduce (fn [pipeline-ctx f]
              (f inner-query pipeline-ctx))
            pipeline-ctx
-           [handle-joins
-            handle-filter
-            handle-breakout+aggregation
-            handle-order-by
-            handle-fields
-            handle-limit
-            handle-page])))
+           [#'handle-joins
+            #'handle-filter
+            #'handle-breakout+aggregation
+            #'handle-order-by
+            #'handle-fields
+            #'handle-limit
+            #'handle-page])))
 
 (mu/defn- generate-aggregation-pipeline :- [:map
                                             [:projections Projections]
@@ -1672,7 +1673,7 @@ function(bin) {
 (defn- log-aggregation-pipeline [form]
   (when-not driver-api/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
-                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
+                (u/pprint-to-str 'green (perf/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 (defn simple-mbql->native
   "Compile a simple (non-nested) MBQL query."
@@ -1719,31 +1720,55 @@ function(bin) {
 ;;; until we get around to fixing that let's just walk the query and replace all the non-add-alias-info keys with the
 ;;; values added by add-alias-info.
 (defn- HACK-update-aliases [form]
-  (driver-api/replace form
-    (m :guard (every-pred map?
-                          :alias
-                          driver-api/qp.add.alias
-                          #(not= (driver-api/qp.add.alias %) (:alias %))))
-    (HACK-update-aliases (assoc m :alias (driver-api/qp.add.alias m)))
+  (letfn [(prepend-nfc-path [{nfc-path      driver-api/qp.add.nfc-path,
+                              source-alias  driver-api/qp.add.source-alias,
+                              desired-alias driver-api/qp.add.desired-alias,
+                              :as           opts}]
+            (when (seq nfc-path)
+              (let [nfc-path-str (str/join \. nfc-path)]
+                (-> opts
+                    (assoc driver-api/qp.add.source-alias  (str nfc-path-str \. source-alias)
+                           driver-api/qp.add.desired-alias (str nfc-path-str \. desired-alias))
+                    (dissoc driver-api/qp.add.nfc-path)))))
+          (update-name [{field-name :name, source-alias driver-api/qp.add.source-alias, :as opts}]
+            (when (and source-alias
+                       (not= field-name source-alias))
+              (assoc opts :name source-alias)))
+          (remove-bad-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
+            (when (and join-alias
+                       (= source-table driver-api/qp.add.source))
+              (dissoc opts :join-alias)))
+          (update-join-alias [{:keys [join-alias], source-table driver-api/qp.add.source-table, :as opts}]
+            (when (and join-alias
+                       source-table
+                       (not= join-alias source-table))
+              (assoc opts :join-alias source-table)))
+          (update-opts [opts]
+            (reduce
+             (fn
+               [opts f]
+               (or (f opts)
+                   opts))
+             opts
+             [prepend-nfc-path
+              update-join-alias
+              update-name
+              remove-bad-join-alias
+              update-join-alias]))
+          (update-field-ref [[_tag id-or-name {source-alias driver-api/qp.add.source-alias, :as opts}]]
+            (let [opts (update-opts opts)]
+              (if (and (string? id-or-name)
+                       source-alias)
+                [:field source-alias opts]
+                [:field id-or-name opts])))]
+    (driver-api/replace form
+      :field
+      (update-field-ref &match)
 
-    [:field id-or-name (opts :guard (every-pred map?
-                                                #(not= (:name %) (driver-api/qp.add.source-alias %))))]
-    (let [id-or-name' (if (string? id-or-name)
-                        (driver-api/qp.add.source-alias opts)
-                        id-or-name)]
-      (HACK-update-aliases [:field id-or-name' (assoc opts :name (driver-api/qp.add.source-alias opts))]))
-
-    [:field id-or-name (opts :guard (every-pred map?
-                                                :join-alias
-                                                #(= (driver-api/qp.add.source-table %) driver-api/qp.add.source)))]
-    [:field id-or-name (-> opts
-                           (dissoc :join-alias)
-                           (assoc ::fixed true))]
-
-    [:field id-or-name (opts :guard (every-pred map?
-                                                :join-alias
-                                                #(string? (driver-api/qp.add.source-table %))))]
-    [:field id-or-name (assoc opts :join-alias (driver-api/qp.add.source-table opts))]))
+      (join :guard (every-pred map?
+                               driver-api/qp.add.alias
+                               #(not= (driver-api/qp.add.alias %) (:alias %))))
+      (recur (assoc join :alias (driver-api/qp.add.alias join))))))
 
 (defn- preprocess
   [inner-query]
@@ -1754,7 +1779,9 @@ function(bin) {
 (defn mbql->native
   "Compile an MBQL query."
   [query]
-  (let [query (update query :query preprocess)]
+  (let [query (-> query
+                  driver-api/->legacy-MBQL
+                  (update :query preprocess))]
     (binding [*query* query
               *next-alias-index* (volatile! 0)]
       (let [source-table-name (if-let [source-table-id (driver-api/query->source-table-id query)]

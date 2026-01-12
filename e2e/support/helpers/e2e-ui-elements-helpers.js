@@ -1,4 +1,5 @@
 // Functions that get key elements in the app
+import { dashboardParameterSidebar } from "./e2e-dashboard-helpers";
 
 export const POPOVER_ELEMENT =
   ".popover[data-state~='visible'],[data-element-id=mantine-popover]";
@@ -43,6 +44,22 @@ export function selectDropdown() {
   return popover().findByRole("listbox");
 }
 
+export function miniPicker() {
+  return cy.findByTestId("mini-picker");
+}
+
+export function miniPickerBrowseAll() {
+  return miniPicker().findByText("Browse all");
+}
+
+export function miniPickerOurAnalytics() {
+  return miniPicker().findByText("Our analytics");
+}
+
+export function miniPickerHeader() {
+  return cy.findByTestId("mini-picker-header");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -54,7 +71,7 @@ export function entityPickerModalLevel(level) {
 /**
  *
  * @param {number} level
- * @param {string} name
+ * @param {string | RegExp} name
  */
 export function entityPickerModalItem(level, name) {
   return entityPickerModalLevel(level).findByText(name).parents("a");
@@ -119,7 +136,7 @@ export function assertNavigationSidebarItemSelected(name, value = "true") {
 
 export function assertNavigationSidebarBookmarkSelected(name, value = "true") {
   navigationSidebar()
-    .findByRole("tab", { name: "Bookmarks" })
+    .findByRole("section", { name: "Bookmarks" })
     .findByRole("listitem", { name })
     .should("have.attr", "aria-selected", value);
 }
@@ -149,7 +166,9 @@ export function notificationList() {
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *
- * @param {boolean} isEditing - whether dashboard editing mode is enabled
+ * @param {Object} options
+ * @param {boolean} [options.isEditing] - whether dashboard editing mode is enabled
+ * @param {string} [options.name] - the name of the filter widget to get
  *
  * @returns HTMLFieldSetElement
  *
@@ -167,10 +186,12 @@ export function notificationList() {
  * @todo Add the ability to alias the chosen filter widget.
  * @todo Extract into a separate helper file.
  */
-export function filterWidget({ isEditing = false } = {}) {
-  return cy.findAllByTestId(
-    isEditing ? "editing-parameter-widget" : "parameter-widget",
-  );
+export function filterWidget({ isEditing = false, name = null } = {}) {
+  const selector = isEditing ? "editing-parameter-widget" : "parameter-widget";
+
+  return name != null
+    ? cy.findAllByTestId(selector).filter(`:contains(${name})`)
+    : cy.findAllByTestId(selector);
 }
 
 export function clearFilterWidget(index = 0) {
@@ -212,6 +233,18 @@ export function toggleFilterWidgetValues(
   });
 }
 
+/**
+ * Moves a dashboard filter to a dashcard / top nav
+ * (it must be in 'editing' mode prior to that)
+ */
+export function moveDashboardFilter(destination, { showFilter = false } = {}) {
+  dashboardParameterSidebar().findByPlaceholderText("Move filter").click();
+  popover().findByText(destination).click();
+  if (showFilter) {
+    undoToast().button("Show filter").click();
+  }
+}
+
 export const openQuestionActions = (action) => {
   cy.findByTestId("qb-header-action-panel").icon("ellipsis").click();
 
@@ -234,6 +267,14 @@ export const queryBuilderFiltersPanel = () => {
 
 export const queryBuilderFooter = () => {
   return cy.findByTestId("view-footer");
+};
+
+export const queryBuilderFooterDisplayToggle = () => {
+  return cy.findByTestId("query-display-tabular-toggle");
+};
+
+export const queryVisualizationRoot = () => {
+  return cy.findByTestId("query-visualization-root");
 };
 
 export const closeQuestionActions = () => {
@@ -266,6 +307,10 @@ export const moveColumnDown = (column, distance) => {
     .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
+/**
+ * @deprecated Use `moveDnDKitElementByAlias` instead.
+ * Otherwise, the chain will be broken due to "element was removed from the DOM" error
+ */
 export const moveDnDKitElement = (
   element,
   { horizontal = 0, vertical = 0, onBeforeDragEnd = () => {} } = {},
@@ -385,6 +430,10 @@ export const undoToastList = () => {
   return cy.findAllByTestId("toast-undo");
 };
 
+export const undoToastListContainer = () => {
+  return cy.findByTestId("undo-list");
+};
+
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
@@ -415,17 +464,18 @@ export function resizeTableColumn(columnId, moveX, elementIndex = 0) {
       clientY: 0,
     });
 
-  // HACK: TanStack table resize handler does not resize column if we fire only one mousemove event
   cy.get("body")
-    .trigger("mousemove", {
-      clientX: moveX / 2,
-      clientY: 0,
-    })
     .trigger("mousemove", {
       clientX: moveX,
       clientY: 0,
+    })
+    // UI requires time to update, causes flakiness without the delay
+    .wait(100)
+    .trigger("mouseup", {
+      button: 0,
+      clientX: moveX,
+      clientY: 0,
     });
-  cy.get("body").trigger("mouseup", { force: true });
 }
 
 export function openObjectDetail(rowIndex) {
@@ -536,7 +586,7 @@ export function assertTableData({ columns, firstRows = [] }) {
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
  * @returns
  */
-export function newButton(menuItem) {
+export function newButton(menuItem = undefined) {
   if (menuItem) {
     cy.findByTestId("app-bar").button("New").click();
     return popover().findByText(menuItem);
@@ -606,4 +656,30 @@ export function mapPinIcon() {
 
 export function waitForLoaderToBeRemoved() {
   cy.findByTestId("loading-indicator").should("not.exist");
+}
+
+export function leaveConfirmationModal() {
+  return cy.findByTestId("leave-confirmation");
+}
+
+export function getUniqueTableColumnValues(columnName) {
+  const values = [];
+
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`)
+      .each(($item) => values.push($item.text()))
+      .then(() => {
+        cy.wrap(Array.from(new Set(values))).as("items");
+      });
+  });
+
+  return cy.get("@items");
+}
+
+export function ensureParameterColumnValue({ columnName, columnValue }) {
+  tableInteractiveBody().within(() => {
+    cy.get(`[data-column-id="${columnName}"]`).each((cell) => {
+      cy.wrap(cell).should("have.text", columnValue);
+    });
+  });
 }

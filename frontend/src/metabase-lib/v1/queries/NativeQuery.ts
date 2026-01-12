@@ -1,13 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import { updateIn } from "icepick";
 import slugg from "slugg";
-import { t } from "ttag";
 import _ from "underscore";
 
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import ValidationError from "metabase-lib/v1/ValidationError";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import { getTemplateTagParameter } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -18,6 +14,7 @@ import type {
   DatabaseId,
   DatasetQuery,
   NativeDatasetQuery,
+  NativeQuerySnippet,
   ParameterValuesConfig,
   TemplateTag,
   TemplateTags,
@@ -51,10 +48,12 @@ function replaceTagName(
   oldTagName: string,
   newTagName: string,
 ): NativeQuery {
-  const queryText = query
-    .queryText()
-    .replace(tagRegex(oldTagName), `{{${newTagName}}}`);
-  return query.setQueryText(queryText);
+  const queryText = query.queryText();
+  const newQueryText = queryText.replace(
+    tagRegex(oldTagName),
+    `{{${newTagName}}}`,
+  );
+  return newQueryText !== queryText ? query.setQueryText(newQueryText) : query;
 }
 
 export function updateCardTemplateTagNames(
@@ -67,10 +66,10 @@ export function updateCardTemplateTagNames(
     // only tags for cards
     .filter((tag) => tag.type === "card")
     // only tags for given cards
-    .filter((tag) => cardById[tag["card-id"]]);
+    .filter((tag) => tag["card-id"] != null && cardById[tag["card-id"]]);
   // reduce over each tag, updating query text with the new tag name
   return tags.reduce((query, tag) => {
-    const card = cardById[tag["card-id"]];
+    const card = cardById[Number(tag["card-id"])];
     const newTagName = `#${card.id}-${slugg(card.name)}`;
     return replaceTagName(query, tag.name, newTagName);
   }, query);
@@ -92,16 +91,12 @@ export default class NativeQuery {
     this._datasetQuery = datasetQuery;
   }
 
-  static isDatasetQueryType(datasetQuery: DatasetQuery) {
-    return datasetQuery?.type === NATIVE_QUERY_TEMPLATE.type;
-  }
-
   private _query(): Lib.Query {
     return this.question().query();
   }
 
   private _setQuery(query: Lib.Query): NativeQuery {
-    return this.question().setQuery(query).legacyNativeQuery();
+    return checkNotNull(this.question().setQuery(query).legacyNativeQuery());
   }
 
   /**
@@ -203,7 +198,9 @@ export default class NativeQuery {
   supportsNativeParameters() {
     const database = this._database();
     return (
-      database != null && _.contains(database.features, "native-parameters")
+      database != null &&
+      database.features != null &&
+      _.contains(database.features, "native-parameters")
     );
   }
 
@@ -235,23 +232,17 @@ export default class NativeQuery {
   setParameterIndex(id: string, newIndex: number) {
     // NOTE: currently all NativeQuery parameters are implicitly generated from
     // template tags, and the order is determined by the key order
-    // NOTE 2: currently cannot be ported to MBQL lib because maps with keys in
-    // different order are considered equal.
-    return new NativeQuery(
-      this._originalQuestion,
-      updateIn(
-        this._datasetQuery,
-        ["native", "template-tags"],
-        (templateTags) => {
-          const entries = Array.from(Object.entries(templateTags));
+    const query = this._query();
+    const tags = this.templateTags();
+    const oldIndex = tags.findIndex((tag) => tag.id === id);
 
-          const oldIndex = _.findIndex(entries, (entry) => entry[1].id === id);
-
-          entries.splice(newIndex, 0, entries.splice(oldIndex, 1)[0]);
-          return _.object(entries);
-        },
-      ),
+    const newTags = [...tags];
+    newTags.splice(newIndex, 0, newTags.splice(oldIndex, 1)[0]);
+    const newTagsMap = Object.fromEntries(
+      newTags.map((tag) => [tag.name, tag]),
     );
+
+    return this._setQuery(Lib.withTemplateTags(query, newTagsMap));
   }
 
   lineCount(): number {
@@ -276,7 +267,14 @@ export default class NativeQuery {
 
   variableTemplateTags(): TemplateTag[] {
     return this.templateTags().filter((t) =>
-      ["dimension", "text", "number", "date", "temporal-unit"].includes(t.type),
+      [
+        "dimension",
+        "text",
+        "number",
+        "date",
+        "boolean",
+        "temporal-unit",
+      ].includes(t.type),
     );
   }
 
@@ -291,33 +289,12 @@ export default class NativeQuery {
   referencedQuestionIds(): number[] {
     return this.templateTags()
       .filter((tag) => tag.type === "card")
-      .map((tag) => tag["card-id"]);
-  }
-
-  private _validateTemplateTags() {
-    return this.templateTags()
-      .map((tag) => {
-        if (!tag["display-name"]) {
-          return new ValidationError(t`Missing widget label: ${tag.name}`);
-        }
-        const dimension = new TemplateTagDimension(
-          tag.name,
-          this.metadata(),
-          this,
-        );
-        if (!dimension) {
-          return new ValidationError(t`Invalid template tag: ${tag.name}`);
-        }
-
-        return dimension.validateTemplateTag();
-      })
-      .filter(
-        (maybeError): maybeError is ValidationError => maybeError != null,
-      );
+      .map((tag) => tag["card-id"])
+      .filter((cardId): cardId is number => cardId != null);
   }
 
   private _allTemplateTagsAreValid() {
-    const tagErrors = this._validateTemplateTags();
+    const tagErrors = Lib.validateTemplateTags(this._query());
     return tagErrors.length === 0;
   }
 
@@ -332,27 +309,35 @@ export default class NativeQuery {
     tag: TemplateTag,
     config: ParameterValuesConfig,
   ): NativeQuery {
-    const newParameter = getTemplateTagParameter(tag, config);
-    return this.question()
-      .setParameter(tag.id, newParameter)
-      .legacyNativeQuery();
+    const oldParameter = this.question()
+      .parameters()
+      .find((parameter) => parameter.id === tag.id);
+    const newParameter = getTemplateTagParameter(tag, {
+      ...oldParameter,
+      ...config,
+    });
+    return checkNotNull(
+      this.question().setParameter(tag.id, newParameter).legacyNativeQuery(),
+    );
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
-    return this.question().setDatasetQuery(datasetQuery).legacyNativeQuery();
+    return checkNotNull(
+      this.question().setDatasetQuery(datasetQuery).legacyNativeQuery(),
+    );
   }
 
   dimensionOptions(
-    dimensionFilter: DimensionFilter = _.identity,
-    operatorFilter = _.identity,
+    dimensionFilter: DimensionFilter = _.constant(true),
   ): DimensionOptions {
     const dimensions = this.templateTags()
-      .filter((tag) => tag.type === "dimension" && operatorFilter(tag))
+      .filter((tag) => tag.type === "dimension")
       .map((tag) => new TemplateTagDimension(tag.name, this.metadata(), this))
       .filter((dimension) => dimensionFilter(dimension));
 
     return new DimensionOptions({
       dimensions: dimensions,
+      fks: [],
       count: dimensions.length,
     });
   }
@@ -366,35 +351,27 @@ export default class NativeQuery {
       .filter(variableFilter);
   }
 
-  updateSnippetsWithIds(snippets): NativeQuery {
-    const tagsBySnippetName = _.chain(this.templateTags())
-      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] == null)
-      .groupBy((tag) => tag["snippet-name"])
-      .value();
+  updateSnippet(
+    oldSnippet: NativeQuerySnippet,
+    newSnippet: NativeQuerySnippet,
+  ) {
+    // if the snippet name has changed, we need to update it in the query
+    const newQuery =
+      newSnippet.name !== oldSnippet.name
+        ? this.updateSnippetNames([newSnippet])
+        : this;
 
-    if (Object.keys(tagsBySnippetName).length === 0) {
-      // no need to check if there are no tags
-      return this;
-    }
-
-    let query = this;
-
-    for (const snippet of snippets) {
-      for (const tag of tagsBySnippetName[snippet.name] || []) {
-        query = query.setTemplateTag(tag.name, {
-          ...tag,
-          "snippet-id": snippet.id,
-        });
-      }
-    }
-
-    return query;
+    // if the query has changed, it was already parsed; otherwise do the parsing
+    // to expand snippet tags into the query tags
+    return newQuery === this
+      ? newQuery.setQueryText(newQuery.queryText())
+      : newQuery;
   }
 
-  updateSnippetNames(snippets): NativeQuery {
+  updateSnippetNames(snippets: NativeQuerySnippet[]): NativeQuery {
     const tagsBySnippetId = _.chain(this.templateTags())
-      .filter((tag) => tag.type === "snippet")
-      .groupBy((tag) => tag["snippet-id"])
+      .filter((tag) => tag.type === "snippet" && tag["snippet-id"] != null)
+      .groupBy((tag) => Number(tag["snippet-id"]))
       .value();
 
     if (Object.keys(tagsBySnippetId).length === 0) {
@@ -416,7 +393,7 @@ export default class NativeQuery {
     }
 
     if (queryText !== this.queryText()) {
-      return this.setQueryText(queryText).updateSnippetsWithIds(snippets);
+      return this.setQueryText(queryText);
     }
 
     return this;

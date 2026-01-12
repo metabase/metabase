@@ -6,6 +6,7 @@ import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupModelActionsEndpoints,
@@ -18,7 +19,7 @@ import {
   within,
 } from "__support__/ui";
 import ActionCreator from "metabase/actions/containers/ActionCreatorModal";
-import Models from "metabase/entities/questions";
+import { Questions as Models } from "metabase/entities/questions";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { checkNotNull } from "metabase/lib/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
@@ -199,15 +200,7 @@ async function setup({
   const modelUpdateSpy = jest.spyOn(Models.actions, "update");
 
   setupDatabasesEndpoints(databases);
-
-  fetchMock.get(
-    {
-      url: "path:/api/card",
-      query: { f: "using_model", model_id: card.id },
-    },
-    usedBy,
-  );
-
+  setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
@@ -217,7 +210,7 @@ async function setup({
         createMockTable({
           id: `card__${card.id}`,
           name: card.name,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ],
     }),
@@ -438,11 +431,16 @@ describe("ModelActions", () => {
         );
 
         expect(
-          fetchMock.calls(`path:/api/action/${action.id}`, { method: "PUT" }),
+          fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
+            method: "PUT",
+          }),
         ).toHaveLength(1);
-        const call = fetchMock.lastCall(`path:/api/action/${action.id}`, {
-          method: "PUT",
-        });
+        const call = fetchMock.callHistory.lastCall(
+          `path:/api/action/${action.id}`,
+          {
+            method: "PUT",
+          },
+        );
         expect(await call?.request?.json()).toEqual({
           id: action.id,
           archived: true,
@@ -472,7 +470,7 @@ describe("ModelActions", () => {
 
         for (const action of actions) {
           expect(
-            fetchMock.called(`path:/api/action/${action.id}`, {
+            fetchMock.callHistory.called(`path:/api/action/${action.id}`, {
               method: "DELETE",
             }),
           ).toBe(true);
@@ -580,14 +578,17 @@ describe("ModelActions", () => {
     it("allows to create implicit actions", async () => {
       const action = createMockQueryAction({ model_id: modelCard.id });
       await setupActions({ model: modelCard, actions: [action] });
-      fetchMock.post("path:/api/action", {}, { overwriteRoutes: true });
+      fetchMock.modifyRoute("action-post", { response: {} });
 
       await userEvent.click(screen.getByLabelText("Actions menu"));
       await userEvent.click(await screen.findByText("Create basic actions"));
 
-      const createActionCalls = fetchMock.calls("path:/api/action", {
-        method: "POST",
-      });
+      const createActionCalls = fetchMock.callHistory.calls(
+        "path:/api/action",
+        {
+          method: "POST",
+        },
+      );
       expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({
@@ -612,15 +613,18 @@ describe("ModelActions", () => {
 
     it("allows to create implicit actions from the empty state", async () => {
       await setupActions({ model: modelCard, actions: [] });
-      fetchMock.post("path:/api/action", {}, { overwriteRoutes: true });
+      fetchMock.modifyRoute("action-post", { response: {} });
 
       await userEvent.click(
         screen.getByRole("button", { name: /Create basic action/i }),
       );
 
-      const createActionCalls = fetchMock.calls("path:/api/action", {
-        method: "POST",
-      });
+      const createActionCalls = fetchMock.callHistory.calls(
+        "path:/api/action",
+        {
+          method: "POST",
+        },
+      );
       expect(createActionCalls).toHaveLength(3);
 
       expect(await createActionCalls[0].request?.json()).toEqual({

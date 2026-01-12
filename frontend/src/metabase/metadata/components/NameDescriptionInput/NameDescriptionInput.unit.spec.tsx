@@ -59,6 +59,26 @@ describe("NameDescriptionInput", () => {
     expect(descriptionInput).toHaveValue("");
   });
 
+  it("should not call onNameChange if name is the same after trimming", async () => {
+    const { onNameChange } = setup({ name: "xyz" });
+
+    const nameInput = screen.getByPlaceholderText("Enter name");
+    await userEvent.type(nameInput, "{backspace}z ");
+    nameInput.blur();
+
+    expect(onNameChange).toHaveBeenCalledTimes(0);
+  });
+
+  it("should not call onDescriptionChange if description is the same after trimming", async () => {
+    const { onNameChange } = setup({ description: "xyz" });
+
+    const nameInput = screen.getByPlaceholderText("Enter description");
+    await userEvent.type(nameInput, "{backspace}z ");
+    nameInput.blur();
+
+    expect(onNameChange).toHaveBeenCalledTimes(0);
+  });
+
   it("should show name prefix", async () => {
     setup({ namePrefix: "prefix" });
 

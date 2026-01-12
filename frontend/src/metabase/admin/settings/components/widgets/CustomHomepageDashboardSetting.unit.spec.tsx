@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupCurrentUserEndpoint,
   setupDashboardEndpoints,
   setupPropertiesEndpoints,
@@ -92,7 +93,7 @@ describe("CustomHomepageDashboardSetting", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("switch")).toBeInTheDocument();
     expect(screen.getByRole("switch")).not.toBeChecked();
-    expect(screen.queryByText(/select a dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pick a dashboard")).not.toBeInTheDocument();
   });
 
   it("should render dashboard picker if toggle is on", async () => {
@@ -100,7 +101,7 @@ describe("CustomHomepageDashboardSetting", () => {
     await waitFor(() => {
       expect(screen.getByRole("switch")).toBeChecked();
     });
-    expect(screen.getByText(/select a dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText("Pick a dashboard")).toBeInTheDocument();
   });
 
   it("should update the toggle value", async () => {
@@ -110,9 +111,9 @@ describe("CustomHomepageDashboardSetting", () => {
     await userEvent.click(toggle);
     expect(await screen.findByRole("switch")).toBeChecked();
 
-    const [[putUrl, putDetails]] = await findPuts();
-    expect(putUrl).toContain("/api/setting/custom-homepage");
-    expect(putDetails).toEqual({ value: true });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain("/api/setting/custom-homepage");
+    expect(body).toEqual({ value: true });
   });
 
   it("should show selected dashboard name", async () => {
@@ -122,7 +123,7 @@ describe("CustomHomepageDashboardSetting", () => {
 
   it("should update the dashboard value", async () => {
     setup({ "custom-homepage": true });
-    const dashboardSelector = await screen.findByText(/select a dashboard/i);
+    const dashboardSelector = await screen.findByText("Pick a dashboard");
     await userEvent.click(dashboardSelector);
 
     await screen.findByText("Choose a dashboard"); // modal opens
@@ -138,12 +139,12 @@ describe("CustomHomepageDashboardSetting", () => {
       expect(screen.queryByText("Choose a dashboard")).not.toBeInTheDocument();
     });
 
-    const [[putUrl, putDetails], [putUrl2, putDetails2]] = await findPuts();
-
+    const [{ url: putUrl, body: putBody }, { url: putUrl2, body: putBody2 }] =
+      await findRequests("PUT");
     expect(putUrl).toContain("/api/setting/custom-homepage-dashboard");
-    expect(putDetails).toEqual({ value: 4242 });
+    expect(putBody).toEqual({ value: 4242 });
     expect(putUrl2).toContain("/api/setting/dismissed-custom-dashboard-toast");
-    expect(putDetails2).toEqual({ value: true });
+    expect(putBody2).toEqual({ value: true });
 
     // dashboard name should be displayed
     expect(await screen.findByText("My dashboard")).toBeInTheDocument();
@@ -156,35 +157,22 @@ describe("CustomHomepageDashboardSetting", () => {
     await userEvent.click(toggle);
     expect(await screen.findByRole("switch")).not.toBeChecked();
     expect(screen.queryByText(/my dashboard/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/select a dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Pick a dashboard")).not.toBeInTheDocument();
   });
 
   it("should refresh current user after updating settings", async () => {
     setup({ "custom-homepage": true });
-    const dashboardSelector = await screen.findByText(/select a dashboard/i);
+    const dashboardSelector = await screen.findByText("Pick a dashboard");
     await userEvent.click(dashboardSelector);
 
     await userEvent.click(await screen.findByText("My dashboard"));
 
     await waitFor(() => {
-      const calls = fetchMock.calls();
+      const calls = fetchMock.callHistory.calls();
       const userCall = calls.find((call) =>
-        call[0].includes("/api/user/current"),
+        call.url?.includes("/api/user/current"),
       );
       expect(userCall).toBeDefined();
     });
   });
 });
-
-async function findPuts() {
-  const calls = fetchMock.calls();
-  const data = calls.filter((call) => call[1]?.method === "PUT") ?? [];
-
-  const puts = data.map(async ([putUrl, putDetails]) => {
-    const body = ((await putDetails?.body) as string) ?? "{}";
-
-    return [putUrl, JSON.parse(body ?? "{}")];
-  });
-
-  return Promise.all(puts);
-}

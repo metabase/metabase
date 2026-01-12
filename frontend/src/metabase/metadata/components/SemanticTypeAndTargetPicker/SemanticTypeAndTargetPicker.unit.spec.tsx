@@ -18,17 +18,17 @@ function setup({
   field?: Field;
   idFields?: Field[];
 } = {}) {
-  const onUpdateField = jest.fn();
+  const onChange = jest.fn();
 
   render(
     <SemanticTypeAndTargetPicker
       field={field}
       idFields={idFields}
-      onUpdateField={onUpdateField}
+      onChange={onChange}
     />,
   );
 
-  return { field, onUpdateField };
+  return { onChange };
 }
 
 describe("SemanticTypeAndTargetPicker", () => {
@@ -78,21 +78,20 @@ describe("SemanticTypeAndTargetPicker", () => {
     expect(screen.getByPlaceholderText("Select a target")).toBeInTheDocument();
   });
 
-  it("should call onUpdateField with correct values for semantic type change", async () => {
-    const { field, onUpdateField } = setup();
+  it("should call onChange with correct values for semantic type change", async () => {
+    const { onChange } = setup();
 
     const select = screen.getByPlaceholderText("Select a semantic type");
     await userEvent.click(select);
     await userEvent.click(screen.getByText("Quantity"));
 
-    expect(onUpdateField).toHaveBeenCalledWith(
-      field,
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ semantic_type: "type/Quantity" }),
     );
   });
 
-  it("should call onUpdateField with correct values for currency change", async () => {
-    const { field, onUpdateField } = setup({
+  it("should call onChange with correct values for currency change", async () => {
+    const { onChange } = setup({
       field: createOrdersTotalField({
         semantic_type: "type/Currency",
       }),
@@ -102,14 +101,13 @@ describe("SemanticTypeAndTargetPicker", () => {
     await userEvent.click(select);
     await userEvent.click(screen.getByText("Canadian Dollar"));
 
-    expect(onUpdateField).toHaveBeenCalledWith(
-      field,
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({ settings: { currency: "CAD" } }),
     );
   });
 
-  it("should call onUpdateField with correct values for FK target change", async () => {
-    const { field, onUpdateField } = setup({
+  it("should call onChange with correct values for FK target change", async () => {
+    const { onChange } = setup({
       field: createOrdersProductIdField({
         fk_target_field_id: null,
       }),
@@ -119,8 +117,7 @@ describe("SemanticTypeAndTargetPicker", () => {
     await userEvent.click(select);
     await userEvent.click(screen.getByText("ID"));
 
-    expect(onUpdateField).toHaveBeenCalledWith(
-      field,
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         fk_target_field_id: getRawTableFieldId(createProductsIdField()),
       }),
@@ -128,7 +125,7 @@ describe("SemanticTypeAndTargetPicker", () => {
   });
 
   it("should unset fk_target_field_id when changing FK semantic type to something else", async () => {
-    const { field, onUpdateField } = setup({
+    const { onChange } = setup({
       field: createOrdersProductIdField(),
     });
 
@@ -136,8 +133,7 @@ describe("SemanticTypeAndTargetPicker", () => {
     await userEvent.click(select);
     await userEvent.click(screen.getByText("Quantity"));
 
-    expect(onUpdateField).toHaveBeenCalledWith(
-      field,
+    expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
         fk_target_field_id: null,
       }),

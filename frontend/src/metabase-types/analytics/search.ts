@@ -14,6 +14,13 @@ type SearchEventSchema = {
   verified_items?: boolean | null;
   search_native_queries?: boolean | null;
   search_archived?: boolean | null;
+  search_engine?: string | null;
+  request_id?: string | null;
+  offset?: number | null;
+  entity_model?: string | null;
+  entity_id?: number | null;
+  search_term_hash?: string | null;
+  search_term?: string | null;
 };
 
 type ValidateEvent<
@@ -21,6 +28,7 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SearchEventSchema>, never>,
 > = T;
 
+// keep in sync with the `search` snowplow schema
 type SearchContentType =
   | "dashboard"
   | "card"
@@ -31,7 +39,9 @@ type SearchContentType =
   | "database"
   | "table"
   | "action"
-  | "indexed-entity";
+  | "indexed-entity"
+  | "document"
+  | "transform";
 
 type SearchContext =
   | "search-app"
@@ -41,6 +51,8 @@ type SearchContext =
 
 export type SearchQueryEvent = ValidateEvent<{
   event: "search_query";
+  search_term_hash: string | null;
+  search_term: string | null;
   runtime_milliseconds: number;
   context: SearchContext | null;
   total_results: number;
@@ -53,6 +65,9 @@ export type SearchQueryEvent = ValidateEvent<{
   verified_items: boolean;
   search_native_queries: boolean;
   search_archived: boolean;
+  search_engine: string | null;
+  request_id: string | null;
+  offset: number | null;
 }>;
 
 export type SearchClickEvent = ValidateEvent<{
@@ -60,6 +75,12 @@ export type SearchClickEvent = ValidateEvent<{
   position: number;
   target_type: "item" | "view_more";
   context: SearchContext | null;
+  search_engine: string | null;
+  request_id: string | null;
+  entity_model: string | null;
+  entity_id: number | null;
+  search_term_hash: string | null;
+  search_term: string | null;
 }>;
 
 export type SearchEvent = SearchQueryEvent | SearchClickEvent;

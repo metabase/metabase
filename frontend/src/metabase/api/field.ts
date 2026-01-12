@@ -1,6 +1,9 @@
+import { updateMetadata } from "metabase/lib/redux/metadata";
+import { FieldSchema } from "metabase/schema";
 import type {
   CreateFieldDimensionRequest,
   Field,
+  FieldDimension,
   FieldId,
   FieldValue,
   GetFieldRequest,
@@ -21,6 +24,7 @@ import {
   provideRemappedFieldValuesTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const fieldApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -31,6 +35,10 @@ export const fieldApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (field) => (field ? provideFieldTags(field) : []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, FieldSchema)),
+        ),
     }),
     getFieldValues: builder.query<GetFieldValuesResponse, FieldId>({
       query: (fieldId) => ({
@@ -73,6 +81,7 @@ export const fieldApi = Api.injectEndpoints({
           idTag("field-values", id),
           tag("parameter-values"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     updateFieldValues: builder.mutation<void, UpdateFieldValuesRequest>({
@@ -87,7 +96,10 @@ export const fieldApi = Api.injectEndpoints({
           tag("parameter-values"),
         ]),
     }),
-    createFieldDimension: builder.mutation<void, CreateFieldDimensionRequest>({
+    createFieldDimension: builder.mutation<
+      FieldDimension,
+      CreateFieldDimensionRequest
+    >({
       query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/field/${id}/dimension`,
@@ -98,6 +110,7 @@ export const fieldApi = Api.injectEndpoints({
           idTag("field", id),
           idTag("field-values", id),
           tag("parameter-values"),
+          tag("dataset"),
         ]),
     }),
     deleteFieldDimension: builder.mutation<void, FieldId>({
@@ -110,6 +123,7 @@ export const fieldApi = Api.injectEndpoints({
           idTag("field", id),
           idTag("field-values", id),
           tag("parameter-values"),
+          tag("dataset"),
         ]),
     }),
     rescanFieldValues: builder.mutation<void, FieldId>({

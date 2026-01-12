@@ -8,20 +8,9 @@
         "romeovs",
         "bshepherdson",
         "metamben",
-        "appleby",
-        "uladzimirdev",
         "wzimrin",
         "ericnormand",
         "galdre"
-      ]
-    },
-    {
-      "name": "Semantic Layer",
-      "label": ".Team/SemanticLayer",
-      "members": [
-        "kamilmielnik",
-        "lbrdnk",
-        "bronsa"
       ]
     },
     {
@@ -37,48 +26,17 @@
       "label": ".Team/Embedding",
       "members": [
         "WiNloSt",
-        "oisincoveney",
         "npretto",
         "heypoom",
-        "sanex3339"
-      ]
-    },
-    {
-      "name": "Workflows",
-      "label": ".Team/Workflows",
-      "members": [
-        "qnkhuat",
-        "piranha",
-        "crisptrutski",
-        "deniskaber",
-        "wotbrew",
-        "spalt08",
-        "stasgavrylov"
+        "sanex3339",
+        "lorem--ipsum"
       ]
     },
     {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
-        "npfitz",
-        "johnswanson",
-        "rafpaf",
-        "iethree",
-        "nvoxland",
-        "fraserdrops",
-        "edpaget"
-      ]
-    },
-    {
-      "name": "DashViz",
-      "label": ".Team/DashViz",
-      "members": [
-        "alxnddr",
-        "kulyk",
-        "tsplude",
-        "lorem--ipsum",
-        "noahmoss",
-        "bpander"
+        "eliotmetabase"
       ]
     },
     {
@@ -86,27 +44,74 @@
       "label": ".Team/DevEx",
       "members": [
         "camsaul",
-        "escherize"
-      ]
-    },
-     {
-      "name": "Metabot",
-      "label": ".Team/Metabot",
-      "members": [
-        "retro",
-        "sloansparger",
-        "somtom"
+        "dpsutton",
+        "escherize",
+        "fraserdrops",
+        "nemanjaglumac"
       ]
     },
     {
-      "name": "Product Growth",
-      "label": ".Team/ProductGrowth",
-      "members": ["nemanjaglumac", "chodorowicz"]
+      "name": "Metabot",
+      "label": ".Team/Metabot",
+      "members": [
+        "appleby",
+        "noahmoss",
+        "retro",
+        "sloansparger",
+        "somtom",
+        "tsplude",
+        "lbrdnk",
+        "piranha",
+        "crisptrutski"
+      ]
     },
     {
       "name": "Cloud",
       "label": "cloud",
-      "members": []
+      "members": [
+        "filipesilva"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "eliotmetabase"
+      ]
+    },
+    {
+      "name": "UX West",
+      "label": ".Team/UXWest",
+      "members": [
+        "eliotmetabase",
+        "npfitz",
+        "johnswanson",
+        "iethree",
+        "nvoxland",
+        "edpaget",
+        "deniskaber",
+        "alxnddr",
+        "bpander",
+        "andsalves",
+        "gantoreno",
+        "kevinkelleher12",
+        "undrfined"
+      ]
+    },
+    {
+      "name": "Gadget",
+      "label": ".Team/Gadget",
+      "members": [
+        "nmezzopera",
+        "bronsa",
+        "wotbrew",
+        "qnkhuat",
+        "chodorowicz",
+        "kamilmielnik",
+        "stasgavrylov",
+        "uladzimirdev",
+        "egorgrushin"
+      ]
     }
   ]
 }

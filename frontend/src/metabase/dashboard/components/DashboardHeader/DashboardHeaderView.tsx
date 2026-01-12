@@ -25,7 +25,6 @@ import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
-import { getIsNavbarOpen } from "metabase/selectors/app";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
@@ -41,7 +40,7 @@ type DashboardHeaderViewProps = {
   editingButtons?: JSX.Element[];
   editWarning?: string;
   dashboard: IDashboard;
-  collection: Collection;
+  collection: Collection | undefined;
   isBadgeVisible: boolean;
   isLastEditInfoVisible: boolean;
   onLastEditInfoClick?: () => void;
@@ -58,7 +57,6 @@ export function DashboardHeaderView({
 }: DashboardHeaderViewProps) {
   const { titled } = useDashboardContext();
 
-  const isNavBarOpen = useSelector(getIsNavbarOpen);
   const isEditing = useSelector(getIsEditing);
 
   const [showSubHeader, setShowSubHeader] = useState(true);
@@ -81,11 +79,7 @@ export function DashboardHeaderView({
 
   const _headerButtons = useMemo(
     () => (
-      <Flex
-        className={cx("Header-buttonSection", S.HeaderButtonSection, {
-          [S.isNavBarOpen]: isNavBarOpen,
-        })}
-      >
+      <Flex className={cx("Header-buttonSection", S.HeaderButtonSection)}>
         <DashboardHeaderButtonRow
           canResetFilters={canResetFilters}
           onResetFilters={handleResetFilters}
@@ -93,7 +87,7 @@ export function DashboardHeaderView({
         />
       </Flex>
     ),
-    [canResetFilters, handleResetFilters, isAnalyticsDashboard, isNavBarOpen],
+    [canResetFilters, handleResetFilters, isAnalyticsDashboard],
   );
 
   useEffect(() => {
@@ -106,7 +100,7 @@ export function DashboardHeaderView({
   }, [isLastEditInfoVisible]);
 
   return (
-    <div>
+    <div className={S.DashboardHeader}>
       {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
       {editWarning && (
         <Flex className={cx(CS.wrapper, S.EditWarning)}>
@@ -132,9 +126,7 @@ export function DashboardHeaderView({
             ref={header}
           >
             <FixedWidthContainer
-              className={cx(S.HeaderFixedWidthContainer, {
-                [S.isNavBarOpen]: isNavBarOpen,
-              })}
+              className={S.HeaderFixedWidthContainer}
               data-testid="fixed-width-dashboard-header"
               isFixedWidth={dashboard?.width === "fixed"}
             >
@@ -145,16 +137,28 @@ export function DashboardHeaderView({
                     [S.showSubHeader]: showSubHeader,
                   })}
                 >
-                  <Flex className={S.HeaderCaptionContainer}>
+                  <Flex className={S.HeaderCaptionContainer} gap={2}>
                     <Dashboard.Title className={S.HeaderCaption} />
-                    <PLUGIN_MODERATION.EntityModerationIcon
-                      dashboard={dashboard}
-                    />
-                    <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
-                      color="brand"
-                      collection={collection}
-                      entity="dashboard"
-                    />
+
+                    <Flex
+                      align="center"
+                      flex="0 0 auto"
+                      gap="sm"
+                      pos="relative"
+                      // intentionally misaligned: https://github.com/metabase/metabase/pull/63871#pullrequestreview-3259596723
+                      top={2}
+                    >
+                      <PLUGIN_MODERATION.EntityModerationIcon
+                        moderationReviews={dashboard.moderation_reviews}
+                      />
+                      {!!collection && (
+                        <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
+                          c="brand"
+                          collection={collection}
+                          entity="dashboard"
+                        />
+                      )}
+                    </Flex>
                   </Flex>
                   <Flex className={S.HeaderBadges}>
                     {isLastEditInfoVisible && (
@@ -168,21 +172,13 @@ export function DashboardHeaderView({
                 </Box>
               )}
 
-              <Flex
-                className={cx(S.HeaderButtonsContainer, {
-                  [S.isNavBarOpen]: isNavBarOpen,
-                })}
-              >
-                {_headerButtons}
-              </Flex>
+              <Flex className={S.HeaderButtonsContainer}>{_headerButtons}</Flex>
             </FixedWidthContainer>
           </FullWidthContainer>
         )}
         <FullWidthContainer className={S.HeaderRow}>
           <FixedWidthContainer
-            className={cx(S.HeaderFixedWidthContainer, {
-              [S.isNavBarOpen]: isNavBarOpen,
-            })}
+            className={S.HeaderFixedWidthContainer}
             data-testid="fixed-width-dashboard-tabs"
             isFixedWidth={dashboard?.width === "fixed"}
           >

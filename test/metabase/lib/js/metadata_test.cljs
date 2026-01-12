@@ -1,6 +1,7 @@
 (ns metabase.lib.js.metadata-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.test :refer [deftest is testing]]
+   [metabase.lib.core :as lib]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]))
 
@@ -18,7 +19,6 @@
 
 (def ^:private mock-field-metadata-with-external-remap
   #js {"id"               36
-       "ident"            "niM_yGvJuGyEZvPqUlgqk"
        "name"             "CATEGORY_ID"
        "has_field_values" "none"
        "dimensions"       #js [{"id"                      72
@@ -32,7 +32,6 @@
         metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
     (is (= {:lib/type           :metadata/column
             :id                 36
-            :ident              "niM_yGvJuGyEZvPqUlgqk"
             :name               "CATEGORY_ID"
             :has-field-values   :none
             :lib/external-remap {:lib/type :metadata.column.remapping/external
@@ -43,7 +42,6 @@
 
 (def ^:private mock-field-metadata-with-internal-remap
   #js {"id"               33
-       "ident"            "cWYe4OhoaSgeCfIMJUDos"
        "name"             "ID"
        "has_field_values" "none"
        "dimensions"       #js [{"id"                      66
@@ -57,7 +55,6 @@
         metadata-provider (lib.js.metadata/metadata-provider 1 metadata)]
     (is (= {:lib/type           :metadata/column
             :id                 33
-            :ident              "cWYe4OhoaSgeCfIMJUDos"
             :name               "ID"
             :has-field-values   :none
             :lib/internal-remap {:lib/type :metadata.column.remapping/internal
@@ -65,30 +62,30 @@
                                  :name     "ID [internal remap]"}}
            (lib.metadata/field metadata-provider 33)))))
 
-(def ^:private mock-metadata-with-generic-tables-and-fields
-  #js {:databases #js {"1" #js {:id 1
-                                :name "fake DB"}}
-       :tables    #js {"6" #js {:id     6
-                                :name   "basic_table"
-                                :db_id  1
-                                :fields #js {}}
-                       "7" #js {:id     7
-                                :name   "another_table"
-                                :schema "SomeSchema"
-                                :db_id  1
-                                :fields #js {}}}
-       :fields    #js {"600" #js {:id       600
-                                  :table_id 6
-                                  :ident    "Pe-udJ-W6agr-C3yh_XMR"
-                                  :name "one_field"}
-                       "700" #js {:id       700
-                                  :table_id 7
-                                  :ident    "cq16i_0gLWMyVf_fjSATF"
-                                  :name     "two_field"}}})
+(deftest ^:parallel do-not-remove-during-normalization-test
+  (let [metadata #js {:fields #js {"36" mock-field-metadata-with-external-remap}}
+        mp       (lib.js.metadata/metadata-provider 1 metadata)
+        query    {:lib/type :mbql/query, :database 1, :lib/metadata mp, :stages [{:lib/type :mbql.stage/mbql, :source-table 2}]}]
+    (is (= query
+           (lib/normalize query)))))
 
-(deftest ^:parallel idents-test
-  (let [mp (lib.js.metadata/metadata-provider 1 mock-metadata-with-generic-tables-and-fields)]
-    (is (= "Pe-udJ-W6agr-C3yh_XMR"
-           (:ident (lib.metadata/field mp 600))))
-    (is (= "cq16i_0gLWMyVf_fjSATF"
-           (:ident (lib.metadata/field mp 700))))))
+(deftest ^:parallel parse-column-lib-source-test
+  ;; See issue #66721 - when both "source" and "lib/source" exist in a JS column object,
+  ;; we should prefer "lib/source" and parse it correctly.
+  ;; Will be resolved by QUE-1404.
+  (testing "legacy 'source' key only"
+    (let [column (lib.js.metadata/parse-column #js {"name" "count", "source" "aggregation"})]
+      (is (= :source/aggregations (:lib/source column)))))
+  (testing "modern 'lib/source' key only"
+    (let [column (lib.js.metadata/parse-column #js {"name" "count", "lib/source" "source/aggregations"})]
+      (is (= :source/aggregations (:lib/source column)))))
+  (testing "both keys present - 'lib/source' should win"
+    ;; This was the bug: when both keys exist, JS object iteration order is non-deterministic,
+    ;; causing flaky behavior. Now we skip 'source' when 'lib/source' exists.
+    (let [column (lib.js.metadata/parse-column #js {"name" "count"
+                                                    "source" "aggregation"
+                                                    "lib/source" "source/aggregations"})]
+      (is (= :source/aggregations (:lib/source column)))))
+  (testing "other lib/source values are handled correctly"
+    (let [column (lib.js.metadata/parse-column #js {"name" "id", "lib/source" "source/table-defaults"})]
+      (is (= :source/table-defaults (:lib/source column))))))

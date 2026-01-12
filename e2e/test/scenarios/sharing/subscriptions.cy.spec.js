@@ -23,10 +23,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     H.openSharingMenu("Embed");
-    H.getEmbedModalSharingPane().within(() => {
-      cy.findByText("public embedding").should("be.visible");
-      cy.findByText("Static embedding").should("be.visible");
-    });
+    H.embedModalContent().should("be.visible");
   });
 
   it("should allow sharing if dashboard contains only text cards (metabase#15077)", () => {
@@ -133,15 +130,19 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.popover().isRenderedWithinViewport();
       });
 
-      it.skip("should not send attachments by default if not explicitly selected (metabase#28673)", () => {
-        openDashboardSubscriptions();
-        assignRecipient();
+      it(
+        "should not send attachments by default if not explicitly selected (metabase#28673)",
+        { tags: "@skip" },
+        () => {
+          openDashboardSubscriptions();
+          assignRecipient();
 
-        cy.findByLabelText("Attach results").should("not.be.checked");
-        H.sendEmailAndAssert(
-          ({ attachments }) => expect(attachments).to.be.empty,
-        );
-      });
+          cy.findByLabelText("Attach results").should("not.be.checked");
+          H.sendEmailAndAssert(
+            ({ attachments }) => expect(attachments).to.be.empty,
+          );
+        },
+      );
     });
 
     describe("with existing subscriptions", () => {
@@ -327,6 +328,29 @@ describe("scenarios > dashboard > subscriptions", () => {
         });
     });
 
+    it("should send only attachments without email content when 'Send only attachments' is enabled", () => {
+      assignRecipient();
+
+      cy.findByLabelText("Attach results").click();
+      cy.findByLabelText("Questions to attach").click();
+      cy.findByLabelText("Send only attachments").click();
+      cy.findByLabelText("Send only attachments").should("be.checked");
+
+      H.sendEmailAndAssert((email) => {
+        expect(email.attachments).to.not.be.empty;
+        const csvAttachment = email.attachments.find(
+          (attachment) => attachment.contentType === "text/csv",
+        );
+        expect(csvAttachment).to.exist;
+        expect(csvAttachment.fileName).to.include("Orders");
+        expect(email.html).to.not.include("Orders chart");
+        expect(email.html).to.include(
+          "Dashboard content available in attached files",
+        );
+        expect(email.html).to.include("Orders in a dashboard");
+      });
+    });
+
     it("should not display 'null' day of the week (metabase#14405)", () => {
       assignRecipient();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -489,13 +513,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.disabled");
     });
 
-    it("should disable subscriptions for non-admin users", () => {
+    it("should allow non-admin users to create subscriptions", () => {
       cy.signInAsNormalUser();
       H.visitDashboard(ORDERS_DASHBOARD_ID);
       H.openSharingMenu();
-      H.sharingMenu()
-        .findByText("Can't send subscriptions")
-        .should("be.visible");
+      H.sharingMenu().findByText("Subscriptions").should("be.visible");
     });
   });
 
@@ -772,6 +794,31 @@ describe("scenarios > dashboard > subscriptions", () => {
         H.sidebar()
           .findByText("Set filter values for when this gets sent")
           .should("not.exist");
+      });
+    });
+
+    describe("modular embedding", () => {
+      it("should not include links to Metabase", () => {
+        H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+        H.openSharingMenu();
+        H.sharingMenu().findByRole("menuitem", { name: "Embed" }).click();
+        cy.findByRole("button", { name: "Agree and enable" }).click();
+        cy.findByLabelText("Metabase account (SSO)").click();
+        cy.findByLabelText("Allow subscriptions").check().should("be.checked");
+        H.getIframeBody().within(() => {
+          cy.button("Subscriptions").click();
+          H.sendEmailAndVisitIt();
+        });
+
+        cy.log(
+          "Links should be disabled in modular embedding and modular embedding SDK subscription emails",
+        );
+        cy.findAllByRole("table")
+          .first()
+          .findByText("Orders in a dashboard")
+          .should("exist");
+        cy.findAllByRole("link").should("not.exist");
       });
     });
   });

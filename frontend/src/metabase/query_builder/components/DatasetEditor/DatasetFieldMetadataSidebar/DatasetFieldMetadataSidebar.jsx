@@ -18,16 +18,17 @@ import {
 import { color } from "metabase/lib/colors";
 import { FIELD_VISIBILITY_TYPES } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Box, Radio, Tabs } from "metabase/ui";
+import { Box, Radio, Stack, Tabs } from "metabase/ui";
 import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import * as Lib from "metabase-lib";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
+import { isCurrency, isFK } from "metabase-lib/v1/types/utils/isa";
 
 import { EDITOR_TAB_INDEXES } from "../constants";
 
+import { DatasetFieldMetadataCurrencyPicker } from "./DatasetFieldMetadataCurrencyPicker";
 import { DatasetFieldMetadataFkTargetPicker } from "./DatasetFieldMetadataFkTargetPicker";
 import { DatasetFieldMetadataSemanticTypePicker } from "./DatasetFieldMetadataSemanticTypePicker";
 import DatasetFieldMetadataSidebarS from "./DatasetFieldMetadataSidebar.module.css";
@@ -110,6 +111,7 @@ function DatasetFieldMetadataSidebar({
       fk_target_field_id: field.fk_target_field_id || null,
       visibility_type: field.visibility_type || "normal",
       should_index: field.should_index ?? fieldHasIndex(modelIndexes, field),
+      settings: field.settings,
     };
     const { isNative } = Lib.queryDisplayInfo(dataset.query());
 
@@ -243,7 +245,7 @@ function DatasetFieldMetadataSidebar({
                         left: "0.75rem",
                         top: "0.5rem",
                         fontSize: "0.625rem",
-                        color: color("text-light"),
+                        color: color("text-tertiary"),
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -274,7 +276,7 @@ function DatasetFieldMetadataSidebar({
                     />
                   </Box>
                 )}
-                <Box mb="1.5rem">
+                <Stack gap="sm" mb="1.5rem">
                   <DatasetFieldMetadataSemanticTypePicker
                     className={DatasetFieldMetadataSidebarS.SelectButton}
                     field={field}
@@ -282,16 +284,19 @@ function DatasetFieldMetadataSidebar({
                     onChange={handleSemanticTypeChange}
                     onKeyDown={onLastEssentialFieldKeyDown}
                   />
-                </Box>
-                {isFK(formFieldValues) && (
-                  <Box mb="1.5rem">
+                  {isCurrency(formFieldValues) && (
+                    <DatasetFieldMetadataCurrencyPicker
+                      onChange={handleFormattingSettingsChange}
+                    />
+                  )}
+                  {isFK(formFieldValues) && (
                     <DatasetFieldMetadataFkTargetPicker
                       databaseId={dataset.databaseId()}
                       field={field}
                       onChange={handleFkTargetChange}
                     />
-                  </Box>
-                )}
+                  )}
+                </Stack>
               </div>
 
               <Tabs value={tab} onChange={setTab}>

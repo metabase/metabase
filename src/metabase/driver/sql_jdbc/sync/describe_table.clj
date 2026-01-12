@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
   "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
   `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
+  (:refer-clojure :exclude [some select-keys every? mapv empty? not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -20,6 +21,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
    [potemkin :as p]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
@@ -133,19 +135,33 @@
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
      #(let [default            (.getString rs "COLUMN_DEF")
             no-default?        (contains? #{nil "NULL" "null"} default)
-            nullable           (.getInt rs "NULLABLE")
-            not-nullable?      (= 0 nullable)
-             ;; IS_AUTOINCREMENT could return nil
+            ;; leave room for "", or other strings to be nil (unknown)
+            nullable           ({"YES" true, "NO" false} (.getString rs "IS_NULLABLE"))
+            generated          (when (driver/database-supports? driver :describe-is-generated nil) ; if not supported, we might get an inaccurate answer from IS_GENERATEDCOLUMN (e.g clickhouse)
+                                 ({"YES" true, "NO" false} (.getString rs "IS_GENERATEDCOLUMN")))
+            ;; IS_AUTOINCREMENT could return nil
             auto-increment     (.getString rs "IS_AUTOINCREMENT")
             auto-increment?    (= "YES" auto-increment)
             no-auto-increment? (= "NO" auto-increment)
             column-name        (.getString rs "COLUMN_NAME")
-            required?          (and no-default? not-nullable? no-auto-increment?)]
+            ;; ambiguous, but preserves previous unknown == not nullable database-required behaviour
+            not-nullable       (= 0 (.getInt rs "NULLABLE"))
+            required?          (and no-default? not-nullable no-auto-increment?)]
         (merge
          {:name                       column-name
           :database-type              (.getString rs "TYPE_NAME")
           :database-is-auto-increment auto-increment?
           :database-required          required?}
+
+         ;; in the same way drivers are free to not return these attributes, and leave them undefined
+         ;; we should treat unknown values accordingly
+         (u/remove-nils
+          {;; COLUMN_DEF = "" observed with clickhouse, druid, "" is never a valid SQL expression, so treat as undefined
+           ;; we should probably not-empty for the purposes of required, but trying to retain existing behaviour for now
+           :database-default           (not-empty default)
+           :database-is-generated      generated
+           :database-is-nullable       nullable})
+
          (when-let [remarks (.getString rs "REMARKS")]
            (when-not (str/blank? remarks)
              {:field-comment remarks})))))))
@@ -209,8 +225,11 @@
                                          :name
                                          :database-type
                                          :field-comment
+                                         :database-default
                                          :database-required
-                                         :database-is-auto-increment])
+                                         :database-is-auto-increment
+                                         :database-is-generated
+                                         :database-is-nullable])
              {:table-schema      (:table-schema col) ;; can be nil
               :base-type         base-type
               ;; json-unfolding is true by default for JSON fields, but this can be overridden at the DB level
@@ -439,15 +458,16 @@
                                               ;; when true, result is allowed to reflect approximate or out of data
                                               ;; values. when false, results are requested to be accurate
                                               false)]
-       (->> (vals (group-by :index_name (into []
-                                              ;; filtered indexes are ignored
-                                              (filter #(nil? (:filter_condition %)))
-                                              (jdbc/reducible-result-set index-info-rs {}))))
-            (keep (fn [idx-values]
+       (->> (group-by :index_name (into []
+                                        ;; filtered indexes are ignored
+                                        (filter #(nil? (:filter_condition %)))
+                                        (jdbc/reducible-result-set index-info-rs {})))
+            (keep (fn [[index-name idx-values]]
                     ;; we only sync columns that are either singlely indexed or is the first key in a composite index
-                    (when-let [index-name (some :column_name (sort-by :ordinal_position idx-values))]
+                    (when-let [column-name (some :column_name (sort-by :ordinal_position idx-values))]
                       {:type  :normal-column-index
-                       :value index-name})))
+                       :index-name index-name
+                       :value column-name})))
             set)))))
 
 (def ^:const max-nested-field-columns

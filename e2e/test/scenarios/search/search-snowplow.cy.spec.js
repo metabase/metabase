@@ -1,8 +1,10 @@
+import { P, isMatching } from "ts-pattern";
+
 const { H } = cy;
 
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
 
-H.describeWithSnowplow("scenarios > search > snowplow", () => {
+describe("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
 
@@ -24,24 +26,40 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       H.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectUnstructuredSnowplowEvent((data) => {
-        if (!data) {
-          return false;
-        }
-        return (
-          data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
-          data.context === "command-palette" &&
-          typeof data.runtime_milliseconds === "number"
-        );
-      });
+      H.expectUnstructuredSnowplowEvent((event) =>
+        isMatching(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+            context: "command-palette",
+            runtime_milliseconds: P.number,
+            search_engine: P.string,
+            request_id: P.string,
+            offset: null,
+            search_term_hash: P.string,
+            search_term: null,
+          },
+          event,
+        ),
+      );
 
       H.commandPalette().findByRole("option", { name: "Orders Model" }).click();
       H.expectUnstructuredSnowplowEvent(
-        {
-          event: SEARCH_CLICK,
-          context: "command-palette",
-          position: 3,
-        },
+        (event) =>
+          isMatching(
+            {
+              event: SEARCH_CLICK,
+              target_type: "item",
+              context: "command-palette",
+              position: 3,
+              search_engine: P.string,
+              request_id: P.string,
+              entity_model: P.string,
+              entity_id: P.number,
+              search_term_hash: P.string,
+              search_term: null,
+            },
+            event,
+          ),
         1,
       );
     });
@@ -51,16 +69,16 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       H.commandPaletteSearch("Orders", false);
 
       //Passing a function to ensure that runtime_milliseconds is populated as a number
-      H.expectUnstructuredSnowplowEvent((data) => {
-        if (!data) {
-          return false;
-        }
-        return (
-          data.event === NEW_SEARCH_QUERY_EVENT_NAME &&
-          data.context === "command-palette" &&
-          typeof data.runtime_milliseconds === "number"
-        );
-      });
+      H.expectUnstructuredSnowplowEvent((event) =>
+        isMatching(
+          {
+            event: NEW_SEARCH_QUERY_EVENT_NAME,
+            context: "command-palette",
+            runtime_milliseconds: P.number,
+          },
+          event,
+        ),
+      );
 
       // FIX ME: We need to slow cypress down before we start inputting keyboard events.
       // Not clear why though :/.

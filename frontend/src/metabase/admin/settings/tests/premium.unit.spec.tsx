@@ -1,4 +1,4 @@
-import { screen } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 
 import {
   setup as baseSetup,
@@ -14,12 +14,12 @@ const setup = async ({
   initialRoute = "",
   features = {},
 } = {}) => {
-  return baseSetup({
-    hasEnterprisePlugins: true,
+  await baseSetup({
     hasTokenFeatures: true,
     isAdmin,
     features,
     initialRoute,
+    enterprisePlugins: "*", // means all enterprise plugins
   });
 };
 
@@ -42,9 +42,15 @@ describe("Admin Settings Routing - Enterprise with all features", () => {
   describe("renders all the routes", () => {
     it.each(routes)(
       "renders the $name route",
-      async ({ path, testPattern }) => {
+      async ({ path, testPattern, role }) => {
         await setup({ isAdmin: true, initialRoute: path });
-        expect(await screen.findByText(testPattern)).toBeInTheDocument();
+        await waitFor(() => {
+          expect(
+            role
+              ? screen.getByRole(role, { name: testPattern })
+              : screen.getByText(testPattern),
+          ).toBeInTheDocument();
+        });
       },
     );
   });

@@ -3,15 +3,19 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
-import { getEmbeddedParameterVisibility } from "metabase/dashboard/selectors";
+import { useDashboardContext } from "metabase/dashboard/context";
+import {
+  getEditingParameterInlineDashcard,
+  getEmbeddedParameterVisibility,
+} from "metabase/dashboard/selectors";
 import { slugify } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
+import { hasMapping } from "metabase/parameters/utils/dashboards";
 import type { IconName } from "metabase/ui";
-import { Tabs, Text } from "metabase/ui";
+import { Tabs } from "metabase/ui";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
-  DashboardCard,
   Parameter,
   ParameterId,
   TemporalUnit,
@@ -24,143 +28,139 @@ import { canUseLinkedFilters } from "../../utils/linked-filters";
 import { ParameterLinkedFilters } from "../ParameterLinkedFilters";
 import { ParameterSettings } from "../ParameterSettings";
 
-export interface ParameterSidebarProps {
-  parameter: Parameter;
-  otherParameters: Parameter[];
-  hasMapping: boolean;
-  onChangeName: (parameterId: ParameterId, name: string) => void;
-  onChangeType: (
-    parameterId: ParameterId,
-    nextType: string,
-    nextSectionId: string,
-  ) => void;
-  onChangeDefaultValue: (parameterId: ParameterId, value: unknown) => void;
-  onChangeIsMultiSelect: (
-    parameterId: ParameterId,
-    isMultiSelect: boolean,
-  ) => void;
-  onChangeQueryType: (
-    parameterId: ParameterId,
-    sourceType: ValuesQueryType,
-  ) => void;
-  onChangeSourceType: (
-    parameterId: ParameterId,
-    sourceType: ValuesSourceType,
-  ) => void;
-  onChangeSourceConfig: (
-    parameterId: ParameterId,
-    sourceOptions: ValuesSourceConfig,
-  ) => void;
-  onChangeFilteringParameters: (
-    parameterId: ParameterId,
-    filteringParameters: string[],
-  ) => void;
-  onChangeRequired: (parameterId: ParameterId, value: boolean) => void;
-  onChangeTemporalUnits: (
-    parameterId: ParameterId,
-    temporalUnits: TemporalUnit[],
-  ) => void;
-  onRemoveParameter: (parameterId: ParameterId) => void;
-  onClose: () => void;
-  editingParameterInlineDashcard?: DashboardCard;
-}
+export const ParameterSidebar = (): JSX.Element | null => {
+  const {
+    dashboard,
+    parameters,
+    editingParameter,
+    closeSidebar,
+    removeParameter,
+    setParameterName,
+    setParameterType,
+    setParameterDefaultValue,
+    setParameterIsMultiSelect,
+    setParameterQueryType,
+    setParameterSourceType,
+    setParameterSourceConfig,
+    setParameterFilteringParameters,
+    setParameterRequired,
+    setParameterTemporalUnits,
+  } = useDashboardContext();
 
-export const ParameterSidebar = ({
-  parameter,
-  otherParameters,
-  onChangeName,
-  onChangeType,
-  onChangeDefaultValue,
-  onChangeIsMultiSelect,
-  onChangeQueryType,
-  onChangeSourceType,
-  onChangeSourceConfig,
-  onChangeFilteringParameters,
-  onChangeRequired,
-  onChangeTemporalUnits,
-  onRemoveParameter,
-  onClose,
-  hasMapping,
-  editingParameterInlineDashcard,
-}: ParameterSidebarProps): JSX.Element => {
-  const parameterId = parameter.id;
-  const tabs = useMemo(() => getTabs(parameter), [parameter]);
-  const [tab, setTab] = useState<"filters" | "settings">(tabs[0].value);
+  const editingParameterInlineDashcard = useSelector(
+    getEditingParameterInlineDashcard,
+  );
+
+  const parameter = useMemo(
+    () =>
+      editingParameter
+        ? parameters.find((p) => p.id === editingParameter.id)
+        : null,
+    [editingParameter, parameters],
+  );
+  const otherParameters = useMemo(
+    () => parameters.filter((p) => p.id !== editingParameter?.id),
+    [editingParameter?.id, parameters],
+  );
+
+  const parameterId = parameter?.id;
+  const tabs = useMemo(
+    () => (parameter ? getTabs(parameter) : []),
+    [parameter],
+  );
+  const [tab, setTab] = useState<"filters" | "settings">(
+    tabs[0]?.value || "settings",
+  );
   const prevParameterId = usePrevious(parameterId);
 
   const embeddedParameterVisibility = useSelector((state) =>
-    getEmbeddedParameterVisibility(state, parameter.slug),
+    parameter ? getEmbeddedParameterVisibility(state, parameter.slug) : null,
   );
 
   useEffect(() => {
-    if (prevParameterId !== parameterId) {
+    if (prevParameterId !== parameterId && tabs.length > 0) {
       setTab(tabs[0].value);
     }
   }, [parameterId, prevParameterId, tabs]);
 
-  const missingRequiredDefault =
-    parameter.required && parameterHasNoDisplayValue(parameter.default);
-
   const handleNameChange = useCallback(
     (name: string) => {
-      onChangeName(parameterId, name);
+      if (parameterId) {
+        setParameterName(parameterId, name);
+      }
     },
-    [parameterId, onChangeName],
+    [parameterId, setParameterName],
   );
 
   const handleTypeChange = useCallback(
     (type: string, sectionId: string) => {
-      onChangeType(parameterId, type, sectionId);
+      if (parameterId) {
+        setParameterType(parameterId, type, sectionId);
+      }
     },
-    [parameterId, onChangeType],
+    [parameterId, setParameterType],
   );
 
   const handleDefaultValueChange = useCallback(
     (value: unknown) => {
-      onChangeDefaultValue(parameterId, value);
+      if (parameterId) {
+        setParameterDefaultValue(parameterId, value);
+      }
     },
-    [parameterId, onChangeDefaultValue],
+    [parameterId, setParameterDefaultValue],
   );
 
   const handleIsMultiSelectChange = useCallback(
     (isMultiSelect: boolean) => {
-      onChangeIsMultiSelect(parameterId, isMultiSelect);
+      if (parameterId) {
+        setParameterIsMultiSelect(parameterId, isMultiSelect);
+      }
     },
-    [parameterId, onChangeIsMultiSelect],
+    [parameterId, setParameterIsMultiSelect],
   );
 
   const handleQueryTypeChange = useCallback(
     (queryType: ValuesQueryType) => {
-      onChangeQueryType(parameterId, queryType);
+      if (parameterId) {
+        setParameterQueryType(parameterId, queryType);
+      }
     },
-    [parameterId, onChangeQueryType],
+    [parameterId, setParameterQueryType],
   );
 
   const handleSourceTypeChange = useCallback(
     (sourceType: ValuesSourceType) => {
-      onChangeSourceType(parameterId, sourceType);
+      if (parameterId) {
+        setParameterSourceType(parameterId, sourceType);
+      }
     },
-    [parameterId, onChangeSourceType],
+    [parameterId, setParameterSourceType],
   );
 
   const handleSourceConfigChange = useCallback(
     (sourceOptions: ValuesSourceConfig) => {
-      onChangeSourceConfig(parameterId, sourceOptions);
+      if (parameterId) {
+        setParameterSourceConfig(parameterId, sourceOptions);
+      }
     },
-    [parameterId, onChangeSourceConfig],
+    [parameterId, setParameterSourceConfig],
   );
 
   const handleFilteringParametersChange = useCallback(
     (filteringParameters: ParameterId[]) => {
-      onChangeFilteringParameters(parameterId, filteringParameters);
+      if (parameterId) {
+        setParameterFilteringParameters(parameterId, filteringParameters);
+      }
     },
-    [parameterId, onChangeFilteringParameters],
+    [parameterId, setParameterFilteringParameters],
   );
 
   const handleRemove = useCallback(() => {
-    onRemoveParameter(parameterId);
-    onClose();
-  }, [parameterId, onRemoveParameter, onClose]);
+    if (parameterId) {
+      removeParameter(parameterId);
+      closeSidebar();
+    }
+  }, [parameterId, removeParameter, closeSidebar]);
 
   const isParameterSlugUsed = useCallback(
     (value: string) =>
@@ -168,11 +168,17 @@ export const ParameterSidebar = ({
     [otherParameters],
   );
 
-  const handleChangeRequired = (value: boolean) =>
-    onChangeRequired(parameterId, value);
+  const handleChangeRequired = (value: boolean) => {
+    if (parameterId) {
+      setParameterRequired(parameterId, value);
+    }
+  };
 
-  const handleChangeTemporalUnits = (temporalUnits: TemporalUnit[]) =>
-    onChangeTemporalUnits(parameterId, temporalUnits);
+  const handleChangeTemporalUnits = (temporalUnits: TemporalUnit[]) => {
+    if (parameterId) {
+      setParameterTemporalUnits(parameterId, temporalUnits);
+    }
+  };
 
   const handleTabChange = (newTab: string | null) => {
     if (!newTab || (newTab !== "settings" && newTab !== "filters")) {
@@ -182,9 +188,17 @@ export const ParameterSidebar = ({
     return setTab(newTab);
   };
 
+  if (!dashboard || !editingParameter || !parameter) {
+    return null;
+  }
+
+  const missingRequiredDefault =
+    parameter.required && parameterHasNoDisplayValue(parameter.default);
+  const parameterHasMapping = hasMapping(parameter, dashboard);
+
   return (
     <Sidebar
-      onClose={onClose}
+      onClose={closeSidebar}
       isCloseDisabled={missingRequiredDefault}
       closeTooltip={
         missingRequiredDefault
@@ -195,36 +209,22 @@ export const ParameterSidebar = ({
       data-testid="dashboard-parameter-sidebar"
     >
       <Tabs radius={0} value={tab} onChange={handleTabChange}>
-        <Tabs.List grow>
-          {tabs.length > 1 &&
-            tabs.map((tab) => {
-              return (
-                <Tabs.Tab
-                  pl={0}
-                  pr={0}
-                  pt="md"
-                  pb="md"
-                  value={tab.value}
-                  key={tab.value}
-                >
-                  {tab.name}
-                </Tabs.Tab>
-              );
-            })}
-          {tabs.length === 1 && (
-            <Text
-              lh="1rem"
-              pb="md"
-              pt="md"
-              fz="md"
-              fw="bold"
-              w="100%"
-              ta="center"
-            >
-              {tabs[0].name}
-            </Text>
-          )}
-        </Tabs.List>
+        {tabs.length > 1 && (
+          <Tabs.List grow>
+            {tabs.map((tab) => (
+              <Tabs.Tab
+                pl={0}
+                pr={0}
+                pt="md"
+                pb="md"
+                value={tab.value}
+                key={tab.value}
+              >
+                {tab.name}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        )}
 
         <Tabs.Panel pr="md" pl="md" value="settings" key="settings">
           <ParameterSettings
@@ -241,7 +241,7 @@ export const ParameterSidebar = ({
             onChangeSourceConfig={handleSourceConfigChange}
             onChangeRequired={handleChangeRequired}
             onChangeTemporalUnits={handleChangeTemporalUnits}
-            hasMapping={hasMapping}
+            hasMapping={parameterHasMapping}
           />
         </Tabs.Panel>
 

@@ -3,7 +3,6 @@ import { DASHBOARD_ACTION } from "./dashboard-action-keys";
 // Buttons visible in public dashboard
 export const DASHBOARD_DISPLAY_ACTIONS = [
   DASHBOARD_ACTION.REFRESH_WIDGET,
-  DASHBOARD_ACTION.NIGHT_MODE_TOGGLE,
   DASHBOARD_ACTION.FULLSCREEN_TOGGLE,
 ];
 

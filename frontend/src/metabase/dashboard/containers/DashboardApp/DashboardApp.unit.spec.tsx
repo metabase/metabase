@@ -16,6 +16,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -109,6 +110,7 @@ async function setup({ dashboard }: Options = {}) {
         entities: createMockEntitiesState({
           databases: [TEST_DATABASE_WITH_ACTIONS],
         }),
+        settings: mockSettings({ "site-url": "http://localhost:3000" }),
       },
     },
   );
@@ -248,12 +250,12 @@ describe("DashboardApp", () => {
   it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
     const { dashboardId } = await setup();
 
-    const dashboardURL = fetchMock.lastUrl(
+    const dashboardURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}`,
-    );
-    const queryMetadataURL = fetchMock.lastUrl(
+    )?.url;
+    const queryMetadataURL = fetchMock.callHistory.lastCall(
       `path:/api/dashboard/${dashboardId}/query_metadata`,
-    );
+    )?.url;
 
     const dashboardSearchParams = new URLSearchParams(
       dashboardURL?.split("?")[1],
@@ -268,5 +270,15 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  it("should not allow to enter a dashboard name longer than 254 characters", async () => {
+    await setup();
+
+    const input = await screen.findByPlaceholderText("Add title");
+    await userEvent.clear(input);
+    await userEvent.paste("A".repeat(256));
+
+    expect(input).toHaveValue("A".repeat(254));
   });
 });

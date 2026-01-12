@@ -249,12 +249,42 @@
                        {:description "Number of queries with metrics processed by the metrics adjust middleware."})
    (prometheus/counter :metabase-query-processor/metrics-adjust-errors
                        {:description "Number of errors when processing metrics in the metrics adjust middleware."})
+   (prometheus/gauge   :metabase-query-processor/computed-weak-map-queries
+                       {:description "Number of queries cached in lib.computed/weak-map."})
+   (prometheus/gauge   :metabase-card/unique-cards-failed-conversion
+                       {:description "Number of distinct cards which have :dataset_query {}, meaning MBQL 4 to 5 conversion failed."})
+   (prometheus/counter :metabase-card/conversions-requiring-cleaning
+                       {:description "Number of times this instance converted a card's MBQL 4 to 5 and `clean` made a real change"})
    (prometheus/gauge :metabase-database/status
                      {:description "Does a given database using driver pass a health check."
                       :labels [:driver :healthy :reason]})
    (prometheus/counter :metabase-query-processor/query
                        {:description "Did a query run by a specific driver succeed or fail"
                         :labels [:driver :status]})
+
+   (prometheus/histogram :metabase-remote-sync/export-duration-ms
+                         {:description "Duration in milliseconds that remote-sync exports took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-remote-sync/exports
+                       {:description "Number of remote-sync export calls"})
+   (prometheus/counter :metabase-remote-sync/exports-failed
+                       {:description "Number of failed remote-sync export calls"})
+   (prometheus/histogram :metabase-remote-sync/import-duration-ms
+                         {:description "Duration in milliseconds that remote-sync imports took."
+      ;; 1ms -> 10minutes
+                          :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/counter :metabase-remote-sync/imports
+                       {:description "Number of remote-sync import calls"})
+   (prometheus/counter :metabase-remote-sync/imports-failed
+                       {:description "Number of failed remote-sync import calls"})
+   (prometheus/counter :metabase-remote-sync/git-operations
+                       {:description "Number of git operations"
+                        :labels [:operation :remote]})
+   (prometheus/counter :metabase-remote-sync/git-operations-failed
+                       {:description "Number of failed git operations"
+                        :labels [:operation :remote]})
+
    (prometheus/counter :metabase-search/index-reindexes
                        {:description "Number of reindexed search entries"
                         :labels      [:model]})
@@ -276,7 +306,13 @@
       ;; 1ms -> 10minutes
                           :buckets [1 500 1000 5000 10000 30000 60000 120000 300000 600000]})
    (prometheus/gauge :metabase-search/appdb-index-size
-                     {:description "Number of rows in the active index table."})
+                     {:description "Number of rows in the active appdb index table."})
+   (prometheus/gauge :metabase-search/semantic-index-size
+                     {:description "Number of rows in the active semantic index table."})
+   (prometheus/gauge :metabase-search/semantic-dlq-size
+                     {:description "Number of rows in the active semantic index dead-letter-queue table."})
+   (prometheus/gauge :metabase-search/semantic-gate-size
+                     {:description "Number of rows in the semantic gate table"})
    (prometheus/gauge :metabase-search/queue-size
                      {:description "Number of updates on the search indexing queue."})
    (prometheus/counter :metabase-search/response-ok
@@ -289,13 +325,81 @@
    (prometheus/gauge :metabase-search/engine-active
                      {:description "Whether a given engine is active. This does NOT mean that it is the default."
                       :labels [:engine]})
-   ;; notification metrics
+   (prometheus/counter :metabase-search/semantic-embedding-tokens
+                       {:description (str "Number of tokens consumed by the given embedding model and provider. "
+                                          "Not all providers track token use.")
+                        :labels [:model :provider]})
+   (prometheus/counter :metabase-search/semantic-permission-filter-ms
+                       {:description "Total number of ms spent filtering readable docs"})
+   (prometheus/counter :metabase-search/semantic-collection-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection"})
+   (prometheus/counter :metabase-search/semantic-collection-id-filter-ms
+                       {:description "Total number of ms spent filtering search results by collection id"})
+   (prometheus/counter :metabase-search/semantic-search-ms
+                       {:description "Total number of ms spent performing a semantic search"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-embedding-ms
+                       {:description "Total number of ms spent calculating the embedding of the search string"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-db-query-ms
+                       {:description "Total number of ms spent querying the search index"
+                        :labels [:embedding-model]})
+   (prometheus/counter :metabase-search/semantic-appdb-scores-ms
+                       {:description "Total number of ms spent adding appdb-based scores"})
+   (prometheus/counter :metabase-search/semantic-fallback-triggered
+                       {:description "Number of times semantic search triggered fallback to appdb search due to insufficient results"
+                        :labels [:fallback-engine]})
+   (prometheus/histogram :metabase-search/semantic-results-before-fallback
+                         {:description "Distribution of result counts from semantic search when fallback is triggered"
+                          :buckets [0 1 5 10 20 50 100]})
+   (prometheus/histogram :metabase-search/semantic-fallback-results-usage
+                         {:description "Distribution of count of fallback results used to supplement semantic search"
+                          :buckets [0 1 5 10 20 50 100]})
+   (prometheus/histogram :metabase-search/semantic-gate-write-ms
+                         {:description "Distribution of semantic search gate write latency"
+                          :buckets [1 10 50 100 500 1000 2000 5000 10000 20000]})
+   (prometheus/histogram :metabase-search/semantic-gate-timeout-ms
+                         {:description "Distribution of caught semantic search gate timeout durations"
+                          :buckets     [4000 5000 6000 7000 8000 9000 10000 15000 30000 60000]})
+   (prometheus/counter :metabase-search/semantic-gate-write-documents
+                       {:description "Total number of gate documents issued to the semantic search gate table"})
+   (prometheus/counter :metabase-search/semantic-gate-write-modified
+                       {:description "Total number of records modified in the gate table"})
+   (prometheus/counter :metabase-search/semantic-indexer-loop-ms
+                       {:description "Total number of ms spent in the semantic search indexer loop"})
+   (prometheus/counter :metabase-search/semantic-indexer-sleep-ms
+                       {:description "Total number of ms the semantic indexer loop had control but was asleep"})
+   (prometheus/histogram :metabase-search/semantic-indexer-poll-to-poll-interval-ms
+                         {:description "Distribution of time elapsed between semantic search indexer polls (pg clock)"
+                          :buckets [10 100 1000 5000 10000 20000 60000 300000 600000]})
+   (prometheus/counter :metabase-search/semantic-indexer-read-gate-poll-ms
+                       {:description "Total number of ms the semantic search indexer spent polling the gate"})
+   (prometheus/counter :metabase-search/semantic-indexer-read-documents-ms
+                       {:description "Total number of ms the semantic search indexer spent looking up candidate document details"})
+   (prometheus/counter :metabase-search/semantic-indexer-write-indexing-ms
+                       {:description "Total number of ms the semantic search indexer spent actually indexing (includes embedding/hnsw indexing), NOTE 'normal' mode only"})
+   (prometheus/counter :metabase-search/semantic-indexer-write-metadata-ms
+                       {:description "Total number of ms the semantic indexer spent updating metadata (includes watermark/stall updates)"})
+   (prometheus/gauge   :metabase-search/semantic-indexer-stalled
+                       {:description "Whether or not the semantic search indexer is stalled - 0 = normal, 1 = stall"})
+   (prometheus/counter :metabase-search/semantic-indexer-dlq-loop-ms
+                       {:description "Total number of ms the semantic indexer spent in dead letter queue processing"})
+   (prometheus/counter :metabase-search/semantic-indexer-dlq-successes
+                       {:description "Number of successful semantic search DLQ retries"})
+   (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
+                       {:description "Number of failed semantic search DLQ retries"})
+
+;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
                         :labels [:payload-type]})
    (prometheus/counter :metabase-notification/send-error
                        {:description "Number of errors when sending notifications."
                         :labels [:payload-type]})
+   (prometheus/counter :metabase-notification/temp-storage
+                       {:description "Number and type of temporary storage uses"
+                        ;; memory, disk, above-threshold, truncated, not-limited
+                        :labels [:storage]})
    (prometheus/histogram :metabase-notification/wait-duration-ms
                          {:description "Duration in milliseconds that notifications wait in the processing queue before being picked up for delivery."
                           :labels [:payload-type]
@@ -333,7 +437,56 @@
    (prometheus/counter :metabase-gsheets/connection-deleted
                        {:description "How many times the instance has deleted their Google Sheets connection."})
    (prometheus/counter :metabase-gsheets/connection-manually-synced
-                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})])
+                       {:description "How many times the instance has manually sync'ed their Google Sheets connection."})
+
+   ;; transform metrics
+   (prometheus/counter :metabase-transforms/job-runs-total
+                       {:description "Total number of transform job runs started."
+                        :labels [:run-method]})
+   (prometheus/counter :metabase-transforms/job-runs-completed
+                       {:description "Number of transform job runs that completed successfully."
+                        :labels [:run-method]})
+   (prometheus/counter :metabase-transforms/job-runs-failed
+                       {:description "Number of transform job runs that failed."
+                        :labels [:run-method]})
+   (prometheus/histogram :metabase-transforms/job-run-duration-ms
+                         {:description "Duration in milliseconds of transform job runs."
+                          :labels [:run-method]
+                          ;; 100ms -> 6 hours
+                          :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
+   (prometheus/counter :metabase-transforms/stage-started
+                       {:description "Number of transform stages started."
+                        :labels [:stage-type :stage-label]})
+   (prometheus/counter :metabase-transforms/stage-completed
+                       {:description "Number of transform stages completed successfully."
+                        :labels [:stage-type :stage-label]})
+   (prometheus/counter :metabase-transforms/stage-failed
+                       {:description "Number of transform stages that failed."
+                        :labels [:stage-type :stage-label]})
+   (prometheus/histogram :metabase-transforms/stage-duration-ms
+                         {:description "Duration in milliseconds of individual transform stages."
+                          :labels [:stage-type :stage-label]
+                          ;; 10ms -> 10 minutes
+                          :buckets [10 100 500 1000 5000 10000 30000 60000 300000 600000]})
+   (prometheus/histogram :metabase-transforms/data-transfer-bytes
+                         {:description "Size in bytes of data transferred during transform stages."
+                          :labels [:stage-label]
+                          ;; 1KB -> 10GB
+                          :buckets [1000 10000 100000 1000000 10000000 100000000 1000000000 10000000000]})
+   (prometheus/histogram :metabase-transforms/data-transfer-rows
+                         {:description "Number of rows transferred during transform stages."
+                          :labels [:stage-label]
+                          ;; 10 -> 10M rows
+                          :buckets [10 100 1000 10000 100000 1000000 10000000]})
+   ;; Python-transform specific metrics
+   (prometheus/histogram :metabase-transforms/python-api-call-duration-ms
+                         {:description "Duration of Python runner API calls."
+                          :labels []
+                          ;; 100ms -> 6 hours
+                          :buckets [100 500 1000 5000 10000 30000 60000 300000 1800000 7200000 14400000 21600000]})
+   (prometheus/counter :metabase-transforms/python-api-calls-total
+                       {:description "Total number of Python runner API calls."
+                        :labels [:status]})])
 
 (defn- quartz-collectors
   []

@@ -5,9 +5,10 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { setOpenModal } from "metabase/redux/ui";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Icon, Menu } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
@@ -38,8 +39,18 @@ const NewItemMenuView = ({
     getSetting(state, "last-used-native-database-id"),
   );
 
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
+
   const menuItems = useMemo(() => {
     const items = [];
+
+    const aiExplorationItem = PLUGIN_METABOT.getNewMenuItemAIExploration(
+      hasDataAccess,
+      collectionId,
+    );
+    if (aiExplorationItem) {
+      items.push(aiExplorationItem);
+    }
 
     if (hasDataAccess) {
       items.push(
@@ -65,11 +76,11 @@ const NewItemMenuView = ({
           key="native"
           component={ForwardRefLink}
           to={Urls.newQuestion({
-            type: "native",
+            DEPRECATED_RAW_MBQL_type: "native",
             creationType: "native_question",
             collectionId,
             cardType: "question",
-            databaseId: lastUsedDatabaseId || undefined,
+            DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
           leftSection={<Icon name="sql" />}
         >
@@ -77,42 +88,47 @@ const NewItemMenuView = ({
         </Menu.Item>,
       );
     }
-    items.push(
-      <Menu.Item
-        key="dashboard"
-        onClick={() => {
-          trackNewMenuItemClicked("dashboard");
-          dispatch(setOpenModal("dashboard"));
-        }}
-        leftSection={<Icon name="dashboard" />}
-      >
-        {t`Dashboard`}
-      </Menu.Item>,
-    );
 
-    // This is a non-standard way of feature gating, akin to using hasPremiumFeature. Do not do this for more complex setups.
-    if (PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.shouldShowEmbedInNewItemMenu()) {
+    if (canWriteToCollections) {
       items.push(
         <Menu.Item
-          key="embed"
-          component={ForwardRefLink}
-          to="/embed-iframe"
-          leftSection={<Icon name="embed" />}
+          key="dashboard"
+          onClick={() => {
+            trackNewMenuItemClicked("dashboard");
+            dispatch(setOpenModal("dashboard"));
+          }}
+          leftSection={<Icon name="dashboard" />}
         >
-          {t`Embed`}
+          {t`Dashboard`}
         </Menu.Item>,
       );
     }
+
+    items.push(
+      <Menu.Item
+        key="document"
+        component={ForwardRefLink}
+        to="/document/new"
+        leftSection={<Icon name="document" />}
+      >
+        {t`Document`}
+      </Menu.Item>,
+    );
 
     return items;
   }, [
     hasDataAccess,
     hasNativeWrite,
     collectionId,
-    hasDatabaseWithJsonEngine,
     lastUsedDatabaseId,
+    hasDatabaseWithJsonEngine,
     dispatch,
+    canWriteToCollections,
   ]);
+
+  if (menuItems.length === 0) {
+    return null;
+  }
 
   return (
     <Menu position="bottom-end">

@@ -5,6 +5,8 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -52,12 +54,14 @@ COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupLibraryEndpoints();
+  setupDatabasesEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({});
 
   if (mockCreateDashboardResponse) {
-    fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
+    fetchMock.post(`path:/api/dashboard`, (call) => call?.options.body);
   }
   const collections = Object.values(COLLECTION);
   setupCollectionsEndpoints({

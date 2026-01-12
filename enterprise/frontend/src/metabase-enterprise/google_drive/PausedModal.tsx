@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import { BUY_STORAGE_URL } from "metabase/admin/upsells";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import ExternalLink from "metabase/common/components/ExternalLink";
-import { useSetting } from "metabase/common/hooks";
+import { useSetting, useStoreUrl } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { _FileUploadErrorModal } from "metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal";
@@ -12,6 +11,7 @@ import { Box, Button, Modal, Stack, Text } from "metabase/ui";
 import databaseError from "./database-error.svg?component";
 
 function PausedModal({ onClose }: { onClose: () => void }) {
+  const storeUrl = useStoreUrl("account/storage");
   const isAdmin = useSelector(getUserIsAdmin);
 
   return (
@@ -21,7 +21,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
         <Text size="lg" fw="bold">
           {t`Couldn't upload the file, storage is full`}
         </Text>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {isAdmin
             ? // eslint-disable-next-line no-literal-metabase-strings -- admin only
               t`Add more storage to your Metabase or connect a database to store the uploaded files.`
@@ -34,7 +34,7 @@ function PausedModal({ onClose }: { onClose: () => void }) {
               <Button
                 variant="filled"
                 component={ExternalLink}
-                href={BUY_STORAGE_URL}
+                href={storeUrl}
                 target="_blank"
               >
                 {t`Add more storage`}

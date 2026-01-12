@@ -6,8 +6,9 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.field :as lib.field]
+   [metabase.lib.schema.metadata]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -21,23 +22,17 @@
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
    [methodical.core :as methodical]
+   [potemkin :as p]
    [toucan2.core :as t2]
    [toucan2.protocols :as t2.protocols]
    [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
-;;; ------------------------------------------------- Type Mappings --------------------------------------------------
+(comment metabase.lib.schema.metadata/keep-me)
 
-(def visibility-types
-  "Possible values for `Field.visibility_type`."
-  #{:normal         ; Default setting.  field has no visibility restrictions.
-    :details-only   ; For long blob like columns such as JSON.  field is not shown in some places on the frontend.
-    :hidden         ; Lightweight hiding which removes field as a choice in most of the UI.  should still be returned in queries.
-    :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
-    :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
-
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+#_{:clj-kondo/ignore [:missing-docstring]} ; false positive
+(p/import-def metabase.lib.schema.metadata/column-visibility-types visibility-types)
 
 (methodical/defmethod t2/table-name :model/Field [_model] :metabase_field)
 
@@ -48,7 +43,7 @@
 
 (defn- hierarchy-keyword-in [column-name & {:keys [ancestor-types]}]
   (fn [k]
-    (when-let [k (keyword k)]
+    (when-let [k (some-> k keyword)]
       (when-not (some
                  (partial isa? k)
                  ancestor-types)
@@ -302,7 +297,7 @@
   See [[lib.field/infer-has-field-values]] for more info."
   [_model k field]
   (when field
-    (let [has-field-values (lib.field/infer-has-field-values (lib.metadata.jvm/instance->metadata field :metadata/column))]
+    (let [has-field-values (lib.field/infer-has-field-values (lib-be/instance->metadata field :metadata/column))]
       (assoc field k has-field-values))))
 
 (methodical/defmethod t2.hydrate/needs-hydration? [#_model :default #_k :has_field_values]
@@ -425,8 +420,9 @@
         (disj this))))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
-               :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
+  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_default :database_indexed
+               :database_is_auto_increment :database_is_generated :database_is_nullable :database_is_pk
+               :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate
                :json_unfolding :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]

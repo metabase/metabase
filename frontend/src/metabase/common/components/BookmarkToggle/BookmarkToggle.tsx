@@ -1,12 +1,13 @@
-import type { HTMLAttributes, Ref } from "react";
+import cx from "classnames";
+import type { Ref } from "react";
 import { forwardRef, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { Tooltip } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 
-import { BookmarkButton, BookmarkIcon } from "./BookmarkToggle.styled";
+import S from "./BookmarkToggle.module.css";
 
-export interface BookmarkToggleProps extends HTMLAttributes<HTMLButtonElement> {
+export interface BookmarkToggleProps extends ActionIconProps {
   isBookmarked: boolean;
   tooltipPlacement?: "top" | "bottom";
   onCreateBookmark: () => void;
@@ -44,22 +45,27 @@ const BookmarkToggle = forwardRef(function BookmarkToggle(
 
   return (
     <Tooltip label={label} position={tooltipPlacement}>
-      <BookmarkButton
+      <ActionIcon
         {...props}
         aria-label={label}
         ref={ref}
         onClick={handleClick}
+        variant="viewHeader"
+        size="2rem"
       >
-        <BookmarkIcon
+        <Icon
           name={iconName}
-          isBookmarked={isBookmarked}
-          isAnimating={isAnimating}
+          className={cx(S.icon, {
+            [S.iconAnimating]: isAnimating,
+            [S.actionIconBookmarked]: isBookmarked,
+            [S.iconAnimatingBookmarked]: isAnimating && isBookmarked,
+            [S.iconAnimatingUnbookmarked]: isAnimating && !isBookmarked,
+          })}
           onAnimationEnd={handleAnimationEnd}
         />
-      </BookmarkButton>
+      </ActionIcon>
     </Tooltip>
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default BookmarkToggle;
+export { BookmarkToggle };

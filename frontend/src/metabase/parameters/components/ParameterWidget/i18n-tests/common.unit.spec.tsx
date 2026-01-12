@@ -1,7 +1,7 @@
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen } from "__support__/ui";
 
-import { setup } from "./setup";
+import { setup } from "./setup.spec";
 
 describe("ParameterWidget (OSS)", () => {
   describe("content translation", () => {
@@ -18,9 +18,9 @@ describe("ParameterWidget (OSS)", () => {
           },
         ],
       });
-      expect(await screen.findByTestId("field-set-legend")).toHaveTextContent(
-        "Text contains",
-      );
+      expect(
+        await screen.findByTestId("parameter-value-widget-target"),
+      ).toHaveTextContent("Text contains");
       expect(translateContentStringSpy()).not.toHaveBeenCalled();
     });
   });

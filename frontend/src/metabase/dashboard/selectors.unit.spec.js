@@ -4,6 +4,7 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   getClickBehaviorSidebarDashcard,
   getDashboardComplete,
+  getDashboardHeaderParameters,
   getEditingParameterId,
   getIsEditingParameter,
   getIsSharing,
@@ -219,6 +220,39 @@ describe("dashboard/selectors", () => {
           hasVariableTemplateTagTarget: false,
         },
       ]);
+    });
+  });
+
+  describe("getDashboardHeaderParameters", () => {
+    it("should ignore dashcards that don't belong to the current dashboard", () => {
+      const parameterId = "_parameterId_";
+      const state = {
+        ...STATE,
+        dashboard: {
+          ...STATE.dashboard,
+          dashboards: {
+            0: {
+              ...STATE.dashboard.dashboards[0],
+              dashcards: [1],
+              parameters: [{ id: parameterId }],
+            },
+          },
+          dashcards: {
+            0: {
+              ...STATE.dashboard.dashcards[0],
+              inline_parameters: [parameterId],
+              dashboard_id: 1,
+            },
+            1: {
+              ...STATE.dashboard.dashcards[1],
+              dashboard_id: 0,
+            },
+          },
+        },
+      };
+      const headerParameters = getDashboardHeaderParameters(state);
+      expect(headerParameters).toHaveLength(1);
+      expect(headerParameters[0].id).toBe(parameterId);
     });
   });
 

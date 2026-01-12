@@ -1,8 +1,8 @@
 ---
 title: Dashboard subscriptions
 redirect_from:
-  - /docs/latest/users-guide/dashboard-subscriptions
-  - /docs/latest/enterprise-guide/dashboards-subscriptions
+- /docs/latest/users-guide/dashboard-subscriptions
+- /docs/latest/enterprise-guide/dashboards-subscriptions
 ---
 
 # Dashboard subscriptions
@@ -58,29 +58,32 @@ If there are no results, you can tell Metabase to skip sending the email.
 
 Here you can set filters to apply when Metabase sends the subscription.
 
-### Attach results
+## Attach results
 
-Tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
+When configuring a subscription, you can tell Metabase if it should attach results to the email as a file, in addition to displaying the table in the email body.
 
 If you've added filters to your dashboard and set default values for those filters, Metabase will apply those default values to your subscriptions, filtering the results of all questions that are connected to those filters when the subscriptions are sent. To learn more, check out [dashboard filters](./filters.md).
 
-#### File format
+### File format
 
 You can choose between the following file formats:
 
 - .csv
 - .xlsx
-- .json
 
-#### Use unformatted values in attachments
+### Use unformatted values in attachments
 
 If you check this box, Metabase will drop any visualization settings applied to the questions' results (e.g., date formatting) and send only the raw, unformatted results.
 
-#### Questions to attach
+### Questions to attach
 
-Here you can specify which questions Metabase should attach results for.
+Here you can specify which questions Metabase should attach results for. If you don't select any questions, Metabase won't send any attachments.
 
-The attached files will include up to 1 048 575 rows by default. If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [MB_ATTACHMENT_ROW_LIMIT](../configuring-metabase/environment-variables.md#mb_attachment_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help-premium) and request a different row limit.
+The attached files will include up to 1 048 575 rows by default (Excel's row limit for spreadsheets). If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [ `MB_ATTACHMENT_ROW_LIMIT` ](../configuring-metabase/environment-variables.md#mb_attachment_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help-premium) and request a different row limit.
+
+### Send only attachments (no charts)
+
+You can toggle on "Send only attachments (no charts)" if you want to receive just the .csv or .xlsx files without the charts. Remember to select the results you want to attach in "Questions to attach" above the toggle.
 
 ## Slack subscription options
 
@@ -135,6 +138,10 @@ See [Notification permissions](../permissions/notifications.md).
 ## Removing Metabase branding from subscriptions
 
 See [Remove Metabase branding from exports](../questions/exporting-results.md#remove-metabase-branding-from-exports).
+
+## Subscriptions in embedded dashboards exclude links
+
+Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
 
 ## Further reading
 

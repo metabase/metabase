@@ -93,7 +93,7 @@ describe("useUserKeyValue", () => {
 
   describe("setValue", () => {
     it("should optimistically update the value and skip refetching", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "before-value",
@@ -115,12 +115,12 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("before-value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.setValue("after-value");
       });
 
-      // assert optimisitic update occurred
+      // assert optimistic update occurred
       expect(result.current.value).toBe("after-value");
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -128,15 +128,18 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("after-value");
     });
 
-    it("should revert optimisitic update if update fails", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+    it("should revert optimistic update if update fails", async () => {
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "before-value",
@@ -154,12 +157,12 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("before-value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.setValue("after-value");
       });
 
-      // assert optimisitic update works as expected
+      // assert optimistic update works as expected
       expect(result.current.value).toBe("after-value");
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -167,9 +170,12 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("before-value");
     });
@@ -177,7 +183,7 @@ describe("useUserKeyValue", () => {
 
   describe("clearValue", () => {
     it("should optimistically delete a key and skip refetching its value", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "value",
@@ -195,12 +201,12 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.clearValue();
       });
 
-      // assert optimisitic deletion worked
+      // assert optimistic deletion worked
       expect(result.current.value).toBe(undefined);
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -208,15 +214,18 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe(undefined);
     });
 
-    it("should revert optimisitic delete if deletion fails", async () => {
-      const mockedFetch = setupGetUserKeyValueEndpoint({
+    it("should revert optimistic delete if deletion fails", async () => {
+      setupGetUserKeyValueEndpoint({
         namespace: "test",
         key: "test",
         value: "before-value",
@@ -234,12 +243,12 @@ describe("useUserKeyValue", () => {
       expect(result.current.value).toBe("before-value");
 
       // set new value
-      expect(mockedFetch.calls().length).toBe(1);
+      expect(fetchMock.callHistory.calls().length).toBe(1);
       act(() => {
         result.current.clearValue();
       });
 
-      // assert optimisitic deletion was reverted
+      // assert optimistic deletion was reverted
       expect(result.current.value).toBe(undefined);
       expect(result.current?.isMutating).toBe(true);
       await waitFor(() => {
@@ -247,9 +256,12 @@ describe("useUserKeyValue", () => {
       });
       expect(result.current?.isLoading).toBe(false);
       expect(
-        mockedFetch.calls(`path:/api/user-key-value/namespace/test/key/test`, {
-          method: "GET",
-        }),
+        fetchMock.callHistory.calls(
+          `path:/api/user-key-value/namespace/test/key/test`,
+          {
+            method: "GET",
+          },
+        ),
       ).toHaveLength(1);
       expect(result.current.value).toBe("before-value");
     });

@@ -1,7 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
-import { createMockNotification } from "metabase-types/api/mocks";
 
 import { openMenu, setupQuestionSharingMenu } from "./setup";
 
@@ -42,79 +41,6 @@ describe("QuestionSharingMenu", () => {
       "aria-label",
       "You must save this question before sharing",
     );
-  });
-
-  describe("notifications", () => {
-    describe("admins", () => {
-      it("should show the 'Create an alert' menu item if no alerts exist", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: true,
-          isEmailSetup: true,
-          alerts: [],
-        });
-        await openMenu();
-        expect(screen.getByText("Create an alert")).toBeInTheDocument();
-      });
-
-      it("should show the 'Edit alerts' menu item if alerts exist", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: true,
-          isEmailSetup: true,
-          alerts: [createMockNotification()],
-        });
-        await openMenu();
-        expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
-      });
-
-      it("clicking to edit alerts should open the alert popover", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: true,
-          isEmailSetup: true,
-          alerts: [createMockNotification()],
-        });
-        await openMenu();
-        await userEvent.click(screen.getByText("Edit alerts"));
-        expect(
-          await screen.findByTestId("alert-list-modal"),
-        ).toBeInTheDocument();
-      });
-    });
-
-    describe("non-admins", () => {
-      // NOTE: canManageSubscriptions doesn't do anything here as it is always "true" for non-EE
-      it("should show the 'Create an alert' menu item if no alerts exist", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: false,
-          isEmailSetup: true,
-          alerts: [],
-        });
-        await openMenu();
-        expect(screen.getByText("Create an alert")).toBeInTheDocument();
-      });
-
-      it("should show the 'Edit alerts' menu item if alerts exist", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: false,
-          isEmailSetup: true,
-          alerts: [createMockNotification()],
-        });
-        await openMenu();
-        expect(screen.getByText("Edit alerts")).toBeInTheDocument();
-      });
-
-      it("clicking to edit alerts should open the alert popover", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: false,
-          isEmailSetup: true,
-          alerts: [createMockNotification()],
-        });
-        await openMenu();
-        await userEvent.click(screen.getByText("Edit alerts"));
-        expect(
-          await screen.findByTestId("alert-list-modal"),
-        ).toBeInTheDocument();
-      });
-    });
   });
 
   describe("public links", () => {
@@ -158,13 +84,14 @@ describe("QuestionSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should show a 'public links are off' menu item if public sharing is disabled", async () => {
+      it('should show an "Enable" link if public sharing is disabled', async () => {
         setupQuestionSharingMenu({
           isAdmin: true,
           isPublicSharingEnabled: false,
         });
         await openMenu();
-        expect(screen.getByText("Public links are off")).toBeInTheDocument();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
+        expect(screen.getByText("Enable")).toBeInTheDocument();
         expect(
           screen.queryByText("Create a public link"),
         ).not.toBeInTheDocument();
@@ -199,32 +126,6 @@ describe("QuestionSharingMenu", () => {
   });
 
   describe("embedding", () => {
-    describe("admins", () => {
-      describe("when embedding is disabled", () => {
-        it("should open the embed modal when the 'Embed' menu item is clicked", async () => {
-          setupQuestionSharingMenu({
-            isAdmin: true,
-            isEmbeddingEnabled: false,
-          });
-          await openMenu();
-          await userEvent.click(screen.getByText("Embed"));
-          expect(await screen.findByText("Embed Metabase")).toBeInTheDocument();
-        });
-      });
-
-      describe("when embedding is enabled", () => {
-        it("should open the embed modal when the 'Embed' menu item is clicked", async () => {
-          setupQuestionSharingMenu({
-            isAdmin: true,
-            isEmbeddingEnabled: true,
-          });
-          await openMenu();
-          await userEvent.click(screen.getByText("Embed"));
-          expect(await screen.findByText("Embed Metabase")).toBeInTheDocument();
-        });
-      });
-    });
-
     describe("non-admins", () => {
       it("should not show the 'Embed' menu item if embedding is enabled", async () => {
         setupQuestionSharingMenu({

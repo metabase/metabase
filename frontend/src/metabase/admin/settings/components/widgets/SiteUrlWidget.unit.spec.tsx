@@ -1,50 +1,68 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
   createMockSettings,
+  createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockSettingsState } from "metabase-types/store/mocks";
 
 import { SiteUrlWidget } from "./SiteUrlWidget";
 
-const setup = () => {
-  setupPropertiesEndpoints(
-    createMockSettings({
-      "site-url": "http://mysite.biz",
+const setup = (props: { isHosted?: boolean; isEnvSetting?: boolean }) => {
+  const siteUrlWidgetSettings = {
+    "site-url": "http://mysite.biz",
+    "token-features": createMockTokenFeatures({
+      hosting: Boolean(props.isHosted),
     }),
-  );
+  } as const;
+
+  const settings = createMockSettings(siteUrlWidgetSettings);
+
+  setupPropertiesEndpoints(settings);
   setupUpdateSettingEndpoint();
-  setupSettingsEndpoints([
-    createMockSettingDefinition({
-      key: "site-url",
-      value: "http://mysite.biz",
-    }),
-  ]);
+  setupSettingsEndpoints(
+    Object.entries(settings).map(([key, value]) =>
+      createMockSettingDefinition({
+        key: key as SettingKey,
+        value,
+        is_env_setting: props.isEnvSetting && key === "site-url",
+        env_name:
+          props.isEnvSetting && key === "site-url" ? "MB_SITE_URL" : undefined,
+      }),
+    ),
+  );
 
   return renderWithProviders(
     <div>
       <SiteUrlWidget />
       <UndoListing />
     </div>,
+    {
+      storeInitialState: {
+        settings: createMockSettingsState(settings),
+      },
+    },
   );
 };
 
 describe("siteUrlWidget", () => {
   it("should render a SiteUrlWidget", async () => {
-    setup();
+    setup({});
     expect(await screen.findByText("Site url")).toBeInTheDocument();
   });
 
   it("should load existing value", async () => {
-    setup();
+    setup({});
     const selectInput = await screen.findByRole("textbox", {
       name: "input-prefix",
     });
@@ -55,32 +73,32 @@ describe("siteUrlWidget", () => {
   });
 
   it("should update the value", async () => {
-    setup();
+    setup({});
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
     await fireEvent.blur(input);
     await screen.findByDisplayValue("newsite.guru");
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/site-url/);
-    expect(putDetails).toEqual({ value: "http://newsite.guru" });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/site-url/);
+    expect(body).toEqual({ value: "http://newsite.guru" });
   });
 
   it("can change from http to https", async () => {
-    setup();
+    setup({});
     await userEvent.click(
       await screen.findByRole("textbox", { name: "input-prefix" }),
     );
     await userEvent.click(await screen.findByText("https://"));
 
-    const [putUrl, putDetails] = await findPut();
-    expect(putUrl).toMatch(/\/api\/setting\/site-url/);
-    expect(putDetails).toEqual({ value: "https://mysite.biz" });
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/\/api\/setting\/site-url/);
+    expect(body).toEqual({ value: "https://mysite.biz" });
   });
 
   it("should show success toast", async () => {
-    setup();
+    setup({});
     const input = await screen.findByDisplayValue("mysite.biz");
     await userEvent.clear(input);
     await userEvent.type(input, "newsite.guru");
@@ -94,7 +112,7 @@ describe("siteUrlWidget", () => {
   });
 
   it("should show error message", async () => {
-    setup();
+    setup({});
     setupUpdateSettingEndpoint({ status: 500 });
 
     const input = await screen.findByDisplayValue("mysite.biz");
@@ -107,14 +125,38 @@ describe("siteUrlWidget", () => {
       await screen.findByText("Error saving Site URL"),
     ).toBeInTheDocument();
   });
+
+  it("should not render if it's hosted", async () => {
+    setup({ isHosted: true });
+    expect(screen.queryByText("Site url")).not.toBeInTheDocument();
+  });
+
+  it("should show environment variable message when site URL is set via env var", async () => {
+    setup({ isEnvSetting: true });
+    expect(
+      await screen.findByText(/This has been set by the/),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("MB_SITE_URL")).toBeInTheDocument();
+  });
+
+  it("should not show the input when site URL is set via env var", async () => {
+    setup({ isEnvSetting: true });
+    await screen.findByText(/This has been set by the/);
+
+    expect(
+      screen.queryByRole("textbox", { name: "input-prefix" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByPlaceholderText("http://example.com"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should show the input when site URL is not set via env var", async () => {
+    setup({ isEnvSetting: false });
+
+    expect(
+      await screen.findByRole("textbox", { name: "input-prefix" }),
+    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("mysite.biz")).toBeInTheDocument();
+  });
 });
-
-async function findPut() {
-  const calls = fetchMock.calls();
-  const [putUrl, putDetails] =
-    calls.find((call) => call[1]?.method === "PUT") ?? [];
-
-  const body = ((await putDetails?.body) as string) ?? "{}";
-
-  return [putUrl, JSON.parse(body)];
-}

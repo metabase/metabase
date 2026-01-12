@@ -14,6 +14,10 @@ Metabase supports the oldest supported version of SQL Server through the latest 
 
 You can edit these settings at any time. Just remember to save your changes.
 
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
+
 ### Display name
 
 The display name for the database in the Metabase interface.
@@ -44,7 +48,7 @@ The password for the username that you use to connect to the database.
 
 ### Use a secure connection (SSL)
 
-Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we highly recommend keeping SSL turned on to keep your data secure.
+Metabase automatically tries to connect to databases with SSL first, then without if that doesn't work. If it's possible to connect to your database with an SSL connection, Metabase will make that the default setting for your database. If you prefer to connect without this layer of security, you can always change this setting later, but we recommend keeping SSL turned on to keep your data secure.
 
 ### Use an SSH tunnel
 
@@ -73,13 +77,13 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll be ab
 
 ### Scanning for filter values
 
-Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database.
+Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a resource-intensive process, particularly if you have a large database.
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
 - **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which rarely have new values added. Use the [Re-scan field values](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
@@ -94,6 +98,8 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 To connect to Azure SQL, you'll need to set the port to 1433.
 
 ## Database routing
+
+With database routing, an admin can build a question once using one database, and the question will run its query against a different database with the same schema depending on who is viewing the question.
 
 See [Database routing](../../permissions/database-routing.md).
 

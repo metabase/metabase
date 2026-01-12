@@ -2,7 +2,8 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
-import { Box, Flex, Text } from "metabase/ui";
+import type { ColorName } from "metabase/lib/colors/types";
+import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
@@ -17,7 +18,7 @@ import { getDefaultJoinStrategy, getJoinFields } from "./utils";
 interface JoinDraftProps {
   query: Lib.Query;
   stageIndex: number;
-  color: string;
+  color: ColorName;
   initialStrategy?: Lib.JoinStrategy;
   initialRhsTable?: Lib.Joinable;
   isReadOnly: boolean;
@@ -105,9 +106,9 @@ export function JoinDraft({
   );
 
   return (
-    <Flex miw="100%" gap="1rem">
+    <Flex miw="100%" gap="sm">
       <NotebookCell className={S.JoinCell} color={color}>
-        <Flex direction="row" gap={6}>
+        <Flex gap={6} align="center">
           <NotebookCellItem color={color} disabled aria-label={t`Left table`}>
             {lhsTableName}
           </NotebookCellItem>
@@ -139,13 +140,14 @@ export function JoinDraft({
       </NotebookCell>
       {rhsTable && (
         <>
-          <Box mt="1.5rem">
-            <Text color="brand" fw="bold">{t`on`}</Text>
-          </Box>
+          <Flex className={S.JoinConditionOn}>
+            <Text c="brand" fw="bold">{t`on`}</Text>
+          </Flex>
           <NotebookCell
             className={S.JoinConditionCell}
             color={color}
             data-testid="new-join-condition"
+            p={rem("6px")}
           >
             <JoinConditionDraft
               query={query}

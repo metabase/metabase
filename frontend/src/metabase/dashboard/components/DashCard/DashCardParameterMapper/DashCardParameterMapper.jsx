@@ -3,8 +3,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Flex } from "metabase/ui";
+import { color } from "metabase/ui/utils/colors";
 
 import { DashCardCardParameterMapperConnected } from "./DashCardCardParameterMapper";
 import S from "./DashCardParameterMapper.module.css";
@@ -27,7 +27,7 @@ export const DashCardParameterMapper = ({
       <div
         className={cx(CS.mx4, CS.my1, CS.p1, CS.rounded, CS.textMedium)}
         style={{
-          backgroundColor: color("bg-light"),
+          backgroundColor: color("background-secondary"),
           marginTop: -10,
         }}
       >
@@ -38,6 +38,7 @@ export const DashCardParameterMapper = ({
       justify="space-around"
       maw="100%"
       m={compact ? undefined : "0 2rem"}
+      gap="sm"
       className={S.MapperSettingsContainer}
       data-testid="parameter-mapper-container"
     >

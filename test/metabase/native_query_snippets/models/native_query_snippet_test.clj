@@ -68,3 +68,80 @@
         (is (= "7ac51ad0"
                (serdes/raw-hash ["my snippet" (serdes/identity-hash coll) (:created_at snippet)])
                (serdes/identity-hash snippet)))))))
+
+(deftest basic-param-finding-test
+  (testing "Can find params in a snippet"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{id}}"}]
+      (is (=? {"id" {:type :text,
+                     :name "id",
+                     :display-name "ID"}}
+              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+
+(deftest update-param-finding-test
+  (testing "Can find params on update"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "id"}]
+      (is (= {} (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id)))
+      (t2/update! :model/NativeQuerySnippet :id snippet-id {:content "{{id}}"})
+      (is (=? {"id" {:type :text,
+                     :name "id",
+                     :display-name "ID"}}
+              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+
+(deftest recursive-snippets-test
+  (testing "Does not find params in child snippets"
+    (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "id"}
+                   :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]
+      (is (=? {"snippet: inner"
+               {:type :snippet,
+                :name "snippet: inner",
+                :snippet-name "inner",
+                :display-name "Snippet: Inner",
+                :snippet-id inner-id}}
+              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+
+(deftest not-parse-recursive-snippets-test
+  (testing "Does not find params in child snippets"
+    (mt/with-temp [:model/NativeQuerySnippet {inner-id :id} {:name "inner" :content "{{id}}"}
+                   :model/NativeQuerySnippet {snippet-id :id} {:name "my snippet" :content "{{snippet: inner}}"}]
+      (is (=? {"snippet: inner"
+               {:type :snippet,
+                :name "snippet: inner",
+                :snippet-name "inner",
+                :display-name "Snippet: Inner",
+                :snippet-id inner-id}}
+              (t2/select-one-fn :template_tags :model/NativeQuerySnippet :id snippet-id))))))
+
+(deftest template-tags-serialization-test
+  (testing "Template tags serialization preserves nil, empty, and populated states"
+    (mt/with-temp [:model/User {user-id :id} {:email "test@example.com"}]
+
+      (testing "nil in -> {} out"
+        (let [snippet (t2/insert-returning-instance! :model/NativeQuerySnippet
+                                                     {:name "nil-tags"
+                                                      :content "SELECT 1"
+                                                      :creator_id user-id
+                                                      :template_tags nil})
+              extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
+          ;; toucan hooks populate it:
+          (is (= {} (:template_tags extracted)))
+          (t2/delete! :model/NativeQuerySnippet :id (:id snippet))))
+
+      (testing "empty map in -> empty map out"
+        (mt/with-temp [:model/NativeQuerySnippet snippet
+                       {:name "empty-tags"
+                        :content "SELECT 1"
+                        :creator_id user-id
+                        :template_tags {}}]
+          (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
+            (is (= {} (:template_tags extracted))))))
+
+      (testing "tags in -> tags out"
+        (mt/with-temp [:model/NativeQuerySnippet snippet
+                       {:name "with-tags"
+                        :content "WHERE id = {{id}}"
+                        :creator_id user-id}]
+          (let [extracted (serdes/extract-one "NativeQuerySnippet" {} snippet)]
+            (is (=? {"id" {:type :text
+                           :name "id"
+                           :display-name "ID"}}
+                    (:template_tags extracted)))))))))

@@ -3,14 +3,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
-   [metabase-enterprise.serialization.serialize :as serialize]
-   [metabase.config.core :as config]
-   [metabase.models.interface :as mi]
-   [metabase.settings.core :as setting]
-   [metabase.util.log :as log]
-   [metabase.util.yaml :as yaml]
-   [toucan2.core :as t2]))
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,7 +25,8 @@
 
 (def ^:private serialization-sorted-map (memoize serialization-sorted-map*))
 
-(defn- serialization-deep-sort
+(defn serialization-deep-sort
+  "Provide a deterministic sort for maps before serialization."
   ([m]
    (let [model (-> (:serdes/meta m) last :model)]
      (serialization-deep-sort m [(keyword model)])))
@@ -58,57 +52,3 @@
       (if-not (.canWrite (.getParentFile (io/file filename)))
         (throw (ex-info (format "Destination path is not writeable: %s" filename) {:filename filename}))
         (throw e)))))
-
-(defn- as-file?
-  [instance]
-  (some (fn [model]
-          (mi/instance-of? model instance))
-        [:model/Pulse :model/Dashboard :model/Segment :model/Field :model/User]))
-
-(defn- spit-entity!
-  [path entity]
-  (let [filename (if (as-file? entity)
-                   (format "%s%s.yaml" path (fully-qualified-name entity))
-                   (format "%s%s/%s.yaml" path (fully-qualified-name entity) (safe-name entity)))]
-    (when (.exists (io/as-file filename))
-      (log/warn (str filename " is about to be overwritten."))
-      (log/debug (str "With object: " (pr-str entity))))
-
-    (spit-yaml! filename (serialize/serialize entity))))
-
-(defn dump!
-  "Serialize entities into a directory structure of YAMLs at `path`."
-  [path & entities]
-  (doseq [entity (flatten entities)]
-    (try
-      (spit-entity! path entity)
-      (catch Throwable e
-        (log/errorf e "Error dumping %s" (name-for-logging entity)))))
-  (spit-yaml! (str path "/manifest.yaml")
-              {:serialization-version serialize/serialization-protocol-version
-               :metabase-version      config/mb-version-info}))
-
-(defn dump-settings!
-  "Combine all settings into a map and dump it into YAML at `path`."
-  [path]
-  (spit-yaml! (str path "/settings.yaml")
-              (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
-                                                  :getter (partial setting/get-value-of-type :string))]
-                         [key value]))))
-
-(defn dump-dimensions!
-  "Combine all dimensions into a vector and dump it into YAML at in the directory for the
-   corresponding schema starting at `path`."
-  [path]
-  (doseq [[table-id dimensions] (group-by (comp :table_id #(t2/select-one :model/Field :id %) :field_id)
-                                          (t2/select :model/Dimension))
-          :let [table (t2/select-one :model/Table :id table-id)]]
-    (spit-yaml! (if (:schema table)
-                  (format "%s%s/schemas/%s/dimensions.yaml"
-                          path
-                          (->> table :db_id (fully-qualified-name :model/Database))
-                          (:schema table))
-                  (format "%s%s/dimensions.yaml"
-                          path
-                          (->> table :db_id (fully-qualified-name :model/Database))))
-                (mapv serialize/serialize dimensions))))

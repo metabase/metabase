@@ -18,7 +18,7 @@
 }
 
 .inputContainer {
-  padding: 0 0.75rem 0 0.25rem;
+  padding: 0 0.75rem 0 0.3rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -27,43 +27,13 @@
   min-height: 3rem;
   border: 1px solid var(--mb-color-border);
 
-  &:has(.textarea textarea:focus) {
+  &:focus-within {
     border-color: var(--mb-color-brand);
   }
 }
 
 .inputContainerLoading {
-  background: var(--mb-color-bg-light);
-}
-
-.inputContainerExpanded {
-  padding: 1rem var(--padding-x);
-  align-items: flex-start;
-  height: 8rem;
-}
-
-.textarea textarea {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  outline: none;
-  width: 100%;
-  padding: 0.5rem 0;
-  line-height: 1.7;
-  color: var(--mb-color-text-dark);
-
-  &:focus {
-    border-color: var(--mb-color-brand);
-  }
-}
-
-.textareaExpanded textarea {
-  padding: 0;
-}
-
-.textareaLoading textarea:disabled {
-  opacity: 1;
-  background: transparent;
+  background: var(--mb-color-background-secondary);
 }
 
 .messagesContainer {
@@ -93,6 +63,12 @@
   width: fit-content;
 }
 
+.messageContainerUser :global(.smart-link) {
+  border: 1px solid var(--mb-color-brand-light);
+  position: relative;
+  bottom: -2px;
+}
+
 .message {
   font-size: 0.875rem;
   line-height: 1.4 !important;
@@ -101,12 +77,21 @@
 .messageUser {
   padding: 0.5rem 1rem;
   border-radius: 1rem;
-  background: var(--mb-color-bg-medium);
+  background: var(--mb-color-background-tertiary);
+}
+
+.messageUserAction {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--mb-color-background-secondary);
+  border: 1px solid var(--mb-color-background-tertiary);
+  font-weight: bold;
 }
 
 .messageActions {
   opacity: 0;
   transition: all 150ms linear;
+  min-height: 1rem;
 }
 
 .messageContainer:hover .messageActions,

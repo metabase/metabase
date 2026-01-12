@@ -5,6 +5,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
@@ -37,7 +38,7 @@
 (deftest ^:parallel ->applicable-models-test-2
   (testing "optional filters will return intersection of support models and provided models\n"
     (testing "created by"
-      (is (= #{"dashboard" "dataset" "action" "card" "metric"}
+      (is (= #{"dashboard" "dataset" "document" "action" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-by #{1}}))))
@@ -49,7 +50,8 @@
                       :created-by #{1}})))))
 
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "collection" "database" "action" "card" "metric"}
+      (is (= (cond-> #{"dashboard" "table" "dataset" "document" "collection" "database" "action" "card" "metric"}
+               config/ee-available? (conj "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -61,12 +63,12 @@
                       :created-at "past3days"})))))
 
     (testing "verified"
-      (is (= #{"dataset" "card" "metric"}
+      (is (= #{"dashboard" "dataset" "card" "metric"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:verified true}))))
 
-      (is (= #{"dataset"}
+      (is (= #{"dashboard" "dataset"}
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:models   #{"dashboard" "dataset" "table"}
@@ -97,10 +99,38 @@
                       :last-edited-at "past3days"})))))
 
     (testing "search native query"
-      (is (= #{"dataset" "action" "card" "metric"}
+      (is (= (cond-> #{"dataset" "action" "card" "metric"}
+               config/ee-available? (conj "transform"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:search-native-query true})))))))
+
+(deftest ^:parallel transform-superuser-visibility-test
+  (testing "Transform model visibility is restricted to superusers"
+    (testing "Superuser sees transform in applicable models"
+      (is (contains?
+           (search.filter/search-context->applicable-models
+            (merge default-search-ctx
+                   {:is-superuser? true
+                    :models (cond-> #{"dashboard" "card" "transform"}
+                              config/ee-available? (conj "transform"))}))
+           "transform")))
+
+    (testing "Non-superuser does not see transform in applicable models"
+      (is (not (contains?
+                (search.filter/search-context->applicable-models
+                 (merge default-search-ctx
+                        {:is-superuser? false
+                         :models (cond-> #{"dashboard" "card"}
+                                   config/ee-available? (conj "transform"))}))
+                "transform"))))
+
+    (testing "Non-superuser with transform in models set - transform is filtered out"
+      (is (= #{"dashboard" "card"}
+             (search.filter/search-context->applicable-models
+              (merge default-search-ctx
+                     {:is-superuser? false
+                      :models #{"dashboard" "card" "transform"}})))))))
 
 (deftest joined-with-table?-test
   #_{:clj-kondo/ignore [:equals-true]}

@@ -25,6 +25,7 @@ type DataSelectorDatabasePickerProps = {
   onBack?: () => void;
   onChangeDatabase: (database: Database) => void;
   onChangeSchema: (item: { schema?: Schema }) => void;
+  databaseIsDisabled?: (database: Database) => boolean;
 };
 
 type Item = {
@@ -40,6 +41,7 @@ const DataSelectorDatabasePicker = ({
   hasNextStep,
   onBack,
   hasInitialFocus,
+  databaseIsDisabled,
 }: DataSelectorDatabasePickerProps) => {
   const sections = useMemo(() => {
     const sections: Section<Item>[] = [];
@@ -81,8 +83,10 @@ const DataSelectorDatabasePicker = ({
       className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
+      globalSearch={true}
       onChange={(item: Item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
+      itemIsClickable={(item: Item) => !databaseIsDisabled?.(item.database)}
       itemIsSelected={(item: Item) =>
         selectedDatabase && item.database.id === selectedDatabase.id
       }

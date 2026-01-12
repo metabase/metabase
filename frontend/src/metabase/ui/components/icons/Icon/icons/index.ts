@@ -1,16 +1,21 @@
-/* eslint-disable import/no-duplicates */
 import ten_thousand_component from "./10k.svg?component";
 import ten_thousand_source from "./10k.svg?source";
 import one_million_component from "./1m.svg?component";
 import one_million_source from "./1m.svg?source";
 import add_component from "./add.svg?component";
 import add_source from "./add.svg?source";
+import add_collection_component from "./add_collection.svg?component";
+import add_collection_source from "./add_collection.svg?source";
 import add_column_component from "./add_column.svg?component";
 import add_column_source from "./add_column.svg?source";
+import add_comment_component from "./add_comment.svg?component";
+import add_comment_source from "./add_comment.svg?source";
 import add_data_component from "./add_data.svg?component";
 import add_data_source from "./add_data.svg?source";
 import add_folder_component from "./add_folder.svg?component";
 import add_folder_source from "./add_folder.svg?source";
+import add_list_component from "./add_list.svg?component";
+import add_list_source from "./add_list.svg?source";
 import add_row_component from "./add_row.svg?component";
 import add_row_source from "./add_row.svg?source";
 import add_to_dash_component from "./add_to_dash.svg?component";
@@ -45,6 +50,8 @@ import audit_component from "./audit.svg?component";
 import audit_source from "./audit.svg?source";
 import badge_component from "./badge.svg?component";
 import badge_source from "./badge.svg?source";
+import ban_component from "./ban.svg?component";
+import ban_source from "./ban.svg?source";
 import bar_component from "./bar.svg?component";
 import bar_source from "./bar.svg?source";
 import bell_component from "./bell.svg?component";
@@ -55,6 +62,8 @@ import bolt_component from "./bolt.svg?component";
 import bolt_source from "./bolt.svg?source";
 import bolt_filled_component from "./bolt_filled.svg?component";
 import bolt_filled_source from "./bolt_filled.svg?source";
+import book_open_component from "./book_open.svg?component";
+import book_open_source from "./book_open.svg?source";
 import bookmark_component from "./bookmark.svg?component";
 import bookmark_source from "./bookmark.svg?source";
 import bookmark_filled_component from "./bookmark_filled.svg?component";
@@ -69,6 +78,8 @@ import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
+import camera_component from "./camera.svg?component";
+import camera_source from "./camera.svg?source";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import check_filled_component from "./check_filled.svg?component";
@@ -95,8 +106,16 @@ import cloud_component from "./cloud.svg?component";
 import cloud_source from "./cloud.svg?source";
 import cloud_filled_component from "./cloud_filled.svg?component";
 import cloud_filled_source from "./cloud_filled.svg?source";
+import code_block_component from "./code_block.svg?component";
+import code_block_source from "./code_block.svg?source";
+import collection2_component from "./collection2.svg?component";
+import collection2_source from "./collection2.svg?source";
 import combine_component from "./combine.svg?component";
 import combine_source from "./combine.svg?source";
+import comment_component from "./comment.svg?component";
+import comment_source from "./comment.svg?source";
+import company_component from "./company.svg?component";
+import company_source from "./company.svg?source";
 import compare_component from "./compare.svg?component";
 import compare_source from "./compare.svg?source";
 import connections_component from "./connections.svg?component";
@@ -105,6 +124,8 @@ import contract_component from "./contract.svg?component";
 import contract_source from "./contract.svg?source";
 import copy_component from "./copy.svg?component";
 import copy_source from "./copy.svg?source";
+import currency_component from "./currency.svg?component";
+import currency_source from "./currency.svg?source";
 import curve_component from "./curve.svg?component";
 import curve_source from "./curve.svg?source";
 import curved_component from "./curved.svg?component";
@@ -113,8 +134,12 @@ import dash_component from "./dash.svg?component";
 import dash_source from "./dash.svg?source";
 import dashboard_component from "./dashboard.svg?component";
 import dashboard_source from "./dashboard.svg?source";
+import data_studio_component from "./data_studio.svg?component";
+import data_studio_source from "./data_studio.svg?source";
 import database_component from "./database.svg?component";
 import database_source from "./database.svg?source";
+import dependencies_component from "./dependencies.svg?component";
+import dependencies_source from "./dependencies.svg?source";
 import document_component from "./document.svg?component";
 import document_source from "./document.svg?source";
 import download_component from "./download.svg?component";
@@ -123,14 +148,24 @@ import dyno_component from "./dyno.svg?component";
 import dyno_source from "./dyno.svg?source";
 import edit_document_component from "./edit_document.svg?component";
 import edit_document_source from "./edit_document.svg?source";
+import edit_document_outlined_component from "./edit_document_outlined.svg?component";
+import edit_document_outlined_source from "./edit_document_outlined.svg?source";
 import ellipsis_component from "./ellipsis.svg?component";
 import ellipsis_source from "./ellipsis.svg?source";
 import embed_component from "./embed.svg?component";
 import embed_source from "./embed.svg?source";
+import embed_interactive_component from "./embed_interactive.svg?component";
+import embed_interactive_source from "./embed_interactive.svg?source";
+import embed_modular_component from "./embed_modular.svg?component";
+import embed_modular_source from "./embed_modular.svg?source";
+import embed_static_component from "./embed_static.svg?component";
+import embed_static_source from "./embed_static.svg?source";
 import empty_component from "./empty.svg?component";
 import empty_source from "./empty.svg?source";
 import enter_or_return_component from "./enter_or_return.svg?component";
 import enter_or_return_source from "./enter_or_return.svg?source";
+import exit_component from "./exit.svg?component";
+import exit_source from "./exit.svg?source";
 import expand_component from "./expand.svg?component";
 import expand_source from "./expand.svg?source";
 import expand_arrow_component from "./expand_arrow.svg?component";
@@ -143,6 +178,8 @@ import eye_crossed_out_component from "./eye_crossed_out.svg?component";
 import eye_crossed_out_source from "./eye_crossed_out.svg?source";
 import eye_outline_component from "./eye_outline.svg?component";
 import eye_outline_source from "./eye_outline.svg?source";
+import factory_component from "./factory.svg?component";
+import factory_source from "./factory.svg?source";
 import field_component from "./field.svg?component";
 import field_source from "./field.svg?source";
 import fields_component from "./fields.svg?component";
@@ -153,6 +190,8 @@ import filter_plus_component from "./filter_plus.svg?component";
 import filter_plus_source from "./filter_plus.svg?source";
 import folder_component from "./folder.svg?component";
 import folder_source from "./folder.svg?source";
+import folder_database_component from "./folder_database.svg?component";
+import folder_database_source from "./folder_database.svg?source";
 import folder_filled_component from "./folder_filled.svg?component";
 import folder_filled_source from "./folder_filled.svg?source";
 import format_code_component from "./format_code.svg?component";
@@ -173,8 +212,14 @@ import gear_settings_filled_component from "./gear_settings_filled.svg?component
 import gear_settings_filled_source from "./gear_settings_filled.svg?source";
 import gem_component from "./gem.svg?component";
 import gem_source from "./gem.svg?source";
+import ghost_component from "./ghost.svg?component";
+import ghost_source from "./ghost.svg?source";
+import git_branch_component from "./git_branch.svg?component";
+import git_branch_source from "./git_branch.svg?source";
 import globe_component from "./globe.svg?component";
 import globe_source from "./globe.svg?source";
+import glossary_component from "./glossary.svg?component";
+import glossary_source from "./glossary.svg?source";
 import google_component from "./google.svg?component";
 import google_source from "./google.svg?source";
 import google_drive_component from "./google_drive.svg?component";
@@ -199,8 +244,6 @@ import index_component from "./index.svg?component";
 import index_source from "./index.svg?source";
 import info_component from "./info.svg?component";
 import info_source from "./info.svg?source";
-import info_filled_component from "./info_filled.svg?component";
-import info_filled_source from "./info_filled.svg?source";
 import info_outline_component from "./info_outline.svg?component";
 import info_outline_source from "./info_outline.svg?source";
 import insight_component from "./insight.svg?component";
@@ -253,6 +296,10 @@ import mail_component from "./mail.svg?component";
 import mail_source from "./mail.svg?source";
 import mail_filled_component from "./mail_filled.svg?component";
 import mail_filled_source from "./mail_filled.svg?source";
+import medallion_component from "./medallion.svg?component";
+import medallion_source from "./medallion.svg?source";
+import message_circle_component from "./message_circle.svg?component";
+import message_circle_source from "./message_circle.svg?source";
 import metabot_component from "./metabot.svg?component";
 import metabot_source from "./metabot.svg?source";
 import metabot_sad_component from "./metabot_sad.svg?component";
@@ -269,14 +316,24 @@ import move_component from "./move.svg?component";
 import move_source from "./move.svg?source";
 import move_card_component from "./move_card.svg?component";
 import move_card_source from "./move_card.svg?source";
+import network_component from "./network.svg?component";
+import network_source from "./network.svg?source";
 import new_folder_component from "./new_folder.svg?component";
 import new_folder_source from "./new_folder.svg?source";
 import notebook_component from "./notebook.svg?component";
 import notebook_source from "./notebook.svg?source";
 import number_component from "./number.svg?component";
 import number_source from "./number.svg?source";
+import octagon_alert_component from "./octagon_alert.svg?component";
+import octagon_alert_source from "./octagon_alert.svg?source";
 import official_collection_component from "./official_collection.svg?component";
 import official_collection_source from "./official_collection.svg?source";
+import open_folder_component from "./open_folder.svg?component";
+import open_folder_source from "./open_folder.svg?source";
+import ordered_list_component from "./ordered_list.svg?component";
+import ordered_list_source from "./ordered_list.svg?source";
+import package_component from "./package.svg?component";
+import package_source from "./package.svg?source";
 import palette_component from "./palette.svg?component";
 import palette_source from "./palette.svg?source";
 import pause_component from "./pause.svg?component";
@@ -307,10 +364,16 @@ import popular_component from "./popular.svg?component";
 import popular_source from "./popular.svg?source";
 import progress_component from "./progress.svg?component";
 import progress_source from "./progress.svg?source";
+import publish_component from "./publish.svg?component";
+import publish_source from "./publish.svg?source";
 import pulse_component from "./pulse.svg?component";
 import pulse_source from "./pulse.svg?source";
 import question_component from "./question.svg?component";
 import question_source from "./question.svg?source";
+import quote_component from "./quote.svg?component";
+import quote_source from "./quote.svg?source";
+import receipt_component from "./receipt.svg?component";
+import receipt_source from "./receipt.svg?source";
 import recents_component from "./recents.svg?component";
 import recents_source from "./recents.svg?source";
 import redo_component from "./redo.svg?component";
@@ -321,6 +384,8 @@ import refresh_component from "./refresh.svg?component";
 import refresh_source from "./refresh.svg?source";
 import refresh_downstream_component from "./refresh_downstream.svg?component";
 import refresh_downstream_source from "./refresh_downstream.svg?source";
+import repository_component from "./repository.svg?component";
+import repository_source from "./repository.svg?source";
 import return_component from "./return.svg?component";
 import return_source from "./return.svg?source";
 import revert_component from "./revert.svg?component";
@@ -339,10 +404,18 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
+import segment2_component from "./segment2.svg?component";
+import segment2_source from "./segment2.svg?source";
+import send_component from "./send.svg?component";
+import send_source from "./send.svg?source";
+import settings_component from "./settings.svg?component";
+import settings_source from "./settings.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
+import shield_outline_component from "./shield_outline.svg?component";
+import shield_outline_source from "./shield_outline.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -353,6 +426,8 @@ import slack_colorized_component from "./slack_colorized.svg?component";
 import slack_colorized_source from "./slack_colorized.svg?source";
 import smartscalar_component from "./smartscalar.svg?component";
 import smartscalar_source from "./smartscalar.svg?source";
+import smile_component from "./smile.svg?component";
+import smile_source from "./smile.svg?source";
 import snail_component from "./snail.svg?component";
 import snail_source from "./snail.svg?source";
 import snippet_component from "./snippet.svg?component";
@@ -373,6 +448,8 @@ import star_filled_component from "./star_filled.svg?component";
 import star_filled_source from "./star_filled.svg?source";
 import stepped_component from "./stepped.svg?component";
 import stepped_source from "./stepped.svg?source";
+import sticky_note_component from "./sticky-note.svg?component";
+import sticky_note_source from "./sticky-note.svg?source";
 import stop_component from "./stop.svg?component";
 import stop_source from "./stop.svg?source";
 import store_component from "./store.svg?component";
@@ -389,6 +466,8 @@ import sun_component from "./sun.svg?component";
 import sun_source from "./sun.svg?source";
 import sync_component from "./sync.svg?component";
 import sync_source from "./sync.svg?source";
+import synced_collection_component from "./synced_collection.svg?component";
+import synced_collection_source from "./synced_collection.svg?source";
 import t_shirt_component from "./t-shirt.svg?component";
 import t_shirt_source from "./t-shirt.svg?source";
 import tab_component from "./tab.svg?component";
@@ -397,8 +476,22 @@ import table_component from "./table.svg?component";
 import table_source from "./table.svg?source";
 import table2_component from "./table2.svg?component";
 import table2_source from "./table2.svg?source";
+import test_tube_component from "./test_tube.svg?component";
+import test_tube_source from "./test_tube.svg?source";
+import text_bold_component from "./text_bold.svg?component";
+import text_bold_source from "./text_bold.svg?source";
+import text_italic_component from "./text_italic.svg?component";
+import text_italic_source from "./text_italic.svg?source";
+import text_strike_component from "./text_strike.svg?component";
+import text_strike_source from "./text_strike.svg?source";
+import thumbs_down_component from "./thumbs_down.svg?component";
+import thumbs_down_source from "./thumbs_down.svg?source";
+import thumbs_up_component from "./thumbs_up.svg?component";
+import thumbs_up_source from "./thumbs_up.svg?source";
 import time_history_component from "./time_history.svg?component";
 import time_history_source from "./time_history.svg?source";
+import transform_component from "./transform.svg?component";
+import transform_source from "./transform.svg?source";
 import trash_component from "./trash.svg?component";
 import trash_source from "./trash.svg?source";
 import trash_filled_component from "./trash_filled.svg?component";
@@ -415,6 +508,8 @@ import unknown_component from "./unknown.svg?component";
 import unknown_source from "./unknown.svg?source";
 import unpin_component from "./unpin.svg?component";
 import unpin_source from "./unpin.svg?source";
+import unpublish_component from "./unpublish.svg?component";
+import unpublish_source from "./unpublish.svg?source";
 import unsubscribe_component from "./unsubscribe.svg?component";
 import unsubscribe_source from "./unsubscribe.svg?source";
 import upload_component from "./upload.svg?component";
@@ -425,6 +520,8 @@ import verified_component from "./verified.svg?component";
 import verified_source from "./verified.svg?source";
 import verified_filled_component from "./verified_filled.svg?component";
 import verified_filled_source from "./verified_filled.svg?source";
+import verified_round_component from "./verified_round.svg?component";
+import verified_round_source from "./verified_round.svg?source";
 import view_archive_component from "./view_archive.svg?component";
 import view_archive_source from "./view_archive.svg?source";
 import warning_component from "./warning.svg?component";
@@ -437,6 +534,8 @@ import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
 import webhook_component from "./webhook.svg?component";
 import webhook_source from "./webhook.svg?source";
+import zap_component from "./zap.svg?component";
+import zap_source from "./zap.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -447,6 +546,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     add: {
       component: add_component,
       source: add_source,
+    },
+    add_collection: {
+      component: add_collection_component,
+      source: add_collection_source,
     },
     add_column: {
       component: add_column_component,
@@ -460,6 +563,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: add_folder_component,
       source: add_folder_source,
     },
+    add_list: {
+      component: add_list_component,
+      source: add_list_source,
+    },
     add_row: {
       component: add_row_component,
       source: add_row_source,
@@ -467,6 +574,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     add_to_dash: {
       component: add_to_dash_component,
       source: add_to_dash_source,
+    },
+    add_comment: {
+      component: add_comment_component,
+      source: add_comment_source,
     },
     ai: {
       component: ai_component,
@@ -528,6 +639,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: badge_component,
       source: badge_source,
     },
+    ban: {
+      component: ban_component,
+      source: ban_source,
+    },
     bar: {
       component: bar_component,
       source: bar_source,
@@ -547,6 +662,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     bookmark_filled: {
       component: bookmark_filled_component,
       source: bookmark_filled_source,
+    },
+    book_open: {
+      component: book_open_component,
+      source: book_open_source,
     },
     bolt: {
       component: bolt_component,
@@ -572,6 +691,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: calendar_component,
       source: calendar_source,
     },
+    camera: {
+      component: camera_component,
+      source: camera_source,
+    },
     check: {
       component: check_component,
       source: check_source,
@@ -579,6 +702,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     check_filled: {
       component: check_filled_component,
       source: check_filled_source,
+    },
+    code_block: {
+      component: code_block_component,
+      source: code_block_source,
     },
     chevrondown: {
       component: chevrondown_component,
@@ -632,6 +759,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: combine_component,
       source: combine_source,
     },
+    company: {
+      component: company_component,
+      source: company_source,
+    },
+    comment: {
+      component: comment_component,
+      source: comment_source,
+    },
     connections: {
       component: connections_component,
       source: connections_source,
@@ -644,6 +779,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: copy_component,
       source: copy_source,
     },
+    currency: {
+      component: currency_component,
+      source: currency_source,
+    },
     curved: {
       component: curved_component,
       source: curved_source,
@@ -651,6 +790,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     database: {
       component: database_component,
       source: database_source,
+    },
+    dependencies: {
+      component: dependencies_component,
+      source: dependencies_source,
+    },
+    data_studio: {
+      component: data_studio_component,
+      source: data_studio_source,
     },
     dash: {
       component: dash_component,
@@ -680,6 +827,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: edit_document_component,
       source: edit_document_source,
     },
+    edit_document_outlined: {
+      component: edit_document_outlined_component,
+      source: edit_document_outlined_source,
+    },
     ellipsis: {
       component: ellipsis_component,
       source: ellipsis_source,
@@ -695,6 +846,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     enter_or_return: {
       component: enter_or_return_component,
       source: enter_or_return_source,
+    },
+    exit: {
+      component: exit_component,
+      source: exit_source,
     },
     expand: {
       component: expand_component,
@@ -719,6 +874,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     eye_outline: {
       component: eye_outline_component,
       source: eye_outline_source,
+    },
+    factory: {
+      component: factory_component,
+      source: factory_source,
     },
     field: {
       component: field_component,
@@ -764,6 +923,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: folder_component,
       source: folder_source,
     },
+    folder_database: {
+      component: folder_database_component,
+      source: folder_database_source,
+    },
     folder_filled: {
       component: folder_filled_component,
       source: folder_filled_source,
@@ -784,9 +947,21 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: gem_component,
       source: gem_source,
     },
+    ghost: {
+      component: ghost_component,
+      source: ghost_source,
+    },
+    git_branch: {
+      component: git_branch_component,
+      source: git_branch_source,
+    },
     globe: {
       component: globe_component,
       source: globe_source,
+    },
+    glossary: {
+      component: glossary_component,
+      source: glossary_source,
     },
     grabber: {
       component: grabber_component,
@@ -831,10 +1006,6 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     info: {
       component: info_component,
       source: info_source,
-    },
-    info_filled: {
-      component: info_filled_component,
-      source: info_filled_source,
     },
     info_outline: {
       component: info_outline_component,
@@ -944,6 +1115,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: mail_filled_component,
       source: mail_filled_source,
     },
+    medallion: {
+      component: medallion_component,
+      source: medallion_source,
+    },
+    message_circle: {
+      component: message_circle_component,
+      source: message_circle_source,
+    },
     metabot: {
       component: metabot_component,
       source: metabot_source,
@@ -976,6 +1155,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: move_card_component,
       source: move_card_source,
     },
+    network: {
+      component: network_component,
+      source: network_source,
+    },
     new_folder: {
       component: new_folder_component,
       source: new_folder_source,
@@ -987,6 +1170,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     number: {
       component: number_component,
       source: number_source,
+    },
+    package: {
+      component: package_component,
+      source: package_source,
     },
     palette: {
       component: palette_component,
@@ -1048,9 +1235,29 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: progress_component,
       source: progress_source,
     },
+    embed_interactive: {
+      component: embed_interactive_component,
+      source: embed_interactive_source,
+    },
+    embed_modular: {
+      component: embed_modular_component,
+      source: embed_modular_source,
+    },
+    embed_static: {
+      component: embed_static_component,
+      source: embed_static_source,
+    },
+    publish: {
+      component: publish_component,
+      source: publish_source,
+    },
     pulse: {
       component: pulse_component,
       source: pulse_source,
+    },
+    receipt: {
+      component: receipt_component,
+      source: receipt_source,
     },
     recents: {
       component: recents_component,
@@ -1068,9 +1275,21 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: sankey_component,
       source: sankey_source,
     },
+    settings: {
+      component: settings_component,
+      source: settings_source,
+    },
     share: {
       component: share_component,
       source: share_source,
+    },
+    sort: {
+      component: sort_component,
+      source: sort_source,
+    },
+    sort_arrows: {
+      component: sort_arrows_component,
+      source: sort_arrows_source,
     },
     split: {
       component: split_component,
@@ -1092,13 +1311,9 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: stepped_component,
       source: stepped_source,
     },
-    sort: {
-      component: sort_component,
-      source: sort_source,
-    },
-    sort_arrows: {
-      component: sort_arrows_component,
-      source: sort_arrows_source,
+    sticky_note: {
+      component: sticky_note_component,
+      source: sticky_note_source,
     },
     sum: {
       component: sum_component,
@@ -1108,9 +1323,17 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: sync_component,
       source: sync_source,
     },
+    synced_collection: {
+      component: synced_collection_component,
+      source: synced_collection_source,
+    },
     question: {
       component: question_component,
       source: question_source,
+    },
+    quote: {
+      component: quote_component,
+      source: quote_source,
     },
     return: {
       component: return_component,
@@ -1132,6 +1355,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: refresh_downstream_component,
       source: refresh_downstream_source,
     },
+    repository: {
+      component: repository_component,
+      source: repository_source,
+    },
     rocket: {
       component: rocket_component,
       source: rocket_source,
@@ -1152,9 +1379,21 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: segment_component,
       source: segment_source,
     },
+    segment2: {
+      component: segment2_component,
+      source: segment2_source,
+    },
+    send: {
+      component: send_component,
+      source: send_source,
+    },
     shield: {
       component: shield_component,
       source: shield_source,
+    },
+    shield_outline: {
+      component: shield_outline_component,
+      source: shield_outline_source,
     },
     sidebar_closed: {
       component: sidebar_closed_component,
@@ -1175,6 +1414,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
     smartscalar: {
       component: smartscalar_component,
       source: smartscalar_source,
+    },
+    smile: {
+      component: smile_component,
+      source: smile_source,
     },
     snail: {
       component: snail_component,
@@ -1230,9 +1473,33 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: table2_component,
       source: table2_source,
     },
+    text_bold: {
+      component: text_bold_component,
+      source: text_bold_source,
+    },
+    text_italic: {
+      component: text_italic_component,
+      source: text_italic_source,
+    },
+    text_strike: {
+      component: text_strike_component,
+      source: text_strike_source,
+    },
+    thumbs_down: {
+      component: thumbs_down_component,
+      source: thumbs_down_source,
+    },
+    thumbs_up: {
+      component: thumbs_up_component,
+      source: thumbs_up_source,
+    },
     time_history: {
       component: time_history_component,
       source: time_history_source,
+    },
+    transform: {
+      component: transform_component,
+      source: transform_source,
     },
     trash: {
       component: trash_component,
@@ -1266,6 +1533,10 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: unpin_component,
       source: unpin_source,
     },
+    unpublish: {
+      component: unpublish_component,
+      source: unpublish_source,
+    },
     unsubscribe: {
       component: unsubscribe_component,
       source: unsubscribe_source,
@@ -1282,13 +1553,29 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: verified_component,
       source: verified_source,
     },
+    octagon_alert: {
+      component: octagon_alert_component,
+      source: octagon_alert_source,
+    },
     official_collection: {
       component: official_collection_component,
       source: official_collection_source,
     },
+    open_folder: {
+      component: open_folder_component,
+      source: open_folder_source,
+    },
+    ordered_list: {
+      component: ordered_list_component,
+      source: ordered_list_source,
+    },
     verified_filled: {
       component: verified_filled_component,
       source: verified_filled_source,
+    },
+    verified_round: {
+      component: verified_round_component,
+      source: verified_round_source,
     },
     view_archive: {
       component: view_archive_component,
@@ -1322,6 +1609,7 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: one_million_component,
       source: one_million_source,
     },
+    zap: { component: zap_component, source: zap_source },
     zoom_in: {
       component: zoom_in_component,
       source: zoom_in_source,
@@ -1339,9 +1627,13 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       source: birthday_source,
     },
     external: { component: share_component, source: share_source },
-    table_spaced: { component: table_component, source: table_source },
     collection: { component: folder_component, source: folder_source },
+    collection2: {
+      component: collection2_component,
+      source: collection2_source,
+    },
     beaker: { component: formula_component, source: formula_source },
+    test_tube: { component: test_tube_component, source: test_tube_source },
     eye_filled: { component: eye_component, source: eye_source },
   };
 
@@ -1350,11 +1642,14 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
  */
 export type IconName =
   | "add"
+  | "add_collection"
   | "add_column"
   | "add_data"
   | "add_folder"
+  | "add_list"
   | "add_row"
   | "add_to_dash"
+  | "add_comment"
   | "ai"
   | "alert"
   | "alert_filled"
@@ -1370,9 +1665,11 @@ export type IconName =
   | "arrow_split"
   | "audit"
   | "badge"
+  | "ban"
   | "bar"
   | "bell"
   | "birthday"
+  | "book_open"
   | "bookmark"
   | "bookmark_filled"
   | "bolt"
@@ -1381,8 +1678,10 @@ export type IconName =
   | "bubble"
   | "burger"
   | "calendar"
+  | "camera"
   | "check"
   | "check_filled"
+  | "code_block"
   | "chevrondown"
   | "chevronleft"
   | "chevronright"
@@ -1394,13 +1693,19 @@ export type IconName =
   | "close"
   | "cloud"
   | "cloud_filled"
+  | "collection2"
   | "compare"
   | "combine"
+  | "company"
+  | "comment"
+  | "currency"
   | "connections"
   | "contract"
   | "copy"
   | "curved"
   | "database"
+  | "dependencies"
+  | "data_studio"
   | "dash"
   | "dashboard"
   | "curve"
@@ -1408,16 +1713,22 @@ export type IconName =
   | "download"
   | "dyno"
   | "edit_document"
+  | "edit_document_outlined"
   | "ellipsis"
   | "embed"
+  | "embed_interactive"
+  | "embed_modular"
+  | "embed_static"
   | "empty"
   | "enter_or_return"
+  | "exit"
   | "expand"
   | "expand_arrow"
   | "extract"
   | "eye"
   | "eye_crossed_out"
   | "eye_outline"
+  | "factory"
   | "field"
   | "fields"
   | "filter"
@@ -1429,12 +1740,16 @@ export type IconName =
   | "funnel"
   | "funnel_outline"
   | "folder"
+  | "folder_database"
   | "folder_filled"
   | "gauge"
   | "gear"
   | "gear_settings_filled"
   | "gem"
+  | "ghost"
   | "globe"
+  | "glossary"
+  | "git_branch"
   | "grabber"
   | "grid"
   | "group"
@@ -1446,7 +1761,6 @@ export type IconName =
   | "horizontal_bar"
   | "hourglass"
   | "info"
-  | "info_filled"
   | "info_outline"
   | "insight"
   | "int"
@@ -1474,6 +1788,8 @@ export type IconName =
   | "lock_filled"
   | "mail"
   | "mail_filled"
+  | "medallion"
+  | "message_circle"
   | "metabot"
   | "metabot_sad"
   | "metric"
@@ -1482,9 +1798,12 @@ export type IconName =
   | "moon"
   | "move"
   | "move_card"
+  | "network"
   | "new_folder"
   | "notebook"
   | "number"
+  | "octagon_alert"
+  | "package"
   | "palette"
   | "pause"
   | "pencil"
@@ -1500,33 +1819,45 @@ export type IconName =
   | "popover"
   | "popular"
   | "progress"
+  | "publish"
   | "pulse"
+  | "receipt"
   | "recents"
   | "revert"
   | "sankey"
   | "share"
+  | "send"
+  | "settings"
+  | "smile"
   | "split"
   | "sql"
   | "subscription"
   | "straight"
   | "stepped"
+  | "sticky_note"
   | "sort"
   | "sort_arrows"
   | "sum"
   | "sync"
+  | "synced_collection"
+  | "transform"
   | "question"
+  | "quote"
   | "redo"
   | "return"
   | "reference"
   | "refresh"
   | "refresh_downstream"
+  | "repository"
   | "rocket"
   | "ruler"
   | "schema"
   | "search"
   | "section"
   | "segment"
+  | "segment2"
   | "shield"
+  | "shield_outline"
   | "sidebar_closed"
   | "sidebar_open"
   | "slack"
@@ -1545,6 +1876,11 @@ export type IconName =
   | "tab"
   | "table"
   | "table2"
+  | "text_bold"
+  | "text_italic"
+  | "text_strike"
+  | "thumbs_down"
+  | "thumbs_up"
   | "time_history"
   | "trash"
   | "trash_filled"
@@ -1554,12 +1890,16 @@ export type IconName =
   | "undo"
   | "unknown"
   | "unpin"
+  | "unpublish"
   | "unsubscribe"
   | "upload"
   | "variable"
   | "verified"
   | "official_collection"
+  | "open_folder"
+  | "ordered_list"
   | "verified_filled"
+  | "verified_round"
   | "view_archive"
   | "warning"
   | "warning_round_filled"
@@ -1568,14 +1908,15 @@ export type IconName =
   | "webhook"
   | "10k"
   | "1m"
+  | "zap"
   | "zoom_in"
   | "zoom_out"
   | "scalar"
   | "cake"
   | "external"
-  | "table_spaced"
   | "collection"
   | "beaker"
+  | "test_tube"
   | "eye_filled";
 
 export const iconNames = Object.keys(Icons) as unknown as IconName[];

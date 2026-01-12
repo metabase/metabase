@@ -65,9 +65,9 @@ describe("scenarios > question > custom column", () => {
     H.createQuestion({ name, query: { "source-table": ORDERS_ID } });
 
     H.startNewQuestion();
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Collections").click();
-      cy.findByText(name).click();
+      H.entityPickerModalLevel(1).findByText(name).click();
     });
     cy.button("Custom column").click();
     H.enterCustomColumnDetails({ formula: "[cre", blur: false });
@@ -165,23 +165,30 @@ describe("scenarios > question > custom column", () => {
   });
 
   // flaky test (#19454)
-  it.skip("should show info popovers when hovering over custom column dimensions in the summarize sidebar", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
+  it(
+    "should show info popovers when hovering over custom column dimensions in the summarize sidebar",
+    { tags: "@skip" },
+    () => {
+      H.openOrdersTable({ mode: "notebook" });
+      cy.findByLabelText("Custom column").click();
 
-    H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
-    cy.button("Done").click();
+      H.enterCustomColumnDetails({ formula: "1 + 1", name: "Math" });
+      cy.button("Done").click();
 
-    H.visualize();
+      H.visualize();
 
-    H.summarize();
+      H.summarize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Group by").parent().findByText("Math").trigger("mouseenter");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Group by")
+        .parent()
+        .findByText("Math")
+        .trigger("mouseenter");
 
-    H.popover().contains("Math");
-    H.popover().contains("No description");
-  });
+      H.popover().contains("Math");
+      H.popover().contains("No description");
+    },
+  );
 
   it("can create a custom column with an existing column name", () => {
     const customFormulas = [
@@ -261,8 +268,9 @@ describe("scenarios > question > custom column", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Join data").click();
 
+    H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+      H.entityPickerModalLevel(0).findByText("Databases").click();
       cy.findByText("Products").click();
     });
 
@@ -558,10 +566,9 @@ describe("scenarios > question > custom column", () => {
     H.CustomExpressionEditor.value().should("equal", "Sum([MyCC \\[2027\\]])");
   });
 
-  it.skip("should work with `isNull` function (metabase#15922)", () => {
+  it("should work with `isNull` function (metabase#15922)", () => {
     H.openOrdersTable({ mode: "notebook" });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Custom column").click();
+    H.getNotebookStep("data").button("Custom column").click();
     H.enterCustomColumnDetails({
       formula: "isnull([Discount])",
       name: "No discount",
@@ -572,10 +579,8 @@ describe("scenarios > question > custom column", () => {
       expect(response.body.error).to.not.exist;
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("37.65");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("No discount");
+    cy.findAllByRole("gridcell").contains("37.65");
+    cy.findAllByTestId("header-cell").contains("No discount");
   });
 
   it("should be able to add a date range filter to a custom column", () => {
@@ -829,9 +834,6 @@ describe("scenarios > question > custom column", () => {
 
     H.CustomExpressionEditor.type("coalesc{tab}", { delay: 50 });
 
-    // Wait for error check to render, it should not affect the state of the snippets
-    cy.wait(1300);
-
     H.CustomExpressionEditor.type("[Tax]{tab}[User ID]", {
       focus: false,
       delay: 50,
@@ -840,18 +842,6 @@ describe("scenarios > question > custom column", () => {
       "equal",
       "coalesce([Tax], [User ID])",
     );
-  });
-
-  // TODO: fixme!
-  it.skip("should render custom expression helper near the custom expression field", () => {
-    H.openOrdersTable({ mode: "notebook" });
-    cy.findByLabelText("Custom column").click();
-
-    H.popover().within(() => {
-      H.enterCustomColumnDetails({ formula: "floor" });
-
-      H.checkExpressionEditorHelperPopoverPosition();
-    });
   });
 
   it("should allow to use `if` function", () => {
@@ -1091,8 +1081,7 @@ describe(
 
     it("should understand date functions", () => {
       H.startNewQuestion();
-      H.entityPickerModal().within(() => {
-        H.entityPickerModalTab("Tables").click();
+      H.miniPicker().within(() => {
         cy.findByText("QA Postgres12").click();
         cy.findByText("Orders").click();
       });
@@ -1513,7 +1502,7 @@ describe("scenarios > question > custom column > exiting the editor", () => {
     H.popover().findByText("Custom Expression").click();
 
     cy.log("Close summarize modal by clicking outside");
-    cy.button("View SQL").click();
+    cy.findByLabelText("View SQL").click();
 
     H.modal().should("not.exist");
     cy.get("popover").should("not.exist");
@@ -1749,8 +1738,7 @@ describe("scenarios > question > custom column > splitPart", () => {
     cy.signInAsAdmin();
 
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("People").click();
     });
@@ -1808,8 +1796,7 @@ describe("exercise today() function", () => {
 
   it("should show today's date", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Products").click();
     });
@@ -2138,16 +2125,13 @@ describe("scenarios > question > custom column > aggregation", () => {
               },
             ],
           ],
-          "aggregation-idents": {
-            0: "S9C0DETiO434MYRP83IwM",
-            1: "EHbjfRmmyZ8Xd2WNrh4wq",
-          },
         },
       }).then((res) => {
         H.visitQuestionAdhoc(
           {
             type: "question",
             dataset_query: {
+              type: "query",
               database: SAMPLE_DB_ID,
               query: {
                 "source-table": `card__${res.body.id}`,
@@ -2290,10 +2274,6 @@ describe("scenarios > question > custom column > aggregation", () => {
                 },
               ],
             ],
-            "aggregation-idents": {
-              0: "S9C0DETiO434MYRP83IwM",
-              1: "EHbjfRmmyZ8Xd2WNrh4wq",
-            },
           },
         },
         { visitQuestion: true },
@@ -2393,10 +2373,6 @@ describe("scenarios > question > custom column > aggregation", () => {
                 },
               ],
             ],
-            "aggregation-idents": {
-              0: "S9C0DETiO434MYRP83IwM",
-              1: "EHbjfRmmyZ8Xd2WNrh4wq",
-            },
             breakout: [
               [
                 "field",
@@ -2564,5 +2540,17 @@ describe("scenarios > question > custom column > aggregation", () => {
         firstRows: [["April 2022", "3", "2"]],
       });
     });
+  });
+
+  it("should show a custom error when there are no aggregations in a custom aggregation", () => {
+    H.openOrdersTable({ mode: "notebook" });
+    H.summarize({ mode: "notebook" });
+    H.popover().findByText("Custom Expression").scrollIntoView().click();
+    H.CustomExpressionEditor.type("1 + 1");
+    H.popover()
+      .findByText(
+        "Aggregations should contain at least one aggregation function.",
+      )
+      .should("be.visible");
   });
 });

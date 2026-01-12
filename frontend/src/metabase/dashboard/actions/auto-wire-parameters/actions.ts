@@ -19,7 +19,10 @@ import {
   getSelectedTabId,
   getTabs,
 } from "metabase/dashboard/selectors";
-import { isQuestionDashCard } from "metabase/dashboard/utils";
+import {
+  findDashCardForInlineParameter,
+  isQuestionDashCard,
+} from "metabase/dashboard/utils";
 import {
   getMappingOptionByTarget,
   getParameterMappingOptions,
@@ -61,11 +64,14 @@ export function showAutoWireToast(
       excludeDashcardIds: [dashcard.id],
     });
 
+    const dashcards = Object.values(dashboardState.dashcards);
+
     const dashcardAttributes = getAutoWiredMappingsForDashcards(
       parameter,
       dashcardsToAutoApply,
       target,
       questions,
+      dashcards,
     );
 
     const shouldShowToast = dashcardAttributes.length > 0;
@@ -86,6 +92,7 @@ export function showAutoWireToast(
       dashcard,
       target,
       questions,
+      dashcards,
     );
 
     const tabs = getTabs(getState());
@@ -154,11 +161,17 @@ export function showAutoWireToastNewCard({
     const processedParameterIds = new Set();
 
     for (const parameter of parameters) {
+      const parameterDashcard = findDashCardForInlineParameter(
+        parameter.id,
+        Object.values(dashcards),
+      );
+
       const dashcardMappingOptions = getParameterMappingOptions(
         targetQuestion,
         parameter,
         targetDashcard.card,
         targetDashcard,
+        parameterDashcard,
       );
 
       for (const dashcard of dashcards) {

@@ -1,14 +1,21 @@
 (ns metabase.xrays.automagic-dashboards.populate
   "Create and save models that make up automagic dashboards."
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema :as lib.schema]
    [metabase.queries.core :as queries]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.xrays.automagic-dashboards.filters :as filters]
+   [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
    [toucan2.core :as t2]))
 
@@ -82,7 +89,7 @@
 
   Colors are then determined by using the hashs of color keys to index into the vector
   of available colors."
-  [{:keys [visualization dataset_query]}]
+  [{:keys [visualization dataset_query], :as _dashcard}]
   (let [display     (first visualization)
         breakout    (-> dataset_query :query :breakout)
         aggregation (-> dataset_query :query :aggregation)]
@@ -103,8 +110,8 @@
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization
            dimensions dimension-name->field metric-definition]
-    :as   card}]
-  (let [{:keys [aggregation]} metric-definition
+    :as   dashcard}]
+  (let [{:keys [aggregation]}            metric-definition
         [display visualization-settings] visualization
         viz-dims (mapv
                   (comp :name dimension-name->field ffirst)
@@ -114,34 +121,44 @@
                                  (assoc :graph.series_labels (map :name metrics)
                                         :graph.metrics (mapv first aggregation)
                                         :graph.dimensions (seq viz-dims))
-                                 (merge (colorize card))
+                                 (merge (colorize dashcard))
                                  (cond->
                                   series_labels (assoc :graph.series_labels series_labels)
-
                                   x_label (assoc :graph.x_axis.title_text x_label)
-
                                   y_label (assoc :graph.y_axis.title_text y_label)))}))
 
-(defn card-defaults
+(defn dashcard-defaults
   "Default properties for a dashcard on magic dashboard."
   []
   {:id                     (gensym)
    :dashboard_tab_id       nil
    :visualization_settings {}})
 
-(defn- add-card
+(mu/defn- add-normal-dashcard :- ::ads/dashboard
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
-  (let [card (-> {:creator_id    api/*current-user-id*
-                  :dataset_query dataset_query
-                  :description   description
-                  :name          title
-                  :collection_id nil
-                  :id            (or id (gensym))}
-                 (merge (visualization-settings card))
-                 queries/populate-card-query-fields)]
+  [dashboard :- ::ads/dashboard
+   {query :dataset_query, :keys [title description width height id] :as dashcard} :- ::ads/card-template
+   [x y]]
+  (let [query-fields (when query
+                       ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of
+                       ;; filters and whatever that use columns from joins before adding the joins themselves (same
+                       ;; with expressions), which is technically invalid at the time it happens but ends up resulting
+                       ;; in a valid query at the end of the day. Maybe one day we can rework this code to be saner
+                       (binding [lib.schema/*HACK-disable-ref-validation* true]
+                         (-> {:dataset_query (lib-be/normalize-query query)}
+                             queries/populate-card-query-fields
+                             (select-keys [:query_type :database_id :table_id]))))
+        card         (merge
+                      {:creator_id    api/*current-user-id*
+                       :dataset_query query
+                       :description   description
+                       :name          title
+                       :collection_id nil
+                       :id            (or id (gensym))}
+                      (visualization-settings dashcard)
+                      query-fields)]
     (update dashboard :dashcards conj
-            (merge (card-defaults)
+            (merge (dashcard-defaults)
                    {:col                    y
                     :row                    x
                     :size_x                 width
@@ -150,11 +167,13 @@
                     :card_id                (:id card)
                     :visualization_settings {}}))))
 
-(defn add-text-card
+(mu/defn add-text-card :- ::ads/dashboard
   "Add a text card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [text width height visualization-settings]} [x y]]
+  [dashboard :- ::ads/dashboard
+   {:keys [text width height visualization-settings]} :- ::ads/card-template
+   [x y] :- [:tuple nat-int? nat-int?]]
   (update dashboard :dashcards conj
-          (merge (card-defaults)
+          (merge (dashcard-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
                                            {:text         text
@@ -166,17 +185,24 @@
                   :col                    y
                   :row                    x
                   :size_x                 width
-                  :size_y                 height
-                  :card                   nil})))
+                  :size_y                 height})))
 
-(defn- make-grid
-  [width height]
+(mr/def ::grid
+  [:sequential [:sequential :boolean]])
+
+(mu/defn- make-grid :- ::grid
+  [width  :- nat-int?
+   height :- nat-int?]
   (vec (repeat height (vec (repeat width false)))))
 
-(defn- fill-grid
+(mu/defn- fill-grid :- ::grid
   "Mark a rectangular area starting at [`x`, `y`] of size [`width`, `height`] as
    occupied."
-  [grid [x y] {:keys [width height]}]
+  [grid                                  :- ::grid
+   [x y]                                 :- [:tuple nat-int? nat-int?]
+   {:keys [width height], :as _dashcard} :- [:map
+                                             [:width nat-int?]
+                                             [:height nat-int?]]]
   (reduce (fn [grid xy]
             (assoc-in grid xy true))
           grid
@@ -184,24 +210,30 @@
                 y (range y (+ y width))]
             [x y])))
 
-(defn- accomodates?
+(mu/defn- accomodates?
   "Can we place card on grid starting at [x y] (top left corner)?
    Since we are filling the grid top to bottom and the cards are rectangulard,
    it suffices to check just the first (top) row."
-  [grid [x y] {:keys [width height]}]
+  [grid                   :- ::grid
+   [x y]                  :- [:tuple nat-int? nat-int?]
+   {:keys [width height]} :- [:map
+                              [:width nat-int?]
+                              [:height nat-int?]]]
   (and (<= (+ x height) (count grid))
        (<= (+ y width) (-> grid first count))
        (every? false? (subvec (grid x) y (+ y width)))))
 
-(defn- card-position
+(mu/defn- dashcard-position
   "Find position on the grid where to put the card.
    We use the dumbest possible algorithm (the grid size is relatively small, so
    we should be fine): startting at top left move along the grid from left to
    right, row by row and try to place the card at each position until we find an
    unoccupied area. Mark the area as occupied."
-  [grid start-row card]
+  [grid :- ::grid
+   start-row
+   dashcard]
   (reduce (fn [grid xy]
-            (if (accomodates? grid xy card)
+            (if (accomodates? grid xy dashcard)
               (reduced xy)
               grid))
           grid
@@ -209,14 +241,14 @@
                 y (range (count (first grid)))]
             [x y])))
 
-(defn- bottom-row
+(mu/defn- bottom-row
   "Find the bottom of the grid. Bottom is the first completely empty row with
    another empty row below it."
-  [grid]
+  [grid :- ::grid]
   (let [row {:height 0, :width grid-width}]
     (loop [bottom (long 0)]
-      (let [[bottom _]      (card-position grid bottom row)
-            [next-bottom _] (card-position grid (inc bottom) row)]
+      (let [[bottom _]      (dashcard-position grid bottom row)
+            [next-bottom _] (dashcard-position grid (inc bottom) row)]
         (if (= (inc bottom) next-bottom)
           bottom
           (recur (long next-bottom)))))))
@@ -226,17 +258,20 @@
 
 (def ^:private ^Long ^:const group-heading-height 2)
 
-(defn- add-group
-  [dashboard grid group cards]
+(mu/defn- add-group :- [:tuple ::ads/dashboard ::grid]
+  [dashboard :- ::ads/dashboard
+   grid      :- ::grid
+   group
+   cards     :- [:sequential ::ads/card-template]]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
                     group (+ group-heading-height))]
-    (reduce (fn [[dashboard grid] card]
-              (let [xy (card-position grid start-row card)]
-                [(if (text-card? card)
-                   (add-text-card dashboard card xy)
-                   (add-card dashboard card xy))
-                 (fill-grid grid xy card)]))
+    (reduce (fn [[dashboard grid] dashcard]
+              (let [xy (dashcard-position grid start-row dashcard)]
+                [(if (text-card? dashcard)
+                   (add-text-card dashboard dashcard xy)
+                   (add-normal-dashcard dashboard dashcard xy))
+                 (fill-grid grid xy dashcard)]))
             (if group
               (let [xy   [(- start-row 2) 0]
                     card {:text                   (format "# %s" (:title group))
@@ -249,7 +284,7 @@
               [dashboard grid])
             cards)))
 
-(defn- shown-cards
+(mu/defn- shown-cards :- [:sequential ::ads/card-template]
   "Pick up to `max-cards` with the highest `:card-score`.
    Keep groups together if possible by pulling all the cards within together and
    using the same (highest) card-score for all.
@@ -257,7 +292,8 @@
    favourized, but it is still possible that not all cards in a group make it
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
-  [max-cards cards]
+  [max-cards :- nat-int?
+   cards     :- [:maybe [:sequential ::ads/card-template]]]
   (->> cards
        (sort-by :card-score >)
        (take max-cards)
@@ -286,10 +322,33 @@
     (let [g (group-by f coll)]
       (access key-order g))))
 
-(defn create-dashboard
+(mu/defn- create-dashboard-populate-dashcards :- [:sequential ::ads/dashcard]
+  [dashcards :- [:maybe [:sequential ::ads/card-template]]]
+  ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of filters and whatever that
+  ;; use columns from joins before adding the joins themselves (same with expressions), which is technically invalid
+  ;; at the time it happens but ends up resulting in a valid query at the end of the day. Maybe one day we can rework
+  ;; this code to be saner
+  (let [card-id->can-run-adhoc-query (binding [lib.schema/*HACK-disable-ref-validation* true]
+                                       (into {}
+                                             (map (juxt ::id :can_run_adhoc_query))
+                                             (queries/with-can-run-adhoc-query
+                                               (for [{:keys [card]} dashcards
+                                                     :when          (and (:id card)
+                                                                         (:dataset_query card))]
+                                                 (-> card
+                                                     (update :dataset_query lib-be/normalize-query)
+                                                     (set/rename-keys {:id ::id}))))))]
+    (for [dashcard dashcards
+          :let     [card (:card dashcard)
+                    card (when (seq card)
+                           (assoc card :can_run_adhoc_query (get card-id->can-run-adhoc-query (:id card))))]]
+      (u/assoc-dissoc dashcard :card card))))
+
+(mu/defn create-dashboard :- ::ads/dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards]} n]
+  ([{:keys [title transient_title description groups filters cards]} :- ::ads/dashboard-template
+    n :- [:or pos-int? :keyword]]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
@@ -312,14 +371,7 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))
-         dashboard (update dashboard :dashcards (fn [dashcards]
-                                                  (let [cards (map :card dashcards)]
-                                                    (mapv
-                                                     (fn [dashcard card]
-                                                       (m/assoc-some dashcard :card card))
-                                                     dashcards
-                                                     (queries/with-can-run-adhoc-query cards)))))]
-
+         dashboard     (update dashboard :dashcards create-dashboard-populate-dashcards)]
      (log/debugf "Adding %s cards to dashboard %s:\n%s"
                  (count cards)
                  title
@@ -360,8 +412,7 @@
          offset                         (->> target
                                              :dashcards
                                              (map #(+ (:row %) (:size_y %)))
-                                             (apply max -1) ; -1 so it neturalizes +1 for spacing
-                                                            ; if the target dashboard is empty.
+                                             (apply max -1) ; -1 so it neturalizes +1 for spacing if the target dashboard is empty.
                                              inc)
          cards                        (->> dashboard
                                            :dashcards
@@ -377,8 +428,7 @@
                                                                 (assoc mapping :card_id card-id)))))))]
      (-> target
          (assoc :parameters parameters)
-         (cond->
-          (not skip-titles?)
+         (cond-> (not skip-titles?)
            (add-text-card {:width                  grid-width
                            :height                 group-heading-height
                            :text                   (format "# %s" (:name dashboard))

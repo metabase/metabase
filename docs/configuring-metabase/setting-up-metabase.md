@@ -15,7 +15,7 @@ Go ahead and click **Let’s get started**.
 
 ## Setting up an admin account
 
-The first thing you’ll need to do is set up an admin account. The account you create when you first install Metabase is an admin account by default — handy! If you’ve installed Metabase on a production server, you should be really careful to remember the password for this account since it will be used to add other users, connect to databases, set up email, and more. You can also create additional admin accounts later.
+The first thing you'll need to do is set up an admin account. The account you create when you first install Metabase is an admin account by default — handy! If you've installed Metabase on a production server, you should be careful to remember the password for this account since it will be used to add other users, connect to databases, set up email, and more. You can also create additional admin accounts later.
 
 For now, let's just create an account for ourselves to explore Metabase. Type in your info, and when you’re ready to continue, click the **Next** button.
 
@@ -36,7 +36,7 @@ Don't worry about picking the wrong option. If you say you're interested in embe
 
 ## Gathering your database info
 
-At this point you’ll need to gather some information about the database you want to use with Metabase. We won’t be able to connect to your database without it, but you’d like to deal with all of this later, that’s okay: just click **I’ll add my data later**. Metabase comes with a [Sample Database](https://www.metabase.com/glossary/sample_database) that you can play around with to get a feel for how Metabase works.
+At this point you’ll need to gather some information about the database you want to use with Metabase. We won’t be able to connect to your database without it, but you’d like to deal with all of this later, that’s okay: just click **I’ll add my data later**. Metabase comes with a [Sample Database](https://www.metabase.com/glossary/sample-database) that you can play around with to get a feel for how Metabase works.
 
 If you’re ready to connect, here’s what you’ll need:
 

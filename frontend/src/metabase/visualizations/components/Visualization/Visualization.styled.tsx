@@ -2,7 +2,7 @@
 import styled from "@emotion/styled";
 
 import LoadingSpinner from "metabase/common/components/LoadingSpinner";
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 export const VisualizationRoot = styled.div`
   display: flex;
@@ -10,6 +10,7 @@ export const VisualizationRoot = styled.div`
   height: 100%;
 `;
 
+// Remember to update DASHCARD_HEADER_HEIGHT if height of this element changes
 export const VisualizationHeader = styled.div`
   padding: 0.625rem 0.5rem 0.375rem 0.5rem;
   flex-shrink: 0;
@@ -28,5 +29,5 @@ export const VisualizationSlowSpinner = styled(
   LoadingSpinner,
 )<VisualizationSlowSpinnerProps>`
   color: ${(props) =>
-    props.isUsuallySlow ? color("accent4") : color("text-medium")};
+    props.isUsuallySlow ? color("accent4") : color("text-secondary")};
 `;

@@ -56,27 +56,12 @@
   (magic-group all-users-magic-group-type))
 
 (def all-external-users-magic-group-type
-  "The magic group type of the \"All External Users\" magic group."
+  "The magic group type of the \"All tenant users\" magic group."
   "all-external-users")
 
-#_(def ^{:arglists '([])} all-external-users
-    "Fetch the `all-external-users` magic group"
-    (mdb/memoize-for-application-db
-     (fn []
-     ;; Don't use `magic-group` here, because this one might not exist and that's ok.
-       (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type all-external-users-magic-group-type))))
-
-(defn create-all-external-users!
-  "Creates the \"All External Users\" magic group."
-  []
-  (t2/insert! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type
-                                       :name "All External Users"
-                                       :is_tenant_group true}))
-
-(defn delete-all-external-users!
-  "Deletes the \"All External Users\" magic group."
-  []
-  (t2/delete! :model/PermissionsGroup {:magic_group_type all-external-users-magic-group-type}))
+(def ^{:arglists '([])} all-external-users
+  "Fetch the `All tenant users` permissions group"
+  (magic-group all-external-users-magic-group-type))
 
 (def admin-magic-group-type
   "The magic-group type of the \"Administrators\" magic group."
@@ -105,6 +90,7 @@
   [{id :id}]
   {:pre [(integer? id)]}
   (doseq [magic-group [(all-users)
+                       (all-external-users)
                        (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
@@ -121,7 +107,9 @@
   [group]
   (t2/with-transaction [_conn]
     (doseq [db-id (t2/select-pks-vec :model/Database)]
-      (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
+      (if (:is_tenant_group group)
+        (data-perms/set-external-group-permissions! group db-id)
+        (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users)))))))
 
 (t2/define-after-insert :model/PermissionsGroup
   [group]
@@ -190,3 +178,24 @@
   "Returns a boolean representing whether this group is a tenant group."
   [group-id]
   (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id (u/the-id group-id)))
+
+(defn- group-id->num-members
+  "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
+  groups.)"
+  []
+  (let [results (mdb/query
+                 {:select    [[:pgm.group_id :group_id] [[:count :pgm.id] :members]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                  :where     [:= :user.is_active true]
+                  :group-by  [:pgm.group_id]})]
+    (zipmap
+     (map :group_id results)
+     (map :members results))))
+
+(methodical/defmethod t2/batched-hydrate [:model/PermissionsGroup :member_count]
+  "Efficiently add `:member_count` to PermissionGroups."
+  [_model _k groups]
+  (let [group-id->num-members (group-id->num-members)]
+    (for [group groups]
+      (assoc group :member_count (get group-id->num-members (u/the-id group) 0)))))

@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import Databases from "metabase/entities/databases";
-import Snippets from "metabase/entities/snippets";
+import { Databases } from "metabase/entities/databases";
+import { Snippets } from "metabase/entities/snippets";
 import * as CardLib from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
@@ -22,7 +22,11 @@ import type {
   UnsavedCard,
   User,
 } from "metabase-types/api";
-import { createMockSegment, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSegment,
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -61,20 +65,25 @@ async function baseSetup({
   hasDataPermissions = true,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
-
-  const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
-
   const state = createMockState({
     entities: createMockEntitiesState({
       databases: hasDataPermissions ? [createSampleDatabase()] : [],
       segments: [SEGMENT],
     }),
-    currentUser: user === undefined ? createMockUser() : user,
+    currentUser:
+      user === undefined
+        ? createMockUser({
+            permissions: createMockUserPermissions({
+              can_create_queries: hasDataPermissions,
+            }),
+          })
+        : user,
   });
 
   const metadata = getMetadata(state);
   const getState = () => state;
 
+  const dispatch = jest.fn();
   await initializeQB(location, params)(dispatch, getState);
   jest.runAllTimers();
 
@@ -561,6 +570,18 @@ describe("QB Actions > initializeQB", () => {
           expect(result.uiControls.datasetEditorTab).toBe("query");
         });
 
+        it("sets UI state correctly for /columns route", async () => {
+          const baseUrl = Urls.question(card);
+          const location = getLocationForCard(card, {
+            pathname: `${baseUrl}/columns`,
+          });
+
+          const { result } = await setup({ card, location });
+
+          expect(result.uiControls.queryBuilderMode).toBe("dataset");
+          expect(result.uiControls.datasetEditorTab).toBe("columns");
+        });
+
         it("sets UI state correctly for /metadata route", async () => {
           const baseUrl = Urls.question(card);
           const location = getLocationForCard(card, {
@@ -696,7 +717,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
-        databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });

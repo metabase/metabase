@@ -34,7 +34,8 @@ export const EmptyVizState = ({
   const isValidChartType =
     isCardDisplayType(chartType) &&
     chartType !== "table" &&
-    chartType !== "object";
+    chartType !== "object" &&
+    chartType !== "list";
 
   const emptyVizChart = isValidChartType ? chartType : "bar";
 
@@ -78,7 +79,7 @@ export const EmptyVizState = ({
               <ExternalLink href={url}>
                 <Group gap="xs">
                   <strong>{secondaryText}</strong>
-                  <Icon name="external" color="brand" />
+                  <Icon name="external" c="brand" />
                 </Group>
               </ExternalLink>
             )}
@@ -98,7 +99,7 @@ export const EmptyVizState = ({
                 )
               } at the top right corner. ${primaryText}`}
             </Text>
-            <Text c="text-light">{secondaryText}</Text>
+            <Text c="text-tertiary">{secondaryText}</Text>
           </>
         )}
 

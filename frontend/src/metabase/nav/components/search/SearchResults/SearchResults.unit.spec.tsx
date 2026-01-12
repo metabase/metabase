@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
@@ -178,6 +177,8 @@ describe("SearchResults", () => {
 
   it("should only call the /api/user/recipients endpoint once even if there are multiple search results", async () => {
     await setup();
-    expect(fetchMock.calls("path:/api/user/recipients").length).toBe(1);
+    expect(
+      fetchMock.callHistory.calls("path:/api/user/recipients").length,
+    ).toBe(1);
   });
 });

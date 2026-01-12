@@ -1,12 +1,5 @@
 import type { EChartsType } from "echarts/core";
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
@@ -28,7 +21,10 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 
 import { useChartDebug } from "./use-chart-debug";
 import { useModelsAndOption } from "./use-models-and-option";
-import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
+import { getGridSizeAdjustedSettings } from "./utils";
+
+const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
+const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
 
 function _CartesianChart(props: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,10 +58,18 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
   } = props;
 
-  const settings = useMemo(
-    () => getGridSizeAdjustedSettings(originalSettings, gridSize),
-    [originalSettings, gridSize],
-  );
+  const settings = useMemo(() => {
+    const settings = getGridSizeAdjustedSettings(originalSettings, gridSize);
+    if (isDashboard) {
+      if (outerWidth <= HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.y_axis.labels_enabled"] = false;
+      }
+      if (outerHeight <= HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD) {
+        settings["graph.x_axis.labels_enabled"] = false;
+      }
+    }
+    return settings;
+  }, [originalSettings, gridSize, isDashboard, outerWidth, outerHeight]);
 
   const { chartModel, timelineEventsModel, option } = useModelsAndOption(
     {
@@ -89,10 +93,6 @@ function _CartesianChart(props: VisualizationProps) {
   );
   const hasLegend = legendItems.length > 0;
 
-  useEffect(() => {
-    validateChartModel(chartModel);
-  }, [chartModel]);
-
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
 
@@ -102,7 +102,7 @@ function _CartesianChart(props: VisualizationProps) {
         const svg = containerRef.current?.querySelector("svg");
         if (svg) {
           const clipPaths = svg.querySelectorAll('defs > clipPath[id^="zr"]');
-          clipPaths.forEach((cp) => cp.remove());
+          clipPaths.forEach((cp) => cp.setAttribute("id", ""));
         }
       });
     }
@@ -123,6 +123,7 @@ function _CartesianChart(props: VisualizationProps) {
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
+    containerRef,
     chartModel,
     timelineEventsModel,
     option,
@@ -150,7 +151,7 @@ function _CartesianChart(props: VisualizationProps) {
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {showTitle && (
         <LegendCaption
-          title={settings["card.title"]}
+          title={settings["card.title"] ?? card.name}
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}

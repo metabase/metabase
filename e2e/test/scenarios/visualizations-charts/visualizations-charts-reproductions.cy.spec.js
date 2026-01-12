@@ -645,13 +645,13 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
-      H.addDataset(Q2.name);
+      H.selectDataset(Q2.name);
       cy.button("Save").click();
     });
 
@@ -675,7 +675,7 @@ describe("issue 21665", () => {
   });
 });
 
-describe.skip("issue 22527", () => {
+describe("issue 22527", { tags: "@skip" }, () => {
   const questionDetails = {
     native: {
       query:
@@ -1223,7 +1223,7 @@ describe("issue 49160", () => {
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");
-    H.echartsContainer().findByText("TOTAL").should("be.visible");
+    H.echartsContainer().findByText("Total").should("be.visible");
   });
 
   it("pie chart should work when instance colors have overrides", () => {
@@ -1280,5 +1280,44 @@ describe("issue 54271", () => {
 
     cy.log("no clear expectations but the app should not crash");
     H.assertQueryBuilderRowCount(1076);
+  });
+});
+
+describe("issue 63671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+              },
+            ],
+          ],
+          filter: [
+            "between",
+            ["field", PRODUCTS.CREATED_AT, null],
+            "2025-01-01",
+            "2025-12-31",
+          ],
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
+    cy.findByTestId("query-visualization-root")
+      .findByText("2025")
+      .should("have.length", 1);
   });
 });

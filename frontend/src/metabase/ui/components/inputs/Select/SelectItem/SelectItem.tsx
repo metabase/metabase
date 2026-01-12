@@ -35,6 +35,7 @@ export const SelectItem = forwardRef(function SelectItem(
       gap="sm"
       flex={1}
       aria-selected={selected}
+      wrap="nowrap"
       {...props}
     />
   );

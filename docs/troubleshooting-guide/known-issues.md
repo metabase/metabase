@@ -10,7 +10,7 @@ If you can't find or solve your problem using the [troubleshooting guides](./ind
 
 If your work in Metabase is crashing, missing, or not being saved, you might have found a bug.
 
-1. Go to the [Metabase Github issues page](https://github.com/metabase/metabase/issues).
+1. Go to the [Metabase GitHub issues page](https://github.com/metabase/metabase/issues).
 
 2. Click on the **Label** dropdown and select `Type: Bug`.
 
@@ -30,7 +30,7 @@ If your work in Metabase is crashing, missing, or not being saved, you might hav
 
 If the functionality you're looking for simply doesn't exist (i.e., it hasn't suddenly gone missing), you might be running into a product limitation.
 
-1. Go to the [Metabase Github issues page](https://github.com/metabase/metabase/issues).
+1. Go to the [Metabase GitHub issues page](https://github.com/metabase/metabase/issues).
 
 2. Click on the **Label** dropdown and select `Type: New Feature`.
 
@@ -38,7 +38,7 @@ If the functionality you're looking for simply doesn't exist (i.e., it hasn't su
 
    > Add additional keywords to the search bar above the list of results. Hit Enter/Return to run the search.
 
-   > Click **Sort** and select the thumbs up emoji (👍) to view the most highly requested features.
+   > Click **Sort** and select the thumbs up emoji (👍) to view the most requested features.
 
 4. If you find a feature request that matches what you want to do, add a thumbs up emoji to help the team prioritize it.
 

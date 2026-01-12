@@ -1,11 +1,6 @@
 .page {
-  background-color: var(--mb-base-color-white);
-
-  @media screen and (--breakpoint-min-lg) {
-    background-image: url("~assets/img/onboarding_bg.svg");
-    background-repeat: no-repeat;
-    background-position: bottom right;
-  }
+  background-color: var(--mb-color-background-primary);
+  position: relative;
 }
 
 .item:not([data-css-specificity-hack="🪗"]) {
@@ -22,27 +17,27 @@
 }
 
 .label:not([data-css-specificity-hack="🪗"]) {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: normal;
 }
 
 .control:not([data-css-specificity-hack="🪗"]) {
   background: linear-gradient(
     to right,
-    var(--mb-base-color-blue-10) 3rem,
+    var(--mb-color-background-hover) 3rem,
     transparent 3rem
   );
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding-left: 0;
   height: 3rem;
 
   &:hover {
     background: linear-gradient(
       to right,
-      var(--mb-base-color-brand-20) 3rem,
-      var(--mb-base-color-brand-10) 3rem
+      var(--mb-color-icon-secondary) 3rem,
+      var(--mb-color-background-hover) 3rem
     );
     color: var(--mb-color-brand);
   }
@@ -58,7 +53,7 @@
       background: linear-gradient(
         to right,
         var(--mb-color-brand) 3rem,
-        var(--mb-base-color-brand-10) 3rem
+        var(--mb-color-background-hover) 3rem
       );
 
       .label,
@@ -75,7 +70,7 @@
 
 .content:not([data-css-specificity-hack="🪗"]) {
   border: 0;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-inline: 1rem;
   padding-top: 1.5rem;
   padding-bottom: 3rem;
@@ -88,7 +83,7 @@
   width: 3rem;
 
   [data-active="true"] & {
-    color: var(--mb-base-color-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 }
 
@@ -106,7 +101,7 @@
 
 .support {
   align-items: center;
-  background-color: var(--mb-base-color-blue-10);
+  background-color: var(--mb-color-background-hover);
   border-radius: 0.5rem;
   display: flex;
   flex-wrap: wrap;

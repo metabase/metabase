@@ -1,24 +1,26 @@
 (ns ^:mb/driver-tests metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
   (:require
-   [clj-time.core :as time]
    [clojure.set :as set]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
+   [java-time.api :as t]
    [medley.core :as m]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.metadata.ident :as lib.metadata.ident]
    [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -130,7 +132,7 @@
               :filter       [:and
                              [:= $user_id->people.source "Facebook" "Google"]
                              [:= $product_id->products.category "Doohickey" "Gizmo"]
-                             [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]})
+                             [:time-interval $created_at (- 2019 (t/as (t/local-date) :year)) :year {}]]})
            {:pivot-rows [0 1 2]
             :pivot-cols []})))
 
@@ -142,7 +144,7 @@
 
 (deftest ^:parallel generate-queries-test
   (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
-    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider (mt/metadata-provider)
           query             (lib/query
                              metadata-provider
                              {:database   (mt/id)
@@ -192,8 +194,7 @@
               expected (walk/postwalk
                         (fn [x]
                           (cond-> x
-                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)
-                            (and (map? x) (:ident x))    (assoc :ident string?)))
+                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)))
                         expected)
               actual   (#'qp.pivot/generate-queries query {:pivot-rows [1 0] :pivot-cols [2]})]
           (is (= 6 (count actual)))
@@ -321,60 +322,67 @@
                                     [:field %people.id {:join-alias "People - User"}]]}]
                    :aggregation  [[:sum $subtotal]]
                    :breakout     [!month.created_at
-                                  [:field %people.id {:join-alias "People - User"}]]})]
-      (mt/with-temp [:model/Card card {:dataset_query model, :type :model}]
-        (testing "Column aliasing needs to work even with aggregations over a model"
-          (let [query        (mt/mbql-query
-                               orders {:source-table (str "card__" (u/the-id card))
-                                       :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
-                                       :breakout     [[:field "ID" {:base-type :type/Number}]]})
-                viz-settings {:pivot_table.column_split
-                              {:columns ["ID"]}}]
-            (testing "for a regular query"
-              (is (=? {:status :completed}
-                      (qp/process-query query))))
-            (testing "and a pivot query"
-              (is (=? {:status    :completed
-                       :row_count 1747}
-                      (-> query
-                          (assoc :info {:visualization-settings viz-settings})
-                          qp.pivot/run-pivot-query))))))))))
+                                  [:field %people.id {:join-alias "People - User"}]]})
+          mp    (lib.tu/mock-metadata-provider
+                 (mt/metadata-provider)
+                 {:cards [{:id 1, :dataset-query model, :type :model}]})]
+      (testing "Column aliasing needs to work even with aggregations over a model"
+        (let [query        (lib/query
+                            mp
+                            (mt/mbql-query
+                              orders {:source-table "card__1"
+                                      :aggregation  [[:sum [:field "sum" {:base-type :type/Number}]]]
+                                      :breakout     [[:field "ID" {:base-type :type/Number}]]}))
+              viz-settings {:pivot_table.column_split
+                            {:columns ["ID"]}}]
+          (testing "for a regular query"
+            (is (=? {:status :completed}
+                    (qp/process-query query))))
+          (testing "and a pivot query"
+            (is (=? {:status    :completed
+                     :row_count 1747}
+                    (-> query
+                        (assoc :info {:visualization-settings viz-settings})
+                        qp.pivot/run-pivot-query)))))))))
 
-(deftest nested-models-with-expressions-pivot-breakout-names-test
+(deftest ^:parallel nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
-    (binding [lib.metadata.ident/*enforce-idents-present* false]
-      (mt/with-temp [:model/Card model1 {:type :model
-                                         :dataset_query
-                                         (mt/mbql-query products
-                                           {:source-table $$products
-                                            :expressions  {"Rating Bucket" [:floor $products.rating]}})}
-                     :model/Card model2 {:type :model
-                                         :dataset_query
-                                         (mt/mbql-query orders
-                                           {:source-table $$orders
-                                            :joins        [{:source-table (str "card__" (u/the-id model1))
-                                                            :alias        "model A - Product"
-                                                            :fields       :all
-                                                            :condition    [:= $orders.product_id
-                                                                           [:field %products.id
-                                                                            {:join-alias "model A - Product"}]]}]})}]
-        (testing "Column aliasing works when joining an expression in an inner model"
-          (let [query        (mt/mbql-query
-                               orders {:source-table (str "card__" (u/the-id model2))
-                                       :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
-                                       :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
-                                                                               :join-alias "model A - Product"}]]})
-                viz-settings {:pivot_table.column_split
-                              {:columns ["Rating Bucket"]}}]
-            (testing "for a regular query"
-              (is (=? {:status :completed}
-                      (qp/process-query query))))
-            (testing "and a pivot query"
-              (is (=? {:status    :completed
-                       :row_count 6}
-                      (-> query
-                          (assoc :info {:visualization-settings viz-settings})
-                          qp.pivot/run-pivot-query))))))))))
+    (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
+                                      (mt/metadata-provider)
+                                      {:cards [{:id            1
+                                                :type          :model
+                                                :name          "Model A"
+                                                :dataset-query (mt/mbql-query products
+                                                                 {:source-table $$products
+                                                                  :expressions  {"Rating Bucket" [:floor $products.rating]}})}
+                                               {:id            2
+                                                :type          :model
+                                                :dataset-query (mt/mbql-query orders
+                                                                 {:source-table $$orders
+                                                                  :joins        [{:source-table "card__1"
+                                                                                  :alias        "model A - Product"
+                                                                                  :fields       :all
+                                                                                  :condition    [:=
+                                                                                                 $orders.product_id
+                                                                                                 [:field %products.id
+                                                                                                  {:join-alias "model A - Product"}]]}]})}]})
+      (testing "Column aliasing works when joining an expression in an inner model"
+        (let [query        (mt/mbql-query
+                             orders {:source-table "card__2"
+                                     :aggregation  [[:sum [:field "SUBTOTAL" {:base-type :type/Number}]]]
+                                     :breakout     [[:field "Rating Bucket" {:base-type  :type/Number
+                                                                             :join-alias "model A - Product"}]]})
+              viz-settings {:pivot_table.column_split
+                            {:columns ["Rating Bucket"]}}]
+          (testing "for a regular query"
+            (is (=? {:status :completed}
+                    (qp/process-query query))))
+          (testing "and a pivot query"
+            (is (=? {:status    :completed
+                     :row_count 6}
+                    (-> query
+                        (assoc :info {:visualization-settings viz-settings})
+                        qp.pivot/run-pivot-query)))))))))
 
 (deftest ^:parallel dont-return-too-many-rows-test
   (testing "Make sure pivot queries don't return too many rows (#14329)"
@@ -469,8 +477,7 @@
             (qp.pivot/run-pivot-query (qp.pivot.test-util/parameters-query))))))
 
 (defn- clean-pivot-results [results]
-  (let [no-uuid #(cond-> (dissoc % :lib/source_uuid)
-                   (= (:name %) "pivot-grouping") (assoc :ident "test_dummy_pivot-grouping"))]
+  (let [no-uuid #(dissoc % :lib/source_uuid)]
     (-> results
         (dissoc :running_time :started_at :json_query)
         (m/dissoc-in [:data :results_metadata :checksum])
@@ -493,30 +500,24 @@
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (mt/dataset test-data
-    (let [query (assoc (mt/mbql-query orders
-                         {:aggregation [[:count]]
-                          :breakout    [$user_id->people.source $product_id->products.category]})
-                       :pivot-rows [0]
-                       :pivot-cols [1])]
-      (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
-        ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
-        ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
-        ;; `:fields` at all, which was a clear bug -- while returning expressions that are referenced in `:fields` is
-        ;; how the QP normally works in non-pivot-mode.
-        ;;
-        ;; I do not think there are any situations where the frontend actually explicitly specifies `:fields` in a
-        ;; pivot query, so we can revisit this behavior at a later date if needed.
-        (let [results (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))]
+    (let [query (->> (assoc (mt/mbql-query orders
+                              {:aggregation [[:count]]
+                               :breakout    [$user_id->people.source $product_id->products.category]})
+                            :pivot-rows [0]
+                            :pivot-cols [1])
+                     (lib/query (mt/metadata-provider)))]
+      (testing "If the expression is *explicitly* included in `:fields`, we still shouldn't see it"
+        ;; In general, if an aggregation has :fields set, those are "if we ever remove this aggregation, we should use
+        ;; these fields again", not "these fields should be added to the aggregation query".  As a result, if fields
+        ;; are set here, we shouldn't see them.
+        (let [results (qp.pivot/run-pivot-query (lib/expression query "test-expr" (lib/ltrim "wheeee")))]
           (is (= ["User → Source"
                   "Product → Category"
                   "pivot-grouping"
-                  "Count"
-                  "test-expr"]
+                  "Count"]
                  (map :display_name (mt/cols results))))
           (testing "expression value should get returned"
-            (is (= ["Affiliate" "Doohickey" 0 783 "wheeee"]
+            (is (= ["Affiliate" "Doohickey" 0 783]
                    (mt/first-row results)))))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test-3
@@ -548,6 +549,9 @@
             (testing "Should be able to run the query via a Card that All Users has perms for"
               ;; now save it as a Card in a Collection in Root Collection; All Users should be able to run because the
               ;; Collection inherits Root Collection perms when created
+              ;;
+              ;; allowing `with-temp` here since we need it to make a Collection
+              #_{:clj-kondo/ignore [:discouraged-var]}
               (mt/with-temp [:model/Collection collection {}
                              :model/Card       card {:collection_id (u/the-id collection), :dataset_query query}]
                 (is (=? {:status "completed"}
@@ -651,7 +655,7 @@
   (testing "Should be able to run a pivot query for an MLv2 query (#39024)"
     ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in MLv2, so it should return
     ;; the same exact results.
-    (let [metadata-provider  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+    (let [metadata-provider  (mt/metadata-provider)
           reviews            (lib.metadata/table metadata-provider (mt/id :reviews))
           reviews-rating     (lib.metadata/field metadata-provider (mt/id :reviews :rating))
           reviews-created-at (lib.metadata/field metadata-provider (mt/id :reviews :created_at))
@@ -704,8 +708,8 @@
                        {:pivot_rows [0 1]
                         :pivot_cols []})]
       (is (= (mt/$ids orders
-               [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
-                [:field %people.source {:source-field %user_id, :base-type :type/Text}]
+               [[:field %products.category {:source-field %product_id}]
+                [:field %people.source {:source-field %user_id}]
                 [:expression "pivot-grouping"]
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
@@ -760,3 +764,39 @@
       (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2],
               :show-row-totals true, :show-column-totals true}
              (#'qp.pivot/column-name-pivot-options query viz-settings))))))
+
+(deftest ^:parallel horrible-pivot-test
+  (testing "#63261"
+    ;; this pivot is so horrible, it takes like 12 seconds to preprocess with all the Malli schema checks. We don't have
+    ;; all day, just disable the checks for this one test.
+    (mu/disable-enforcement
+      (let [mp    (-> (mt/metadata-provider)
+                      (as-> $mp (lib.tu/mock-metadata-provider
+                                 $mp
+                                 {:cards [{:id            1
+                                           :name          "Q1: Orders + People"
+                                           :dataset-query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))
+                                                              (lib/join (lib.metadata/table $mp (mt/id :people)))
+                                                              (lib/order-by (lib.metadata/field $mp (mt/id :orders :id)))
+                                                              (lib/limit 3))}]}))
+                      (as-> $mp (lib.tu/mock-metadata-provider
+                                 $mp
+                                 (let [query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :products)))
+                                                 (lib/join (lib.metadata/card $mp 1))
+                                                 (lib/limit 3))]
+                                   {:cards [{:id            2
+                                             :name          "Nested: Products + Q1: Orders + People"
+                                             :dataset-query query}]}))))
+            query (-> (lib/query mp (lib.metadata/card mp 2))
+                      (lib/aggregate (lib/count))
+                      (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                         $query
+                                                         (lib/breakoutable-columns $query)
+                                                         {:display-name "Nested: Products + Q1: Orders + People"}
+                                                         ;; not sure this is the right column?
+                                                         {:display-name "Q1: Orders + People → Name"})))
+                      (lib/limit 3))]
+        (is (= [[nil 0 3]
+                [nil 1 3]]
+               (mt/rows
+                (qp.pivot/run-pivot-query query))))))))

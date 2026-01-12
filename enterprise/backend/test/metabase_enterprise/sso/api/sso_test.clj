@@ -1,10 +1,19 @@
 (ns metabase-enterprise.sso.api.sso-test
   (:require
+   [buddy.sign.jwt :as jwt]
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.config.core :as config]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.test :as mt]
-   [metabase.test.http-client :as client]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
+   [metabase.util.random :as u.random]))
+
+(set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 (deftest saml-logout
   (testing "with slo enabled and configured"
@@ -44,3 +53,60 @@
                               "W6HSXlA%2FP2W1xFSMV7isYbynM%2BTPZ1vp88zQCpb0xVzDWt"
                               "%2FYw11yAqadb8%3D")
                              (:saml-logout-url response))))))))))))))
+
+(def ^:private default-jwt-secret (u.random/secure-hex 32))
+
+(defn- with-jwt-settings! [f]
+  (mt/with-additional-premium-features #{:sso-jwt}
+    (mt/with-temporary-setting-values
+      [jwt-enabled true
+       jwt-identity-provider-uri "http://test.idp.metabase.com"
+       jwt-shared-secret default-jwt-secret
+       site-url (format "http://localhost:%s" (config/config-str :mb-jetty-port))]
+      (f))))
+
+(defn- create-valid-jwt-token
+  ([]
+   (create-valid-jwt-token {}))
+  ([claims]
+   (let [now (int (/ (System/currentTimeMillis) 1000))
+         default-claims {:email "test@example.com"
+                         :first_name "Test"
+                         :last_name "User"
+                         :iat now
+                         :exp (+ now 3600)}]
+     (jwt/sign (merge default-claims claims) default-jwt-secret))))
+
+(deftest jwt-to-session-test
+  (testing "POST /auth/sso/to_session"
+    (binding [client/*url-prefix* ""]
+      (with-jwt-settings!
+        (fn []
+          (testing "successful JWT to session conversion"
+            (let [jwt-token (create-valid-jwt-token)
+                  response (mt/client :post 200 "/auth/sso/to_session" {:jwt jwt-token})]
+              (is (string? (:session_token response)))))
+          (testing "missing JWT token"
+            (is (=? {:errors {:jwt "value must be a non-blank string."}}
+                    (mt/client :post 400 "/auth/sso/to_session" {}))))
+          (testing "JWT disabled"
+            (mt/with-temporary-setting-values [jwt-enabled false]
+              (let [jwt-token (create-valid-jwt-token)]
+                (is (= "JWT authentication is not enabled"
+                       (mt/client :post 400 "/auth/sso/to_session" {:jwt jwt-token}))))))
+          (testing "invalid JWT token"
+            (is (= "Message seems corrupt or manipulated"
+                   (mt/client :post 401 "/auth/sso/to_session" {:jwt "invalid-token"}))))
+          (testing "expired JWT token"
+            (let [expired-token (create-valid-jwt-token {:exp (- (int (/ (System/currentTimeMillis) 1000)) 3600)})]
+              (is (str/starts-with? (mt/client :post 401 "/auth/sso/to_session" {:jwt expired-token})
+                                    "Token is expired"))))
+          (testing "JWT with different secret"
+            (let [wrong-secret-token (jwt/sign {:email "test@example.com"
+                                                :first_name "Test"
+                                                :last_name "User"
+                                                :iat (int (/ (System/currentTimeMillis) 1000))
+                                                :exp (+ (int (/ (System/currentTimeMillis) 1000)) 3600)}
+                                               "wrong-secret")]
+              (is (= "Message seems corrupt or manipulated"
+                     (mt/client :post 401 "/auth/sso/to_session" {:jwt wrong-secret-token}))))))))))

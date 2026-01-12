@@ -1,6 +1,7 @@
 import type { ResizableBoxProps } from "react-resizable";
 
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import type {
   SelectionRange,
@@ -86,6 +87,8 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
     getHighlightedNativeQueryLineNumbers,
   );
 
+  const inlineSQLPrompt = PLUGIN_METABOT.useInlineSQLPrompt(question, "qb");
+
   // Normally, when users open native models,
   // they open an ad-hoc GUI question using the model as a data source
   // (using the `/dataset` endpoint instead of the `/card/:id/query`)
@@ -108,7 +111,12 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
         isInitiallyOpen={isNativeEditorOpen}
         datasetQuery={card && card.dataset_query}
         onSetDatabaseId={onSetDatabaseId}
+        extensions={inlineSQLPrompt?.extensions}
+        proposedQuestion={inlineSQLPrompt?.proposedQuestion}
+        onAcceptProposed={inlineSQLPrompt?.handleAcceptProposed}
+        onRejectProposed={inlineSQLPrompt?.handleRejectProposed}
       />
+      {inlineSQLPrompt?.portalElement}
     </Box>
   );
 };

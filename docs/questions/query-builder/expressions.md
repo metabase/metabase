@@ -58,17 +58,22 @@ For example, you could create a new column that calculates the difference betwee
 
 To do math on timestamp columns, you can use [Date functions](expressions-list.md#date-functions) like [dateDiff](./expressions/datetimediff.md).
 
-## Conditional operators
+## Conditional and Boolean logic operators {#conditional-operators}
 
-- `AND`
-- `OR`  
-- `NOT`
-- `>` 
+Comparison operators:
+
+- `>`
 - `>=` (greater than or equal to)
 - `<`
-- `<=` (less than or equal to) 
+- `<=` (less than or equal to)
 - `=`
 - `!=` (not equal to)
+
+Boolean operators for logical conjunction, disjunction, and negation:
+
+- `AND`
+- `OR`
+- `NOT`
 
 For example, you could create a filter for customers from California or Vermont: `[State] = "CA" OR [State] = "VT"`.
 
@@ -93,6 +98,7 @@ You can refer to saved [metrics](../../data-modeling/metrics.md) and [segments](
 Some things to keep in mind about filter expressions and conditionals:
 
 - Filter expressions are different in that they must return a Boolean value (something that's either true or false). For example, you could write `[Subtotal] + [Tax] < 100`. Metabase would look at each row, add its subtotal and tax, the check if that sum is greater than 100. If it is, the statement evaluates as true, and Metabase will include the row in the result. If instead you were to (incorrectly) write `[Subtotal] + [Tax]`, Metabase wouldn't know what to do, as that expression doesn't evaluate to true or false.
+- The arguments of logic operators such as `AND` and `OR` must be Boolean. For example, '[Subtotal] < 100 AND [Tax] > 12`.
 - You can use functions inside of the conditional portion of the `CountIf` and `SumIf` aggregations, like so: `CountIf( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`.
 
 ## Working with dates in filter expressions

@@ -3,18 +3,37 @@ import { Route } from "react-router";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { createMockVersionInfo } from "metabase-types/api/mocks";
+import {
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockVersionInfo,
+} from "metabase-types/api/mocks";
 import {
   createMockLocation,
   createMockRoutingState,
+  createMockSettingsState,
 } from "metabase-types/store/mocks";
 
 import { SettingsNav } from "./SettingsNav";
 
-const setup = async ({ initialRoute }: { initialRoute: string }) => {
+const setup = async ({
+  initialRoute,
+  isHosted,
+}: {
+  initialRoute: string;
+  isHosted?: boolean;
+}) => {
+  const versionInfo = createMockVersionInfo();
+  const settings = createMockSettings({
+    "version-info": versionInfo,
+    "token-features": createMockTokenFeatures({
+      hosting: Boolean(isHosted),
+    }),
+  });
+
   setupSettingEndpoint({
     settingKey: "version-info",
-    settingValue: createMockVersionInfo(),
+    settingValue: versionInfo,
   });
 
   renderWithProviders(<Route path="*" component={SettingsNav} />, {
@@ -26,6 +45,7 @@ const setup = async ({ initialRoute }: { initialRoute: string }) => {
           pathname: initialRoute,
         }),
       }),
+      settings: createMockSettingsState(settings),
     },
   });
 };
@@ -97,5 +117,10 @@ describe("SettingsNav", () => {
     await userEvent.click(authNavItem);
     expect(authNavItem).not.toHaveAttribute("data-expanded");
     expect(authNavItem).toHaveAttribute("data-active", "true");
+  });
+
+  it("should only show Updates nav item when hosted", async () => {
+    await setup({ initialRoute: "/admin/settings/general", isHosted: true });
+    expect(screen.queryByText("Updates")).not.toBeInTheDocument();
   });
 });

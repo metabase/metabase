@@ -1,14 +1,12 @@
 (ns metabase.api-keys.api
   "/api/api-key endpoints for CRUD management of API Keys"
   (:require
+   [medley.core :as m]
+   [metabase.api-keys.core :as-alias api-keys]
    [metabase.api-keys.models.api-key :as api-key]
+   [metabase.api-keys.schema :as api-keys.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.events.core :as events]
-   [metabase.permissions.core :as perms]
-   [metabase.users.models.user :as user]
-   [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
    [metabase.util.secret :as u.secret]
    [toucan2.core :as t2]))
@@ -34,112 +32,70 @@
       (maybe-expose-key)
       (update :updated_by #(select-keys % [:common_name :id]))))
 
-(defn- key-with-unique-prefix []
-  (u/auto-retry 5
-    (let [api-key (api-key/generate-key)
-          prefix (api-key/prefix (u.secret/expose api-key))]
-     ;; we could make this more efficient by generating 5 API keys up front and doing one select to remove any
-     ;; duplicates. But a duplicate should be rare enough to just do multiple queries for now.
-      (if-not (t2/exists? :model/ApiKey :key_prefix prefix)
-        api-key
-        (throw (ex-info (tru "could not generate key with unique prefix") {}))))))
-
-(defn- with-updated-by [api-key]
-  (assoc api-key :updated_by_id api/*current-user-id*))
-
-(defn- with-creator [api-key]
-  (assoc api-key :creator_id api/*current-user-id*))
-
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new API key (and an associated `User`) with the provided name and group ID."
   [_route-params
    _query-params
-   {:keys [group_id name] :as _body} :- [:map
-                                         [:group_id ms/PositiveInt]
-                                         [:name     ms/NonBlankString]]]
+   {group-id :group_id, key-name :name, :as _body} :- [:map
+                                                       [:group_id ::api-keys.schema/id]
+                                                       [:name     ms/NonBlankString]]]
   (api/check-superuser)
-  (api/checkp (not (t2/exists? :model/ApiKey :name name))
-              "name" "An API key with this name already exists.")
-  (let [unhashed-key (key-with-unique-prefix)
-        email        (format "api-key-user-%s@api-key.invalid" (random-uuid))]
-    (t2/with-transaction [_conn]
-      (let [user (first
-                  (t2/insert-returning-instances! :model/User
-                                                  {:email      email
-                                                   :first_name name
-                                                   :last_name  ""
-                                                   :type       :api-key
-                                                   :password (str (random-uuid))}))]
-        (user/set-permissions-groups! user [(perms/all-users-group) group_id])
-        (let [api-key (-> (t2/insert-returning-instance! :model/ApiKey
-                                                         (-> {:user_id       (u/the-id user)
-                                                              :name          name
-                                                              :unhashed_key  unhashed-key}
-                                                             with-creator
-                                                             with-updated-by))
-                          (t2/hydrate :group :updated_by))]
-          (events/publish-event! :event/api-key-create
-                                 {:object  api-key
-                                  :user-id api/*current-user-id*})
-          (present-api-key (assoc api-key :unmasked_key unhashed-key)))))))
+  (-> (api-key/create-api-key-with-new-user! {:key-name key-name, :group-id group-id})
+      present-api-key))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/count"
   "Get the count of API keys in the DB with the default scope."
   []
   (api/check-superuser)
   (t2/count :model/ApiKey :scope nil))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an API key by changing its group and/or its name"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [group_id name] :as _body} :- [:map
-                                         [:group_id {:optional true} [:maybe ms/PositiveInt]]
-                                         [:name     {:optional true} [:maybe ms/NonBlankString]]]]
+   {group-id :group_id, key-name :name} :- [:map
+                                            [:group_id {:optional true} [:maybe ms/PositiveInt]]
+                                            [:name     {:optional true} [:maybe ::api-keys.schema/name]]]]
   (api/check-superuser)
-  (let [api-key-before (-> (t2/select-one :model/ApiKey :id id)
-                           ;; hydrate the group_name for audit logging
-                           (t2/hydrate :group)
-                           (api/check-404))]
-    (t2/with-transaction [_conn]
-      (when group_id
-        (let [user (-> api-key-before (t2/hydrate :user) :user)]
-          (user/set-permissions-groups! user [(perms/all-users-group) {:id group_id}])))
-      (when name
-        ;; A bit of a pain to keep these in sync, but oh well.
-        (t2/update! :model/User (:user_id api-key-before) {:first_name name
-                                                           :last_name ""})
-        (t2/update! :model/ApiKey id (with-updated-by {:name name}))))
-    (let [updated-api-key (-> (t2/select-one :model/ApiKey :id id)
-                              (t2/hydrate :group :updated_by))]
-      (events/publish-event! :event/api-key-update {:object          updated-api-key
-                                                    :previous-object api-key-before
-                                                    :user-id         api/*current-user-id*})
-      (present-api-key updated-api-key))))
+  (api/let-404 [api-key-before (t2/select-one :model/ApiKey id)]
+    (-> api-key-before
+        (m/assoc-some ::api-keys/group-id group-id, :name key-name)
+        t2/save!
+        present-api-key)))
 
-(api.macros/defendpoint :put "/:id/regenerate"
+(api.macros/defendpoint :put "/:id/regenerate" :- [:map
+                                                   [:id           ::api-keys.schema/id]
+                                                   [:unmasked_key ::api-keys.schema/key.raw]
+                                                   [:masked_key   ::api-keys.schema/key.masked]
+                                                   [:prefix       ::api-keys.schema/prefix]]
   "Regenerate an API Key"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (let [api-key-before (-> (t2/select-one :model/ApiKey id)
-                           (t2/hydrate :group)
-                           (api/check-404))
-        unhashed-key (key-with-unique-prefix)
-        api-key-after (assoc api-key-before
-                             :unhashed_key unhashed-key
-                             :key_prefix (api-key/prefix (u.secret/expose unhashed-key)))]
-    (t2/update! :model/ApiKey :id id (with-updated-by
-                                       (select-keys api-key-after [:unhashed_key])))
-    (events/publish-event! :event/api-key-regenerate
-                           {:object api-key-after
-                            :previous-object api-key-before
-                            :user-id api/*current-user-id*})
-    (present-api-key (assoc api-key-after
-                            :unmasked_key unhashed-key
-                            :masked_key (api-key/mask unhashed-key)))))
+  (api/check-404 (t2/exists? :model/ApiKey id))
+  (let [regenerated (api-key/regenerate! id)]
+    {:id           id
+     :unmasked_key (u.secret/expose (:unmasked-key regenerated))
+     :masked_key   (:masked-key regenerated)
+     :prefix       (:prefix regenerated)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get a list of API keys with the default scope. Non-paginated."
   []
@@ -147,18 +103,20 @@
   (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
     (map present-api-key api-keys)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete an ApiKey"
   [{:keys [id]} :- [:map
-                    [:id ms/PositiveInt]]]
+                    [:id ::api-keys.schema/id]]]
   (api/check-superuser)
-  (let [api-key (-> (t2/select-one :model/ApiKey id)
-                    (t2/hydrate :group)
-                    (api/check-404))]
-    (t2/with-transaction [_tx]
-      (t2/delete! :model/ApiKey id)
-      (t2/update! :model/User (:user_id api-key) {:is_active false}))
-    (events/publish-event! :event/api-key-delete
-                           {:object api-key
-                            :user-id api/*current-user-id*})
-    api/generic-204-no-content))
+  (api/check-404 (t2/exists? :model/ApiKey id))
+  (t2/delete! :model/ApiKey id)
+  api/generic-204-no-content)
+
+#_:clj-kondo/ignore
+(comment
+  ;; check the generated docs
+  (metabase.api.open-api/open-api-spec (metabase.api.macros/ns-handler) "/api/api-key"))

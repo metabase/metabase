@@ -1,5 +1,9 @@
 (ns metabase.driver.common.parameters
-  "Various record types below are used as a convenience for differentiating the different param types."
+  "Various record types below are used as a convenience for differentiating the different param types.
+
+  DEPRECATED: `driver.common.parameters.*` namespaces deal with legacy MBQL queries. Migrate to MBQL-5-friendly
+  replacement namespaces. The replacement for this namespace is [[metabase.lib.parameters.parse.types]]."
+  {:deprecated "0.57.0"}
   (:require
    [potemkin.types :as p.types]
    [pretty.core :as pretty]))
@@ -16,7 +20,7 @@
 ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
 ;;
 ;; *  A vector of maps like the one above (for multiple values)
-(p.types/defrecord+ FieldFilter [field value]
+(p.types/defrecord+ FieldFilter [field value alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->FieldFilter) (into {} this))))
@@ -26,7 +30,7 @@
   [x]
   (instance? FieldFilter x))
 
-(p.types/defrecord+ TemporalUnit [name value]
+(p.types/defrecord+ TemporalUnit [field value alias]
   pretty/PrettyPrintable
   (pretty [this]
     (list (pretty/qualify-symbol-for-*ns* `map->TemporalUnit) (into {} this))))
