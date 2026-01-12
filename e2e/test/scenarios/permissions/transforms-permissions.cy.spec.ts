@@ -4,6 +4,7 @@ import { DataPermissionValue } from "metabase/admin/permissions/types";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
 
+const CREATE_QUERIES_PERMISSION_INDEX = 1;
 const TRANSFORMS_PERMISSION_INDEX = 5;
 
 const SOURCE_TABLE = "Animals";
@@ -51,8 +52,29 @@ describe(
           "No",
         );
 
-        H.modifyPermission("All Users", TRANSFORMS_PERMISSION_INDEX, "Yes");
+        cy.log(
+          "Verify transforms permission is disabled if group lacks full data access",
+        );
+        H.isPermissionDisabled(
+          "All Users",
+          TRANSFORMS_PERMISSION_INDEX,
+          "No",
+          true,
+        );
+        H.modifyPermission(
+          "All Users",
+          CREATE_QUERIES_PERMISSION_INDEX,
+          "Query builder and native",
+        );
+        H.isPermissionDisabled(
+          "All Users",
+          TRANSFORMS_PERMISSION_INDEX,
+          "No",
+          false,
+        );
 
+        cy.log("Enable 'Transforms' permission and save");
+        H.modifyPermission("All Users", TRANSFORMS_PERMISSION_INDEX, "Yes");
         cy.button("Save changes").click();
         H.modal().within(() => {
           cy.button("Yes").click();
@@ -82,19 +104,15 @@ describe(
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
 
-        cy.findByTestId("transforms-sidebar").should("be.visible");
-        cy.findByTestId("transforms-sidebar")
-          .button("Create a transform")
-          .should("be.visible");
+        H.DataStudio.Transforms.list().should("be.visible");
+        cy.button("Create a transform").should("be.visible");
       });
 
       it("allows user to create a new transform via UI", () => {
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
 
-        cy.findByTestId("transforms-sidebar")
-          .button("Create a transform")
-          .click();
+        cy.button("Create a transform").click();
         H.popover().findByText("Query builder").click();
 
         H.miniPicker().within(() => {
@@ -128,7 +146,9 @@ describe(
 
           cy.findByTestId("transform-query-editor").should("be.visible");
           H.DataStudio.Transforms.runTab().click();
-          cy.findByText("succeeded", { timeout: 10000 }).should("be.visible");
+          cy.findByTestId("run-status")
+            .findByText(/successfully/, { timeout: 10_000 })
+            .should("be.visible");
         });
       });
 
@@ -145,7 +165,7 @@ describe(
 
           cy.findByTestId("transform-query-editor").should("be.visible");
           H.DataStudio.Transforms.header()
-            .findByText("Admin Created Transform")
+            .findByDisplayValue("Admin Created Transform")
             .should("be.visible");
         });
       });
@@ -247,7 +267,8 @@ describe(
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
-        cy.findByTestId("transforms-sidebar").should("be.visible");
+        getTransformsNavLink().should("be.visible");
+        H.DataStudio.Transforms.list().should("be.visible");
       });
 
       it("revokes access after permission is removed", () => {
@@ -255,7 +276,7 @@ describe(
 
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
-        cy.findByTestId("transforms-sidebar").should("be.visible");
+        getTransformsNavLink().should("be.visible");
 
         cy.signInAsAdmin();
         denyTransformsPermissionToAllGroups();
@@ -263,6 +284,7 @@ describe(
         cy.signInAsNormalUser();
         cy.visit("/data-studio/transforms");
         cy.url().should("include", "/unauthorized");
+        H.DataStudio.Transforms.list().should("not.exist");
       });
     });
   },
@@ -318,4 +340,8 @@ function denyTransformsPermissionToAllGroups() {
       },
     },
   });
+}
+
+function getTransformsNavLink() {
+  return H.DataStudio.nav().findByRole("link", { name: "Transforms" });
 }

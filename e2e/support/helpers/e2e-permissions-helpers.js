@@ -87,7 +87,8 @@ export function assertPermissionForItem(
 }
 
 /**
- * @param {string} index
+ * @param {string} row
+ * @param {number} index
  * @param {string} permission
  * @param {boolean} isDisabled
  */
