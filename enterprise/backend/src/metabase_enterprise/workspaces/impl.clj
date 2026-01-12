@@ -324,7 +324,9 @@
   "Insert a new graph for the given version. Silently ignores constraint violations
    from concurrent inserts (another process already inserted this version)."
   [ws-id graph-version graph]
-  (when-not (t2/exists? :model/WorkspaceGraph :graph_version [:>= graph-version])
+  (when-not (t2/exists? :model/WorkspaceGraph
+                        :workspace_id  ws-id
+                        :graph_version [:>= graph-version])
     (ws.u/ignore-constraint-violation
      (t2/insert! :model/WorkspaceGraph
                  {:workspace_id  ws-id
