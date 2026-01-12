@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
+import { getTranslatedFilterDisplayName } from "metabase/querying/filters/utils/display";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepProps } from "../../types";
@@ -27,19 +27,8 @@ export function FilterStep({
   );
 
   const renderFilterName = useCallback(
-    (filter: Lib.FilterClause) => {
-      const displayInfo = Lib.displayInfo(query, stageIndex, filter);
-      const parts = Lib.filterParts(query, stageIndex, filter);
-      const columnDisplayName = parts?.column
-        ? Lib.displayInfo(query, stageIndex, parts.column).displayName
-        : undefined;
-
-      return PLUGIN_CONTENT_TRANSLATION.getTranslatedFilterDisplayName(
-        displayInfo.longDisplayName ?? "",
-        tc,
-        columnDisplayName,
-      );
-    },
+    (filter: Lib.FilterClause) =>
+      getTranslatedFilterDisplayName(query, stageIndex, filter, tc),
     [query, stageIndex, tc],
   );
 
