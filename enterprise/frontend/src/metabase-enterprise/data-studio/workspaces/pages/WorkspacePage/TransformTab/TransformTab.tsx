@@ -26,11 +26,11 @@ import type {
 } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
-import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
 import type { EditedTransform, TableTab } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
+import { SaveTransformButton } from "./SaveTransformButton";
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
 
 interface Props {
