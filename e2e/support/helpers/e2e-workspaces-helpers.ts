@@ -65,6 +65,10 @@ export const Workspaces = {
     return cy.findByPlaceholderText("Workspace name");
   },
 
+  getRunAllTransformsButton() {
+    return cy.findByTestId("run-all-button");
+  },
+
   getMergeWorkspaceButton() {
     return cy.findByRole("button", { name: /Merge/ });
   },

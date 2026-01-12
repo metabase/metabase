@@ -994,6 +994,61 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
+  describe("run all transforms", () => {
+    it("should run all transforms", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getRunAllTransformsButton().should("be.disabled");
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      Workspaces.getSaveTransformButton().click();
+
+      Workspaces.getMainlandTransforms().findByText("Python transform").click();
+      Workspaces.getSaveTransformButton().click();
+
+      Workspaces.getRunAllTransformsButton().should("be.enabled").click();
+
+      H.popover().within(() => {
+        cy.findByText("Run stale transforms").should("be.visible");
+        cy.findByText("Run all transforms").should("be.visible").click();
+      });
+
+      Workspaces.getRunAllTransformsButton().should(
+        "have.attr",
+        "data-loading",
+        "true",
+      );
+
+      Workspaces.getRunAllTransformsButton().should(
+        "not.have.attr",
+        "data-loading",
+      );
+
+      Workspaces.getWorkspaceContent()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
+
+      cy.findByRole("tab", { name: "SQL transform" }).click();
+
+      Workspaces.getWorkspaceContent()
+        .findByText("Last ran a few seconds ago successfully.")
+        .should("be.visible");
+
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
+        .realHover();
+      H.tooltip().should("not.exist");
+
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_PYTHON}`)
+        .realHover();
+      H.tooltip().should("not.exist");
+    });
+  });
+
   describe("transform -> workspace", () => {
     it("should check out transform into a new workspace from the transform page", () => {
       cy.log("Create 2 workspaces, add transform to the second one");
