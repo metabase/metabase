@@ -35,12 +35,14 @@ type TagMultiSelectProps = {
   tagIds: TransformTagId[];
   onChange: (tagIds: TransformTagId[], undoable?: boolean) => void;
   disabled?: boolean;
+  requireTransformWriteAccess?: boolean;
 };
 
 export function TagMultiSelect({
   tagIds,
   onChange,
   disabled,
+  requireTransformWriteAccess,
 }: TagMultiSelectProps) {
   const { transformsDatabases } = useTransformPermissions();
   const { data: transforms = [] } = useListTransformsQuery({});
@@ -48,7 +50,7 @@ export function TagMultiSelect({
   // TODO: Do this on the BE? Via new TransformTag flag?
   const tagReadOnlyMap = useMemo(() => {
     const map = {} as Record<TransformTagId, boolean>;
-    if (!transforms || !transformsDatabases) {
+    if (!requireTransformWriteAccess || !transforms || !transformsDatabases) {
       return map;
     }
     transforms.forEach((t) => {
@@ -59,7 +61,7 @@ export function TagMultiSelect({
       });
     });
     return map;
-  }, [transforms, transformsDatabases]);
+  }, [requireTransformWriteAccess, transforms, transformsDatabases]);
 
   const { data: tags = [], isLoading } = useListTransformTagsQuery();
   const [createTag, { isLoading: isCreating }] =
