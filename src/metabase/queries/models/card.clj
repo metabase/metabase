@@ -739,13 +739,16 @@
   ;; |   Future revisions to the shapes of cards should be handled via [[upgrade-card-schema-to]].   |
   ;; |   See [[current-schema-version]] for details on the schema versioning.                        |
   ;; +===============================================================================================+
-  (-> card
+  (let [result (-> card
       (dissoc :dataset_query_metrics_v2_migration_backup)
       (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
       public-sharing/remove-public-uuid-if-public-sharing-is-disabled
       add-query-description-to-metric-card
       ;; At this point, the card should be at schema version 20 or higher.
-      upgrade-card-schema-to-latest))
+                   upgrade-card-schema-to-latest)]
+    ;; Track query UUIDs for debugging query corruption
+    (mi/track-card-query-uuids! result)
+    result))
 
 (t2/define-before-insert :model/Card
   [card]

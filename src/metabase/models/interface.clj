@@ -193,6 +193,145 @@
   {:in  json-in-with-eliding
    :out json-out-with-keywordization})
 
+;;; ---------------------------------------- Query UUID Collision Tracking ----------------------------------------
+;;; This is debug tooling to detect when multiple cards end up with identical UUIDs in their queries,
+;;; which should be impossible since UUIDs are randomly generated. Bind *query-uuid-tracker* to an atom
+;;; containing {:seen {} :collisions []} to enable tracking during a dashboard load.
+
+(def ^:dynamic *query-uuid-tracker*
+  "When bound to an atom, collects query data at each processing stage for post-hoc analysis.
+   Structure: {:sequence (atom 0)
+               :before-deserialize {seq-id {:uuids #{...} :fingerprint hash :source-card id}}
+               :after-deserialize  {seq-id {:uuids #{...} :fingerprint hash :source-card id}}
+               :after-card-select  {card-id {:uuids #{...} :card-name str :seq-id id}}}
+   Use [[analyze-query-tracking]] at end of dashboard load to detect corruption."
+  nil)
+
+(defn- extract-query-uuids
+  "Extract all lib/uuid values from a query structure."
+  [query]
+  (let [uuids (volatile! #{})]
+    (walk/postwalk
+     (fn [x]
+       (when (map? x)
+         (when-let [uuid (or (:lib/uuid x) (get x "lib/uuid"))]
+           (vswap! uuids conj uuid)))
+       x)
+     query)
+    @uuids))
+
+(defn- next-seq-id!
+  "Get the next sequence ID for correlating before/after deserialize stages."
+  []
+  (when-let [tracker *query-uuid-tracker*]
+    (swap! (:sequence @tracker) inc)))
+
+(def ^:dynamic *current-deserialize-seq-id*
+  "Holds the sequence ID for the current deserialize operation, allowing before/after correlation."
+  nil)
+
+(defn- record-stage-data!
+  "Record query data for a processing stage. Returns the seq-id used."
+  [stage query & {:keys [card-id card-name]}]
+  (when-let [tracker *query-uuid-tracker*]
+    (let [uuids (extract-query-uuids query)
+          fingerprint (hash (pr-str (:stages query)))
+          source-card (or (get-in query [:stages 0 :source-card])
+                          (get-in query ["stages" 0 "source-card"]))
+          data {:uuids uuids
+                :fingerprint fingerprint
+                :source-card source-card}]
+      (case stage
+        :before-deserialize
+        (let [seq-id (next-seq-id!)]
+          (swap! tracker assoc-in [:before-deserialize seq-id] data)
+          seq-id)
+
+        :after-deserialize
+        (when-let [seq-id *current-deserialize-seq-id*]
+          (swap! tracker assoc-in [:after-deserialize seq-id] data)
+          seq-id)
+
+        :after-card-select
+        (let [seq-id *current-deserialize-seq-id*]
+          (swap! tracker assoc-in [:after-card-select card-id]
+                 (assoc data :card-name card-name :seq-id seq-id))
+          card-id)))))
+
+(defn track-card-query-uuids!
+  "Track UUIDs from a card's query with full card context.
+   Call this from Card after-select to capture card id and name."
+  [{:keys [id name dataset_query] :as _card}]
+  (when (and dataset_query *query-uuid-tracker*)
+    (record-stage-data! :after-card-select dataset_query :card-id id :card-name name)))
+
+(defn- find-uuid-collisions
+  "Find UUIDs that appear in multiple cards. Returns map of uuid -> [card-ids]."
+  [card-data]
+  (->> card-data
+       (mapcat (fn [[card-id {:keys [uuids]}]]
+                 (map (fn [uuid] [uuid card-id]) uuids)))
+       (group-by first)
+       (m/filter-vals #(> (count %) 1))
+       (m/map-vals #(mapv second %))))
+
+(defn- find-fingerprint-collisions
+  "Find fingerprints that appear in multiple entries. Returns map of fingerprint -> [ids]."
+  [stage-data]
+  (->> stage-data
+       (group-by (fn [[_id {:keys [fingerprint]}]] fingerprint))
+       (m/filter-vals #(> (count %) 1))
+       (m/map-vals #(mapv first %))))
+
+(defn analyze-query-tracking
+  "Analyze collected tracking data to detect and diagnose query corruption.
+   Returns a map with :status (:clean, :corrupted-in-db, :corrupted-in-processing)
+   and diagnostic details."
+  []
+  (when-let [tracker *query-uuid-tracker*]
+    (let [{:keys [before-deserialize after-deserialize after-card-select]} @tracker
+          before-fp-collisions (find-fingerprint-collisions before-deserialize)
+          after-fp-collisions (find-fingerprint-collisions after-deserialize)
+          uuid-collisions (find-uuid-collisions after-card-select)
+          ;; Check if fingerprints changed between before and after
+          fingerprint-changes (for [[seq-id before-data] before-deserialize
+                                    :let [after-data (get after-deserialize seq-id)]
+                                    :when (and after-data
+                                               (not= (:fingerprint before-data)
+                                                     (:fingerprint after-data)))]
+                                {:seq-id seq-id
+                                 :before-fp (:fingerprint before-data)
+                                 :after-fp (:fingerprint after-data)
+                                 :source-card (:source-card before-data)})]
+      (cond
+        ;; Fingerprints already identical before processing → corruption in DB
+        (and (seq before-fp-collisions) (seq uuid-collisions))
+        {:status :corrupted-in-db
+         :message "Queries were already identical in database before any processing"
+         :before-fingerprint-collisions before-fp-collisions
+         :uuid-collisions uuid-collisions
+         :card-names (m/map-vals (fn [card-ids]
+                                   (mapv #(get-in after-card-select [% :card-name]) card-ids))
+                                 uuid-collisions)}
+
+        ;; Fingerprints changed during processing → corruption in lib/query
+        (seq fingerprint-changes)
+        {:status :corrupted-in-processing
+         :message "Query fingerprints changed during deserialize-mlv2-query"
+         :fingerprint-changes fingerprint-changes
+         :uuid-collisions uuid-collisions}
+
+        ;; UUID collisions but fingerprints were different → unexpected case
+        (seq uuid-collisions)
+        {:status :uuid-collision-only
+         :message "UUID collisions detected but fingerprints differ - unexpected state"
+         :uuid-collisions uuid-collisions}
+
+        :else
+        {:status :clean
+         :message "No corruption detected"
+         :cards-processed (count after-card-select)}))))
+
 (defn- serialize-mlv2-query
   "Saving MLv2 queries​ we can assume MLv2 queries are normalized enough already, but remove the metadata provider before
   saving it, because it's not something that lends itself well to serialization."
@@ -200,15 +339,18 @@
   (dissoc query :lib/metadata))
 
 (defn- deserialize-mlv2-query
-  "Reading MLv2 queries​: normalize them, then attach a MetadataProvider based on their Database."
+  "Reading MLv2 queries: normalize them, then attach a MetadataProvider based on their Database."
   [query]
-  (let [metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
-                            ;; in case someone passes in an already-normalized query to [[maybe-normalize-query]] below,
-                            ;; preserve the existing metadata provider.
+  (let [seq-id (record-stage-data! :before-deserialize query)
+        metadata-provider (if (lib.metadata.protocols/metadata-provider? (:lib/metadata query))
                             (:lib/metadata query)
                             ((requiring-resolve 'metabase.lib-be.metadata.jvm/application-database-metadata-provider)
-                             (u/the-id (some #(get query %) [:database "database"]))))]
-    (lib/query metadata-provider query)))
+                             (u/the-id (some #(get query %) [:database "database"]))))
+        result (binding [*current-deserialize-seq-id* seq-id]
+                 (let [r (lib/query metadata-provider query)]
+                   (record-stage-data! :after-deserialize r)
+                   r))]
+    result))
 
 (mu/defn maybe-normalize-query
   "For top-level query maps like `Card.dataset_query`. Normalizes them on the way in & out."
