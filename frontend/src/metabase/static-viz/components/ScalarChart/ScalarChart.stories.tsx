@@ -41,7 +41,7 @@ const renderingContext: RenderingContext = {
 export const Default = {
   render: Template,
   args: {
-    rawSeries: [data.twoScalars[0]] as any,
+    rawSeries: data.twoScalars as any,
     renderingContext,
   },
 };
