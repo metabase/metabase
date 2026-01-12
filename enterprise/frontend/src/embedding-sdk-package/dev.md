@@ -62,7 +62,7 @@ We recommend running either the dev or the watch command to have shorter a feedb
 To start the cypress for the e2e tests:
 
 ```bash
-CYPRESS_TESTING_TYPE="component" yarn test-cypress
+CYPRESS_TESTING_TYPE="component" bun test-cypress
 ```
 
 Then in a separate terminal run `bun embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
@@ -78,13 +78,13 @@ Define one of the following environment variables with enterprise token: `CYPRES
 To run these tests locally, run:
 
 ```
-SDK_TEST_SUITE=<sample_app_repo_name>-e2e yarn test-cypress-host-sample-apps
+SDK_TEST_SUITE=<sample_app_repo_name>-e2e bun test-cypress-host-sample-apps
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 
 ```
-SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e yarn test-cypress-host-sample-apps
+SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e bun test-cypress-host-sample-apps
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
@@ -130,13 +130,13 @@ Tests a bit similar to Sample App tests, but:
 To run these tests locally, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production bun test-cypress-host-sample-apps
 ```
 
 For example for the `vite-6-host-app` Host App, run:
 
 ```
-ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production yarn test-cypress-host-sample-apps
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production bun test-cypress-host-sample-apps
 ```
 
 #### CI runs

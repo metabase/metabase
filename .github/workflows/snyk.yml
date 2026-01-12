@@ -66,8 +66,8 @@ jobs:
             package-manager: npm
             category: e2e-vite-host
           - name: Release Helper
-            file: release/yarn.lock
-            package-manager: yarn
+            file: release/bun.lock
+            package-manager: bun
             category: release-helper
     steps:
       - uses: actions/checkout@v4

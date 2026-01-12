@@ -53,13 +53,13 @@ bun install
 To build and run without watching changes:
 
 ```bash
-yarn build
+bun build
 ```
 
 To build and run with hot-reload:
 
 ```bash
-yarn build-hot
+bun build-hot
 ```
 
 ### Backend  quick setup

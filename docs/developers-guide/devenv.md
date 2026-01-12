@@ -19,14 +19,14 @@ Both components are built and assembled together into a single JAR file. In the 
 ./bin/dev-install
 ```
 
-This installs [mise](https://mise.jdx.dev) (a tool version manager), sets up your shell, and installs all required tools (Node.js, Java, Clojure, Yarn, Babashka) at the correct versions. Follow the prompts, then open a new terminal.
+This installs [mise](https://mise.jdx.dev) (a tool version manager), sets up your shell, and installs all required tools (Node.js, Java, Clojure, Bun, Babashka) at the correct versions. Follow the prompts, then open a new terminal.
 
 **Already have your own setup?** You can check that it meets the requirements with `./bin/mage doctor`.
 
 To spin up a development environment, run:
 
 ```
-yarn dev
+bun dev
 ```
 
 This runs both the [frontend](#frontend) and [backend](#backend). Alternatively, you can run them separately in two terminal sessions below.
@@ -39,13 +39,13 @@ Metabase depends on third-party libraries to run, so you'll need to keep those u
 
 ```sh
 # javascript dependencies
-$ yarn
+$ bun install
 ```
 
 Start the frontend build process with
 
 ```
-yarn build-hot
+bun build-hot
 ```
 
 See [Frontend development](#frontend-development).
@@ -119,7 +119,7 @@ We use these technologies for our FE build process to allow us to use modules, e
 - babel
 - cssnext
 
-Frontend tasks are executed using `yarn`. All available tasks can be found in `package.json` under _scripts_.
+Frontend tasks are executed using `bun`. All available tasks can be found in `package.json` under _scripts_.
 
 To build the frontend client without watching for changes, you can use:
 
@@ -146,7 +146,7 @@ Some systems may have trouble detecting changes to frontend files. You can enabl
 We exclude ESLint loader in dev mode for seven times quicker initial builds by default. You can enable it by exporting an environment variable:
 
 ```sh
-$ USE_ESLINT=true yarn build-hot
+$ USE_ESLINT=true bun build-hot
 ```
 
 ### Frontend testing
@@ -154,7 +154,7 @@ $ USE_ESLINT=true yarn build-hot
 Run all unit and Cypress end-to-end tests with
 
 ```
-yarn test
+bun test
 ```
 
 Cypress tests and some unit tests are located in `frontend/test` directory. New unit test files are added next to the files they test.
@@ -168,7 +168,7 @@ If you run into issues with breakpoints, especially inside jsx, please set env v
 Example:
 
 ```
-BETTER_SOURCE_MAPS=true yarn dev
+BETTER_SOURCE_MAPS=true bun dev
 ```
 
 ### Cypress end-to-end tests
@@ -184,8 +184,8 @@ Unit tests are focused around isolated parts of business logic.
 Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.js` to separate them from end-to-end tests.
 
 ```
-yarn test-unit # Run all tests at once
-yarn test-unit-watch # Watch for file changes
+bun test-unit # Run all tests at once
+bun test-unit-watch # Watch for file changes
 ```
 
 ## Backend development
@@ -213,7 +213,7 @@ By default Rspack runs the development server on port `8088`. You can run multip
 
 Frontend:
 
-- If you are running the frontend with `bun build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
+- If you are running the frontend with `bun build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee bun build-hot`
 - If you are building the frontend statically with `bun build`, there is nothing different to do
 
 Backend:

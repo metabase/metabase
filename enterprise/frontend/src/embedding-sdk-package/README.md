@@ -42,7 +42,7 @@ You can install Metabase Embedded analytics SDK for React via npm:
 npm install @metabase/embedding-sdk-react
 ```
 
-or using yarn:
+or using bun or yarn:
 
 ```bash
 bun add @metabase/embedding-sdk-react
