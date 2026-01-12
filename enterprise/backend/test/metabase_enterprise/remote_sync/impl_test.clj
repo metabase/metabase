@@ -274,24 +274,32 @@
 
 (deftest export!-calls-update-progress-with-expected-values-test
   (testing "export! calls update-progress! with expected progress values"
-    (mt/dataset test-data
-      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
-          (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
-                         :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
-                         :model/Card _ {:collection_id coll-id}]
-            (let [mock-source (test-helpers/create-mock-source)
-                  progress-calls (atom [])]
-              (with-redefs [remote-sync.task/update-progress!
-                            (fn [task-id progress]
-                              (swap! progress-calls conj {:task-id task-id :progress progress}))]
-                (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
-                  (is (= :success (:status result)))
-                  ;; Verify progress was called with expected values
-                  (is (= 4 (count @progress-calls)))
-                  (is (= task-id (:task-id (first @progress-calls))))
-                  ;; Check progress value is expected
-                  (is (= 0.3 (:progress (first @progress-calls)))))))))))))
+    ;; Clear any existing remote-synced collections to ensure consistent progress call count
+    (let [existing-synced-ids (t2/select-pks-set :model/Collection :is_remote_synced true)]
+      (try
+        (when (seq existing-synced-ids)
+          (t2/update! :model/Collection {:is_remote_synced false} :id [:in existing-synced-ids]))
+        (mt/dataset test-data
+          (mt/with-temporary-setting-values [remote-sync-type :read-write]
+            (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
+              (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                             :model/Collection _ {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-2xxxx" :location "/"}
+                             :model/Card _ {:collection_id coll-id}]
+                (let [mock-source (test-helpers/create-mock-source)
+                      progress-calls (atom [])]
+                  (with-redefs [remote-sync.task/update-progress!
+                                (fn [task-id progress]
+                                  (swap! progress-calls conj {:task-id task-id :progress progress}))]
+                    (let [result (impl/export! (source.p/snapshot mock-source) task-id "Test commit")]
+                      (is (= :success (:status result)))
+                      ;; Verify progress was called with expected values
+                      (is (= 4 (count @progress-calls)))
+                      (is (= task-id (:task-id (first @progress-calls))))
+                      ;; Check progress value is expected
+                      (is (= 0.3 (:progress (first @progress-calls)))))))))))
+        (finally
+          (when (seq existing-synced-ids)
+            (t2/update! :model/Collection {:is_remote_synced true} :id [:in existing-synced-ids])))))))
 
 (deftest import!-resets-remote-sync-object-table-test
   (testing "import! deletes and recreates RemoteSyncObject table with synced status"
