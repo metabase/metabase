@@ -32,8 +32,10 @@ export function parseTimestampWithTimezone(
   }
 }
 
-export function formatStatus(status: TransformRunStatus) {
+export function formatStatus(status: TransformRunStatus | null) {
   switch (status) {
+    case null:
+      return t`Unknown`;
     case "started":
       return t`In progress`;
     case "succeeded":
