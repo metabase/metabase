@@ -12,7 +12,7 @@ function _ToolbarButton(
     isHighlighted,
     ...buttonProps
   }: {
-    label?: ReactNode;
+    label: ReactNode;
     icon?: IconName;
     isHighlighted?: boolean;
   } & ButtonProps,
