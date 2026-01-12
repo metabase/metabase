@@ -11,7 +11,7 @@ import React, { Component, createRef } from "react";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { isCypressActive } from "metabase/env";
+import { isCypressActive, isStorybookActive } from "metabase/env";
 import { delay } from "metabase/lib/delay";
 import resizeObserver from "metabase/lib/resize-observer";
 
@@ -68,6 +68,8 @@ function ExplicitSize<T>({
 
       timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+      _isMounted = false;
+
       _currentElement: Element | null = null;
 
       _printMediaQuery = window.matchMedia && window.matchMedia("print");
@@ -107,11 +109,26 @@ function ExplicitSize<T>({
       }
 
       componentDidMount() {
+        this._isMounted = true;
         this._initMediaQueryListener();
-        this._initResizeObserver();
-        // Set the size on the next tick. We had issues with wrapped components
-        // not adjusting if the size was fixed during mounting.
-        this.timeoutId = setTimeout(this._updateSize, 0);
+
+        // In Storybook, wait for fonts to load before measuring.
+        // This ensures visualizations render with correct font metrics,
+        // fixing flaky visual tests caused by font loading timing.
+        if (isStorybookActive && document.fonts) {
+          document.fonts.ready.then(() => {
+            if (!this._isMounted) {
+              return;
+            }
+            this._initResizeObserver();
+            this.timeoutId = setTimeout(this._updateSize, 0);
+          });
+        } else {
+          this._initResizeObserver();
+          // Set the size on the next tick. We had issues with wrapped components
+          // not adjusting if the size was fixed during mounting.
+          this.timeoutId = setTimeout(this._updateSize, 0);
+        }
       }
 
       componentDidUpdate() {
@@ -126,6 +143,7 @@ function ExplicitSize<T>({
       }
 
       componentWillUnmount() {
+        this._isMounted = false;
         this._teardownResizeObserver();
         this._teardownQueryMediaListener();
         if (this.timeoutId !== null) {
