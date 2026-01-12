@@ -6,8 +6,10 @@
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -208,7 +210,7 @@
 
 (deftest ^:parallel comment-question-mark-test
   (mt/test-driver :clickhouse
-    (testing "a query with a question mark in the comment and has a variable should work correctly"
+    (testing "a query with a question mark in the comment and has a variable should work correctly (#56690)"
       (let [query "SELECT *
                    -- ?
                    FROM test_data.categories
@@ -228,7 +230,7 @@
 
 (deftest ^:parallel select-question-mark-test
   (mt/test-driver :clickhouse
-    (testing "a query that selects a question mark and has a variable should work correctly"
+    (testing "a query that selects a question mark and has a variable should work correctly (#56690)"
       (let [query "SELECT *, '?'
                    FROM test_data.categories
                    WHERE {{category_name}};"]
@@ -251,7 +253,7 @@
 
 (deftest ^:parallel ternary-with-variable-test
   (mt/test-driver :clickhouse
-    (testing "a query with a ternary and a variable should work correctly"
+    (testing "a query with a ternary and a variable should work correctly (#56690)"
       (is (= [[1 "African" 1]]
              (mt/rows
               (qp/process-query
@@ -269,7 +271,7 @@
 
 (deftest ^:parallel line-comment-block-comment-test
   (mt/test-driver :clickhouse
-    (testing "a query with a line comment followed by a block comment should work correctly"
+    (testing "a query with a line comment followed by a block comment should work correctly (#57149, #62741)"
       (is (= [[1]]
              (mt/rows
               (qp/process-query
@@ -370,3 +372,20 @@
                 :parameters [{:type "string/="
                               :target [:variable [:template-tag "val"]]
                               :value ["abc"]}]})))))))
+
+(deftest ^:parallel native-query-cte-filtering-test
+  (mt/test-driver :clickhouse
+    (testing "can filter on a saved native query with a CTE (#63635)"
+      (let [native-query (mt/native-query
+                          {:query "with base as (select 1 id, 'abc' val) select * from base"})
+            card-data    (mt/card-with-source-metadata-for-query native-query)]
+        (mt/with-temp [:model/Card {card-id :id} card-data]
+          (let [mp       (mt/metadata-provider)
+                card-mp  (lib.metadata/card mp card-id)
+                val-col  (some #(when (= "val" (:name %)) %)
+                               (lib.card/card-returned-columns mp card-mp))]
+            (is (= [[1 "abc"]]
+                   (-> (lib/query mp card-mp)
+                       (lib/filter (lib/= val-col "abc"))
+                       (qp/process-query)
+                       (mt/rows))))))))))
