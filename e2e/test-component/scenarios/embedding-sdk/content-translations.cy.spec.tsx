@@ -130,7 +130,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       mountEditor();
 
       popover().within(() => {
-        cy.findByText("Produkte").should("be.visible");
+        cy.findByText("Produkte").scrollIntoView().should("be.visible");
 
         cy.findByText("Bestellungen").click();
       });
@@ -142,9 +142,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Gesamtsumme").should("be.visible");
-        cy.findByText("Steuer").should("be.visible");
-        cy.findByText("Menge").should("be.visible");
+        cy.findByText("Gesamtsumme").scrollIntoView().should("be.visible");
+        cy.findByText("Steuer").scrollIntoView().should("be.visible");
+        cy.findByText("Menge").scrollIntoView().should("be.visible");
       });
     });
 
@@ -163,12 +163,12 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Gesamtsumme").click();
+        cy.findByText("Gesamtsumme").scrollIntoView().click();
       });
 
       popover().within(() => {
         cy.findByTestId("number-filter-picker").within(() => {
-          cy.findByText("Gesamtsumme").should("be.visible");
+          cy.findByText("Gesamtsumme").scrollIntoView().should("be.visible");
 
           cy.findByPlaceholderText("Min").type("100");
           cy.findByPlaceholderText("Max").type("200");
@@ -199,12 +199,12 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       popover().within(() => {
         cy.findByText("Summe von...").click();
 
-        cy.findByText("Bestellungen").should("be.visible");
-        cy.findByText("Rabatt").should("be.visible");
+        cy.findByText("Bestellungen").scrollIntoView().should("be.visible");
+        cy.findByText("Rabatt").scrollIntoView().should("be.visible");
       });
 
       popover().within(() => {
-        cy.findByText("Gesamtsumme").click();
+        cy.findByText("Gesamtsumme").scrollIntoView().click();
       });
 
       getSdkRoot().within(() => {
@@ -212,10 +212,10 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Bestellungen").should("be.visible");
-        cy.findByText("Produkt ID").should("be.visible");
+        cy.findByText("Bestellungen").scrollIntoView().should("be.visible");
+        cy.findByText("Produkt ID").scrollIntoView().should("be.visible");
 
-        cy.findByText("Gesamtsumme").click();
+        cy.findByText("Gesamtsumme").scrollIntoView().click();
       });
     });
 
@@ -232,9 +232,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Benutzer ID").should("be.visible");
+        cy.findByText("Benutzer ID").scrollIntoView().should("be.visible");
 
-        cy.findByText("Gesamtsumme").click();
+        cy.findByText("Gesamtsumme").scrollIntoView().click();
       });
 
       getSdkRoot().within(() => {
@@ -259,7 +259,7 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Personen").click();
+        cy.findByText("Personen").scrollIntoView().click();
       });
 
       getSdkRoot().within(() => {
@@ -267,9 +267,9 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Bestellungen").should("be.visible");
+        cy.findByText("Bestellungen").scrollIntoView().should("be.visible");
 
-        cy.findByText("Produkt ID").click();
+        cy.findByText("Produkt ID").scrollIntoView().click();
       });
 
       getSdkRoot().within(() => {
@@ -277,8 +277,8 @@ describe("scenarios > embedding-sdk > content-translations", () => {
       });
 
       popover().within(() => {
-        cy.findByText("Personen").should("be.visible");
-        cy.findByText("Adresse").click();
+        cy.findByText("Personen").scrollIntoView().should("be.visible");
+        cy.findByText("Adresse").scrollIntoView().click();
       });
 
       getSdkRoot().within(() => {
