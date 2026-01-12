@@ -232,7 +232,7 @@ export const SaveTransformButton = ({
 
     if (isNewTransform) {
       return {
-        disabled: isDisabled || !hasChanges,
+        disabled: isDisabled,
         variant: "filled" as const,
         onClick: () => setSaveModalOpen(true),
       };
