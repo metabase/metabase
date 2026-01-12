@@ -6,21 +6,16 @@ import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import {
-  ActionIcon,
   Card,
   EntityNameCell,
-  FixedSizeIcon,
   Flex,
   Icon,
-  Menu,
   Stack,
   TextInput,
-  Tooltip,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -35,6 +30,7 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
+import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 import {
   useBuildSnippetTree,
   useBuildTreeForCollection,
@@ -271,44 +267,3 @@ export function LibrarySectionLayout() {
     </>
   );
 }
-
-const RootSnippetsCollectionMenu = ({
-  setPermissionsCollectionId,
-}: {
-  setPermissionsCollectionId: (id: CollectionId) => void;
-}) => {
-  const isAdmin = useSelector(getUserIsAdmin);
-
-  if (!isAdmin) {
-    return null;
-  }
-
-  const optionsLabel = t`Snippet collection options`;
-
-  return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <Tooltip
-          label={optionsLabel}
-          onClick={(e) => e.stopPropagation()}
-          openDelay={1000}
-        >
-          <ActionIcon aria-label={optionsLabel} size="md">
-            <FixedSizeIcon name="ellipsis" size={16} c="text-medium" />
-          </ActionIcon>
-        </Tooltip>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<FixedSizeIcon name="lock" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setPermissionsCollectionId("root");
-          }}
-        >
-          {t`Change permissions`}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  );
-};
