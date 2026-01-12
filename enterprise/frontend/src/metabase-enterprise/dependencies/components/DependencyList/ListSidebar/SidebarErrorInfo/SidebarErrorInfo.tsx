@@ -1,5 +1,6 @@
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { Box, Card, Group, Stack, Title } from "metabase/ui";
+import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Card, Group, Stack, Title } from "metabase/ui";
 import type { DependencyError, DependencyErrorType } from "metabase-types/api";
 
 import {
@@ -33,7 +34,7 @@ export function SidebarErrorInfo({ type, errors }: SidebarErrorInfoProps) {
               justify="space-between"
               wrap="nowrap"
             >
-              <Box>{detail}</Box>
+              <Ellipsified>{detail}</Ellipsified>
               <CopyButton value={detail} />
             </Group>
           ))}

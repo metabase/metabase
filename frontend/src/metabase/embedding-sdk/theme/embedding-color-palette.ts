@@ -129,7 +129,7 @@ export function setGlobalEmbeddingColors(
   });
 
   // Also set overrides on the color config, this way when we
-  // set up the mantine theme colors, we will grab apropriate app palette colors as well 🥺
+  // set up the mantine theme colors, we will grab appropriate app palette colors as well 🥺
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     colorConfig[key as ColorName] = { light: value, dark: value };
   });

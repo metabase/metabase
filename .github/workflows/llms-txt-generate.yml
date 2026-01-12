@@ -45,13 +45,16 @@ jobs:
           # Extract version number (e.g., v0.57.0 -> 0.57.0)
           VERSION_NUM="${VERSION#v}"
 
-          # Extract patch version (last number)
-          PATCH_VERSION=$(echo "$VERSION_NUM" | cut -d. -f3)
+          # Count dots to determine version type
+          # Metabase format: v0.MAJOR.MINOR (3 segments) or v0.MAJOR.MINOR.PATCH (4 segments)
+          DOT_COUNT=$(echo "$VERSION_NUM" | tr -cd '.' | wc -c | tr -d ' ')
 
-          # Only proceed if this is a minor or major release (patch version is 0)
+          # Only proceed if this is a minor or major release (3 segments)
+          # Examples of minor/major releases: v0.57.8, v0.59.0
+          # Skip for patch releases (4 segments): v0.57.8.1
           # Note: This is a safety check even though the workflow should only be called
           # for minor/major releases, just in case the workflow is dispatched manually.
-          if [ "$PATCH_VERSION" != "0" ]; then
+          if [ "$DOT_COUNT" -eq 3 ]; then
             echo "⏭️  This is a patch release ($VERSION). Skipping llms.txt generation."
             echo "should_generate=false" >> $GITHUB_OUTPUT
           else
@@ -180,6 +183,7 @@ jobs:
 
       - name: Auto approve PR
         if: steps.create_pr.outputs.pull-request-number != ''
+        working-directory: metabase
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -187,6 +191,7 @@ jobs:
 
       - name: Auto merge PR
         if: steps.create_pr.outputs.pull-request-number != ''
+        working-directory: metabase
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         run: |
