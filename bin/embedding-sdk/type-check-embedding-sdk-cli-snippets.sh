@@ -5,7 +5,7 @@ function prepare_files() {
 }
 
 function install_dependencies() {
-  cd ./enterprise/frontend/src/embedding-sdk-package/cli-snippets-tmp/express-server && bun install --frozen-lockfile && cd ../../../../../../..
+  bun install --frozen-lockfile --cwd ./enterprise/frontend/src/embedding-sdk-package/cli-snippets-tmp/express-server
 }
 
 function type_check() {

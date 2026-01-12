@@ -6,7 +6,7 @@ function prepare_files() {
 }
 
 function install_dependencies() {
-  cd ./docs/embedding && bun install --frozen-lockfile && cd ../..
+  bun install --frozen-lockfile --cwd ./docs/embedding
 }
 
 function type_check() {
