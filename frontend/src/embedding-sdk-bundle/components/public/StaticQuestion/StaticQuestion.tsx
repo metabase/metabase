@@ -158,9 +158,10 @@ const StaticQuestionInner = (
               gap="sm"
               p="md"
               data-hide-empty
+              data-testid="static-question-top-bar"
             >
               {title && <DefaultViewTitle title={title} />}
-              <ResultToolbar data-hide-empty>
+              <ResultToolbar data-hide-empty data-testid="result-toolbar">
                 {withChartTypeSelector && <SdkQuestion.ChartTypeDropdown />}
                 {/* This container is always shown on the right */}
                 <Group gap="sm" ml="auto" data-hide-empty>
