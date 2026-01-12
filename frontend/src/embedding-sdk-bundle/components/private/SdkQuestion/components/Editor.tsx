@@ -11,7 +11,10 @@ import { Notebook as QBNotebook } from "metabase/querying/notebook/components/No
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+
+import { QueryEditorAndResults } from "./QueryEditorAndResults";
 
 /**
  * @interface
@@ -71,7 +74,10 @@ export const Editor = ({
   );
 
   return (
-    question && (
+    question &&
+    (Lib.queryDisplayInfo(question.query()).isNative ? (
+      <QueryEditorAndResults question={question} />
+    ) : (
       <ScrollArea w="100%" h="100%">
         <QBNotebook
           question={question}
@@ -92,6 +98,6 @@ export const Editor = ({
           hasVisualizeButton={hasVisualizeButton}
         />
       </ScrollArea>
-    )
+    ))
   );
 };
