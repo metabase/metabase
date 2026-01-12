@@ -199,7 +199,7 @@
         global-map       (merge table-ids global-tx-ids)
 
         ;; Create workspace
-        ws               (create-workspace-for-test! {:name (str "test-ws-" (random-uuid))})
+        ws               (create-workspace-for-test! {:name (or (:name workspace) (str "test-ws-" (random-uuid)))})
         ws-id            (:id ws)
 
         ;; Determine which workspace transforms to create
@@ -274,11 +274,10 @@
                  :timeout-ms (if config/is-dev? 10000 60000)})
         (throw (ex-info "Timeout waiting for workspace to be ready" {:workspace-id ws-id})))))
 
-;; TODO (chris 2026/01/06) this needs a transform added for it to really be ready
 (defn create-ready-ws!
-  "Create a workspace and wait for it to be ready."
+  "Create a simple workspace and wait for it to be ready."
   [name]
-  (create-workspace-for-test! {:name name}))
+  (ws-ready (:workspace-id (create-resources! {:workspace {:name name, :definitions {:x2 [:t1]}}}))))
 
 (defn do-with-workspaces!
   "Function that sets up workspaces for testing and cleans up afterwards.
