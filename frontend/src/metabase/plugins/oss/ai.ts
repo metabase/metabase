@@ -55,7 +55,7 @@ type PluginMetabotConfig = {
 };
 
 type PluginMetabotType = {
-  isEnabled: () => boolean;
+  isOmnibotEnabled: () => boolean;
   Metabot: (props: {
     hide?: boolean;
     config?: PluginMetabotConfig;
@@ -110,7 +110,7 @@ export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
   getDefaultPluginAIEntityAnalysis();
 
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
-  isEnabled: () => false,
+  isOmnibotEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
   getAdminPaths: () => [],

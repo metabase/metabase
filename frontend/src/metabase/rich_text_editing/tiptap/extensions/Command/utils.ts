@@ -8,7 +8,7 @@ export const getAllCommandSections = (): CommandSection[] => {
   return [
     {
       items: [
-        ...(PLUGIN_METABOT.isEnabled()
+        ...(PLUGIN_METABOT.isOmnibotEnabled()
           ? ([
               {
                 icon: "metabot" as const,

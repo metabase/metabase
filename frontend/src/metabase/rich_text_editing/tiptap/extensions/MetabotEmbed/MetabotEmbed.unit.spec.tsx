@@ -30,9 +30,9 @@ describe("MetabotEmbed", () => {
     jest.clearAllMocks();
   });
 
-  describe("when metabot is disabled", () => {
+  describe("when omnibot is disabled", () => {
     beforeEach(() => {
-      PLUGIN_METABOT.isEnabled = jest.fn(() => false);
+      PLUGIN_METABOT.isOmnibotEnabled = jest.fn(() => false);
     });
 
     it("should show disabled button with tooltip", async () => {
@@ -59,9 +59,9 @@ describe("MetabotEmbed", () => {
     });
   });
 
-  describe("when metabot is enabled", () => {
+  describe("when omnibot is enabled", () => {
     beforeEach(() => {
-      PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+      PLUGIN_METABOT.isOmnibotEnabled = jest.fn(() => true);
     });
 
     it("should show enabled button without tooltip", async () => {

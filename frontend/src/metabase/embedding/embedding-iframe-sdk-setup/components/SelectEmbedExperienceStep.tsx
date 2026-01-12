@@ -17,12 +17,10 @@ export const SelectEmbedExperienceStep = () => {
     useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
-  const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
-
   const handleEmbedExperienceChange = useHandleExperienceChange();
 
   const experiences = getEmbedExperiences({
-    isMetabotAvailable,
+    isOmniMetabotAvailable: PLUGIN_METABOT.isOmnibotEnabled(),
   });
 
   return (

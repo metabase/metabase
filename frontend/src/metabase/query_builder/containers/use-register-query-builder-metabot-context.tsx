@@ -214,7 +214,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
   timelineEvents: TimelineEvent[];
   queryResult: any;
 }) => {
-  if (!PLUGIN_METABOT.isEnabled()) {
+  if (!PLUGIN_METABOT.isOmnibotEnabled()) {
     return {};
   }
   if (!question) {

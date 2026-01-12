@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { METAKEY } from "metabase/lib/browser";
 import { getEngineNativeType } from "metabase/lib/engine";
 import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type { CardId, CardType } from "metabase-types/api";
 
@@ -260,23 +259,15 @@ export const getPlaceholderText = (engine?: string | null): string => {
     return "";
   }
 
-  const SQLPlaceholder = "SELECT * FROM TABLE_NAME";
-  const MongoPlaceholder = `[ { "$project": { "_id": "$_id" } } ]`;
-
-  const engineType = getEngineNativeType(engine);
-
-  if (PLUGIN_METABOT.isEnabled() && engineType === "sql") {
+  if (getEngineNativeType(engine) === "sql") {
     return t`Write your SQL here, or press ${METAKEY} + Shift + i to have SQL generated for you.`;
   }
 
-  switch (true) {
-    case engineType === "sql":
-      return SQLPlaceholder;
-    case engine === "mongo":
-      return MongoPlaceholder;
-    default:
-      return "";
+  if (engine === "mongo") {
+    return `[ { "$project": { "_id": "$_id" } } ]`;
   }
+
+  return "";
 };
 
 export function getSelectedRanges(state: EditorState): Range[] {

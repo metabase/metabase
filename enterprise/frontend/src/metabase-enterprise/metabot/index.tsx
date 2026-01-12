@@ -25,7 +25,7 @@ import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExplorati
  */
 export function initializePlugin() {
   if (hasPremiumFeature("metabot_v3")) {
-    PLUGIN_METABOT.isEnabled = () => true;
+    PLUGIN_METABOT.isOmnibotEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 

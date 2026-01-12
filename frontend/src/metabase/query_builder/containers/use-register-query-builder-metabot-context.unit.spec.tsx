@@ -253,8 +253,8 @@ describe("registerQueryBuilderMetabotContextFn", () => {
   });
 });
 
-it("should return empty result when metabot is disabled", async () => {
-  PLUGIN_METABOT.isEnabled = jest.fn(() => false);
+it("should return empty result when omnibot is disabled", async () => {
+  PLUGIN_METABOT.isOmnibotEnabled = jest.fn(() => false);
 
   const card = createMockCard({
     name: "Count by name",
@@ -270,8 +270,8 @@ it("should return empty result when metabot is disabled", async () => {
   expect(getUserIsViewing(result)).toBeUndefined();
 });
 
-it("should return populated context when metabot is enabled", async () => {
-  PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+it("should return populated context when omnibot is enabled", async () => {
+  PLUGIN_METABOT.isOmnibotEnabled = jest.fn(() => true);
 
   const card = createMockCard({
     name: "Count by name",
@@ -288,7 +288,7 @@ it("should return populated context when metabot is enabled", async () => {
 });
 
 it("should register without throwing", () => {
-  PLUGIN_METABOT.isEnabled = jest.fn(() => true);
+  PLUGIN_METABOT.isOmnibotEnabled = jest.fn(() => true);
 
   expect(() => {
     renderHook(() => useRegisterQueryBuilderMetabotContext());

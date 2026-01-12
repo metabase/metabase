@@ -13,9 +13,9 @@ import type {
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
 export const getEmbedExperiences = ({
-  isMetabotAvailable,
+  isOmniMetabotAvailable,
 }: {
-  isMetabotAvailable: boolean;
+  isOmniMetabotAvailable: boolean;
 }) =>
   [
     {
@@ -46,7 +46,7 @@ export const getEmbedExperiences = ({
       supportsOss: false,
       supportsGuestEmbed: false,
     },
-    ...(isMetabotAvailable
+    ...(isOmniMetabotAvailable
       ? [
           {
             value: "metabot" as const,

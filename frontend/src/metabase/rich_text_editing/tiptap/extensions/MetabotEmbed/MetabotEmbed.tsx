@@ -152,7 +152,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = PLUGIN_METABOT.useLazyMetabotGenerateContentQuery();
-    const isMetabotEnabled = PLUGIN_METABOT.isEnabled();
+    const isOmniMetabotEnabled = PLUGIN_METABOT.isOmnibotEnabled();
 
     const handleRunMetabot = async () => {
       const serializePrompt =
@@ -279,11 +279,11 @@ export const MetabotComponent = memo(
     }, [editor, onRunMetabotRef]);
 
     const tooltip = useMemo(() => {
-      if (!isMetabotEnabled) {
+      if (!isOmniMetabotEnabled) {
         return t`Metabot is disabled`;
       }
       return isLoading ? t`Stop generating` : null;
-    }, [isMetabotEnabled, isLoading]);
+    }, [isOmniMetabotEnabled, isLoading]);
 
     return (
       <NodeViewWrapper>
@@ -360,7 +360,7 @@ export const MetabotComponent = memo(
               >
                 <Button
                   size="sm"
-                  disabled={!isMetabotEnabled}
+                  disabled={!isOmniMetabotEnabled}
                   onClick={() =>
                     isLoading ? handleStopMetabot() : handleRunMetabot()
                   }
