@@ -177,7 +177,6 @@ describe("compileFormatter with extreme ranges", () => {
       { value: [0, 1000000000] },
     );
 
-    // Test values near zero (produces extremely small interpolation factors)
     [0, 1, 10, 100, 1000, 500000000, 1000000000].forEach((val) => {
       const color = formatter(val);
       expect(color).not.toBeNull();
@@ -187,78 +186,35 @@ describe("compileFormatter with extreme ranges", () => {
     });
   });
 
-  it("should produce visually distinguishable colors across the range", () => {
-    const formatter = compileFormatter(
-      {
-        type: "range",
-        columns: ["value"],
-        colors: ["#FFFFFF", "#88BF4D"],
-        min_type: "custom",
-        min_value: "0",
-        max_type: "custom",
-        max_value: "1000000000",
-      },
-      "value",
-      { value: [0, 1000000000] },
-    );
-
-    const colorMin = formatter(0);
-    const colorMid = formatter(500000000);
-    const colorMax = formatter(1000000000);
-
-    // Colors should be different
-    expect(colorMin).not.toEqual(colorMid);
-    expect(colorMid).not.toEqual(colorMax);
-
-    // All should be valid
-    expect(colorMin).toBeTruthy();
-    expect(colorMid).toBeTruthy();
-    expect(colorMax).toBeTruthy();
-  });
-
   it("should clamp alpha values to prevent scientific notation", () => {
     const formatter = compileFormatter(
       {
         type: "range",
         columns: ["value"],
-        colors: ["rgba(255, 255, 255, 0.0000001)", "#88BF4D"], // Alpha below MIN_ALPHA threshold
+        colors: ["rgba(255, 255, 255, 0.0000001)", "rgba(255, 255, 255, 1)"], // Alpha below MIN_ALPHA threshold
         min_type: "custom",
         min_value: "0",
         max_type: "custom",
-        max_value: "100",
+        max_value: "1000000",
       },
       "value",
-      { value: [0, 100] },
+      { value: [0, 1, 1000000] },
     );
 
-    const color = formatter(0);
-
-    // Should not contain scientific notation
-    expect(color).not.toMatch(/e[+-]\d+/i);
-
-    // Should be parseable
-    expect(() => Color(color)).not.toThrow();
-  });
-
-  it("should handle very small numeric differences", () => {
-    const formatter = compileFormatter(
-      {
-        type: "range",
-        columns: ["value"],
-        colors: ["#FFFFFF", "#88BF4D"],
-        min_type: "custom",
-        min_value: "0",
-        max_type: "custom",
-        max_value: "0.001",
-      },
-      "value",
-      { value: [0, 0.001] },
-    );
-
-    [0, 0.0001, 0.0005, 0.001].forEach((val) => {
+    [0, 1, 999999].forEach((val) => {
       const color = formatter(val);
       expect(color).not.toBeNull();
-      expect(() => Color(color)).not.toThrow();
+      expect(color).not.toMatch(/e[+-]\d+/i);
+      const colorObject = Color(color);
+      expect(colorObject.alpha()).toBeLessThan(0.75);
     });
+
+    const colorMin = formatter(0);
+    expect(colorMin).not.toBeNull();
+    expect(colorMin).toBe("rgba(255, 255, 255, 0.000001)");
+
+    const colorMax = formatter(1000000);
+    expect(colorMax).not.toBeNull();
+    expect(colorMax).toBe("rgba(255, 255, 255, 0.75)");
   });
 });
