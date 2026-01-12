@@ -46,7 +46,7 @@ npm install @metabase/embedding-sdk-react@56-stable
 If you're using Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@{next-major-version-number}-stable
+bun add @metabase/embedding-sdk-react@{next-major-version-number}-stable
 ```
 
 See more on [SDK versions](./version.md).

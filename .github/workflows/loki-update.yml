@@ -22,10 +22,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: yarn build-pure:cljs
+        run: bun build-pure:cljs
 
       - name: Update Loki Snapshots
-        run: yarn test-visual:loki:ci || yarn test-visual:loki-approve-diff && yarn test-visual:loki-prune
+        run: bun test-visual:loki:ci || bun test-visual:loki-approve-diff && bun test-visual:loki-prune
 
       - name: Check for changes
         id: check-changes

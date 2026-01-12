@@ -124,13 +124,13 @@ Frontend tasks are executed using `yarn`. All available tasks can be found in `p
 To build the frontend client without watching for changes, you can use:
 
 ```sh
-$ yarn build
+$ bun build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
 ```sh
-$ yarn build-hot
+$ bun build-hot
 ```
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
@@ -138,7 +138,7 @@ Note that at this time if you change CSS variables, those changes will only be p
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
 ```sh
-$ yarn build-watch
+$ bun build-watch
 ```
 
 Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `rspack.main.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged rspack.main.config.js`
@@ -205,7 +205,7 @@ You can also start a REPL another way (e.g., through your editor) and then call:
 ```
 
 To start the server (at `localhost:3000`). This will also set up or migrate your application database. To actually
-use Metabase, don't forget to start the frontend as well (e.g. with `yarn build-hot`).
+use Metabase, don't forget to start the frontend as well (e.g. with `bun build-hot`).
 
 ### Multiple Instances
 
@@ -213,8 +213,8 @@ By default Rspack runs the development server on port `8088`. You can run multip
 
 Frontend:
 
-- If you are running the frontend with `yarn build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
-- If you are building the frontend statically with `yarn build`, there is nothing different to do
+- If you are running the frontend with `bun build-hot`, set the `MB_FRONTEND_DEV_PORT` environment variable: `MB_FRONTEND_DEV_PORT=8089 MB_EDITION=ee yarn build-hot`
+- If you are building the frontend statically with `bun build`, there is nothing different to do
 
 Backend:
 
@@ -462,12 +462,12 @@ clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 All frontend and backend linters and tests can be executed with
 
 ```sh
-$ yarn ci
+$ bun ci
 ```
 
 It is also possible to execute front-end and back-end checks separately
 
 ```sh
-$ yarn ci-frontend
-$ yarn ci-backend
+$ bun ci-frontend
+$ bun ci-backend
 ```

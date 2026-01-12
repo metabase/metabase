@@ -37,9 +37,9 @@ jobs:
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+        run: bun --cwd release install --frozen-lockfile
       - name: Run frontend type-check
-        run: yarn --cwd release type-check
+        run: bun --cwd release run type-check
 
   release-tests-unit:
     needs: files-changed
@@ -51,9 +51,9 @@ jobs:
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+        run: bun --cwd release install --frozen-lockfile
       - name: Run release unit tests
-        run: yarn --cwd release test:unit
+        run: bun --cwd release run test:unit
 
   release-test-build:
     needs: files-changed
@@ -65,8 +65,8 @@ jobs:
         with:
           sparse-checkout: "release"
       - name: prepare dependencies in release directory
-        run: yarn --cwd release --frozen-lockfile
+        run: bun --cwd release install --frozen-lockfile
       - name: Build release bundle
-        run: yarn --cwd release build
+        run: bun --cwd release run build
       - name: Smoke test release bundle
         run: node release/dist/index.cjs

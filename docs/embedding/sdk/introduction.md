@@ -53,7 +53,7 @@ npm install @metabase/embedding-sdk-react@56-stable
 or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@56-stable
+bun add @metabase/embedding-sdk-react@56-stable
 ```
 
 ### Resolving `@types/react` version mismatches

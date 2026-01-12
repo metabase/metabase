@@ -56,10 +56,10 @@ jobs:
         uses: ./.github/actions/prepare-backend
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
+        run: NODE_ENV=development bun build-pure:cljs
 
       - name: Build Storybook (once)
-        run: yarn build-storybook
+        run: bun build-storybook
 
       - name: Stress-test Loki "${{ inputs.stories_filter }}" ${{ inputs.burn_in }} times
         run: |
@@ -75,7 +75,7 @@ jobs:
             echo "Run $i of $BURN_IN"
             echo "=========================================="
 
-            if yarn test-visual:loki \
+            if bun test-visual:loki \
               --reactUri file:./storybook-static \
               --verboseRenderer \
               --storiesFilter "$STORIES_FILTER"; then
@@ -101,7 +101,7 @@ jobs:
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun test-visual:loki-report
 
       - name: Upload Artifact
         id: artifact-upload-step

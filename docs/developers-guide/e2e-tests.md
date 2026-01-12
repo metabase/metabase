@@ -18,11 +18,11 @@ Our custom Cypress runner builds its own backend and creates a temporary H2 app 
 
 1. Continuously build the frontend
 
-   a. If you need only the frontend, run `yarn build-hot`
+   a. If you need only the frontend, run `bun build-hot`
 
-   b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `yarn dev` or `yarn dev-ee` (both rely on frontend hot reloading under the hood)
+   b. If you want to run a local Metabase instance alongside Cypress, the easiest way to achieve this is by using `bun dev` or `bun dev-ee` (both rely on frontend hot reloading under the hood)
 
-2. In a separate terminal session (without killing the previous one) run `yarn test-cypress`. This will open a Cypress GUI that will let you choose which tests to run. Alternatively, take a look at `run_cypress_local.js` and `e2e/test/scenarios/docker-compose.yml` for all possible options.
+2. In a separate terminal session (without killing the previous one) run `bun test-cypress`. This will open a Cypress GUI that will let you choose which tests to run. Alternatively, take a look at `run_cypress_local.js` and `e2e/test/scenarios/docker-compose.yml` for all possible options.
 
 ### Running Options
 
@@ -112,7 +112,7 @@ it("bar", { viewportWidth: 1600, viewportHeight: 1200 }, () => {});
 
 ### Code reloading vs test reloading
 
-When you edit a Cypress test file, the tests will refresh and run again. However, when you edit a code file, Cypress won’t detect that change. If you’re running `yarn build-hot`, the code will rebuild and update within Cypress. You’ll have to manually click rerun after the new code has loaded.
+When you edit a Cypress test file, the tests will refresh and run again. However, when you edit a code file, Cypress won’t detect that change. If you’re running `bun build-hot`, the code will rebuild and update within Cypress. You’ll have to manually click rerun after the new code has loaded.
 
 ### Inspecting while the “contains helper” is open
 
@@ -120,7 +120,7 @@ One great feature of Cypress is that you can use the Chrome inspector after each
 
 ### Putting the wrong HTML template in the Uberjar
 
-`yarn build` and `yarn build-hot` each overwrite an HTML template to reference the correct JavaScript files. If you run `yarn build` before building an Uberjar for Cypress tests, you won’t see changes to your JavaScript reflected even if you then start `yarn build-hot`.
+`bun build` and `bun build-hot` each overwrite an HTML template to reference the correct JavaScript files. If you run `bun build` before building an Uberjar for Cypress tests, you won’t see changes to your JavaScript reflected even if you then start `bun build-hot`.
 
 ### Running Cypress on Apple Silicon
 
@@ -236,7 +236,7 @@ If you navigate to the `/admin/settings/license` page, the license input field s
 
 ## Tags
 
-Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `yarn test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
+Cypress allows us to [tag](https://github.com/cypress-io/cypress/tree/develop/npm/grep#tags-in-the-test-config-object) tests, to easily find certain categories of tags. For example, we can tag all tests that require an external database with `@external` and then run only those tests with `bun test-cypress --env grepTags="@external"`. Tags should start with `@` just to make it easier to distinguish them from other strings in searches.
 
 These are the tags currently in use:
 
@@ -279,4 +279,4 @@ Individual Mocha reports are automatically generated per spec. They are stored i
 
 When tests run _in CI_ we do some extra steps by merging these individual reports (using `mochawesome-merge`), formatting them, and then generating customized GitHub Actions job summaries.
 
-On an off chance that you need a unified test report _while running tests locally_, you can achieve that by invoking `yarn generate-cypress-html-report`.
+On an off chance that you need a unified test report _while running tests locally_, you can achieve that by invoking `bun generate-cypress-html-report`.

@@ -2,11 +2,11 @@
 
 function prepare_files() {
   cp ./bin/embedding-sdk/templates/package.json docs/embedding/
-  cp ./bin/embedding-sdk/templates/yarn.lock docs/embedding/
+  cp ./bin/embedding-sdk/templates/bun.lockb docs/embedding/
 }
 
 function install_dependencies() {
-  yarn --cwd ./docs/embedding install --frozen-lockfile
+  bun --cwd ./docs/embedding install --frozen-lockfile
 }
 
 function type_check() {
@@ -15,7 +15,7 @@ function type_check() {
 
 function cleanup_files() {
   rm -f ./docs/embedding/package.json
-  rm -f ./docs/embedding/yarn.lock
+  rm -f ./docs/embedding/bun.lockb
 }
 
 cleanup_files

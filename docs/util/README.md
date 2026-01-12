@@ -7,7 +7,7 @@ Scripts for generating docs.
 From this directory, run:
 
 ```bash
-yarn install
+bun install
 ```
 
 Then:

@@ -28,30 +28,25 @@ runs:
           ~/.gitlibs
         key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
 
-    - name: Get yarn cache directory
-      id: yarn-cache-dir
-      run: |
-        YARN_CACHE_DIR=$(yarn cache dir)
-        echo "Yarn cache directory: $YARN_CACHE_DIR"
-        echo "dir=$YARN_CACHE_DIR" >> $GITHUB_OUTPUT
-      shell: bash
-
     - name: Restore node_modules cache
       uses: actions/cache/restore@v4
       id: node-modules-cache
       with:
         path: |
-          ${{ steps.yarn-cache-dir.outputs.dir }}
+          ~/.bun/install/cache
           node_modules
         key: ${{ steps.get-cache-keys.outputs.node-cache-key }}
 
     # postinstall lifecycle hook can be dangerous in CI so we only run it locally (see package.json)
     # If a job wants to patch packages, it does so explicitly in the CI. This setting is opt-out.
     # For example, we never want to cache node_modules with patches already applied so cache-generator.yml skips that step.
-    - name: Clean install
-      run: yarn install --frozen-lockfile --prefer-offline
+    - name: Install Bun and dependencies
+      run: |
+        curl -fsSL https://bun.sh/install | bash
+        export PATH="$HOME/.bun/bin:$PATH"
+        bun install --frozen-lockfile
       shell: bash
     - name: Patch frontend dependencies
       if: inputs.apply-patches == 'true'
-      run: yarn patch-package
+      run: bun patch-package
       shell: bash

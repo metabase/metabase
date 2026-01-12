@@ -58,7 +58,7 @@ npm install @metabase/embedding-sdk-react@53-stable
 Via Yarn:
 
 ```
-yarn add @metabase/embedding-sdk-react@53-stable
+bun add @metabase/embedding-sdk-react@53-stable
 ```
 
 ## 4. Embed SDK components in your app

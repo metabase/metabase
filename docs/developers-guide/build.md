@@ -22,7 +22,7 @@ To complete any build of the Metabase code, you'll need to install the following
 
 3. [Node.js (https://nodejs.org/)](https://nodejs.org/) - latest LTS release
 
-4. [Yarn package manager for Node.js](https://yarnpkg.com/) - latest release of version 1.x - you can install it in any OS by running:
+4. [Yarn package manager for Node.js](https://bun.sh/) - latest release of version 1.x - you can install it in any OS by running:
 
 ```
 npm install --global yarn

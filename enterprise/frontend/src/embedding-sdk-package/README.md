@@ -45,7 +45,7 @@ npm install @metabase/embedding-sdk-react
 or using yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react
+bun add @metabase/embedding-sdk-react
 ```
 
 For more on the SDK, check out the [SDK docs](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
