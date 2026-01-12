@@ -263,7 +263,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it("[FLAKY] should be able to check out existing transform into a new workspace from the transform page", () => {
+    it("should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
       const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
@@ -354,9 +354,6 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByLabelText(targetTable).should("be.visible").click();
       cy.wait("@dataset");
 
-      // This step is flaky, because for some reason the preview tab is not
-      // always opened on time.
-      // @uladzimirdev ☝️
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(targetTable, [
           "Setup",
