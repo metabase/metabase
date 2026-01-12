@@ -236,7 +236,7 @@ export const SaveTransformButton = ({
 
     // External transform
     return {
-      disabled: isDisabled || isCheckoutDisabled || !hasChanges,
+      disabled: isDisabled || isCheckoutDisabled,
       variant: (hasChanges ? "filled" : "default") as "filled" | "default",
       onClick: handleSaveExternalTransform,
     };
