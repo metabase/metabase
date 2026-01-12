@@ -2,10 +2,8 @@
 # Increase timeout for large packages (in milliseconds)
 timeout = 600000
 
-# Strict mode settings
-peer = false                    # Don't auto-install peer dependencies
-production = false              # Include devDependencies
-exact = true                    # Use exact versions in package.json when adding deps
+# Only install package versions published at least 3 days ago
+minimumReleaseAge = 259200
 
-[install.lockfile]
-save = true                     # Always save lockfile changes
+# Add packages if versions newer than 3 days are required (e.g. security patch)
+# minimumReleaseAgeExcludes = []
