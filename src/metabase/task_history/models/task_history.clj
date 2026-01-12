@@ -4,12 +4,15 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.task-history.models.task-run :as task-run]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent.atomic AtomicInteger)))
 
 (set! *warn-on-reflection* true)
 
@@ -62,6 +65,7 @@
 
 (t2/deftransforms :model/TaskHistory
   {:task_details mi/transform-json-eliding
+   :logs         mi/transform-json
    :status       mi/transform-keyword})
 
 (defn- params->where
@@ -150,9 +154,10 @@
         info            (dissoc info :on-success-info :on-fail-info)
         start-time-ns   (System/nanoTime)
         th-id           (t2/insert-returning-pk! :model/TaskHistory
-                                                 (assoc info
-                                                        :status     :started
-                                                        :started_at (t/instant)))]
+                                                 (cond-> (assoc info
+                                                                :status     :started
+                                                                :started_at (t/instant))
+                                                   task-run/*run-id* (assoc :run_id task-run/*run-id*)))]
     (try
       (u/prog1 (f)
         (update-task-history! th-id start-time-ns (on-success-info {:status       :success
