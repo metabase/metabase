@@ -4,6 +4,7 @@ import {
   QueryEditor,
   getInitialUiState,
 } from "metabase/querying/editor/components/QueryEditor";
+import { useQueryResults } from "metabase/querying/editor/hooks/use-query-results";
 import { Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -13,32 +14,37 @@ interface QueryEditorAndResultsProps {
 }
 
 export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
-  const { question } = props;
+  const { question: initialQuestion } = props;
 
   const [uiState, setUiState] = useState(getInitialUiState);
+  const [currentQuestion, setCurrentQuestion] = useState(initialQuestion);
+
+  const { isRunnable, runQuery } = useQueryResults(
+    currentQuestion,
+    uiState,
+    setUiState,
+  );
 
   const onQueryChange = (query: Lib.Query) => {
-    console.log(query);
-    // setDatasetQuery(Lib.toJsQuery(query));
+    const updatedQuestion = currentQuestion.setQuery(query);
+    setCurrentQuestion(updatedQuestion);
+  };
+
+  const handleRunQuery = () => {
+    if (isRunnable) {
+      runQuery();
+    }
   };
 
   return (
     <Stack w="100%" h="100%" gap={0}>
       <QueryEditor
-        query={question.query()}
+        query={currentQuestion.query()}
         uiState={uiState}
         onChangeQuery={onQueryChange}
         onChangeUiState={setUiState}
-        onAcceptProposed={() => {}}
+        onAcceptProposed={handleRunQuery}
         onRejectProposed={() => {}}
-      />
-      <div
-        style={{
-          background: "lightgrey",
-          width: "100%",
-          height: "100%",
-          minHeight: "100px",
-        }}
       />
     </Stack>
   );
