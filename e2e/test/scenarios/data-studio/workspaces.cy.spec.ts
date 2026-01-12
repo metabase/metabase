@@ -491,7 +491,7 @@ describe("scenarios > data studio > workspaces", () => {
       });
     });
 
-    it.only('closes relevant tabs after ws transform is removed', () => {
+    it("closes relevant tabs after ws transform is removed", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
       createWorkspace();

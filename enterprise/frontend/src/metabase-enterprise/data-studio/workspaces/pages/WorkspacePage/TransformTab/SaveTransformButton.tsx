@@ -55,7 +55,7 @@ export const SaveTransformButton = ({
   const {
     updateTransformState,
     removeUnsavedTransform,
-    removeOpenedTransform,
+    removeWorkspaceTransform,
     removeEditedTransform,
   } = useWorkspace();
 
@@ -213,7 +213,7 @@ export const SaveTransformButton = ({
       }).unwrap();
 
       removeEditedTransform(transform.id);
-      removeOpenedTransform(transform.id);
+      removeWorkspaceTransform(transform.id);
       onSaveTransform(savedTransform);
     } catch (error) {
       sendErrorToast(t`Failed to save transform`);

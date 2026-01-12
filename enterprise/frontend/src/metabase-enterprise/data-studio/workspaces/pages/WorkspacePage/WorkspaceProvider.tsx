@@ -70,7 +70,7 @@ export interface WorkspaceContextValue {
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
-  removeOpenedTransform: (transformId: string | number) => void;
+  removeWorkspaceTransform: (transformId: string | number) => void;
   editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
     transformId: number,
@@ -338,11 +338,16 @@ export const WorkspaceProvider = ({
     [addOpenedTab],
   );
 
-  const removeOpenedTransform = useCallback(
+  const removeWorkspaceTransform = useCallback(
     (transformId: string | number) => {
       removeOpenedTab(`transform-${transformId}`);
+      for (const tab of openedTabs) {
+        if (tab.type === "table" && tab.table.transformId === transformId) {
+          removeOpenedTab(tab.id);
+        }
+      }
     },
-    [removeOpenedTab],
+    [removeOpenedTab, openedTabs],
   );
 
   const patchEditedTransform = useCallback(
@@ -674,9 +679,9 @@ export const WorkspaceProvider = ({
       setActiveTable,
       addOpenedTab,
       removeOpenedTab,
+      removeWorkspaceTransform,
       setOpenedTabs,
       addOpenedTransform,
-      removeOpenedTransform,
       editedTransforms: currentState.editedTransforms,
       patchEditedTransform,
       removeEditedTransform,
@@ -705,7 +710,7 @@ export const WorkspaceProvider = ({
       removeOpenedTab,
       setOpenedTabs,
       addOpenedTransform,
-      removeOpenedTransform,
+      removeWorkspaceTransform,
       currentState.editedTransforms,
       currentState.runTransforms,
       currentState.unsavedTransforms,

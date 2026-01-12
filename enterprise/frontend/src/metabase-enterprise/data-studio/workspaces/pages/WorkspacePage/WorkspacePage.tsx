@@ -214,25 +214,6 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
     refetch: refetchWorkspaceTables,
   } = useGetWorkspaceTablesQuery(id);
-  const openedTabsRef = useLatest(openedTabs);
-  useEffect(() => {
-    // Filter all previously opened table tabs, if they no longer exist in the workspace.
-    const updatedTabs = openedTabsRef.current.filter((tab) => {
-      if (tab.type === "table") {
-        return (
-          workspaceTables.inputs.some(
-            (table) => table.table_id === tab.table.tableId,
-          ) ||
-          workspaceTables.outputs.some(
-            (table) => table.isolated.table_id === tab.table.tableId,
-          )
-        );
-      }
-      return true;
-    });
-    setOpenedTabs(updatedTabs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceTables, setOpenedTabs]);
 
   const [mergeWorkspace, { isLoading: isMerging }] =
     useMergeWorkspaceMutation();
@@ -312,6 +293,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
       setTab(activeTab.id);
+    } else {
+      setTab("setup");
     }
   }, [id, activeTab, setTab]);
 
