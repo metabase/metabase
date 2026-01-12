@@ -57,7 +57,7 @@
               [:query
                [:map [:query ::lib.schema/query]]]
               [:python
-               [:map [:source-tables {:optional true} [:map-of :string :int]]]]]]]]
+               [:map [:source-tables {:optional true} [:map-of :string [:or :int [:map [:table_id :int]]]]]]]]]]]
   (cond
     (= (keyword source-type) :query)
     (upstream-deps:query query)
