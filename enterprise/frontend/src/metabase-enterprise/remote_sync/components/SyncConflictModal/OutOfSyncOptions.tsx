@@ -24,24 +24,18 @@ export const OutOfSyncOptions = (props: BranchSwitchOptionsProps) => {
       value: "new-branch",
       label: t`Create a new branch and push changes there`,
     };
+    const forcePushOption: OutOfSyncOption = {
+      value: "push",
+      label: c("{0} is the current GitHub branch name")
+        .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
+    };
 
     if (variant === "push") {
-      return [
-        newBranchOption,
-        {
-          value: "push",
-          label: c("{0} is the current GitHub branch name")
-            .t`Force push to ${currentBranch} (this will overwrite the remote branch)`,
-        },
-      ];
+      return [newBranchOption, forcePushOption];
     }
 
     return [
-      {
-        value: "push",
-        label: c("{0} is the current GitHub branch name")
-          .t`Push changes to the current branch, ${currentBranch}`,
-      },
+      forcePushOption,
       newBranchOption,
       {
         value: "discard",

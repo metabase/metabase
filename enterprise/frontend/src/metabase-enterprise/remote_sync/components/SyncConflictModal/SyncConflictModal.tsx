@@ -10,7 +10,7 @@ import { BranchNameInput } from "./BranchNameInput";
 import { OutOfSyncOptions } from "./OutOfSyncOptions";
 import {
   useDiscardChangesAndImportAction,
-  usePushChangesAction,
+  useForcePushAction,
   useStashToNewBranchAction,
 } from "./mutation-wrappers";
 import {
@@ -35,12 +35,12 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     () => branchesData?.items || [],
     [branchesData],
   );
-  const { pushChanges, isPushingChanges } = usePushChangesAction();
+  const { forcePush, isPushingChanges } = useForcePushAction();
   const { stashToNewBranch, isStashing } =
     useStashToNewBranchAction(existingBranches);
   const { discardChangesAndImport, isImporting } =
     useDiscardChangesAndImportAction();
-  const isForcingPush = variant === "push" && optionValue === "push";
+  const isForcingPush = optionValue === "push";
 
   const handleContinueButtonClick = async () => {
     if (!optionValue) {
@@ -48,7 +48,7 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
     }
 
     if (optionValue === "push") {
-      await pushChanges(currentBranch, variant === "push", onClose);
+      await forcePush(currentBranch, onClose);
     }
 
     if (optionValue === "new-branch") {

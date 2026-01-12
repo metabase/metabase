@@ -312,9 +312,7 @@ describe("Remote Sync", () => {
           cy.findByRole("heading", {
             name: "You have unsynced changes. What do you want to do?",
           });
-          cy.findByLabelText(
-            "Push changes to the current branch, " + NEW_BRANCH,
-          );
+          cy.findByLabelText(new RegExp(`Force push to ${NEW_BRANCH}`));
           cy.findByLabelText("Create a new branch and push changes there");
 
           // Choose discard so that we can switch later
@@ -338,41 +336,40 @@ describe("Remote Sync", () => {
 
         cy.visit("/collection/root");
 
-        // Make a change in metabase
-        H.moveCollectionItemToSyncedCollection("Orders");
-
         // Ensure that remote is ahead of us so that the pull button is enabled
-        // Make a change outside metabase
         H.updateRemoteQuestion((doc) => {
-          doc.description = "Lalala";
+          doc.description = "Sloan for Frontend Emperor";
           return doc;
         });
+
+        // Make a change in metabase
+        H.moveCollectionItemToSyncedCollection("Orders");
 
         H.goToSyncedCollection();
         H.getPullOption().click();
       });
 
-      it("push changes", () => {
+      it("can force push changes", () => {
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
-          cy.findByRole("radio", { name: /Push changes/ }).click();
-          cy.button("Push changes").click();
+          cy.findByRole("radio", { name: /Force push to main/ }).click();
+          cy.button(/Push changes/).click();
         });
 
-        cy.findByTestId("undo-list").within(() => {
-          cy.root()
-            .findByText(
-              /Cannot export changes that will overwrite new changes in the branch/,
-            )
-            .should("be.visible");
+        H.waitForTask({ taskName: "export" });
+
+        H.getGitSyncControls().should("contain.text", "main");
+        H.collectionTable().within(() => {
+          cy.findByText("Orders").should("exist");
+          cy.findByText(REMOTE_QUESTION_NAME).should("exist");
         });
       });
 
-      it("new branch", () => {
+      it("can stash changes to a new branch", () => {
         const NEW_BRANCH = `new-branch-${Date.now()}`;
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
           cy.findByRole("radio", { name: /new branch/ }).click();
           cy.findByPlaceholderText("your-branch-name").type(NEW_BRANCH);
-          cy.button("Push changes").click();
+          cy.button(/Push changes/).click();
         });
 
         H.waitForTask({ taskName: "export" });
@@ -393,7 +390,7 @@ describe("Remote Sync", () => {
         });
       });
 
-      it("delete changes", () => {
+      it("can delete/discard changes", () => {
         cy.findByRole("dialog", { name: /unsynced changes/ }).within(() => {
           cy.findByRole("radio", { name: /Delete/ }).click();
           cy.button("Delete unsynced changes").click();
