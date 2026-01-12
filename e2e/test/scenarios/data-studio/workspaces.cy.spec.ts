@@ -12,7 +12,9 @@ const { DataStudio, Workspaces } = H;
 const { Transforms } = DataStudio;
 
 const SOURCE_TABLE = "Animals";
-const TARGET_TABLE = "transform_table";
+const TARGET_TABLE_MBQL = "transform_table_1";
+const TARGET_TABLE_SQL = "transform_table_2";
+const TARGET_TABLE_PYTHON = "transform_table_3";
 const TARGET_SCHEMA = "Schema A";
 
 describe("scenarios > data studio > workspaces", () => {
@@ -266,7 +268,7 @@ describe("scenarios > data studio > workspaces", () => {
     it("should be able to check out existing transform into a new workspace from the transform page", () => {
       cy.log("Prepare available transforms: MBQL, Python, SQL");
       const sourceTable = `${TARGET_SCHEMA}.${SOURCE_TABLE}`;
-      const targetTable = `${TARGET_SCHEMA}.${TARGET_TABLE}`;
+      const targetTableSql = `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`;
       createTransforms({ visit: true });
 
       cy.log("Create a workspace, open transform page in it");
@@ -351,16 +353,16 @@ describe("scenarios > data studio > workspaces", () => {
         });
       });
 
-      cy.findByLabelText(targetTable).should("be.visible").click();
+      cy.findByLabelText(targetTableSql).should("be.visible").click();
       cy.wait("@dataset");
 
       Workspaces.getWorkspaceContent().within(() => {
-        H.tabsShouldBe(targetTable, [
+        H.tabsShouldBe(targetTableSql, [
           "Setup",
           "Agent Chat",
           "SQL transform",
           sourceTable,
-          targetTable,
+          targetTableSql,
         ]);
         H.assertTableData({
           columns: ["Name", "Score"],
@@ -416,7 +418,7 @@ describe("scenarios > data studio > workspaces", () => {
       Transforms.runTab().click();
       runTransformAndWaitForSuccess();
       Transforms.settingsTab().click();
-      getTableLink().should("contain.text", TARGET_TABLE).click();
+      getTableLink().should("contain.text", TARGET_TABLE_SQL).click();
 
       H.assertTableData({
         columns: ["Name", "Score"],
@@ -879,7 +881,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.modal().within(() => {
         cy.findByDisplayValue("new_transform").clear();
         cy.findByText("Target table name is required").should("be.visible");
-        cy.realType("transform_table");
+        cy.realType(TARGET_TABLE_SQL);
         cy.findByText(
           "Another transform in this workspace already targets that table",
         ).should("be.visible");
@@ -1096,7 +1098,7 @@ const TEST_PYTHON_TRANSFORM = dedent`
 `;
 function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   createMbqlTransform({
-    targetTable: TARGET_TABLE,
+    targetTable: TARGET_TABLE_MBQL,
   });
 
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
@@ -1125,7 +1127,7 @@ function createMbqlTransform(
 ) {
   return H.createMbqlTransform({
     sourceTable: SOURCE_TABLE,
-    targetTable: TARGET_TABLE,
+    targetTable: TARGET_TABLE_MBQL,
     targetSchema: TARGET_SCHEMA,
     name: "MBQL transform",
     ...opts,
@@ -1140,7 +1142,7 @@ function createSqlTransform(opts: {
   visitTransform?: boolean;
 }) {
   return H.createSqlTransform({
-    targetTable: TARGET_TABLE,
+    targetTable: TARGET_TABLE_SQL,
     targetSchema: TARGET_SCHEMA,
     ...opts,
   });
@@ -1155,7 +1157,7 @@ function createPythonTransform(opts: {
   visitTransform?: boolean;
 }) {
   return H.createPythonTransform({
-    targetTable: TARGET_TABLE,
+    targetTable: TARGET_TABLE_PYTHON,
     targetSchema: TARGET_SCHEMA,
     ...opts,
   });
