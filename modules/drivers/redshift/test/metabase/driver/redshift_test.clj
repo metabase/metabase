@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
@@ -48,6 +49,15 @@
                        [(h2x/identifier :table-alias "source")]]]}
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))
+
+(deftest ^:parallel describe-fields-sql-uses-select-distinct-for-pks-test
+  (testing "describe-fields-sql should use SELECT DISTINCT in PK subquery to avoid duplicates (#67275)"
+    ;; Redshift's information_schema can return duplicate constraint entries, especially with
+    ;; Spectrum/external tables. The PK lookup subquery must use SELECT DISTINCT to prevent
+    ;; duplicate field rows that cause unique constraint violations during sync.
+    (let [[sql] (sql-jdbc.describe-table/describe-fields-sql :redshift)]
+      (is (str/includes? sql "SELECT DISTINCT")
+          "PK subquery should use SELECT DISTINCT to deduplicate constraint metadata"))))
 
 (defn- query->native! [query]
   (let [native-query (atom nil)

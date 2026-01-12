@@ -157,9 +157,12 @@
                         [[:case [:not= :c.remarks [:inline ""]] :c.remarks :else nil] :field-comment]]
                ;; svv_columns excludes columns from datashares, unlike svv_all_columns with includes them
                :from [[:svv_columns :c]]
-               :left-join [[{:select [:tc.table_schema
-                                      :tc.table_name
-                                      :kc.column_name]
+               ;; Use select-distinct to avoid duplicate rows when Redshift's information_schema
+               ;; contains duplicate/stale constraint entries (common with Spectrum/external tables).
+               ;; See GitHub issue #67275
+               :left-join [[{:select-distinct [:tc.table_schema
+                                               :tc.table_name
+                                               :kc.column_name]
                              :from [[:information_schema.table_constraints :tc]]
                              :join [[:information_schema.key_column_usage :kc]
                                     [:and
