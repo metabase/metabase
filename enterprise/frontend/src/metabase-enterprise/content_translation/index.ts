@@ -2,7 +2,10 @@ import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ContentTranslationConfiguration } from "./components";
-import { contentTranslationEndpoints } from "./constants";
+import {
+  contentTranslationEndpoints,
+  dictionaryEndpointStore,
+} from "./constants";
 import { useTranslateContent } from "./use-translate-content";
 import {
   getTranslatedFilterDisplayName,
@@ -31,14 +34,16 @@ export function initializePlugin() {
           return;
         }
 
-        contentTranslationEndpoints.getDictionary = getDictionaryBasePath;
+        dictionaryEndpointStore.setEndpoint(getDictionaryBasePath);
       },
       setEndpointsForStaticEmbedding: (encodedToken: string) => {
         if (contentTranslationEndpoints.getDictionary) {
           return;
         }
 
-        contentTranslationEndpoints.getDictionary = `${getDictionaryBasePath}/${encodedToken}`;
+        dictionaryEndpointStore.setEndpoint(
+          `${getDictionaryBasePath}/${encodedToken}`,
+        );
       },
       translateDisplayNames,
       getTranslatedFilterDisplayName,
