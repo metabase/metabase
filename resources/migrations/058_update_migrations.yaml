@@ -4877,6 +4877,31 @@ databaseChangeLog:
             tableName: transform
             columnName: target_db_id
 
+  - changeSet:
+      id: v58.2026-01-12T10:47:48
+      author: christruter
+      comment: Add last_run_status column to workspace_transform
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_transform
+                columnName: last_run_status
+      changes:
+        - addColumn:
+            tableName: workspace_transform
+            columns:
+              - column:
+                  name: last_run_status
+                  type: varchar(20)
+                  remarks: Status of the last transform run (succeeded or failed)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: workspace_transform
+            columnName: last_run_status
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
