@@ -207,6 +207,15 @@ export const NativeQueryEditor = forwardRef<
     [query, setDatasetQuery],
   );
 
+  const handleSnippetUpdate = useCallback(
+    (newSnippet: NativeQuerySnippet, oldSnippet: NativeQuerySnippet) => {
+      // get the query instance with the latest Metadata that has the updated snippet
+      const updatedQuery = query.updateSnippet(oldSnippet, newSnippet);
+      setDatasetQuery(updatedQuery);
+    },
+    [query, setDatasetQuery],
+  );
+
   const handleRightClickSelection = useCallback(() => {
     setSelectedTextPopoverOpen(true);
   }, []);
@@ -391,11 +400,7 @@ export const NativeQueryEditor = forwardRef<
         <SnippetFormModal
           snippet={modalSnippet}
           onCreate={insertSnippet}
-          onUpdate={(newSnippet, oldSnippet) => {
-            // get the query instance with the latest Metadata that has the updated snippet
-            const newQuery = query.updateSnippet(oldSnippet, newSnippet);
-            setDatasetQuery(newQuery);
-          }}
+          onUpdate={handleSnippetUpdate}
           onClose={closeSnippetModal}
         />
       )}
