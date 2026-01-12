@@ -2,8 +2,11 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
+import { t } from "ttag";
 
 import { isWebkit } from "metabase/lib/browser";
+import { setUIControls } from "metabase/query_builder/actions";
+import { Button, Card, Center, Group, Stack, Text } from "metabase/ui";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
@@ -20,6 +23,7 @@ import {
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
 import { useChartDebug } from "./use-chart-debug";
+import { useAreAllDataPointsOutOfRange } from "./use-data-points-visible";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings } from "./utils";
 
@@ -56,6 +60,8 @@ function _CartesianChart(props: VisualizationProps) {
     onHoverChange,
     canToggleSeriesVisibility,
     titleMenuItems,
+    onUpdateVisualizationSettings,
+    dispatch,
   } = props;
 
   const settings = useMemo(() => {
@@ -147,6 +153,8 @@ function _CartesianChart(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
+  const val = useAreAllDataPointsOutOfRange(chartModel, settings);
+
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {showTitle && (
@@ -189,6 +197,39 @@ function _CartesianChart(props: VisualizationProps) {
         />
       </CartesianChartLegendLayout>
       {seriesColorsCss}
+      {val && (
+        <Center pos="absolute" right={0} left={0} pt="xl">
+          <Card withBorder py="sm">
+            <Stack gap="xs">
+              <Text>{t`Every data point is off-screen because of your y-axis settings`}</Text>
+              <Group justify="center" gap="lg">
+                <Button
+                  variant="subtle"
+                  size="compact-sm"
+                  onClick={() => {
+                    onUpdateVisualizationSettings({
+                      ...settings,
+                      "graph.y_axis.auto_range": true,
+                    });
+                  }}
+                >{t`Change to auto y-axis`}</Button>
+                <Button
+                  variant="subtle"
+                  size="compact-sm"
+                  onClick={() => {
+                    dispatch(
+                      setUIControls({
+                        isShowingChartSettingsSidebar: true,
+                        initialChartSetting: { section: "Axes" },
+                      }),
+                    );
+                  }}
+                >{t`Open axis settings`}</Button>
+              </Group>
+            </Stack>
+          </Card>
+        </Center>
+      )}
     </CartesianChartRoot>
   );
 }
