@@ -3,18 +3,18 @@ import { combineReducers } from "@reduxjs/toolkit";
 
 import { mockSettings } from "__support__/settings";
 import { act, renderHookWithProviders } from "__support__/ui";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
-
-import { useMetabotAgentsManager } from "../hooks";
 import {
   type MetabotAgentId,
-  type MetabotStoreState,
   getMessages,
   metabotReducer,
   submitInput,
-} from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
+} from "metabase/metabot/state";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
+import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import type { State } from "metabase-types/store";
+import { createMockState } from "metabase-types/store/mocks";
+
+import { useMetabotAgentsManager } from "../hooks";
 
 import { mockAgentEndpoint } from "./utils";
 
@@ -50,8 +50,8 @@ function setup(
   );
 
   const store = _store as Omit<typeof _store, "getState" | "dispatch"> & {
-    getState: () => MetabotStoreState;
-    dispatch: ThunkDispatch<MetabotStoreState, void, AnyAction>;
+    getState: () => State;
+    dispatch: ThunkDispatch<State, void, AnyAction>;
   };
 
   return {

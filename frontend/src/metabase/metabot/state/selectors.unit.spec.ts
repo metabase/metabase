@@ -1,14 +1,14 @@
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { getMetabotInitialState } from "./reducer-utils";
-import type { MetabotStoreState } from "./types";
 
 import { type MetabotChatMessage, getUserPromptForMessageId } from "./index";
 
-function setup(messages: MetabotChatMessage[]): MetabotStoreState {
+function setup(messages: MetabotChatMessage[]): State {
   setupEnterprisePlugins();
 
   const state = getMetabotInitialState();
@@ -24,10 +24,8 @@ function setup(messages: MetabotChatMessage[]): MetabotStoreState {
   );
 
   return createMockState({
-    plugins: {
-      metabotPlugin: withMessages,
-    },
-  } as any) as unknown as MetabotStoreState;
+    metabot: withMessages,
+  });
 }
 
 describe("metabot selectors", () => {

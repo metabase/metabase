@@ -1,4 +1,3 @@
-import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
@@ -8,6 +7,7 @@ import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { MetabotProvider } from "metabase/metabot/context";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -15,8 +15,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
-import { metabotReducer } from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
 
 let mockShouldThrow = false;
 
@@ -61,15 +59,8 @@ function setup() {
       storeInitialState: createMockState({
         settings,
         currentUser: createMockUser(),
-        plugins: {
-          metabotPlugin: metabotState,
-        },
+        metabot: metabotState,
       } as any),
-      customReducers: {
-        plugins: combineReducers({
-          metabotPlugin: metabotReducer,
-        }),
-      },
     },
   );
 }

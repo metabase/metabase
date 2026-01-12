@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { tinykeys } from "tinykeys";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import type { MetabotPromptInputRef } from "metabase/metabot";
+import { addSuggestedCodeEdit } from "metabase/metabot/state";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
-import { useMetabotDispatch } from "metabase-enterprise/metabot/hooks/use-metabot-store";
-import { addSuggestedCodeEdit } from "metabase-enterprise/metabot/state";
 import type { DatabaseId, MetabotCodeEdit } from "metabase-types/api";
 
 import { MetabotPromptInput } from "../MetabotPromptInput";
@@ -102,7 +102,7 @@ export const MetabotInlineSQLPrompt = ({
   const [hasError, setHasError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingText, setStreamingText] = useState("");
-  const dispatch = useMetabotDispatch();
+  const dispatch = useDispatch();
 
   const disabled = !value.trim() || isLoading || !databaseId;
 

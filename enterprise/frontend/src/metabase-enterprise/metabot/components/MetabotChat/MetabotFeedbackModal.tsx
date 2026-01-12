@@ -5,14 +5,10 @@ import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
 import { useSelector } from "metabase/lib/redux";
+import { getMetabotId, getMetabotState } from "metabase/metabot/state";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
-import { useMetabotSelector } from "metabase-enterprise/metabot/hooks/use-metabot-store";
-import {
-  getMetabotId,
-  getMetabotState,
-} from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
 
 interface MetabotFeedbackModalProps {
@@ -32,8 +28,8 @@ export const MetabotFeedbackModal = ({
   const isAdmin = useSelector(getUserIsAdmin);
   const version = useSetting("version");
 
-  const metabotId = useMetabotSelector(getMetabotId);
-  const metabotState = useMetabotSelector(getMetabotState);
+  const metabotId = useSelector(getMetabotId);
+  const metabotState = useSelector(getMetabotState);
 
   const handleSubmit = (
     values: Pick<

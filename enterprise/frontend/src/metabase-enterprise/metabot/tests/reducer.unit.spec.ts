@@ -8,14 +8,13 @@ import {
   addSuggestedTransform,
   deactivateSuggestedTransform,
   metabotReducer,
-} from "metabase-enterprise/metabot/state";
-import { createMockTransform } from "metabase-types/api/mocks/transform";
-
+} from "metabase/metabot/state";
 import {
   createConversation,
   getMetabotInitialState,
   getRequestConversation,
-} from "../state/reducer-utils";
+} from "metabase/metabot/state/reducer-utils";
+import { createMockTransform } from "metabase-types/api/mocks/transform";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,

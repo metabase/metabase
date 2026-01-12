@@ -12,6 +12,11 @@ import _ from "underscore";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import {
+  type MetabotAgentEditSuggestionChatMessage,
+  activateSuggestedTransform,
+  getIsSuggestedTransformActive,
+} from "metabase/metabot/state";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -25,11 +30,6 @@ import {
   Text,
 } from "metabase/ui";
 import { useLazyGetTransformQuery } from "metabase-enterprise/api";
-import {
-  type MetabotAgentEditSuggestionChatMessage,
-  activateSuggestedTransform,
-  getIsSuggestedTransformActive,
-} from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {

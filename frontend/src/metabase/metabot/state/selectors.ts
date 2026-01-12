@@ -8,20 +8,15 @@ import {
 } from "metabase/metabot/constants";
 import { getIsEmbedding } from "metabase/selectors/embed";
 import type { TransformId } from "metabase-types/api";
+import type { State } from "metabase-types/store/state";
 
-import type {
-  MetabotAgentId,
-  MetabotStoreState,
-  MetabotUserChatMessage,
-} from "./types";
+import type { MetabotAgentId, MetabotUserChatMessage } from "./types";
 
 /*
  * Top Level Selectors
  */
 
-export const getMetabotState = (state: MetabotStoreState) => {
-  return state.plugins.metabotPlugin;
-};
+export const getMetabotState = (state: State) => state.metabot;
 
 export const getActiveMetabotAgentIds = createSelector(
   getMetabotState,
@@ -78,7 +73,7 @@ export const getIsSuggestedTransformActive = createSelector(
  * Conversation Selectors
  */
 
-const getAgentId = (_: MetabotStoreState, agentId: MetabotAgentId) => agentId;
+const getAgentId = (_: State, agentId: MetabotAgentId) => agentId;
 
 export const getMetabotConversation = createSelector(
   [getMetabotState, getAgentId],

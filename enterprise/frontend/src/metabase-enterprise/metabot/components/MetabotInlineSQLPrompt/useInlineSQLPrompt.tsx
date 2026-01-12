@@ -11,17 +11,14 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import {
-  useMetabotDispatch,
-  useMetabotSelector,
-} from "metabase-enterprise/metabot/hooks/use-metabot-store";
 import {
   addDeveloperMessage,
   getMetabotSuggestedCodeEdit,
   removeSuggestedCodeEdit,
   resetConversation,
-} from "metabase-enterprise/metabot/state";
+} from "metabase/metabot/state";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
@@ -78,8 +75,8 @@ export function useInlineSQLPrompt(
     bufferId,
   );
 
-  const dispatch = useMetabotDispatch();
-  const generatedSql = useMetabotSelector((state) =>
+  const dispatch = useDispatch();
+  const generatedSql = useSelector((state) =>
     getMetabotSuggestedCodeEdit(state, bufferId),
   )?.value;
 

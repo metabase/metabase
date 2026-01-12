@@ -7,7 +7,7 @@ import {
   addUserMessage,
   getHistory,
   getMetabotConversation,
-} from "metabase-enterprise/metabot/state";
+} from "metabase/metabot/state";
 
 import {
   assertConversation,

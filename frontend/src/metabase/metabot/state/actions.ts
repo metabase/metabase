@@ -1,9 +1,4 @@
-import {
-  type UnknownAction,
-  createAsyncThunk as createAsyncThunkOriginal,
-  isRejected,
-  nanoid,
-} from "@reduxjs/toolkit";
+import { type UnknownAction, isRejected, nanoid } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 import { P, match } from "ts-pattern";
 import _ from "underscore";
@@ -14,6 +9,7 @@ import {
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
+import { createAsyncThunk } from "metabase/lib/redux";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import { addUndo } from "metabase/redux/undo";
 import { getIsEmbedding } from "metabase/selectors/embed";
@@ -24,7 +20,7 @@ import type {
   MetabotChatContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 import { metabot } from "./reducer";
 import {
@@ -43,18 +39,10 @@ import type {
   MetabotAgentId,
   MetabotAgentTodoListChatMessage,
   MetabotErrorMessage,
-  MetabotStoreState,
   MetabotUserChatMessage,
   SlashCommand,
 } from "./types";
 import { createMessageId, parseSlashCommand } from "./utils";
-
-interface MetabotThunkConfig {
-  state: MetabotStoreState;
-}
-
-const createAsyncThunk =
-  createAsyncThunkOriginal.withTypes<MetabotThunkConfig>();
 
 export const {
   addAgentTextDelta,
@@ -111,7 +99,7 @@ const handleResponseError = (error: unknown): PromptErrorOutcome => {
 
 export const setVisible =
   (payload: { agentId: MetabotAgentId; visible: boolean }) =>
-  (dispatch: Dispatch, getState: () => MetabotStoreState) => {
+  (dispatch: Dispatch, getState: GetState) => {
     const currentUser = getUser(getState());
     if (!currentUser) {
       console.error(

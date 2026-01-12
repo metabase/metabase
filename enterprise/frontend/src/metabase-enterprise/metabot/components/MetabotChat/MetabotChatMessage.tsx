@@ -4,6 +4,13 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import type {
+  MetabotAgentChatMessage,
+  MetabotAgentTextChatMessage,
+  MetabotChatMessage,
+  MetabotErrorMessage,
+  MetabotUserChatMessage,
+} from "metabase/metabot/state";
 import {
   ActionIcon,
   Flex,
@@ -13,13 +20,6 @@ import {
   Text,
 } from "metabase/ui";
 import { useSubmitMetabotFeedbackMutation } from "metabase-enterprise/api/metabot";
-import type {
-  MetabotAgentChatMessage,
-  MetabotAgentTextChatMessage,
-  MetabotChatMessage,
-  MetabotErrorMessage,
-  MetabotUserChatMessage,
-} from "metabase-enterprise/metabot/state";
 import type { MetabotFeedback } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";

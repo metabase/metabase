@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { getMetabotRequestState } from "metabase-enterprise/metabot/state";
+import { getMetabotRequestState } from "metabase/metabot/state";
 
 import {
   assertConversation,

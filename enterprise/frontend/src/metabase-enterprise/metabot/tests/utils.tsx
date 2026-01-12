@@ -1,4 +1,3 @@
-import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
@@ -21,6 +20,12 @@ import {
 } from "metabase/api/ai-streaming/test-utils";
 import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
 import { MetabotProvider } from "metabase/metabot/context";
+import {
+  type MetabotAgentId,
+  type MetabotState,
+  setVisible,
+} from "metabase/metabot/state";
+import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
@@ -29,14 +34,6 @@ import {
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
-import {
-  type MetabotAgentId,
-  type MetabotState,
-  type MetabotStoreState,
-  metabotReducer,
-  setVisible,
-} from "../state";
-import { getMetabotInitialState } from "../state/reducer-utils";
 
 export { createMockReadableStream, createPauses };
 
@@ -171,23 +168,14 @@ export function setup(
       storeInitialState: createMockState({
         settings,
         currentUser: currentUser ? currentUser : undefined,
-        plugins: {
-          metabotPlugin: metabotPluginInitialState,
-        },
+        metabot: metabotPluginInitialState,
       } as any),
-      customReducers: {
-        plugins: combineReducers({
-          metabotPlugin: metabotReducer,
-        }),
-      },
     },
   );
 
   return {
     rerender,
     conversationIds: Object.keys(metabotState.conversations),
-    store: store as Omit<typeof store, "getState"> & {
-      getState: () => MetabotStoreState;
-    },
+    store,
   };
 }

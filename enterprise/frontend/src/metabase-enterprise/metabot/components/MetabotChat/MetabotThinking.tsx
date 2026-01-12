@@ -1,8 +1,8 @@
 import cx from "classnames";
 import { useMemo } from "react";
 
+import type { MetabotToolCall } from "metabase/metabot/state";
 import { Loader, Stack, Text, Transition } from "metabase/ui";
-import type { MetabotToolCall } from "metabase-enterprise/metabot/state";
 
 import S from "./MetabotThinking.module.css";
 

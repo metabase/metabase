@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   deactivateSuggestedTransform,
   getMetabotSuggestedTransform,
-} from "metabase-enterprise/metabot/state";
+} from "metabase/metabot/state";
+import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

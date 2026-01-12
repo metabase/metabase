@@ -5,7 +5,7 @@ import {
   addSuggestedTransform,
   getMetabotReactionsState,
   setNavigateToPath,
-} from "metabase-enterprise/metabot/state";
+} from "metabase/metabot/state";
 import { createMockTransform } from "metabase-types/api/mocks";
 
 import { resetChatButton, setup } from "./utils";

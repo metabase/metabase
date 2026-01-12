@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { CodeEditor } from "metabase/common/components/CodeEditor";
+import type { MetabotDebugToolCallMessage } from "metabase/metabot/state";
 import {
   ActionIcon,
   Badge,
@@ -14,7 +15,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { MetabotDebugToolCallMessage } from "metabase-enterprise/metabot/state";
 
 const ToolCallDetailsModal = ({
   message,

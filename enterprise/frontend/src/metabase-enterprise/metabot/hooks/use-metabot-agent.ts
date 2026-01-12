@@ -1,9 +1,9 @@
 import { isFulfilled } from "@reduxjs/toolkit";
 import { useCallback } from "react";
 
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useMetabotContext } from "metabase/metabot";
 import { trackMetabotRequestSent } from "metabase/metabot/analytics";
-
 import {
   type MetabotAgentId,
   type MetabotPromptSubmissionResult,
@@ -25,21 +25,17 @@ import {
   setProfileOverride as setProfileOverrideAction,
   setVisible as setVisibleAction,
   submitInput as submitInputAction,
-} from "../state";
-
-import { useMetabotDispatch, useMetabotSelector } from "./use-metabot-store";
+} from "metabase/metabot/state";
 
 export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
-  const dispatch = useMetabotDispatch();
+  const dispatch = useDispatch();
   const { prompt, setPrompt, promptInputRef, getChatContext } =
     useMetabotContext();
 
-  const metabotRequestId = useMetabotSelector((state) =>
+  const metabotRequestId = useSelector((state) =>
     getMetabotRequestId(state, agentId),
   );
-  const visible = useMetabotSelector((state) =>
-    getMetabotVisible(state, agentId),
-  );
+  const visible = useSelector((state) => getMetabotVisible(state, agentId));
 
   const setVisible = useCallback(
     (visible: boolean) => dispatch(setVisibleAction({ agentId, visible })),
@@ -157,24 +153,18 @@ export const useMetabotAgent = (agentId: MetabotAgentId = "omnibot") => {
     submitInput,
     retryMessage,
     cancelRequest,
-    metabotId: useMetabotSelector(getMetabotId),
-    messages: useMetabotSelector((state) => getMessages(state, agentId)),
-    errorMessages: useMetabotSelector((state) =>
+    metabotId: useSelector(getMetabotId),
+    messages: useSelector((state) => getMessages(state, agentId)),
+    errorMessages: useSelector((state) =>
       getAgentErrorMessages(state, agentId),
     ),
-    isDoingScience: useMetabotSelector((state) =>
-      getIsProcessing(state, agentId),
-    ),
-    isLongConversation: useMetabotSelector((state) =>
+    isDoingScience: useSelector((state) => getIsProcessing(state, agentId)),
+    isLongConversation: useSelector((state) =>
       getIsLongMetabotConversation(state, agentId),
     ),
-    activeToolCalls: useMetabotSelector((state) =>
-      getActiveToolCalls(state, agentId),
-    ),
-    debugMode: useMetabotSelector(getDebugMode),
-    profileOverride: useMetabotSelector((state) =>
-      getProfileOverride(state, agentId),
-    ),
-    reactions: useMetabotSelector(getMetabotReactionsState),
+    activeToolCalls: useSelector((state) => getActiveToolCalls(state, agentId)),
+    debugMode: useSelector(getDebugMode),
+    profileOverride: useSelector((state) => getProfileOverride(state, agentId)),
+    reactions: useSelector(getMetabotReactionsState),
   };
 };

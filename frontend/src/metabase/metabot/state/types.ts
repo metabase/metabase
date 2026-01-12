@@ -1,5 +1,3 @@
-import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
-import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
@@ -126,13 +124,6 @@ export interface MetabotState {
   conversations: Record<MetabotAgentId, MetabotConverstationState | undefined>;
   reactions: MetabotReactionsState;
   debugMode: boolean;
-}
-
-export interface MetabotStoreState extends EnterpriseState {
-  plugins: {
-    shared: EnterpriseSharedState;
-    metabotPlugin: MetabotState;
-  };
 }
 
 export interface SlashCommand {

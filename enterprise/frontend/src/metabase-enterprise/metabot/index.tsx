@@ -1,9 +1,9 @@
 import { IndexRoute, Route } from "react-router";
-import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
 import { MetabotDataStudioSidebar } from "metabase-enterprise/metabot/components/MetabotDataStudioSidebar";
@@ -19,18 +19,6 @@ import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
-import { getMetabotVisible, metabotReducer } from "./state";
-
-/**
- * This is for Metabot in embedding
- *
- * TODO: Move this under a feature flag, but then we need to make our
- * store allowing injecting reducers dynamically since the store would
- * already be created before PLUGIN_REDUCERS.* is set via the dynamic EE plugin.
- */
-
-// TODO TODO TODO: remove this
-PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
 
 /**
  * Initialize metabot plugin features that depend on hasPremiumFeature.
@@ -41,13 +29,6 @@ export function initializePlugin() {
     PLUGIN_METABOT.Metabot = Metabot;
     PLUGIN_METABOT.getMetabotRoutes = getMetabotQuickLinks;
 
-    PLUGIN_METABOT.getAdminPaths = () => [
-      {
-        name: t`AI`,
-        path: "/admin/metabot",
-        key: "metabot",
-      },
-    ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route
         key="metabot"
@@ -73,13 +54,6 @@ export function initializePlugin() {
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
-    PLUGIN_METABOT.getAdminPaths = () => [
-      {
-        name: t`AI`,
-        path: "/admin/metabot",
-        key: "metabot",
-      },
-    ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
         <Route component={AdminSettingsLayout}>
@@ -88,13 +62,6 @@ export function initializePlugin() {
       </Route>
     );
   } else if (hasPremiumFeature("offer_metabase_ai")) {
-    PLUGIN_METABOT.getAdminPaths = () => [
-      {
-        name: t`AI`,
-        path: "/admin/metabot",
-        key: "metabot",
-      },
-    ];
     PLUGIN_METABOT.getAdminRoutes = () => (
       <Route path="metabot" component={createAdminRouteGuard("metabot")}>
         <Route component={AdminSettingsLayout}>
