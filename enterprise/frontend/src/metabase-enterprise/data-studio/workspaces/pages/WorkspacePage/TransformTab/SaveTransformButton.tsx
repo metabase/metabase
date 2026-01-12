@@ -111,6 +111,10 @@ export const SaveTransformButton = ({
 
   // Handler for updating existing workspace transform (scenario 1)
   const handleUpdateTransform = async () => {
+    if (typeof transform.id !== "string") {
+      throw new Error(t`This is not a workspace transform`);
+    }
+
     const updated = await updateTransform({
       workspaceId,
       transformId: transform.id,
