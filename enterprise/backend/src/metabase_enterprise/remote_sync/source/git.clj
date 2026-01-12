@@ -250,9 +250,13 @@
   - :path and :content keys for writing/updating a file
   - :path and :remove? true for recursively removing all files at that path
 
-  Replaces all files in the branch organized by collection prefix - files not in the provided list but in the same
-  collection prefix will be deleted. Removal entries with empty paths are no-ops. Removing non-existent paths
-  is also a no-op (idempotent).
+  For writes within collection directories, ALL files in the same collection are replaced
+  (using the collection entity_id prefix to identify the collection scope). This ensures
+  that stale files don't remain when a collection's contents change.
+
+  For removals, all files matching the path as a prefix are deleted (allowing recursive
+  directory deletion). Removal entries with empty paths are no-ops. Removing non-existent
+  paths is also a no-op (idempotent).
 
   Returns the version written. Throws ExceptionInfo if the write or push
   operation fails."
@@ -264,21 +268,35 @@
     (with-open [inserter (.newObjectInserter repo)]
       (let [index (DirCache/newInCore)
             builder (.builder index)
-            updated-prefixes (into #{}
+            ;; Extract collection prefixes from written paths - all files in these
+            ;; collections will be deleted and replaced with the new files
+            write-prefixes (into #{}
+                                 (comp
+                                  (remove :remove?)
+                                  (map :path)
+                                  (remove str/blank?)
+                                  (map path-prefix))
+                                 files)
+            ;; Collect removal paths/prefixes for explicit deletions
+            removal-prefixes (into #{}
                                    (comp
-                                    (map (fn [{:keys [path content remove?]}]
-                                           (when-not remove?
-                                             (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
-                                                   entry (doto (DirCacheEntry. ^String path)
-                                                           (.setFileMode FileMode/REGULAR_FILE)
-                                                           (.setObjectId blob-id))]
-                                               (.add builder entry)))
-                                           (when (not-empty path)
-                                             (path-prefix path))))
-                                    (remove nil?))
+                                    (filter :remove?)
+                                    (map :path)
+                                    (remove str/blank?))
                                    files)]
 
-        ;; Copy existing tree entries, excluding files under updated-prefixes
+        ;; Add new/updated files to the index
+        (doseq [{:keys [path content remove?]} files
+                :when (and (not remove?) (not (str/blank? path)))]
+          (let [blob-id (.insert inserter Constants/OBJ_BLOB (.getBytes ^String content "UTF-8"))
+                entry (doto (DirCacheEntry. ^String path)
+                        (.setFileMode FileMode/REGULAR_FILE)
+                        (.setObjectId blob-id))]
+            (.add builder entry)))
+
+        ;; Copy existing tree entries, excluding:
+        ;; 1. Files in collections being written to (using write-prefixes)
+        ;; 2. Files matching explicit removal prefixes
         (when parent-id
           (with-open [rev-walk (RevWalk. repo)
                       tree-walk (TreeWalk. repo)]
@@ -286,8 +304,10 @@
               (.addTree tree-walk (.getTree commit))
               (.setRecursive tree-walk true)
               (while (.next tree-walk)
-                (let [path (.getPathString tree-walk)]
-                  (when-not (matches-prefix path updated-prefixes)
+                (let [path (.getPathString tree-walk)
+                      existing-prefix (path-prefix path)]
+                  (when-not (or (contains? write-prefixes existing-prefix)
+                                (matches-prefix path removal-prefixes))
                     (let [entry (doto (DirCacheEntry. path)
                                   (.setFileMode (.getFileMode tree-walk 0))
                                   (.setObjectId (.getObjectId tree-walk 0)))]

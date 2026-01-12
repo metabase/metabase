@@ -138,7 +138,7 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (api/create-check :model/Transform body)
   (check-database-feature body)
   (check-feature-enabled! body)
 
@@ -162,8 +162,7 @@
 (defn get-transform
   "Get a specific transform."
   [id]
-  (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
+  (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator)
@@ -189,9 +188,8 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        _ (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
         dep-ids (get global-ordering id)
         dependencies (map id->transform dep-ids)]
@@ -241,7 +239,7 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
                     (let [old (t2/select-one :model/Transform id)
@@ -274,8 +272,7 @@
   "Delete a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
+  (let [transform (api/write-check :model/Transform id)]
     (t2/delete! :model/Transform id)
     (events/publish-event! :event/transform-delete
                            {:object transform
@@ -290,7 +287,7 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
+  (api/write-check :model/Transform id)
   (transforms.util/delete-target-table-by-id! id)
   nil)
 
@@ -302,8 +299,7 @@
   "Cancel the current run for a given transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [transform (api/write-check :model/Transform id)
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
@@ -318,8 +314,7 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [transform (api/write-check :model/Transform id)
         _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*

@@ -6,17 +6,18 @@
    This enables the remote sync system to know which objects have changed
    since the last sync operation.
 
-   Handlers are defined using the `defmodel-change-handler` macro which:
-   - Derives event hierarchies for create/update/delete events
-   - Checks if the model is in a remote-synced collection
-   - Creates or updates RemoteSyncObject entries with denormalized model details
+   Event handlers are registered using specs from `metabase-enterprise.remote-sync.spec`.
+   Each spec defines eligibility checking, field hydration, and other configuration.
 
    Tracked model types:
    - Card, Dashboard, Document, NativeQuerySnippet, Timeline, Collection
    - Table (when published in a remote-synced collection)
-   - Field, Segment (when belonging to a published table in a remote-synced collection)"
+   - Field, Segment (when belonging to a published table in a remote-synced collection)
+   - Transform, TransformTag, transforms-namespace Collections (when remote-sync-transforms setting is enabled)"
   (:require
    [java-time.api :as t]
+   [metabase-enterprise.remote-sync.settings :as settings]
+   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
@@ -24,13 +25,6 @@
    [toucan2.core :as t2]))
 
 ;; Helper functions for model change tracking
-
-(defn- model-in-remote-synced-collection?
-  "Checks if a model (card, dashboard, document) is in a remote-synced collection. Takes a model instance with a
-  collection_id field. Returns true if the model is in a remote-synced collection, false otherwise."
-  [{:keys [collection_id]}]
-  (boolean
-   (collections/remote-synced-collection? collection_id)))
 
 (defn- create-or-update-remote-sync-object-entry!
   "Creates or updates a remote sync object entry for a model change.
@@ -79,92 +73,100 @@
                      :model_table_id (:table_id model-details)
                      :model_table_name (:table_name model-details)})))))
 
-;; Model change tracking event handlers
+;;; ----------------------------------------- Spec-based Event Handling ------------------------------------------------
 
-(defmacro ^:private defmodel-change-handler
-  "Defines event derivations and handler for a standard model change event.
+(defn- create-or-update-sync-object-from-spec!
+  "Creates or updates a RemoteSyncObject entry using a spec for field hydration.
+   This is the spec-based version of create-or-update-remote-sync-object-entry!."
+  [model-spec model-id status]
+  (let [model-type (:model-type model-spec)
+        existing   (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)]
+    (cond
+      ;; No existing entry - create new one
+      (not existing)
+      (let [model-details (spec/hydrate-model-details model-spec model-id)
+            fields        (spec/build-sync-object-fields model-spec model-details)]
+        (t2/insert! :model/RemoteSyncObject
+                    (merge {:model_type        model-type
+                            :model_id          model-id
+                            :status            status
+                            :status_changed_at (t/offset-date-time)}
+                           fields)))
 
-   Usage:
-     (defmodel-change-handler card
-       {:model-type       \"Card\"
-        :event-prefix     :event/card
-        :log-name         \"card\"
-        :hydrate-details  (fn [id] (t2/select-one [:model/Card :name :collection_id :display] :id id))})
+      ;; Created then removed/deleted before sync - delete the entry
+      (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
+      (t2/delete! :model/RemoteSyncObject (:id existing))
 
-   Configuration options:
-   - :model-type       - String for RemoteSyncObject model_type (e.g. \"Card\")
-   - :event-prefix     - Keyword prefix for events (e.g. :event/card)
-   - :log-name         - String for log messages (e.g. \"card\")
-   - :hydrate-details  - Function (fn [model-id]) that returns map with :name, :collection_id,
-                         and optionally :display, :table_id, :table_name
-   - :archived-key     - Key to check for archived status (default :archived)
-   - :in-sync-pred     - Predicate fn (default model-in-remote-synced-collection?)"
-  [event-group {:keys [model-type event-prefix log-name hydrate-details archived-key in-sync-pred]
-                :or   {archived-key :archived
-                       in-sync-pred `model-in-remote-synced-collection?}}]
-  (let [parent-kw  (keyword (str *ns*) (str (name event-group) "-change-event"))
-        create-kw  (keyword (namespace event-prefix) (str (name event-prefix) "-create"))
-        update-kw  (keyword (namespace event-prefix) (str (name event-prefix) "-update"))
-        delete-kw  (keyword (namespace event-prefix) (str (name event-prefix) "-delete"))]
-    `(do
-       (derive ~parent-kw :metabase/event)
-       (derive ~create-kw ~parent-kw)
-       (derive ~update-kw ~parent-kw)
-       (derive ~delete-kw ~parent-kw)
+      ;; Already deleted - just update status
+      (= "delete" (:status existing))
+      (t2/update! :model/RemoteSyncObject (:id existing)
+                  {:status            status
+                   :status_changed_at (t/offset-date-time)})
 
-       (methodical/defmethod events/publish-event! ~parent-kw
-         [topic# event#]
-         (let [{:keys [~'object]} event#
-               in-remote-synced?# (~in-sync-pred ~'object)
-               existing-entry# (t2/select-one :model/RemoteSyncObject
-                                              :model_type ~model-type
-                                              :model_id (:id ~'object))
-               status# (if (get ~'object ~archived-key)
-                         "delete"
-                         (case topic#
-                           ~create-kw "create"
-                           ~update-kw "update"
-                           ~delete-kw "delete"))]
-           (cond
-             in-remote-synced?#
-             (do
-               (log/infof "Creating remote sync object entry for %s %s (status: %s)"
-                          ~log-name (:id ~'object) status#)
-               (create-or-update-remote-sync-object-entry!
-                ~model-type (:id ~'object) status# ~hydrate-details))
+      ;; Status is not "create" - update with new details
+      (not= "create" (:status existing))
+      (let [model-details (spec/hydrate-model-details model-spec model-id)
+            fields        (spec/build-sync-object-fields model-spec model-details)]
+        (t2/update! :model/RemoteSyncObject (:id existing)
+                    (merge {:status            status
+                            :status_changed_at (t/offset-date-time)}
+                           fields))))))
 
-             (and existing-entry# (not in-remote-synced?#))
-             (do
-               (log/infof "%s %s moved out of remote-synced collection, marking as removed"
-                          ~log-name (:id ~'object))
-               (create-or-update-remote-sync-object-entry!
-                ~model-type (:id ~'object) "removed" ~hydrate-details))))))))
+(defn- handle-model-event-from-spec
+  "Generic event handler that uses a spec for all configuration.
+   Checks eligibility, determines status, and creates/updates the sync object."
+  [model-spec topic {:keys [object]}]
+  (let [model-type     (:model-type model-spec)
+        model-id       (:id object)
+        eligible?      (spec/check-eligibility model-spec object)
+        existing-entry (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id)
+        status         (spec/determine-status model-spec topic object)]
+    (cond
+      ;; Model is eligible for sync
+      eligible?
+      (do
+        (log/infof "Creating remote sync object entry for %s %s (status: %s)"
+                   model-type model-id status)
+        (create-or-update-sync-object-from-spec! model-spec model-id status))
 
-;; Standard model change handlers
+      ;; Model was synced but no longer eligible - mark as removed
+      (and existing-entry (not eligible?))
+      (do
+        (log/infof "%s %s moved out of sync scope, marking as removed" model-type model-id)
+        (create-or-update-sync-object-from-spec! model-spec model-id "removed")))))
 
-(defmodel-change-handler :card
-  {:model-type       "Card"
-   :event-prefix     :event/card
-   :log-name         "card"
-   :hydrate-details  (fn [id] (t2/select-one [:model/Card :name :collection_id :display] :id id))})
+(defn- register-events-for-spec!
+  "Registers event handlers for a single spec. Creates event hierarchy and
+   registers a methodical handler for the parent event."
+  [model-spec]
+  (let [event-kws (spec/event-keywords model-spec)
+        parent-kw (:parent event-kws)]
+    ;; Derive event hierarchy
+    (derive parent-kw :metabase/event)
+    (doseq [[_event-type event-kw] (dissoc event-kws :parent)]
+      (derive event-kw parent-kw))
 
-(defmodel-change-handler :dashboard
-  {:model-type       "Dashboard"
-   :event-prefix     :event/dashboard
-   :log-name         "dashboard"
-   :hydrate-details  (fn [id] (t2/select-one [:model/Dashboard :name :collection_id] :id id))})
+    ;; Register the handler using methodical's runtime API
+    ;; (defmethod requires compile-time dispatch values, so we use add-primary-method!)
+    ;; Note: We use #'events/publish-event! (the var) because add-primary-method! expects a var/atom
+    ;; The method signature matches defmethod: [topic event], not [next-method topic event]
+    (methodical/add-primary-method!
+     #'events/publish-event!
+     parent-kw
+     (fn [topic event]
+       (handle-model-event-from-spec model-spec topic event)))))
 
-(defmodel-change-handler :document
-  {:model-type       "Document"
-   :event-prefix     :event/document
-   :log-name         "document"
-   :hydrate-details  (fn [id] (t2/select-one [:model/Document :name :collection_id] :id id))})
+;;; --------------------------------- Spec-based Event Registration (Non-Collection) -----------------------------------
+;; Register event handlers for models that use standard spec-based handling.
+;; Collection has special handling and is registered separately below.
 
-(defmodel-change-handler :snippet
-  {:model-type       "NativeQuerySnippet"
-   :event-prefix     :event/snippet
-   :log-name         "snippet"
-   :hydrate-details  (fn [id] (t2/select-one [:model/NativeQuerySnippet :name :id] :id id))})
+(doseq [[_model-key model-spec] (dissoc spec/remote-sync-specs :model/Collection)]
+  (register-events-for-spec! model-spec))
+
+;;; ----------------------------------------- Collection Event Handler -------------------------------------------------
+;; Collection has special handling due to side effects (tracking published tables when
+;; a collection becomes remote-synced). This handler is kept separate from the standard
+;; spec-based registration.
 
 ;; Collection create/update events - derive from common parent for shared handling
 (derive ::collection-change-event :metabase/event)
@@ -175,6 +177,18 @@
   "Hydrates details for a Collection."
   [id]
   (t2/select-one [:model/Collection :name [:id :collection_id]] :id id))
+
+(defn- transforms-namespace-collection?
+  "Check if this is a transforms-namespace collection."
+  [collection]
+  (= (keyword (:namespace collection)) :transforms))
+
+(defn- should-sync-collection?
+  "Check if a collection should be synced - either remote-synced or transforms-namespace with setting enabled."
+  [collection]
+  (or (collections/remote-synced-collection? collection)
+      (and (settings/remote-sync-transforms)
+           (transforms-namespace-collection? collection))))
 
 (defn- hydrate-table-details
   "Hydrates details for a Table. For tables, table_id and table_name refer to themselves."
@@ -203,96 +217,29 @@
 (methodical/defmethod events/publish-event! ::collection-change-event
   [topic event]
   (let [{:keys [object]} event
+        should-sync? (should-sync-collection? object)
         is-remote-synced? (collections/remote-synced-collection? object)
         existing-entry (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id (:id object))
-        was-remote-synced? (and existing-entry
-                                (not (contains? #{"removed"} (:status existing-entry))))
+        was-synced? (and existing-entry
+                         (not (contains? #{"removed"} (:status existing-entry))))
         status (if (:archived object)
                  "delete"
                  (case topic
                    :event/collection-create "create"
                    :event/collection-update "update"))]
     (cond
-      ;; Collection is remote-synced - create or update entry
-      is-remote-synced?
+      ;; Collection should be synced (remote-synced or transforms-namespace with setting enabled)
+      should-sync?
       (do
         (log/infof "Creating remote sync object entry for collection %s (status: %s)" (:id object) status)
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) status hydrate-collection-details)
         ;; If collection just became remote-synced, track all published tables in it
-        (when (not was-remote-synced?)
+        ;; (only for actual remote-synced collections, not transforms-namespace)
+        (when (and is-remote-synced? (not was-synced?))
           (track-published-tables-in-collection! (:id object))))
 
-      ;; Collection was remote-synced but type changed - mark as removed
-      (and existing-entry (not is-remote-synced?))
+      ;; Collection was synced but no longer should be - mark as removed
+      (and existing-entry (not should-sync?))
       (do
-        (log/infof "Collection %s type changed from remote-synced, marking as removed" (:id object))
+        (log/infof "Collection %s no longer needs syncing, marking as removed" (:id object))
         (create-or-update-remote-sync-object-entry! "Collection" (:id object) "removed" hydrate-collection-details)))))
-
-(defmodel-change-handler :timeline
-  {:model-type       "Timeline"
-   :event-prefix     :event/timeline
-   :log-name         "timeline"
-   :hydrate-details  (fn [id] (t2/select-one [:model/Timeline :name :collection_id] :id id))})
-
-;; Table events - only track published tables in remote-synced collections
-
-(defn- published-table-in-remote-synced-collection?
-  "Check if a table is published AND in a remote-synced collection.
-   Tables are only considered part of remote sync when they are both published
-   and their collection_id points to a remote-synced collection."
-  [{:keys [is_published collection_id]}]
-  (boolean
-   (and is_published
-        (collections/remote-synced-collection? collection_id))))
-
-(defn- model-in-published-table-in-remote-synced-collection?
-  "Check if a model (field, segment) belongs to a published table in a remote-synced collection.
-   The model must have a :table_id that points to a table with :is_published true
-   and :collection_id in a remote-synced collection."
-  [{:keys [table_id]}]
-  (boolean
-   (when table_id
-     (when-let [table (t2/select-one :model/Table :id table_id)]
-       (published-table-in-remote-synced-collection? table)))))
-
-(defmodel-change-handler :table
-  {:model-type       "Table"
-   :event-prefix     :event/table
-   :log-name         "table"
-   :archived-key     :archived_at
-   :in-sync-pred     published-table-in-remote-synced-collection?
-   :hydrate-details  hydrate-table-details})
-
-;; Segment events - track segments in published tables in remote-synced collections
-
-(defn- hydrate-segment-details
-  "Hydrates details for a Segment, including parent table info."
-  [id]
-  (first (t2/query {:select [:s.name :s.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-                    :from [[:segment :s]]
-                    :join [[:metabase_table :t] [:= :s.table_id :t.id]]
-                    :where [:= :s.id id]})))
-
-(defmodel-change-handler :segment
-  {:model-type       "Segment"
-   :event-prefix     :event/segment
-   :log-name         "segment"
-   :in-sync-pred     model-in-published-table-in-remote-synced-collection?
-   :hydrate-details  hydrate-segment-details})
-
-;; Field events - track fields in published tables in remote-synced collections
-
-(defn- hydrate-field-details
-  "Hydrates details for a Field, including parent table info."
-  [id]
-  (first (t2/query {:select [:f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
-                    :from [[:metabase_field :f]]
-                    :join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                    :where [:= :f.id id]})))
-
-(defmodel-change-handler :field
-  {:model-type       "Field"
-   :event-prefix     :event/field
-   :log-name         "field"
-   :in-sync-pred     model-in-published-table-in-remote-synced-collection?
-   :hydrate-details  hydrate-field-details})

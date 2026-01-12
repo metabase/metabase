@@ -2330,6 +2330,7 @@
            premium-features
            queries
            query-processor
+           remote-sync
            request
            search
            settings

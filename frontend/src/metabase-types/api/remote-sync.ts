@@ -12,7 +12,10 @@ export type RemoteSyncEntityModel =
   | "snippet"
   | "table"
   | "field"
-  | "segment";
+  | "segment"
+  | "transform"
+  | "transformtag"
+  | "transformjob";
 
 export type RemoteSyncEntityStatus =
   | "create"
