@@ -234,7 +234,9 @@ function ExistingTagSelectItem({
       <Text c="inherit" lh="inherit" flex={1}>
         {tag.name}
         {readOnly && (
-          <Tooltip label={t`You don't have permission to run this tag`}>
+          <Tooltip
+            label={t`This tag contains a transform you don't have permission to run.`}
+          >
             <Icon name="lock_filled" size={14} ml="xs" />
           </Tooltip>
         )}
