@@ -60,7 +60,8 @@
   issues when syncing."
   1234)
 
-(mu/defn- fingerprint-fields!
+(mu/defn fingerprint-fields!
+  "Generate fingerprints for a list of fields in a table."
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
@@ -265,3 +266,11 @@
   [field :- i/FieldInstance]
   (let [table (field/table field)]
     (fingerprint-fields! table [field])))
+
+(mu/defn refingerprint-table
+  "Refingerprint all fields in a table"
+  [table :- i/TableInstance]
+  (binding [*refingerprint?* true]
+    (if-let [fields (fields-to-fingerprint table)]
+      (fingerprint-fields! table fields)
+      (empty-stats-map 0))))

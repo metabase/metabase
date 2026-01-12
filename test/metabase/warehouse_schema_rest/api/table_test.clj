@@ -18,6 +18,7 @@
    [metabase.test.http-client :as client]
    [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
+   [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.api.table :as api.table]
    [toucan2.core :as t2]))
 
@@ -1366,3 +1367,15 @@
         (sync/sync-database! db {:scan :schema})
 
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
+
+(deftest refingerprint-table-test
+  (testing "POST /api/table/:id/refingerprint"
+    (testing "It should return success"
+      (mt/with-temp [:model/Table {table-id :id} {}]
+        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+          (is (= {:status "success"}
+                 (mt/user-http-request :crowberto :post 200 (format "table/%d/refingerprint" table-id)))))))
+
+    (testing "It should return 404 for non-existent table"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :post 404 (format "table/%d/refingerprint" Integer/MAX_VALUE)))))))

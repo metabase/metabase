@@ -97,3 +97,17 @@
                                              (sync-util/name-for-logging field))
         (sync.fingerprint/refingerprint-field! field))
       :sync/no-connection)))
+
+(mu/defn refingerprint-table!
+  "Refingerprint a table, usually after its visibility changes or manual request. Checks if can connect to database, returning
+  `:sync/no-connection` if not."
+  [table :- i/TableInstance]
+  (let [database (table/database table)]
+    ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+    ;; purposes of creating a new H2 database.
+    (if (binding [driver.settings/*allow-testing-h2-connections* true]
+          (driver.u/can-connect-with-details? (:engine database) (:details database)))
+      (sync-util/with-error-handling (format "Error refingerprinting table %s"
+                                             (sync-util/name-for-logging table))
+        (sync.fingerprint/refingerprint-table table))
+      :sync/no-connection)))
