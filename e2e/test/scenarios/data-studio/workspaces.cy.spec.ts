@@ -1241,6 +1241,41 @@ describe("scenarios > data studio > workspaces", () => {
         H.tabsShouldBe("My transform", ["Setup", "Agent Chat", "My transform"]);
       });
     });
+
+    it("should show empty state after creating, archiving, and deleting a workspace", () => {
+      Workspaces.visitWorkspaces();
+
+      // Create a new workspace
+      createWorkspace();
+      registerWorkspaceAliasName("workspaceToDelete");
+
+      // Archive the workspace immediately
+      cy.get<string>("@workspaceToDelete").then((workspaceName) => {
+        Workspaces.getWorkspaceItemActions(workspaceName).click();
+        H.popover().findByText("Archive").click();
+        verifyAndCloseToast("Workspace archived successfully");
+
+        // Verify it's archived
+        Workspaces.getWorkspaceItem(workspaceName).should("contain.text", "Archived");
+
+        // Delete the archived workspace
+        Workspaces.getWorkspaceItemActions(workspaceName).click();
+        H.popover().findByText("Delete").click();
+        H.modal().findByText("Delete").click();
+        verifyAndCloseToast("Workspace deleted successfully");
+
+        // Verify workspace is gone
+        Workspaces.getWorkspaceItem(workspaceName).should("not.exist");
+      });
+
+      // Verify empty state is shown again
+      Workspaces.getWorkspacesPage()
+        .findByText("No active workspaces")
+        .should("be.visible");
+      Workspaces.getWorkspacesSection()
+        .findByText("No workspaces yet")
+        .should("be.visible");
+    });
   });
 });
 
