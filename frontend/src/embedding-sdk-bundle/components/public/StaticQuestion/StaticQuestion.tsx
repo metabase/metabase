@@ -82,6 +82,7 @@ export type StaticQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
+  AlertsButton: typeof QuestionAlertsButton;
   SqlParametersList: typeof SqlParametersList;
 };
 
@@ -204,6 +205,7 @@ const subComponents: StaticQuestionComponents = {
   BreakoutDropdown: BreakoutDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
+  AlertsButton: QuestionAlertsButton,
   SqlParametersList: SqlParametersList,
 };
 
