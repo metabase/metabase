@@ -76,8 +76,8 @@ export function useWorkspaceTransformRun({
     fetchedWorkspaceTransform?.last_run_at ?? transform.last_run_at;
   const lastRunMessage =
     fetchedWorkspaceTransform?.last_run_message ?? transform.last_run_message;
-
-  const lastRunStatus = lastRunMessage ? "failed" : "succeeded";
+  const lastRunStatus =
+    fetchedWorkspaceTransform?.last_run_status ?? transform.last_run_status;
 
   const statusRun: TransformRun | null = useMemo(
     () =>
@@ -93,7 +93,7 @@ export function useWorkspaceTransformRun({
         : lastRunAt
           ? {
               id: -1,
-              status: lastRunStatus,
+              status: lastRunStatus === "succeeded" ? "succeeded" : "failed",
               start_time: lastRunAt,
               end_time: lastRunAt,
               message: lastRunMessage,
@@ -151,6 +151,7 @@ export function useWorkspaceTransformRun({
 
       // Transform completed - store the result
       const endTime = result.end_time ?? new Date().toISOString();
+
       setLastRunResult({
         status: result.status,
         end_time: endTime,
