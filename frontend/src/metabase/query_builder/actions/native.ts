@@ -20,10 +20,11 @@ import {
   getNativeEditorSelectedText,
   getQuestion,
   getSnippetCollectionId,
+  getUiControls,
 } from "../selectors";
 
 import { updateQuestion } from "./core/updateQuestion";
-import { SET_UI_CONTROLS } from "./ui";
+import { setUIControls } from "./ui";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
@@ -91,13 +92,21 @@ export const setIsShowingSnippetSidebar = (
   isShowingSnippetSidebar,
 });
 
-export const setIsNativeEditorOpen = (
-  isNativeEditorOpen: boolean,
-  openDataReference: boolean = true,
-) => ({
-  type: SET_UI_CONTROLS,
-  payload: { isNativeEditorOpen, isShowingDataReference: openDataReference },
-});
+export const SET_IS_NATIVE_EDITOR_OPEN =
+  "metabase/qb/SET_IS_NATIVE_EDITOR_OPEN";
+export const setIsNativeEditorOpen = createThunkAction(
+  SET_IS_NATIVE_EDITOR_OPEN,
+  (isNativeEditorOpen: boolean, openDataReference?: boolean) =>
+    (dispatch, getState) => {
+      const uiControls = getUiControls(getState());
+      const isShowingDataReference =
+        typeof openDataReference === "undefined"
+          ? uiControls.isShowingDataReference
+          : openDataReference;
+
+      dispatch(setUIControls({ isNativeEditorOpen, isShowingDataReference }));
+    },
+);
 
 export const SET_NATIVE_EDITOR_SELECTED_RANGE =
   "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
