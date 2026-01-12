@@ -1577,6 +1577,21 @@
                (-> (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))
                    (update-vals set))))))))
 
+;; Edge cases covered:
+;;
+;; 1. excluded ancestor
+;; 2. excluded descendant
+;; 3. disconnected components
+;; 4. enclosed by chain
+;; 5. workspace tx input
+;; 6. enclosed tx input
+;; 7. overridden dependency
+;;
+;; Ideas for more:
+;;
+;; - Removed dependency
+;; - Inverted dependency
+;; - ...
 (deftest larger-test
   (testing "GET /api/ee/workspace/:id/graph - structure for a larger and more complex graph"
     (let [{ws-id :workspace-id
@@ -1585,27 +1600,30 @@
                                                                       :x3 [:x2 :t102]
                                                                       :x4 [:x3 :t103]
                                                                       :x5 [:x4 :t104]
-                                                                      :x6 [:t105]}
-                                                          :workspace {:checkouts   [:x2 :x4]
-                                                                      :definitions {:x4 [:x3 :t106]}}})]
+                                                                      :x6 [:t105]
+                                                                      :x7 [:106]}
+                                                          :workspace {:checkouts   [:x2 :x4 :x6]
+                                                                      :definitions {:x4 [:x3 :t199]}}})]
       (testing "returns enclosed external transform too"
         (is (= {:nodes #{;; checked out
                          :x2
+                         :x4
+                         :x6
                          ;; enclosed
                          :x3
-                         ;; checked out
-                         :x4
-                         ;; output of non-enclosed x1
+                         ;; output of non-enclosed ancestor
                          :t1
-                         ;; global input for workspace transform
+                         ;; global input for workspace transforms
                          :t101
+                         :t105
                          ;; global input for enclosed transform
                          :t102
                          ;; overridden input
-                         :t106},
+                         :t199},
                 :edges {:x2 #{:t1 :t101}
                         :x3 #{:x2 :t102}
-                        :x4 #{:x3 :t106}}}
+                        :x4 #{:x3 :t199}
+                        :x6 #{:t105}}}
                (-> (mt/user-http-request :crowberto :get 200 (ws-url ws-id "graph"))
                    (ws.tu/translate-graph resources-map))))))))
 
