@@ -67,7 +67,7 @@
   "Fetches updates from the remote git repository.
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
-  of the git fetch operation.
+  of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
@@ -76,37 +76,54 @@
     (u/prog1 (call-remote-command (.fetch git) git-source))
     (log/info "Successfully fetched repository")))
 
-(defn- repo-path [{:keys [^String url ^String token]}]
-  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [url token]) buddy-hash/sha1 codecs/bytes->hex)))
+(defn- repo-path [{:keys [^String remote-url ^String token]}]
+  (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
 
 (defn- clone-repository!
   "Clones a git repository to a temporary directory using JGit.
 
-  Takes a map with :url (the git repository URL) and optional :token (authentication token for private
+  Takes a map with :remote-url (the git repository URL) and optional :token (authentication token for private
   repositories). Returns a Git instance for the cloned repository. If the repository already exists in the temp
   directory and is valid, returns the existing repository after fetching.
 
   Throws ExceptionInfo if cloning fails due to network issues, invalid URL, authentication failure, etc."
-  [repo-path {:keys [^String url ^String token]}]
-  (log/info "Cloning repository" {:url url :repo-path repo-path})
+  [repo-path {:keys [^String remote-url ^String token]}]
+  (log/info "Cloning repository" {:url remote-url :repo-path repo-path})
   (io/make-parents repo-path)
   (try
     (u/prog1 (call-remote-command (-> (Git/cloneRepository)
                                       (.setDirectory repo-path)
-                                      (.setURI url)
+                                      (.setURI remote-url)
                                       (.setBare true)) {:token token})
       (log/info "Successfully cloned repository" {:repo-path repo-path}))
     (catch Exception e
       (throw (ex-info (format "Failed to clone git repository: %s" (ex-message e))
-                      {:url       url
+                      {:url       remote-url
                        :repo-path repo-path
                        :error     (.getMessage e)} e)))))
 
-(defn- open-jgit [^File repo-path args]
+(defn- ensure-origin-configured!
+  "Ensures the 'origin' remote is configured with the correct URL.
+
+  This fixes issues where the origin remote may be missing or have an incorrect URL
+  (e.g., after repository corruption or configuration changes). If the URL doesn't
+  match, it's updated and saved."
+  [^Git git ^String url]
+  (let [config (.getConfig (.getRepository git))
+        current-url (.getString config "remote" "origin" "url")]
+    (when (not= url current-url)
+      (log/info "Configuring origin remote" {:current current-url :new url})
+      (.setString config "remote" "origin" "url" url)
+      (.setString config "remote" "origin" "fetch" "+refs/heads/*:refs/heads/*")
+      (.save config))))
+
+(defn- open-jgit [^File repo-path {:keys [remote-url] :as args}]
   (if (.exists repo-path)
-    (do
-      (log/debugf "Opening existing at %" repo-path)
-      (Git/open repo-path))
+    (let [git (do
+                (log/debugf "Opening existing at %" repo-path)
+                (Git/open repo-path))]
+      (ensure-origin-configured! git remote-url)
+      git)
     (clone-repository! repo-path args)))
 
 (defn commit-sha
@@ -175,7 +192,7 @@
   "Pushes a local branch to the remote repository.
 
   Takes a git-source map containing a :git Git instance, :branch, and optional :token for
-  authentication.
+  authentication. Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns the push response from JGit. Throws ExceptionInfo if the push operation fails or returns a
   non-OK/UP_TO_DATE status."
@@ -183,7 +200,6 @@
   (let [branch-name (qualify-branch branch)
         push-response (call-remote-command
                        (-> (.push git)
-                           (.setRemote "origin")
                            (.setRefSpecs (doto (java.util.ArrayList.)
                                            (.add (RefSpec. (str branch-name ":" branch-name))))))
                        git-source)
@@ -301,6 +317,7 @@
   "Retrieves all branch names from the remote repository.
 
   Takes a source map containing a :git Git instance and optional :token for authentication.
+  Uses the 'origin' remote which is configured by ensure-origin-configured!.
 
   Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
   [{:keys [^Git git] :as source}]
@@ -402,14 +419,14 @@
 
 (def ^:private jgit (atom {}))
 
-(defn- get-jgit [^File path {:keys [url token] :as args}]
+(defn- get-jgit [^File path {:keys [remote-url token] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
     obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:url   url
-                                                                     :token token})
+    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
+                                                                     :token      token})
                                              (when-not (has-data? (assoc args :git <>))
                                                (FileUtils/deleteDirectory path)
-                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url url})))))
+                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
          (.getPath path))))
 
 (defn git-source
@@ -420,5 +437,5 @@
 
   Returns a GitSource record implementing the Source protocol."
   [url branch token]
-  (->GitSource (get-jgit (repo-path {:url url :token token}) {:url url :token token})
+  (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
                url branch token))

@@ -207,10 +207,10 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Data grid theme */
   theme?: DataGridTheme;
 
-  /** Controlls whether cell selection is enabled */
+  /** Controls whether cell selection is enabled */
   enableSelection?: boolean;
 
-  /** Controlls whether row selection is enabled */
+  /** Controls whether row selection is enabled */
   enableRowSelection?: RowSelectionOptions<TData>["enableRowSelection"];
 
   /** Row selection state */

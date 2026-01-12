@@ -1,7 +1,10 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_PERSONAL_COLLECTION_ID,
+  FIRST_COLLECTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import type {
   CardId,
   CollectionId,
@@ -125,7 +128,7 @@ describe("scenarios > dependencies > unreferenced list", () => {
       });
 
       H.DataStudio.Tasks.filterButton().click();
-      H.popover().findByText("Model").click();
+      H.popover().findByText("Snippet").click();
       checkList({
         visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG],
         hiddenEntities: [SNIPPET_FOR_SNIPPET_TAG],
@@ -141,11 +144,11 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
       H.DataStudio.Tasks.filterButton().click();
       H.popover().findByText("Model").click();
-      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+      checkList({ hiddenEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
 
       H.popover().findByText("Segment").click();
       checkList({
-        visibleEntities: [
+        hiddenEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
           SEGMENT_FOR_QUESTION_FILTER,
         ],
@@ -153,21 +156,45 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
       H.popover().findByText("Metric").click();
       checkList({
-        visibleEntities: [
+        hiddenEntities: [
           MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
           SEGMENT_FOR_QUESTION_FILTER,
           METRIC_FOR_QUESTION_AGGREGATION,
         ],
       });
 
-      H.popover().findByText("Snippet").click();
+      H.popover().findByText("Model").click();
+      checkList({ visibleEntities: [MODEL_FOR_NATIVE_QUESTION_CARD_TAG] });
+    });
+
+    it("should filter by location", () => {
+      createEntities({ withPersonalCollection: true });
+      H.DataStudio.Tasks.visitUnreferencedEntities();
       checkList({
         visibleEntities: [
-          MODEL_FOR_NATIVE_QUESTION_CARD_TAG,
-          SEGMENT_FOR_QUESTION_FILTER,
-          METRIC_FOR_QUESTION_AGGREGATION,
+          MODEL_FOR_MODEL_DATA_SOURCE,
           SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
         ],
+        hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
+      });
+
+      H.DataStudio.Tasks.filterButton().click();
+      H.popover().findByText("Include items in personal collections").click();
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          MODEL_FOR_METRIC_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
+      });
+
+      H.popover().findByText("Include items in personal collections").click();
+      checkList({
+        visibleEntities: [
+          MODEL_FOR_MODEL_DATA_SOURCE,
+          SNIPPET_FOR_NATIVE_QUESTION_CARD_TAG,
+        ],
+        hiddenEntities: [MODEL_FOR_METRIC_DATA_SOURCE],
       });
     });
   });
@@ -232,8 +259,9 @@ describe("scenarios > dependencies > unreferenced list", () => {
 
 function createEntities({
   withReferences = false,
-}: { withReferences?: boolean } = {}) {
-  createModelContent({ withReferences });
+  withPersonalCollection = false,
+}: { withReferences?: boolean; withPersonalCollection?: boolean } = {}) {
+  createModelContent({ withReferences, withPersonalCollection });
   createSegmentContent({ withReferences });
   createMetricContent({ withReferences });
   createSnippetContent({ withReferences });
@@ -241,8 +269,10 @@ function createEntities({
 
 function createModelContent({
   withReferences = false,
+  withPersonalCollection = false,
 }: {
   withReferences?: boolean;
+  withPersonalCollection?: boolean;
 }) {
   createModelWithTableDataSource({
     name: MODEL_FOR_QUESTION_DATA_SOURCE,
@@ -272,6 +302,9 @@ function createModelContent({
   createModelWithTableDataSource({
     name: MODEL_FOR_METRIC_DATA_SOURCE,
     tableId: ORDERS_ID,
+    collectionId: withPersonalCollection
+      ? ADMIN_PERSONAL_COLLECTION_ID
+      : undefined,
   }).then(({ body: model }) => {
     if (withReferences) {
       createMetricWithModelDataSource({

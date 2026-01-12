@@ -1,4 +1,4 @@
-import { msgid, ngettext, t } from "ttag";
+import { c, msgid, ngettext, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -20,6 +20,7 @@ import type {
 import type {
   DependencyErrorInfo,
   DependencyGroupTypeInfo,
+  DependentGroup,
   NodeId,
   NodeLink,
   NodeLocationInfo,
@@ -62,6 +63,7 @@ export function getNodeIcon(node: DependencyNode): IconName {
     node.type,
     node.type === "card" ? node.data.type : undefined,
     node.type === "card" ? node.data.display : undefined,
+    node.type === "card" ? node.data.query_type : undefined,
   );
 }
 
@@ -69,11 +71,15 @@ export function getNodeIconWithType(
   type: DependencyType,
   cardType?: CardType,
   cardDisplay?: VisualizationDisplay,
+  queryType?: "native" | "query",
 ): IconName {
   switch (type) {
     case "card":
       switch (cardType) {
         case "question":
+          if (queryType === "native") {
+            return "sql";
+          }
           return cardDisplay != null
             ? (visualizations.get(cardDisplay)?.iconName ?? "table2")
             : "table2";
@@ -89,7 +95,7 @@ export function getNodeIconWithType(
     case "transform":
       return "transform";
     case "snippet":
-      return "sql";
+      return "snippet";
     case "dashboard":
       return "dashboard";
     case "document":
@@ -497,6 +503,27 @@ export function getDependencyGroupTypeInfo(
   }
 }
 
+export function getDependencyGroupIcon(groupType: DependencyGroupType) {
+  const type = getDependencyType(groupType);
+  const cardType = getCardType(groupType);
+
+  return getNodeIconWithType(type, cardType ?? undefined);
+}
+
+export function getNodeTypeInfo(node: DependencyNode): DependencyGroupTypeInfo {
+  // For SQL questions, return a special label
+  if (
+    node.type === "card" &&
+    node.data.type === "question" &&
+    node.data.query_type === "native"
+  ) {
+    return { label: t`SQL question`, color: "text-secondary" };
+  }
+
+  // For all other cases, use the standard group type info
+  return getDependencyGroupTypeInfo(getDependencyGroupType(node));
+}
+
 export function getDependencyTypes(
   groupTypes: DependencyGroupType[],
 ): DependencyType[] {
@@ -509,6 +536,96 @@ export function getCardTypes(groupTypes: DependencyGroupType[]): CardType[] {
     .map(getCardType)
     .filter((cardType) => cardType !== null);
   return Array.from(new Set(cardTypes));
+}
+
+export function getDependentGroups(node: DependencyNode): DependentGroup[] {
+  const {
+    question = 0,
+    model = 0,
+    metric = 0,
+    table = 0,
+    transform = 0,
+    snippet = 0,
+    dashboard = 0,
+    document = 0,
+    sandbox = 0,
+    segment = 0,
+    measure = 0,
+  } = node.dependents_count ?? {};
+
+  const groups: DependentGroup[] = [
+    { type: "question", count: question },
+    { type: "model", count: model },
+    { type: "metric", count: metric },
+    { type: "table", count: table },
+    { type: "transform", count: transform },
+    { type: "snippet", count: snippet },
+    { type: "dashboard", count: dashboard },
+    { type: "document", count: document },
+    { type: "sandbox", count: sandbox },
+    { type: "segment", count: segment },
+    { type: "measure", count: measure },
+  ];
+
+  return groups.filter(({ count }) => count !== 0);
+}
+
+export function getDependencyGroupTitle(
+  node: DependencyNode,
+  groups: DependentGroup[],
+) {
+  if (node.type === "sandbox") {
+    return t`Restricts table data`;
+  }
+  if (groups.length === 0) {
+    return t`Nothing uses this`;
+  }
+  if (node.type === "transform") {
+    return t`Generates`;
+  }
+  return t`Used by`;
+}
+
+export function getDependentGroupLabel({
+  type,
+  count,
+}: DependentGroup): string {
+  switch (type) {
+    case "question":
+      return ngettext(msgid`${count} question`, `${count} questions`, count);
+    case "model":
+      return ngettext(msgid`${count} model`, `${count} models`, count);
+    case "metric":
+      return ngettext(msgid`${count} metric`, `${count} metrics`, count);
+    case "table":
+      return ngettext(msgid`${count} table`, `${count} tables`, count);
+    case "transform":
+      return ngettext(msgid`${count} transform`, `${count} transforms`, count);
+    case "snippet":
+      return ngettext(msgid`${count} snippet`, `${count} snippet`, count);
+    case "dashboard":
+      return ngettext(msgid`${count} dashboard`, `${count} dashboards`, count);
+    case "document":
+      return ngettext(msgid`${count} document`, `${count} documents`, count);
+    case "sandbox":
+      return ngettext(
+        msgid`${count} row and column security rule`,
+        `${count} row and column security rules`,
+        count,
+      );
+    case "segment":
+      return c("{0} is the number of segments").ngettext(
+        msgid`${count} segment`,
+        `${count} segments`,
+        count,
+      );
+    case "measure":
+      return c("{0} is the number of measures").ngettext(
+        msgid`${count} measure`,
+        `${count} measures`,
+        count,
+      );
+  }
 }
 
 export function getDependencyErrorTypeLabel(type: DependencyErrorType): string {
@@ -611,6 +728,21 @@ export function getDependencyErrorInfo(
   };
 }
 
+export function parseString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+export function parseBoolean(value: unknown): boolean | undefined {
+  switch (value) {
+    case "true":
+      return true;
+    case "false":
+      return false;
+    default:
+      return undefined;
+  }
+}
+
 export function parseEnum<T extends string>(
   value: unknown,
   items: readonly T[],
@@ -620,6 +752,18 @@ export function parseEnum<T extends string>(
   }
   const item = items.find((item) => item === value);
   return item != null ? item : undefined;
+}
+
+export function parseList<T>(
+  value: unknown,
+  parseItem: (item: unknown) => T | undefined,
+): T[] | undefined {
+  if (value != null) {
+    const array = Array.isArray(value) ? value : [value];
+    return array.map(parseItem).filter((item) => item != null);
+  } else {
+    return undefined;
+  }
 }
 
 export function getSearchQuery(searchValue: string): string | undefined {

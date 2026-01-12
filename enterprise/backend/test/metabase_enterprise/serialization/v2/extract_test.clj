@@ -962,6 +962,92 @@
                           {:model "Field" :id "Some Field"}]}
                        (set (serdes/dependencies ser))))))))))))
 
+(deftest measure-referencing-measure-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}
+                       :model/Database   {db-id :id}        {:name "My Database"}
+                       :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
+                       :model/Field      {field-id :id}     {:name "Amount" :table_id table-id}]
+      (let [base-definition (pmbql-measure-definition db-id table-id field-id)]
+        (ts/with-temp-dpc [:model/Measure
+                           {m1-id  :id
+                            m1-eid :entity_id}
+                           {:name       "Base Measure"
+                            :creator_id ann-id
+                            :table_id   table-id
+                            :definition base-definition}]
+          ;; Create a measure that references the base measure
+          (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+                table (lib.metadata/table metadata-provider table-id)
+                query (lib/query metadata-provider table)
+                measure-ref (lib.metadata/measure metadata-provider m1-id)
+                derived-definition (lib/aggregate query (lib/* measure-ref 2))]
+            (ts/with-temp-dpc [:model/Measure
+                               {m2-id  :id
+                                m2-eid :entity_id}
+                               {:name       "Derived Measure"
+                                :creator_id ann-id
+                                :table_id   table-id
+                                :definition derived-definition}]
+              (testing "measure referencing another measure"
+                (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m2-id))]
+                  (is (=? {:serdes/meta [{:model "Measure" :id m2-eid :label "derived_measure"}]
+                           :table_id    ["My Database" nil "My Table"]
+                           :creator_id  "ann@heart.band"
+                           :definition  {:database "My Database"
+                                         :type     :query
+                                         :query    {:source-table ["My Database" nil "My Table"]
+                                                    :aggregation  [[:* [:measure m1-eid] 2]]}}}
+                          ser))
+                  (testing "depends on the referenced Measure"
+                    (is (contains? (set (serdes/dependencies ser))
+                                   [{:model "Measure" :id m1-eid}]))))))))))))
+
+(deftest measure-referencing-segment-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User       {ann-id :id}        {:first_name "Ann"
+                                                              :last_name  "Wilson"
+                                                              :email      "ann@heart.band"}
+                       :model/Database   {db-id :id}        {:name "My Database"}
+                       :model/Table      {table-id :id}     {:name "My Table" :db_id db-id}
+                       :model/Field      {field-id :id}     {:name "Price" :table_id table-id}
+                       :model/Segment
+                       {seg-id  :id
+                        seg-eid :entity_id}
+                       {:name       "Expensive Items"
+                        :creator_id ann-id
+                        :table_id   table-id
+                        :definition {:source-table table-id
+                                     :filter       [:> [:field field-id nil] 100]}}]
+      ;; Create a measure that uses count-where with a segment reference
+      (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+            table (lib.metadata/table metadata-provider table-id)
+            query (lib/query metadata-provider table)
+            segment-ref (lib.metadata/segment metadata-provider seg-id)
+            measure-definition (lib/aggregate query (lib/count-where segment-ref))]
+        (ts/with-temp-dpc [:model/Measure
+                           {m-id  :id
+                            m-eid :entity_id}
+                           {:name       "Expensive Item Count"
+                            :creator_id ann-id
+                            :table_id   table-id
+                            :definition measure-definition}]
+          (testing "measure referencing a segment"
+            (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m-id))]
+              (is (=? {:serdes/meta [{:model "Measure" :id m-eid :label "expensive_item_count"}]
+                       :table_id    ["My Database" nil "My Table"]
+                       :creator_id  "ann@heart.band"
+                       :definition  {:database "My Database"
+                                     :type     :query
+                                     :query    {:source-table ["My Database" nil "My Table"]
+                                                :aggregation  [[:count-where [:segment seg-eid]]]}}}
+                      ser))
+              (testing "depends on the referenced Segment"
+                (is (contains? (set (serdes/dependencies ser))
+                               [{:model "Segment" :id seg-eid}]))))))))))
+
 (deftest table-publishing-serdes-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database   {db-id :id}           {:name "My Database"}
@@ -1772,6 +1858,40 @@
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
         (is (= #{} (ids-by-model "Collection" ser)))))))
+
+(deftest xray-of-analytics-model-export-test
+  (testing "X-rays of analytics models can be exported without errors"
+    (mt/with-empty-h2-app-db!
+      (mbc/ensure-audit-db-installed!)
+      (testing "sanity check that the analytics content exists"
+        (is (some? (audit/default-audit-collection)))
+        ;; Find the Query log model (entity_id: QOtZaiTLf2FDD4AT6Oinb)
+        (let [query-log-card (t2/select-one :model/Card :entity_id "QOtZaiTLf2FDD4AT6Oinb")]
+          (is (some? query-log-card) "Query log model should exist in analytics")
+          (when query-log-card
+            ;; Create a card that depends on the analytics model (simulating an x-ray)
+            (mt/with-temp [:model/Collection {coll-id :id coll-eid :entity_id} {:name "Test Collection"}
+                           :model/Card {_xray-card-id :id xray-card-eid :entity_id}
+                           {:name          "X-ray of Query log"
+                            :collection_id coll-id
+                            :database_id   (:database_id query-log-card)
+                            :dataset_query {:type     :query
+                                            :database (:database_id query-log-card)
+                                            :query    {:source-table (str "card__" (:id query-log-card))}}}]
+              (testing "Export should succeed without warnings about analytics dependencies"
+                (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+                  (let [ser (extract/extract {:targets       [["Collection" coll-id]]
+                                              :no-settings   true
+                                              :no-data-model true})]
+                    (is (contains? (ids-by-model "Card" ser) xray-card-eid)
+                        "X-ray card should be exported")
+                    (is (contains? (ids-by-model "Collection" ser) coll-eid)
+                        "Collection should be exported")
+                    (is (not (contains? (ids-by-model "Card" ser) "QOtZaiTLf2FDD4AT6Oinb"))
+                        "Analytics model should NOT be exported")
+                    (let [warn-msgs (into #{} (map :message) (messages))]
+                      (is (not (some #(str/starts-with? % "Failed to export") warn-msgs))
+                          (str "Should not have export warnings, got: " warn-msgs)))))))))))))
 
 (deftest entity-id-in-targets-test
   (mt/with-temp [:model/Collection c {:name "Top-Level Collection"}]

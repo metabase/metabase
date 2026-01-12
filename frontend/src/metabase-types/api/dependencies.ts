@@ -84,8 +84,10 @@ export type CardDependencyNodeData = Pick<
   | "creator"
   | "created_at"
   | "last-edit-info"
-  | "view_count"
->;
+> & {
+  view_count?: number | null;
+  query_type?: "native" | "query";
+};
 
 export type SnippetDependencyNodeData = Pick<
   NativeQuerySnippet,
@@ -281,10 +283,12 @@ export type ListBrokenGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
+  include_personal_collections?: boolean;
 };
 
 export type ListUnreferencedGraphNodesRequest = {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
+  include_personal_collections?: boolean;
 };

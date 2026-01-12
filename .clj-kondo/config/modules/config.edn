@@ -367,7 +367,8 @@
 
   collections-rest
   {:team "UX West"
-   :api  #{metabase.collections-rest.api}
+   :api  #{metabase.collections-rest.api
+           metabase.collections-rest.init}
    :uses #{api
            app-db
            collections
@@ -382,6 +383,7 @@
            queries
            request
            revisions
+           settings
            upload
            util}}
 
@@ -756,6 +758,7 @@
            metabase.lib.util.match
            metabase.lib.walk}
    :uses #{config
+           graph
            legacy-mbql
            types
            util}}
@@ -798,7 +801,6 @@
    :api  #{metabase.measures.api}
    :uses #{api
            events
-           legacy-mbql
            lib
            lib-be
            models
