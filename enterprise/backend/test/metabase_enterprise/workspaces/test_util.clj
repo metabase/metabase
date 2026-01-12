@@ -332,3 +332,49 @@
   "Trigger the reconstruction and persistence of the workspace graph."
   [id]
   (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/graph")))
+
+(defn- replace-entity [{:keys [input-table workspace-transform external-transform]} entity-type entity-id]
+  (get
+   (case entity-type
+     "input-table" input-table
+     "workspace-transform" workspace-transform
+     "external-transform" external-transform)
+   entity-id entity-id))
+
+(defn translate-graph
+  "Turn a real workspace graph back into :x1 etc symbols"
+  [{:keys [nodes edges]} resources-map]
+  (let [mapping (merge (reduce
+                        (fn [acc [sym id]]
+                          (assoc-in acc
+                                    [(cond
+                                       (table? sym) :input-table
+                                       (transform? sym) :external-transform
+                                       :else (throw (ex-info "Unexpected symbol" {:symbol sym :id id})))
+                                     (if (table? sym)
+                                       (let [{:keys [db_id schema name]} (t2/select-one [:model/Table :db_id :schema :name] id)]
+                                         (str db_id "-" schema "-" name))
+                                       id)]
+                                    sym))
+                        {:input-table        {}
+                         :external-transform {}}
+                        (:global-map resources-map))
+                       (reduce
+                        (fn [acc [sym id]]
+                          (assoc-in acc
+                                    [(cond
+                                       (transform? sym) :workspace-transform
+                                       :else (throw (ex-info "Unexpected symbol" {:symbol sym :id id})))
+                                     id]
+                                    sym))
+                        {:workspace-transform {}}
+                        (:workspace-map resources-map)))]
+    {:nodes (into #{} (map #(replace-entity mapping (:type %) (:id %))) nodes)
+     :edges (reduce
+             (fn [acc e]
+               (update acc
+                       (replace-entity mapping (:from_entity_type e) (:from_entity_id e))
+                       (fnil conj #{})
+                       (replace-entity mapping (:to_entity_type e) (:to_entity_id e))))
+             {}
+             edges)}))

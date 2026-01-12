@@ -1531,16 +1531,8 @@
             (is (= (:id iso-table)
                    (-> result :outputs first :isolated :table_id)))))))))
 
-;; TODO (Chris 2026-01-12) We have the DSL working now, so it should be feasible to make these extensions
-;; This should be tested using a non-trivial graph:
-;; - Non-included ancestor transforms.
-;; - Non-included descendant transforms.
-;; - Enclosed transforms outside the working set.
-;; - Direct input table dependencies for enclosed transforms.
-;; - A disconnected component.
-;; Whatever else you can think of.
 (deftest graph-test
-  (testing "GET /api/ee/workspace/:id/graph"
+  (testing "GET /api/ee/workspace/:id/graph - explicit shape for a smaller graph"
     (let [{ws-id  :workspace-id
            id-map :global-map
            tx-ids :workspace-map} (ws.tu/create-resources! {:global    {:x1 [:t0]
@@ -1584,6 +1576,38 @@
                           :from_entity_id   (:ref_id tx-3)}}}
                (-> (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "graph"))
                    (update-vals set))))))))
+
+(deftest larger-test
+  (testing "GET /api/ee/workspace/:id/graph - structure for a larger and more complex graph"
+    (let [{ws-id :workspace-id
+           :as   resources-map} (ws.tu/create-resources! {:global    {:x1 [:t100]
+                                                                      :x2 [:x1 :t101]
+                                                                      :x3 [:x2 :t102]
+                                                                      :x4 [:x3 :t103]
+                                                                      :x5 [:x4 :t104]
+                                                                      :x6 [:t105]}
+                                                          :workspace {:checkouts   [:x2 :x4]
+                                                                      :definitions {:x4 [:x3 :t106]}}})]
+      (testing "returns enclosed external transform too"
+        (is (= {:nodes #{;; checked out
+                         :x2
+                         ;; enclosed
+                         :x3
+                         ;; checked out
+                         :x4
+                         ;; output of non-enclosed x1
+                         :t1
+                         ;; global input for workspace transform
+                         :t101
+                         ;; global input for enclosed transform
+                         :t102
+                         ;; overridden input
+                         :t106},
+                :edges {:x2 #{:t1 :t101}
+                        :x3 #{:x2 :t102}
+                        :x4 #{:x3 :t106}}}
+               (-> (mt/user-http-request :crowberto :get 200 (ws-url ws-id "graph"))
+                   (ws.tu/translate-graph resources-map))))))))
 
 (deftest enabled-test
   (let [url "ee/workspace/enabled"]
