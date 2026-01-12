@@ -127,6 +127,7 @@ export type ValidateTableNameResponse =
   | "A table with that name already exists";
 
 export type CreateWorkspaceTransformRequest = {
+  id: WorkspaceId;
   global_id?: TransformId;
   name: string;
   description?: string | null;
