@@ -1,5 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.common
   (:require
+   [metabase-enterprise.impersonation.core :as impersonation]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
@@ -158,10 +159,11 @@
   (if (or
        (t2/exists? :model/DataPermissions
                    :perm_type :perms/view-data
-                   :perm_value :blocked
+                   :perm_value [:in [:blocked :impersonated :sandboxed]]
                    :group_id group-id)
-       (t2/exists? :model/ConnectionImpersonation
-                   :group_id group-id)
+       ;; these shouldn't be necessary going forward, but older setups had `:unrestricted` data access for impersonation/sandboxing
+       ;; If we migrate them, we can remove these additional checks.
+       (t2/exists? :model/ConnectionImpersonation :group_id group-id)
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists? :model/Sandbox
@@ -181,8 +183,10 @@
        (t2/exists? :model/DataPermissions
                    :db_id db-id
                    :perm_type :perms/view-data
-                   :perm_value :blocked
+                   :perm_value [:in [:blocked :sandboxed]]
                    :group_id group-id)
+       ;; these shouldn't be necessary going forward, but older setups had `:unrestricted` data access for impersonation/sandboxing
+       ;; If we migrate them, we can remove these additional checks.
        (and
         (premium-features/enable-sandboxes?)
         (t2/exists?
@@ -221,3 +225,26 @@
                        :where [:= :t.db_id db-id]})))
       :blocked
       :unrestricted)))
+
+(defenterprise can-read-table?
+  "EE implementation. Returns a boolean, whether the user can read this table."
+  :feature :advanced-permissions
+  [table]
+  (and (perms/user-has-permission-for-table?
+        api/*current-user-id*
+        :perms/create-queries
+        :query-builder
+        (:db_id table)
+        (:id table))
+       (or
+        ;; either the user has actual permissions
+        (perms/user-has-permission-for-table?
+         api/*current-user-id*
+         :perms/view-data
+         :unrestricted
+         (:db_id table)
+         (:id table))
+        ;; or they are impersonated
+        (seq (impersonation/enforced-impersonations-for-db (:db_id table)))
+        ;; or they have sandboxing enabled
+        (perms/sandboxed-table? table))))

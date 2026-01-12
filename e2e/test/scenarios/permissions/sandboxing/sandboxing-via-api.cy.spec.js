@@ -1127,28 +1127,6 @@ describe("admin > permissions > sandboxes (tested via the API)", () => {
       });
     });
 
-    it("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
-      cy.sandboxTable({
-        table_id: ORDERS_ID,
-        attribute_remappings: {
-          attr_uid: [
-            "dimension",
-            ["fk->", ["field-id", ORDERS.USER_ID], ["field-id", PEOPLE.ID]],
-          ],
-        },
-      });
-
-      cy.signOut();
-      cy.signInAsSandboxedUser();
-
-      H.openOrdersTable({
-        callback: (xhr) => expect(xhr.response.body.error).not.to.exist,
-      });
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("37.65");
-    });
-
     it("unsaved/dirty query should work on linked table column with multiple dimensions and remapping (metabase#15106)", () => {
       H.remapDisplayValueToFK({
         display_value: ORDERS.USER_ID,

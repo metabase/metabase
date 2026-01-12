@@ -793,3 +793,182 @@
                 (is (=? {:status "failed"
                          :error (partial re-find #"You do not have permission to view data of table \d+ in result_metadata")}
                         (mt/user-http-request :rasta :post (str "/card/" (:id card) "/query") {})))))))))))
+
+(deftest sandboxed-user-can-view-native-query-when-other-tables-unrestricted-test
+  (testing "Sandboxed user CAN view native query when all non-sandboxed tables have :unrestricted permission"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Collection collection {}
+                       :model/Card {native-card-id :id} {:collection_id (u/the-id collection)
+                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          ;; Set up permissions via graph API: sandbox checkins, unrestricted on everything else
+          (let [graph (-> (data-perms.graph/api-graph)
+                          (assoc-in [:groups group-id (mt/id) :view-data]
+                                    {"PUBLIC" {(mt/id :checkins) :sandboxed
+                                               (mt/id :venues) :unrestricted
+                                               (mt/id :categories) :unrestricted
+                                               (mt/id :users) :unrestricted
+                                               (mt/id :orders) :unrestricted
+                                               (mt/id :products) :unrestricted
+                                               (mt/id :reviews) :unrestricted
+                                               (mt/id :people) :unrestricted}})
+                          (assoc-in [:groups group-id (mt/id) :create-queries] "query-builder")
+                          (assoc :sandboxes [{:table_id             (mt/id :checkins)
+                                              :group_id             group-id
+                                              :attribute_remappings {}}]))]
+            (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
+          (perms/grant-collection-read-permissions! group-id collection)
+          (testing "Sandboxed user should be able to view native query"
+            (is (= [[1]]
+                   (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" native-card-id)))))))))))
+
+(deftest sandboxed-user-cannot-view-native-query-when-other-table-blocked-test
+  (testing "Sandboxed user CANNOT view native query when another (non-sandboxed) table is blocked"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Collection collection {}
+                       :model/Card {native-card-id :id} {:collection_id (u/the-id collection)
+                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          (let [graph (-> (data-perms.graph/api-graph)
+                          (assoc-in [:groups group-id (mt/id) :view-data]
+                                    {"PUBLIC" {(mt/id :checkins) :sandboxed
+                                               (mt/id :venues) :blocked
+                                               (mt/id :categories) :unrestricted
+                                               (mt/id :users) :unrestricted
+                                               (mt/id :orders) :unrestricted
+                                               (mt/id :products) :unrestricted
+                                               (mt/id :reviews) :unrestricted
+                                               (mt/id :people) :unrestricted}})
+                          (assoc-in [:groups group-id (mt/id) :create-queries] "query-builder")
+                          (assoc :sandboxes [{:table_id             (mt/id :checkins)
+                                              :group_id             group-id
+                                              :attribute_remappings {}}]))]
+            (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
+          (perms/grant-collection-read-permissions! group-id collection)
+          (testing "Sandboxed user should NOT be able to view native query (blocked on non-sandboxed table)"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" native-card-id)))))))))))
+
+(deftest sandboxed-user-all-tables-sandboxed-can-view-native-query-test
+  (testing "User sandboxed on ALL tables in DB CAN view native queries"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Collection collection {}
+                       :model/Card {native-card-id :id} {:collection_id (u/the-id collection)
+                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          ;; Set up permissions via graph API: sandbox both checkins and venues, unrestricted on others
+          (let [graph (-> (data-perms.graph/api-graph)
+                          (assoc-in [:groups group-id (mt/id) :view-data]
+                                    {"PUBLIC" {(mt/id :checkins) :sandboxed
+                                               (mt/id :venues) :sandboxed
+                                               (mt/id :categories) :unrestricted
+                                               (mt/id :users) :unrestricted
+                                               (mt/id :orders) :unrestricted
+                                               (mt/id :products) :unrestricted
+                                               (mt/id :reviews) :unrestricted
+                                               (mt/id :people) :unrestricted}})
+                          (assoc-in [:groups group-id (mt/id) :create-queries] "query-builder")
+                          (assoc :sandboxes [{:table_id             (mt/id :checkins)
+                                              :group_id             group-id
+                                              :attribute_remappings {}}
+                                             {:table_id             (mt/id :venues)
+                                              :group_id             group-id
+                                              :attribute_remappings {}}]))]
+            (mt/user-http-request :crowberto :put 200 "permissions/graph" graph))
+          (perms/grant-collection-read-permissions! group-id collection)
+          (testing "User sandboxed on multiple tables should still be able to view native query"
+            (is (= [[1]]
+                   (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" native-card-id)))))))))))
+
+;;; ------------------------------------------------ Legacy sandbox tests ------------------------------------------------
+;;; before PR #64961, sandboxed users got `:unrestricted` view data permissions. Rather than migrate existing sandbox permissions,
+;;; these tests assert that the view-data permissions do not matter in the case of sandboxing. In other words, users who were sandboxed
+;;; before do not get MORE access than they had before
+;;; At some point we may wish to actually migrate `:unrestricted` sandbox permissions to be `:blocked` instead, in which case we can
+;;; delete these tests.
+(deftest legacy-sandbox-unrestricted-permission-native-query-allowed-test
+  (testing "Legacy setup: sandboxed table with :unrestricted permission - user CAN view native query"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Collection collection {}
+                       :model/Card {native-card-id :id} {:collection_id (u/the-id collection)
+                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}
+                       ;; Create sandbox row directly (legacy setup)
+                       :model/Sandbox _ {:group_id             group-id
+                                         :table_id             (mt/id :checkins)
+                                         :attribute_remappings {}}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          ;; KEY: Set :unrestricted on ALL tables (legacy setup - NOT using :sandboxed permission value)
+          (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+          (perms/grant-collection-read-permissions! group-id collection)
+          (testing "Legacy sandboxed user should be able to view native query (all tables :unrestricted)"
+            (is (= [[1]]
+                   (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" native-card-id)))))))))))
+
+(deftest legacy-sandbox-unrestricted-permission-native-query-blocked-test
+  (testing "Legacy setup: sandboxed table with :unrestricted, non-sandboxed table :blocked - user CANNOT view native query"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Collection collection {}
+                       :model/Card {native-card-id :id} {:collection_id (u/the-id collection)
+                                                         :dataset_query (mt/native-query {:query "SELECT 1"})}
+                       ;; Create sandbox row directly (legacy setup)
+                       :model/Sandbox _ {:group_id             group-id
+                                         :table_id             (mt/id :checkins)
+                                         :attribute_remappings {}}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          ;; Legacy setup: sandboxed table has :unrestricted, but another table is :blocked
+          (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+          (is (t2/exists? :model/Sandbox :group_id group-id :table_id (mt/id :checkins)))
+          (perms/grant-collection-read-permissions! group-id collection)
+          ;; sanity check - the sandbox still exists
+          (testing "Legacy sandboxed user should NOT be able to view native query (blocked on non-sandboxed table)"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query"
+                 (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" native-card-id)))))))))))
+
+(deftest legacy-sandbox-filtering-still-works-test
+  (testing "Legacy setup: sandbox filtering is still enforced when table has :unrestricted permission"
+    (mt/with-premium-features #{:advanced-permissions :sandboxes}
+      (mt/with-no-data-perms-for-all-users!
+        ;; Create a sandbox card that filters venues by category_id
+        (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                       :model/Card {sandbox-card-id :id} {:dataset_query (mt/mbql-query venues)}
+                       ;; Create sandbox row with remappings (legacy setup)
+                       :model/Sandbox _ {:group_id             group-id
+                                         :table_id             (mt/id :venues)
+                                         :card_id              sandbox-card-id
+                                         :attribute_remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}]
+          (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+          ;; KEY: Set :unrestricted on ALL tables (legacy setup - NOT :blocked)
+          (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+          ;; Set user attribute for sandbox filter
+          (t2/update! :model/User (mt/user->id :rasta) {:login_attributes {"cat" 50}})
+          (try
+            (testing "Legacy sandboxed user should see filtered data, not all rows"
+              ;; There are 100 venues total, but only 10 in category 50
+              (let [result (mt/user-http-request :rasta :post 202 "dataset"
+                                                 (mt/mbql-query venues {:aggregation [[:count]]}))]
+                (is (= [[10]]
+                       (mt/rows result))
+                    "User should only see 10 venues (filtered by category_id = 50), not all 100")))
+            (finally
+              ;; Clean up user attributes
+              (t2/update! :model/User (mt/user->id :rasta) {:login_attributes nil}))))))))
+
+;;; ------------------------------------------------ End of Legacy sandbox tests ------------------------------------------------

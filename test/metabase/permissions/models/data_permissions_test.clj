@@ -14,24 +14,75 @@
 
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
-    (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
-      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service}]
-      :blocked         [:perms/view-data #{:legacy-no-self-service :blocked}]
-      :blocked         [:perms/view-data #{:blocked}]
-      nil              [:perms/view-data #{}])))
+    (mt/with-premium-features #{}
+      (are [expected args] (= expected (apply data-perms/coalesce args))
+        :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+        :unrestricted  [:perms/view-data #{:unrestricted :sandboxed :impersonated :legacy-no-self-service :blocked}]
+        :unrestricted  [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+        ;; without any premium features, sandboxed and impersonated permissions are equivalent to blocked
+        :blocked       [:perms/view-data #{:sandboxed :impersonated :legacy-no-self-service :blocked}]
+        :blocked       [:perms/view-data #{:sandboxed :blocked}]
+        :blocked       [:perms/view-data #{:sandboxed}]
+        :blocked       [:perms/view-data #{:impersonated :legacy-no-self-service :blocked}]
+        :blocked       [:perms/view-data #{:impersonated :blocked}]
+        :blocked       [:perms/view-data #{:impersonated}]
+        :blocked       [:perms/view-data #{:legacy-no-self-service :blocked}]
+        :blocked       [:perms/view-data #{:blocked}]
+        nil            [:perms/view-data #{}]))))
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
+    ;; :unrestricted is most permissive
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :sandboxed))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :impersonated))
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
     (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
+    ;; :sandboxed is second most permissive (without feature flag)
+    (mt/with-premium-features #{}
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :sandboxed))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :legacy-no-self-service))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :blocked)))
+    ;; :impersonated is third most permissive (without feature flag)
+    (mt/with-premium-features #{}
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :impersonated :unrestricted)))
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :impersonated :sandboxed)))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :impersonated))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :legacy-no-self-service))
+      (is (data-perms/at-least-as-permissive? :perms/view-data :impersonated :blocked)))
+    ;; :legacy-no-self-service is fourth most permissive
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :sandboxed)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :impersonated)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
     (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
+    ;; :blocked is least permissive
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :sandboxed)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :impersonated)))
     (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
     (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
+
+(deftest at-least-as-permissive?-with-feature-flags-test
+  (testing "Without feature flags, :sandboxed and :impersonated are NOT at least as permissive as :unrestricted"
+    (mt/with-premium-features #{}
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :sandboxed :unrestricted)))
+      (is (not (data-perms/at-least-as-permissive? :perms/view-data :impersonated :unrestricted))))))
+
+(deftest sandboxed-impersonated-permission-oss-invariant-test
+  (testing "INVARIANT: Without the appropriate features, :sandboxed/:impersonated are treated as :blocked"
+    (mt/with-premium-features #{}
+      (testing "coalesce treats :sandboxed as :blocked when :sandboxes feature is disabled"
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:sandboxed})))
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:sandboxed :legacy-no-self-service})))
+        (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :sandboxed}))))
+
+      (testing "coalesce treats :impersonated as :blocked when :advanced-permissions feature is disabled"
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:impersonated})))
+        (is (= :blocked (data-perms/coalesce :perms/view-data #{:impersonated :legacy-no-self-service})))
+        (is (= :unrestricted (data-perms/coalesce :perms/view-data #{:unrestricted :impersonated})))))))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
@@ -47,11 +98,6 @@
           (is (= :no (perm-value :perms/create-queries)))
           (data-perms/set-database-permission! group-id database-id :perms/create-queries :query-builder)
           (is (= :query-builder (perm-value :perms/create-queries))))
-
-        (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :blocked"
-          (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
-          (is (= :blocked (perm-value :perms/view-data)))
-          (is (= :no (perm-value :perms/create-queries))))
 
         (testing "A database-level permission cannot be set to an invalid value"
           (is (thrown-with-msg?
@@ -126,6 +172,8 @@
 
         (testing "Setting block permissions at the database level clears table-level query query perms"
           (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
+          (data-perms/set-database-permission! group-id database-id :perms/create-queries :no)
+          (data-perms/set-database-permission! group-id database-id :perms/download-results :no)
           (is (= :no (create-queries-perm-value nil)))
           (is (nil?  (create-queries-perm-value table-id-1)))
           (is (nil?  (create-queries-perm-value table-id-2)))
@@ -147,6 +195,8 @@
 
             ;; Now set view-data to :blocked for table-id-1 only
             (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked})
+            (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :no})
+            (data-perms/set-table-permissions! group-id :perms/download-results {table-id-1 :no})
 
             ;; Verify that create-queries and download-results are set to :no for table-id-1
             (is (= :no (create-queries-perm-value table-id-1)))
@@ -248,7 +298,8 @@
                    :model/PermissionsGroupMembership {}                {:user_id  user-id
                                                                         :group_id group-id-1}
                    :model/Database                   {database-id :id} {}
-                   :model/Table                      {table-id-1 :id}  {:db_id database-id}]
+                   :model/Table                      {table-id-1 :id}  {:db_id database-id}
+                   :model/Table                      _other-table      {:db_id database-id}]
       ;; Revoke All Users perms so that it doesn't override perms in the new groups
       (mt/with-no-data-perms-for-all-users!
         (data-perms/set-database-permission! group-id-1 database-id :perms/view-data :blocked)
@@ -354,10 +405,12 @@
                                                                 :schema "PUBLIC"}
                  :model/Table            {table-id-3 :id}      {:db_id database-id-2
                                                                 :schema nil}]
+    ;; initialize permissions
+    (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :no)
+    (data-perms/set-database-permission! group-id-1 database-id-2 :perms/create-queries :no)
+    (data-perms/set-database-permission! group-id-1 database-id-1 :perms/view-data :blocked)
+    (data-perms/set-database-permission! group-id-1 database-id-2 :perms/view-data :blocked)
     (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
-      ;; Clear the default permissions for the groups
-      (t2/delete! :model/DataPermissions :group_id group-id-1)
-      (t2/delete! :model/DataPermissions :group_id group-id-2)
       (testing "Data and query permissions can be fetched as a graph"
         (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :query-builder-and-native)
         (data-perms/set-database-permission! group-id-1 database-id-2 :perms/create-queries :no)
@@ -372,9 +425,7 @@
                                {table-id-1 :unrestricted
                                 table-id-2 :legacy-no-self-service}}
                               :perms/create-queries :query-builder-and-native}
-               database-id-2 {:perms/view-data
-                              {""
-                               {table-id-3 :unrestricted}}
+               database-id-2 {:perms/view-data :unrestricted
                               :perms/create-queries :no}}
               group-id-2
               {database-id-1 {:perms/view-data
@@ -391,43 +442,38 @@
               {database-id-1 {:perms/manage-table-metadata
                               {"PUBLIC"
                                {table-id-1 :yes}}}
-               database-id-2 {:perms/download-results
-                              {""
-                               {table-id-3 :one-million-rows}}
+               database-id-2 {:perms/download-results :one-million-rows
                               :perms/manage-database :yes}}}
              (data-perms.graph/data-permissions-graph))))
 
       (testing "Data permissions graph can be filtered by group ID, database ID, and permission type"
-        (is (= {group-id-1
-                {database-id-1 {:perms/view-data
-                                {"PUBLIC"
-                                 {table-id-1 :unrestricted
-                                  table-id-2 :legacy-no-self-service}}
-                                :perms/create-queries :query-builder-and-native
-                                :perms/manage-table-metadata
-                                {"PUBLIC"
-                                 {table-id-1 :yes}}}
-                 database-id-2 {:perms/view-data
-                                {""
-                                 {table-id-3 :unrestricted}}
-                                :perms/download-results
-                                {""
-                                 {table-id-3 :one-million-rows}}
-                                :perms/manage-database :yes
-                                :perms/create-queries :no}}}
-               (data-perms.graph/data-permissions-graph :group-id group-id-1)))
+        (is (partial= {group-id-1
+                       {database-id-1 {:perms/view-data
+                                       {"PUBLIC"
+                                        {table-id-1 :unrestricted
+                                         table-id-2 :legacy-no-self-service}}
+                                       :perms/create-queries :query-builder-and-native
+                                       :perms/manage-table-metadata {"PUBLIC"
+                                                                     {table-id-1 :yes}}
+                                       :perms/download-results :one-million-rows
+                                       :perms/manage-database :no}
+                        database-id-2 {:perms/view-data :unrestricted
+                                       :perms/download-results :one-million-rows
+                                       :perms/manage-database :yes
+                                       :perms/create-queries :no}}}
+                      (data-perms.graph/data-permissions-graph :group-id group-id-1)))
 
-        (is (= {group-id-1
-                {database-id-1 {:perms/view-data
-                                {"PUBLIC"
-                                 {table-id-1 :unrestricted
-                                  table-id-2 :legacy-no-self-service}}
-                                :perms/create-queries :query-builder-and-native
-                                :perms/manage-table-metadata
-                                {"PUBLIC"
-                                 {table-id-1 :yes}}}}}
-               (data-perms.graph/data-permissions-graph :group-id group-id-1
-                                                        :db-id database-id-1)))
+        (is (partial= {group-id-1
+                       {database-id-1 {:perms/view-data
+                                       {"PUBLIC"
+                                        {table-id-1 :unrestricted
+                                         table-id-2 :legacy-no-self-service}}
+                                       :perms/create-queries :query-builder-and-native
+                                       :perms/manage-table-metadata
+                                       {"PUBLIC"
+                                        {table-id-1 :yes}}}}}
+                      (data-perms.graph/data-permissions-graph :group-id group-id-1
+                                                               :db-id database-id-1)))
 
         (is (= {group-id-1
                 {database-id-1 {:perms/view-data
@@ -551,9 +597,7 @@
           (data-perms/set-table-permission! group-id-2 table-id-3 :perms/create-queries :no)
 
           ;; Group 3: native permissions (most permissive)
-          (data-perms/set-table-permission! group-id-3 table-id-1 :perms/create-queries :query-builder-and-native)
-          (data-perms/set-table-permission! group-id-3 table-id-2 :perms/create-queries :no)
-          (data-perms/set-table-permission! group-id-3 table-id-3 :perms/create-queries :no)
+          (data-perms/set-database-permission! group-id-3 database-id :perms/create-queries :query-builder-and-native)
 
           ;; Should return the most permissive permission found across all tables and groups
           (is (= :query-builder-and-native

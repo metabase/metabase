@@ -181,14 +181,8 @@
   (mi/perms-objects-set (card-instance source-card-id) :read))
 
 (defn- preprocess-query [query]
-  ;; ignore the current user for the purposes of calculating the permissions required to run the query. Don't want the
-  ;; preprocessing to fail because current user doesn't have permissions to run it when we're not trying to run it at
-  ;; all
-  (let [do-as-admin (requiring-resolve 'metabase.request.core/do-as-admin)
-        preprocess  (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
-    (do-as-admin
-     (^:once fn* []
-       (preprocess query)))))
+  (let [preprocess  (requiring-resolve 'metabase.query-processor.preprocess/preprocess)]
+    (preprocess query)))
 
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
@@ -206,8 +200,9 @@
 (defn- native-query-perms
   [query]
   (merge
-   {:perms/create-queries :query-builder-and-native
-    :perms/view-data      :unrestricted}
+   {:perms/create-queries :query-builder-and-native}
+   (when-not (:impersonation/role query)
+     {:perms/view-data :unrestricted})
    (when-let [card-ids (referenced-card-ids query)]
      {:paths (into #{}
                    (mapcat (fn [card-id]
@@ -389,8 +384,11 @@
   `throw-exceptions?` to `false`).
 
   If the [:gtap :query-permissions/perms] path is present in the query, these perms are implicitly granted to the current user."
-  [{{gtap-perms :gtaps} :query-permissions/perms, :as query} required-perms & {:keys [throw-exceptions?]
-                                                                               :or   {throw-exceptions? true}}]
+  [{{gtap-perms :gtaps} :query-permissions/perms,
+    :as query}
+   required-perms
+   & {:keys [throw-exceptions?]
+      :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]

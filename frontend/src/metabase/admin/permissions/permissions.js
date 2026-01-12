@@ -10,6 +10,7 @@ import {
   updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
+  upgradeViewPermissionsIfNeeded,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { Groups } from "metabase/entities/groups";
@@ -389,11 +390,8 @@ const dataPermissions = handleActions(
           );
         }
 
-        if (
-          permissionInfo.type === DataPermissionType.NATIVE &&
-          PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
-        ) {
-          state = PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded(
+        if (permissionInfo.type === DataPermissionType.NATIVE) {
+          state = upgradeViewPermissionsIfNeeded(
             state,
             groupId,
             entityId,

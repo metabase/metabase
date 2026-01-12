@@ -34,41 +34,42 @@
             {:view-data :impersonated}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :unrestricted}}}
+            {:perms/view-data :impersonated}}}
 
           {group-id-1
            {database-id-1
             {:view-data {"PUBLIC" {table-id-1 :sandboxed}}}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :unrestricted}}}
+            {:perms/view-data :sandboxed}}}
 
-          ;; Setting block permissions for the database also removes query access and download access
           {group-id-1
            {database-id-1
             {:view-data :blocked}}}
           {group-id-1
            {database-id-1
-            {:perms/view-data :blocked
-             :perms/create-queries :no
-             :perms/download-results :no}}})))))
+            {:perms/view-data :blocked}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
+                                                                  :schema "PUBLIC"}
+                   :model/Table            {table-id-2 :id}      {:db_id database-id-1
                                                                   :schema "PUBLIC"}]
       (testing "data permissions can be updated via API-style graph"
-        (are [api-graph db-graph] (= db-graph
-                                     (do
+        (are [api-graph db-graph] (=? db-graph
+                                      (do
                                        ;; Clear default perms for the group
-                                       (t2/delete! :model/DataPermissions :group_id group-id-1)
-                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
-                                       (data-perms.graph/data-permissions-graph :group-id group-id-1)))
+                                        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/view-data :blocked)
+                                        (data-perms/set-database-permission! group-id-1 database-id-1 :perms/create-queries :no)
+                                        (data-perms.graph/update-data-perms-graph! {:groups api-graph})
+                                        (data-perms.graph/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
-            {:create-queries :query-builder-and-native}}}
+            {:create-queries :query-builder-and-native
+             :view-data :unrestricted}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries :query-builder-and-native
@@ -76,7 +77,8 @@
 
           {group-id-1
            {database-id-1
-            {:create-queries :query-builder}}}
+            {:create-queries :query-builder
+             :view-data :unrestricted}}}
           {group-id-1
            {database-id-1
             {:perms/create-queries :query-builder
@@ -91,33 +93,37 @@
 
           {group-id-1
            {database-id-1
-            {:create-queries {"PUBLIC" :query-builder}}}}
+            {:create-queries {"PUBLIC" :query-builder}
+             :view-data {"PUBLIC" :unrestricted}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+            {:perms/create-queries :query-builder
+             :perms/view-data :unrestricted}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" :no}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}}
+            {:perms/create-queries :no}}}
 
           {group-id-1
            {database-id-1
-            {:create-queries {"PUBLIC" {table-id-1 :query-builder}}}}}
+            {:create-queries {"PUBLIC" {table-id-1 :query-builder}}
+             :view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder}}
-             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted}}}}}
+            {:perms/create-queries {"PUBLIC" {table-id-1 :query-builder
+                                              table-id-2 :no}}
+             :perms/view-data {"PUBLIC" {table-id-1 :unrestricted
+                                         table-id-2 :blocked}}}}}
 
           {group-id-1
            {database-id-1
             {:create-queries {"PUBLIC" {table-id-1 :no}}}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
+            {:perms/create-queries :no}}})))))
 
 (deftest update-db-level-data-access-permissions!-test
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
@@ -179,15 +185,14 @@
                                ""
                                {table-id-3 :legacy-no-self-service}}}}}
 
-          ;; Setting block permissions for the database also sets :create-queries and :download-results to :no
           {group-id-1
            {database-id-1
-            {:view-data :blocked}}}
+            {:view-data :blocked
+             :create-queries :query-builder}}}
           {group-id-1
            {database-id-1
-            {:perms/create-queries :no
-             :perms/view-data :blocked
-             :perms/download-results :no}}})))))
+            {:perms/view-data :blocked
+             :perms/create-queries :query-builder}}})))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
@@ -481,7 +486,8 @@
                                     :create-queries :query-builder}))))
               (testing "revoke schema perms"
                 (is (= nil
-                       (set-perms! {:view-data :blocked}))))
+                       (set-perms! {:view-data :blocked
+                                    :create-queries :no}))))
               (testing "disallow blocked data access + native querying"
                 (is (thrown-with-msg?
                      Exception

@@ -9,7 +9,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.published-tables :as published-tables]
    [metabase.permissions.schema :as permissions.schema]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -64,12 +64,27 @@
   (-> permissions.schema/data-permissions perm-type :values first))
 
 (mu/defn at-least-as-permissive?
-  "Returns true if value1 is at least as permissive as value2 for the given permission type."
+  "Returns true if value1 is at least as permissive as value2 for the given permission type.
+
+   For :perms/view-data, :sandboxed and :impersonated are treated as equivalent to :unrestricted
+   when their respective feature flags are enabled. This is because sandboxed/impersonated users
+   have valid access to the data (just filtered or via impersonation)."
   [perm-type :- ::permissions.schema/data-permission-type
    value1    :- ::permissions.schema/data-permission-value
    value2    :- ::permissions.schema/data-permission-value]
-  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)]
-    (<= (.indexOf values value1)
+  (let [^PersistentVector values (-> permissions.schema/data-permissions perm-type :values)
+        ;; For view-data permission, sandboxed/impersonated users have valid access (just filtered)
+        effective-value1 (if (= perm-type :perms/view-data)
+                           (cond
+                             (and (= value1 :sandboxed) (premium-features/enable-sandboxes?))
+                             :unrestricted
+
+                             (and (= value1 :impersonated) (premium-features/enable-advanced-permissions?))
+                             :unrestricted
+
+                             :else value1)
+                           value1)]
+    (<= (.indexOf values effective-value1)
         (.indexOf values value2))))
 
 (def ^:private model-by-perm-type
@@ -160,6 +175,11 @@
   []
   @*sandboxes-for-user*)
 
+(defn sandboxed-table?
+  "Returns `true` if the table is in an enforced sandbox for this user."
+  [table-or-id]
+  (contains? (into #{} (map :table_id (sandboxes-for-user))) (u/the-id table-or-id)))
+
 (defmacro with-relevant-permissions-for-user
   "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
   in this namespace."
@@ -215,10 +235,23 @@
 (defmethod coalesce :perms/view-data
   [perm-type perm-values]
   (let [perm-values (set perm-values)
+        ;; IMPORTANT: Without the appropriate feature flags, :sandboxed and :impersonated are equivalent to :blocked.
+        ;; :sandboxed requires :sandboxes feature
+        perm-values (if (and (perm-values :sandboxed)
+                             (not (premium-features/enable-sandboxes?)))
+                      (-> perm-values (disj :sandboxed) (conj :blocked))
+                      perm-values)
+        ;; :impersonated requires :advanced-permissions feature
+        perm-values (if (and (perm-values :impersonated)
+                             (not (premium-features/enable-advanced-permissions?)))
+                      (-> perm-values (disj :impersonated) (conj :blocked))
+                      perm-values)
         ordered-values (-> permissions.schema/data-permissions perm-type :values)]
     (if (and (perm-values :blocked)
-             (not (perm-values :unrestricted)))
-      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted
+             (not (perm-values :unrestricted))
+             (not (perm-values :sandboxed))
+             (not (perm-values :impersonated)))
+      ;; Block in one group overrides `legacy-no-self-service` in another, but not unrestricted, sandboxed, or impersonated
       :blocked
       (first (filter perm-values ordered-values)))))
 
@@ -596,18 +629,9 @@
         new-perm {:perm_type  perm-type
                   :group_id   group-id
                   :perm_value value
-                  :db_id      db-id}
-        recursive-calls (cond-> []
-                          (and (= perm-type :perms/create-queries) (not= value :no))
-                          (conj (build-database-permission group-or-id db-or-id :perms/view-data :unrestricted))
-
-                          (= [:perms/view-data :blocked] [perm-type value])
-                          (into [(build-database-permission group-or-id db-or-id :perms/create-queries :no)
-                                 (build-database-permission group-or-id db-or-id :perms/download-results :no)]))]
-    (apply merge-with concat
-           {:to-delete existing-perms
-            :to-insert [new-perm]}
-           recursive-calls)))
+                  :db_id      db-id}]
+    {:to-delete existing-perms
+     :to-insert [new-perm]}))
 
 (def ^:private permission-batch-size 1000)
 
@@ -747,28 +771,6 @@
             :schema_name schema}))
        table-perms))
 
-(declare build-table-permissions)
-
-(defn- build-recursive-table-calls
-  "Builds recursive calls for related permissions based on permission type and table permissions."
-  [group-or-id perm-type table-perms]
-  (cond-> []
-    (= perm-type :perms/create-queries)
-    (conj (build-table-permissions group-or-id :perms/view-data
-                                   (-> (filter (fn [[_ value]] (not= value :no)) table-perms)
-                                       keys
-                                       (zipmap (repeat :unrestricted)))))
-
-    (= :perms/view-data perm-type)
-    (into [(build-table-permissions group-or-id :perms/create-queries
-                                    (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
-                                        keys
-                                        (zipmap (repeat :no))))
-           (build-table-permissions group-or-id :perms/download-results
-                                    (-> (filter (fn [[_ value]] (= value :blocked)) table-perms)
-                                        keys
-                                        (zipmap (repeat :no))))])))
-
 (defn- handle-existing-db-permission
   "Handles the case where there's an existing database-level permission."
   [existing-db-perm values group-id perm-type db-id table-ids new-perms]
@@ -799,8 +801,17 @@
                                             :db_id       db-id
                                             :table_id    (:id table)
                                             :schema_name (:schema table)}))))]
-        {:to-delete [existing-db-perm]
-         :to-insert (concat other-new-perms new-perms)}))))
+        (if (and (not (seq other-new-perms))
+                 (= (count values) 1))
+          ;; in this case, we are setting this permission for *EVERY* table in the database to a single value.
+          ;; Therefore, we need to create a *database*-level permission!
+          {:to-insert [{:perm_type perm-type
+                        :group_id group-id
+                        :perm_value (first values)
+                        :db_id db-id}]
+           :to-delete [existing-db-perm]}
+          {:to-delete [existing-db-perm]
+           :to-insert (concat other-new-perms new-perms)})))))
 
 (defn- handle-no-db-permission
   "Handles the case where there's no existing database-level permission."
@@ -813,8 +824,10 @@
                                                  [:not= :table_id nil]
                                                  [:not [:in :table_id table-ids]]]})
         existing-table-values (set (map :perm_value existing-table-perms))]
-    (if (and (= (count existing-table-values) 1)
-             (= values existing-table-values))
+    (if (or (and (empty? existing-table-values)
+                 (= (count values) 1))
+            (and (= (count existing-table-values) 1)
+                 (= values existing-table-values)))
       ;; If all tables would have the same permissions after we update these ones, we can replace all of the table
       ;; perms with a DB-level perm instead.
       (build-database-permission group-id db-id perm-type (first values))
@@ -850,28 +863,26 @@
       (when (not= (count (set (map :db_id new-perms))) 1)
         (throw (ex-info (tru "All tables must belong to the same database.")
                         {:new-perms new-perms})))
-      (apply merge-with concat
-             (if-let [existing-db-perm (t2/select-one :model/DataPermissions
-                                                      {:where
-                                                       [:and
-                                                        [:= :perm_type (u/qualified-name perm-type)]
-                                                        [:= :group_id  group-id]
-                                                        [:= :db_id     db-id]
-                                                        [:= :table_id  nil]]})]
-               (handle-existing-db-permission existing-db-perm
-                                              values
-                                              group-id
-                                              perm-type
-                                              db-id
-                                              table-ids
-                                              new-perms)
-               (handle-no-db-permission group-id
-                                        db-id
-                                        perm-type
-                                        table-ids
-                                        values
-                                        new-perms))
-             (build-recursive-table-calls group-or-id perm-type table-perms)))))
+      (if-let [existing-db-perm (t2/select-one :model/DataPermissions
+                                               {:where
+                                                [:and
+                                                 [:= :perm_type (u/qualified-name perm-type)]
+                                                 [:= :group_id  group-id]
+                                                 [:= :db_id     db-id]
+                                                 [:= :table_id  nil]]})]
+        (handle-existing-db-permission existing-db-perm
+                                       values
+                                       group-id
+                                       perm-type
+                                       db-id
+                                       table-ids
+                                       new-perms)
+        (handle-no-db-permission group-id
+                                 db-id
+                                 perm-type
+                                 table-ids
+                                 values
+                                 new-perms)))))
 
 (mu/defn- set-table-permissions-internal!
   "For internal use only - assumes that the cluster lock has already been obtained and sets table permissions."

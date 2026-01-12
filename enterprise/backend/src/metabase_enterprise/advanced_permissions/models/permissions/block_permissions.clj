@@ -25,14 +25,22 @@
   ;; block.
   :feature :none
   [{database-id :database :as query}]
-  (let [{:keys [table-ids]} (query-perms/query->source-ids query)
-        table-permissions   (map (partial perms/table-permission-for-user api/*current-user-id*
-                                          :perms/view-data database-id)
-                                 table-ids)]
+  (let [{:keys [table-ids]}
+        (query-perms/query->source-ids query)
+        other-table-permissions   (into #{}
+                                        (map (fn [table-id]
+                                               (perms/table-permission-for-user api/*current-user-id*
+                                                                                :perms/view-data
+                                                                                database-id
+                                                                                table-id))
+                                             table-ids))
+        full-db-permission (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id)]
     ;; Make sure we don't have block permissions for the entire DB or individual tables referenced by the query.
     (or
-     (not= :blocked (perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-     (= #{:unrestricted} (set table-permissions))
+     ;; if the lowest perm for the entire DB isn't blocked, we're good to go
+     (not= :blocked full-db-permission)
+     ;; if we know what specific tables we're querying and none of them are blocked, we're also good to go
+     (and (seq other-table-permissions) (every? #{:unrestricted :sandboxed :impersonated} other-table-permissions))
      (throw-block-permissions-exception))
 
     true))

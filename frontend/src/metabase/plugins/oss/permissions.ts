@@ -12,7 +12,6 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Dataset,
   Group,
-  GroupPermissions,
   GroupsPermissions,
   User,
 } from "metabase-types/api";
@@ -73,8 +72,8 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION =
 const getDefaultDataPermissions = () => ({
   permissionsPayloadExtraSelectors: [],
   hasChanges: [],
-  upgradeViewPermissionsIfNeeded: null,
   shouldRestrictNativeQueryPermissions: () => false,
+  hasOrthogonalPermissions: false,
 });
 
 export const PLUGIN_DATA_PERMISSIONS: {
@@ -90,17 +89,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     value: DataPermissionValue,
     database: Database,
   ) => boolean;
-
-  upgradeViewPermissionsIfNeeded:
-    | ((
-        permissions: GroupsPermissions,
-        groupId: number,
-        entityId: EntityId,
-        value: any,
-        database: Database,
-        permission: DataPermission,
-      ) => GroupPermissions)
-    | null;
+  hasOrthogonalPermissions: boolean;
 } = getDefaultDataPermissions();
 
 const getDefaultAdminUserMenuItems = (): Array<
