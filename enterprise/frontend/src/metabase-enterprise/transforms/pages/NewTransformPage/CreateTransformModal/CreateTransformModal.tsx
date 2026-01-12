@@ -130,11 +130,17 @@ function CreateTransformForm({
 
   const supportsSchemas = database && hasFeature(database, "schemas");
 
-  const { initialValues, validationSchema: defaultSchema, createTransform } =
-    useCreateTransform(schemas, defaultValues);
+  const {
+    initialValues,
+    validationSchema: defaultSchema,
+    createTransform,
+  } = useCreateTransform(schemas, defaultValues);
 
   const validationSchema = useMemo(
-    () => validationSchemaExtension ? defaultSchema.shape(validationSchemaExtension) : defaultSchema,
+    () =>
+      validationSchemaExtension
+        ? defaultSchema.shape(validationSchemaExtension)
+        : defaultSchema,
     [validationSchemaExtension, defaultSchema],
   );
 

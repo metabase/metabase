@@ -26,7 +26,7 @@ import type {
   WorkspaceTransform,
 } from "metabase-types/api";
 
-import { useTransformValidation } from "../TransformTab";
+import { useTransformValidation } from "../useTransformValidation";
 
 type UpdateTargetModalProps = {
   transform: WorkspaceTransform;

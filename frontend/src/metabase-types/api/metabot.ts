@@ -48,6 +48,7 @@ export type MetabotChatContext = {
   user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
   default_database_id?: number;
+  workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
 };

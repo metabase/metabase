@@ -69,10 +69,10 @@ export function PythonDataPicker({
   } = useListTablesQuery(
     database
       ? {
-        dbId: database,
-        include_hidden: false,
-        include_editable_data_model: true,
-      }
+          dbId: database,
+          include_hidden: false,
+          include_editable_data_model: true,
+        }
       : skipToken,
   );
 
@@ -255,7 +255,7 @@ function SelectionInput({
       selection.alias !== "" &&
       (!oldTable ||
         selection.alias !==
-        slugify(oldTable.name, usedAliases, selection.alias));
+          slugify(oldTable.name, usedAliases, selection.alias));
 
     const newAlias = wasOldAliasManuallySet
       ? selection.alias

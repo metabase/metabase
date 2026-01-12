@@ -2,18 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { createMockMetadata } from "__support__/metadata";
-import {
-  skipToken,
-  useGetTableQuery
-} from "metabase/api";
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { Box, Stack, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { useGetWorkspaceTransformQuery } from "metabase-enterprise/api";
-import type {
-  DatabaseId, DatasetQuery, TableId
-} from "metabase-types/api";
+import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
 
 import { useTablePreview } from "./useTablePreview";
 

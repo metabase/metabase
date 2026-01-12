@@ -636,7 +636,7 @@
    [:source :map]
    [:target :map]
    ;; Not yet calculated, see https://linear.app/metabase/issue/BOT-684/mark-stale-transforms-workspace-only
-   [:target_stale :boolean]
+   [:target_stale [:maybe :boolean]]
    [:workspace_id ::ws.t/appdb-id]
    [:creator_id [:maybe ::ws.t/appdb-id]]
    [:archived_at :any]

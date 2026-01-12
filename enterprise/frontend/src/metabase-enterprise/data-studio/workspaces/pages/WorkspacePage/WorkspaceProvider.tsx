@@ -39,7 +39,7 @@ export interface EditedTransform {
 export interface Tab {
   id: string;
   name: string;
-  type: "transform" | "table" | "preview";
+  type: "transform" | "table";
 }
 
 export interface TransformTab extends Tab {
@@ -70,13 +70,13 @@ export interface WorkspaceContextValue {
   removeOpenedTab: (tabId: string) => void;
   setOpenedTabs: (tabs: WorkspaceTab[]) => void;
   addOpenedTransform: (transform: Transform | WorkspaceTransformItem) => void;
-  removeOpenedTransform: (transformId: number) => void;
+  removeOpenedTransform: (transformId: string | number) => void;
   editedTransforms: Map<number | string, EditedTransform>;
   patchEditedTransform: (
     transformId: number,
     patch: Partial<EditedTransform>,
   ) => void;
-  removeEditedTransform: (transformId: number) => void;
+  removeEditedTransform: (transformId: string | number) => void;
   runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
   updateTab: <T extends WorkspaceTab>(tabId: string, patch: Partial<T>) => void;
@@ -102,7 +102,7 @@ interface WorkspaceState {
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
   editedTransforms: Map<number | string, EditedTransform>;
-  runTransforms: Set<number>;
+  runTransforms: Set<number | string>;
   unsavedTransforms: Transform[];
   nextUnsavedTransformIndex: number;
 }
@@ -339,7 +339,7 @@ export const WorkspaceProvider = ({
   );
 
   const removeOpenedTransform = useCallback(
-    (transformId: number) => {
+    (transformId: string | number) => {
       removeOpenedTab(`transform-${transformId}`);
     },
     [removeOpenedTab],
@@ -395,7 +395,7 @@ export const WorkspaceProvider = ({
   );
 
   const removeEditedTransform = useCallback(
-    (transformId: number) => {
+    (transformId: string | number) => {
       updateWorkspaceState((state) => {
         const newEditedTransforms = new Map(state.editedTransforms);
         newEditedTransforms.delete(transformId);
@@ -499,7 +499,10 @@ export const WorkspaceProvider = ({
   const hasTransformEdits = useCallback(
     (originalTransform: Transform | WorkspaceTransform) => {
       // Check if it's an unsaved transform (negative IDs, always has changes)
-      if (typeof originalTransform.id === "number" && originalTransform.id < 0) {
+      if (
+        typeof originalTransform.id === "number" &&
+        originalTransform.id < 0
+      ) {
         return true;
       }
 
@@ -510,7 +513,7 @@ export const WorkspaceProvider = ({
 
       // We don't store workspace transforms sources in the provider, so we can't compare
       // changes. So we just mark all "dirty" workspace transforms as edited.
-      if ('ref_id' in originalTransform && edited) {
+      if ("ref_id" in originalTransform && edited) {
         return true;
       }
 

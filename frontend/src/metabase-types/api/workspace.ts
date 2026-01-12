@@ -224,52 +224,80 @@ export type WorkspaceProblemType =
 
 export type WorkspaceProblemSeverity = "error" | "warning" | "info";
 
-// Problem data structures (examples from API response)
-export type WorkspaceProblemDataRemovedField = {
-  output: {
-    db_id: DatabaseId;
-    producer?: {
-      type: "workspace-transform" | "external-transform";
-      id: string | number;
-    };
-    global: {
-      schema: string;
-      table: string;
-    };
-    isolated?: {
-      db_id?: DatabaseId;
-      schema: string;
-      table: string;
-    };
-  };
-  transform: {
-    type: "workspace-transform" | "external-transform";
-    id: string | number;
-    name?: string;
-  };
-  "bad-refs": Array<{
-    type: "field";
-    data: {
-      id: number;
-      name: string;
-      base_type: string;
-    };
+// Base types for problem data structures
+export type WorkspaceProblemOutput = {
+  db_id: DatabaseId;
+  schema: string | null;
+  table: string;
+};
+
+export type WorkspaceProblemTransformRef = {
+  type: "workspace-transform" | "external-transform";
+  id: string | number;
+  name?: string;
+};
+
+export type WorkspaceProblemBadRef = {
+  type:
+    | "validate/missing-column"
+    | "validate/missing-table-alias"
+    | "validate/duplicate-column"
+    | "validate/syntax-error"
+    | "validate/validation-exception-error";
+  name?: string; // Column/alias name (for missing-column, missing-table-alias, duplicate-column)
+  message?: string; // Error message (for validation-exception-error)
+};
+
+// Problem data structures matching backend implementation
+// See enterprise/backend/src/metabase_enterprise/workspaces/validation.clj
+
+// unused/not-run: Output hasn't been created, nothing depends on it
+export type WorkspaceProblemDataUnusedNotRun = {
+  output: WorkspaceProblemOutput;
+  transform: WorkspaceProblemTransformRef;
+};
+
+// internal-downstream/not-run: Output hasn't been created, other workspace transforms need it
+export type WorkspaceProblemDataInternalDownstreamNotRun = {
+  output: WorkspaceProblemOutput;
+  transform: WorkspaceProblemTransformRef;
+  dependents: Array<{
+    type: "workspace-transform";
+    id: string;
   }>;
 };
 
-export type WorkspaceProblemDataNotRun = {
-  output: {
-    isolated?: {
-      db_id: DatabaseId;
-      schema: string;
-      table: string;
-    };
-  };
-  transform: {
-    type: "workspace-transform" | "external-transform";
-    id: string | number;
-  };
+// external-downstream/not-run: Output hasn't been created, external transforms depend on it
+export type WorkspaceProblemDataExternalDownstreamNotRun = {
+  output: WorkspaceProblemOutput;
+  transform: WorkspaceProblemTransformRef;
+  dependents: Array<{
+    type: "external-transform";
+    id: number;
+    name: string;
+  }>;
 };
+
+// external-downstream/removed-field: Field was removed that external transforms reference
+export type WorkspaceProblemDataRemovedField = {
+  output: WorkspaceProblemOutput;
+  transform: {
+    type: "external-transform";
+    id: number;
+    name: string;
+  };
+  "bad-refs": WorkspaceProblemBadRef[];
+};
+
+export type KnownWorkspaceProblemData =
+  | WorkspaceProblemDataUnusedNotRun
+  | WorkspaceProblemDataInternalDownstreamNotRun
+  | WorkspaceProblemDataExternalDownstreamNotRun
+  | WorkspaceProblemDataRemovedField;
+
+export type WorkspaceProblemData =
+  | KnownWorkspaceProblemData
+  | Record<string, unknown>; // For future problem types not yet implemented
 
 export type WorkspaceProblem = {
   category: WorkspaceProblemCategory;
@@ -277,10 +305,7 @@ export type WorkspaceProblem = {
   severity: WorkspaceProblemSeverity;
   block_merge: boolean;
   description: string;
-  data:
-    | WorkspaceProblemDataRemovedField
-    | WorkspaceProblemDataNotRun
-    | Record<string, unknown>; // Varies by problem type
+  data: WorkspaceProblemData;
 };
 
 export type WorkspaceLogEntryId = number;

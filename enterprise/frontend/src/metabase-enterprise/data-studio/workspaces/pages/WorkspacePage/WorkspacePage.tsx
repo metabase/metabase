@@ -18,7 +18,7 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { Sortable } from "metabase/common/components/Sortable";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
@@ -55,11 +55,13 @@ import { RunWorkspaceMenu } from "metabase-enterprise/data-studio/workspaces/com
 import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
 import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
 import type {
+  MetabotConverstationState,
   MetabotState,
-  MetabotStoreState,
+  MetabotSuggestedTransform,
 } from "metabase-enterprise/metabot/state";
 import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
 import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
+import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import { NAME_MAX_LENGTH } from "metabase-enterprise/transforms/constants";
 import type { DraftTransformSource, Transform } from "metabase-types/api";
 
@@ -90,15 +92,14 @@ type WorkspacePageProps = {
 };
 
 type MetabotConversationSnapshot = Pick<
-  MetabotStoreState,
+  MetabotConverstationState,
   | "messages"
   | "history"
   | "state"
-  | "reactions"
   | "activeToolCalls"
   | "errorMessages"
   | "conversationId"
->;
+> & { suggestedTransforms: MetabotSuggestedTransform[] };
 
 function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const dispatch = useDispatch();
@@ -242,7 +243,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   );
 
   // Metabot
-  const metabotState = useSelector(getMetabotState);
+  const metabotState = useEnterpriseSelector(getMetabotState);
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
   const {
@@ -356,15 +357,19 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     }
 
     return () => {
-      snapshots.set(id, {
-        messages: metabotStateRef.current.messages,
-        history: metabotStateRef.current.history,
-        state: metabotStateRef.current.state,
-        reactions: metabotStateRef.current.reactions,
-        activeToolCalls: metabotStateRef.current.activeToolCalls,
-        errorMessages: metabotStateRef.current.errorMessages,
-        conversationId: metabotStateRef.current.conversationId,
-      });
+      const convo = metabotStateRef.current.conversations["omnibot"];
+      if (convo) {
+        snapshots.set(id, {
+          messages: convo.messages,
+          history: convo.history,
+          state: convo.state,
+          activeToolCalls: convo.activeToolCalls,
+          errorMessages: convo.errorMessages,
+          conversationId: convo.conversationId,
+          suggestedTransforms:
+            metabotStateRef.current.reactions.suggestedTransforms,
+        });
+      }
       resetMetabotConversation();
     };
   }, [id, dispatch, resetMetabotConversation]);
@@ -739,9 +744,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                               name={
                                 tab.type === "transform"
                                   ? "pivot_table"
-                                  : tab.type === "preview"
-                                    ? "eye"
-                                    : "table"
+                                  : "table"
                               }
                               aria-hidden
                             />
@@ -824,7 +827,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
                     workspaceTransforms={workspaceTransforms}
                     isDisabled={isArchived}
                     onChange={handleTransformChange}
-                    onOpenTransform={(transform) => {
+                    onSaveTransform={(transform) => {
                       // After adding first transform to a workspace,
                       // show 'Setup' tab with initialization status log.
                       if (isWorkspaceUninitialized(workspace)) {
@@ -934,13 +937,14 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
 export const WorkspacePage = ({ params }: WorkspacePageProps) => {
   const workspaceId = Number(params.workspaceId);
   const { search } = useLocation();
+  const transformId = new URLSearchParams(search).get("transformId");
 
   return (
     <WorkspaceProvider workspaceId={workspaceId}>
       <WorkspacePageContent
         key={workspaceId}
         params={params}
-        transformId={new URLSearchParams(search).get("transformId")}
+        transformId={transformId ?? undefined}
       />
     </WorkspaceProvider>
   );

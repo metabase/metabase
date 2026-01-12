@@ -4721,6 +4721,13 @@ databaseChangeLog:
       id: v58.2026-01-09T07:51:02
       author: christruter
       comment: Add access_granted column to workspace_input
+      validCheckSum: ANY
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: workspace_input
+                columnName: access_granted
       changes:
         - addColumn:
             tableName: workspace_input
