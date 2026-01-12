@@ -3,7 +3,6 @@ import type { HTMLAttributes, PropsWithChildren } from "react";
 import { Group } from "metabase/ui";
 
 type Props = HTMLAttributes<HTMLDivElement> & {
-  className?: string;
   "data-testid"?: string;
 };
 
