@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [metabase.lib.binning :as lib.binning]
+   [metabase.lib.column-key :as lib.column-key]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
@@ -43,7 +44,8 @@
    (some->> (breakouts query stage-number)
             (mapv (mu/fn [a-ref :- [:or :mbql.clause/field :mbql.clause/expression]]
                     (-> (lib.metadata.calculation/metadata query stage-number a-ref)
-                        (assoc :lib/breakout? true)))))))
+                        (assoc :lib/breakout?  true
+                               :lib/column-key (lib.column-key/breakout-key a-ref))))))))
 
 (mu/defn breakout :- ::lib.schema/query
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
@@ -155,7 +157,7 @@
                                                         {:generous? true})]
      (let [binning (lib.binning/binning breakout-ref)
            bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
-       (cond-> column
+       (cond-> (assoc column :lib/column-key (lib.column-key/breakout-key breakout-ref))
          binning (lib.binning/with-binning binning)
          bucket  (lib.temporal-bucket/with-temporal-bucket bucket))))))
 

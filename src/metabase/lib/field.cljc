@@ -7,7 +7,6 @@
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
    [metabase.lib.computed :as lib.computed]
-   [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.expression :as lib.expression]
    [metabase.lib.field.resolution :as lib.field.resolution]
@@ -720,25 +719,26 @@
         ;; Then drop any redundant :fields clauses.
         lib.remove-replace/normalize-fields-clauses)))
 
-;; TODO: Refactor this away? The special handling for aggregations is strange.
-(mu/defn find-visible-column-for-ref :- [:maybe ::lib.schema.metadata/column]
-  "Return the visible column in `query` at `stage-number` referenced by `field-ref`. If `stage-number` is omitted, the
-  last stage is used. This is currently only meant for use with `:field` clauses."
-  ([query field-ref]
-   (find-visible-column-for-ref query -1 field-ref))
+(mu/defn find-column-for-name :- [:maybe ::lib.schema.metadata/column]
+  "Find the first column in `columns` whose `:name` matches `column-name`.
+  Matching is case-insensitive.
 
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    field-ref    :- some?]
-   (let [;; not 100% sure why, but [[lib.metadata.calculation/visible-columns]] doesn't seem to return aggregations,
-         ;; so we have to use [[lib.metadata.calculation/returned-columns]] instead.
-         columns ((if (= (lib.dispatch/dispatch-value field-ref) :aggregation)
-                    lib.metadata.calculation/returned-columns
-                    lib.metadata.calculation/visible-columns)
-                  query stage-number)]
-     (lib.equality/find-matching-column query stage-number field-ref columns))))
+  Optionally pass a `pred` function for additional filtering; only columns
+  satisfying `(pred column)` will be considered."
+  ([columns :- [:sequential ::lib.schema.metadata/column]
+    column-name :- :string]
+   (find-column-for-name columns column-name nil))
 
-(mu/defn json-field? :- :boolean
+  ([columns :- [:sequential ::lib.schema.metadata/column]
+    column-name :- :string
+    pred :- [:maybe ifn?]]
+   (let [lower-name (u/lower-case-en column-name)]
+     (m/find-first (fn [col]
+                     (and (= (u/lower-case-en (:name col)) lower-name)
+                          (or (nil? pred) (pred col))))
+                   columns))))
+
+(defn json-field?
   "Return true if field is a JSON field, false if not."
   [field :- [:maybe ::lib.schema.metadata/column]]
   (some? (:nfc-path field)))

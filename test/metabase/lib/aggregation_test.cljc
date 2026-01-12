@@ -811,7 +811,10 @@
                        lib/available-aggregation-operators
                        (m/find-first #(= (:short %) :sum))
                        lib/aggregation-operator-columns
-                       (map #(dissoc % :lib/source-uuid))))]
+                       (map #(-> %
+                                 (dissoc :lib/source-uuid)
+                                 (assoc-in [:lib/column-key :column.expression/uuid]
+                                           "11111111-2222-3333-4444-555555555555")))))]
       (is (= (clean built-query)
              (clean converted-query))))))
 
