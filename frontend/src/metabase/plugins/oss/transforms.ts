@@ -45,6 +45,7 @@ export type TransformsPlugin = {
 export type PythonTransformEditorUiOptions = {
   canChangeDatabase?: boolean;
   readOnly?: boolean;
+  hidePreview?: boolean;
 };
 
 export type PythonTransformEditorProps = {

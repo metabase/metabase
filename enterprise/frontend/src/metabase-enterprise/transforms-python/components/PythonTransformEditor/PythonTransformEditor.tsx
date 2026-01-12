@@ -86,14 +86,16 @@ export function PythonTransformEditor({
           source={source.body}
           proposedSource={proposedSource?.body}
           onChange={handleScriptChange}
-          withDebugger
+          withDebugger={!uiOptions?.hidePreview}
           onAcceptProposed={onAcceptProposed}
           onRejectProposed={onRejectProposed}
         />
-        <PythonEditorResults
-          isRunning={isRunning}
-          executionResult={executionResult}
-        />
+        {!uiOptions?.hidePreview && (
+          <PythonEditorResults
+            isRunning={isRunning}
+            executionResult={executionResult}
+          />
+        )}
       </Stack>
     </Flex>
   );
