@@ -21,7 +21,7 @@ export function LocationCell({ node }: LocationCellProps) {
   return (
     <Flex align="center" gap="sm" miw={0}>
       {icon && <FixedSizeIcon name={icon} />}
-      <Ellipsified>{path}</Ellipsified>
+      <Ellipsified tooltipProps={{ openDelay: 300 }}>{path}</Ellipsified>
     </Flex>
   );
 }

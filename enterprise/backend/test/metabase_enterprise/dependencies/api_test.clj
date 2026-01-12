@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
+   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1462,14 +1463,18 @@
 (deftest ^:sequential unreferenced-archived-measure-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
     (mt/with-premium-features #{:dependencies}
-      (let [products-id (mt/id :products)
-            price-field-id (mt/id :products :price)]
+      (let [mp (mt/metadata-provider)
+            products-id (mt/id :products)
+            products (lib.metadata/table mp products-id)
+            price (lib.metadata/field mp (mt/id :products :price))
+            measure-definition (-> (lib/query mp products)
+                                   (lib/aggregate (lib/sum price)))]
         (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
                                                                                       :table_id products-id
-                                                                                      :definition {:aggregation [[:sum [:field price-field-id nil]]]}}
+                                                                                      :definition measure-definition}
                        :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
                                                                                       :table_id products-id
-                                                                                      :definition {:aggregation [[:sum [:field price-field-id nil]]]}
+                                                                                      :definition measure-definition
                                                                                       :archived true}]
           (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
           (events/publish-event! :event/measure-create {:object archived-measure :user-id (mt/user->id :crowberto)})
@@ -1484,3 +1489,88 @@
                   measure-ids (set (map :id response))]
               (is (contains? measure-ids unreffed-measure-id))
               (is (contains? measure-ids archived-measure-id)))))))))
+
+(deftest ^:sequential unreferenced-personal-collection-card-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with include_personal_collections parameter for cards"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (let [mp (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))]
+          (mt/with-temp [:model/User {user-id :id} {}
+                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                   :name "Test Personal Collection"}
+                         :model/Collection {sub-personal-coll-id :id} {:name "Sub Personal Collection"
+                                                                       :location (format "/%d/" personal-coll-id)}
+                         :model/Card {card-in-personal :id} {:name "Card in Personal - personalcolltest"
+                                                             :type :question
+                                                             :collection_id personal-coll-id
+                                                             :dataset_query (lib/query mp products)}
+                         :model/Card {card-in-sub-personal :id} {:name "Card in Sub Personal - personalcolltest"
+                                                                 :type :question
+                                                                 :collection_id sub-personal-coll-id
+                                                                 :dataset_query (lib/query mp products)}
+                         :model/Card {card-regular :id} {:name "Card Regular - personalcolltest"
+                                                         :type :question
+                                                         :dataset_query (lib/query mp products)}]
+            (while (#'dependencies.backfill/backfill-dependencies!))
+            (testing "include_personal_collections=false (default) excludes cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest")
+                    card-ids (set (map :id response))]
+                (is (not (contains? card-ids card-in-personal)))
+                (is (not (contains? card-ids card-in-sub-personal)))
+                (is (contains? card-ids card-regular))))
+            (testing "include_personal_collections=true includes cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest&include_personal_collections=true")
+                    card-ids (set (map :id response))]
+                (is (contains? card-ids card-in-personal))
+                (is (contains? card-ids card-in-sub-personal))
+                (is (contains? card-ids card-regular))))))))))
+
+(deftest ^:sequential unreferenced-personal-collection-dashboard-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced with include_personal_collections parameter for dashboards"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (mt/with-temp [:model/User {user-id :id} {}
+                       :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                 :name "Test Personal Collection"}
+                       :model/Dashboard {dash-in-personal :id} {:name "Dashboard in Personal - personalcolltest"
+                                                                :collection_id personal-coll-id}
+                       :model/Dashboard {dash-regular :id} {:name "Dashboard Regular - personalcolltest"}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (testing "include_personal_collections=false (default) excludes dashboards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest")
+                  dashboard-ids (set (map :id response))]
+              (is (not (contains? dashboard-ids dash-in-personal)))
+              (is (contains? dashboard-ids dash-regular))))
+          (testing "include_personal_collections=true includes dashboards in personal collections"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest&include_personal_collections=true")
+                  dashboard-ids (set (map :id response))]
+              (is (contains? dashboard-ids dash-in-personal))
+              (is (contains? dashboard-ids dash-regular)))))))))
+
+(deftest ^:sequential broken-personal-collection-card-test
+  (testing "GET /api/ee/dependencies/graph/broken with include_personal_collections parameter"
+    (mt/with-premium-features #{:dependencies}
+      (binding [collection/*allow-deleting-personal-collections* true]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/User {user-id :id} {}
+                         :model/Collection {personal-coll-id :id} {:personal_owner_id user-id
+                                                                   :name "Test Personal Collection"}
+                         :model/Card {broken-in-personal :id} {:name "Broken Card in Personal - personalcollbrokentest"
+                                                               :type :question
+                                                               :collection_id personal-coll-id
+                                                               :dataset_query (lib/native-query mp "not a query")}
+                         :model/Card {broken-regular :id} {:name "Broken Card Regular - personalcollbrokentest"
+                                                           :type :question
+                                                           :dataset_query (lib/native-query mp "not a query")}]
+            (while (> (dependencies.findings/analyze-batch! :card 50) 0))
+            (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
+                    card-ids (set (map :id response))]
+                (is (not (contains? card-ids broken-in-personal)))
+                (is (contains? card-ids broken-regular))))
+            (testing "include_personal_collections=true includes broken cards in personal collections"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest&include_personal_collections=true")
+                    card-ids (set (map :id response))]
+                (is (contains? card-ids broken-in-personal))
+                (is (contains? card-ids broken-regular))))))))))
