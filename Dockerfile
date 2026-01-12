@@ -24,10 +24,7 @@ COPY . .
 RUN git config --global --add safe.directory /home/node
 
 # install frontend dependencies
-RUN curl -fsSL https://bun.sh/install | bash && \
-    export BUN_INSTALL="$HOME/.bun" && \
-    export PATH="$BUN_INSTALL/bin:$PATH" && \
-    bun install --frozen-lockfile
+RUN npm install -g bun && bun install --frozen-lockfile
 
 RUN INTERACTIVE=false CI=true MB_EDITION=$MB_EDITION bin/build.sh :version ${VERSION}
 
