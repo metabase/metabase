@@ -1,6 +1,7 @@
 (ns metabase-enterprise.dependencies.models.analysis-finding
   (:require
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
+   [metabase-enterprise.dependencies.models.analysis-finding-error :as deps.analysis-finding-error]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
@@ -24,11 +25,24 @@
   This should be incremented when the analysis logic changes.
   The background task will re-analyze anything with out-of-date analyses.
 
-  This generally shouldn't be rebound in real code, but making it dynamic is convenient for testing"
-  3)
+  This generally shouldn't be rebound in real code, but making it dynamic is convenient for testing.
+
+  Version history:
+  - 3: Initial version
+  - 4: Added source entity tracking in analysis_finding_error table"
+  4)
+
+(defn- error->finding-error-row
+  "Convert an error from find-bad-refs-with-source to a row for analysis_finding_error table."
+  [error]
+  {:error-type          (:type error)
+   :error-detail        (or (:name error) (:message error))
+   :source-entity-type  (:source-entity-type error)
+   :source-entity-id    (:source-entity-id error)})
 
 (defn upsert-analysis!
-  "Given the details of an AnalysisFinding row, upsert the data into the actual db."
+  "Given the details of an AnalysisFinding row, upsert the data into the actual db.
+   Also writes individual errors to the analysis_finding_error table with source information."
   [type instance-id result finding-details]
   (let [update {:analyzed_at (mi/now)
                 :analysis_version *current-analysis-finding-version*
@@ -42,7 +56,12 @@
       (t2/insert! :model/AnalysisFinding
                   (assoc update
                          :analyzed_entity_type type
-                         :analyzed_entity_id instance-id)))))
+                         :analyzed_entity_id instance-id)))
+    ;; Also write individual errors to the new analysis_finding_error table
+    (deps.analysis-finding-error/replace-errors-for-entity!
+     type
+     instance-id
+     (map error->finding-error-row finding-details))))
 
 (defn instances-for-analysis
   "Find a batch of instances with missing or outdated AnalysisFindings"
