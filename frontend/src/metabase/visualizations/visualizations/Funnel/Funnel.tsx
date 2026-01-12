@@ -31,7 +31,7 @@ import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { funnelToBarTransform } from "metabase/visualizations/visualizations/Funnel/funnel-bar-transform";
 import type { DatasetData, RawSeries, RowValue } from "metabase-types/api";
 
-import FunnelNormal from "../../components/FunnelNormal";
+import { FunnelNormal } from "../../components/FunnelNormal";
 
 import type { FunnelRow } from "./types";
 
