@@ -136,6 +136,8 @@
                      proposed-errors (-> base-provider
                                          (metadata-provider edits :dependents deps)
                                          check-query-soundness)
+                     ;; Clear the cache before baseline check to avoid pollution from the proposed check.
+                     _ (lib.metadata.protocols/clear-cache! base-provider)
                      new-errors (diff-with-baseline base-provider proposed-errors)]
                  (merge errors new-errors)))
              {} by-db)))
@@ -150,6 +152,10 @@
    (let [proposed-errors (-> base-provider
                              (metadata-provider edits :graph graph)
                              check-query-soundness)]
+     ;; Clear the cache before baseline check to avoid pollution from the proposed check.
+     ;; The overriding provider delegates cache operations to base-provider, so cached values
+     ;; from the proposed check could affect the baseline check.
+     (lib.metadata.protocols/clear-cache! base-provider)
      (diff-with-baseline base-provider proposed-errors))))
 
 (mu/defn downstream-errors-from-proposed-edits :- ::errors-map
