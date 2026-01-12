@@ -17,6 +17,7 @@ import {
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
+  ActionIcon,
   Box,
   Center,
   FixedSizeIcon,
@@ -27,7 +28,6 @@ import {
   Stack,
   Text,
   Tooltip,
-  UnstyledButton,
 } from "metabase/ui";
 
 import S from "./DataStudioLayout.module.css";
@@ -268,54 +268,58 @@ function DataStudioNavbarToggle({
   onNavbarToggle,
 }: DataStudioNavbarToggleProps) {
   return (
-    <Flex justify="space-between" mb={2}>
+    <Flex
+      align="center"
+      justify="space-between"
+      mb="0.75rem"
+      mt="sm"
+      mr="0.125rem"
+    >
       <Group gap="sm">
-        <Tooltip
-          label={getSidebarTooltipLabel(isNavbarOpened)}
-          withArrow
-          offset={-12}
-          openDelay={1000}
+        <Box
+          className={cx(S.logoWrapper, { [S.navbarClosed]: !isNavbarOpened })}
         >
-          <UnstyledButton
-            className={cx(S.toggle, {
-              [S.hoverButton]: !isNavbarOpened,
-              [S.disablePointer]: isNavbarOpened,
-            })}
-            p="0.5rem"
-            bdrs="md"
-            onClick={() => !isNavbarOpened && onNavbarToggle(true)}
-          >
-            <img
-              alt="Data Studio Logo"
-              className={cx(S.hideOnHover, S.logo)}
-              src={DataStudioLogo}
+          <img
+            alt={t`Data Studio Logo`}
+            className={S.logo}
+            src={DataStudioLogo}
+          />
+          {!isNavbarOpened && (
+            <ToggleActionIcon
+              isNavbarOpened={isNavbarOpened}
+              onNavbarToggle={onNavbarToggle}
             />
-            <FixedSizeIcon
-              name="sidebar_open"
-              className={S.showOnHover}
-              c="text-secondary"
-            />
-          </UnstyledButton>
-        </Tooltip>
+          )}
+        </Box>
         {isNavbarOpened && <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />}
       </Group>
       {isNavbarOpened && (
-        <Tooltip
-          label={getSidebarTooltipLabel(isNavbarOpened)}
-          withArrow
-          offset={-12}
-          openDelay={1000}
-        >
-          <UnstyledButton
-            className={S.toggle}
-            p="0.5rem"
-            bdrs="md"
-            onClick={() => onNavbarToggle(false)}
-          >
-            <FixedSizeIcon name="sidebar_closed" c="text-secondary" />
-          </UnstyledButton>
-        </Tooltip>
+        <ToggleActionIcon isNavbarOpened onNavbarToggle={onNavbarToggle} />
       )}
     </Flex>
+  );
+}
+
+type ToggleActionIconProps = DataStudioNavbarToggleProps & {
+  className?: string;
+};
+
+function ToggleActionIcon(props: ToggleActionIconProps) {
+  const { isNavbarOpened, onNavbarToggle } = props;
+  const label = getSidebarTooltipLabel(isNavbarOpened);
+
+  return (
+    <Tooltip label={label} openDelay={1000}>
+      <ActionIcon
+        aria-label={label}
+        className={S.toggle}
+        onClick={() => onNavbarToggle(!isNavbarOpened)}
+      >
+        <FixedSizeIcon
+          name={isNavbarOpened ? "sidebar_closed" : "sidebar_open"}
+          c="text-secondary"
+        />
+      </ActionIcon>
+    </Tooltip>
   );
 }
