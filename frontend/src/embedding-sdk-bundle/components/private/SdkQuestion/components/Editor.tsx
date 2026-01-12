@@ -76,7 +76,19 @@ export const Editor = ({
   return (
     question &&
     (Lib.queryDisplayInfo(question.query()).isNative ? (
-      <QueryEditorAndResults question={question} />
+      <QueryEditorAndResults
+        question={question}
+        hasVisualizeButton={hasVisualizeButton}
+        isDirty={isDirty}
+        updateQuestion={async (nextQuestion: Question) => {
+          console.log(nextQuestion.query());
+          await updateQuestion(nextQuestion, { run: false });
+        }}
+        runQuestionQuery={async () => {
+          onApply();
+          await queryQuestion();
+        }}
+      />
     ) : (
       <ScrollArea w="100%" h="100%">
         <QBNotebook

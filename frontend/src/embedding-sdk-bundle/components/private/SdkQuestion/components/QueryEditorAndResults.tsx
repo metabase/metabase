@@ -8,13 +8,24 @@ import { useQueryResults } from "metabase/querying/editor/hooks/use-query-result
 import { Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
 
 interface QueryEditorAndResultsProps {
   question: Question;
+  hasVisualizeButton?: boolean;
+  isDirty: boolean;
+  runQuestionQuery?: () => Promise<void>;
+  updateQuestion: (question: Question) => Promise<void>;
 }
 
 export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
-  const { question: initialQuestion } = props;
+  const {
+    question: initialQuestion,
+    hasVisualizeButton = true,
+    isDirty,
+    runQuestionQuery,
+    updateQuestion,
+  } = props;
 
   const [uiState, setUiState] = useState(getInitialUiState);
   const [currentQuestion, setCurrentQuestion] = useState(initialQuestion);
@@ -46,6 +57,16 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
         onAcceptProposed={handleRunQuery}
         onRejectProposed={() => {}}
       />
+      {hasVisualizeButton && runQuestionQuery && (
+        <VisualizeButton
+          question={currentQuestion}
+          isDirty={isDirty}
+          isRunnable={isRunnable}
+          isResultDirty
+          updateQuestion={updateQuestion}
+          runQuestionQuery={runQuestionQuery}
+        />
+      )}
     </Stack>
   );
 }
