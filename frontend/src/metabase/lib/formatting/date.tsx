@@ -845,125 +845,134 @@ function getWeekFormatSpecsWithDateStyle(
   dateStyle: string,
   dateSeparator: string = "/",
 ): DateRangeFormatSpec[] {
-  const sep = dateSeparator;
   const M = DATE_RANGE_MONTH_PLACEHOLDER;
   const D = "D";
   const Y = "YYYY";
 
   // Handle numeric date formats (M/D/YYYY, D/M/YYYY, YYYY/M/D)
-  if (dateStyle.includes("/")) {
-    if (dateStyle === "M/D/YYYY") {
-      return [
-        {
-          same: "month",
-          format: [`M${sep}D`, `D, ${Y}`],
-          removedYearFormat: [`M${sep}D`, D],
-          tests: {
-            verbose: {
-              output: "1/1–7, 2017",
-              input: ["2017-01-01", "2017-01-07"],
-            },
+  if (dateStyle === "M/D/YYYY") {
+    return [
+      {
+        same: "month",
+        format: [`M${dateSeparator}D`, `D, ${Y}`],
+        removedYearFormat: [`M${dateSeparator}D`, D],
+        tests: {
+          verbose: {
+            output: "1/1–7, 2017",
+            input: ["2017-01-01", "2017-01-07"],
           },
         },
-        {
-          same: "year",
-          format: [`M${sep}D`, `M${sep}D, ${Y}`],
-          removedYearFormat: [`M${sep}D`, `M${sep}D`],
-          dashPad: " ",
-          tests: {
-            verbose: {
-              output: "1/1 – 5/14, 2017",
-              input: ["2017-01-01", "2017-05-14"],
-            },
+      },
+      {
+        same: "year",
+        format: [`M${dateSeparator}D`, `M${dateSeparator}D, ${Y}`],
+        removedYearFormat: [`M${dateSeparator}D`, `M${dateSeparator}D`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1 – 5/14, 2017",
+            input: ["2017-01-01", "2017-05-14"],
           },
         },
-        {
-          same: null,
-          format: [`M${sep}D${sep}${Y}`, `M${sep}D${sep}${Y}`],
-          dashPad: " ",
-          tests: {
-            verbose: {
-              output: "1/1/2017 – 2/4/2018",
-              input: ["2017-01-01", "2018-02-04"],
-            },
+      },
+      {
+        same: null,
+        format: [
+          `M${dateSeparator}D${dateSeparator}${Y}`,
+          `M${dateSeparator}D${dateSeparator}${Y}`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1/2017 – 2/4/2018",
+            input: ["2017-01-01", "2018-02-04"],
           },
         },
-      ];
-    } else if (dateStyle === "D/M/YYYY") {
-      return [
-        {
-          same: "month",
-          format: [`D${sep}M`, `D, ${Y}`],
-          removedYearFormat: [`D${sep}M`, D],
-          tests: {
-            verbose: {
-              output: "1/1–7, 2017",
-              input: ["2017-01-01", "2017-01-07"],
-            },
+      },
+    ];
+  } else if (dateStyle === "D/M/YYYY") {
+    return [
+      {
+        same: "month",
+        format: [`D${dateSeparator}M`, `D, ${Y}`],
+        removedYearFormat: [`D${dateSeparator}M`, D],
+        tests: {
+          verbose: {
+            output: "1/1–7, 2017",
+            input: ["2017-01-01", "2017-01-07"],
           },
         },
-        {
-          same: "year",
-          format: [`D${sep}M`, `D${sep}M, ${Y}`],
-          removedYearFormat: [`D${sep}M`, `D${sep}M`],
-          dashPad: " ",
-          tests: {
-            verbose: {
-              output: "1/1 – 14/5, 2017",
-              input: ["2017-01-01", "2017-05-14"],
-            },
+      },
+      {
+        same: "year",
+        format: [`D${dateSeparator}M`, `D${dateSeparator}M, ${Y}`],
+        removedYearFormat: [`D${dateSeparator}M`, `D${dateSeparator}M`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1 – 14/5, 2017",
+            input: ["2017-01-01", "2017-05-14"],
           },
         },
-        {
-          same: null,
-          format: [`D${sep}M${sep}${Y}`, `D${sep}M${sep}${Y}`],
-          dashPad: " ",
-          tests: {
-            verbose: {
-              output: "1/1/2017 – 4/2/2018",
-              input: ["2017-01-01", "2018-02-04"],
-            },
+      },
+      {
+        same: null,
+        format: [
+          `D${dateSeparator}M${dateSeparator}${Y}`,
+          `D${dateSeparator}M${dateSeparator}${Y}`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1/2017 – 4/2/2018",
+            input: ["2017-01-01", "2018-02-04"],
           },
         },
-      ];
-    } else if (dateStyle === "YYYY/M/D") {
-      return [
-        {
-          same: "month",
-          format: [`${Y}${sep}M${sep}D`, D],
-          removedYearFormat: [`M${sep}D`, D],
-          tests: {
-            verbose: {
-              output: "2017/1/1–7",
-              input: ["2017-01-01", "2017-01-07"],
-            },
+      },
+    ];
+  } else if (dateStyle === "YYYY/M/D") {
+    return [
+      {
+        same: "month",
+        format: [`${Y}${dateSeparator}M${dateSeparator}D`, D],
+        removedYearFormat: [`M${dateSeparator}D`, D],
+        tests: {
+          verbose: {
+            output: "2017/1/1–7",
+            input: ["2017-01-01", "2017-01-07"],
           },
         },
-        {
-          same: "year",
-          format: [`${Y}${sep}M${sep}D`, `M${sep}D`],
-          removedYearFormat: [`M${sep}D`, `M${sep}D`],
-          dashPad: " ",
-          tests: {
-            verbose: {
-              output: "2017/1/1 – 5/14",
-              input: ["2017-01-01", "2017-05-14"],
-            },
+      },
+      {
+        same: "year",
+        format: [
+          `${Y}${dateSeparator}M${dateSeparator}D`,
+          `M${dateSeparator}D`,
+        ],
+        removedYearFormat: [`M${dateSeparator}D`, `M${dateSeparator}D`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "2017/1/1 – 5/14",
+            input: ["2017-01-01", "2017-05-14"],
           },
         },
-        {
-          same: null,
-          format: [`${Y}${sep}M${sep}D`, `${Y}${sep}M${sep}D`],
-          dashPad: " ",
-          tests: {
-            verbose: {
-              output: "2017/1/1 – 2018/2/4",
-              input: ["2017-01-01", "2018-02-04"],
-            },
+      },
+      {
+        same: null,
+        format: [
+          `${Y}${dateSeparator}M${dateSeparator}D`,
+          `${Y}${dateSeparator}M${dateSeparator}D`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "2017/1/1 – 2018/2/4",
+            input: ["2017-01-01", "2018-02-04"],
           },
         },
-      ];
-    }
+      },
+    ];
   }
 
   // Handle text-based date formats
