@@ -42,45 +42,62 @@ export const Default: StoryFn = () => (
   </VisualizationWrapper>
 );
 
-export const WithFormatting = () => {
-  const settings = {
-    "scalar.segments": [
-      createMockSegmentFormatting({
-        label: "bad",
-        min: 0,
-        max: 50,
-        color: "#F00",
-      }),
-      createMockSegmentFormatting({
-        label: "good",
-        min: 50,
-        max: 100,
-        color: "#0F0",
-      }),
-    ],
-  };
+const SETTINGS = {
+  "scalar.segments": [
+    createMockSegmentFormatting({
+      label: "bad",
+      min: 0,
+      max: 50,
+      color: "#F00",
+    }),
+    createMockSegmentFormatting({
+      label: "good",
+      min: 50,
+      max: 100,
+      color: "#0F0",
+    }),
+  ],
+};
 
+export const WithFormatting = () => {
   return (
     <VisualizationWrapper>
       <Box h={500}>
         <Visualization
           rawSeries={MOCK_SERIES}
           width={500}
-          settings={settings}
+          settings={SETTINGS}
         />
       </Box>
     </VisualizationWrapper>
   );
 };
 
-WithFormatting.play = async ({
+export const WithFormattingHover = () => {
+  return (
+    <VisualizationWrapper>
+      <Box h={500}>
+        <Visualization
+          rawSeries={MOCK_SERIES}
+          width={500}
+          settings={SETTINGS}
+        />
+      </Box>
+    </VisualizationWrapper>
+  );
+};
+
+WithFormattingHover.play = async ({
   canvasElement,
 }: {
   canvasElement: HTMLCanvasElement;
 }) => {
   const asyncCallback = createAsyncCallback();
   const canvas = within(canvasElement.parentElement as HTMLElement);
-  await userEvent.hover(await canvas.findByTestId("scalar-value"));
+  const value = await canvas.findByTestId("scalar-value");
+
+  value.classList.add("pseudo-hover");
+  await userEvent.hover(value);
 
   await expect(await canvas.findByRole("tooltip")).toBeInTheDocument();
 
