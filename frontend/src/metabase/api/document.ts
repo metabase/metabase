@@ -1,6 +1,7 @@
 import { Api } from "metabase/api/api";
 import { idTag, listTag } from "metabase/api/tags";
 import type {
+  CopyDocumentRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
@@ -56,6 +57,14 @@ export const documentApi = Api.injectEndpoints({
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
     }),
+    copyDocument: builder.mutation<Document, CopyDocumentRequest>({
+      query: ({ id, ...body }) => ({
+        method: "POST",
+        url: `/api/document/${id}/copy`,
+        body,
+      }),
+      invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
+    }),
     listPublicDocuments: builder.query<GetPublicDocument[], void>({
       query: () => ({
         method: "GET",
@@ -106,6 +115,8 @@ export const {
   useGetDocumentQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
+  useDeleteDocumentMutation,
+  useCopyDocumentMutation,
   useListPublicDocumentsQuery,
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,
