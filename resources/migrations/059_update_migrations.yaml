@@ -240,6 +240,153 @@ databaseChangeLog:
               - column:
                   name: result
 
+  - changeSet:
+      id: v59.2026-01-12T15:30:00
+      author: bronsa
+      comment: Create task_run table for grouping related tasks
+      changes:
+        - createTable:
+            tableName: task_run
+            remarks: Groups related tasks from a single operation (subscription, alert, sync, fingerprint)
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: run_type
+                  type: varchar(32)
+                  remarks: "Type of run: subscription, alert, sync, fingerprint"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_type
+                  type: varchar(32)
+                  remarks: "Type of associated entity: database, card, dashboard"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: entity_id
+                  type: int
+                  remarks: ID of associated entity
+                  constraints:
+                    nullable: false
+              - column:
+                  name: started_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ended_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: varchar(21)
+                  remarks: "Overall status: started, success, failed"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: task_run
+
+  - changeSet:
+      id: v59.2026-01-12T15:30:01
+      author: bronsa
+      comment: Add composite index on task_run for type/entity queries
+      changes:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_type_entity
+            columns:
+              - column:
+                  name: run_type
+              - column:
+                  name: entity_type
+              - column:
+                  name: entity_id
+      rollback:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_type_entity
+
+  - changeSet:
+      id: v59.2026-01-12T15:30:02
+      author: bronsa
+      comment: Add index on task_run.started_at for ordering
+      changes:
+        - createIndex:
+            tableName: task_run
+            indexName: idx_task_run_started_at
+            columns:
+              - column:
+                  name: started_at
+                  descending: true
+      rollback:
+        - dropIndex:
+            tableName: task_run
+            indexName: idx_task_run_started_at
+
+  - changeSet:
+      id: v59.2026-01-12T15:30:03
+      author: bronsa
+      comment: Add run_id column to task_history
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: run_id
+                  type: int
+                  remarks: FK to task_run - groups tasks belonging to the same run
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: task_history
+            columnName: run_id
+
+  - changeSet:
+      id: v59.2026-01-12T15:30:05
+      author: bronsa
+      comment: Add foreign key from task_history.run_id to task_run
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: task_history
+            baseColumnNames: run_id
+            referencedTableName: task_run
+            referencedColumnNames: id
+            constraintName: fk_task_history_run_id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: task_history
+            constraintName: fk_task_history_run_id
+
+  - changeSet:
+      id: v59.2026-01-12T15:30:06
+      author: bronsa
+      comment: Add logs column to task_history for captured execution logs
+      changes:
+        - addColumn:
+            tableName: task_history
+            columns:
+              - column:
+                  name: logs
+                  type: ${text.type}
+                  remarks: JSON array of captured log messages during task execution
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: task_history
+            columnName: logs
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
