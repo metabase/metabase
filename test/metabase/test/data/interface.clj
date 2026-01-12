@@ -534,6 +534,18 @@
   [_driver]
   false)
 
+(defmulti fake-sync-schema
+  "Return the schema name to use for fake sync Table rows. Returns nil by default.
+   Drivers opting into fake sync (via [[use-fake-sync?]]) should implement this to return
+   their session schema name."
+  {:arglists '([driver]), :added "0.56.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod fake-sync-schema ::test-extensions
+  [_driver]
+  nil)
+
 (defmulti track-dataset
   "Track the creation or the usage of the database.
    This is useful for cloud databases with shared state to ensure that stale datasets can be deleted and dataset loading is not done more than necessary. Pairs well with [[dataset-already-loaded?]]"

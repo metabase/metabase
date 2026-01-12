@@ -12,7 +12,6 @@
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
    [metabase.test.data.interface :as tx]
-   [metabase.test.data.sql :as sql.tx]
    [metabase.test.initialize :as initialize]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
@@ -124,7 +123,7 @@
 (defn- insert-fake-table!
   "Insert a Table row from a TableDefinition, returning the inserted table."
   [driver db {:keys [table-name table-comment]} database-name]
-  (let [schema         (sql.tx/session-schema driver)
+  (let [schema         (tx/fake-sync-schema driver)
         qualified-name (tx/db-qualified-table-name database-name table-name)]
     (first
      (t2/insert-returning-instances! :model/Table
@@ -140,10 +139,12 @@
 
 (defn- insert-fake-field!
   "Insert a Field row from a FieldDefinition, returning the inserted field."
-  [driver table position {:keys [field-name base-type semantic-type visibility-type
-                                 effective-type coercion-strategy field-comment fk]}
+  [_driver table position {:keys [field-name base-type semantic-type visibility-type
+                                  effective-type coercion-strategy field-comment fk]}
    & {:keys [pk?]}]
-  (let [database-type (sql.tx/field-base-type->sql-type driver base-type)
+  ;; For fake sync, database_type is informational only - tests query by base_type.
+  ;; Using (name base-type) as a simple placeholder avoids the sql.tx dependency.
+  (let [database-type (name base-type)
         ;; Set semantic type based on context
         semantic-type (cond
                         pk?        :type/PK
@@ -168,10 +169,10 @@
 (defn- insert-pk-field!
   "Insert the auto-generated PK field (id) for a table."
   [driver table]
-  (let [pk-field-name (sql.tx/pk-field-name driver)
-        pk-base-type  (tx/id-field-type driver)]
+  ;; pk-field-name is "id" for all SQL drivers that would use fake sync
+  (let [pk-base-type (tx/id-field-type driver)]
     (insert-fake-field! driver table 0
-                        {:field-name pk-field-name
+                        {:field-name "id"
                          :base-type  pk-base-type}
                         :pk? true)))
 

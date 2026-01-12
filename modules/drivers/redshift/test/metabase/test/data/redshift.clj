@@ -324,6 +324,10 @@
   ;; true
   false)
 
+(defmethod tx/fake-sync-schema :redshift
+  [_driver]
+  (unique-session-schema))
+
 (defn drop-if-exists-and-create-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]

@@ -66,6 +66,12 @@ This defers the require to runtime, after all namespaces are loaded.
 ### Key Files to Modify
 - `test/metabase/test/data/impl/get_or_create.clj` - Remove `sql.tx` require, use `requiring-resolve`
 
+### Start the REPL Server
+```bash
+source ~/dv/mb/mb-test-env/test.env && DRIVERS=redshift clj -A:dev:drivers:drivers-dev:ee:ee-dev:cider/nrepl
+```
+This starts a REPL on port 7888 with Redshift driver loaded and test credentials from `test.env`.
+
 ### Test Command
 ```bash
 clj-nrepl-eval -p 7888 --timeout 300000 <<'EOF'
@@ -83,12 +89,40 @@ Once the cyclic dependency is fixed, the test might still fail due to:
 
 ---
 
-## Iteration 1 - [pending]
+## Iteration 1 - 2026-01-12
+
 ### Tried
-- (not started yet)
+- Fixed cyclic dependency **without** using `requiring-resolve` (cleaner approach)
+- Added `tx/fake-sync-schema` multimethod to `interface.clj`
+- Simplified fake sync to not need `sql.tx` at all
+
 ### Observed
--
+- The cycle was: `test.data → test.data.impl → get_or_create → sql → test.data`
+- `get_or_create.clj` was using 3 functions from `sql.tx`:
+  1. `session-schema` - for Table schema column
+  2. `field-base-type->sql-type` - for Field database_type column
+  3. `pk-field-name` - for PK field name
+
 ### Hypothesis
--
+- We don't actually need the exact SQL types for fake sync
+- `database_type` is informational only - tests query by `base_type`
+- `pk-field-name` is always "id" for SQL drivers that would use fake sync
+- Schema can come from a new multimethod in `interface.clj` (no cycle)
+
+### Solution Implemented
+1. **Added `tx/fake-sync-schema`** to `interface.clj` (default returns `nil`)
+2. **Redshift implements `tx/fake-sync-schema`** returning `(unique-session-schema)`
+3. **Simplified `get_or_create.clj`**:
+   - `insert-fake-table!`: Uses `(tx/fake-sync-schema driver)`
+   - `insert-fake-field!`: Uses `(name base-type)` for `database_type`
+   - `insert-pk-field!`: Hardcodes `"id"`
+
+### Validated
+- Namespaces load without cyclic dependency error ✓
+- `(tx/fake-sync-schema :h2)` returns `nil` ✓
+- `(tx/fake-sync-schema :redshift)` returns unique session schema ✓
+
 ### Next
-- Fix cyclic dependency using `requiring-resolve` for `sql.tx` functions
+- Enable fake sync: change `(tx/use-fake-sync? :redshift)` to return `true`
+- Run `remark-test` to see if fake sync produces correct Tables/Fields
+- Debug any missing metadata issues
