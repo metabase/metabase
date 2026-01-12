@@ -12,7 +12,6 @@ const COLS = [
     table_id: 2,
     binning_info: {
       binning_strategy: "num-bins",
-      strategy: "num-bins",
       min_value: 0,
       max_value: 100,
       num_bins: 8,

@@ -119,9 +119,13 @@ const hasNonMetricName = (col) => {
 };
 
 export const isDimension = (col) =>
-  col && (col.source !== "aggregation" || col.binning_info); // columns with binning_info are always dimensions (they represent categorical buckets)
+  col && (col.source !== "aggregation" || !!col.binning_info); // columns with binning_info are always dimensions (they represent categorical buckets)
 export const isMetric = (col) =>
-  col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
+  col &&
+  col.source !== "breakout" &&
+  isSummable(col) &&
+  !hasNonMetricName(col) &&
+  !col.binning_info;
 
 /**
  * @param {Field | DatasetColumn} field
