@@ -95,6 +95,8 @@
                               :metadata/table-existence-check         true
                               :transforms/python                      true
                               :transforms/table                       true
+                              ;; currently disabled as :describe-indexes is not supported
+                              :transforms/index-ddl                   false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true}]
@@ -1158,6 +1160,10 @@
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
   (driver-api/query-canceled-exception? :mysql e))
+
+(defmethod sql-jdbc/drop-index-sql :mysql [_ _schema table-name index-name]
+  (let [{quote-identifier :quote} (sql/get-dialect :mysql)]
+    (format "DROP INDEX %s ON %s" (quote-identifier (name index-name)) (quote-identifier (name table-name)))))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
