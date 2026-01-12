@@ -502,9 +502,8 @@ describe("scenarios > data studio > workspaces", () => {
       runTransformAndWaitForSuccess();
 
       // Open the transform table tab
-      Workspaces.openDataTab().then(() => {
-        cy.findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).should("be.visible").click();
-      });
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar().findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).should("be.visible").click();
 
       // Verify both tabs are open
       Workspaces.getWorkspaceContent().within(() => {
