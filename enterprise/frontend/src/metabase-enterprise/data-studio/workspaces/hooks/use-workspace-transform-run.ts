@@ -93,7 +93,7 @@ export function useWorkspaceTransformRun({
         : lastRunAt
           ? {
               id: -1,
-              status: lastRunStatus === "succeeded" ? "succeeded" : "failed",
+              status: lastRunStatus,
               start_time: lastRunAt,
               end_time: lastRunAt,
               message: lastRunMessage,

@@ -101,7 +101,7 @@ export type TransformTarget = TableTarget | TableIncrementalTarget;
 
 export type TransformRun = {
   id: TransformRunId;
-  status: TransformRunStatus;
+  status: TransformRunStatus | null;
   start_time: string;
   end_time: string | null;
   message: string | null;
