@@ -502,9 +502,7 @@
               (testing "API validation rejects unsupported checkpoint column type"
                 (let [response (mt/user-http-request :crowberto :post 400 "ee/transform" transform-payload)]
                   (is (string? response))
-                  (is (or (re-find #"not found in query results or has unsupported type" response)
-                          (re-find #"not supported" response))
-                      "API should reject unsupported column type"))))))))))
+                  (is (re-find #"not supported" response)))))))))))
 
 (deftest ^:postgres-only native-query-with-temporal-checkpoint-test
   (testing "Native query with temporal checkpoint"

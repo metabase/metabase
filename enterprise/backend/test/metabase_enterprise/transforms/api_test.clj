@@ -1073,8 +1073,7 @@
                                                              :name "invalid_incremental"
                                                              :target-incremental-strategy {:type "append"}}})]
                 (is (string? response))
-                (is (or (re-find #"not found in query results or has unsupported type" response)
-                        (re-find #"Only numeric and temporal" response)))))))))))
+                (is (re-find #"Only numeric and temporal" response))))))))))
 
 (deftest native-incremental-column-type-validated-on-update-test
   (testing "PUT /api/ee/transform column type validation"
@@ -1105,8 +1104,7 @@
                                                                  :name table-name
                                                                  :target-incremental-strategy {:type "append"}}})]
                     (is (string? response))
-                    (is (or (re-find #"not found in query results or has unsupported type" response)
-                            (re-find #"Only numeric and temporal" response)))))))))))))
+                    (is (re-find #"Only numeric and temporal" response))))))))))))
 
 (deftest mbql-incremental-column-type-validated-on-create-test
   (testing "MBQL query with checkpoint-filter-unique-key - checkpoint column type validation"
