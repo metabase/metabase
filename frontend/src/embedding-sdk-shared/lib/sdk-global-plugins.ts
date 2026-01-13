@@ -4,6 +4,7 @@ type HandleLinkFn = (url: string) => { handled: boolean };
 
 type SdkGlobalPlugins = {
   handleLink?: HandleLinkFn;
+  enableInternalNavigation?: boolean;
 };
 
 // `MetabaseProvider` and most of the sdk code are in two different bundles,

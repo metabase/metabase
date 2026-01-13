@@ -26,6 +26,7 @@ export const ALLOWED_EMBED_SETTING_KEYS_MAP = {
     "fetchRequestToken",
     "useExistingUserSession",
     "isGuest",
+    "enableInternalNavigation",
   ] satisfies (keyof SdkIframeEmbedBaseSettings)[],
   dashboard: [
     "dashboardId",

@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { getSdkGlobalPlugins } from "embedding-sdk-shared/lib/sdk-global-plugins";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   convertLinkColumnToClickBehavior,
@@ -52,10 +53,15 @@ export function getComputedSettings(
   }
 
   if (isEmbeddingSdk()) {
-    return _.compose(
-      removeInternalClickBehaviors,
+    const { enableInternalNavigation } = getSdkGlobalPlugins();
+
+    const result = _.compose(
+      // remove internal click behaviors unless internal navigation is enabled
+      enableInternalNavigation ? _.identity : removeInternalClickBehaviors,
       convertLinkColumnToClickBehavior,
     )(computedSettings);
+
+    return result;
   }
 
   return computedSettings;
