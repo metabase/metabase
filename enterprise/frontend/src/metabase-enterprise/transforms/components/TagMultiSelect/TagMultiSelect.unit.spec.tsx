@@ -2,9 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupCreateTransformTagEndpoint,
-  setupDatabaseListEndpoint,
   setupListTransformTagsEndpoint,
-  setupListTransformsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { TransformTag, TransformTagId } from "metabase-types/api";
@@ -19,10 +17,6 @@ type SetupOpts = {
 };
 
 function setup({ tags = [], tagIds = [], newTag }: SetupOpts) {
-  // TODO: `setupListTransformsEndpoint` + `setupDatabaseListEndpoint` are only needed right now because
-  // tagReadOnlyMap is calculated on the FE, but it might be calculated on the BE. If we do the latter, remove them.
-  setupListTransformsEndpoint([]);
-  setupDatabaseListEndpoint([]);
   setupListTransformTagsEndpoint(tags);
   if (newTag != null) {
     setupCreateTransformTagEndpoint(newTag);

@@ -126,6 +126,7 @@ export type TransformTag = {
   name: string;
   created_at: string;
   updated_at: string;
+  can_run: boolean;
 };
 
 export type TransformJob = {

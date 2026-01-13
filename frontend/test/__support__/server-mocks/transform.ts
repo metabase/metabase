@@ -7,10 +7,6 @@ import type {
   TransformTag,
 } from "metabase-types/api";
 
-export function setupListTransformsEndpoint(transforms: Transform[]) {
-  fetchMock.get(`path:/api/ee/transform`, transforms);
-}
-
 export function setupListTransformTagsEndpoint(tags: TransformTag[]) {
   fetchMock.get(`path:/api/ee/transform-tag`, tags);
 }
