@@ -41,7 +41,7 @@
        (or
         ;; match requests that are js/css and have a cache-busting hex string
         (re-matches #"^/app/dist/.+\.[a-f0-9]+\.(js|css)$" uri)
-        ;; any resource that is named as a cache-busting hex string (e.g. fonts, images)
+        ;; any resource that is named as a cache-busting hex string (e.g. images)
         (re-matches #"^/app/dist/[a-f0-9]+.*$" uri)
         ;; font files are static and should be cached
         (re-matches #"^/app/fonts/.+\.(woff2?|ttf|otf|eot)$" uri))))
