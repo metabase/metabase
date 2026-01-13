@@ -12,6 +12,7 @@ import {
   removeSuggestedCodeEdit,
   resetConversation,
 } from "metabase-enterprise/metabot/state";
+import type { DatabaseId } from "metabase-types/api";
 
 import { METABOT_PROFILE_OVERRIDES } from "../constants";
 
@@ -34,7 +35,10 @@ const responseHasCodeEdit = (action: SubmitInputResult) => {
   );
 };
 
-export function useMetabotSQLSuggestion(bufferId: string) {
+export function useMetabotSQLSuggestion(
+  _databaseId: DatabaseId | null,
+  bufferId: string,
+) {
   const { isDoingScience, submitInput, cancelRequest } = useMetabotAgent("sql");
 
   const [hasError, setHasError] = useState(false);

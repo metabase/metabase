@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
-import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
@@ -64,6 +63,7 @@ export function initializePlugin() {
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
+    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestion;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
     PLUGIN_METABOT.getAdminPaths = () => [
       {
@@ -98,6 +98,4 @@ export function initializePlugin() {
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
-  PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
-  PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestion;
 }

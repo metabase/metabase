@@ -24,7 +24,7 @@ export const MetabotInlineSQLPrompt = ({
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
   const { isLoading, error, generate, cancelRequest } =
-    PLUGIN_METABOT.useMetabotSQLSuggestion(bufferId);
+    PLUGIN_METABOT.useMetabotSQLSuggestion(databaseId, bufferId);
 
   const disabled = !value.trim() || isLoading;
 

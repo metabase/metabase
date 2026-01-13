@@ -69,12 +69,14 @@ export function useInlineSQLPrompt(
     bufferId,
   );
 
+  const databaseId = question.databaseId();
+
   const {
     source,
     clear: clearSuggestion,
     reset: resetSuggestionState,
     reject,
-  } = PLUGIN_METABOT.useMetabotSQLSuggestion(bufferId);
+  } = PLUGIN_METABOT.useMetabotSQLSuggestion(databaseId, bufferId);
 
   const hideInput = useCallback(() => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
@@ -103,7 +105,6 @@ export function useInlineSQLPrompt(
     clearSuggestionRef.current = clearSuggestion;
   }, [clearSuggestion]);
 
-  const databaseId = question.databaseId();
   useEffect(
     function resetOnDbChangeAndUnmount() {
       return () => {
