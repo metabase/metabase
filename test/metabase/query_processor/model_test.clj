@@ -2,12 +2,76 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
+   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.api :as qp.api]
+   [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.streaming.test-util :as qp.streaming.tu]
    [metabase.test :as mt]))
+
+;; TODO (eric, 2025-01-12): remapped column does not get new display name
+(defn- run-query-for-card
+  "Run query for Card synchronously."
+  [card-id]
+  (qp.card/process-query-for-card
+   card-id :api
+   :make-run (constantly
+              (fn [query info]
+                (qp/process-query (assoc (qp/userland-query query) :info info))))))
+
+(deftest ^:parallel model-custom-column-names-persist-test
+  (testing "Custom column names from model result_metadata persist in saved questions (#65532)"
+    (let [mp (mt/metadata-provider)
+          expected-columns [{:name "ID"
+                             :display_name "ID"}
+                            {:name "ID_2"
+                             :display_name "IDX"}]]
+      (mt/with-temp [:model/Card model {:type :model
+                                        :database_id (mt/id)
+                                        :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                                                           (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :products))
+                                                                                          [(lib/=
+                                                                                            (lib.metadata/field mp (mt/id :orders :product_id))
+                                                                                            (lib.metadata/field mp (mt/id :products :id)))])
+                                                                         (lib/with-join-alias "Products")
+                                                                         (lib/with-join-fields [(lib.metadata/field mp (mt/id :products :id))])))
+                                                           (lib/with-fields [(lib.metadata/field mp (mt/id :orders :id))]))
+                                        :result_metadata [{:name "ID"
+                                                           :display_name "ID"
+                                                           :base_type :type/BigInteger}
+                                                          {:name "ID_2"
+                                                           :display_name "IDX"
+                                                           :base_type :type/BigInteger}]}
+                     :model/Card q1 {:type :question
+                                     :database_id (mt/id)
+                                     :dataset_query (lib/query mp (lib.metadata/card mp (:id model)))}
+                     :model/Card q2 {:type :question
+                                     :database_id (mt/id)
+                                     :dataset_query (lib/query mp (lib.metadata/card mp (:id q1)))}]
+        (mt/as-admin
+          (testing "Model metadata works directly on model"
+            (is (=? expected-columns
+                    (mt/cols (run-query-for-card (:id model))))))
+          (testing "Model metadata gets passed through to question on model"
+            (is (=? expected-columns
+                    (mt/cols (run-query-for-card (:id q1))))))
+          (testing "Model metadata gets passed through to question on question on model"
+            (is (=? expected-columns
+                    (mt/cols (run-query-for-card (:id q2))))))
+          (is (=? expected-columns
+                  (:cols
+                   (:data
+                    (mt/user-http-request :rasta :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id model))))))))
+          (is (=? expected-columns
+                  (:cols (:data
+                          (mt/user-http-request :crowberto :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id q1))))))))
+          (is (=? expected-columns
+                  (:cols (:data
+                          (mt/user-http-request :crowberto :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id q2)))))))))))))
 
 ;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
 (deftest ^:parallel model-self-join-test

@@ -50,6 +50,21 @@
     (api/read-check :model/Card source-card-id)
     source-card-id))
 
+(defn- source-model-metadata [card]
+  (loop [card card
+         remaining 10] ;; only go 10 cards deep
+    (let [source-card-id (some-> card :dataset_query lib/source-card-id)]
+      (cond
+        (not (pos? remaining))
+        nil
+
+        (= :model (:type card))
+        (:result_metadata card)
+
+        source-card-id
+        (recur (t2/select-one [:model/Card :result_metadata :type :dataset_query] :id source-card-id)
+               (dec remaining))))))
+
 (mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.server.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
    & {:keys [context export-format was-pivot]
@@ -64,20 +79,22 @@
                         {:status-code 400, :query query})))
       (when-not (mi/can-read? :model/Database database)
         (api/throw-403)))
-    ;; store table id trivially iff we get a query with simple source-table
+      ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
         (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
                                                   :user-id api/*current-user-id*})))
-    ;; add sensible constraints for results limits on our query
+      ;; add sensible constraints for results limits on our query
     (let [source-card-id (query->source-card-id query) ; This is only set for direct :source-table "card__..."
-          source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+          source-card (when source-card-id
+                        (t2/select-one [:model/Card :result_metadata :type :dataset_query] :id source-card-id))
+          source-model-md (when source-card
+                            (source-model-metadata source-card))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
-                           (= (:type source-card) :model)
-                           (assoc :metadata/model-metadata (:result_metadata source-card)))]
+                           source-model-md
+                           (assoc :metadata/model-metadata source-model-md))]
       (qp.streaming/streaming-response [rff export-format]
         (if was-pivot
           (let [constraints (if (= export-format :api)

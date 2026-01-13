@@ -294,6 +294,21 @@
     :map-tiles              nil
     context))
 
+(defn- source-model-metadata [card]
+  (loop [card card
+         remaining 10] ;; only go 10 cards deep
+    (let [source-card-id (some-> card :dataset_query lib/source-card-id)]
+      (cond
+        (not (pos? remaining))
+        nil
+
+        (= :model (:type card))
+        (:result_metadata card)
+
+        source-card-id
+        (recur (t2/select-one [:model/Card :result_metadata :type :dataset_query] :id source-card-id)
+               (dec remaining))))))
+
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.server.streaming_response.StreamingResponse` (see [[metabase.server.streaming-response]]) that should be
@@ -344,14 +359,15 @@
                                              (merge
                                               {:js-int-to-string? true, :ignore-cached-results? ignore-cache}
                                               middleware))))
+        source-model-md (source-model-metadata card)
         info       (cond-> {:executed-by            api/*current-user-id*
                             :context                context
                             :card-id                card-id
                             :card-name              (:name card)
                             :dashboard-id           dashboard-id
                             :visualization-settings merged-viz}
-                     (and (= (:type card) :model) (seq (:result_metadata card)))
-                     (assoc :metadata/model-metadata (:result_metadata card)))]
+                     source-model-md
+                     (assoc :metadata/model-metadata source-model-md))]
     (when (seq parameters)
       (validate-card-parameters card-id (lib/normalize ::lib.schema.parameter/parameters parameters)))
     (log/tracef "Running query for Card %d:\n%s" card-id
