@@ -65,6 +65,13 @@
                         (lib/with-join-fields :all))]
     (card-with-query "Card with join" (lib/join base-query join-clause))))
 
+(defn broken-mbql-query []
+  (let [mp (mt/metadata-provider)
+        products-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        products-column (first (lib/filterable-columns products-query))]
+    (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+        (lib/filter (lib/= products-column 1)))))
+
 (deftest check-card-test
   (testing "POST /api/ee/dependencies/check_card"
     (mt/with-premium-features #{:dependencies}
@@ -224,6 +231,35 @@
                        :bad_transforms []}
                       (update response :bad_cards #(into #{} (map :id) %)))))))))))
 
+(deftest check-card-skips-native-cards-test
+  (testing "POST /api/ee/dependencies/check_card does not validate native cards"
+    (mt/dataset test-data
+      (mt/with-premium-features #{:dependencies}
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (mt/with-model-cleanup [:model/Card :model/Dependency]
+            (let [mp (mt/metadata-provider)
+                  ;; Create base card querying real orders table
+                  base-card (card/create-card! (basic-card) user)
+                  ;; Create dependent card that filters on TOTAL
+                  base-card-meta (lib.metadata/card mp (:id base-card))
+                  dependent-query (lib/native-query mp (str "select * from {{#"
+                                                            (:id base-card)
+                                                            "}} orders where total > 100"))
+                  dependent-card (card/create-card!
+                                  (card-with-query "Dependent Card filtering on Total" dependent-query)
+                                  user)
+                  ;; Propose changing to products table (doesn't have TOTAL column, breaks downstream)
+                  proposed-query (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                  proposed-card {:id (:id base-card)
+                                 :type :question
+                                 :dataset_query proposed-query
+                                 :result_metadata nil}
+                  response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_card" proposed-card)]
+              (is (=? {:success true
+                       :bad_cards []
+                       :bad_transforms []}
+                      response)))))))))
+
 (deftest check-transform-test
   (testing "POST /api/ee/dependencies/check_transform"
     (mt/with-premium-features #{:dependencies}
@@ -241,8 +277,8 @@
           (is (= {:bad_cards [], :bad_transforms [], :success true}
                  response)))))))
 
-(deftest check-snippet-content-change-breaks-cards-test
-  (testing "POST /api/ee/dependencies/check_snippet detects when snippet content changes break dependent cards"
+(deftest check-snippet-content-change-doest-not-break-cards-test
+  (testing "POST /api/ee/dependencies/check_snippet doesn't catch when a change would break a card, because native query validation is disabled"
     (mt/dataset test-data
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/User user {:email "test@test.com"}
@@ -266,8 +302,8 @@
                   response (mt/user-http-request :rasta :post 200 "ee/dependencies/check_snippet"
                                                  {:id snippet-id
                                                   :content proposed-content})]
-              (is (=? {:success false
-                       :bad_cards [{:id (:id card)}]
+              (is (=? {:success true
+                       :bad_cards []
                        :bad_transforms []}
                       response)))))))))
 
@@ -1384,7 +1420,7 @@
                                       :dataset_query (lib/query mp products)}
                        :model/Card {broken-card-id :id} {:name "Broken Card - brokentest"
                                                          :type :question
-                                                         :dataset_query (lib/native-query mp "not a query")}]
+                                                         :dataset_query (broken-mbql-query)}]
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
             (is (=? {:data [{:id broken-card-id
@@ -1399,7 +1435,7 @@
             products (lib.metadata/table mp (mt/id :products))]
         (mt/with-temp [:model/Transform {broken-transform-id :id} {:name "Broken Transform - brokentest"
                                                                    :source {:type :query
-                                                                            :query (lib/native-query mp "not a query")}
+                                                                            :query (broken-mbql-query)}
                                                                    :target {:schema "PUBLIC"
                                                                             :name "broken_transform_table"}}
                        :model/Transform _ {:name "Good Transform - brokentest"
@@ -1420,10 +1456,10 @@
       (let [mp (mt/metadata-provider)]
         (mt/with-temp [:model/Card {broken-model-id :id} {:name "A - Broken Model - cardtype"
                                                           :type :model
-                                                          :dataset_query (lib/native-query mp "not a query")}
+                                                          :dataset_query (broken-mbql-query)}
                        :model/Card {broken-metric-id :id} {:name "B - Broken Metric - cardtype"
                                                            :type :metric
-                                                           :dataset_query (lib/native-query mp "not a query")}]
+                                                           :dataset_query (broken-mbql-query)}]
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (testing "filtering by model only"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
@@ -1457,11 +1493,11 @@
       (let [mp (mt/metadata-provider)]
         (mt/with-temp [:model/Card {broken-card-id :id} {:name "Broken Card - archivedbrokentestcard"
                                                          :type :question
-                                                         :dataset_query (lib/native-query mp "not a query")}
+                                                         :dataset_query (broken-mbql-query)}
                        :model/Card {archived-broken-card-id :id} {:name "Archived Broken Card - archivedbrokentestcard"
                                                                   :type :question
                                                                   :archived true
-                                                                  :dataset_query (lib/native-query mp "not a query")}]
+                                                                  :dataset_query (broken-mbql-query)}]
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (testing "archived=false (default) excludes archived broken card"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
@@ -1596,10 +1632,10 @@
                          :model/Card {broken-in-personal :id} {:name "Broken Card in Personal - personalcollbrokentest"
                                                                :type :question
                                                                :collection_id personal-coll-id
-                                                               :dataset_query (lib/native-query mp "not a query")}
+                                                               :dataset_query (broken-mbql-query)}
                          :model/Card {broken-regular :id} {:name "Broken Card Regular - personalcollbrokentest"
                                                            :type :question
-                                                           :dataset_query (lib/native-query mp "not a query")}]
+                                                           :dataset_query (broken-mbql-query)}]
             (while (> (dependencies.findings/analyze-batch! :card 50) 0))
             (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
@@ -1618,10 +1654,10 @@
       (let [mp (mt/metadata-provider)]
         (mt/with-temp [:model/Card {card1-id :id} {:name "Card 1 - brokentest"
                                                    :type :question
-                                                   :dataset_query (lib/native-query mp "not a query")}
+                                                   :dataset_query (broken-mbql-query)}
                        :model/Card {card2-id :id} {:name "Card 2 - brokentest"
                                                    :type :question
-                                                   :dataset_query (lib/native-query mp "not a query")}]
+                                                   :dataset_query (broken-mbql-query)}]
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (is (=? {:data   [{:id card1-id}]
                    :total  2
