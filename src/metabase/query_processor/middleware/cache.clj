@@ -223,9 +223,20 @@
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
-  (and (cache/enable-query-caching)
-       (some? cache-strategy)
-       (not= (:type cache-strategy) :nocache)))
+  (let [caching-enabled? (cache/enable-query-caching)
+        has-strategy?    (some? cache-strategy)
+        not-nocache?     (not= (:type cache-strategy) :nocache)
+        all-conditions-met? (and caching-enabled? has-strategy? not-nocache?)]
+    (if all-conditions-met?
+      {:cacheable? true
+       :conditions [(str "query caching is enabled")
+                    (str "cache strategy provided: " (pr-str cache-strategy))
+                    (str "cache strategy type is not :nocache")]}
+      {:cacheable? false
+       :reasons    (cond-> []
+                     (not caching-enabled?) (conj "query caching is disabled")
+                     (not has-strategy?)    (conj "no cache strategy provided")
+                     (not not-nocache?)     (conj "cache strategy is :nocache"))})))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
@@ -241,8 +252,10 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
-    (let [cacheable? (is-cacheable? query)]
-      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
+    (let [{:keys [cacheable? reasons conditions]} (is-cacheable? query)]
+      (if cacheable?
+        (log/tracef "Query is cacheable: %s" (clojure.string/join "; " conditions))
+        (log/tracef "Query is not cacheable: %s" (clojure.string/join ", " reasons)))
       (if cacheable?
         (run-query-with-cache qp query rff)
         (qp query rff)))))
