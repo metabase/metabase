@@ -484,11 +484,12 @@ function WorkspacePageContent({
 
       try {
         await updateWorkspace({ id, name: newName.trim() }).unwrap();
+        sendSuccessToast(t`Workspace renamed successfully`);
       } catch (error) {
         sendErrorToast(t`Failed to update workspace name`);
       }
     },
-    [workspace, id, updateWorkspace, sendErrorToast],
+    [workspace, id, updateWorkspace, sendErrorToast, sendSuccessToast],
   );
 
   const handleTableSelect = useCallback(

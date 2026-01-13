@@ -119,7 +119,7 @@ export const MergeWorkspaceModal = ({
       >
         {({ values, touched, errors }) => (
           <Form style={{ display: "flex", flexDirection: "column" }}>
-            <Flex h={500}>
+            <Flex h={540}>
               <Box
                 pt="md"
                 w={220}

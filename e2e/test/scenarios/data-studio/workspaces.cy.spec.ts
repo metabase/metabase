@@ -146,6 +146,7 @@ describe("scenarios > data studio > workspaces", () => {
             .clear()
             .type("Renamed workspace")
             .blur();
+          verifyAndCloseToast("Workspace renamed successfully");
           Workspaces.getWorkspaceItem("Renamed workspace").should("be.visible");
         });
       });
@@ -429,6 +430,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByRole("button", { name: /Merge/ }).click();
       });
+      verifyAndCloseToast("merged successfully");
 
       Transforms.list()
         .findByRole("row", { name: /SQL transform/ })
