@@ -1,4 +1,4 @@
-(ns metabase-enterprise.dependences.metadata-update-test
+(ns metabase-enterprise.dependencies.metadata-update-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
