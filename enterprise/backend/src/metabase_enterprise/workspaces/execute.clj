@@ -81,7 +81,13 @@
 (def ^:private no-mapping {})
 
 (defn remapped-target
-  "Apply `remapping` to `transform`'s target. Returns a map with :schema and :name for the isolated table."
+  "Apply `remapping` to the `target` of the given `transform`.
+
+  `remapping` is a map with:
+  - `:tables`          - map of table references to isolated table specs
+  - `:target-fallback` - function to generate fallback mappings for unmapped targets
+
+  Returns the remapped target."
   [{:keys [target] :as _transform} remapping]
   (let [table-mapping   (:tables remapping no-mapping)
         target-fallback (:target-fallback remapping no-mapping)]
