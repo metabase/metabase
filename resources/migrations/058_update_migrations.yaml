@@ -1275,11 +1275,26 @@ databaseChangeLog:
   - changeSet:
       id: v58.2026-01-13T12:00:00
       author: galdre
-      comment: "Change source_card_id FK from ON DELETE CASCADE to ON DELETE SET NULL (#68080)"
+      comment: "Drop source_card_id FK in preparation for changing to SET NULL (#68080)"
       changes:
         - dropForeignKeyConstraint:
             baseTableName: report_card
             constraintName: fk_report_card_source_card_id_ref_report_card_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
+      id: v58.2026-01-13T12:00:01
+      author: galdre
+      comment: "Add source_card_id FK with ON DELETE SET NULL (#68080)"
+      changes:
         - addForeignKeyConstraint:
             baseTableName: report_card
             baseColumnNames: source_card_id
@@ -1292,14 +1307,6 @@ databaseChangeLog:
         - dropForeignKeyConstraint:
             baseTableName: report_card
             constraintName: fk_report_card_source_card_id_ref_report_card_id
-        - addForeignKeyConstraint:
-            baseTableName: report_card
-            baseColumnNames: source_card_id
-            referencedTableName: report_card
-            referencedColumnNames: id
-            constraintName: fk_report_card_source_card_id_ref_report_card_id
-            nullable: true
-            deleteCascade: true
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
