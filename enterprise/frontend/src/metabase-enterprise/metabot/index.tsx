@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
@@ -15,7 +16,6 @@ import { MetabotTrialPage } from "./components/MetabotAdmin/MetabotTrialPage";
 import { MetabotAppBarButton } from "./components/MetabotAppBarButton";
 import MetabotThinkingStyles from "./components/MetabotChat/MetabotThinking.module.css";
 import { MetabotDataStudioButton } from "./components/MetabotDataStudioButton";
-import { useInlineSQLPrompt } from "./components/MetabotInlineSQLPrompt";
 import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";

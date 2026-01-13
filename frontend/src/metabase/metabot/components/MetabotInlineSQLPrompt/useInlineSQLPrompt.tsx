@@ -12,7 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import { useMetabotSQLSuggestion } from "metabase-enterprise/metabot/hooks/use-metabot-sql-suggestion";
+import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
@@ -74,7 +74,7 @@ export function useInlineSQLPrompt(
     clear: clearSuggestion,
     reset: resetSuggestionState,
     reject,
-  } = useMetabotSQLSuggestion(bufferId);
+  } = PLUGIN_METABOT.useMetabotSQLSuggestion(bufferId);
 
   const hideInput = useCallback(() => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
