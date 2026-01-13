@@ -1,5 +1,12 @@
 import type { Row } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ComponentProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -38,6 +45,7 @@ import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEm
 import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
+import S from "./TransformListPage.module.css";
 import { type TreeNode, getCollectionNodeId, isCollectionNode } from "./types";
 import { buildTreeData, getDefaultExpandedIds } from "./utils";
 
@@ -129,8 +137,18 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     [targetCollectionId, targetCollection],
   );
 
-  const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(
-    () => [
+  const columnDefs = useMemo<TreeTableColumnDef<TreeNode>[]>(() => {
+    type EllipsifiedProps = ComponentProps<
+      typeof EntityNameCell
+    >["ellipsifiedProps"];
+    const unreadableTransformEllipsifiedProps: EllipsifiedProps = {
+      alwaysShowTooltip: true,
+      tooltipProps: {
+        openDelay: 300,
+        label: t`Sorry, you don't have permission to view this transform.`,
+      },
+    };
+    return [
       {
         id: "name",
         accessorKey: "name",
@@ -144,6 +162,11 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             icon={row.original.icon}
             iconColor={getNodeIconColor(row.original)}
             name={row.original.name}
+            ellipsifiedProps={
+              row.original.source_readable
+                ? undefined
+                : unreadableTransformEllipsifiedProps
+            }
           />
         ),
       },
@@ -187,9 +210,8 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
             />
           ) : null,
       },
-    ],
-    [],
-  );
+    ];
+  }, []);
 
   const navigateToTransform = useCallback(
     (transformId: number) => {
@@ -223,8 +245,15 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
     onRowActivate: handleRowActivate,
   });
 
+  const isRowDisabled = useCallback((row: Row<TreeNode>) => {
+    return row.original.source_readable === false;
+  }, []);
+
   const handleRowClick = useCallback(
     (row: Row<TreeNode>) => {
+      if (isRowDisabled(row)) {
+        return;
+      }
       if (row.getCanExpand()) {
         row.toggleExpanded();
       } else if (
@@ -236,7 +265,7 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
         dispatch(push(row.original.url));
       }
     },
-    [navigateToTransform, dispatch],
+    [isRowDisabled, navigateToTransform, dispatch],
   );
 
   useEffect(() => {
@@ -292,6 +321,8 @@ export const TransformListPage = ({ location }: WithRouterProps) => {
                 emptyMessage ? <ListEmptyState label={emptyMessage} /> : null
               }
               onRowClick={handleRowClick}
+              isRowDisabled={isRowDisabled}
+              classNames={{ rowDisabled: S.rowDisabled }}
             />
           )}
         </Card>
