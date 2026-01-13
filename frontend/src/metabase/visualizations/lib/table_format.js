@@ -145,11 +145,8 @@ export function compileFormatter(
       [min, max],
       format.colors.map((c) => {
         const color = Color(c);
-        let alpha = color.alpha();
-
-        alpha = Math.min(GRADIENT_ALPHA, Math.max(MIN_ALPHA, alpha));
-
-        return color.alpha(alpha).toString();
+        const alpha = color.alpha();
+        return color.alpha(clampAlpha(alpha)).toString();
       }),
     ).clamp(true);
     return (value) => {
@@ -163,6 +160,20 @@ export function compileFormatter(
     console.warn("Unknown format type", format.type);
     return () => null;
   }
+}
+
+/**
+ * Clamps the alpha value to prevent values very close to 0 from being converted to scientific notation.
+ *
+ * @param {number} alpha - The alpha value to clamp
+ * @returns {number} The clamped alpha value. Returns 0 if input is 0, otherwise clamps between MIN_ALPHA (0.000001) and GRADIENT_ALPHA (0.75)
+ */
+function clampAlpha(alpha) {
+  if (alpha === 0) {
+    return 0;
+  }
+
+  return Math.min(GRADIENT_ALPHA, Math.max(MIN_ALPHA, alpha));
 }
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may
