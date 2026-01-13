@@ -411,6 +411,7 @@
     "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
     "json5": "2.2.2",
+    "module-replacements": "2.3.2",
     "nth-check": "2.0.1",
     "on-headers": "^1.1.0",
     "set-value": "4.0.1",

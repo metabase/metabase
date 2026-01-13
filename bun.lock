@@ -432,6 +432,7 @@
     "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
     "json5": "2.2.2",
+    "module-replacements": "2.3.2",
     "nth-check": "2.0.1",
     "on-headers": "^1.1.0",
     "set-value": "4.0.1",
@@ -3748,7 +3749,7 @@
 
     "module-lookup-amd": ["module-lookup-amd@9.0.5", "", { "dependencies": { "commander": "^12.1.0", "glob": "^7.2.3", "requirejs": "^2.3.7", "requirejs-config-file": "^4.0.0" }, "bin": { "lookup-amd": "bin/cli.js" } }, "sha512-Rs5FVpVcBYRHPLuhHOjgbRhosaQYLtEo3JIeDIbmNo7mSssi1CTzwMh8v36gAzpbzLGXI9wB/yHh+5+3fY1QVw=="],
 
-    "module-replacements": ["module-replacements@2.10.1", "", {}, "sha512-qkKuLpMHDqRSM676OPL7HUpCiiP3NSxgf8NNR1ga2h/iJLNKTsOSjMEwrcT85DMSti2vmOqxknOVBGWj6H6etQ=="],
+    "module-replacements": ["module-replacements@2.3.2", "", {}, "sha512-dK8FQwOCU0rKuqtS2kWIU6It0XrE8qYZWtDT6fK4BQPtcspQ9EjWo2V0hob2d6G1wvQ21q+b1HFHOp3E/0cQTg=="],
 
     "moment": ["moment@2.30.1", "", {}, "sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how=="],
 
