@@ -19,7 +19,7 @@ import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
 import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode } from "./types";
-import { getDefaultGroupTypes } from "./utils";
+import { getAvailableGroupTypes } from "./utils";
 
 type DependencyListProps = {
   mode: DependencyListMode;
@@ -38,13 +38,13 @@ export function DependencyList({
     mode === "broken"
       ? useListBrokenGraphNodesQuery
       : useListUnreferencedGraphNodesQuery;
-  const defaultGroupTypes = getDefaultGroupTypes(mode);
+  const availableGroupTypes = getAvailableGroupTypes(mode);
 
   const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
     query: params.query,
-    types: getDependencyTypes(params.groupTypes ?? defaultGroupTypes),
-    card_types: getCardTypes(params.groupTypes ?? defaultGroupTypes),
-    include_personal_collections: params.includePersonalCollections,
+    types: getDependencyTypes(params.groupTypes ?? availableGroupTypes),
+    card_types: getCardTypes(params.groupTypes ?? availableGroupTypes),
+    include_personal_collections: params.includePersonalCollections ?? true,
     offset: (params.page ?? 0) * PAGE_SIZE,
     limit: PAGE_SIZE,
   });

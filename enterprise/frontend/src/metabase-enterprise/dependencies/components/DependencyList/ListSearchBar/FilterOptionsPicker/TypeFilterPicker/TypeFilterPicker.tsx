@@ -6,7 +6,7 @@ import { Checkbox, Stack } from "metabase/ui";
 
 import { getDependencyGroupTypeInfo } from "../../../../../utils";
 import type { DependencyListMode } from "../../../types";
-import { getAvailableGroupTypes, getDefaultGroupTypes } from "../../../utils";
+import { getAvailableGroupTypes } from "../../../utils";
 
 type TypeFilterPickerProps = {
   mode: DependencyListMode;
@@ -20,12 +20,11 @@ export function TypeFilterPicker({
   onParamsChange,
 }: TypeFilterPickerProps) {
   const availableGroupTypes = getAvailableGroupTypes(mode);
-  const defaultGroupTypes = getDefaultGroupTypes(mode);
 
   // preserve selected options in state to allow to deselect all types
   // until the popover is closed
   const [groupTypes, setGroupTypes] = useState(
-    params.groupTypes ?? defaultGroupTypes,
+    params.groupTypes ?? availableGroupTypes,
   );
 
   const groupOptions = availableGroupTypes.map((groupType) => ({
@@ -40,7 +39,10 @@ export function TypeFilterPicker({
     setGroupTypes(newGroupTypes);
     onParamsChange({
       ...params,
-      groupTypes: newGroupTypes,
+      groupTypes:
+        newGroupTypes.length === availableGroupTypes.length
+          ? undefined
+          : newGroupTypes,
     });
   };
 

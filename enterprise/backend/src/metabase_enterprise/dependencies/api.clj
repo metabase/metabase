@@ -597,6 +597,10 @@
         join-filter (case query-type
                       :unreferenced [:= :dependency.id nil]
                       :broken [:= :analysis_finding.result false])
+
+        database-filter (when (= entity-type :table)
+                          [:and [:not :database.is_sample] [:not :database.is_audit]])
+        needs-database-join? (= entity-type :table)
         archived-filter (when (= include-archived-items :exclude)
                           (case entity-type
                             (:card :dashboard :document :snippet :segment :measure)
@@ -628,8 +632,8 @@
               [name-column :sort_key]]
      :from [[table-name :entity]]
      :left-join (cond-> join
-                  needs-collection-join?
-                  (conj :collection [:= :entity.collection_id :collection.id]))
+                  needs-database-join? (conj [:metabase_database :database] [:= :entity.db_id :database.id])
+                  needs-collection-join? (conj :collection [:= :entity.collection_id :collection.id]))
      :where (cond->> join-filter
               (and (= entity-type :card)
                    (seq card-types))
@@ -637,6 +641,9 @@
 
               (and query (not= entity-type :sandbox))
               (conj [:and [:like [:lower name-column] (str "%" (u/lower-case-en query) "%")]])
+
+              database-filter
+              (conj [:and database-filter])
 
               archived-filter
               (conj [:and archived-filter])
