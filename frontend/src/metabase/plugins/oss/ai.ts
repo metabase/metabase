@@ -4,6 +4,7 @@ import type { Extension } from "@uiw/react-codemirror";
 import type { ComponentType } from "react";
 import type React from "react";
 
+import { useMetabotSQLSuggestion } from "metabase/metabot/hooks";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -139,16 +140,7 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
-  useMetabotSQLSuggestion: () => ({
-    source: undefined,
-    isLoading: false,
-    generate: async () => {},
-    error: undefined,
-    cancelRequest: () => {},
-    clear: () => {},
-    reject: () => {},
-    reset: () => {},
-  }),
+  useMetabotSQLSuggestion,
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 
