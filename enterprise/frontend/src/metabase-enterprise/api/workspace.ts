@@ -33,6 +33,7 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideWorkspaceAllowedDatabaseTags,
   provideWorkspaceTags,
   provideWorkspacesTags,
   tag,
@@ -357,6 +358,8 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/database`,
       }),
+      providesTags: (response) =>
+        provideWorkspaceAllowedDatabaseTags(response?.databases ?? []),
     }),
   }),
 });

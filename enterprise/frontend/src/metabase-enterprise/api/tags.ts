@@ -32,6 +32,7 @@ import {
   type TransformRun,
   type TransformTag,
   type Workspace,
+  type WorkspaceAllowedDatabase,
   type WorkspaceItem,
 } from "metabase-types/api";
 
@@ -351,5 +352,14 @@ export function provideBulkTableSelectionInfoTags({
     ...(selected_table != null ? provideBulkTableInfoTags(selected_table) : []),
     ...published_downstream_tables.flatMap(provideBulkTableInfoTags),
     ...unpublished_upstream_tables.flatMap(provideBulkTableInfoTags),
+  ];
+}
+
+export function provideWorkspaceAllowedDatabaseTags(
+  databases: WorkspaceAllowedDatabase[],
+) {
+  return [
+    listTag("database"),
+    ...databases.map((db) => idTag("database", db.id)),
   ];
 }
