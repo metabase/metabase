@@ -567,3 +567,33 @@
       (is (= {:classname "com.amazon.redshift.jdbc42.Driver", :subprotocol "redshift", :subname "//test.example.com:/test-db", :ssl true, :OpenSourceSubProtocolOverride false}
              (sql-jdbc.conn/connection-details->spec :redshift (assoc options :dbname "test-dbname" :db "test-db")))
           ":db should take precedence"))))
+
+;;; ------------------------------------------------ Real Sync Test ------------------------------------------------
+;; This test uses real sync (not fake sync) to validate that fake sync produces equivalent metadata.
+;; It uses a minimal dataset to keep sync time reasonable (~30s instead of ~6min for test-data).
+
+(deftest real-sync-validation-test
+  (mt/test-driver :redshift
+    (testing "Real sync produces expected metadata for a minimal dataset"
+      ;; Force real sync by binding use-fake-sync? to return false
+      (with-redefs [tx/use-fake-sync? (constantly false)]
+        (mt/dataset (mt/dataset-definition "real-sync-validation"
+                                           [["sync_test_table"
+                                             [{:field-name "text_col" :base-type :type/Text}
+                                              {:field-name "int_col" :base-type :type/Integer}]
+                                             [["hello" 1]
+                                              ["world" 2]]]])
+          (testing "Table was synced with correct schema"
+            (let [table (t2/select-one :model/Table :db_id (mt/id) :name "real_sync_validation_sync_test_table")]
+              (is (some? table) "Table should exist")
+              (is (= (redshift.tx/unique-session-schema) (:schema table)) "Schema should match session schema")))
+          (testing "Fields were synced with correct types"
+            (let [fields (t2/select [:model/Field :name :base_type :semantic_type]
+                                    :table_id (mt/id :sync_test_table)
+                                    :active true
+                                    {:order-by [:database_position]})]
+              (is (= 3 (count fields)) "Should have 3 fields (id + 2 defined)")
+              (is (= "id" (:name (first fields))) "First field should be auto-generated PK")
+              (is (= :type/PK (:semantic_type (first fields))) "PK should have :type/PK semantic type")
+              (is (= :type/Text (:base_type (second fields))) "text_col should be :type/Text")
+              (is (= :type/Integer (:base_type (nth fields 2))) "int_col should be :type/Integer"))))))))
