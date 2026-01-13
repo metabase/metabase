@@ -28,8 +28,8 @@
   "Check that the current user edit a job with the given tags. If tag-ids are empty or nil, requires at least one transform permission"
   [tag-ids]
   (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*))
-  (doseq [transform #p (transform/transforms-with-tags tag-ids)]
-    (api/check-403 #p (transforms.util/current-user-has-transforms-write-permission? #p (:source_database_id transform)))))
+  (doseq [transform (transform/transforms-with-tags tag-ids)]
+    (api/check-403 (transforms.util/current-user-has-transforms-write-permission? (:source_database_id transform)))))
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 

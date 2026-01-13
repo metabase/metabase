@@ -334,8 +334,8 @@
   "Run a transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (check-transforms-read-permission)
   (let [transform (api/check-404 (t2/select-one :model/Transform id))
+        _         (api/check-403 (mi/can-write? transform))
         _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*

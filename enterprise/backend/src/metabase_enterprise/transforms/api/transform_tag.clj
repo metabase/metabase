@@ -76,7 +76,7 @@
    _query-params]
   (log/info "Getting all transform tags")
   (check-transforms-read-permission)
-  (t2/select :model/TransformTag {:order-by [[:name :asc]]}))
+  (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transform-tag` routes."

@@ -45,6 +45,33 @@
                (t2/changes tag))    ;; include user edits
         (update :name str)))) ;; convert deferred to string
 
+(methodical/defmethod t2/batched-hydrate [:model/TransformTag :can_run]
+  "Add :can_run to transform tags. Returns true if all transforms associated with the tag can be written by the current user."
+  [_model _k tags]
+  (if-not (seq tags)
+    tags
+    (let [tag-ids (into #{} (map :id) tags)
+          ;; Get all transform-tag associations
+          associations (t2/select [:model/TransformTransformTag :tag_id :transform_id]
+                                  :tag_id [:in tag-ids])
+          ;; Get unique transform IDs
+          transform-ids (into #{} (map :transform_id) associations)
+          ;; Fetch transforms and check can-write? for each
+          transforms (when (seq transform-ids)
+                       (t2/select :model/Transform :id [:in transform-ids]))
+          transform-id->can-write (into {} (map (juxt :id mi/can-write?)) transforms)
+          ;; Build tag-id -> can_run map
+          tag-id->transform-ids (reduce (fn [acc {:keys [tag_id transform_id]}]
+                                          (update acc tag_id (fnil conj #{}) transform_id))
+                                        {}
+                                        associations)
+          tag-id->can-run (into {}
+                                (map (fn [[tag-id tform-ids]]
+                                       [tag-id (every? transform-id->can-write tform-ids)]))
+                                tag-id->transform-ids)]
+      (for [tag tags]
+        (assoc tag :can_run (get tag-id->can-run (:id tag) true))))))
+
 (defmethod serdes/hash-fields :model/TransformTag
   [_tt]
   [:name :built_in_type])
