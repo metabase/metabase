@@ -9,6 +9,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
+   [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -97,6 +98,18 @@
     (log/infof "Deleting trigger for subscription %d" notification-subscription-id)
     (task/delete-trigger! (-> trigger :key triggers/key))))
 
+(defn- notification->task-run-info
+  "Extract task run info from a notification."
+  [{:keys [payload_type payload]}]
+  (case payload_type
+    :notification/card      {:run_type    :alert
+                             :entity_type :card
+                             :entity_id   (:card_id payload)}
+    :notification/dashboard {:run_type    :subscription
+                             :entity_type :dashboard
+                             :entity_id   (:dashboard_id payload)}
+    nil))
+
 (defn- send-notification*
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
@@ -107,18 +120,19 @@
 
       (cond
         (:active notification)
-        (try
-          (log/info "Submitting to the notification queue")
-          (task-history/with-task-history {:task         "notification-trigger"
-                                           :task_details {:trigger_type                 :notification-subscription/cron
-                                                          :notification_subscription_id subscription-id
-                                                          :cron_schedule                (:cron_schedule subscription)
-                                                          :notification_ids             [notification-id]}}
-            (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
-          (log/info "Submitted to the notification queue")
-          (catch Exception e
-            (log/error e "Failed to submit to the notification queue")
-            (throw e)))
+        (task-run/with-task-run (notification->task-run-info notification)
+          (try
+            (log/info "Submitting to the notification queue")
+            (task-history/with-task-history {:task         "notification-trigger"
+                                             :task_details {:trigger_type                 :notification-subscription/cron
+                                                            :notification_subscription_id subscription-id
+                                                            :cron_schedule                (:cron_schedule subscription)
+                                                            :notification_ids             [notification-id]}}
+              (notification.send/send-notification! (assoc notification :triggering_subscription subscription)))
+            (log/info "Submitted to the notification queue")
+            (catch Exception e
+              (log/error e "Failed to submit to the notification queue")
+              (throw e))))
 
         (nil? notification)
         (do
