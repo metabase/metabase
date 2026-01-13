@@ -1349,12 +1349,12 @@
                    :total  3
                    :offset 0
                    :limit  2}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=0&limit=2"))
-              (is (=? {:data   [{:id table3-id}]
-                       :total  3
-                       :offset 2
-                       :limit  2}
-                      (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=2&limit=2")))))))))
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=0&limit=2")))
+          (is (=? {:data   [{:id table3-id}]
+                   :total  3
+                   :offset 2
+                   :limit  2}
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=2&limit=2"))))))))
 
 (deftest ^:sequential broken-questions-test
   (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
@@ -1593,3 +1593,25 @@
                     card-ids (set (map :id (:data response)))]
                 (is (contains? card-ids broken-in-personal))
                 (is (contains? card-ids broken-regular))))))))))
+
+(deftest ^:sequential broken-pagination-test
+  (testing "GET /api/ee/dependencies/broken - should paginate results"
+    (mt/with-premium-features #{:dependencies}
+      (let [mp (mt/metadata-provider)]
+        (mt/with-temp [:model/Card {card1-id :id} {:name "Card 1 - brokentest"
+                                                   :type :question
+                                                   :dataset_query (lib/native-query mp "not a query")}
+                       :model/Card {card2-id :id} {:name "Card 2 - brokentest"
+                                                   :type :question
+                                                   :dataset_query (lib/native-query mp "not a query")}]
+          (while (#'dependencies.backfill/backfill-dependencies!))
+          (is (=? {:data   [{:id card1-id}]
+                   :total  2
+                   :offset 0
+                   :limit  1}
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=questionquery=brokentest&offset=0&limit=1")))
+          (is (=? {:data   [{:id card2-id}]
+                   :total  2
+                   :offset 1
+                   :limit  1}
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=1&limit=1"))))))))
