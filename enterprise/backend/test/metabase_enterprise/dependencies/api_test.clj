@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.collections.models.collection :as collection]
+   [metabase.core.core :as mbc]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1354,6 +1355,24 @@
                  :offset 2
                  :limit  2}
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=2&limit=2")))))))
+
+(deftest ^:sequential unreferenced-sample-db-test
+  (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the sample database"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Database {db-id :id}    {:is_sample true}
+                     :model/Table    {table-id :id} {:db_id db-id :name "Sample DB table - unreftest"}]
+        (is (=? {:data   []
+                 :total  0}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")))))))
+
+(deftest ^:sequential unreferenced-audit-db-test
+  (testing "GET /api/ee/dependencies/unreferenced - should not return tables from the audit database"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-empty-h2-app-db!
+        (mbc/ensure-audit-db-installed!)
+        (is (=? {:data   []
+                 :total  0}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
 
 (deftest ^:sequential broken-questions-test
   (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
