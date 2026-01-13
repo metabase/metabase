@@ -63,7 +63,8 @@
     (loop [complete (ordered-set/ordered-set)]
       (if-let [current-transform (next-transform ordering transforms-by-id complete)]
         (recur (conj complete (:id current-transform)))
-        (map transforms-by-id complete)))))
+        {:order (map transforms-by-id complete)
+         :deps global-ordering}))))
 
 (defn- run-transform! [run-id run-method {transform-id :id :as transform}]
   (if-not (transforms.util/check-feature-enabled transform)
@@ -82,13 +83,27 @@
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
 
-  Updates the transform-job-run specified by run-id after every completion."
+  Updates the transform-job-run specified by run-id after every completion.
+  Returns a map with :status and a :message if failed."
   [run-id transform-ids-to-run {:keys [run-method start-promise]}]
-  (let [plan (get-plan transform-ids-to-run)]
+  (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
+        successful (volatile! #{})
+        messages (volatile! [])]
     (when start-promise
       (deliver start-promise :started))
+
     (doseq [transform plan]
-      (run-transform! run-id run-method transform))))
+      (when (every? @successful (get deps (:id transform)))
+        (try
+          (run-transform! run-id run-method transform)
+          (vswap! successful conj (:id transform))
+          (catch Exception e
+            (vswap! messages conj (str "Tranform " (:name transform) " failed: " (.getMessage e)))))))
+
+    (if @messages
+      {:status :failed
+       :message (str/join "\n\n" @messages)}
+      {:status :succeeded})))
 
 (defn- job-transform-ids [job-id]
   (t2/select-fn-set :transform_id
@@ -105,7 +120,7 @@
 
   The transforms are returned in the order of their execution."
   [job-id]
-  (get-plan (job-transform-ids job-id)))
+  (:order (get-plan (job-transform-ids job-id))))
 
 (defn run-job!
   "Runs all transforms for a given job and their dependencies."
@@ -117,8 +132,10 @@
       (let [{run-id :id} (transforms.job-run/start-run! job-id run-method)]
         (transforms.instrumentation/with-job-timing [job-id run-method]
           (try
-            (run-transforms! run-id transforms opts)
-            (transforms.job-run/succeed-started-run! run-id)
+            (let [result (run-transforms! run-id transforms opts)]
+              (case (:status result)
+                :succeeded (transforms.job-run/succeed-started-run! run-id)
+                :failed (transforms.job-run/fail-started-run! run-id {:message (:message result)})))
             (catch Throwable t
               (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
               (throw t))))))))
