@@ -72,11 +72,6 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
 }
 
 export function getValueFromDimensionKey(key: string) {
-  // try {
-  //   return JSON.parse(key);
-  // } catch (error) {
-  //   return key === NULL_DISPLAY_VALUE ? null : key;
-  // }
   return key === NULL_DISPLAY_VALUE ? null : key;
 }
 
