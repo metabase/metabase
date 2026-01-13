@@ -34,6 +34,74 @@ describe("Native SQL generation", () => {
     });
   });
 
+  describe("oss llm", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should show the feature when LLM SQL generation is enabled and send request to generate-sql endpoint", () => {
+      // Intercept settings API to enable the LLM SQL generation feature
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["llm-sql-generation-enabled"] = true;
+        });
+      }).as("sessionProperties");
+
+      // Intercept the OSS endpoint (not streaming - simple JSON response)
+      cy.intercept("POST", "/api/llm/generate-sql", {
+        statusCode: 200,
+        delay: 100,
+        body: {
+          parts: [
+            {
+              type: "code_edit",
+              version: 1,
+              value: {
+                buffer_id: "qb",
+                mode: "rewrite",
+                value: "SELECT * FROM users",
+              },
+            },
+          ],
+        },
+      }).as("generateSql");
+
+      H.startNewNativeQuestion();
+      H.NativeEditor.get().should("be.visible");
+
+      // Feature should now be available
+      toggleInlineSQLPrompt();
+      inlinePrompt().should("be.visible");
+      generateButton().should("be.disabled");
+
+      // Type prompt and generate
+      inlinePromptInput().type("select all users");
+      generateButton().should("be.enabled");
+      generateButton().click();
+      generateButton().should("contain", "Generating...");
+
+      // Verify request was sent to OSS endpoint with correct payload
+      cy.wait("@generateSql").then(({ request }) => {
+        expect(request.body.prompt).to.eq("select all users");
+        expect(request.body.database_id).to.eq(1); // Sample Database
+        expect(request.body.buffer_id).to.eq("qb");
+      });
+
+      // Should auto-close input and show diff with accept/reject buttons
+      inlinePrompt().should("not.exist");
+      acceptButton().should("be.visible");
+      rejectButton().should("be.visible");
+      H.NativeEditor.get().should("contain", "SELECT * FROM users");
+
+      // Accept changes
+      acceptButton().click();
+      acceptButton().should("not.exist");
+      rejectButton().should("not.exist");
+      H.NativeEditor.get().should("contain", "SELECT * FROM users");
+    });
+  });
+
   describe("ee", () => {
     describe("single db", () => {
       beforeEach(() => {
