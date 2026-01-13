@@ -34,7 +34,7 @@ import {
   type SdkQuestionDefaultViewProps,
 } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
 
-import { PLUGIN_NOTIFICATIONS_SDK } from "../notifications";
+import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
 
 import type { SdkQuestionIdProps } from "./types";
 
@@ -112,7 +112,7 @@ export type SdkQuestionComponents = {
   BreakoutDropdown: typeof BreakoutDropdown;
   DownloadWidget: typeof DownloadWidget;
   DownloadWidgetDropdown: typeof DownloadWidgetDropdown;
-  AlertsButton: typeof PLUGIN_NOTIFICATIONS_SDK.QuestionAlertsButton;
+  AlertsButton: typeof QuestionAlertsButton;
 
   SqlParametersList: typeof SqlParametersList;
 };
@@ -209,7 +209,7 @@ const subComponents: SdkQuestionComponents = {
   ChartTypeDropdown: ChartTypeDropdown,
   DownloadWidget: DownloadWidget,
   DownloadWidgetDropdown: DownloadWidgetDropdown,
-  AlertsButton: PLUGIN_NOTIFICATIONS_SDK.QuestionAlertsButton,
+  AlertsButton: QuestionAlertsButton,
   VisualizationButton: VisualizationButton,
   SqlParametersList: SqlParametersList,
 };
