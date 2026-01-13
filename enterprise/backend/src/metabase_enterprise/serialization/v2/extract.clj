@@ -73,7 +73,12 @@
 
 (defn- parse-target [[model-name id :as target]]
   (if (string? id)
-    [model-name (serdes/eid->id model-name id)]
+    (if-let [resolved-id (serdes/eid->id model-name id)]
+      [model-name resolved-id]
+      (throw (ex-info (format "Could not find %s with entity ID: %s" model-name id)
+                      {:status-code 400
+                       :model       model-name
+                       :entity-id   id})))
     target))
 
 (defn- escape-analysis [{colls "Collection" cards "Card" :as _by-model} nodes]
