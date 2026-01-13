@@ -44,39 +44,41 @@
 (deftest server-stats-test
   (mt/with-prometheus-system! [_ system]
     (let [hold-chan (a/chan)
-          hit-chan (a/chan)]
+          hit-chan (a/chan)
+          value! (fn value! [& metric-args]
+                   (apply mt/metric-value system metric-args))]
       (with-server [hold-chan hit-chan]
         (fn [_server port]
           (testing "async"
             (let [route (format "http://localhost:%d/sync" port)]
               (is (= 200 (:status (http/get route))))
-              (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/requests-total)))
-              (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-total)))
-              (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-active-max)))
-              (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-total)))
-              (is (prometheus-test/approx= 0 (mt/metric-value system :jetty/dispatched-active)))
-              (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-active-max)))
-              (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/responses-total {:code "2xx"})))))
+              (is (prometheus-test/approx= 1 (value! :jetty/requests-total)))
+              (is (prometheus-test/approx= 1 (value! :jetty/dispatched-total)))
+              (is (prometheus-test/approx= 1 (value! :jetty/dispatched-active-max)))
+              (is (prometheus-test/approx= 1 (value! :jetty/dispatched-total)))
+              (is (prometheus-test/approx= 0 (value! :jetty/dispatched-active)))
+              (is (prometheus-test/approx= 1 (value! :jetty/dispatched-active-max)))
+              (is (prometheus-test/approx= 1 (value! :jetty/responses-total {:code "2xx"})))))
           (testing "requests active"
             (let [route (format "http://localhost:%d/hold" port)]
               (future
                 ;; this will wait on the hold chan
                 (is (= 200 (:status (http/get route))))
-                (is (prometheus-test/approx= 0 (mt/metric-value system :jetty/requests-active)))
-                (is (prometheus-test/approx= 0 (mt/metric-value system :jetty/dispatched-active))))
+                (is (prometheus-test/approx= 0 (value! :jetty/requests-active)))
+                (is (prometheus-test/approx= 0 (value! :jetty/dispatched-active))))
               (let [timeout (a/timeout 500)
                     [ch _v] (a/alts!! [hit-chan timeout])]
                 (is (not= ch timeout) "We timed out!")
-                (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/requests-active)))
-                (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/dispatched-active)))
+                (is (prometheus-test/approx= 1 (value! :jetty/requests-active)))
+                (is (prometheus-test/approx= 1 (value! :jetty/dispatched-active)))
                 (a/>!! hold-chan :continue))))
           (testing "300"
             (testing "when server responds 300"
               (let [route (format "http://localhost:%d/reroute" port)]
                 (http/get route {:redirect-strategy :none})
-                (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/responses-total {:code "3xx"}))))))
+                (is (prometheus-test/approx= 1 (value! :jetty/responses-total {:code "3xx"}))))))
           (testing "500"
             (testing "when server responds 500"
               (let [route (format "http://localhost:%d/blowup" port)]
                 (http/get route {:throw-exceptions false})
-                (is (prometheus-test/approx= 1 (mt/metric-value system :jetty/responses-total {:code "5xx"})))))))))))
+                (is (prometheus-test/approx= 1 (value! :jetty/responses-total {:code "5xx"})))))))))))
