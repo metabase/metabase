@@ -9,10 +9,10 @@ Notifications in Metabase include [alerts](../questions/alerts.md) and [dashboar
 
 ## Who can edit dashboard subscriptions and alerts
 
-What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a group with [row and column security](../permissions/row-and-column-security.md).
+What you can do with alerts and dashboard subscriptions depends on whether you're in the Administrators group or in a group with [impersonation](./impersonation.md) or [row and column security](./row-and-column-security.md).
 
 - [All Users group](#all-users-group-notification-permissions)
-- [Restricted group](#notification-permissions-for-people-in-groups-with-row-and-column-security)
+- [Groups with impersonation or row and column security](#groups-with-impersonation-or-row-and-column-security)
 - [Administrators group](#administrators-group-notification-permissions)
 
 ### All Users group notification permissions
