@@ -286,11 +286,12 @@
                                                       "t2" table2-id}}}]
               (mt/with-user-in-groups [group {:name "Limited Granular Group"}
                                        user [group]]
-                (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :unrestricted
-                  (try
-                    (data-perms/set-table-permission! (:id (perms-group/all-users)) table2-id :perms/view-data :blocked)
+                ;; Block all-users from viewing data at database level, then grant specific access via test group
+                (mt/with-no-data-perms-for-all-users!
+                  (mt/with-db-perm-for-group! group db-id :perms/view-data :unrestricted
+                    ;; Block table2 for the test group only
+                    (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.util/source-tables-readable? transform))
-                          "User who cannot read all source tables should have source_readable=false"))
-                    (finally
-                      (data-perms/set-table-permission! (:id (perms-group/all-users)) table2-id :perms/view-data :unrestricted))))))))))))
+                          "User who cannot read all source tables should have source_readable=false"))))))))))))
+
