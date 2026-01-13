@@ -574,8 +574,7 @@
 
 (deftest real-sync-validation-test
   (mt/test-driver :redshift
-    (testing "Real sync produces expected metadata for a minimal dataset"
-      ;; Force real sync by binding use-fake-sync? to return false
+    (testing "Forces a real sync for a minimal dataset to test real sync logic"
       (with-redefs [tx/use-fake-sync? (constantly false)]
         (mt/dataset (mt/dataset-definition "real-sync-validation"
                                            [["sync_test_table"

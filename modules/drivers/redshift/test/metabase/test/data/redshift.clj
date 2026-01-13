@@ -43,17 +43,17 @@
 
 ;; Time, UUID types aren't supported by redshift
 (doseq [[base-type database-type] {:type/BigInteger "BIGINT"
-                                   :type/Boolean "BOOL"
-                                   :type/Date "DATE"
-                                   :type/DateTime "TIMESTAMP"
-                                   :type/Decimal "DECIMAL"
-                                   :type/Float "FLOAT8"
-                                   :type/Integer "INTEGER"
+                                   :type/Boolean    "BOOL"
+                                   :type/Date       "DATE"
+                                   :type/DateTime   "TIMESTAMP"
+                                   :type/Decimal    "DECIMAL"
+                                   :type/Float      "FLOAT8"
+                                   :type/Integer    "INTEGER"
                                    ;; Use VARCHAR because TEXT in Redshift is VARCHAR(256)
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/r_Character_types.html#r_Character_types-varchar-or-character-varying
                                    ;; But don't use VARCHAR(MAX) either because of performance impact
                                    ;; https://docs.aws.amazon.com/redshift/latest/dg/c_best-practices-smallest-column-size.html
-                                   :type/Text "VARCHAR(1024)"}]
+                                   :type/Text       "VARCHAR(1024)"}]
   (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
@@ -65,21 +65,21 @@
   (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (def db-connection-details
-  (delay {:host (tx/db-test-env-var-or-throw :redshift :host)
-          :port (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db (tx/db-test-env-var-or-throw :redshift :db)
-          :user (tx/db-test-env-var-or-throw :redshift :user)
-          :password (tx/db-test-env-var-or-throw :redshift :password)
-          :schema-filters-type "inclusion"
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (def db-routing-connection-details
-  (delay {:host (tx/db-test-env-var-or-throw :redshift :host)
-          :port (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db (tx/db-test-env-var-or-throw :redshift :db-routing)
-          :user (tx/db-test-env-var-or-throw :redshift :user)
-          :password (tx/db-test-env-var-or-throw :redshift :password)
-          :schema-filters-type "inclusion"
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db-routing)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
           :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (defmethod tx/dbdef->connection-details :redshift
@@ -149,7 +149,7 @@
                               (with-open [rset (.executeQuery stmt sql)]
                                 (if (.next rset)
                                   (let [date-string (.getString rset "value")
-                                        created-at (java.time.Instant/parse date-string)]
+                                        created-at  (java.time.Instant/parse date-string)]
                                     (if (t/before? created-at threshold)
                                       :expired
                                       :recent))
@@ -169,27 +169,27 @@
   not have this luxury. Test runs can create schemas where models are persisted and nothing cleans these up, leading
   to redshift clusters hitting the max number of tables allowed."
   [^java.sql.Connection conn]
-  (let [{old-convention :old
-         caches-with-info :cache} (reduce (fn [acc s]
-                                            (cond (sql.tu.unique-prefix/old-dataset-name? s)
-                                                  (update acc :old conj s)
-                                                  (str/starts-with? s "metabase_cache_")
-                                                  (update acc :cache conj s)
-                                                  :else acc))
-                                          {:old [] :cache []}
-                                          (fetch-schemas conn))
+  (let [{old-convention   :old
+         caches-with-info :cache}    (reduce (fn [acc s]
+                                               (cond (sql.tu.unique-prefix/old-dataset-name? s)
+                                                     (update acc :old conj s)
+                                                     (str/starts-with? s "metabase_cache_")
+                                                     (update acc :cache conj s)
+                                                     :else acc))
+                                             {:old [] :cache []}
+                                             (fetch-schemas conn))
         {:keys [expired
                 old-style-cache
                 lacking-created-at]} (classify-cache-schemas conn caches-with-info)
-        drop-sql (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;"
-                                           schema-name))]
+        drop-sql                     (fn [schema-name] (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;"
+                                                               schema-name))]
     ;; don't delete unknown-error and recent.
     (with-open [stmt (.createStatement conn)]
       (doseq [[collection fmt-str] [[old-convention "Dropping old data schema: %s"]
                                     [expired "Dropping expired cache schema: %s"]
                                     [lacking-created-at "Dropping cache without created-at info: %s"]
                                     [old-style-cache "Dropping old cache schema without `cache_info` table: %s"]]
-              schema collection]
+              schema               collection]
         (log/infof fmt-str schema)
         (.execute stmt (drop-sql schema))))))
 
@@ -252,7 +252,7 @@
 (defmethod driver/describe-database* :redshift
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
-    (let [r (original-describe-database driver database)
+    (let [r                (original-describe-database driver database)
           physical-db-name (data.impl/database-source-dataset-name database)]
       (update r :tables (fn [tables]
                           (into #{}
@@ -286,7 +286,7 @@
 (mu/defmethod tx/dataset-already-loaded? :redshift
   [driver :- :keyword
    dbdef :- [:map
-             [:database-name :string]
+             [:database-name     :string]
              [:table-definitions [:sequential
                                   [:map
                                    [:table-name :string]]]]]]
@@ -296,21 +296,21 @@
    (empty? (:table-definitions dbdef))
    ;; otherwise, check and make sure the first table in the dbdef has been created.
    (let [session-schema (unique-session-schema)
-         tabledef (first (:table-definitions dbdef))
+         tabledef       (first (:table-definitions dbdef))
          ;; table-name should be something like test_data_venues
-         table-name (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
+         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
      (sql-jdbc.execute/do-with-connection-with-options
       driver
       (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
       {:write? false}
       (fn [^java.sql.Connection conn]
         (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog (if tx/*use-routing-details*
-                                                 (tx/db-test-env-var :redshift :db-routing)
-                                                 (tx/db-test-env-var :redshift :db))
+                                     #_catalog        (if tx/*use-routing-details*
+                                                        (tx/db-test-env-var :redshift :db-routing)
+                                                        (tx/db-test-env-var :redshift :db))
                                      #_schema-pattern session-schema
-                                     #_table-pattern table-name
-                                     #_types (into-array String ["TABLE"]))]
+                                     #_table-pattern  table-name
+                                     #_types          (into-array String ["TABLE"]))]
           ;; if the ResultSet returns anything we know the table is already loaded.
           (.next rset)))))))
 
@@ -335,7 +335,7 @@
 
 (defn grant-table-perms-to-roles!
   [driver details roles]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
@@ -351,7 +351,7 @@
 
 (defmethod tx/drop-roles! :redshift
   [driver details roles _user-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+  (let [spec   (sql-jdbc.conn/connection-details->spec driver details)
         schema (sql.tx/qualify-and-quote driver (unique-session-schema))]
     (doseq [[role-name _table-perms] roles]
       (let [role-name (sql.tx/qualify-and-quote driver role-name)]
