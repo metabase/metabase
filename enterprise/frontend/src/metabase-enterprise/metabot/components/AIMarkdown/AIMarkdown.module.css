@@ -8,7 +8,7 @@
   overflow: auto hidden;
   max-width: 100%;
   white-space: pre;
-  background: var(--mb-color-bg-black);
+  background: var(--mb-color-background-secondary);
   padding: 0.625rem 0.75rem;
   border-radius: 0.375rem;
   margin: 0.5rem 0;
@@ -36,7 +36,7 @@
 
 .aiMarkdown code {
   font-family: Monaco, Menlo, "Courier New", monospace;
-  background: var(--mb-color-bg-medium);
+  background: var(--mb-color-background-secondary);
   color: var(--mb-color-text-primary);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
