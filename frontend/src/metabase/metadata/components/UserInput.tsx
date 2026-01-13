@@ -81,8 +81,8 @@ export const UserInput = ({
             <Icon name="mail" />
           </Avatar>
         ) : userId === "unknown" ? (
-          <Avatar color="bg-light" name="unknown">
-            <Icon name="person" c="text-medium" />
+          <Avatar color="background-secondary" name="unknown">
+            <Icon name="person" c="text-secondary" />
           </Avatar>
         ) : null
       }
