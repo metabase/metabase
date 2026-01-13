@@ -7,6 +7,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.validate :as lib.schema.validate]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.malli :as mu]))
 
 (mu/defn returned-columns
@@ -22,8 +23,13 @@
   "Find any bad refs in a `query`."
   [driver :- :keyword
    query  :- ::lib.schema/query]
-  (if (lib/any-native-stage? query)
-    (deps.native/validate-native-query driver query)
+  ;; preprocess query first to check for native dependencies
+  (if (-> (qp.preprocess/preprocess query)
+          lib/any-native-stage?)
+    ;; Disabling native sql validation for the moment
+    ;; see https://metaboat.slack.com/archives/C09DZ0ASL81/p1768334339046829
+    ;; (deps.native/validate-native-query driver query)
+    #{}
     (lib/find-bad-refs query)))
 
 (defmulti check-entity
