@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.user]
    [metabase-enterprise.test :as met]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -42,6 +43,33 @@
                      (map :email (:data result))))
               (is (= 1 (count (:data result))))
               (is (= 1 (:total result))))))))))
+
+;; Test for issue #23689: Sandboxed group managers should be able to see users in their managed groups
+;; via GET /api/user (People tab in Admin), but NOT via GET /api/user/recipients
+(deftest sandboxed-group-manager-user-list-test
+  (testing "GET /api/user (People tab)"
+    (testing "a sandboxed group manager CAN see users in their managed group"
+      (met/with-gtaps! {:gtaps {:venues {}}}
+        (mt/with-premium-features #{:advanced-permissions :sandboxes}
+          ;; Make rasta a group manager
+          (let [membership (t2/select-one :model/PermissionsGroupMembership
+                                          :group_id (u/the-id &group)
+                                          :user_id (mt/user->id :rasta))]
+            (t2/update! :model/PermissionsGroupMembership :id (:id membership)
+                        {:is_group_manager true}))
+          ;; Add another user to the group
+          (perms/add-user-to-group! (mt/user->id :lucky) &group)
+          (let [result (mt/user-http-request :rasta :get 200 (format "user?group_id=%d" (u/the-id &group)))]
+            (testing "sees themselves and the other group member"
+              (is (set/subset? #{"rasta@metabase.com" "lucky@metabase.com"}
+                               (set (map :email (:data result))))))
+            (testing "total count includes both users"
+              (is (>= (:total result) 2))))
+          (let [membership (t2/select-one :model/PermissionsGroupMembership
+                                          :group_id (u/the-id &group)
+                                          :user_id (mt/user->id :rasta))]
+            (t2/update! :model/PermissionsGroupMembership :id (:id membership)
+                        {:is_group_manager false})))))))
 
 (deftest get-user-attributes-test
   (mt/with-premium-features #{}

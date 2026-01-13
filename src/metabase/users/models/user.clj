@@ -554,8 +554,6 @@
   (cond-> {}
     true                                    (sql.helpers/where [:= :core_user.type "personal"])
     true                                    (sql.helpers/where (status-clause status include_deactivated))
-    ;; don't send the internal user
-    (perms/sandboxed-or-impersonated-user?) (sql.helpers/where [:= :core_user.id api/*current-user-id*])
     (some? query)                           (sql.helpers/where (query-clause query))
     (some? group_ids)                       (sql.helpers/right-join
                                              :permissions_group_membership

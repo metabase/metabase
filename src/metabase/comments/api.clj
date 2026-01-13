@@ -10,6 +10,7 @@
    [metabase.comments.models.comment :as comment]
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.events.core :as events]
+   [metabase.permissions.util :as perms]
    [metabase.request.core :as request]
    [metabase.users-rest.api :as api.user]
    [metabase.users.models.user :as user]
@@ -290,23 +291,27 @@
   [_route _query _body req]
   ;; no access in embedding context
   (api/check-404 (not (analytics/embedding-context? (get-in req [:headers "x-metabase-client"]))))
-
-  (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
-                                                      :offset (request/offset)})]
-    ;; returns nothing while we're trying to figure out how do we deal with sandboxes and tenants etc
-    ;; do not forget to uncomment tests (both api and e2e)
-    {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
-                             (-> clauses
-                                 (sql.helpers/order-by [:%lower.first_name :asc]
-                                                       [:%lower.last_name :asc]
-                                                       [:id :asc])))
-                  (mapv #(assoc % :model "user")))
-     :total  (:count (t2/query-one
-                      (merge {:select [[[:count [:distinct :core_user.id]] :count]]
-                              :from   :core_user}
-                             (api.user/filter-clauses-without-paging clauses))))
+  ;; sandboxed/impersonated users can only see themselves
+  (if (perms/sandboxed-or-impersonated-user?)
+    {:data   [(-> (t2/select-one [:model/User :id :first_name :last_name :email] :id api/*current-user-id*)
+                  (assoc :model "user"))]
+     :total  1
      :limit  (request/limit)
-     :offset (request/offset)}))
+     :offset (request/offset)}
+    (let [clauses (user/filter-clauses nil nil nil nil {:limit  (request/limit)
+                                                        :offset (request/offset)})]
+      {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
+                               (-> clauses
+                                   (sql.helpers/order-by [:%lower.first_name :asc]
+                                                         [:%lower.last_name :asc]
+                                                         [:id :asc])))
+                    (mapv #(assoc % :model "user")))
+       :total  (:count (t2/query-one
+                        (merge {:select [[[:count [:distinct :core_user.id]] :count]]
+                                :from   :core_user}
+                               (api.user/filter-clauses-without-paging clauses))))
+       :limit  (request/limit)
+       :offset (request/offset)})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/comment/` routes."
