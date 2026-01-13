@@ -183,6 +183,7 @@ export type SdkIframeEmbedBaseSettings = {
   preferredAuthMethod?: MetabaseAuthMethod;
   jwtProviderUri?: string;
   fetchRequestToken?: MetabaseFetchRequestTokenFn;
+  enableInternalNavigation?: boolean;
 
   /** Whether we should use the existing user session (i.e. admin user's cookie) */
   useExistingUserSession?: boolean;

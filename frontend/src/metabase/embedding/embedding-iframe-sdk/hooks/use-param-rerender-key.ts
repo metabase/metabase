@@ -10,13 +10,16 @@ import type { SdkIframeEmbedSettings } from "../types/embed";
  */
 export const useParamRerenderKey = (settings: SdkIframeEmbedSettings) =>
   useMemo(() => {
+    const globalDependencies = {
+      token: settings.token,
+      enableInternalNavigation: settings.enableInternalNavigation,
+    };
     const { entity, dependencies } = match(settings)
       .with({ componentName: "metabase-dashboard" }, (settings) => ({
         entity: "dashboard",
         dependencies: {
           initialParameters: settings.initialParameters,
           hiddenParameters: settings.hiddenParameters,
-          token: settings.token,
         },
       }))
       .with(
@@ -27,14 +30,17 @@ export const useParamRerenderKey = (settings: SdkIframeEmbedSettings) =>
           dependencies: {
             initialParameters: settings.initialSqlParameters,
             hiddenParameters: settings.hiddenParameters,
-            token: settings.token,
           },
         }),
       )
-      .otherwise(() => ({ entity: "entity", dependencies: {} }));
+      .otherwise(() => ({
+        entity: "entity",
+        dependencies: globalDependencies,
+      }));
 
     return `${entity}-${stableStringify({
       isGuest: settings.isGuest,
+      ...globalDependencies,
       ...dependencies,
     })}`;
   }, [settings]);
