@@ -7,7 +7,6 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -230,8 +229,7 @@
       (mt/with-premium-features #{:dependencies}
         (let [mp (mt/metadata-provider)
               products-id (mt/id :products)
-              products (lib.metadata/table mp products-id)
-              native-query (lib/native-query mp "select * from orders")]
+              products (lib.metadata/table mp products-id)]
           (mt/with-temp [:model/Card {parent-id :id :as parent-card} {:dataset_query (lib/query mp products)
                                                                       :type :model}
                          :model/Card {child-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))
@@ -266,8 +264,7 @@
       (mt/with-premium-features #{:dependencies}
         (let [mp (mt/metadata-provider)
               products-id (mt/id :products)
-              products (lib.metadata/table mp products-id)
-              native-query (lib/native-query mp "select * from orders")]
+              products (lib.metadata/table mp products-id)]
           (mt/with-temp [:model/Card {parent-id :id :as parent-card} {:dataset_query (lib/query mp products)
                                                                       :type :model}
                          :model/Card {child-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))
@@ -309,8 +306,7 @@
       (mt/with-premium-features #{:dependencies}
         (let [mp (mt/metadata-provider)
               products-id (mt/id :products)
-              products (lib.metadata/table mp products-id)
-              native-query (lib/native-query mp "select * from orders")]
+              products (lib.metadata/table mp products-id)]
           (mt/with-temp [:model/Card {parent-id :id :as parent-card} {:dataset_query (lib/query mp products)
                                                                       :type :model}
                          :model/Card {child-id :id :as child-card} {:dataset_query (lib/query mp (lib.metadata/card mp parent-id))

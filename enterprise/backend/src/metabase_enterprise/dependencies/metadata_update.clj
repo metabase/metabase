@@ -41,7 +41,7 @@
            child-map {}]
       (let [new-children (->> (graph/children-of graph to-traverse)
                               (m/map-vals (fn [children]
-                                            (remove (fn [[type id :as child]]
+                                            (remove (fn [[type id]]
                                                       (and (= type :card)
                                                            (-> (lib.metadata/card mp id)
                                                                :dataset-query
@@ -232,10 +232,3 @@
   (when (and (premium-features/has-feature? :dependencies)
              (not (lib/any-native-stage? dataset_query)))
     (update-dependent-mbql-cards-metadata! dataset_query :card id previous-object :metadata/card)))
-
-(comment
-  (def mp (metabase.lib-be.core/application-database-metadata-provider 2))
-  (let [mp (metabase.lib-be.core/application-database-metadata-provider 1)
-        card (lib.metadata/card mp 1750)
-        edits (card-list-metadata-edits mp [1749 1750 1751])]
-    (updated-metadata mp card edits)))
