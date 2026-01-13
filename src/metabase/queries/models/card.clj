@@ -346,9 +346,7 @@
               (map? query)
               (not mi/*deserializing?*))
      (merge
-      ;; Always set source_card_id even if it's nilling out.
-      ;; This ensures that when a question is converted from model-based to native SQL,
-      ;; the source_card_id is cleared, preventing cascade deletion when the model is deleted (#68080).
+      ;; This used to be conditional on not nilling source-card-id, changed due to #68080.
       {:source_card_id (source-card-id query)}
       (when-let [{:keys [database-id table-id]} (query/query->database-and-table-ids query)]
         ;; TODO -- not sure `query_type` is actually used for anything important anyway
