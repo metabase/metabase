@@ -683,7 +683,7 @@
    - `offset`: Default 0
    - `limit`: Default 50
 
-   Returns a a map with:
+   Returns a map with:
    - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields
    - `total`: Total count of matched items
    - `offset`: Applied offset
