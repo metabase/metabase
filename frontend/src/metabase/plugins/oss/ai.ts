@@ -4,7 +4,6 @@ import type { ComponentType } from "react";
 import React from "react";
 
 import type { MetabotContext } from "metabase/metabot";
-import { useMetabotSQLSuggestion } from "metabase/metabot/hooks";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import type Question from "metabase-lib/v1/Question";
@@ -158,7 +157,17 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
-  useMetabotSQLSuggestion,
+  useMetabotSQLSuggestion: () => ({
+    source: undefined,
+    isLoading: false,
+    generate: async () => {},
+    error: undefined,
+    cancelRequest: () => {},
+    clear: () => {},
+    reject: () => {},
+    reset: () => {},
+    suggestionModels: [],
+  }),
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 

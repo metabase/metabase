@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { createAdminRouteGuard } from "metabase/admin/utils";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
+import { useMetabotSQLSuggestion as useMetabotSQLSuggestionOSS } from "metabase/metabot/hooks/use-metabot-sql-suggestion";
 import { PLUGIN_METABOT, PLUGIN_REDUCERS } from "metabase/plugins";
 import { useLazyMetabotGenerateContentQuery } from "metabase-enterprise/api";
 import { MetabotPurchasePage } from "metabase-enterprise/metabot/components/MetabotAdmin/MetabotPurchasePage";
@@ -19,9 +20,8 @@ import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
-import { useMetabotSQLSuggestion } from "./hooks";
+import { useMetabotSQLSuggestion as useMetabotSQLSuggestionEE } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
-
 /**
  * This is for Metabot in embedding
  *
@@ -39,6 +39,14 @@ PLUGIN_REDUCERS.metabotPlugin = metabotReducer;
  * Initialize metabot plugin features that depend on hasPremiumFeature.
  */
 export function initializePlugin() {
+  // setting the OSS value within the default implementation changes import order
+  // in a way that breaks the jest module system and prevents running unit tests (cljs gets imported twice)
+  if (hasPremiumFeature("metabot_v3")) {
+    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestionEE;
+  } else {
+    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestionOSS;
+  }
+
   if (hasPremiumFeature("metabot_v3")) {
     PLUGIN_METABOT.isEnabled = () => true;
     PLUGIN_METABOT.Metabot = Metabot;
@@ -75,7 +83,6 @@ export function initializePlugin() {
     PLUGIN_METABOT.useLazyMetabotGenerateContentQuery =
       useLazyMetabotGenerateContentQuery;
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
-    PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestion;
   } else if (hasPremiumFeature("offer_metabase_ai_tiered")) {
     PLUGIN_METABOT.getAdminPaths = () => [
       {
