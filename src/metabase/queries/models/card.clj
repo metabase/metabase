@@ -425,7 +425,10 @@
 
 (mu/defn- assert-valid-type
   "Check that the card is a valid model if being saved as one. Throw an exception if not."
-  [{query :dataset_query, card-type :type, :as _card} :- [:maybe ::queries.schema/card]]
+  [{query :dataset_query, card-type :type, source-card :source_card_id, :as _card} :- [:maybe ::queries.schema/card]]
+  (assert (not (and (query/query-is-native? query)
+                    (some? source-card)))
+          "A native SQL question cannot have a source card.")
   (when (= (keyword card-type) :model)
     (let [template-tag-types (into #{}
                                    (map :type)
