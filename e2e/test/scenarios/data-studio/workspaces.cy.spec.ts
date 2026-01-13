@@ -715,7 +715,7 @@ describe("scenarios > data studio > workspaces", () => {
           "New transform",
         ]);
         H.NativeEditor.value().should("be.empty");
-        Workspaces.getSaveTransformButton().should("be.disabled");
+        Workspaces.getSaveTransformButton().should("be.enabled");
       });
 
       cy.log(
@@ -747,6 +747,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByRole("button", { name: /Save/ }).click();
       });
+      verifyAndCloseToast("Transform saved successfully");
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
@@ -778,6 +779,7 @@ describe("scenarios > data studio > workspaces", () => {
           .type("new_table");
         cy.findByRole("button", { name: /Change target/ }).click();
       });
+      verifyAndCloseToast("Transform target updated");
 
       Workspaces.getWorkspaceSidebar()
         .findByText("Schema B.new_table")
@@ -854,6 +856,7 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.findByRole("button", { name: /Save/ }).click();
       });
+      verifyAndCloseToast("Transform saved successfully");
 
       cy.log("Verify transform is saved with new name");
       Workspaces.getWorkspaceContent().within(() => {
@@ -900,6 +903,7 @@ describe("scenarios > data studio > workspaces", () => {
           .type("new_table");
         cy.findByRole("button", { name: /Change target/ }).click();
       });
+      verifyAndCloseToast("Transform target updated");
 
       Workspaces.getWorkspaceSidebar()
         .findByText("Schema B.new_table")
