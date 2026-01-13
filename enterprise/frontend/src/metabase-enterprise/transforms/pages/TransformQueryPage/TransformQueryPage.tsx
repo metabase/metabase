@@ -268,6 +268,7 @@ export type TransformQueryPageEditorProps = {
   rejectProposed: () => void;
   uiOptions?: TransformEditorProps["uiOptions"];
   onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunTransform?: (result: any) => void;
 };
 
 export function TransformQueryPageEditor({
@@ -283,6 +284,7 @@ export function TransformQueryPageEditor({
   acceptProposed,
   rejectProposed,
   onRunQueryStart,
+  onRunTransform,
 }: TransformQueryPageEditorProps) {
   return source.type === "python" ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
@@ -295,6 +297,7 @@ export function TransformQueryPageEditor({
       onChangeSource={setSourceAndRejectProposed}
       onAcceptProposed={acceptProposed}
       onRejectProposed={rejectProposed}
+      onRunTransform={onRunTransform}
     />
   ) : (
     <TransformEditor

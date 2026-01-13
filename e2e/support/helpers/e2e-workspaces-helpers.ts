@@ -38,15 +38,11 @@ export const Workspaces = {
   },
 
   openCodeTab() {
-    return this.getWorkspaceSidebar().within(() => {
-      return cy.findByRole("tab", { name: "Code" }).click();
-    });
+    this.getWorkspaceSidebar().findByRole("tab", { name: "Code" }).click();
   },
 
   openDataTab() {
-    return this.getWorkspaceSidebar().within(() => {
-      return cy.findByRole("tab", { name: "Data" }).click();
-    });
+    this.getWorkspaceSidebar().findByRole("tab", { name: "Data" }).click();
   },
 
   getWorkspacesSection() {
@@ -67,6 +63,10 @@ export const Workspaces = {
 
   getWorkspaceNameInput() {
     return cy.findByPlaceholderText("Workspace name");
+  },
+
+  getRunAllTransformsButton() {
+    return cy.findByTestId("run-all-button");
   },
 
   getMergeWorkspaceButton() {

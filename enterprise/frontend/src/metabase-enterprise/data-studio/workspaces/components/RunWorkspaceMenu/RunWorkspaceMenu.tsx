@@ -39,11 +39,12 @@ export function RunWorkspaceMenu({
     <Menu position="bottom-end">
       <Menu.Target>
         <Button
-          variant="default"
-          rightSection={<Icon name="chevrondown" />}
-          loading={isRunning}
+          data-testid="run-all-button"
           disabled={disabled}
+          loading={isRunning}
+          rightSection={<Icon name="chevrondown" />}
           size="xs"
+          variant="default"
         >
           {t`Run transforms`}
         </Button>

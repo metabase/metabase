@@ -96,10 +96,7 @@
   [& {:keys [last_run_start_time last_run_statuses tag_ids type]}]
   (api/check-superuser)
   (let [where      (when type [:in :source_type (map #(if (= % "query") "mbql" %) type)])
-        transforms (t2/select :model/Transform (merge
-                                                (when where
-                                                  {:where where})
-                                                {:order-by [[:id :asc]]}))]
+        transforms (t2/select :model/Transform {:where (or where true) :order-by [[:id :asc]]})]
     (into []
           (comp (transforms.util/->date-field-filter-xf [:last_run :start_time] last_run_start_time)
                 (transforms.util/->status-filter-xf [:last_run :status] last_run_statuses)

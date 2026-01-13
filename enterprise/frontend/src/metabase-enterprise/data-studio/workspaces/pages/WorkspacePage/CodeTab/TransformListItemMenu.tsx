@@ -21,7 +21,7 @@ export function TransformListItemMenu({ transform, workspaceId }: Props) {
 
   const {
     removeEditedTransform,
-    removeOpenedTransform,
+    removeWorkspaceTransform,
     removeUnsavedTransform,
   } = useWorkspace();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
@@ -45,7 +45,7 @@ export function TransformListItemMenu({ transform, workspaceId }: Props) {
 
       sendSuccessToast(t`Transform removed from the workspace`);
       removeEditedTransform(transform.ref_id);
-      removeOpenedTransform(transform.ref_id);
+      removeWorkspaceTransform(transform.ref_id);
     } catch (error) {
       sendErrorToast(t`Failed to remove transform from the workspace`);
     }

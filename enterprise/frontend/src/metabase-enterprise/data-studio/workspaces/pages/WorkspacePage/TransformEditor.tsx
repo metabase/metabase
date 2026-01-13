@@ -15,6 +15,7 @@ type TransformEditorProps = {
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
   onRunQueryStart?: (query: DatasetQuery) => void;
+  onRunTransform?: (result: any) => void;
 };
 
 export function TransformEditor({
@@ -25,6 +26,7 @@ export function TransformEditor({
   onAcceptProposed,
   onRejectProposed,
   onRunQueryStart,
+  onRunTransform,
 }: TransformEditorProps) {
   const [uiState, setUiState] = useState(getInitialUiStateForTransform);
 
@@ -54,6 +56,7 @@ export function TransformEditor({
       acceptProposed={onAcceptProposed ?? _.noop}
       rejectProposed={onRejectProposed ?? _.noop}
       onRunQueryStart={onRunQueryStart}
+      onRunTransform={onRunTransform}
     />
   );
 }

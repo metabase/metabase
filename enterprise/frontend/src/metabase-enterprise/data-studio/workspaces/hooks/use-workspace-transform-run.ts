@@ -1,34 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
-  DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE,
-  useGetWorkspaceTablesQuery,
   useGetWorkspaceTransformQuery,
   useRunWorkspaceTransformMutation,
-  workspaceApi,
+  workspaceApi
 } from "metabase-enterprise/api";
 import type {
-  DatabaseId,
-  SchemaName,
-  TableId,
   TransformRun,
   WorkspaceId,
-  WorkspaceTransform,
+  WorkspaceTransform
 } from "metabase-types/api";
 
 type UseWorkspaceTransformRunOptions = {
   workspaceId: WorkspaceId;
   transform: WorkspaceTransform;
-};
-
-type OutputTableInfo = {
-  db_id: DatabaseId;
-  table_id: TableId | null;
-  table_name: string;
-  schema: SchemaName;
 };
 
 type UseWorkspaceTransformRunResult = {
@@ -42,7 +30,6 @@ type UseWorkspaceTransformRunResult = {
   isRunning: boolean;
   /** Trigger a transform run */
   handleRun: () => Promise<void>;
-  output: OutputTableInfo | null;
 };
 
 export function useWorkspaceTransformRun({
@@ -52,8 +39,6 @@ export function useWorkspaceTransformRun({
   const dispatch = useDispatch();
   const { sendErrorToast } = useMetadataToasts();
   const [runTransform] = useRunWorkspaceTransformMutation();
-  const { data: workspaceTables = DEFAULT_WORKSPACE_TABLES_QUERY_RESPONSE } =
-    useGetWorkspaceTablesQuery(workspaceId);
 
   const [isRunTriggered, setIsRunTriggered] = useState(false);
   const [lastRunResult, setLastRunResult] = useState<{
@@ -61,6 +46,7 @@ export function useWorkspaceTransformRun({
     end_time: string;
     message: string | null;
   } | null>(null);
+
 
   // Fetch workspace transform to get updated last_run_at
   const { data: fetchedWorkspaceTransform, isFetching } =
@@ -76,8 +62,8 @@ export function useWorkspaceTransformRun({
     fetchedWorkspaceTransform?.last_run_at ?? transform.last_run_at;
   const lastRunMessage =
     fetchedWorkspaceTransform?.last_run_message ?? transform.last_run_message;
-
-  const lastRunStatus = lastRunMessage ? "failed" : "succeeded";
+  const lastRunStatus =
+    fetchedWorkspaceTransform?.last_run_status ?? transform.last_run_status;
 
   const statusRun: TransformRun | null = useMemo(
     () =>
@@ -103,23 +89,8 @@ export function useWorkspaceTransformRun({
     [lastRunResult, lastRunAt, lastRunMessage, lastRunStatus],
   );
 
-  const output = useMemo<OutputTableInfo | null>(() => {
-    const table = workspaceTables.outputs.find(
-      (table) => table.isolated.transform_id === transform.ref_id,
-    );
-    if (!table || statusRun?.status !== "succeeded") {
-      return null;
-    }
-    return {
-      db_id: table.db_id,
-      table_id: table.isolated.table_id,
-      table_name: table.isolated.table,
-      schema: table.isolated.schema,
-    };
-  }, [workspaceTables, transform.ref_id, statusRun]);
-
   // Run object for button - only shows feedback during/after user-triggered runs
-  const buttonRun: TransformRun | null = isRunTriggered
+  const buttonRun: TransformRun | null = useMemo(() => isRunTriggered
     ? {
         id: -1,
         status: "started",
@@ -137,7 +108,9 @@ export function useWorkspaceTransformRun({
           message: lastRunResult.message,
           run_method: "manual",
         }
-      : null;
+      : null,
+    [isRunTriggered, lastRunResult],
+  );
 
   const handleRun = async () => {
     try {
@@ -151,12 +124,12 @@ export function useWorkspaceTransformRun({
 
       // Transform completed - store the result
       const endTime = result.end_time ?? new Date().toISOString();
+
       setLastRunResult({
         status: result.status,
         end_time: endTime,
         message: result.message ?? null,
       });
-      setIsRunTriggered(false);
 
       // Invalidate caches to refetch updated data
       dispatch(
@@ -171,9 +144,9 @@ export function useWorkspaceTransformRun({
         sendErrorToast(t`Transform run failed`);
       }
     } catch (error) {
-      setIsRunTriggered(false);
-      setLastRunResult(null);
       sendErrorToast(t`Failed to run transform`);
+    } finally {
+      setIsRunTriggered(false);
     }
   };
 
@@ -183,6 +156,5 @@ export function useWorkspaceTransformRun({
     isRunStatusLoading: statusRun == null && isFetching,
     isRunning: isRunTriggered,
     handleRun,
-    output,
   };
 }

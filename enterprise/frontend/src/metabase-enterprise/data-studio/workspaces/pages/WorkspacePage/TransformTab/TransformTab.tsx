@@ -26,11 +26,11 @@ import type {
 } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
-import { SaveTransformButton } from "./SaveTransformButton";
 import { TransformEditor } from "../TransformEditor";
 import type { EditedTransform, TableTab } from "../WorkspaceProvider";
 import { useWorkspace } from "../WorkspaceProvider";
 
+import { SaveTransformButton } from "./SaveTransformButton";
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
 
 interface Props {
@@ -90,6 +90,27 @@ export const TransformTab = ({
           query,
         },
       };
+      addOpenedTab(tableTab);
+    },
+    [transform.id, transform.name, addOpenedTab],
+  );
+
+  const handleRunTransform = useCallback(
+    (result) => {
+      const tableTabId = `table-${transform.id}`;
+
+      const tableTab: TableTab = {
+        id: tableTabId,
+        name: t`Preview (${transform.name})`,
+        type: "table",
+        table: {
+          tableId: transform.id,
+          name: t`Preview (${transform.name})`,
+          transformId: transform.id.toString(),
+          pythonPreviewResult: result,
+        },
+      };
+
       addOpenedTab(tableTab);
     },
     [transform.id, transform.name, addOpenedTab],
@@ -250,6 +271,7 @@ export const TransformTab = ({
             onRejectProposed={handleRejectProposed}
             onChange={handleSourceChange}
             onRunQueryStart={handleRunQueryStart}
+            onRunTransform={handleRunTransform}
           />
         </Box>
       )}
