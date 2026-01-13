@@ -11,7 +11,7 @@ import type { SdkEntityId, SdkEntityToken } from "./entity";
 
 export type { MetabaseQuestion } from "metabase/embedding-sdk/types/question";
 
-export type SdkQuestionId = number | "new" | SdkEntityId;
+export type SdkQuestionId = number | "new" | "new-native" | SdkEntityId;
 
 export type SdkQuestionEntityPublicProps =
   | {

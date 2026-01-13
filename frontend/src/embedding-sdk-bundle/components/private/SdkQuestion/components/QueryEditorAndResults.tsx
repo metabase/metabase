@@ -6,7 +6,6 @@ import {
 } from "metabase/querying/editor/components/QueryEditor";
 import { useQueryResults } from "metabase/querying/editor/hooks/use-query-results";
 import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
-import { Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -49,7 +48,7 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
   };
 
   return (
-    <Stack w="100%" h="100%" gap={0}>
+    <>
       <QueryEditor
         query={currentQuestion.query()}
         uiState={uiState}
@@ -57,6 +56,7 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
         onChangeUiState={setUiState}
         onAcceptProposed={handleRunQuery}
         onRejectProposed={() => {}}
+        height={hasVisualizeButton ? "calc(100% - 100px)" : undefined}
       />
       {hasVisualizeButton && runQuestionQuery && (
         <VisualizeButton
@@ -68,6 +68,6 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
           runQuestionQuery={runQuestionQuery}
         />
       )}
-    </Stack>
+    </>
   );
 }

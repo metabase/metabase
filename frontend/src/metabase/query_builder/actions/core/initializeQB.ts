@@ -92,6 +92,21 @@ function getCardForBlankQuestion(
   return question.card();
 }
 
+function getCardForBlankNativeQuestion(
+  metadata: Metadata,
+  options: BlankQueryOptions,
+) {
+  const databaseId = options.db ? parseInt(options.db) : undefined;
+
+  const question = Question.create({
+    DEPRECATED_RAW_MBQL_type: "native",
+    DEPRECATED_RAW_MBQL_databaseId: databaseId,
+    metadata,
+  });
+
+  return question.card();
+}
+
 function filterBySegmentId(question: Question, segmentId: SegmentId) {
   const stageIndex = -1;
   const query = question.query();
@@ -178,6 +193,7 @@ export async function resolveCards({
   options,
   dispatch,
   getState,
+  questionType,
 }: {
   cardId?: string | number;
   token?: EntityToken | null;
@@ -185,13 +201,17 @@ export async function resolveCards({
   options: BlankQueryOptions;
   dispatch: Dispatch;
   getState: GetState;
+  questionType?: "native" | "gui";
 }): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
     const metadata = getMetadata(getState());
 
-    return {
-      card: getCardForBlankQuestion(metadata, options),
-    };
+    const card =
+      questionType === "native"
+        ? getCardForBlankNativeQuestion(metadata, options)
+        : getCardForBlankQuestion(metadata, options);
+
+    return { card };
   }
   return cardId
     ? fetchAndPrepareSavedQuestionCards({ cardId, token }, dispatch, getState)
