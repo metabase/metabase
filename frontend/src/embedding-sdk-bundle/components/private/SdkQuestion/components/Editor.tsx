@@ -80,10 +80,9 @@ export const Editor = ({
         question={question}
         hasVisualizeButton={hasVisualizeButton}
         isDirty={isDirty}
-        updateQuestion={async (nextQuestion: Question) => {
-          console.log(nextQuestion.query());
-          await updateQuestion(nextQuestion, { run: false });
-        }}
+        updateQuestion={async (nextQuestion: Question) =>
+          await updateQuestion(nextQuestion, { run: false })
+        }
         runQuestionQuery={async () => {
           onApply();
           await queryQuestion();

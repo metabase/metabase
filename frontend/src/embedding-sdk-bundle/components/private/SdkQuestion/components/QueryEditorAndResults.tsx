@@ -5,10 +5,10 @@ import {
   getInitialUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { useQueryResults } from "metabase/querying/editor/hooks/use-query-results";
+import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
 import { Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { VisualizeButton } from "metabase/querying/notebook/components/Notebook";
 
 interface QueryEditorAndResultsProps {
   question: Question;
@@ -39,6 +39,7 @@ export function QueryEditorAndResults(props: QueryEditorAndResultsProps) {
   const onQueryChange = (query: Lib.Query) => {
     const updatedQuestion = currentQuestion.setQuery(query);
     setCurrentQuestion(updatedQuestion);
+    updateQuestion(updatedQuestion);
   };
 
   const handleRunQuery = () => {
