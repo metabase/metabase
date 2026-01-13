@@ -1,6 +1,7 @@
 (ns metabase.task-history.models.task-history-test
   (:require
    [clojure.test :refer :all]
+   [clojure.tools.logging :as log]
    [java-time.api :as t]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
@@ -108,10 +109,11 @@
         (task-history/with-task-history {:task            task-name
                                          :task_details    {:id 1}
                                          :on-success-info (fn [info result]
-                                                            (testing "info should have task_details and updated status"
-                                                              (is (= {:task_details {:id 1}
-                                                                      :status       :success}
-                                                                     info)))
+                                                            (testing "info should have task_details, logs, and updated status"
+                                                              (is (=? {:task_details {:id 1}
+                                                                       :logs         (mt/malli=? vector?)
+                                                                       :status       :success}
+                                                                      info)))
                                                             (update info :task_details assoc :result result))}
           42)
         (is (= {:status       :success
@@ -144,3 +146,49 @@
                                 :original-info {:id 1}
                                 :reason         "test"}}
                 (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))))
+
+(deftest log-capture-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (testing "logs are captured on success"
+      (let [task-name (mt/random-name)]
+        (task-history/with-task-history {:task task-name}
+          (log/info "info message")
+          (log/warn "warning message")
+          (log/error "error message"))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (= [{:level "info", :msg "info message"}
+                  {:level "warn", :msg "warning message"}
+                  {:level "error", :msg "error message"}]
+                 logs)))))
+
+    (testing "logs are captured on failure"
+      (let [task-name (mt/random-name)]
+        (u/ignore-exceptions
+          (task-history/with-task-history {:task task-name}
+            (log/info "before exception")
+            (throw (ex-info "Test failure" {:reason :test}))))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :failed status))
+          (is (= [{:level "info", :msg "before exception"}] logs)))))
+
+    (testing "exception details are captured in logs"
+      (let [task-name (mt/random-name)]
+        (u/ignore-exceptions
+          (task-history/with-task-history {:task task-name}
+            (log/error (Exception. "Test exception") "error message")))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (=? [{:level "error"
+                    :msg "error message"
+                    :ex {:type "class java.lang.Exception"
+                         :message "Test exception"
+                         :stacktrace (mt/malli=? vector?)}}]
+                  logs)))))
+
+    (testing "task with no logs"
+      (let [task-name (mt/random-name)]
+        (task-history/with-task-history {:task task-name})
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (= [] logs)))))))

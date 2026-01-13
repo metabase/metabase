@@ -150,12 +150,13 @@
   ;; TODO: should we save ex-data
   ;;  - what about cause chains
   ;;  - security
-  {:level level
-   :msg   msg
-   :ex    (when e
-            {:type       (class e)
-             :message    (.getMessage e)
-             :stacktrace (u/filtered-stacktrace e)})})
+  (cond->
+   {:level level
+    :msg   msg}
+    e (assoc :ex
+             {:type       (class e)
+              :message    (.getMessage e)
+              :stacktrace (u/filtered-stacktrace e)})))
 
 (defn- log-capture-factory [base-factory logs-atom]
   (reify log.impl/LoggerFactory
@@ -186,7 +187,7 @@
         (u/prog1 (f)
           (update-task-history! th-id start-time-ns (on-success-info {:status       :success
                                                                       :task_details (:task_details info)
-                                                                      :logs         (json/encode @logs-atom)}
+                                                                      :logs         @logs-atom}
                                                                      <>)))
         (catch Throwable e
           (update-task-history! th-id start-time-ns
@@ -195,8 +196,8 @@
                                                               :message       (.getMessage e)
                                                               :stacktrace    (u/filtered-stacktrace e)
                                                               :ex-data       (ex-data e)
-                                                              :original-info (:task_details info)
-                                                              :logs          (json/encode @logs-atom)}
+                                                              :original-info (:task_details info)}
+                                               :logs         @logs-atom
                                                :status       :failed}
                                               e))
           (throw e))))))
