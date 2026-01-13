@@ -40,7 +40,7 @@ export function NewSegmentPage({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
-  const [hasSaved, setHasSaved] = useState(false);
+  const [savedSegment, setSavedSegment] = useState<Segment | null>(null);
 
   const isInitialized = useRef(false);
 
@@ -54,7 +54,8 @@ export function NewSegmentPage({
   const { query, filters } = useSegmentQuery(definition, metadata);
 
   const isDirty =
-    name.trim().length > 0 || description.length > 0 || filters.length > 0;
+    !savedSegment &&
+    (name.trim().length > 0 || description.length > 0 || filters.length > 0);
   const isValid = name.trim().length > 0 && filters.length > 0;
   const previewUrl =
     filters.length > 0 ? getDatasetQueryPreviewUrl(definition) : undefined;
@@ -79,9 +80,8 @@ export function NewSegmentPage({
     if (error) {
       sendErrorToast(t`Failed to create segment`);
     } else if (segment) {
-      setHasSaved(true);
+      setSavedSegment(segment);
       sendSuccessToast(t`Segment created`);
-      dispatch(push(getSuccessUrl(segment)));
     }
   }, [
     table,
@@ -90,11 +90,15 @@ export function NewSegmentPage({
     description,
     isValid,
     createSegment,
-    dispatch,
-    getSuccessUrl,
     sendSuccessToast,
     sendErrorToast,
   ]);
+
+  useEffect(() => {
+    if (savedSegment) {
+      dispatch(push(getSuccessUrl(savedSegment)));
+    }
+  }, [savedSegment, dispatch, getSuccessUrl]);
 
   return (
     <PageContainer data-testid="new-segment-page" gap="xl">
@@ -121,10 +125,7 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal
-        route={route}
-        isEnabled={isDirty && !isSaving && !hasSaved}
-      />
+      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
     </PageContainer>
   );
 }
