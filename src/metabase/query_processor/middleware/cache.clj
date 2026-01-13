@@ -232,8 +232,9 @@
 (defn- strategy-not-nocache? [cache-strategy]
   (not= (:type cache-strategy) :nocache))
 
-(defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
+(defn- is-cacheable?
   "Returns a map with :eligible? and :description detailing cache eligibility."
+  [{:keys [cache-strategy], :as _query}]
   (let [enabled?    (caching-enabled?)
         has-strat?  (has-cache-strategy? cache-strategy)
         not-nocache? (strategy-not-nocache? cache-strategy)]
@@ -264,7 +265,7 @@
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
     (let [{:keys [eligible? description]} (is-cacheable? query)]
-      (log/tracef "Query is %scacheable: %s" (if-not eligible? "not ") description)
+      (log/tracef "Query is %scacheable: %s" (if-not eligible? "not " "") description)
       (if eligible?
         (run-query-with-cache qp query rff)
         (qp query rff)))))
