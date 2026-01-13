@@ -157,7 +157,15 @@
                                               :dirname "check" :all_collections false :data_model false :settings false)]
                   (is (= "check/"
                          (with-open [tar (open-tar f)]
-                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))))))
+                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))
+
+              (testing "Invalid entity ID returns an error instead of falling back to root collection"
+                (let [fake-eid "abcdefghijklmnopqrstu"
+                      res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                                     :collection fake-eid :data_model false :settings false)
+                      log      (slurp (io/input-stream res))]
+                  (is (re-find #"Could not find Collection with entity ID" log))
+                  (is (re-find #"abcdefghijklmnopqrstu" log))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files

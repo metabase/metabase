@@ -183,7 +183,8 @@ describe("scenarios > visualizations > table", () => {
     cy.findByTestId("sidebar-left").findByText("Done").click();
 
     headerCells().eq(3).should("contain.text", "TOTAL");
-    H.moveDnDKitElement(H.tableHeaderColumn("TOTAL"), { horizontal: -220 });
+    H.tableHeaderColumn("TOTAL").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { horizontal: -220 });
     headerCells().eq(1).should("contain.text", "TOTAL");
 
     H.tableHeaderClick("QUANTITY");
@@ -209,7 +210,8 @@ describe("scenarios > visualizations > table", () => {
     H.tableHeaderColumn("first_column").invoke("outerWidth").as("firstWidth");
     H.tableHeaderColumn("second_column").invoke("outerWidth").as("secondWidth");
 
-    H.moveDnDKitElement(H.tableHeaderColumn("first_column"), {
+    H.tableHeaderColumn("first_column").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       horizontal: 100,
     });
 
@@ -926,7 +928,8 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .first()
         .should("contain.text", "is less than 20");
 
-      H.moveDnDKitElement(cy.findAllByTestId("formatting-rule-preview").eq(2), {
+      cy.findAllByTestId("formatting-rule-preview").eq(2).as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: -300,
       });
 

@@ -212,7 +212,7 @@ export const HandleEditorDrop = Extension.create({
             return new Slice(
               Fragment.fromArray(transformedContent),
               slice.openStart,
-              slice.openEnd,
+              slice.openEnd, // codespell:ignore
             );
           },
         },
