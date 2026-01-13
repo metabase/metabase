@@ -1033,9 +1033,9 @@
                                                                                (lib/query mp))}]
           (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=unreftest")]
-            (is (=? [{:id unreffed-card-id
-                      :type "card"
-                      :data {:name "Unreferenced Card - unreftest"}}]
+            (is (=? {:data [{:id unreffed-card-id
+                             :type "card"
+                             :data {:name "Unreferenced Card - unreftest"}}]}
                     response))))))))
 
 (deftest ^:sequential unreferenced-tables-test
@@ -1049,9 +1049,9 @@
                                           :dataset_query (lib/query mp (lib.metadata/table mp referenced-table-id))}]
           (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest")]
-            (is (=? [{:id unreffed-table-id
-                      :type "table"
-                      :data {:name "Unreferenced Table - unreftest"}}]
+            (is (=? {:data [{:id unreffed-table-id
+                             :type "table"
+                             :data {:name "Unreferenced Table - unreftest"}}]}
                     response))))))))
 
 (deftest ^:sequential unreferenced-transforms-test
@@ -1079,9 +1079,9 @@
                                            :transform-id referenced-transform-id}})
           (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
-            (is (=? [{:id unreffed-transform-id
-                      :type "transform"
-                      :data {:name "Unreferenced Transform - unreftest"}}]
+            (is (=? {:data [{:id unreffed-transform-id
+                             :type "transform"
+                             :data {:name "Unreferenced Transform - unreftest"}}]}
                     response))))))))
 
 (deftest ^:sequential unreferenced-snippets-test
@@ -1104,9 +1104,9 @@
                                               :dataset_query native-query}]
               (while (#'dependencies.backfill/backfill-dependencies!))
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=unreftest")]
-                (is (=? [{:id unreffed-snippet-id
-                          :type "snippet"
-                          :data {:name "Unreferenced Snippet - unreftest"}}]
+                (is (=? {:data   [{:id unreffed-snippet-id
+                                   :type "snippet"
+                                   :data {:name "Unreferenced Snippet - unreftest"}}]}
                         response))))))))))
 
 (deftest ^:sequential unreferenced-dashboards-test
@@ -1124,9 +1124,9 @@
                                         :content_type "application/json+vnd.prose-mirror"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=unreftest")]
-          (is (=? [{:id unreffed-dashboard-id
-                    :type "dashboard"
-                    :data {:name "Unreferenced Dashboard - unreftest"}}]
+          (is (=? {:data [{:id unreffed-dashboard-id
+                           :type "dashboard"
+                           :data {:name "Unreferenced Dashboard - unreftest"}}]}
                   response)))))))
 
 (deftest ^:sequential unreferenced-documents-test
@@ -1142,9 +1142,9 @@
                                                                  :content_type "application/json+vnd.prose-mirror"}]
         (while (#'dependencies.backfill/backfill-dependencies!))
         (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=unreftest")]
-          (is (=? [{:id unreffed-document-id
-                    :type "document"
-                    :data {:name "Unreferenced Document - unreftest"}}]
+          (is (=? {:data [{:id unreffed-document-id
+                           :type "document"
+                           :data {:name "Unreferenced Document - unreftest"}}]}
                   response)))))))
 
 (deftest ^:sequential unreferenced-sandboxes-test
@@ -1161,9 +1161,9 @@
                                                         :card_id sandbox-card-id}]
           (while (#'dependencies.backfill/backfill-dependencies!))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=sandbox")]
-            (is (=? [{:id sandbox-id
-                      :type "sandbox"
-                      :data {:table {:name "PRODUCTS"}}}]
+            (is (=? {:data [{:id sandbox-id
+                             :type "sandbox"
+                             :data {:table {:name "PRODUCTS"}}}]}
                     response))))))))
 
 (deftest ^:sequential unreferenced-card-types-test
@@ -1180,28 +1180,28 @@
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "filtering by model only"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=model&query=cardtype")]
-              (is (=? [{:id unreffed-model-id
-                        :type "card"
-                        :data {:name "A - Unreferenced Model - cardtype"
-                               :type "model"}}]
+              (is (=? {:data [{:id unreffed-model-id
+                               :type "card"
+                               :data {:name "A - Unreferenced Model - cardtype"
+                                      :type "model"}}]}
                       response))))
           (testing "filtering by metric only"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=metric&query=cardtype")]
-              (is (=? [{:id unreffed-metric-id
-                        :type "card"
-                        :data {:name "B - Unreferenced Metric - cardtype"
-                               :type "metric"}}]
+              (is (=? {:data [{:id unreffed-metric-id
+                               :type "card"
+                               :data {:name "B - Unreferenced Metric - cardtype"
+                                      :type "metric"}}]}
                       response))))
           (testing "filtering by model and metric as the default card types"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&query=cardtype")]
-              (is (=? [{:id unreffed-model-id
-                        :type "card"
-                        :data {:name "A - Unreferenced Model - cardtype"
-                               :type "model"}}
-                       {:id unreffed-metric-id
-                        :type "card"
-                        :data {:name "B - Unreferenced Metric - cardtype"
-                               :type "metric"}}]
+              (is (=? {:data [{:id unreffed-model-id
+                               :type "card"
+                               :data {:name "A - Unreferenced Model - cardtype"
+                                      :type "model"}}
+                              {:id unreffed-metric-id
+                               :type "card"
+                               :data {:name "B - Unreferenced Metric - cardtype"
+                                      :type "metric"}}]}
                       response)))))))))
 
 (deftest ^:sequential unreferenced-archived-card-test
@@ -1219,12 +1219,12 @@
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "archived=false (default) excludes archived card"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest")
-                  card-ids (set (map :id response))]
+                  card-ids (set (map :id (:data response)))]
               (is (contains? card-ids unreffed-card-id))
               (is (not (contains? card-ids archived-card-id)))))
           (testing "archived=true includes archived card"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=archivedtest&archived=true")
-                  card-ids (set (map :id response))]
+                  card-ids (set (map :id (:data response)))]
               (is (contains? card-ids unreffed-card-id))
               (is (contains? card-ids archived-card-id)))))))))
 
@@ -1237,12 +1237,12 @@
         (while (#'dependencies.backfill/backfill-dependencies!))
         (testing "archived=false (default) excludes archived dashboard"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=archivedtest")
-                dashboard-ids (set (map :id response))]
+                dashboard-ids (set (map :id (:data response)))]
             (is (contains? dashboard-ids unreffed-dashboard-id))
             (is (not (contains? dashboard-ids archived-dashboard-id)))))
         (testing "archived=true includes archived dashboard"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=archivedtest&archived=true")
-                dashboard-ids (set (map :id response))]
+                dashboard-ids (set (map :id (:data response)))]
             (is (contains? dashboard-ids unreffed-dashboard-id))
             (is (contains? dashboard-ids archived-dashboard-id))))))))
 
@@ -1255,12 +1255,12 @@
         (while (#'dependencies.backfill/backfill-dependencies!))
         (testing "archived=false (default) excludes archived document"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=archivedtest")
-                document-ids (set (map :id response))]
+                document-ids (set (map :id (:data response)))]
             (is (contains? document-ids unreffed-document-id))
             (is (not (contains? document-ids archived-document-id)))))
         (testing "archived=true includes archived document"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=archivedtest&archived=true")
-                document-ids (set (map :id response))]
+                document-ids (set (map :id (:data response)))]
             (is (contains? document-ids unreffed-document-id))
             (is (contains? document-ids archived-document-id))))))))
 
@@ -1275,12 +1275,12 @@
         (while (#'dependencies.backfill/backfill-dependencies!))
         (testing "archived=false (default) excludes archived snippet"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=archivedtest")
-                snippet-ids (set (map :id response))]
+                snippet-ids (set (map :id (:data response)))]
             (is (contains? snippet-ids unreffed-snippet-id))
             (is (not (contains? snippet-ids archived-snippet-id)))))
         (testing "archived=true includes archived snippet"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=archivedtest&archived=true")
-                snippet-ids (set (map :id response))]
+                snippet-ids (set (map :id (:data response)))]
             (is (contains? snippet-ids unreffed-snippet-id))
             (is (contains? snippet-ids archived-snippet-id))))))))
 
@@ -1301,12 +1301,12 @@
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "archived=false (default) excludes archived segment"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
-                  segment-ids (set (map :id response))]
+                  segment-ids (set (map :id (:data response)))]
               (is (contains? segment-ids unreffed-segment-id))
               (is (not (contains? segment-ids archived-segment-id)))))
           (testing "archived=true includes archived segment"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest&archived=true")
-                  segment-ids (set (map :id response))]
+                  segment-ids (set (map :id (:data response)))]
               (is (contains? segment-ids unreffed-segment-id))
               (is (contains? segment-ids archived-segment-id)))))))))
 
@@ -1326,13 +1326,13 @@
         (while (#'dependencies.backfill/backfill-dependencies!))
         (testing "archived=false (default) excludes inactive and hidden tables"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest")
-                table-ids (set (map :id response))]
+                table-ids (set (map :id (:data response)))]
             (is (contains? table-ids active-table-id))
             (is (not (contains? table-ids inactive-table-id)))
             (is (not (contains? table-ids hidden-table-id)))))
         (testing "archived=true includes inactive and hidden tables"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest&archived=true")
-                table-ids (set (map :id response))]
+                table-ids (set (map :id (:data response)))]
             (is (contains? table-ids active-table-id))
             (is (contains? table-ids inactive-table-id))
             (is (contains? table-ids hidden-table-id))))))))
@@ -1350,9 +1350,9 @@
                                                          :dataset_query (lib/native-query mp "not a query")}]
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest")]
-            (is (=? [{:id broken-card-id
-                      :type "card"
-                      :data {:name "Broken Card - brokentest"}}]
+            (is (=? {:data [{:id broken-card-id
+                             :type "card"
+                             :data {:name "Broken Card - brokentest"}}]}
                     response))))))))
 
 (deftest ^:sequential broken-transforms-test
@@ -1372,9 +1372,9 @@
                                                     :name "referenced_transform_table"}}]
           (while (> (dependencies.findings/analyze-batch! :transform 50) 0))
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=transform&query=brokentest")]
-            (is (=? [{:id broken-transform-id
-                      :type "transform"
-                      :data {:name "Broken Transform - brokentest"}}]
+            (is (=? {:data [{:id broken-transform-id
+                             :type "transform"
+                             :data {:name "Broken Transform - brokentest"}}]}
                     response))))))))
 
 (deftest ^:sequential broken-card-types-test
@@ -1390,28 +1390,28 @@
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (testing "filtering by model only"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=model&query=cardtype")]
-              (is (=? [{:id broken-model-id
-                        :type "card"
-                        :data {:name "A - Broken Model - cardtype"
-                               :type "model"}}]
+              (is (=? {:data [{:id broken-model-id
+                               :type "card"
+                               :data {:name "A - Broken Model - cardtype"
+                                      :type "model"}}]}
                       response))))
           (testing "filtering by metric only"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=metric&query=cardtype")]
-              (is (=? [{:id broken-metric-id
-                        :type "card"
-                        :data {:name "B - Broken Metric - cardtype"
-                               :type "metric"}}]
+              (is (=? {:data [{:id broken-metric-id
+                               :type "card"
+                               :data {:name "B - Broken Metric - cardtype"
+                                      :type "metric"}}]}
                       response))))
           (testing "filtering by model and metric as the default card types"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&query=cardtype")]
-              (is (=? [{:id broken-model-id
-                        :type "card"
-                        :data {:name "A - Broken Model - cardtype"
-                               :type "model"}}
-                       {:id broken-metric-id
-                        :type "card"
-                        :data {:name "B - Broken Metric - cardtype"
-                               :type "metric"}}]
+              (is (=? {:data [{:id broken-model-id
+                               :type "card"
+                               :data {:name "A - Broken Model - cardtype"
+                                      :type "model"}}
+                              {:id broken-metric-id
+                               :type "card"
+                               :data {:name "B - Broken Metric - cardtype"
+                                      :type "metric"}}]}
                       response)))))))))
 
 (deftest ^:sequential broken-archived-card-test
@@ -1428,12 +1428,12 @@
           (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (testing "archived=false (default) excludes archived broken card"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard")
-                  card-ids (set (map :id response))]
+                  card-ids (set (map :id (:data response)))]
               (is (contains? card-ids broken-card-id))
               (is (not (contains? card-ids archived-broken-card-id)))))
           (testing "archived=true includes archived broken card"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=archivedbrokentestcard&archived=true")
-                  card-ids (set (map :id response))]
+                  card-ids (set (map :id (:data response)))]
               (is (contains? card-ids broken-card-id))
               (is (contains? card-ids archived-broken-card-id)))))))))
 
@@ -1451,12 +1451,12 @@
         (while (> (dependencies.findings/analyze-batch! :segment 50) 0))
         (testing "archived=false (default) excludes archived broken segment"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest")
-                segment-ids (set (map :id response))]
+                segment-ids (set (map :id (:data response)))]
             (is (contains? segment-ids broken-segment-id))
             (is (not (contains? segment-ids archived-broken-segment-id)))))
         (testing "archived=true includes archived broken segment"
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=segment&query=archivedbrokentest&archived=true")
-                segment-ids (set (map :id response))]
+                segment-ids (set (map :id (:data response)))]
             (is (contains? segment-ids broken-segment-id))
             (is (contains? segment-ids archived-broken-segment-id))))))))
 
@@ -1481,12 +1481,12 @@
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "archived=false (default) excludes archived measure"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest")
-                  measure-ids (set (map :id response))]
+                  measure-ids (set (map :id (:data response)))]
               (is (contains? measure-ids unreffed-measure-id))
               (is (not (contains? measure-ids archived-measure-id)))))
           (testing "archived=true includes archived measure"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest&archived=true")
-                  measure-ids (set (map :id response))]
+                  measure-ids (set (map :id (:data response)))]
               (is (contains? measure-ids unreffed-measure-id))
               (is (contains? measure-ids archived-measure-id)))))))))
 
@@ -1515,13 +1515,13 @@
             (while (#'dependencies.backfill/backfill-dependencies!))
             (testing "include_personal_collections=false (default) excludes cards in personal collections"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest")
-                    card-ids (set (map :id response))]
+                    card-ids (set (map :id (:data response)))]
                 (is (not (contains? card-ids card-in-personal)))
                 (is (not (contains? card-ids card-in-sub-personal)))
                 (is (contains? card-ids card-regular))))
             (testing "include_personal_collections=true includes cards in personal collections"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card_types=question&query=personalcolltest&include_personal_collections=true")
-                    card-ids (set (map :id response))]
+                    card-ids (set (map :id (:data response)))]
                 (is (contains? card-ids card-in-personal))
                 (is (contains? card-ids card-in-sub-personal))
                 (is (contains? card-ids card-regular))))))))))
@@ -1539,12 +1539,12 @@
           (while (#'dependencies.backfill/backfill-dependencies!))
           (testing "include_personal_collections=false (default) excludes dashboards in personal collections"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest")
-                  dashboard-ids (set (map :id response))]
+                  dashboard-ids (set (map :id (:data response)))]
               (is (not (contains? dashboard-ids dash-in-personal)))
               (is (contains? dashboard-ids dash-regular))))
           (testing "include_personal_collections=true includes dashboards in personal collections"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=personalcolltest&include_personal_collections=true")
-                  dashboard-ids (set (map :id response))]
+                  dashboard-ids (set (map :id (:data response)))]
               (is (contains? dashboard-ids dash-in-personal))
               (is (contains? dashboard-ids dash-regular)))))))))
 
@@ -1566,11 +1566,11 @@
             (while (> (dependencies.findings/analyze-batch! :card 50) 0))
             (testing "include_personal_collections=false (default) excludes broken cards in personal collections"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest")
-                    card-ids (set (map :id response))]
+                    card-ids (set (map :id (:data response)))]
                 (is (not (contains? card-ids broken-in-personal)))
                 (is (contains? card-ids broken-regular))))
             (testing "include_personal_collections=true includes broken cards in personal collections"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=personalcollbrokentest&include_personal_collections=true")
-                    card-ids (set (map :id response))]
+                    card-ids (set (map :id (:data response)))]
                 (is (contains? card-ids broken-in-personal))
                 (is (contains? card-ids broken-regular))))))))))
