@@ -1,6 +1,7 @@
 (ns metabase.task-history.models.task-history
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [clojure.string :as str]
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]
@@ -14,7 +15,8 @@
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
-  (:import (java.time Clock)))
+  (:import (clojure.lang PersistentQueue)
+           (java.time Clock)))
 
 (set! *warn-on-reflection* true)
 
@@ -152,6 +154,21 @@
   "The java.time.Clock used for captured log message `:ts` values. Can be overriden for tests."
   (Clock/systemUTC))
 
+(def ^:private log-capture-truncation-threshold 1000)
+
+(defn- log-capture-atom []
+  (atom {:queue PersistentQueue/EMPTY
+         :trunc {:start-ts -1, :last-ts -1 :levels {}}}))
+
+(defn- log-capture-entries [{:keys [queue trunc]}]
+  (if (= -1 (:last-ts trunc))
+    (vec queue)
+    (into [{:level  :info
+            :ts     (:last-ts trunc)
+            :msg    (format "[truncated] %d messages" (apply + (vals (:levels trunc))))
+            :trunc  trunc}]
+          queue)))
+
 (defn- log-capture-entry [level msg ^Throwable e]
   ;; TODO: should we save ex-data
   ;;  - what about cause chains
@@ -165,6 +182,16 @@
               :message    (.getMessage e)
               :stacktrace (u/filtered-stacktrace e)})))
 
+(defn- add-log-capture-entry [{:keys [queue, trunc]} entry]
+  (if (< (count queue) log-capture-truncation-threshold)
+    {:queue (conj queue entry), :trunc trunc}
+    (let [removed   (peek queue)
+          {:keys [start-ts, levels]} trunc]
+      {:queue (conj (pop queue) entry)
+       :trunc {:levels (update levels (:level removed) (fnil inc 0))
+               :start-ts (if (= -1 start-ts) (:ts removed) start-ts)
+               :last-ts  (:ts removed)}})))
+
 (defn- log-capture-factory [base-factory logs-atom]
   (reify clojure.tools.logging.impl/LoggerFactory
     (name [_] "metabase.task_history")
@@ -175,7 +202,7 @@
           (write! [_ level ex msg]
             (case level
               (:fatal :error :warn :info)
-              (swap! logs-atom conj (log-capture-entry level msg ex))
+              (swap! logs-atom add-log-capture-entry (log-capture-entry level msg ex))
               nil)
             (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
 
@@ -191,14 +218,14 @@
                                                                 :status     :started
                                                                 :started_at (t/instant))
                                                    task-run/*run-id* (assoc :run_id task-run/*run-id*)))
-        logs-atom       (atom [])]
+        logs-atom       (log-capture-atom)]
     (binding [clojure.tools.logging/*logger-factory*
               (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
       (try
         (u/prog1 (f)
           (update-task-history! th-id start-time-ns (on-success-info {:status       :success
                                                                       :task_details (:task_details info)
-                                                                      :logs         @logs-atom}
+                                                                      :logs         (log-capture-entries @logs-atom)}
                                                                      <>)))
         (catch Throwable e
           (update-task-history! th-id start-time-ns
@@ -208,7 +235,7 @@
                                                               :stacktrace    (u/filtered-stacktrace e)
                                                               :ex-data       (ex-data e)
                                                               :original-info (:task_details info)}
-                                               :logs         @logs-atom
+                                               :logs         (log-capture-entries @logs-atom)
                                                :status       :failed}
                                               e))
           (throw e))))))
