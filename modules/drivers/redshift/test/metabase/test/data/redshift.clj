@@ -318,11 +318,7 @@
   [_driver]
   ;; Redshift sync can take ~10 minutes due to network RTT to AWS.
   ;; Use fake sync to directly insert Table/Field rows from the dbdef, skipping network calls entirely.
-
-  ;; IMPORTANT:
-  ;; comment or uncomment these lines (and reload the file) to toggle between real and fake sync for Redshift tests.
-  ;; true
-  false)
+  true)
 
 (defmethod tx/fake-sync-schema :redshift
   [_driver]
