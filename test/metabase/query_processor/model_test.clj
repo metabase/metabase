@@ -2,15 +2,12 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
-   [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.api :as qp.api]
    [metabase.query-processor.card :as qp.card]
-   [metabase.query-processor.streaming.test-util :as qp.streaming.tu]
    [metabase.test :as mt]))
 
 ;; TODO (eric, 2025-01-12): remapped column does not get new display name
