@@ -26,7 +26,6 @@
    [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -92,14 +91,27 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
-(defn- ensure-workspace-permissions-cached!
-  "Ensure workspace_permissions is cached for the database.
-   If not cached, run the check synchronously and cache it.
-   Returns the database with :workspace_permissions populated."
+(defn- get-workspace-enabled-status
+  "Get the workspace enabled status for a database from its settings.
+   Returns {:enabled true/false, :reason \"...\" (optional)}"
   [db]
-  (if (:workspace_permissions db)
-    db
-    (assoc db :workspace_permissions (database/check-and-cache-workspace-permissions! db))))
+  (let [settings (:settings db)
+        enabled? (get settings :workspaces-enabled false)
+        cache    (get settings :workspace-permissions-cache)]
+    (cond
+      enabled?
+      {:enabled true}
+
+      (nil? cache)
+      {:enabled false
+       :reason  "Workspace permissions have not been verified. Run the permission check first."}
+
+      (not= "ok" (:status cache))
+      {:enabled false
+       :reason  (:error cache)}
+
+      :else
+      {:enabled false})))
 
 (defn- ws->response
   "Transform a workspace record into an API response, computing the backwards-compatible status."
@@ -339,25 +351,24 @@
                                               [:sequential [:map
                                                             [:id ms/PositiveInt]
                                                             [:name :string]
-                                                            [:supported :boolean]
+                                                            [:enabled :boolean]
                                                             [:reason {:optional true} :string]]]]]
-  "Get a list of databases that support workspaces, with their isolation permission status."
+  "Get a list of databases that support workspaces, with their enablement status.
+   A database is enabled if:
+   1. The workspace permission check has passed (cached in Database.settings)
+   2. The workspaces-enabled setting is true"
   [_url-params
    _query-params]
-  (let [databases (->> (t2/select [:model/Database :id :name :engine :workspace_permissions]
+  (let [databases (->> (t2/select [:model/Database :id :name :engine :settings]
                                   :is_audit false :is_sample false {:order-by [:name]})
-                       (filter #(driver.u/supports? (:engine %) :workspace %)))
-        ;; TODO: Ngoc 2026-01-05: this might not be a good place to warm the cache, we might want to do this in the
-        ;; background somewhere
-        databases-with-perms (mapv ensure-workspace-permissions-cached! databases)]
+                       (filter #(driver.u/supports? (:engine %) :workspace %)))]
     {:databases (mapv (fn [db]
-                        (let [perms (:workspace_permissions db)
-                              ok?   (= "ok" (:status perms))]
-                          (cond-> {:id        (:id db)
-                                   :name      (:name db)
-                                   :supported ok?}
-                            (not ok?) (assoc :reason (:error perms)))))
-                      databases-with-perms)}))
+                        (let [{:keys [enabled reason]} (get-workspace-enabled-status db)]
+                          (cond-> {:id      (:id db)
+                                   :name    (:name db)
+                                   :enabled enabled}
+                            reason (assoc :reason reason))))
+                      databases)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
   "Update simple workspace properties.

@@ -849,23 +849,3 @@
                                              :id)
                        db-id))))))
 
-;;; ---------------------------------------- workspace_permissions cache tests ----------------------------------------
-
-(deftest workspace-permissions-cleared-on-details-change-test
-  (testing "workspace_permissions is cleared when details changes"
-    (mt/with-temp [:model/Database db {:workspace_permissions {:status "ok" :checked_at "2025-01-01T00:00:00Z"}}]
-      (is (= {:status "ok" :checked_at "2025-01-01T00:00:00Z"}
-             (:workspace_permissions (t2/select-one :model/Database (:id db)))))
-      ;; Update details
-      (t2/update! :model/Database (:id db) {:details {:host "new-host"}})
-      ;; workspace_permissions should be cleared
-      (is (nil? (:workspace_permissions (t2/select-one :model/Database (:id db))))))))
-
-(deftest workspace-permissions-preserved-on-other-changes-test
-  (testing "workspace_permissions is preserved when other fields change"
-    (mt/with-temp [:model/Database db {:workspace_permissions {:status "ok" :checked_at "2025-01-01T00:00:00Z"}}]
-      ;; Update name (not details)
-      (t2/update! :model/Database (:id db) {:name "New Name"})
-      ;; workspace_permissions should still be there
-      (is (= {:status "ok" :checked_at "2025-01-01T00:00:00Z"}
-             (:workspace_permissions (t2/select-one :model/Database (:id db))))))))

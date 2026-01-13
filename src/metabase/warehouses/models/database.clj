@@ -55,8 +55,7 @@
    :cache_field_values_schedule mi/transform-cron-string
    :start_of_week               mi/transform-keyword
    :settings                    mi/transform-encrypted-json
-   :dbms_version                mi/transform-json
-   :workspace_permissions       mi/transform-json})
+   :dbms_version                mi/transform-json})
 
 (methodical/defmethod t2/model-for-automagic-hydration [:default :database] [_model _k] :model/Database)
 (methodical/defmethod t2/model-for-automagic-hydration [:default :db]       [_model _k] :model/Database)
@@ -417,11 +416,7 @@
                  secret/handle-incoming-client-secrets!
 
                  (:uploads_enabled changes)
-                 maybe-disable-uploads-for-all-dbs!
-
-                 ;; Clear workspace permissions cache when details change
-                 (contains? changes :details)
-                 (assoc :workspace_permissions nil))
+                 maybe-disable-uploads-for-all-dbs!)
         ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
         ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
         (when (and (:database-enable-actions (or new-settings existing-settings))
@@ -556,8 +551,8 @@
 ;;; ------------------------------------------ Workspace Permissions Cache --------------------------------------------
 
 (defn check-and-cache-workspace-permissions!
-  "Check isolation permissions for a database and cache the result.
-   Returns the workspace_permissions map: {:status \"ok\", :checked_at ...}
+  "Check isolation permissions for a database and cache the result in Database.settings.
+   Returns the permission check result: {:status \"ok\", :checked_at ...}
    or {:status \"failed\", :error \"...\", :checked_at ...}"
   [database]
   (let [checked-at (java.time.Instant/now)
@@ -567,8 +562,13 @@
                          {:status "failed", :error error, :checked_at (str checked-at)}
                          {:status "ok", :checked_at (str checked-at)}))
                      (catch Exception e
-                       {:status "failed", :error (ex-message e), :checked_at (str checked-at)}))]
-    (t2/update! :model/Database (:id database) {:workspace_permissions result})
+                       {:status "failed", :error (ex-message e), :checked_at (str checked-at)}))
+        ;; Update the settings with the new cache value
+        current-settings (or (:settings database)
+                             (:settings (t2/select-one [:model/Database :settings] :id (:id database)))
+                             {})
+        new-settings     (assoc current-settings :workspace-permissions-cache result)]
+    (t2/update! :model/Database (:id database) {:settings new-settings})
     result))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------

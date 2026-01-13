@@ -2463,11 +2463,11 @@
           (is (some? (:checked_at response)))
           (is (nil? (:error response)))))
 
-      (testing "caches the result in the database"
+      (testing "caches the result in Database.settings"
         (mt/user-http-request :crowberto :post 200
                               (format "database/%d/check-workspace-permissions" (mt/id)))
         (let [db (t2/select-one :model/Database (mt/id))]
-          (is (= "ok" (get-in db [:workspace_permissions :status])))))
+          (is (= "ok" (get-in db [:settings :workspace-permissions-cache :status])))))
 
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
