@@ -81,7 +81,7 @@
 (def ^:private no-mapping {})
 
 (defn remapped-target
-  "The co-ordinates for the output table we'll use in practice for the given transform."
+  "Apply `remapping` to `transform`'s target. Returns a map with :schema and :name for the isolated table."
   [{:keys [target] :as _transform} remapping]
   (let [table-mapping   (:tables remapping no-mapping)
         target-fallback (:target-fallback remapping no-mapping)]
