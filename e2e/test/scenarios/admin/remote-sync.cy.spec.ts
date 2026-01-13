@@ -312,7 +312,9 @@ describe("Remote Sync", () => {
           cy.findByRole("heading", {
             name: "You have unsynced changes. What do you want to do?",
           });
-          cy.findByLabelText(new RegExp(`Force push to ${NEW_BRANCH}`));
+          cy.findByLabelText(
+            `Push changes to the current branch, ${NEW_BRANCH}`,
+          );
           cy.findByLabelText("Create a new branch and push changes there");
 
           // Choose discard so that we can switch later

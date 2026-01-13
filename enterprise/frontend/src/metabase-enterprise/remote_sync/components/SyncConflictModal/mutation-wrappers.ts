@@ -14,23 +14,23 @@ import {
 
 import { trackBranchCreated, trackPushChanges } from "../../analytics";
 
-export const useForcePushAction = () => {
+export const usePushChangesAction = () => {
   const [exportChanges, { isLoading: isPushingChanges }] =
     useExportChangesMutation();
   const [sendToast] = useToast();
 
   return {
-    forcePush: useCallback(
-      async (branch: string, closeModal: VoidFunction) => {
+    pushChanges: useCallback(
+      async (branch: string, force: boolean, closeModal: VoidFunction) => {
         try {
           await exportChanges({
             branch,
-            force: true,
+            force,
           }).unwrap();
 
           trackPushChanges({
             triggeredFrom: "conflict-modal",
-            force: true,
+            force,
           });
 
           sendToast({
