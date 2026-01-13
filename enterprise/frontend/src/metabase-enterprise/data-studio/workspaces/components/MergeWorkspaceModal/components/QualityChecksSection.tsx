@@ -1,15 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Box,
-  Collapse,
-  Group,
-  Icon,
-  Loader,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Box, Collapse, Group, Icon, Loader, Stack, Text } from "metabase/ui";
 import { useGetWorkspaceProblemsQuery } from "metabase-enterprise/api";
 import type { WorkspaceId } from "metabase-types/api";
 
