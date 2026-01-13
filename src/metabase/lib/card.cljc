@@ -254,6 +254,9 @@
                             (source-model-card metadata-providerable card))
             model-cols    (when model-card
                             (card-cols* metadata-providerable model-card))
+            ;; the BE passes metadata to the FE as virtual tables that contain `:type` and `:fields` but not `:dataset-query`
+            ;; in this case we should not override the `:id` and assume that the `card` metadata is up-to-date
+            ;; see (metabase#68012) for more details
             native-model? (and (some? model-card)
                                (some? (:dataset-query model-card))
                                (-> (card->underlying-query metadata-providerable model-card)
