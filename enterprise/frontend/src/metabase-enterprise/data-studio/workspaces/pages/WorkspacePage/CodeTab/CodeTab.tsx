@@ -25,7 +25,9 @@ type CodeTabProps = {
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransform[];
   readOnly: boolean;
-  onTransformClick: (transform: Transform | WorkspaceTransform | EditedTransform) => void;
+  onTransformClick: (
+    transform: Transform | WorkspaceTransform | EditedTransform,
+  ) => void;
 };
 
 export const CodeTab = ({
