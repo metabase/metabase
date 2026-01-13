@@ -1,11 +1,7 @@
 import { t } from "ttag";
 
-import {
-  STANDARD_USER_LIST_PAGE_SIZE as PAGE_SIZE,
-  useListUsersQuery,
-} from "metabase/api";
+import { useListUsersQuery } from "metabase/api";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
-import { usePagination } from "metabase/common/hooks/use-pagination";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
@@ -19,17 +15,11 @@ export const TenantUsersPersonalCollectionList = ({
   params,
 }: TenantUsersPersonalCollectionListProps) => {
   const tenantId = parseInt(params.tenantId, 10);
-  const { page, handleNextPage, handlePreviousPage } = usePagination();
 
   const { data: tenant } = useGetTenantQuery(tenantId);
-  const { data, isLoading } = useListUsersQuery({
-    tenant_id: tenantId,
-    limit: PAGE_SIZE,
-    offset: PAGE_SIZE * page,
-  });
+  const { data, isLoading } = useListUsersQuery({ tenant_id: tenantId });
 
   const users = data?.data ?? [];
-  const total = data?.total;
 
   const crumbs = [
     {
@@ -56,18 +46,6 @@ export const TenantUsersPersonalCollectionList = ({
     }));
 
   return (
-    <CollectionListView
-      crumbs={crumbs}
-      loading={isLoading}
-      items={items}
-      pagination={{
-        page,
-        pageSize: PAGE_SIZE,
-        total,
-        itemsLength: items.length,
-        onNextPage: handleNextPage,
-        onPreviousPage: handlePreviousPage,
-      }}
-    />
+    <CollectionListView crumbs={crumbs} loading={isLoading} items={items} />
   );
 };
