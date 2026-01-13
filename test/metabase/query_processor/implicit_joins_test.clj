@@ -286,3 +286,83 @@
                           (lib/breakout big-col))]
             (is (= [["b1"] ["b2"]]
                    (mt/rows (qp/process-query query))))))))))
+
+(mt/defdataset unix-timestamp-fk-dataset
+  [["events" [{:field-name "event_timestamp"
+               :base-type         :type/Integer
+               :effective-type    :type/DateTime
+               :coercion-strategy :Coercion/UNIXSeconds->DateTime}
+              {:field-name "name"
+               :base-type  :type/Text}]
+    ;; UNIX timestamps for dates in 2024
+    [[1704067200 "New Year 2024"] ; 2024-01-01 00:00:00 UTC
+     [1706745600 "Groundhog Day 2024"] ; 2024-02-01 00:00:00 UTC
+     [1709251200 "March 2024"]]] ; 2024-03-01 00:00:00 UTC
+   ["logs" [{:field-name "event_id"
+             :base-type  :type/Integer
+             :fk         :events}
+            {:field-name "message"
+             :base-type  :type/Text}]
+    [[1 "Log entry 1"]
+     [1 "Log entry 2"]
+     [2 "Log entry 3"]
+     [3 "Log entry 4"]
+     [3 "Log entry 5"]]]])
+
+(deftest coerced-field-via-implicit-join-test
+  (testing "Filtering/aggregating on a coerced UNIX field via implicit join should apply coercion (#67704)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset unix-timestamp-fk-dataset
+        (testing "Filter on coerced field via implicit join"
+            ;; This would fail with "operator does not exist: integer >= timestamp"
+            ;; if coercion is not applied to the implicitly joined field.
+          (let [query (mt/mbql-query logs
+                        {:aggregation [[:count]]
+                         :filter      [:>
+                                       $event_id->events.event_timestamp
+                                       [:absolute-datetime #t "2024-01-15T00:00:00Z" :default]]})]
+            (mt/with-native-query-testing-context query
+                ;; 3 logs for events after Jan 15 (Groundhog Day + March)
+              (is (= [[3]]
+                     (mt/rows (qp/process-query query)))))))
+        (testing "Breakout on coerced field via implicit join"
+            ;; This would fail with "function date_trunc(unknown, integer) does not exist"
+            ;; if coercion is not applied to the implicitly joined field.
+          (let [query (mt/mbql-query logs
+                        {:aggregation [[:count]]
+                         :breakout    [!month.event_id->events.event_timestamp]})]
+            (mt/with-native-query-testing-context query
+                ;; 3 months with log counts: Jan=2, Feb=1, Mar=2
+              (is (= 3
+                     (count (mt/rows (qp/process-query query))))))))))));
+
+(deftest coerced-field-via-explicit-join-test
+  (testing "Coerced fields via explicit joins should also work correctly (sanity check for #67704 fix)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+      (mt/dataset unix-timestamp-fk-dataset
+        (testing "Filter on coerced field via explicit join"
+          (let [query (mt/mbql-query logs
+                        {:joins       [{:source-table $$events
+                                        :alias        "Events"
+                                        :condition    [:= $event_id &Events.events.id]
+                                        :fields       :all}]
+                         :aggregation [[:count]]
+                         :filter      [:>
+                                       &Events.events.event_timestamp
+                                       [:absolute-datetime #t "2024-01-15T00:00:00Z" :default]]})]
+            (mt/with-native-query-testing-context query
+                ;; 3 logs for events after Jan 15 (Groundhog Day + March)
+              (is (= [[3]]
+                     (mt/rows (qp/process-query query)))))))
+        (testing "Breakout on coerced field via explicit join"
+          (let [query (mt/mbql-query logs
+                        {:joins       [{:source-table $$events
+                                        :alias        "Events"
+                                        :condition    [:= $event_id &Events.events.id]
+                                        :fields       :all}]
+                         :aggregation [[:count]]
+                         :breakout    [!month.&Events.events.event_timestamp]})]
+            (mt/with-native-query-testing-context query
+                ;; 3 months with log counts
+              (is (= 3
+                     (count (mt/rows (qp/process-query query))))))))))))
