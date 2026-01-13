@@ -11,7 +11,7 @@ function serializeNodes(nodes: JSONContent[]): string {
   return nodes
     .map((node, index) => {
       const serialized = serializeNode(node);
-      // Add newline after paragraphs, except for the last one if it's empty
+      // Add newline after paragraphs, except for the last one
       if (node.type === "paragraph" && index < nodes.length - 1) {
         return serialized + "\n";
       }
