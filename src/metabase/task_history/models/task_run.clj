@@ -83,11 +83,9 @@
    Must be called manually for async flows, or automatically via [[with-task-run]]."
   [run-id :- ms/PositiveInt]
   (let [task-statuses (t2/select-fn-set :status :model/TaskHistory :run_id run-id)
-        status        (cond
-                        (empty? task-statuses)             :success
-                        (task-statuses :failed)            :failed
-                        (every? #{:success} task-statuses) :success
-                        :else                              :failed)]
+        status        (if (= #{:success} task-statuses)
+                        :success
+                        :failed)]
     (t2/update! :model/TaskRun run-id
                 {:status   status
                  :ended_at (t/instant)})))
@@ -102,7 +100,7 @@
   [run-info & body]
   `(let [info#          ~run-info
          auto-complete# (get info# :auto-complete true)
-         run-id#        (create-task-run! (dissoc info# :auto-complete))]
+         run-id#        (create-task-run! info#)]
      (if auto-complete#
        (try
          (binding [*run-id* run-id#]
