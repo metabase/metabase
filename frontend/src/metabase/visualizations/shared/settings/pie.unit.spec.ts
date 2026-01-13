@@ -1,6 +1,12 @@
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
+import type { RawSeries } from "metabase-types/api";
+import {
+  createMockColumn,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
-import { getAggregatedRows, getKeyFromDimensionValue } from "./pie";
+import { getAggregatedRows, getColors, getKeyFromDimensionValue } from "./pie";
 
 describe("getKeyFromDimensionValue", () => {
   it("should return NULL_DISPLAY_VALUE for null", () => {
@@ -81,5 +87,65 @@ describe("getAggregatedRows", () => {
       [obj3, 1],
       [null, 2],
     ]);
+  });
+});
+
+describe("getColors", () => {
+  it("should respect handle pie.color, pie.rows, and untranslatedKeysToTranslatedKeys", () => {
+    const columns = [
+      createMockColumn({ name: "Category" }),
+      createMockColumn({ name: "Count" }),
+    ];
+    const rawSeries = [
+      {
+        data: createMockDatasetData({
+          rows: [
+            ["Doohickey", 1],
+            ["Gadget", 2],
+            ["Gizmo", 3],
+            ["le Widget", 4],
+          ],
+          cols: columns,
+        }),
+      },
+    ] as RawSeries;
+    const settings = {
+      "pie.metric": "Count",
+      "pie.dimension": "Category",
+      "pie.colors": {
+        Doohickey: "#FF0000",
+        Gadget: "#00FF00",
+        Gizmo: "#FFFFFF",
+      },
+      "pie.rows": [
+        {
+          key: "Gadget",
+          defaultColor: false,
+          color: "#0000FF",
+        },
+        {
+          key: "Gizmo",
+          defaultColor: true,
+          color: "#00FF00",
+        },
+        {
+          key: "Widget",
+          defaultColor: false,
+          color: "#000000",
+        },
+      ] as PieRow[],
+    };
+    const untranslatedKeysToTranslatedKeys = new Map([["Widget", "le Widget"]]);
+    const result = getColors(
+      rawSeries,
+      settings,
+      untranslatedKeysToTranslatedKeys,
+    );
+    expect(result).toEqual({
+      Doohickey: "#FF0000",
+      Gadget: "#0000FF",
+      Gizmo: "#FFFFFF",
+      "le Widget": "#000000",
+    });
   });
 });
