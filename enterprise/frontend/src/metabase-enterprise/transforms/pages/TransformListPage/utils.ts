@@ -49,6 +49,7 @@ export function buildTreeData(
       updated_at: transform.updated_at,
       target: transform.target,
       transformId: transform.id,
+      source_readable: transform.source_readable,
     };
   }
 
