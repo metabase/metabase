@@ -1,6 +1,9 @@
 .queryEditor {
-  width: 100%;
   background-color: var(--mb-color-background-secondary);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: auto;
 }
 
 .dragHandleContainer {
@@ -22,7 +25,9 @@
 }
 
 .editorWrapper {
+  overflow: auto;
   width: 100%;
+  height: 100%;
 }
 
 .resizableBox {
@@ -51,4 +56,8 @@
   /* min-height of the top bar, it's needed for vertical alignment when there
   are several template tags */
   height: 3rem;
+}
+
+.readOnlyEditor .dragHandle {
+  display: none;
 }

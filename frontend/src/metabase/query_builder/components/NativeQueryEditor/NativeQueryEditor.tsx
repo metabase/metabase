@@ -278,7 +278,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
 
     return (
       <div
-        className={S.queryEditor}
+        className={cx(S.queryEditor, { [S.readOnlyEditor]: readOnly })}
         data-testid="native-query-editor-container"
         ref={forwardedRef}
       >
@@ -365,7 +365,12 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 }
               />
 
-              <Stack m="1rem" gap="md" mt="auto">
+              <Stack
+                display={readOnly ? "none" : undefined}
+                gap="md"
+                m="1rem"
+                mt="auto"
+              >
                 {proposedQuestion && onRejectProposed && onAcceptProposed && (
                   <>
                     <Tooltip label={t`Accept proposed changes`} position="top">
@@ -401,7 +406,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                     </Tooltip>
                   </>
                 )}
-                {hasRunButton && !readOnly && (
+                {hasRunButton && (
                   <NativeQueryEditorRunButton
                     cancelQuery={this.props.cancelQuery}
                     isResultDirty={this.props.isResultDirty}
