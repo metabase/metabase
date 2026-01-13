@@ -1662,9 +1662,11 @@
               enabled-entry (m/find-first #(= (:id %) db-enabled) (:databases response))
               disabled-entry (m/find-first #(= (:id %) db-disabled) (:databases response))]
           (is (true? (:enabled enabled-entry)))
-          (is (false? (:enabled disabled-entry))))))
+          (is (= "ok" (get-in enabled-entry [:permissions_status :status])))
+          (is (false? (:enabled disabled-entry)))
+          (is (= "ok" (get-in disabled-entry [:permissions_status :status]))))))
 
-    (testing "databases with failed permission check show reason"
+    (testing "databases with failed permission check include permissions_status"
       (mt/with-temp [:model/Database {db-failed :id} {:name "DB Failed"
                                                       :engine :h2
                                                       :is_audit false
@@ -1673,15 +1675,15 @@
         (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
           (is (false? (:enabled fail-entry)))
-          (is (= "permission denied" (:reason fail-entry))))))
+          (is (= "failed" (get-in fail-entry [:permissions_status :status])))
+          (is (= "permission denied" (get-in fail-entry [:permissions_status :error]))))))
 
-    (testing "databases without permission cache show appropriate message"
+    (testing "databases without permission check have nil permissions_status"
       (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
                                                         :engine :h2
                                                         :is_audit false
                                                         :is_sample false}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               entry    (m/find-first #(= (:id %) db-uncached) (:databases response))]
-          ;; Should not be enabled and should show reason
           (is (false? (:enabled entry)))
-          (is (some? (:reason entry))))))))
+          (is (nil? (:permissions_status entry))))))))

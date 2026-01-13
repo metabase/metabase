@@ -91,27 +91,6 @@
     (api/check-400 (not (transforms.util/db-routing-enabled? database))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
-(defn- get-workspace-enabled-status
-  "Get the workspace enabled status for a database from its columns.
-   Returns {:enabled true/false, :reason \"...\" (optional)}"
-  [db]
-  (let [enabled? (:workspaces_enabled db)
-        cache    (:workspace_permissions_status db)]
-    (cond
-      enabled?
-      {:enabled true}
-
-      (nil? cache)
-      {:enabled false
-       :reason  "Workspace permissions have not been verified. Run the permission check first."}
-
-      (not= "ok" (:status cache))
-      {:enabled false
-       :reason  (:error cache)}
-
-      :else
-      {:enabled false})))
-
 (defn- ws->response
   "Transform a workspace record into an API response, computing the backwards-compatible status."
   [ws]
@@ -351,7 +330,11 @@
                                                             [:id ms/PositiveInt]
                                                             [:name :string]
                                                             [:enabled :boolean]
-                                                            [:reason {:optional true} :string]]]]]
+                                                            [:permissions_status {:optional true}
+                                                             [:map
+                                                              [:status :string]
+                                                              [:checked_at :string]
+                                                              [:error {:optional true} :string]]]]]]]
   "Get a list of databases that support workspaces, with their enablement status.
    A database is enabled if:
    1. The workspace permission check has passed (cached in workspace_permissions_status column)
@@ -361,12 +344,11 @@
   (let [databases (->> (t2/select [:model/Database :id :name :engine :workspaces_enabled :workspace_permissions_status]
                                   :is_audit false :is_sample false {:order-by [:name]})
                        (filter #(driver.u/supports? (:engine %) :workspace %)))]
-    {:databases (mapv (fn [db]
-                        (let [{:keys [enabled reason]} (get-workspace-enabled-status db)]
-                          (cond-> {:id      (:id db)
-                                   :name    (:name db)
-                                   :enabled enabled}
-                            reason (assoc :reason reason))))
+    {:databases (mapv (fn [{:keys [id name workspaces_enabled workspace_permissions_status]}]
+                        (cond-> {:id      id
+                                 :name    name
+                                 :enabled workspaces_enabled}
+                          workspace_permissions_status (assoc :permissions_status workspace_permissions_status)))
                       databases)}))
 
 (api.macros/defendpoint :put "/:id" :- Workspace
