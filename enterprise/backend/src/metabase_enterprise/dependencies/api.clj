@@ -756,7 +756,7 @@
    - `offset`: Default 0
    - `limit`: Default 50
 
-   Returns a a map with:
+   Returns a map with:
    - `data`: List of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields
    - `total`: Total count of matched items
    - `offset`: Applied offset
