@@ -59,9 +59,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
     }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest | void>(
       {
-        query: () => ({
+        query: (body) => ({
           method: "POST",
           url: "/api/ee/workspace",
+          body,
         }),
         invalidatesTags: (_, error) =>
           invalidateTags(error, [listTag("workspace"), listTag("transform")]),
