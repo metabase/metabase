@@ -21,15 +21,10 @@
 ;; Analyzing an entity in memory ================================================================
 (mu/defn- check-query :- [:set [:ref ::lib.schema.validate/error]]
   "Find any bad refs in a `query`."
-  [_driver :- :keyword
+  [driver :- :keyword
    query   :- ::lib.schema/query]
-  ;; preprocess query first to check for native dependencies
-  (if (-> (qp.preprocess/preprocess query)
-          lib/any-native-stage?)
-    ;; Disabling native sql validation for the moment
-    ;; see https://metaboat.slack.com/archives/C09DZ0ASL81/p1768334339046829
-    ;; (deps.native/validate-native-query driver query)
-    #{}
+  (if lib/any-native-stage?
+    (deps.native/validate-native-query driver query)
     (lib/find-bad-refs query)))
 
 (defmulti check-entity
