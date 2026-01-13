@@ -58,7 +58,7 @@ export type WorkspaceTab = TransformTab | TableTab;
 export interface WorkspaceContextValue {
   workspaceId: number;
   openedTabs: WorkspaceTab[];
-  activeTransform?: Transform;
+  activeTransform?: Transform | WorkspaceTransform;
   activeEditedTransform?: EditedTransform;
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;

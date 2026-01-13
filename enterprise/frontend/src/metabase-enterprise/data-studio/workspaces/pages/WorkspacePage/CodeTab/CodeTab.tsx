@@ -14,7 +14,7 @@ import type {
   WorkspaceTransform,
 } from "metabase-types/api";
 
-import { useWorkspace } from "../WorkspaceProvider";
+import { type EditedTransform, useWorkspace } from "../WorkspaceProvider";
 
 import { TransformListItem } from "./TransformListItem";
 import { TransformListItemMenu } from "./TransformListItemMenu";
@@ -25,7 +25,7 @@ type CodeTabProps = {
   workspaceId: WorkspaceId;
   workspaceTransforms: WorkspaceTransform[];
   readOnly: boolean;
-  onTransformClick: (transform: Transform | WorkspaceTransform) => void;
+  onTransformClick: (transform: Transform | WorkspaceTransform | EditedTransform) => void;
 };
 
 export const CodeTab = ({

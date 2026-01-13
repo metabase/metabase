@@ -652,7 +652,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Make additional changes to the saved transform");
       Workspaces.getWorkspaceContent().within(() => {
-        H.NativeEditor.type(" ORDER BY 1");
+        H.NativeEditor.type(" LIMIT 1");
       });
 
       cy.log("Check that transform has yellow dot status again");
@@ -719,7 +719,7 @@ describe("scenarios > data studio > workspaces", () => {
           "New transform",
         ]);
         H.NativeEditor.value().should("be.empty");
-        Workspaces.getSaveTransformButton().should("be.enabled");
+        Workspaces.getSaveTransformButton().should("be.disabled");
       });
 
       cy.log(
@@ -1040,19 +1040,20 @@ describe("scenarios > data studio > workspaces", () => {
 
       H.NativeEditor.type(" LIMIT");
       Workspaces.getSaveTransformButton().click();
-      Workspaces.getRunTransformButton().click();
 
-      H.undoToast().findByText("Failed to run transform");
       Workspaces.getWorkspaceContent().findByText(
         "This transform hasn't been run before.",
       );
+
+      Workspaces.getRunTransformButton().click();
+
+      H.undoToast().findByText(/Transform run failed/);
 
       H.NativeEditor.type(" 1;");
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
-      // The run button state change happens very fast and behaves flaky. Not sure if we need to test it.
-      // Workspaces.getWorkspaceContent().findByText("Ran successfully");
+      Workspaces.getWorkspaceContent().findByText("Ran successfully");
       Workspaces.getWorkspaceContent().findByText(
         "Last ran a few seconds ago successfully.",
       );
@@ -1061,7 +1062,7 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getSaveTransformButton().click();
       Workspaces.getRunTransformButton().click();
 
-      H.undoToast().findByText("Failed to run transform");
+      H.undoToast().findByText(/Transform run failed/);
     });
 
     it("should show ad-hoc results", () => {
