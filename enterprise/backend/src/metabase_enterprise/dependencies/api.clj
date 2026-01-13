@@ -695,7 +695,16 @@
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]])
+   [:include_personal_collections {:optional true} :boolean]
+   [:limit {:optional true} ms/PositiveInt]
+   [:offset {:optional true} nat-int?]])
+
+(def ^:private broken-items-response
+  [:map
+   [:data [:sequential ::entity]]
+   [:total nat-int?]
+   [:limit ms/PositiveInt]
+   [:offset nat-int?]])
 
 (defn- broken-query [entity-type card-types query include-archived-items include-personal-collections]
   (let [table-name (case entity-type
@@ -747,7 +756,7 @@
               personal-filter
               (conj [:and personal-filter]))}))
 
-(api.macros/defendpoint :get "/graph/broken" :- [:sequential ::entity]
+(api.macros/defendpoint :get "/graph/broken" :- broken-items-response
   "Returns a list of all items with broken queries.
 
    Accepts optional parameters for filtering:
@@ -763,7 +772,9 @@
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
          include_personal_collections false}} :- broken-items-args]
-  (let [include-archived-items (if archived :all :exclude)
+  (let [limit (request/limit)
+        offset (request/offset)
+        include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
@@ -772,11 +783,20 @@
         union-queries (map #(broken-query % card-types query include-archived-items include_personal_collections)
                            selected-types)
         union-query {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]))
+        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]
+                                                  :limit limit
+                                                  :offset offset))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
-        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))]
-    (expanded-nodes downstream-graph all-ids {:include-errors? true})))
+        downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
+        total (-> (t2/query {:select [[:%count.* :total]]
+                             :from [[union-query :subquery]]})
+                  first
+                  :total)]
+    {:data   (expanded-nodes downstream-graph all-ids {:include-errors? true}
+     :limit  limit
+     :offset offset
+     :total  total})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."
