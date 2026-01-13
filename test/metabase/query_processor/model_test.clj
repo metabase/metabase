@@ -53,25 +53,30 @@
                                      :database_id (mt/id)
                                      :dataset_query (lib/query mp (lib.metadata/card mp (:id q1)))}]
         (mt/as-admin
-          (testing "Model metadata works directly on model"
-            (is (=? expected-columns
-                    (mt/cols (run-query-for-card (:id model))))))
-          (testing "Model metadata gets passed through to question on model"
-            (is (=? expected-columns
-                    (mt/cols (run-query-for-card (:id q1))))))
-          (testing "Model metadata gets passed through to question on question on model"
-            (is (=? expected-columns
-                    (mt/cols (run-query-for-card (:id q2))))))
-          (is (=? expected-columns
-                  (:cols
-                   (:data
-                    (mt/user-http-request :rasta :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id model))))))))
-          (is (=? expected-columns
-                  (:cols (:data
-                          (mt/user-http-request :crowberto :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id q1))))))))
-          (is (=? expected-columns
-                  (:cols (:data
-                          (mt/user-http-request :crowberto :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id q2)))))))))))))
+          (testing "/api/card/{id}/query"
+            (testing "Model metadata works directly on model"
+              (is (=? expected-columns
+                      (mt/cols (run-query-for-card (:id model))))))
+            (testing "Model metadata gets passed through to question on model"
+              (is (=? expected-columns
+                      (mt/cols (run-query-for-card (:id q1))))))
+            (testing "Model metadata gets passed through to question on question on model"
+              (is (=? expected-columns
+                      (mt/cols (run-query-for-card (:id q2)))))))
+          (testing "/api/dataset"
+            (testing "Model metadata works directly on a model"
+              (is (=? expected-columns
+                      (:cols
+                       (:data
+                        (mt/user-http-request :rasta :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id model)))))))))
+            (testing "Model metadata gets passed through to question on model"
+              (is (=? expected-columns
+                      (:cols (:data
+                              (mt/user-http-request :crowberto :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id q1)))))))))
+            (testing "Model metadata gets passed through to question on question on model"
+              (is (=? expected-columns
+                      (:cols (:data
+                              (mt/user-http-request :crowberto :post 202 "dataset" (lib/query mp (lib.metadata/card mp (:id q2)))))))))))))))
 
 ;;; see also [[metabase.lib.field-test/model-self-join-test-display-name-test]]
 (deftest ^:parallel model-self-join-test
