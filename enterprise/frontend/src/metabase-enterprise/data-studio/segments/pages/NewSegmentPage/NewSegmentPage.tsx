@@ -40,6 +40,7 @@ export function NewSegmentPage({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [definition, setDefinition] = useState<DatasetQuery | null>(null);
+  const [hasSaved, setHasSaved] = useState(false);
 
   const isInitialized = useRef(false);
 
@@ -78,6 +79,7 @@ export function NewSegmentPage({
     if (error) {
       sendErrorToast(t`Failed to create segment`);
     } else if (segment) {
+      setHasSaved(true);
       sendSuccessToast(t`Segment created`);
       dispatch(push(getSuccessUrl(segment)));
     }
@@ -119,7 +121,10 @@ export function NewSegmentPage({
         onQueryChange={setQuery}
         onDescriptionChange={setDescription}
       />
-      <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
+      <LeaveRouteConfirmModal
+        route={route}
+        isEnabled={isDirty && !isSaving && !hasSaved}
+      />
     </PageContainer>
   );
 }
