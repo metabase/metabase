@@ -7,6 +7,24 @@
    [metabase.test :as mt]
    [ring.mock.request :as ring.mock]))
 
+(deftest ^:parallel cacheable?-test
+  (testing "JS/CSS with cache-busting hash are cacheable"
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/dist/main.abc123def.js"})))
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/dist/styles.abc123def.css"}))))
+  (testing "Resources in /app/dist/ with hex hash prefix are cacheable"
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/dist/abc123def456.png"}))))
+  (testing "Font files are cacheable"
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff2"})))
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/fonts/Lato/lato-v16-latin-regular.woff"})))
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.ttf"})))
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.otf"})))
+    (is (true? (req.util/cacheable? {:request-method :get :uri "/app/fonts/CustomFont/custom.eot"}))))
+  (testing "Non-GET requests are not cacheable"
+    (is (false? (req.util/cacheable? {:request-method :post :uri "/app/fonts/Lato/lato.woff2"}))))
+  (testing "Other paths are not cacheable"
+    (is (nil? (req.util/cacheable? {:request-method :get :uri "/api/dashboard/1"})))
+    (is (nil? (req.util/cacheable? {:request-method :get :uri "/app/dist/main.js"})))))
+
 (deftest ^:parallel https?-test
   (doseq [[headers expected] {{"x-forwarded-proto" "https"}    true
                               {"x-forwarded-proto" "http"}     false
