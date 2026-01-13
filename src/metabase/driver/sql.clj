@@ -1,6 +1,6 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
-  (:refer-clojure :exclude [some])
+  (:refer-clojure :exclude [not-empty some])
   (:require
    [clojure.set :as set]
    ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
@@ -19,7 +19,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [some]]
+   [metabase.util.performance :refer [not-empty some]]
    [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
@@ -231,7 +231,8 @@
                  :table
                  (driver-api/active-fields metadata-provider)
                  (map #(-> (assoc % :lib/desired-column-alias (:name %))
-                           sql.references/wrap-col)))
+                           sql.references/wrap-col))
+                 not-empty)
         [{:error (driver-api/missing-table-alias-error
                   (sql.references/table-name (:table col-spec)))}])))
 

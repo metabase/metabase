@@ -1,6 +1,6 @@
 (ns metabase-enterprise.dependencies.core-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.test-util :as deps.tu]
@@ -8,7 +8,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- testbed
   "A `MetadataProvider` with a chain of MBQL cards and transforms for testing."
@@ -61,7 +64,7 @@
         tf2-query     (lib/native-query mp "SELECT * FROM {{#7}}")
         transform2    {:id      31
                        :name    "SQL transform"
-                       :source {:query (lib/->legacy-MBQL tf2-query)}
+                       :source {:query tf2-query}
                        :target {:schema "Transformed"
                                 :name   "output_tf31"}}
         tf2-output    (-> (meta/table-metadata :orders)

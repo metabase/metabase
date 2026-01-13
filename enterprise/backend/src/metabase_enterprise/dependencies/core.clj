@@ -106,10 +106,7 @@
   (let [edited-transform-ids (keep :id (:transform edits))]
     (if (seq edited-transform-ids)
       ;; Create an overriding provider with original transforms to trigger setup-transforms!
-      (let [original-transforms (for [id edited-transform-ids
-                                      :let [t (lib.metadata/transform base-provider id)]
-                                      :when t]
-                                  t)]
+      (let [original-transforms (keep #(lib.metadata/transform base-provider %) edited-transform-ids)]
         (deps.provider/override-metadata-provider
          base-provider
          {:transform original-transforms}
