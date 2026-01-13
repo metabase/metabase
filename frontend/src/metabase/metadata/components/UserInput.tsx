@@ -97,7 +97,7 @@ export const UserInput = ({
             {option.type === "user" && <Avatar name={item.option.label} />}
             {option.type === "unknown" && (
               <Avatar>
-                <Icon name="person" c="text-medium" />
+                <Icon name="person" c="text-secondary" />
               </Avatar>
             )}
             {option.type === "email" && (
