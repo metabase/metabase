@@ -345,7 +345,7 @@
 
                      ;; Transform requires transforms app permission for any specific database
                      :model/Transform
-                     (when (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)
+                     (when (transforms.util/has-any-transforms-permission? api/*current-user-id*)
                        [:and
                         [:= entity-type-field (name entity-type)]
                         [:in entity-id-field {:select [:id] :from [table-name]}]])

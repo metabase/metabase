@@ -228,7 +228,7 @@
   (let [ordered-values (-> permissions.schema/data-permissions perm-type :values reverse)]
     (first (filter (set perm-values) ordered-values))))
 
-(defn- is-superuser?
+(defn is-superuser?
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*

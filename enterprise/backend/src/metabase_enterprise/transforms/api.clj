@@ -92,15 +92,15 @@
   (api/check (transforms.util/check-feature-enabled transform)
              [402 (deferred-tru "Premium features required for this transform type are not enabled.")]))
 
-(defn- check-transforms-read-permission
+(defn- check-any-transforms-permission
   "Check that the current user has transforms permission for at least one database."
   []
-  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
+  (api/check-403 (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
 
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last_run_start_time last_run_statuses tag_ids]}]
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (let [transforms (t2/select :model/Transform {:order-by [[:id :asc]]})]
     (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator)
          (into []
@@ -145,7 +145,7 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (api/check-403 (transforms.util/current-user-has-transforms-write-permission? (transforms.i/source-db-id body)))
+  (api/check-403 (transforms.util/has-db-transforms-permission? api/*current-user-id* (transforms.i/source-db-id body)))
   (check-database-feature body)
   (check-feature-enabled! body)
 
@@ -171,7 +171,7 @@
 (defn get-transform
   "Get a specific transform."
   [id]
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
@@ -199,7 +199,7 @@
   "Get the dependencies of a specific transform."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (let [id->transform   (t2/select-pk->fn identity :model/Transform)
         _               (api/check-404 (get id->transform id))
         global-ordering (transforms.ordering/transform-ordering (vals id->transform))
@@ -230,7 +230,7 @@
     [:start_time {:optional true} [:maybe ms/NonBlankString]]
     [:end_time {:optional true} [:maybe ms/NonBlankString]]
     [:run_methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (-> (transform-run/paged-runs (assoc query-params
                                        :offset (request/offset)
                                        :limit  (request/limit)))

@@ -11,8 +11,8 @@
   [_user-or-id]
   [])
 
-(defenterprise user-has-transforms-read-permission?
-  "OSS version of user-has-transforms-read-permission? Returns false since transforms are an EE feature."
+(defenterprise has-any-transforms-permission?
+  "OSS version of has-any-transforms-permission? Returns false since transforms are an EE feature."
   metabase-enterprise.transforms.util
   [_user-id]
   false)
@@ -34,7 +34,7 @@
                      (user->tenant-collection-and-descendant-ids user-or-id))
 
                  ;; Current User always gets read perms for Transforms if they have access to any (1 DB Call)
-                (when (user-has-transforms-read-permission? user-id)
+                (when (has-any-transforms-permission? user-id)
                   (concat ["/collection/namespace/transforms/root/"]
                           (map permissions.path/collection-readwrite-path ((requiring-resolve 'metabase.collections.models.collection/collections-in-namespace)
                                                                            :transforms))))

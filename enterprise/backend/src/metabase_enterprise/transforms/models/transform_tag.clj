@@ -67,7 +67,7 @@
                                         associations)
           tag-id->can-run (into {}
                                 (map (fn [[tag-id tform-ids]]
-                                       [tag-id (every? transform-id->can-write tform-ids)]))
+                                       [tag-id (every? #(get transform-id->can-write % false) tform-ids)]))
                                 tag-id->transform-ids)]
       (for [tag tags]
         (assoc tag :can_run (get tag-id->can-run (:id tag) true))))))

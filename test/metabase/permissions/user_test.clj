@@ -56,10 +56,10 @@
   (testing "Users with transforms read permission can create transform collections, even in the root"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "Test transform coll" :namespace collection/transforms-ns}]
       (testing "without permission"
-        (with-redefs [permissions.user/user-has-transforms-read-permission? (constantly false)]
+        (with-redefs [permissions.user/has-any-transforms-permission? (constantly false)]
           (is (not (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) "/collection/namespace/transforms/root/")))
           (is (not (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) (format "/collection/%s" coll-id))))))
       (testing "with permission"
-        (with-redefs [permissions.user/user-has-transforms-read-permission? (constantly true)]
+        (with-redefs [permissions.user/has-any-transforms-permission? (constantly true)]
           (is (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) "/collection/namespace/transforms/root/"))
           (is (contains? (permissions.user/user-permissions-set (mt/user->id :lucky)) (permissions.path/collection-readwrite-path coll-id))))))))

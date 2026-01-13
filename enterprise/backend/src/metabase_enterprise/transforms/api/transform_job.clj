@@ -19,17 +19,17 @@
 
 (comment transform-job/keep-me)
 
-(defn- check-transforms-read-permissions
+(defn- check-any-transforms-permission
   "Check that the current user can read transforms."
   []
-  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
+  (api/check-403 (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
 
 (defn- check-job-edit-permissions
   "Check that the current user edit a job with the given tags. If tag-ids are empty or nil, requires at least one transform permission"
   [tag-ids]
-  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*))
+  (api/check-403 (transforms.util/has-any-transforms-permission? api/*current-user-id*))
   (doseq [transform (transform/transforms-with-tags tag-ids)]
-    (api/check-403 (transforms.util/current-user-has-transforms-write-permission? (:source_database_id transform)))))
+    (api/check-403 (transforms.util/has-db-transforms-permission? api/*current-user-id* (:source_database_id transform)))))
 
 (def ^:private ui-display-types [:cron/raw :cron/builder])
 
@@ -136,7 +136,7 @@
   "Delete a transform job."
   [{:keys [job-id]} :- [:map [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (check-transforms-read-permissions)
+  (check-any-transforms-permission)
   (let [existing-job (api/check-404 (t2/hydrate (t2/select-one :model/TransformJob :id job-id) :tag_ids))]
     (check-job-edit-permissions (:tag_ids existing-job))
     (t2/delete! :model/TransformJob :id job-id)
@@ -171,7 +171,7 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (check-transforms-read-permissions)
+  (check-any-transforms-permission)
   (let [job (api/check-404 (t2/select-one :model/TransformJob :id job-id))]
     (t2/hydrate job :tag_ids :last_run)))
 
@@ -190,7 +190,7 @@
   [{:keys [job-id]} :- [:map
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting the transforms of transform job" job-id)
-  (check-transforms-read-permissions)
+  (check-any-transforms-permission)
   (api/check-404 (t2/select-one-pk :model/TransformJob :id job-id))
   (-> (transforms.jobs/job-transforms job-id)
       (t2/hydrate :creator)
@@ -214,7 +214,7 @@
     [:last_run_statuses {:optional true} [:maybe (ms/QueryVectorOf [:enum "started" "succeeded" "failed" "timeout"])]]
     [:tag_ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]]]
   (log/info "Getting all transform jobs")
-  (check-transforms-read-permissions)
+  (check-any-transforms-permission)
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)

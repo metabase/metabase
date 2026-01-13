@@ -12,10 +12,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-transforms-read-permission
+(defn- check-any-transforms-permission
   "Check that the current user has transforms permission for at least one database."
   []
-  (api/check-403 (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
+  (api/check-403 (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -28,7 +28,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Creating transform tag:" name)
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (api/check-400 (not (transform-tag/tag-name-exists? name))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (t2/insert-returning-instance! :model/TransformTag {:name name}))
@@ -45,7 +45,7 @@
    {:keys [name]} :- [:map
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id "with name:" name)
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (api/check-400 (not (transform-tag/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
@@ -61,7 +61,7 @@
   [{:keys [tag-id]} :- [:map
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (api/check-404 (t2/select-one :model/TransformTag :id tag-id))
   (t2/delete! :model/TransformTag :id tag-id)
   api/generic-204-no-content)
@@ -75,7 +75,7 @@
   [_route-params
    _query-params]
   (log/info "Getting all transform tags")
-  (check-transforms-read-permission)
+  (check-any-transforms-permission)
   (t2/hydrate (t2/select :model/TransformTag {:order-by [[:name :asc]]}) :can_run))
 
 (def ^{:arglists '([request respond raise])} routes

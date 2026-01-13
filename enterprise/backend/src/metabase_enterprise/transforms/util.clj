@@ -100,26 +100,26 @@
          (premium-features/has-feature? :transforms-python))
     (premium-features/has-feature? :transforms)))
 
-(defn current-user-has-transforms-write-permission?
-  "Returns true if the current user has the ability to write transforms for the given source db."
-  [database-id]
-  (or api/*is-superuser?*
-      (perms/user-has-permission-for-database? api/*current-user-id*
+(defn has-db-transforms-permission?
+  "Returns true if the current user the transforms permission for the given source db."
+  [user-id database-id]
+  (or (perms/is-superuser? user-id)
+      (perms/user-has-permission-for-database? user-id
                                                :perms/transforms
                                                :yes
                                                database-id)))
 
-(defenterprise user-has-transforms-read-permission?
+(defenterprise has-any-transforms-permission?
   "If users have any 'transforms' permissions, they can read all transforms.
   This allows users to see transform dependencies etc."
   :feature :transforms
   [user-id]
-  (or api/*is-superuser?*
+  (or (perms/is-superuser? user-id)
       (perms/user-has-any-perms-of-type? user-id :perms/transforms)))
 
 (defn source-tables-readable?
   "Check if the source tables/database in a transform are readable by the current user.
-  Returns true if the user can read all source tables (for python transforms) or the
+  Returns true if the user can query all source tables (for python transforms) or the
   source database (for query transforms)."
   [transform]
   (let [source (:source transform)]

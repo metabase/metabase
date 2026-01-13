@@ -29,17 +29,24 @@
 ;; Users with the transform permission can read ALL transforms, regardless of the database they are associated with.
 (defmethod mi/can-read? :model/Transform
   ([_instance]
-   (transforms.util/user-has-transforms-read-permission? api/*current-user-id*))
+   (transforms.util/has-any-transforms-permission? api/*current-user-id*))
   ([_model _pk]
-   (transforms.util/user-has-transforms-read-permission? api/*current-user-id*)))
+   (transforms.util/has-any-transforms-permission? api/*current-user-id*)))
 
 ;; Users with the transform permission can only write transforms where they have access to the associated db.
 (defmethod mi/can-write? :model/Transform
   ([instance]
-   (transforms.util/current-user-has-transforms-write-permission? (:source_database_id instance)))
+   (transforms.util/has-db-transforms-permission? api/*current-user-id* (:source_database_id instance)))
   ([_model pk]
    (when-let [transform (t2/select-one :model/Transform :id pk)]
      (mi/can-write? transform))))
+
+;; Users who can write the transform can also query it. This is a duplicate, but keeps things explicit.
+(defmethod mi/can-query? :model/Transform
+  ([instance]
+   (mi/can-write? instance))
+  ([model pk]
+   (mi/can-query? model pk)))
 
 (defn- keywordize-source-table-refs
   "Keywordize keys in source-tables map values (refs are maps, ints pass through)."
@@ -78,7 +85,6 @@
     (collection/check-allowed-content :model/Transform collection_id))
   (assoc transform
          :source_type (transforms.util/transform-source-type source)
-         ;; Only set source_database_id if not already set (e.g., during deserialization)
          :source_database_id (or source_database_id (transforms.i/source-db-id transform))))
 
 (t2/define-before-update :model/Transform
@@ -89,7 +95,6 @@
   (if source
     (assoc transform
            :source_type (transforms.util/transform-source-type source)
-           ;; Only set source_database_id if not already set (e.g., during deserialization)
            :source_database_id (or source_database_id (transforms.i/source-db-id transform)))
     transform))
 
