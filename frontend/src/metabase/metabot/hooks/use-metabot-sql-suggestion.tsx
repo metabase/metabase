@@ -7,7 +7,7 @@ import type { DatabaseId } from "metabase-types/api";
 
 export function useMetabotSQLSuggestion(
   databaseId: DatabaseId | null,
-  bufferId: string,
+  _bufferId: string,
 ) {
   const [source, setSource] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -15,7 +15,7 @@ export function useMetabotSQLSuggestion(
   const requestRef = useRef<ReturnType<typeof generateSql> | null>(null);
 
   const generate = useCallback(
-    async (prompt: string) => {
+    async (prompt: string, sourceSql?: string) => {
       if (!databaseId) {
         setError(t`No database selected.`);
         return;
@@ -25,7 +25,7 @@ export function useMetabotSQLSuggestion(
         const request = generateSql({
           prompt,
           database_id: databaseId,
-          buffer_id: bufferId,
+          source_sql: sourceSql,
         });
         requestRef.current = request;
         const result = await request.unwrap();
@@ -41,7 +41,7 @@ export function useMetabotSQLSuggestion(
         setError(t`Something went wrong. Please try again.`);
       }
     },
-    [generateSql, bufferId, databaseId],
+    [generateSql, databaseId],
   );
 
   const cancelRequest = useCallback(() => {

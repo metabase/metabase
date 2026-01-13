@@ -93,6 +93,10 @@ export function useInlineSQLPrompt(
     portalTarget?.view.focus();
   }, [portalTarget?.view]);
 
+  const getSourceSql = useCallback(() => {
+    return portalTarget?.view.state.doc.toString() ?? "";
+  }, [portalTarget?.view]);
+
   const hideInputRef = useRef(hideInput);
   useLayoutEffect(() => {
     hideInputRef.current = hideInput;
@@ -204,6 +208,7 @@ export function useInlineSQLPrompt(
               generate={generate}
               cancelRequest={cancelRequest}
               suggestionModels={suggestionModels}
+              getSourceSql={getSourceSql}
             />,
             portalTarget.container,
           )

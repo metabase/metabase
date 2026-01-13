@@ -15,9 +15,10 @@ interface MetabotInlineSQLPromptProps {
   onClose: () => void;
   isLoading: boolean;
   error: string | undefined;
-  generate: (value: string) => Promise<void>;
+  generate: (value: string, sourceSql?: string) => Promise<void>;
   cancelRequest: () => void;
   suggestionModels: SuggestionModel[];
+  getSourceSql?: () => string;
 }
 
 export const MetabotInlineSQLPrompt = ({
@@ -28,6 +29,7 @@ export const MetabotInlineSQLPrompt = ({
   generate,
   cancelRequest,
   suggestionModels,
+  getSourceSql,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
@@ -36,8 +38,9 @@ export const MetabotInlineSQLPrompt = ({
 
   const handleSubmit = useCallback(async () => {
     const prompt = inputRef.current?.getValue?.().trim() ?? "";
-    generate(prompt);
-  }, [generate]);
+    const sourceSql = getSourceSql?.();
+    generate(prompt, sourceSql);
+  }, [generate, getSourceSql]);
 
   const handleClose = useCallback(() => {
     cancelRequest();

@@ -50,7 +50,7 @@ export function useMetabotSQLSuggestion(
   )?.value;
 
   const generate = useCallback(
-    async (value: string) => {
+    async (value: string, _sourceSql?: string) => {
       setHasError(false);
       const action = await submitInput(value, {
         profile: METABOT_PROFILE_OVERRIDES.SQL,

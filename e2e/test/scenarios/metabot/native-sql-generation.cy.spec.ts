@@ -85,7 +85,6 @@ describe("Native SQL generation", () => {
       cy.wait("@generateSql").then(({ request }) => {
         expect(request.body.prompt).to.eq("select all users");
         expect(request.body.database_id).to.eq(1); // Sample Database
-        expect(request.body.buffer_id).to.eq("qb");
       });
 
       // Should auto-close input and show diff with accept/reject buttons
