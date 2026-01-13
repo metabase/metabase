@@ -157,7 +157,7 @@
                           :message    (ex-message e)
                           :start_time start-time
                           :end_time   (db-time)
-                          :table      (select-keys (:target transform) [:schema :name])}))]
+                          :table      (select-keys (ws.execute/remapped-target transform remapping) [:schema :name])}))]
      ;; We don't keep currently any record of when enclosed transforms were run.
      (when ref-id
        (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}

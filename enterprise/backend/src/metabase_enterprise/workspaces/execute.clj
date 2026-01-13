@@ -80,6 +80,13 @@
 
 (def ^:private no-mapping {})
 
+(defn remapped-target
+  "The co-ordinates for the output table we'll use in practice for the given transform."
+  [{:keys [target] :as _transform} remapping]
+  (let [table-mapping   (:tables remapping no-mapping)
+        target-fallback (:target-fallback remapping no-mapping)]
+    (remap-target table-mapping target-fallback target)))
+
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.
 
