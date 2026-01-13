@@ -11,7 +11,7 @@
    "docs"
    #_"e2e"
    "enterprise"
-   #_"frontend"
+   "frontend"
    "modules/drivers"
    #_"src"
    #_"test"])
