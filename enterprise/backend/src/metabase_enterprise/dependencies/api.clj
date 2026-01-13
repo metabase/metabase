@@ -24,7 +24,6 @@
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
-   [metabase.request.current :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -662,36 +661,42 @@
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
    [:include_personal_collections {:optional true} :boolean]
-   [:limit {:optional true} ms/PositiveInt]
-   [:offset {:optional true} nat-int?]])
+   [:offset {:optional true} nat-int?]
+   [:limit {:optional true} ms/PositiveInt]])
 
 (def ^:private unreferenced-items-response
   [:map
    [:data [:sequential ::entity]]
    [:total nat-int?]
-   [:limit ms/PositiveInt]
-   [:offset nat-int?]])
+   [:offset nat-int?]
+   [:limit ms/PositiveInt]])
 
 (api.macros/defendpoint :get "/graph/unreferenced" :- unreferenced-items-response
   "Returns a list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
 
    Accepts optional parameters for filtering:
-   - types: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
-   - card_types: List of card types to include when filtering cards (e.g., [:question :model :metric])
-   - query: Search string to filter by name or location
-   - archived: Controls whether archived entities are included
-   - include_personal_collections: Controls whether items in personal collections are included (default: false)
+   - `types`: List of entity types to include (e.g., [:card :transform :snippet :dashboard])
+   - `card_types`: List of card types to include when filtering cards (e.g., [:question :model :metric])
+   - `query`: Search string to filter by name or location
+   - `archived`: Controls whether archived entities are included
+   - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
+   - `offset`: Default 0
+   - `limit`: Default 50
 
-   Returns a list of unreferenced items, each with :id, :type, and :data fields."
+   Returns a a map with:
+   - `data`: List of unreferenced items, each with `:id`, `:type`, and `:data` fields
+   - `total`: Total count of matched items
+   - `offset`: Applied offset
+   - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections]
+   {:keys [types card_types query archived include_personal_collections offset limit]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- unreferenced-items-args]
-  (let [limit (request/limit)
-        offset (request/offset)
-        include-archived-items (if archived :all :exclude)
+         include_personal_collections false
+         offset 0
+         limit 50}} :- unreferenced-items-args]
+  (let [include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
@@ -705,9 +710,10 @@
                                                     :include-personal-collections include_personal_collections})
                            selected-types)
         union-query {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]
-                                      :limit limit
-                                      :offset offset))
+        all-ids (->> (t2/query (assoc union-query
+                                      :order-by [[:sort_key :asc]]
+                                      :offset offset
+                                      :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
@@ -731,15 +737,15 @@
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
    [:include_personal_collections {:optional true} :boolean]
-   [:limit {:optional true} ms/PositiveInt]
-   [:offset {:optional true} nat-int?]])
+   [:offset {:optional true} nat-int?]
+   [:limit {:optional true} ms/PositiveInt]])
 
 (def ^:private broken-items-response
   [:map
    [:data [:sequential ::entity]]
    [:total nat-int?]
-   [:limit ms/PositiveInt]
-   [:offset nat-int?]])
+   [:offset nat-int?]
+   [:limit ms/PositiveInt]])
 
 (api.macros/defendpoint :get "/graph/broken" :- broken-items-response
   "Returns a list of all items with broken queries.
@@ -750,16 +756,22 @@
    - `query`: Search string to filter by name or location
    - `archived`: Controls whether archived entities are included
    - `include_personal_collections`: Controls whether items in personal collections are included (default: false)
+   - `offset`: Default 0
+   - `limit`: Default 50
 
-   Returns a list of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields."
+   Returns a a map with:
+   - `data`: List of broken items, each with `:id`, `:type`, `:data`, and `:error`s fields
+   - `total`: Total count of matched items
+   - `offset`: Applied offset
+   - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections]
+   {:keys [types card_types query archived include_personal_collections offset limit]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- broken-items-args]
-  (let [limit (request/limit)
-        offset (request/offset)
-        include-archived-items (if archived :all :exclude)
+         include_personal_collections false
+         offset 0
+         limit 50}} :- broken-items-args]
+  (let [include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
@@ -773,9 +785,10 @@
                                                     :include-personal-collections include_personal_collections})
                            selected-types)
         union-query {:union-all union-queries}
-        all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]
-                                      :limit limit
-                                      :offset offset))
+        all-ids (->> (t2/query (assoc union-query
+                                      :order-by [[:sort_key :asc]]
+                                      :offset offset
+                                      :limit limit))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
@@ -784,8 +797,8 @@
                   first
                   :total)]
     {:data   (expanded-nodes downstream-graph all-ids {:include-errors? true})
-     :limit  limit
      :offset offset
+     :limit  limit
      :total  total}))
 
 (def ^{:arglists '([request respond raise])} routes
