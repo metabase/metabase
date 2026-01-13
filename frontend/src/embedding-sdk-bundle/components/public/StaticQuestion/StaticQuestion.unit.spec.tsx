@@ -174,18 +174,18 @@ describe("StaticQuestion", () => {
   it("should render a static question with the mocked data", async () => {
     await setup();
 
-    expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
+    expect(screen.getByTestId("query-visualization-root")).toBeVisible();
     expect(
       within(screen.getByTestId("table-root")).getByText(
         TEST_COLUMN.display_name,
       ),
-    ).toBeInTheDocument();
+    ).toBeVisible();
     expect(
       within(screen.getByRole("gridcell")).getByText("Test Row"),
-    ).toBeInTheDocument();
+    ).toBeVisible();
   });
 
-  describe("hide the toolbar and their nested containers when their underlying children are hidden", () => {
+  describe("toolbar visibility", () => {
     it("should hide the TopBar when no UI elements are provided", async () => {
       await setup({
         title: false,
@@ -196,7 +196,7 @@ describe("StaticQuestion", () => {
 
       const topBar = screen.getByTestId("static-question-top-bar");
 
-      expect(topBar).toBeInTheDocument();
+      expect(topBar).not.toBeVisible();
       expect(topBar).toHaveStyle({ display: "none" });
     });
 
@@ -210,9 +210,9 @@ describe("StaticQuestion", () => {
 
       const topBar = screen.getByTestId("static-question-top-bar");
 
-      expect(topBar).toBeInTheDocument();
+      expect(topBar).toBeVisible();
       expect(topBar).not.toHaveStyle({ display: "none" });
-      expect(screen.getByText("My Custom Title")).toBeInTheDocument();
+      expect(screen.getByText("My Custom Title")).toBeVisible();
     });
 
     it("should show the TopBar when withChartTypeSelector is true", async () => {
@@ -225,11 +225,9 @@ describe("StaticQuestion", () => {
 
       const topBar = screen.getByTestId("static-question-top-bar");
 
-      expect(topBar).toBeInTheDocument();
+      expect(topBar).toBeVisible();
       expect(topBar).not.toHaveStyle({ display: "none" });
-      expect(
-        screen.getByTestId("chart-type-selector-button"),
-      ).toBeInTheDocument();
+      expect(screen.getByTestId("chart-type-selector-button")).toBeVisible();
     });
 
     it("should show the TopBar when withDownloads is true", async () => {
@@ -242,7 +240,7 @@ describe("StaticQuestion", () => {
 
       const topBar = screen.getByTestId("static-question-top-bar");
 
-      expect(topBar).toBeInTheDocument();
+      expect(topBar).toBeVisible();
       expect(topBar).not.toHaveStyle({ display: "none" });
     });
 
@@ -294,9 +292,7 @@ describe("StaticQuestion", () => {
             enterprisePlugins: ["sdk_notifications"],
           });
 
-          expect(
-            screen.getByRole("button", { name: "Alerts" }),
-          ).toBeInTheDocument();
+          expect(screen.getByRole("button", { name: "Alerts" })).toBeVisible();
         });
 
         it("should show the alert button for custom layouts", async () => {
@@ -314,10 +310,8 @@ describe("StaticQuestion", () => {
             ),
           });
 
-          expect(screen.getByText("Custom Layout")).toBeInTheDocument();
-          expect(
-            screen.getByRole("button", { name: "Alerts" }),
-          ).toBeInTheDocument();
+          expect(screen.getByText("Custom Layout")).toBeVisible();
+          expect(screen.getByRole("button", { name: "Alerts" })).toBeVisible();
         });
 
         it("should not show the alert button when withAlerts is false", async () => {
@@ -401,12 +395,10 @@ describe("StaticQuestion", () => {
 
       const topBar = screen.getByTestId("static-question-top-bar");
 
-      expect(topBar).toBeInTheDocument();
+      expect(topBar).toBeVisible();
       expect(topBar).not.toHaveStyle({ display: "none" });
-      expect(screen.getByText("My Title")).toBeInTheDocument();
-      expect(
-        screen.getByTestId("chart-type-selector-button"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("My Title")).toBeVisible();
+      expect(screen.getByTestId("chart-type-selector-button")).toBeVisible();
     });
   });
 });
