@@ -37,6 +37,7 @@ import {
   SdkIframeExistingUserSessionInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
+import { DASHBOARD_STYLES } from "./constants";
 
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.
@@ -174,6 +175,7 @@ const SdkIframeEmbedView = ({
               withDownloads={settings.withDownloads}
               initialParameters={settings.initialParameters}
               hiddenParameters={settings.hiddenParameters}
+              style={DASHBOARD_STYLES}
             />
           );
         },
@@ -197,6 +199,7 @@ const SdkIframeEmbedView = ({
             hiddenParameters={settings.hiddenParameters}
             drillThroughQuestionHeight="100%"
             drillThroughQuestionProps={{ isSaveEnabled: false }}
+            style={DASHBOARD_STYLES}
           />
         ),
       )
