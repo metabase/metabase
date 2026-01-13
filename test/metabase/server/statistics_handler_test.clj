@@ -14,6 +14,7 @@
 
 (defn routes
   [hold-chan hit-chan]
+  #_{:clj-kondo/ignore [:discouraged-var]}
   (compojure/routes
    (GET "/sync" [] {:status 200 :headers {} :body "you got it sync"})
    (GET "/hold" []
