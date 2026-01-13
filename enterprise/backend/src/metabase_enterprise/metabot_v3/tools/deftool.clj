@@ -72,15 +72,29 @@
     :result-schema  - Malli schema for result (required for response schema generation)
     :handler        - Function to call. Always receives an args map (may be empty for no-args tools)
                       with `:metabot-id` included when available from the request.
+    :version        - API version number (e.g., 1). When present, the version is prepended to the
+                      route path (e.g., \"/search\" becomes \"/v1/search\"). This is used for
+                      external-facing versioned APIs like the Agent API.
 
   Example:
     (deftool \"/field-values\"
       \"Return statistics and/or values for a given field.\"
       {:args-schema   ::field-values-arguments
        :result-schema ::field-values-result
-       :handler       metabot-v3.tools.field-stats/field-values})"
-  [route docstring {:keys [args-schema args-optional? result-schema handler]}]
+       :handler       metabot-v3.tools.field-stats/field-values})
+
+  Versioned example:
+    (deftool \"/search\"
+      \"Search for entities.\"
+      {:version       1
+       :args-schema   ::search-arguments
+       :result-schema ::search-result
+       :handler       search-v1})"
+  [route docstring {:keys [args-schema args-optional? result-schema handler version]}]
   (let [api-name        (keyword (subs route 1)) ; "/field-values" -> :field-values
+        versioned-route (if version
+                          (str "/v" version route)
+                          route)
         body-schema     (if args-schema
                           (if args-optional?
                             `[:merge [:map [:arguments {:optional true} ~args-schema]] ::tool-request]
@@ -91,7 +105,7 @@
                          :args-schema   args-schema
                          :result-schema result-schema
                          :handler       handler}]
-    `(api.macros/defendpoint :post ~route :- ~response-schema
+    `(api.macros/defendpoint :post ~versioned-route :- ~response-schema
        ~docstring
        [~'_route-params ~'_query-params ~'body :- ~body-schema ~'request]
        (invoke-tool ~'body ~'request ~tool-opts))))
