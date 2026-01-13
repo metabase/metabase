@@ -1,7 +1,8 @@
 (ns metabase.task-history.models.task-history
   (:require
-   [clojure.tools.logging :as log]
-   [clojure.tools.logging.impl :as log.impl]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [clojure.tools.logging]
+   [clojure.tools.logging.impl]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -159,15 +160,15 @@
               :stacktrace (u/filtered-stacktrace e)})))
 
 (defn- log-capture-factory [base-factory logs-atom]
-  (reify log.impl/LoggerFactory
+  (reify clojure.tools.logging.impl/LoggerFactory
     (name [_] "metabase.task_history")
     (get-logger [_ logger-ns]
-      (let [base-logger (log.impl/get-logger base-factory logger-ns)]
-        (reify log.impl/Logger
-          (enabled? [_ level] (log.impl/enabled? base-logger level))
+      (let [base-logger (clojure.tools.logging.impl/get-logger base-factory logger-ns)]
+        (reify clojure.tools.logging.impl/Logger
+          (enabled? [_ level] (clojure.tools.logging.impl/enabled? base-logger level))
           (write! [_ level ex msg]
             (swap! logs-atom conj (log-capture-entry level msg ex))
-            (log.impl/write! base-logger level ex msg)))))))
+            (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
@@ -182,7 +183,8 @@
                                                                 :started_at (t/instant))
                                                    task-run/*run-id* (assoc :run_id task-run/*run-id*)))
         logs-atom       (atom [])]
-    (binding [log/*logger-factory* (log-capture-factory log/*logger-factory* logs-atom)]
+    (binding [clojure.tools.logging/*logger-factory*
+              (log-capture-factory clojure.tools.logging/*logger-factory* logs-atom)]
       (try
         (u/prog1 (f)
           (update-task-history! th-id start-time-ns (on-success-info {:status       :success
