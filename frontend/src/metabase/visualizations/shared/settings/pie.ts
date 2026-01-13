@@ -150,6 +150,7 @@ export function getSortedRows(rows: RowValues[], metricIndex: number) {
 export function getColors(
   rawSeries: RawSeries,
   currentSettings: Partial<ComputedVisualizationSettings>,
+  untranslatedKeysToTranslatedKeys: Map<string, string>,
 ) {
   const [
     {
@@ -171,22 +172,39 @@ export function getColors(
     getKeyFromDimensionValue(r[dimensionIndex]),
   );
 
-  // `pie.colors` is a legacy setting used by old questions for their
-  // colors. We'll still read it to preserve those color selections, but
-  // will no longer write values to it, instead storing colors in `pie.rows`.
+  let existingColorMapping: Record<string, string> = {};
 
-  // Historically we used String(dimensionValue) in the `pie.colors` setting instead of `getKeyFromDimensionValue`
-  // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DISPLAY_VALUE
-
-  let existingColorMapping;
+  // pie.colors is the legacy setting for colors
   if (currentSettings["pie.colors"]) {
     existingColorMapping = Object.fromEntries(
       Object.entries(currentSettings["pie.colors"]).map(([key, value]) => [
+        // Historically we used String(dimensionValue) in the `pie.colors` setting instead of `getKeyFromDimensionValue`
+        // For compatibility with old charts, we'll transform the strings "null" and "undefined" into NULL_DISPLAY_VALUE
         key === "null" || key === "undefined" ? NULL_DISPLAY_VALUE : key,
-        value,
+        getHexColor(value),
       ]),
     );
   }
+
+  // pie.rows is the new setting for colors - takes precedence over pie.colors
+  if (currentSettings["pie.rows"]) {
+    for (const row of currentSettings["pie.rows"]) {
+      if (!row.defaultColor && row.color) {
+        existingColorMapping[row.key] = getHexColor(row.color);
+      }
+    }
+  }
+
+  existingColorMapping = {
+    ...existingColorMapping,
+    // fixes #62382 and #62373
+    ...Object.fromEntries(
+      Object.entries(existingColorMapping).map(([key, value]) => [
+        untranslatedKeysToTranslatedKeys.get(key) ?? key,
+        value,
+      ]),
+    ),
+  };
 
   return getColorsForValues(dimensionValues, existingColorMapping);
 }
@@ -237,7 +255,11 @@ export function getPieRows(
     return formatter(value, dimensionColSettings);
   };
 
-  const colors = getColors(rawSeries, settings);
+  const colors = getColors(
+    rawSeries,
+    settings,
+    untranslatedKeysToTranslatedKeys,
+  );
 
   const currentDataRows = getAggregatedRows(
     dataRows,
@@ -255,13 +277,6 @@ export function getPieRows(
   const savedPieRows = hasSortDimensionChanged
     ? []
     : (settings["pie.rows"] ?? []);
-  const savedColors = new Map<string, string>();
-  savedPieRows.forEach((pieRow) => {
-    savedColors.set(
-      untranslatedKeysToTranslatedKeys.get(pieRow.key) ?? pieRow.key,
-      pieRow.color,
-    );
-  });
 
   const savedPieKeys = savedPieRows.map((pieRow) => pieRow.key);
 
@@ -281,16 +296,14 @@ export function getPieRows(
     newPieRows = sortedCurrentDataRows.map((dataRow) => {
       const dimensionValue = dataRow[dimensionDesc.index];
       const key = getKeyFromDimensionValue(dimensionValue);
-      const color = getHexColor(colors[key]);
+      const color = colors[key];
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
         const newRow = { ...savedRow, hidden: false };
-
         if (savedRow.defaultColor) {
           newRow.color = color;
         }
-
         return newRow;
       }
 
@@ -300,7 +313,7 @@ export function getPieRows(
         key,
         name,
         originalName: name,
-        color: savedColors.get(key) ?? color,
+        color,
         defaultColor: true,
         enabled: true,
         hidden: false,
@@ -317,11 +330,11 @@ export function getPieRows(
       if (savedPieRow == null) {
         throw Error(`Did not find saved pie row for kept key ${keptKey}`);
       }
-
-      return {
-        ...savedPieRow,
-        hidden: false,
-      };
+      const newRow = { ...savedPieRow, hidden: false };
+      if (savedPieRow.defaultColor) {
+        newRow.color = colors[keptKey];
+      }
+      return newRow;
     });
 
     const addedRows = added.map((addedKey) => {
@@ -339,14 +352,14 @@ export function getPieRows(
         const dimensionValue = addedDataRow[dimensionDesc.index];
 
         const key = getKeyFromDimensionValue(dimensionValue);
-        const color = getHexColor(colors[key]);
+        const color = colors[key];
         const name = formatDimensionValue(dimensionValue);
 
         return {
           key,
           name,
           originalName: name,
-          color: savedColors.get(key) ?? color,
+          color,
           defaultColor: true,
           enabled: true,
           hidden: false,
