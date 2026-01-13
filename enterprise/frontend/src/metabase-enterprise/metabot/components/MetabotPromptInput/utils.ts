@@ -8,7 +8,16 @@ import {
 import { mbProtocolModelToSuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/suggestionUtils";
 
 function serializeNodes(nodes: JSONContent[]): string {
-  return nodes.map((node) => serializeNode(node)).join("");
+  return nodes
+    .map((node, index) => {
+      const serialized = serializeNode(node);
+      // Add newline after paragraphs, except for the last one if it's empty
+      if (node.type === "paragraph" && index < nodes.length - 1) {
+        return serialized + "\n";
+      }
+      return serialized;
+    })
+    .join("");
 }
 
 function serializeNode(node: JSONContent): string {
