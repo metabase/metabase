@@ -59,7 +59,8 @@ export const SaveTransformButton = ({
     removeEditedTransform,
   } = useWorkspace();
 
-  const [updateTransform] = useUpdateWorkspaceTransformMutation();
+  const [updateTransform, { isLoading: isUpdating }] =
+    useUpdateWorkspaceTransformMutation();
   const [createWorkspaceTransform] = useCreateWorkspaceTransformMutation();
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -225,6 +226,7 @@ export const SaveTransformButton = ({
     if (isSaved) {
       return {
         disabled: !hasChanges || isDisabled,
+        loading: isUpdating,
         variant: "filled" as const,
         onClick: handleUpdateTransform,
       };
