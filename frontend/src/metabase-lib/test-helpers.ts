@@ -5,9 +5,11 @@ import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  CardId,
   DatabaseId,
   DatasetColumn,
   DatasetQuery,
+  JoinStrategy,
   RowValue,
   TableId,
 } from "metabase-types/api";
@@ -407,4 +409,254 @@ export function createLegendItemClickObject(
   dimension: Lib.ClickObjectDimension,
 ) {
   return { dimensions: [dimension] };
+}
+
+type CreateTestQueryOpts = {
+  databaseId: DatabaseId;
+  metadata?: Metadata;
+
+  stages: TestQueryStage[];
+};
+
+type TestQueryStage = {
+  source: TestQuerySource;
+  joins?: TestQueryJoin[];
+  filters?: TestQueryFilter[];
+  aggregations?: TestQueryAggregation[];
+  expression?: TestQueryNamedExpression[];
+};
+
+type TestQueryTableSource = { type: "table"; id: TableId };
+type TestQueryCardSource = { type: "card"; id: CardId };
+type TestQuerySource = TestQueryTableSource | TestQueryCardSource;
+
+type TestQueryJoin = {
+  source: TestQuerySource;
+  strategy: JoinStrategy;
+
+  // If not set we will used the suggested join conditions
+  conditions?: TestQueryJoinCondition[];
+};
+
+type TestQueryJoinCondition = {
+  operator: Lib.JoinConditionOperator;
+  left: TestQueryExpression;
+  right: TestQueryExpression;
+};
+
+type TestQueryNamedExpression = {
+  name: string;
+  value: TestQueryExpression;
+};
+
+type TestQueryFilter = TestQueryExpression;
+
+type TestQueryAggregation = TestQueryExpression | TestQueryNamedExpression;
+
+type TestQueryExpression =
+  | TestQueryLiteralExpression
+  | TestQueryColumnExpression
+  | TestQueryOperatorExpression;
+
+type TestQueryLiteralExpression = {
+  type: "literal";
+  value: number | bigint | string | boolean;
+};
+
+type TestQueryColumnExpression = {
+  type: "column";
+  name: string;
+};
+
+type TestQueryOperatorExpression = {
+  type: "operator";
+  operator: Lib.ExpressionOperator;
+  args: TestQueryExpression[];
+};
+
+function findColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  columnName: string,
+) {
+  for (const column of columns) {
+    const displayInfo = Lib.displayInfo(query, stageIndex, column);
+    if (columnName === displayInfo.name) {
+      return column;
+    }
+  }
+
+  throw new Error(
+    `[stage ${stageIndex}]: Could not find column named "${columnName}"`,
+  );
+}
+
+function expressionToExpressionParts(
+  query: Lib.Query,
+  stageIndex: number,
+  availableColumns: Lib.ColumnMetadata[],
+  expression: TestQueryExpression,
+): Lib.ExpressionArg | Lib.ExpressionParts {
+  switch (expression.type) {
+    case "literal":
+      return expression.value;
+    case "column":
+      return findColumn(query, stageIndex, availableColumns, expression.name);
+    case "operator":
+      return {
+        operator: expression.operator,
+        options: {},
+        args: expression.args.map((arg) =>
+          expressionToExpressionParts(query, stageIndex, availableColumns, arg),
+        ),
+      };
+  }
+}
+
+function expressionToExpressionClause(
+  query: Lib.Query,
+  stageIndex: number,
+  availableColumns: Lib.ColumnMetadata[],
+  expression: TestQueryExpression,
+): Lib.ExpressionClause {
+  const expressionParts = expressionToExpressionParts(
+    query,
+    stageIndex,
+    availableColumns,
+    expression,
+  );
+  return Lib.expressionClause(expressionParts);
+}
+
+function expressionToJoinConditionExpression(
+  query: Lib.Query,
+  stageIndex: number,
+  joinableColumns: Lib.ColumnMetadata[],
+  expression: TestQueryExpression,
+) {
+  switch (expression.type) {
+    case "column":
+      return findColumn(query, stageIndex, joinableColumns, expression.name);
+    case "operator":
+    case "literal": {
+      return expressionToExpressionClause(
+        query,
+        stageIndex,
+        joinableColumns,
+        expression,
+      );
+    }
+  }
+}
+
+function getSourceMetadata(
+  context: string,
+  provider: Lib.MetadataProvider,
+  source: TestQuerySource,
+): Lib.TableMetadata | Lib.CardMetadata {
+  const metadata = Lib.tableOrCardMetadata(provider, source.id);
+
+  if (!metadata) {
+    error(context, `Could not find source metadata for source: ${source.id}`);
+  }
+
+  return metadata;
+}
+
+function error(context: string, message: string): never {
+  throw new Error(`[${context}]: ${message}`);
+}
+
+export function createTestQuery({
+  databaseId,
+  metadata = SAMPLE_METADATA,
+  stages,
+}: CreateTestQueryOpts): Lib.Query {
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+
+  const queryWithStages = stages.reduce(
+    (query: Lib.Query | null, stage, stageIndex): Lib.Query => {
+      const { source, joins = [] } = stage;
+
+      const sourceMetadata = getSourceMetadata(
+        `[stage ${stageIndex}]`,
+        metadataProvider,
+        source,
+      );
+
+      const queryWithStage =
+        query == null
+          ? // The first stage is created by creating the query
+            Lib.queryFromTableOrCardMetadata(metadataProvider, sourceMetadata)
+          : // Further stages are appended to the query
+            Lib.appendStage(query);
+
+      const queryWithJoins = joins.reduce((query, join, joinIndex) => {
+        const targetMetadata = getSourceMetadata(
+          `[stage ${stageIndex}, join ${joinIndex}]`,
+          metadataProvider,
+          join.source,
+        );
+
+        // Pick join strategy
+        const availableJoinStrategies = Lib.availableJoinStrategies(query, -1);
+        const joinStrategy = availableJoinStrategies.find(
+          (strategy) =>
+            Lib.displayInfo(query, -1, strategy).shortName === join.strategy,
+        );
+        if (!joinStrategy) {
+          error(
+            `[stage ${stageIndex}, join ${joinIndex}]`,
+            `Could not find join strategy "${join.strategy}"`,
+          );
+        }
+
+        // Build join conditions
+        const conditions =
+          join.conditions == null
+            ? // If no conditions are specified, use the suggested conditions
+              Lib.suggestedJoinConditions(query, stageIndex, sourceMetadata)
+            : // If conditions are specified, use them
+              join.conditions.map((condition) => {
+                const lhs = expressionToJoinConditionExpression(
+                  query,
+                  stageIndex,
+                  Lib.joinConditionLHSColumns(query, stageIndex),
+                  condition.left,
+                );
+                const rhs = expressionToJoinConditionExpression(
+                  query,
+                  stageIndex,
+                  // TODO: why does this return an empty array?
+                  //   Lib.joinConditionRHSColumns(query, stageIndex),
+                  Lib.joinableColumns(query, stageIndex, targetMetadata),
+                  condition.right,
+                );
+
+                return Lib.joinConditionClause(condition.operator, lhs, rhs);
+              });
+
+        const joinClause = Lib.joinClause(
+          sourceMetadata,
+          conditions,
+          joinStrategy,
+        );
+        return Lib.join(query, stageIndex, joinClause);
+      }, queryWithStage);
+
+      return queryWithJoins;
+    },
+    null,
+  );
+
+  if (queryWithStages == null) {
+    throw new Error("query must have at least one stage");
+  }
+
+  return queryWithStages;
+}
+
+export function createTestJsQuery(opts: CreateTestQueryOpts) {
+  return Lib.toJsQuery(createTestQuery(opts));
 }
