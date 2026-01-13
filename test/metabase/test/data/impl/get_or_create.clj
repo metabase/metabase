@@ -140,8 +140,7 @@
 (defn- insert-fake-field!
   "Insert a Field row from a FieldDefinition, returning the inserted field."
   [_driver table position {:keys [field-name base-type semantic-type visibility-type
-                                  effective-type coercion-strategy field-comment fk]}
-   & {:keys [pk?]}]
+                                  effective-type coercion-strategy field-comment fk pk?]}]
   ;; For fake sync, database_type is informational only - tests query by base_type.
   ;; Using (name base-type) as a simple placeholder avoids the sql.tx dependency.
   (let [database-type (name base-type)
@@ -166,15 +165,15 @@
                                       :database_position position
                                       :active            true}))))
 
-(defn- insert-pk-field!
-  "Insert the auto-generated PK field (id) for a table."
+(defn- insert-auto-pk-field!
+  "Insert the auto-generated PK field (id) for a table that doesn't define custom PKs."
   [driver table]
   ;; pk-field-name is "id" for all SQL drivers that would use fake sync
   (let [pk-base-type (tx/id-field-type driver)]
     (insert-fake-field! driver table 0
                         {:field-name "id"
-                         :base-type  pk-base-type}
-                        :pk? true)))
+                         :base-type  pk-base-type
+                         :pk?        true})))
 
 (defn- resolve-fk-relationships!
   "Second pass: resolve FK relationships by setting fk_target_field_id on FK fields."
@@ -205,14 +204,17 @@
   (let [table-name->table
         (into {}
               (for [{:keys [table-name field-definitions] :as table-def} table-definitions]
-                (let [table (insert-fake-table! driver db table-def database-name)]
-                  ;; Insert PK field first (position 0)
-                  (insert-pk-field! driver table)
-                  ;; Insert other fields with positions starting at 1
+                (let [table           (insert-fake-table! driver db table-def database-name)
+                      has-custom-pk?  (some :pk? field-definitions)]
+                  ;; Only insert auto-generated PK if no custom PK is defined
+                  (when-not has-custom-pk?
+                    (insert-auto-pk-field! driver table))
+                  ;; Insert fields with positions (0-indexed if custom PK, 1-indexed if auto PK)
                   (dorun
                    (map-indexed
                     (fn [idx field-def]
-                      (insert-fake-field! driver table (inc idx) field-def))
+                      (let [position (if has-custom-pk? idx (inc idx))]
+                        (insert-fake-field! driver table position field-def)))
                     field-definitions))
                   [table-name table])))]
     ;; Second pass: resolve FK relationships
