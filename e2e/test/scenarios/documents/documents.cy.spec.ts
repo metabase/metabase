@@ -21,6 +21,239 @@ describe("documents", () => {
     H.resetSnowplow();
   });
 
+  describe("duplicating documents", () => {
+    it("should warn about unsaved changes when duplicating an existing document", () => {
+      H.createDocument({
+        name: "Unsaved Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Unsaved Duplicate Doc")
+        .clear()
+        .type("Unsaved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+
+      cy.findByRole("button", { name: "Cancel" }).click();
+
+      cy.findByTestId("save-confirmation").should("not.exist");
+      cy.findByRole("heading", { name: /Duplicate "/ }).should("not.exist");
+
+      // still unsaved
+      H.documentSaveButton().should("be.visible");
+    });
+
+    it("should discard unsaved changes when duplicating and then open the duplicate modal", () => {
+      H.createDocument({
+        name: "Discard Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Discard Duplicate Doc")
+        .clear()
+        .type("Unsaved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+      cy.findByRole("button", { name: "Discard changes" }).click();
+
+      // reverted
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Discard Duplicate Doc",
+      );
+      H.documentContent().should("contain.text", "Original content");
+      H.documentSaveButton().should("not.exist");
+
+      // duplicate modal is open
+      cy.findByRole("heading", { name: /Duplicate "/ }).should("be.visible");
+      cy.findByRole("button", { name: "Copy" }).should("be.visible");
+    });
+
+    it("should save changes when duplicating, then copy and redirect to the new document", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
+      H.createDocument({
+        name: "Save Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" })
+        .should("have.value", "Save Duplicate Doc")
+        .clear()
+        .type("Saved title");
+
+      H.documentContent().click();
+      H.addToDocument(" changed", false);
+
+      H.documentSaveButton().should("be.visible");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByTestId("save-confirmation").should("be.visible");
+      cy.findByRole("button", { name: "Save changes" }).click();
+
+      // saved
+      H.documentSaveButton().should("not.exist");
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Saved title",
+      );
+
+      // duplicate modal
+      cy.findByRole("button", { name: "Copy" }).should("be.visible");
+      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+        const copyName = ($input.val() ?? "").toString();
+        cy.wrap(copyName).as("copyName");
+      });
+
+      cy.findByRole("button", { name: "Copy" }).click();
+
+      cy.wait("@copyDoc").then(({ response }) => {
+        const copiedId = response?.body?.id;
+        expect(copiedId).to.exist;
+
+        cy.location("pathname").should(
+          "match",
+          new RegExp(`^/document/${copiedId}`),
+        );
+      });
+
+      cy.get<string>("@copyName").then((copyName) => {
+        cy.findByRole("textbox", { name: "Document Title" }).should(
+          "have.value",
+          copyName,
+        );
+      });
+
+      // content should match the saved changes
+      H.documentContent().should("contain.text", "Original content changed");
+    });
+
+    it("should duplicate a document without any changes (happy path)", () => {
+      cy.intercept("POST", "/api/document/*/copy").as("copyDoc");
+
+      H.createDocument({
+        name: "Happy Path Duplicate Doc",
+        document: {
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Original content" }],
+              attrs: { _id: "1" },
+            },
+          ],
+          type: "doc",
+        },
+        collection_id: null,
+        alias: "document",
+        idAlias: "documentId",
+      });
+
+      H.visitDocument("@documentId");
+
+      cy.findByRole("textbox", { name: "Document Title" }).should(
+        "have.value",
+        "Happy Path Duplicate Doc",
+      );
+      H.documentSaveButton().should("not.exist");
+
+      cy.findByLabelText("More options").click();
+      H.popover().findByText("Duplicate").click();
+
+      cy.findByRole("heading", {
+        name: 'Duplicate "Happy Path Duplicate Doc"',
+      }).should("be.visible");
+
+      cy.findByRole("textbox", { name: "Name" }).then(($input) => {
+        // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
+        const copyName = ($input.val() ?? "").toString();
+        cy.wrap(copyName).as("copyName");
+      });
+      cy.findByRole("button", { name: "Copy" }).click();
+
+      cy.wait("@copyDoc").then(({ response }) => {
+        const copiedId = response?.body?.id;
+        expect(copiedId).to.exist;
+
+        cy.location("pathname").should(
+          "match",
+          new RegExp(`^/document/${copiedId}`),
+        );
+      });
+
+      cy.get<string>("@copyName").then((copyName) => {
+        cy.findByRole("textbox", { name: "Document Title" }).should(
+          "have.value",
+          copyName,
+        );
+      });
+
+      H.documentContent().should("contain.text", "Original content");
+    });
+  });
+
   it("should allow you to create a new document from the new button and save", () => {
     const getDocumentStub = cy.stub();
 
@@ -1470,11 +1703,17 @@ describe("documents", () => {
       H.documentContent().click();
       H.addToDocument("Updated content");
       H.documentSaveButton().click();
+      cy.findByTestId("toast-undo")
+        .should("be.visible")
+        .and("contain.text", "Document saved");
 
       cy.log("Make another change");
       H.documentContent().click();
       H.addToDocument("More changes");
       H.documentSaveButton().click();
+      cy.contains('[data-testid="toast-undo"]', "Document saved").should(
+        "be.visible",
+      );
 
       cy.log("Open revision history");
       cy.findByLabelText("More options").click();

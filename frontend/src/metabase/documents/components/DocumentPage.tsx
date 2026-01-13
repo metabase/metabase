@@ -508,7 +508,7 @@ export const DocumentPage = ({
               onQuestionSelect={handleQuestionSelect}
               initialContent={documentContent}
               onChange={handleChange}
-              editable={canWrite}
+              editable={canWrite && !isSaving}
               isLoading={isDocumentLoading}
               editorContainerRef={editorContainerRef}
             />

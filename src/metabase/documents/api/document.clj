@@ -282,7 +282,7 @@
   [source-document-id :- ms/PositiveInt
    new-document-id :- ms/PositiveInt
    new-collection-id :- [:or :nil ms/PositiveInt]]
-  (let [cards-to-copy (t2/select :model/Card :document_id source-document-id :archived false)]
+  (let [cards-to-copy (t2/select :model/Card :document_id source-document-id)]
     (reduce (fn [accum card]
               (let [new-card (create-card! (-> card
                                                (dissoc :id :entity_id :created_at :updated_at :creator_id
@@ -290,6 +290,10 @@
                                                (assoc :document_id new-document-id
                                                       :collection_id new-collection-id))
                                            @api/*current-user*)]
+                (when (or (:archived card) (:archived_directly card))
+                  (t2/update! :model/Card (:id new-card)
+                              {:archived          (boolean (:archived card))
+                               :archived_directly (boolean (:archived_directly card))}))
                 (assoc accum (:id card) (:id new-card))))
             {}
             cards-to-copy)))

@@ -48,6 +48,16 @@ export const documentApi = Api.injectEndpoints({
         !error
           ? [listTag("document"), idTag("document", id), listTag("revision")]
           : [],
+      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
+        const { data } = await queryFulfilled;
+        await dispatch(
+          documentApi.util.upsertQueryData(
+            "getDocument",
+            { id: data.id },
+            data,
+          ),
+        );
+      },
     }),
     deleteDocument: builder.mutation<void, DeleteDocumentRequest>({
       query: (document) => ({
@@ -64,6 +74,16 @@ export const documentApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) => (error ? [] : [listTag("document")]),
+      async onQueryStarted(_props, { dispatch, queryFulfilled }) {
+        const { data } = await queryFulfilled;
+        await dispatch(
+          documentApi.util.upsertQueryData(
+            "getDocument",
+            { id: data.id },
+            data,
+          ),
+        );
+      },
     }),
     listPublicDocuments: builder.query<GetPublicDocument[], void>({
       query: () => ({

@@ -179,7 +179,7 @@ export const Editor: React.FC<EditorProps> = ({
         }
       },
     },
-    [initialContent],
+    [],
   );
 
   // Handle content updates when initialContent changes

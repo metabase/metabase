@@ -30,7 +30,7 @@ export function useDocumentState(documentData?: {
   const revertToOriginalDocument = useCallback(() => {
     if (documentData) {
       setDocumentTitle(documentData.name);
-      // Force update to ensure `Editor` component re-renders with the original content.
+      // Force update to ensure the editor updates with the original content.
       setDocumentContent(Object.assign({}, documentData.document));
     }
   }, [documentData]);

@@ -164,18 +164,21 @@ describe("DocumentHeader", () => {
       setup({ isNewDocument: false, canWrite: true });
       await userEvent.click(screen.getByLabelText("More options"));
 
-      // TODO?
       expect(screen.getByText("Move")).toBeInTheDocument();
       expect(screen.getByText("Move to trash")).toBeInTheDocument();
+
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
     });
 
     it("should not show move and archive options when user cannot write", async () => {
       setup({ isNewDocument: false, canWrite: false });
       await userEvent.click(screen.getByLabelText("More options"));
 
-      // TODO?
       expect(screen.queryByText("Move")).not.toBeInTheDocument();
       expect(screen.queryByText("Move to trash")).not.toBeInTheDocument();
+
+      // User can still duplicate the document
+      expect(screen.getByText("Duplicate")).toBeInTheDocument();
     });
 
     it("should call onMove when move is clicked", async () => {
@@ -213,11 +216,16 @@ describe("DocumentHeader", () => {
       expect(screen.queryByLabelText("More options")).not.toBeInTheDocument();
     });
 
-    it("should open the duplicate modal when duplicate is clicked", async () => {
-      setup({ isNewDocument: false, documentTitle: "Test Document" });
+    it("should call onDuplicate when duplicate is clicked", async () => {
+      const onDuplicate = jest.fn();
+      setup({
+        isNewDocument: false,
+        documentTitle: "Test Document",
+        onDuplicate,
+      });
       await userEvent.click(screen.getByLabelText("More options"));
       await userEvent.click(screen.getByText("Duplicate"));
-      expect(screen.getByText('Duplicate "Test Document"')).toBeInTheDocument();
+      expect(onDuplicate).toHaveBeenCalled();
     });
   });
 });
