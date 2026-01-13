@@ -245,7 +245,7 @@
 (defn record-stage-data!
   "Record a query tracking event and immediately check for collisions at this stage.
    Logs ERROR if fingerprint collisions are detected.
-   
+
    Parameters:
    - stage: keyword identifying the instrumentation point (e.g. :after-json-parse, :before-lib-normalize)
    - query: the query data to fingerprint
