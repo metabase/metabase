@@ -21,8 +21,8 @@
 ;; Analyzing an entity in memory ================================================================
 (mu/defn- check-query :- [:set [:ref ::lib.schema.validate/error]]
   "Find any bad refs in a `query`."
-  [driver :- :keyword
-   query  :- ::lib.schema/query]
+  [_driver :- :keyword
+   query   :- ::lib.schema/query]
   ;; preprocess query first to check for native dependencies
   (if (-> (qp.preprocess/preprocess query)
           lib/any-native-stage?)
