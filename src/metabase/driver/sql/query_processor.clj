@@ -911,9 +911,9 @@
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata)
-                            ;; Fallback: derive from base-type when field-metadata is nil.
-                            ;; This handles nested queries where fields are referenced by string name
-                            ;; instead of integer ID (#68065).
+                                   ;; Fallback: derive from base-type when field-metadata is nil.
+                                   ;; This handles nested queries where fields are referenced by string name
+                                   ;; instead of integer ID (#68065).
                                    (base-type->db-type driver (:base-type options)))
           maybe-add-db-type    (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
