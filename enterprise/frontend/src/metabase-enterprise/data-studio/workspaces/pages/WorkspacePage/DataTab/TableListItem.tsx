@@ -116,8 +116,9 @@ export const TableListItem = ({
             size="sm"
             variant="subtle"
             onClick={handleTransformClick}
+            aria-label={t`Open transform`}
           >
-            <Icon name="code_block" size={14} c="text-medium" />
+            <Icon name="code_block" size={14} c="text-medium"/>
           </ActionIcon>
         </Tooltip>
       )}

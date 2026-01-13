@@ -955,6 +955,85 @@ describe("scenarios > data studio > workspaces", () => {
     });
   });
 
+  describe("data tab", () => {
+
+    it("should list input and output tables", () => {
+      createTransforms();
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+
+      H.NativeEditor.type(" LIMIT 1;");
+      Workspaces.getSaveTransformButton().click();
+
+      cy.log("Close saved transform tab");
+      Workspaces.getWorkspaceContent().within(() => {
+        cy.findAllByRole("tab").eq(2).findByLabelText("close icon").click();
+      });
+
+      Workspaces.openDataTab();
+      Workspaces.getWorkspaceSidebar().findByText(`${TARGET_SCHEMA}.${SOURCE_TABLE}`).should("be.visible");
+      Workspaces.getWorkspaceSidebar().findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).as("outputTable").should("be.visible").realHover();
+      cy.root().findByText("Run transform to see the results").should("be.visible");
+
+      cy.get("@outputTable").realHover().click();
+
+      Workspaces.getWorkspaceContent().within(() => {
+      cy.findByText("Loading...").should("be.visible");
+        H.assertTableData({
+          columns: ["Name", "Score"],
+          firstRows: [["Duck", "10"]],
+        });
+      });
+
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`, [
+          "Setup",
+          "Agent Chat",
+          `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
+        ]);
+      });
+
+
+      Workspaces.getWorkspaceSidebar().findByLabelText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).findByLabelText("Open transform").as("transformLink").realHover();
+      cy.root().findByText("Open transform").should("be.visible");
+      cy.get("@transformLink").click();
+
+      Workspaces.getWorkspaceTabs().within(() => {
+        H.tabsShouldBe("SQL transform", [
+          "Setup",
+          "Agent Chat",
+          `${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`,
+          "SQL transform",
+        ]);
+      });
+
+
+
+      // H.undoToast().findByText("Failed to run transform");
+      // Workspaces.getWorkspaceContent().findByText(
+      //   "This transform hasn't been run before.",
+      // );
+
+      // H.NativeEditor.type(" 1;");
+      // Workspaces.getSaveTransformButton().click();
+      // Workspaces.getRunTransformButton().click();
+
+      // // The run button state change happens very fast and behaves flaky. Not sure if we need to test it.
+      // // Workspaces.getWorkspaceContent().findByText("Ran successfully");
+      // Workspaces.getWorkspaceContent().findByText(
+      //   "Last ran a few seconds ago successfully.",
+      // );
+
+      // H.NativeEditor.type("{backspace}{backspace}");
+      // Workspaces.getSaveTransformButton().click();
+      // Workspaces.getRunTransformButton().click();
+
+      // H.undoToast().findByText("Failed to run transform");
+    });
+  });
+
   describe("run transform", () => {
     it("should run and fail transform runs", () => {
       createTransforms();
