@@ -104,7 +104,7 @@
   "Transform YAML from dev format to canonical format.
 
   Replaces user email with canonical creator_id.
-  For the Database entitiy, strips down to minimal required fields and sets is_audit to true."
+  For the Database entity, strips down to minimal required fields and sets is_audit to true."
   [file-name yaml-data user-email]
   (let [transformed (walk/postwalk
                      (fn [node]

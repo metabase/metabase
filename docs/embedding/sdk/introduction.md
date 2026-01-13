@@ -108,16 +108,6 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
 
-## Changelog
-
-View the SDK's changelog:
-
-- [56-stable](https://github.com/metabase/metabase/blob/release-x.56.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [55-stable](https://github.com/metabase/metabase/blob/release-x.55.x/enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md)
-- [54-stable](https://github.com/metabase/metabase/blob/release-x.54.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [53-stable](https://github.com/metabase/metabase/blob/release-x.53.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-- [52-stable](https://github.com/metabase/metabase/blob/release-x.52.x/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
-
 ## Modular embedding SDK on npm
 
 Check out the Metabase Modular embedding SDK on npm: [metaba.se/sdk-npm](https://metaba.se/sdk-npm).

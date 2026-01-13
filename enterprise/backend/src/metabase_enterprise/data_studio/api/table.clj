@@ -274,7 +274,7 @@
 (api.macros/defendpoint :post "/sync-schema" :- :nil
   "Batch version of /table/:id/sync_schema. Takes an abstract table selection as /table/edit does.
   - Currently checks policy before returning (so you might receive a 4xx on e.g. AuthZ policy failure)
-  - The sync itself is however, asyncronous. This call may return before all tables synced."
+  - The sync itself is however, asynchronous. This call may return before all tables synced."
   [_
    _
    body :- ::table-selectors]

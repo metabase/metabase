@@ -10,9 +10,9 @@
   [#_"dev"
    "docs"
    #_"e2e"
-   #_"enterprise"
-   #_"frontend"
-   #_"modules/drivers"
+   "enterprise"
+   "frontend"
+   "modules/drivers"
    #_"src"
    #_"test"])
 

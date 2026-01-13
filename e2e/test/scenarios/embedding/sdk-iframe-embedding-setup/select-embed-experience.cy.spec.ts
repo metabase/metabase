@@ -22,7 +22,9 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
     H.enableTracking();
+
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", true);
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
@@ -61,6 +63,48 @@ describe(suiteTitle, () => {
 
         cy.log("dashboard card is visible");
         cy.findByText("Orders").should("be.visible");
+      });
+    });
+
+    it("shows the `guest embeds disabled` icon + tooltip when guest embeds disabled", () => {
+      H.updateSetting("enable-embedding-static", false);
+
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+      visitNewEmbedPage({ waitForResource: false });
+
+      cy.url().should("not.match", /\/admin\/embedding\/guest/);
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("guest-embeds-disabled-info-icon").should("be.visible");
+        cy.findByTestId("guest-embeds-disabled-info-icon").click();
+      });
+
+      H.hovercard()
+        .findByText(/You can enable guest embeds in/)
+        .should("exist");
+
+      H.hovercard()
+        .findByText(/admin settings/)
+        .click();
+
+      cy.findAllByTestId(/(sdk-setting-card|guest-embeds-setting-card)/)
+        .first()
+        .within(() => {
+          cy.url().should("match", /\/admin\/embedding\/guest/);
+          cy.findByText("Enable guest embeds").should("be.visible");
+        });
+    });
+
+    it("hides the `guest embeds disabled` icon + tooltip when guest embeds enabled", () => {
+      H.updateSetting("enable-embedding-static", true);
+
+      H.visitQuestion(ORDERS_COUNT_QUESTION_ID);
+
+      visitNewEmbedPage({ waitForResource: false });
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("guest-embeds-disabled-info-icon").should("not.exist");
       });
     });
 
