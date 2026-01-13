@@ -1604,12 +1604,12 @@
                        :model/Card {card2-id :id} {:name "Card 2 - brokentest"
                                                    :type :question
                                                    :dataset_query (lib/native-query mp "not a query")}]
-          (while (#'dependencies.backfill/backfill-dependencies!))
+          (while (> (dependencies.findings/analyze-batch! :card 50) 0))
           (is (=? {:data   [{:id card1-id}]
                    :total  2
                    :offset 0
                    :limit  1}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=questionquery=brokentest&offset=0&limit=1")))
+                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/broken?types=card&card_types=question&query=brokentest&offset=0&limit=1")))
           (is (=? {:data   [{:id card2-id}]
                    :total  2
                    :offset 1
