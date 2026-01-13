@@ -134,14 +134,31 @@
                                       [:or [:= :woe.isolated_table_id nil] [:not= :t.id :woe.isolated_table_id]]]}))]
     (t2/update! :model/WorkspaceOutputExternal {:transform_id transform-id} {:isolated_table_id table-id})))
 
+(defn- db-time []
+  (:t (first (t2/query {:select [[:%now :t]]}))))
+
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
   ([workspace transform]
    (run-transform! workspace transform (build-remapping workspace)))
   ([workspace transform remapping]
-   (let [ref-id (:ref_id transform)
+   (let [ref-id      (:ref_id transform)
          external-id (:id transform)
-         result (ws.isolation/with-workspace-isolation workspace (ws.execute/run-transform-with-remapping transform remapping))]
+         start-time  (db-time)
+         result      (try
+                       (ws.isolation/with-workspace-isolation
+                         workspace
+                         (ws.execute/run-transform-with-remapping transform remapping))
+                       (catch Exception e
+                         (log/errorf e "Failure running %s transform %s"
+                                     (if ref-id "workspace" "external")
+                                     (or ref-id external-id))
+                         {:status     :failed
+                          :message    (ex-message e)
+                          :start_time start-time
+                          :end_time   (db-time)
+                          :table      (select-keys (:target transform) [:schema :name])}))]
+     ;; We don't keep currently any record of when enclosed transforms were run.
      (when ref-id
        (t2/update! :model/WorkspaceTransform {:ref_id ref-id :workspace_id (:id workspace)}
                    {:last_run_at      (:end_time result)
