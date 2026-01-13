@@ -311,7 +311,7 @@
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
 (defn- tabledef->prepared-rows
-  "Convert `table-definition` to a format approprate for passing to `insert-data!`."
+  "Convert `table-definition` to a format appropriate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
   {:pre [(every? map? field-definitions) (sequential? rows) (seq rows)]}
   (let [field-names (map :field-name field-definitions)]
@@ -323,7 +323,7 @@
   (let [table-name (normalize-name table-name)]
     (create-table! dataset-id table-name field-definitions)
     (when (seq (:rows tabledef))
-      ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
+      ;; retry the `insert-data!` step up to 5 times because it seems to fail silently a lot. Since each row is given a
       ;; unique key it shouldn't result in duplicates.
       (loop [num-retries 5]
         (let [^Throwable e (try

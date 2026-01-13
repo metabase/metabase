@@ -239,21 +239,62 @@
     (set-new-table-permissions! table)))
 
 (defmethod mi/can-read? :model/Table
+  ;; Check if user can see this table's metadata.
+  ;; True if user has:
+  ;; - Data access permissions (and (view-data :unrestricted) (create-queries :query-builder)), OR
+  ;; - Metadata management permission (manage-table-metadata :yes), OR
+  ;; - Access via published table in a collection (EE feature)
   ([instance]
-   (and (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/view-data
-         :unrestricted
-         (:db_id instance)
-         (:id instance))
-        (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/create-queries
-         :query-builder
-         (:db_id instance)
-         (:id instance))))
+   (or
+    ;; Has data access permissions
+    (and (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/view-data
+          :unrestricted
+          (:db_id instance)
+          (:id instance))
+         (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/create-queries
+          :query-builder
+          (:db_id instance)
+          (:id instance)))
+    ;; Has manage-table-metadata permission (allows viewing metadata without data access)
+    (perms/user-has-permission-for-table?
+     api/*current-user-id*
+     :perms/manage-table-metadata
+     :yes
+     (:db_id instance)
+     (:id instance))
+    ;; Can access via published collection (EE feature)
+    (perms/can-access-via-collection? instance)))
   ([_ pk]
    (mi/can-read? (t2/select-one :model/Table pk))))
+
+(defmethod mi/can-query? :model/Table
+  ;; Check if user can execute queries against this table.
+  ;; True if user has:
+  ;; - Both view-data AND create-queries permissions, OR
+  ;; - Access via published table in a collection (EE feature)
+  ([instance]
+   (or
+    ;; Has both view-data and create-queries permissions
+    (and (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/view-data
+          :unrestricted
+          (:db_id instance)
+          (:id instance))
+         (perms/user-has-permission-for-table?
+          api/*current-user-id*
+          :perms/create-queries
+          :query-builder
+          (:db_id instance)
+          (:id instance)))
+    ;; Can access via published collection (EE feature)
+    (perms/can-access-via-collection? instance)))
+  ([_ pk]
+   (mi/can-query? (t2/select-one :model/Table pk))))
 
 (defenterprise current-user-can-write-table?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -262,6 +303,8 @@
   (mi/superuser?))
 
 (defmethod mi/can-write? :model/Table
+  ;; Check if user can modify this table's metadata.
+  ;; Requires the manage-table-metadata permission
   ([instance]
    (current-user-can-write-table? instance))
   ([_ pk]
@@ -389,6 +432,15 @@
   (with-objects :segments
     (fn [table-ids]
       (t2/select :model/Segment :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
+    tables))
+
+(mi/define-batched-hydration-method with-measures
+  :measures
+  "Efficiently hydrate the Measures for a collection of `tables`."
+  [tables]
+  (with-objects :measures
+    (fn [table-ids]
+      (t2/select :model/Measure :table_id [:in table-ids], :archived false, {:order-by [[:name :asc]]}))
     tables))
 
 (mi/define-batched-hydration-method with-metrics

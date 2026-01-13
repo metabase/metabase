@@ -9,6 +9,7 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
@@ -198,6 +199,20 @@ export const setupSdkDashboard = async ({
   setupLastDownloadFormatEndpoints();
 
   setupBookmarksEndpoints([]);
+
+  const BOBBY_TEST_COLLECTION = createMockCollection({
+    archived: false,
+    can_write: true,
+    description: null,
+    id: 1,
+    location: "/",
+    name: "Bobby Tables's Personal Collection",
+    personal_owner_id: 100,
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [BOBBY_TEST_COLLECTION],
+  });
 
   const user = createMockUser({
     permissions: createMockUserPermissions({

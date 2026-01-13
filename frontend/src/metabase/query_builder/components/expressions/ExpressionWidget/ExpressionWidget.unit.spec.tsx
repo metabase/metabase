@@ -128,7 +128,9 @@ describe("ExpressionWidget", () => {
       const doneButton = screen.getByRole("button", { name: "Done" });
       expect(doneButton).toBeDisabled();
 
-      await screen.findByText("Unknown Aggregation or Metric: Imaginary");
+      await screen.findByText(
+        "Unknown Aggregation, Measure or Metric: Imaginary",
+      );
     });
 
     it("should show 'no aggregation found' error if the identifier is recognized as a dimension (metabase#50753)", async () => {

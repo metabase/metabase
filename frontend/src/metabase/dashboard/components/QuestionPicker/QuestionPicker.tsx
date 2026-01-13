@@ -118,7 +118,7 @@ function QuestionPickerInner({
                 const iconColor = PLUGIN_COLLECTIONS.isRegularCollection(
                   collection,
                 )
-                  ? "text-light"
+                  ? "text-tertiary"
                   : icon.color;
                 return (
                   <SelectList.Item
@@ -127,7 +127,7 @@ function QuestionPickerInner({
                     name={collection.name}
                     icon={{
                       ...icon,
-                      color: iconColor,
+                      c: iconColor,
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>

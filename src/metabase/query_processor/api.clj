@@ -77,9 +77,7 @@
       (when-not database
         (throw (ex-info (tru "`database` is required for all queries whose type is not `internal`.")
                         {:status-code 400, :query query})))
-      (when-not (mi/can-read? :model/Database database)
-        (api/throw-403)))
-      ;; store table id trivially iff we get a query with simple source-table
+      (api/query-check :model/Database database))
     (let [table-id (get-in query [:query :source-table])]
       (when (int? table-id)
         (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)

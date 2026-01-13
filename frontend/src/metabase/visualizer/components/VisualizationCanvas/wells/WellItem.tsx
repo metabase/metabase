@@ -19,7 +19,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
       <Flex
         direction="row"
         align="center"
-        bg="var(--mb-color-bg-white)"
+        bg="background-primary"
         px="sm"
         data-testid="well-item"
         {...props}
@@ -35,7 +35,7 @@ export const WellItem = forwardRef<HTMLDivElement, WellItemProps>(
                 border: "2px solid var(--mb-color-brand)",
                 boxShadow: "0px 1px 4px 1px var(--mb-color-shadow)",
                 cursor: "grab",
-                backgroundColor: "var(--mb-color-bg-light)",
+                backgroundColor: "var(--mb-color-background-secondary)",
                 borderRadius: "var(--border-radius-xl)",
               }
             : {}),

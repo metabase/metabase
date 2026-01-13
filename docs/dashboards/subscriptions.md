@@ -1,8 +1,8 @@
 ---
 title: Dashboard subscriptions
 redirect_from:
-  - /docs/latest/users-guide/dashboard-subscriptions
-  - /docs/latest/enterprise-guide/dashboards-subscriptions
+- /docs/latest/users-guide/dashboard-subscriptions
+- /docs/latest/enterprise-guide/dashboards-subscriptions
 ---
 
 # Dashboard subscriptions
@@ -79,7 +79,7 @@ If you check this box, Metabase will drop any visualization settings applied to 
 
 Here you can specify which questions Metabase should attach results for. If you don't select any questions, Metabase won't send any attachments.
 
-The attached files will include up to 1 048 575 rows by default (Excel's row limit for spreadsheets). If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [`MB_ATTACHMENT_ROW_LIMIT`](../configuring-metabase/environment-variables.md#mb_attachment_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help-premium) and request a different row limit.
+The attached files will include up to 1 048 575 rows by default (Excel's row limit for spreadsheets). If you're self-hosting Metabase, you can adjust this row limit by setting the environment variable [ `MB_ATTACHMENT_ROW_LIMIT` ](../configuring-metabase/environment-variables.md#mb_attachment_row_limit). To change this row limit on your Metabase Cloud instance, you can [contact us](https://www.metabase.com/help-premium) and request a different row limit.
 
 ### Send only attachments (no charts)
 
@@ -138,6 +138,10 @@ See [Notification permissions](../permissions/notifications.md).
 ## Removing Metabase branding from subscriptions
 
 See [Remove Metabase branding from exports](../questions/exporting-results.md#remove-metabase-branding-from-exports).
+
+## Subscriptions in embedded dashboards exclude links
+
+Since people viewing embedded dashboards likely don't have direct access to your Metabase, Metabase will omit the links to Metabase items in subscriptions sent from embedded dashboards. That way people don't get broken links in their email. See [embedded dashboards](../embedding/components.md).
 
 ## Further reading
 

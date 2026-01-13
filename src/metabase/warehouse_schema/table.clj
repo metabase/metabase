@@ -31,20 +31,12 @@
                 (update field :values field-values/field-values->pairs)
                 field)))))
 
-(defenterprise can-access-via-collection?
-  "Returns true if the user can access this published table via collection read permissions.
-  OSS returns false (published tables don't grant access).
-  Enterprise checks collection permissions for published tables."
-  metabase-enterprise.data-studio.permissions.published-tables
-  [_table]
-  false)
-
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
-  Checks collection permissions for published tables, data permissions for unpublished tables."
+  Uses can-read? which checks data permissions, metadata management permissions,
+  and collection permissions for published tables."
   [table]
-  (or (can-access-via-collection? table)
-      (mi/can-read? table)))
+  (mi/can-read? table))
 
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
@@ -55,7 +47,7 @@
     (api/write-check table)
     (api/check-403 (can-access-table-for-query-metadata? table)))
   (let [hydration-keys (cond-> [:db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
-                                [:segments :definition_description] :metrics :collection]
+                                [:segments :definition_description] [:measures :definition_description] :metrics :collection]
                          (premium-features/has-feature? :transforms) (conj :transform))]
     (-> table
         (update :collection nil-if-unreadable)
@@ -78,6 +70,7 @@
           tables (t2/hydrate tables
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
+                             :measures
                              :metrics)]
       (for [table tables]
         (-> table
