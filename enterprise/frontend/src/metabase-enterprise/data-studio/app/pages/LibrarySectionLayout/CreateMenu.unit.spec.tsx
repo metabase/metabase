@@ -60,11 +60,6 @@ describe("CreateMenu", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual([
-      "Publish a table",
-      "Metric",
-      "New snippet",
-      "New snippet folder",
-    ]);
+    ).toEqual(["Published table", "Metric", "Snippet", "Snippet folder"]);
   });
 });

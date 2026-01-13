@@ -111,7 +111,7 @@ describe("scenarios > data studio > library", () => {
 
       cy.log("Publish a table from the 'New' menu");
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
+      H.popover().findByText("Published table").click();
 
       cy.log("Select a table and click 'Publish'");
       H.entityPickerModalItem(3, "Orders").click();
@@ -127,7 +127,7 @@ describe("scenarios > data studio > library", () => {
         "Verify tables in the entity picker are disabled if already published",
       );
       H.DataStudio.Library.newButton().click();
-      H.popover().findByText("Publish a table").click();
+      H.popover().findByText("Published table").click();
       H.entityPickerModalItem(3, "Orders").should("have.attr", "data-disabled");
       H.entityPickerModalItem(3, "People").should(
         "not.have.attr",
