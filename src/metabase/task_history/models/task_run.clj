@@ -106,12 +106,11 @@
      (let [info#          ~run-info
            auto-complete# (get info# :auto-complete true)
            run-id#        (create-task-run! info#)]
-       (if auto-complete#
-         (try
-           (binding [*run-id* run-id#]
-             ~@body)
-           (finally
-             (complete-task-run! run-id#)))
-         ;; Async: caller is responsible for calling complete-task-run!
-         (binding [*run-id* run-id#]
-           ~@body)))))
+       (binding [*run-id* run-id#]
+         (if auto-complete#
+           (try
+             ~@body
+             (finally
+               (complete-task-run! run-id#)))
+           ;; Async: caller is responsible for calling complete-task-run!
+           (do ~@body))))))
