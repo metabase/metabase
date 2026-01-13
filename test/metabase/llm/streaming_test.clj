@@ -77,6 +77,50 @@
           result (into [] streaming/openai-chat->aisdk-xf chunks)]
       (is (= [] result)))))
 
+(deftest anthropic-chat->aisdk-xf-test
+  (testing "extracts partial_json from content_block_delta events"
+    (let [chunks [{:type "content_block_delta"
+                   :index 0
+                   :delta {:type "input_json_delta"
+                           :partial_json "{\"sql\":"}}
+                  {:type "content_block_delta"
+                   :index 0
+                   :delta {:type "input_json_delta"
+                           :partial_json "\"SELECT"}}
+                  {:type "content_block_delta"
+                   :index 0
+                   :delta {:type "input_json_delta"
+                           :partial_json " * FROM users\"}"}}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [{:type :text-delta :delta "{\"sql\":"}
+              {:type :text-delta :delta "\"SELECT"}
+              {:type :text-delta :delta " * FROM users\"}"}]
+             result))))
+
+  (testing "skips non-content_block_delta events"
+    (let [chunks [{:type "message_start"
+                   :message {:id "msg_123"}}
+                  {:type "content_block_start"
+                   :index 0
+                   :content_block {:type "tool_use" :name "generate_sql"}}
+                  {:type "content_block_delta"
+                   :index 0
+                   :delta {:type "input_json_delta"
+                           :partial_json "{\"sql\":\"SELECT 1\"}"}}
+                  {:type "content_block_stop"
+                   :index 0}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [{:type :text-delta :delta "{\"sql\":\"SELECT 1\"}"}]
+             result))))
+
+  (testing "skips content_block_delta with non-input_json_delta type"
+    (let [chunks [{:type "content_block_delta"
+                   :index 0
+                   :delta {:type "text_delta"
+                           :text "Hello"}}]
+          result (into [] streaming/anthropic-chat->aisdk-xf chunks)]
+      (is (= [] result)))))
+
 (deftest sse-chan-test
   (testing "parses SSE stream into channel of JSON objects"
     (let [sse-data "data: {\"id\":\"1\",\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\n\ndata: {\"id\":\"2\",\"choices\":[{\"delta\":{\"content\":\"!\"}}]}\n\ndata: [DONE]\n"
@@ -110,6 +154,43 @@
           ch (streaming/sse-chan input)]
       (is (some? (a/<!! ch)))
       (is (nil? (a/<!! ch))))))
+
+(deftest anthropic-sse-chan-test
+  (testing "parses Anthropic SSE stream with event: and data: lines"
+    (let [sse-data (str "event: message_start\n"
+                        "data: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_123\"}}\n\n"
+                        "event: content_block_start\n"
+                        "data: {\"type\":\"content_block_start\",\"index\":0}\n\n"
+                        "event: content_block_delta\n"
+                        "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"sql\\\":\"}}\n\n"
+                        "event: content_block_delta\n"
+                        "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"SELECT 1\\\"}\"}}\n\n"
+                        "event: message_stop\n"
+                        "data: {\"type\":\"message_stop\"}\n\n")
+          input (ByteArrayInputStream. (.getBytes sse-data "UTF-8"))
+          ch (streaming/anthropic-sse-chan input)
+          results (loop [acc []]
+                    (if-let [v (a/<!! ch)]
+                      (recur (conj acc v))
+                      acc))]
+      (is (= 4 (count results)))
+      (is (= "message_start" (:type (first results))))
+      (is (= "content_block_delta" (:type (nth results 2))))
+      (is (= "{\"sql\":" (-> (nth results 2) :delta :partial_json)))))
+
+  (testing "closes channel on message_stop event"
+    (let [sse-data (str "event: message_start\n"
+                        "data: {\"type\":\"message_start\"}\n\n"
+                        "event: message_stop\n"
+                        "data: {\"type\":\"message_stop\"}\n\n")
+          input (ByteArrayInputStream. (.getBytes sse-data "UTF-8"))
+          ch (streaming/anthropic-sse-chan input)
+          results (loop [acc []]
+                    (if-let [v (a/<!! ch)]
+                      (recur (conj acc v))
+                      acc))]
+      (is (= 1 (count results)))
+      (is (= "message_start" (:type (first results)))))))
 
 (deftest type-prefix-test
   (testing "type prefixes are correct AI SDK v5 values"
