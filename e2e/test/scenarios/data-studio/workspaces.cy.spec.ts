@@ -201,6 +201,7 @@ describe("scenarios > data studio > workspaces", () => {
         .click();
 
       H.NativeEditor.type(" LIMIT 2");
+      Workspaces.getSaveTransformButton().click();
 
       cy.log("Create a second workspace");
       createWorkspace();
