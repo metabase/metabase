@@ -91,13 +91,13 @@ const getColumnsData = (
   datasetColumns: DatasetColumn[],
   visualizationSettings: VisualizationSettings,
 ) => {
-  const dimensionKey =
+  const columnTitle =
     visualizationSettings["graph.x_axis.title_text"] ??
     chartColumns.dimension.column.display_name;
 
   const data = [
     {
-      key: dimensionKey,
+      key: columnTitle,
       value: formatNullable(datum.dimensionValue),
       col: chartColumns.dimension.column,
     },
