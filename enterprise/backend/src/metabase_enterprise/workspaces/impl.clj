@@ -152,7 +152,7 @@
                          workspace
                          (ws.execute/run-transform-with-remapping transform remapping))
                        (catch Exception e
-                         (log/errorf e "Failure running %s transform %s"
+                         (log/errorf e "Failed to execute %s transform %s"
                                      (if ref-id "workspace" "external")
                                      (or ref-id external-id))
                          {:status     :failed
