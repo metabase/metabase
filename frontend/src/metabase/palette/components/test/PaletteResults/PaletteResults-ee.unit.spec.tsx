@@ -19,7 +19,7 @@ describe("PaletteResults EE", () => {
     });
 
     it("should show verified badges for search results", async () => {
-      setup({ query: "ques" }); // codespell:ignore
+      setup({ query: "ques" });
 
       //Foo Question should be displayed with a verified badge
       expect(
