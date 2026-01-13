@@ -300,11 +300,14 @@
       (subs query-text 0 (min (count query-text) search/max-searchable-value-length)))))
 
 (defn transforms-with-tags
-  "Returns all transforms associated with the given tag IDs."
+  "Returns all transforms associated with the given tag IDs.
+  Return empty list if no tag IDs are provided or no transforms are associated with the tags."
   [tag-ids]
-  (when (seq tag-ids)
-    (t2/select :model/Transform :id [:in (t2/select-fn-set :transform_id [:model/TransformTransformTag :transform_id]
-                                                           :tag_id [:in  tag-ids])])))
+  (or (when (seq tag-ids)
+        (when-let [transform-ids (t2/select-fn-set :transform_id [:model/TransformTransformTag :transform_id]
+                                                   :tag_id [:in tag-ids])]
+          (t2/select :model/Transform :id [:in transform-ids])))
+      []))
 
 ;;; ------------------------------------------------- Search ---------------------------------------------------
 

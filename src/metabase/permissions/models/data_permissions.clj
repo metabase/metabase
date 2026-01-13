@@ -229,6 +229,7 @@
     (first (filter (set perm-values) ordered-values))))
 
 (defn is-superuser?
+  "Returns true if the given user ID is a superuser. Avoids a DB query when checking the current user."
   [user-id]
   (if (= user-id api/*current-user-id*)
     api/*is-superuser?*
