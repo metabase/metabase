@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useDispatch } from "metabase/lib/redux";
@@ -6,12 +6,12 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   useGetWorkspaceTransformQuery,
   useRunWorkspaceTransformMutation,
-  workspaceApi
+  workspaceApi,
 } from "metabase-enterprise/api";
 import type {
   TransformRun,
   WorkspaceId,
-  WorkspaceTransform
+  WorkspaceTransform,
 } from "metabase-types/api";
 
 type UseWorkspaceTransformRunOptions = {
@@ -46,7 +46,6 @@ export function useWorkspaceTransformRun({
     end_time: string;
     message: string | null;
   } | null>(null);
-
 
   // Fetch workspace transform to get updated last_run_at
   const { data: fetchedWorkspaceTransform, isFetching } =
@@ -90,25 +89,27 @@ export function useWorkspaceTransformRun({
   );
 
   // Run object for button - only shows feedback during/after user-triggered runs
-  const buttonRun: TransformRun | null = useMemo(() => isRunTriggered
-    ? {
-        id: -1,
-        status: "started",
-        start_time: new Date().toISOString(),
-        end_time: null,
-        message: null,
-        run_method: "manual",
-      }
-    : lastRunResult
-      ? {
-          id: -1,
-          status: lastRunResult.status,
-          start_time: lastRunResult.end_time,
-          end_time: lastRunResult.end_time,
-          message: lastRunResult.message,
-          run_method: "manual",
-        }
-      : null,
+  const buttonRun: TransformRun | null = useMemo(
+    () =>
+      isRunTriggered
+        ? {
+            id: -1,
+            status: "started",
+            start_time: new Date().toISOString(),
+            end_time: null,
+            message: null,
+            run_method: "manual",
+          }
+        : lastRunResult
+          ? {
+              id: -1,
+              status: lastRunResult.status,
+              start_time: lastRunResult.end_time,
+              end_time: lastRunResult.end_time,
+              message: lastRunResult.message,
+              run_method: "manual",
+            }
+          : null,
     [isRunTriggered, lastRunResult],
   );
 
