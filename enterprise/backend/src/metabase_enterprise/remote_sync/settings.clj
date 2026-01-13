@@ -122,8 +122,8 @@
 
   Throws ExceptionInfo if the git settings are invalid or if unable to connect to the repository."
   [{:keys [remote-sync-url remote-sync-token] :as settings}]
-
-  (if (str/blank? remote-sync-url)
+  (if (and (contains? settings :remote-sync-url)
+           (str/blank? remote-sync-url))
     (t2/with-transaction [_conn]
       (setting/set! :remote-sync-url nil)
       (setting/set! :remote-sync-token nil)
@@ -134,5 +134,6 @@
           _ (check-git-settings! (assoc settings :remote-sync-token token-to-check))]
       (t2/with-transaction [_conn]
         (doseq [k [:remote-sync-url :remote-sync-token :remote-sync-type :remote-sync-branch :remote-sync-auto-import]]
-          (when (not (and (= k :remote-sync-token) obfuscated?))
+          (when (and (contains? settings k)
+                     (not (and (= k :remote-sync-token) obfuscated?)))
             (setting/set! k (k settings))))))))

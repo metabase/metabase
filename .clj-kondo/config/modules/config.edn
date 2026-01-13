@@ -1987,6 +1987,7 @@
            premium-features
            queries
            query-processor
+           request
            revisions
            settings
            task
