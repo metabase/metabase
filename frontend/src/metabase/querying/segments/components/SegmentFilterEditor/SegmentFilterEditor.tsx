@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useTranslateContent } from "metabase/i18n/hooks";
@@ -24,9 +25,11 @@ export function SegmentFilterEditor({
   const tc = useTranslateContent();
   const filters = useMemo(() => Lib.filters(query, STAGE_INDEX), [query]);
 
-  const renderFilterName = useCallback(
-    (filter: Lib.FilterClause) =>
-      getTranslatedFilterDisplayName(query, STAGE_INDEX, filter, tc),
+  const renderFilterName = useMemo(
+    () =>
+      _.memoize((filter: Lib.FilterClause) =>
+        getTranslatedFilterDisplayName(query, STAGE_INDEX, filter, tc),
+      ),
     [query, tc],
   );
 

@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useTranslateContent } from "metabase/i18n/hooks";
@@ -26,9 +27,11 @@ export function FilterStep({
     [query, stageIndex],
   );
 
-  const renderFilterName = useCallback(
-    (filter: Lib.FilterClause) =>
-      getTranslatedFilterDisplayName(query, stageIndex, filter, tc),
+  const renderFilterName = useMemo(
+    () =>
+      _.memoize((filter: Lib.FilterClause) =>
+        getTranslatedFilterDisplayName(query, stageIndex, filter, tc),
+      ),
     [query, stageIndex, tc],
   );
 
