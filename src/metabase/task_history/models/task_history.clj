@@ -173,7 +173,10 @@
         (reify clojure.tools.logging.impl/Logger
           (enabled? [_ level] (clojure.tools.logging.impl/enabled? base-logger level))
           (write! [_ level ex msg]
-            (swap! logs-atom conj (log-capture-entry level msg ex))
+            (case level
+              (:fatal :error :warn :info)
+              (swap! logs-atom conj (log-capture-entry level msg ex))
+              nil)
             (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
 
 (mu/defn do-with-task-history

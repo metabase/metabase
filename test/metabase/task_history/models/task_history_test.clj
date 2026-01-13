@@ -189,6 +189,15 @@
                             :stacktrace (mt/malli=? vector?)}}]
                   logs)))))
 
+    (testing "debug/trace are elided"
+      (let [task-name (mt/random-name)]
+        (task-history/with-task-history {:task task-name}
+          (log/error "error")
+          (log/fatal "fatal"))
+        (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
+          (is (= :success status))
+          (is (=? [{:level "error"} {:level "fatal"}] logs)))))
+
     (testing "task with no logs"
       (let [task-name (mt/random-name)]
         (task-history/with-task-history {:task task-name})
