@@ -420,6 +420,7 @@ type CreateTestQueryOpts = {
 
 type TestQueryStage = {
   source: TestQuerySource;
+  fields?: TestQueryColumnExpression[] | "all";
   joins?: TestQueryJoin[];
   filters?: TestQueryFilter[];
   aggregations?: TestQueryAggregation[];
@@ -592,6 +593,7 @@ export function createTestQuery({
           : // Further stages are appended to the query
             Lib.appendStage(query);
 
+      // Add joins to stage
       const queryWithJoins = joins.reduce((query, join, joinIndex) => {
         const targetMetadata = getSourceMetadata(
           `[stage ${stageIndex}, join ${joinIndex}]`,
@@ -645,7 +647,27 @@ export function createTestQuery({
         return Lib.join(query, stageIndex, joinClause);
       }, queryWithStage);
 
-      return queryWithJoins;
+      // Limit query fields
+      const visibleColumns = Lib.visibleColumns(queryWithJoins, stageIndex);
+      const queryWithFields =
+        stage.fields == null || stage.fields === "all"
+          ? // If no fields are specified, we use all the visible fields
+            queryWithJoins
+          : // If fields are specified, we use only those fields
+            Lib.withFields(
+              queryWithJoins,
+              stageIndex,
+              stage.fields.map((field) =>
+                findColumn(
+                  queryWithJoins,
+                  stageIndex,
+                  visibleColumns,
+                  field.name,
+                ),
+              ),
+            );
+
+      return queryWithFields;
     },
     null,
   );
