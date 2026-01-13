@@ -1,10 +1,9 @@
+import { ColorPill } from "metabase/common/components/ColorPill";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import { Box, Text } from "metabase/ui";
+import { Text } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
-import type { RowValue } from "metabase-types/api";
-
-import type { Segment } from "../components/settings/ChartSettingSegmentsEditor";
+import type { CardSegment, RowValue } from "metabase-types/api";
 
 export const COMPACT_MAX_WIDTH = 250;
 export const COMPACT_WIDTH_PER_DIGIT = 25;
@@ -45,7 +44,7 @@ export function compactifyValue(
 
 const DEFAULT_COLOR = color("text-primary");
 
-export function getColor(_value: RowValue, segments?: Segment[]) {
+export function getColor(_value: RowValue, segments?: CardSegment[]) {
   const value = parseInt(String(_value));
 
   if (!segments || segments.length === 0 || Number.isNaN(value)) {
@@ -60,7 +59,7 @@ export function getColor(_value: RowValue, segments?: Segment[]) {
   return segment.color;
 }
 
-export function getTooltipContent(segments?: Segment[]) {
+export function getTooltipContent(segments?: CardSegment[]) {
   if (!segments || segments.length === 0) {
     return null;
   }
@@ -68,15 +67,10 @@ export function getTooltipContent(segments?: Segment[]) {
   return (
     <table style={{ borderSpacing: "0.75rem 0.25rem" }}>
       <tbody>
-        {segments.map(({ color, min, max, label }: Segment, index) => (
+        {segments.map(({ color, min, max, label }: CardSegment, index) => (
           <tr key={index}>
             <td>
-              <Box
-                bg={color}
-                w="0.5rem"
-                h="0.5rem"
-                style={{ borderRadius: "50%", verticalAlign: "middle" }}
-              ></Box>
+              <ColorPill color={color} pillSize="xsmall" />
             </td>
             <td>
               <Text c="inherit" lh="md">{`${min} - ${max}`}</Text>

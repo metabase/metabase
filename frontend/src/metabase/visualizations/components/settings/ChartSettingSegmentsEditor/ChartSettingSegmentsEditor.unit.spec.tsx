@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
 import { fireEvent, render, screen, within } from "__support__/ui";
+import type { CardSegment } from "metabase-types/api";
 
 import {
   ChartSettingSegmentsEditor,
   type ChartSettingSegmentsEditorProps,
-  type Segment,
 } from "./ChartSettingSegmentsEditor";
 
-const createMockSegment = (opts?: Partial<Segment>): Segment => {
+const createMockSegment = (opts?: Partial<CardSegment>): CardSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
 };
 
