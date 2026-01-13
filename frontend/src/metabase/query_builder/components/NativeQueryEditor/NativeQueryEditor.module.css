@@ -3,7 +3,6 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  overflow: auto;
 }
 
 .dragHandleContainer {
@@ -58,6 +57,10 @@
   height: 3rem;
 }
 
-.readOnlyEditor .dragHandle {
-  display: none;
+.readOnlyEditor {
+  overflow: auto;
+
+  .dragHandle {
+    display: none;
+  }
 }
