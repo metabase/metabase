@@ -223,21 +223,31 @@
               (fn [metadata]
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
-  (let [caching-enabled? (cache/enable-query-caching)
-        has-strategy?    (some? cache-strategy)
-        not-nocache?     (not= (:type cache-strategy) :nocache)
-        all-conditions-met? (and caching-enabled? has-strategy? not-nocache?)]
-    (if all-conditions-met?
-      {:cacheable? true
-       :conditions ["query caching is enabled"
-                    (str "cache strategy provided: " (pr-str cache-strategy))
-                    "cache strategy type is not :nocache"]}
-      {:cacheable? false
-       :reasons    (cond-> []
-                     (not caching-enabled?) (conj "query caching is disabled")
-                     (not has-strategy?)    (conj "no cache strategy provided")
-                     (not not-nocache?)     (conj "cache strategy is :nocache"))})))
+(defn- caching-enabled? []
+  (cache/enable-query-caching))
+
+(defn- has-cache-strategy? [cache-strategy]
+  (some? cache-strategy))
+
+(defn- strategy-not-nocache? [cache-strategy]
+  (not= (:type cache-strategy) :nocache))
+
+(defn- get-cache-eligibility-details [{:keys [cache-strategy], :as _query}]
+  "Returns a map with :eligible? and :description detailing cache eligibility."
+  (let [enabled?    (caching-enabled?)
+        has-strat?  (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)]
+    (if (and enabled? has-strat? not-nocache?)
+      {:eligible? true
+       :description (str "query caching is enabled; "
+                         "cache strategy provided: " (pr-str cache-strategy) "; "
+                         "cache strategy type is not :nocache")}
+      {:eligible? false
+       :description (str/join ", "
+                              (cond-> []
+                                (not enabled?)     (conj "query caching is disabled")
+                                (not has-strat?)   (conj "no cache strategy provided")
+                                (not not-nocache?) (conj "cache strategy is :nocache")))})))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
@@ -253,10 +263,8 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
-    (let [{:keys [cacheable? reasons conditions]} (is-cacheable? query)]
-      (if cacheable?
-        (log/tracef "Query is cacheable: %s" (str/join "; " conditions))
-        (log/tracef "Query is not cacheable: %s" (str/join ", " reasons)))
-      (if cacheable?
+    (let [{:keys [eligible? description]} (get-cache-eligibility-details query)]
+      (log/tracef "Query is %scacheable: %s" (if-not eligible? "not ") description)
+      (if eligible?
         (run-query-with-cache qp query rff)
         (qp query rff)))))
