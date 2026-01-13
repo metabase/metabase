@@ -52,7 +52,7 @@
                                      :dataset_query (lib/query mp (lib.metadata/card mp (:id q1)))}]
         (mt/as-admin
           (testing "/api/card/{id}/query"
-           ;; These are defined in metabase.query-processor.card/process-query-for-card
+            ;; These are defined in metabase.query-processor.card/process-query-for-card
             (testing "Model metadata works directly on model"
               (is (=? expected-columns
                       (mt/cols (run-query-for-card (:id model))))))
@@ -63,7 +63,7 @@
               (is (=? expected-columns
                       (mt/cols (run-query-for-card (:id q2)))))))
           (testing "/api/dataset"
-           ;; These are defined in metabase.query-processor.api/run-streaming-query
+            ;; These are defined in metabase.query-processor.api/run-streaming-query
             (testing "Model metadata works directly on a model"
               (is (=? expected-columns
                       (:cols
