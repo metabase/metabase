@@ -3,10 +3,7 @@
   gap: 0.5rem;
   flex-wrap: nowrap;
   overflow: auto;
-
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  scrollbar-width: thin;
 
   &::before {
     display: none;
