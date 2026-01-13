@@ -7,8 +7,11 @@ import {
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import { createMockUser } from "metabase-types/api/mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import {
+  createMockSearchResult,
+  createMockUser,
+} from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
 import { Palette } from "./Palette";
@@ -135,7 +138,7 @@ describe("command palette", () => {
     // Verify that the user's selection is preserved
     const options = screen.getAllByRole("option");
     const selectedOption = options.find(
-      option => option.getAttribute("aria-selected") === "true",
+      (option) => option.getAttribute("aria-selected") === "true",
     );
 
     expect(selectedOption).toBeDefined();
