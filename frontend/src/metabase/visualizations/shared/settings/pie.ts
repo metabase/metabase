@@ -435,6 +435,7 @@ export const getDefaultSortRows = (series: MaybeTranslatedSeries) => {
 
   // Auto-sort only when there's NO explicit order-by in the query
   const hasOrderBy = hasExplicitOrderBy(card.dataset_query);
+
   return !hasOrderBy;
 };
 
@@ -448,6 +449,6 @@ function hasExplicitOrderBy(datasetQuery: DatasetQuery | null): boolean {
     return false;
   }
 
-  const orderBys = Lib.orderBys(question.query(), 0);
+  const orderBys = Lib.orderBys(question.query(), -1);
   return orderBys.length > 0;
 }
