@@ -3,6 +3,7 @@ import { KBarProvider } from "kbar";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { UpgradeModalProvider } from "metabase/admin/upsells/components/UpgradeModal";
 import { AppBanner } from "metabase/common/components/AppBanner";
 import {
   Archived,
@@ -113,26 +114,28 @@ function App({
     <ErrorBoundary onError={onError}>
       <ScrollToTop>
         <KBarProvider>
-          <KeyboardTriggeredErrorModal />
-          <AppContainer className={CS.spread}>
-            <AppBanner />
-            {isAppBarVisible && <AppBar />}
-            <AppContentContainer isAdminApp={isAdminApp}>
-              {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  {errorPage ? getErrorComponent(errorPage) : children}
-                </ContentViewportContext.Provider>
-              </AppContent>
-              <UndoListing />
-              <StatusListing />
-              <NewModals />
-              <PLUGIN_METABOT.Metabot hide={isAdminApp || isDataStudioApp} />
-            </AppContentContainer>
-          </AppContainer>
-          <Palette />
+          <UpgradeModalProvider>
+            <KeyboardTriggeredErrorModal />
+            <AppContainer className={CS.spread}>
+              <AppBanner />
+              {isAppBarVisible && <AppBar />}
+              <AppContentContainer isAdminApp={isAdminApp}>
+                {isNavBarEnabled && <Navbar />}
+                <AppContent ref={setViewportElement}>
+                  <ContentViewportContext.Provider
+                    value={viewportElement ?? null}
+                  >
+                    {errorPage ? getErrorComponent(errorPage) : children}
+                  </ContentViewportContext.Provider>
+                </AppContent>
+                <UndoListing />
+                <StatusListing />
+                <NewModals />
+                <PLUGIN_METABOT.Metabot hide={isAdminApp || isDataStudioApp} />
+              </AppContentContainer>
+            </AppContainer>
+            <Palette />
+          </UpgradeModalProvider>
         </KBarProvider>
       </ScrollToTop>
     </ErrorBoundary>
