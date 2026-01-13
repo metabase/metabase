@@ -578,9 +578,9 @@
       (mt/with-temp [:model/Database {db-id :id}]
         (with-redefs [driver/can-connect? (constantly true)]
           (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
-              "A db update occured")
+              "A db update occurred")
           (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
-              "A db update occured")
+              "A db update occurred")
           (let [audit-log-entry (mt/latest-audit-log-entry)]
             (is (partial=
                  {:previous {:name "Original Database Name"}
@@ -1469,7 +1469,7 @@
         (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Table (:id table))))))))
 
 (deftest ^:parallel dismiss-spinner-test-2
-  (testing "can we dissmiss the spinner if db has no tables? (#30837)"
+  (testing "can we dismiss the spinner if db has no tables? (#30837)"
     (mt/with-temp [:model/Database db    {:engine "h2", :details (:details (mt/db)) :initial_sync_status "incomplete"}]
       (mt/user-http-request :crowberto :post 200 (format "database/%d/dismiss_spinner" (u/the-id db)))
       (testing "dismissed db spinner"

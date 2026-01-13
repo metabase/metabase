@@ -1136,7 +1136,7 @@
                       (dissoc :user_group_memberships :personal_collection_id :email :is_superuser :jwt_attributes)
                       (#(apply (partial dissoc %) (keys @user-defaults)))
                       mt/boolean-ids-and-timestamps))]
-          (testing "Name keys ommitted does not update the user"
+          (testing "Name keys omitted does not update the user"
             (is (= {:first_name "Blue Ape"
                     :last_name "Ron"
                     :common_name "Blue Ape Ron"
@@ -1476,7 +1476,7 @@
             "the user should now be active")))
 
     (testing "error conditions"
-      (testing "Attempting to reactivate a non-existant user should return a 404"
+      (testing "Attempting to reactivate a non-existent user should return a 404"
         (is (= "Not found."
                (mt/user-http-request :crowberto :put 404 (format "user/%s/reactivate" Integer/MAX_VALUE)))))
 
@@ -1507,7 +1507,7 @@
       ;; use API to reset the users password
       (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password "abc123!!DEF"
                                                                         :old_password "def"})
-      ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
+      ;; now simply grab the latest pass from the db and compare to the one we have from before reset
       (not= hashed-password (t2/select-one-fn :password :model/User, :%lower.email (u/lower-case-en (:email user)))))))
 
 (deftest can-reset-password-test

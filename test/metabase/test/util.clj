@@ -971,7 +971,7 @@
                          :moderated_item_type "card"))))))
 
 (defn call-with-paused-query
-  "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
+  "This is a function to make testing query cancellation easier as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.
 
   This function takes `f` which is a function of 4 arguments:
@@ -1064,7 +1064,7 @@
       (thunk))))
 
 (defmacro with-discard-model-updates!
-  "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
+  "Execute `body` and makes sure that every updates operation on `models` will be reverted."
   [models & body]
   (if (> (count models) 1)
     (let [[model & more] models]

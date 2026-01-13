@@ -1051,7 +1051,7 @@
           (testing "FieldValues should still exist"
             (is (t2/exists? :model/FieldValues :id (u/the-id field-values)))))
 
-        (testing "Admins should be able to successfuly delete them"
+        (testing "Admins should be able to successfully delete them"
           (is (= {:status "success"}
                  (mt/user-http-request :crowberto :post 200 url)))
           (testing "FieldValues should be gone"

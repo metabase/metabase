@@ -119,7 +119,7 @@
                            (.acquire finished1)
                            (do-in-transaction
                             (fn []
-                              ;; can see uncommited change
+                              ;; can see uncommitted change
                               (is (user-exists? user-1))
                               (create-user! user-2)
                               (is (user-exists? user-2))))

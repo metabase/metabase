@@ -34,7 +34,7 @@
                    :entity     table}}))))
 
 (deftest ^:parallel add-bindings-test
-  (testing "Can we accure bindings?"
+  (testing "Can we accrue bindings?"
     (let [new-bindings {"D2" [:sum [:field 4 nil]]
                         "D3" [:field 5 nil]}]
       (is (= (update-in @test-bindings ["Venues" :dimensions] merge new-bindings)

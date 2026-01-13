@@ -550,7 +550,7 @@
 
 (deftest ^:parallel deduplicate-column-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
-    (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
+    (testing (str "Do we gracefully handle situations where joins would produce multiple columns with the same name? "
                   "(Multiple columns named `id` in the example below)")
       (let [{:keys [rows columns]} (mt/rows+column-names
                                     (mt/format-rows-by
@@ -761,7 +761,7 @@
 
 (deftest ^:parallel join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
-    (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
+    (testing "Some drivers don't allow Table aliases with spaces in them. Make sure joins still work."
       (mt/dataset
         test-data
         (let [query (mt/mbql-query

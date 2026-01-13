@@ -38,7 +38,7 @@
                (into {} (for [field (t2/select [:model/Field :name :semantic_type :last_analyzed] :table_id (data/id :venues))]
                           [(:name field) (into {} (dissoc field :name))]))))))))
 
-;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
+;; ...but they *SHOULD* get analyzed if they ARE newly created (except for PK which we skip)
 (deftest analyze-table-test
   (mt/with-temp [:model/Database db         {:engine "h2",       :details (:details (data/db))}
                  :model/Table    categories {:name "CATEGORIES", :db_id (:id db) :schema "PUBLIC"}
@@ -216,7 +216,7 @@
                     (sync!)
                     (sync!)))))]
       (tests api-sync!)
-      (testing "\nsame test but with sync triggered programatically rather than via the API"
+      (testing "\nsame test but with sync triggered programmatically rather than via the API"
         (tests analyze-table!)))))
 
 (deftest analyze-db!-return-value-test

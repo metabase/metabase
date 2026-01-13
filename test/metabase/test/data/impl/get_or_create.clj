@@ -151,7 +151,7 @@
         (throw e)))))
 
 (defn set-test-db-permissions!
-  "Set data permissions for a newly created test database. We need to do this explicilty since new DB perms are
+  "Set data permissions for a newly created test database. We need to do this explicitly since new DB perms are
   set dynamically based on permissions for other existing DB, but we almost always want to start with full perms in tests."
   [new-db-id]
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/view-data :unrestricted)
@@ -213,7 +213,7 @@
   `:metadata/key-constraints`.
 
   `:metadata/key-constraints` driver feature signals that underlying dbms _is capable of reporting_ some columns
-  as having foregin key relationship to other columns. If that's the case, sync infers those relationships.
+  as having foreign key relationship to other columns. If that's the case, sync infers those relationships.
 
   However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo)
   in Metabase.
@@ -266,7 +266,7 @@
     (when (not (driver/database-supports? driver :metadata/key-constraints nil))
       (add-foreign-key-relationships! driver database-definition db))
     (set-test-db-permissions! (u/the-id db))
-    ;; make sure we're returing an up-to-date copy of the DB
+    ;; make sure we're returning an up-to-date copy of the DB
     (t2/select-one :model/Database :id (u/the-id db))))
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]

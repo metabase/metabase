@@ -97,7 +97,7 @@
 (defmethod execute/execute-sql! :h2
   [driver ^java.sql.Connection conn sql]
   ;; we always want to use 'server' context when execute-sql! is called (never
-  ;; try connect as GUEST, since we're not giving them priviledges to create
+  ;; try connect as GUEST, since we're not giving them privileges to create
   ;; tables / etc)
   ((get-method execute/execute-sql! :sql-jdbc/test-extensions) driver conn sql))
 

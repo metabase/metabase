@@ -280,7 +280,7 @@
         ;; The original bug can be found here: https://github.com/metabase/metabase/issues/8262. The MySQL driver code
         ;; was parsing the date using Joda Time's date parser, which is in UTC. The MySQL driver code was assuming
         ;; that date was in the system timezone rather than UTC which caused an incorrect conversion and with the
-        ;; trucation, let to it being off by a day.
+        ;; truncation, let to it being off by a day.
         ;;
         ;; [April, 2024]
         ;; We no longer use Joda Time at all (this logic has been pulled out to qp.timezone, and uses java-time), but
@@ -729,7 +729,7 @@
                                                      :query      {:source-table $$test_users}
                                                      :type       :query}))))))))))))
 
-;; this contains specical test cases for mysql
+;; this contains special test cases for mysql
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
 (deftest action-error-handling-test
   (mt/test-driver :mysql

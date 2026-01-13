@@ -151,7 +151,7 @@
      (sad-toucan-incidents-with-bucketing! unit))))
 
 (defn- default-timezone-parse-fn
-  "Create a date formatter, interpretting the datestring as being in `tz`"
+  "Create a date formatter, interpreting the datestring as being in `tz`"
   [default-timezone-id]
   (let [timezone-id (->timezone-id default-timezone-id)]
     (fn [s]
@@ -1020,7 +1020,7 @@
                       (take 3)))))))))
 
 ;;; All of the sad toucan events in the test data fit in June. The results are the same on all databases and the only
-;;; difference is how the beginning of hte month is represented, since we always return times with our dates
+;;; difference is how the beginning of the month is represented, since we always return times with our dates
 
 (defmulti group-by-month-pacific-test-expected-rows
   "Expected rows for [[group-by-month-pacific-test]]."
@@ -1276,7 +1276,7 @@
     ;; TODO - perhaps this should be rolled into `mt/dataset` itself -- it seems like a useful feature?
     (if (and (checkins-db-is-old? (* (.intervalSeconds dataset) 5)) *recreate-db-if-stale?*)
       (binding [*recreate-db-if-stale?* false]
-        (log/infof "DB for %s is stale! Deleteing and running test again\n" dataset)
+        (log/infof "DB for %s is stale! Deleting and running test again\n" dataset)
         (t2/delete! :model/Database :id (mt/id))
         (tx/destroy-db! driver/*driver* (tx/get-dataset-definition dataset))
         (apply count-of-grouping dataset field-grouping relative-datetime-args))

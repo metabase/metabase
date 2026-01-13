@@ -7,7 +7,7 @@
 
 (defonce
   ^{:dynamic true
-    :doc "Generator that could be rebound. Bind when you need to control the seed for exmaple."}
+    :doc "Generator that could be rebound. Bind when you need to control the seed for example."}
   *generator*
   (Random.))
 

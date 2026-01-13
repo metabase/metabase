@@ -80,7 +80,7 @@
       (testing "uses substrings if driver supports expressions"
         (let [query (#'table-rows-sample/table-rows-sample-query mp table fields {:truncation-size 4})]
           (is (seq (lib/expressions query)))))
-      (testing "doesnt' use substrings if driver doesn't support expressions"
+      (testing "doesn't use substrings if driver doesn't support expressions"
         (let [mp    (lib.tu/merged-mock-metadata-provider
                      mp
                      {:database (assoc database :engine ::does-not-support-expressions-driver)})
@@ -133,7 +133,7 @@
         (is (seq (lib/expressions query)))))))
 
 (deftest ^:synchronized coerced-field-substring-integration-test
-  (testing "For coerced fields, effective type is used for fingerprinting (string -> number exmaple)"
+  (testing "For coerced fields, effective type is used for fingerprinting (string -> number example)"
     (mt/dataset
       coerced-string-nums-db
       (doseq [id (t2/select-fn-vec :id :model/Field :table_id (mt/id :string_nums))]

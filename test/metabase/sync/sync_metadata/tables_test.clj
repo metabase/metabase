@@ -53,7 +53,7 @@
        (mt/with-premium-features #{:transforms}
          (is (= #{normal-table}
                 (#'sync-tables/table-set db-metadata)))))
-     (testing "ignroe it if transform feature is disabled"
+     (testing "ignore it if transform feature is disabled"
        (mt/with-premium-features #{}
          (is (= #{normal-table temp-table}
                 (#'sync-tables/table-set db-metadata))))))))

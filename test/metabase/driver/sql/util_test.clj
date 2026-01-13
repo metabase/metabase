@@ -17,7 +17,7 @@
     :postgres "\"wow\""))
 
 (deftest ^:parallel select-clause-alias-everything-test
-  (testing "first column is just <identifer>, wrap it like [<identifier> <alias>]"
+  (testing "first column is just <identifier>, wrap it like [<identifier> <alias>]"
     (is (= [[(h2x/identifier :field "A" "B" "C" "D") (h2x/identifier :field-alias "D")]
             [(h2x/identifier :field "F")             (h2x/identifier :field-alias "G")]]
            (sql.u/select-clause-alias-everything

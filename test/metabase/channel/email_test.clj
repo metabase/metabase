@@ -462,7 +462,7 @@
 
         (testing "still throttle if we already at limit"
           (with-redefs [email/email-throttler (#'email/make-email-throttler 3)]
-            ;; mx otu the limit
+            ;; max out the limit
             (is (some? (send-email {:to ["1@metabase.com" "2@metabase.com" "3@metabase.com"]})))
             (testing "but still max-out the limit"
               (is (thrown-with-msg?

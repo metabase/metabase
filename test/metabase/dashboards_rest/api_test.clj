@@ -109,7 +109,7 @@
                              (update :collection boolean)))))
 
 (defn- dashboard-response [{:keys [creator dashcards created_at updated_at] :as dashboard}]
-  ;; todo: should be udpated to use mt/boolean-ids-and-timestamps
+  ;; todo: should be updated to use mt/boolean-ids-and-timestamps
   (let [dash (-> (into {} dashboard)
                  (dissoc :id)
                  (assoc :created_at (boolean created_at)
@@ -307,7 +307,7 @@
                   #{crowberto-dash-id archived-dash-id}
                   (set (map :id (mt/user-http-request :rasta :get 200 "dashboard" :f "all"))))))))
 
-    (testing "f=archvied return archived dashboards"
+    (testing "f=archived return archived dashboards"
       (is (= #{archived-dash-id}
              (set (map :id (mt/user-http-request :crowberto :get 200 "dashboard" :f "archived")))))
 
@@ -1857,7 +1857,7 @@
                                                        :size_y           4
                                                        :col              1
                                                        :row              1
-                                                      ;; initialy was in tab1, now in tab 2
+                                                      ;; initially was in tab1, now in tab 2
                                                        :dashboard_tab_id dashtab-id-2
                                                        :card_id          card-id-1}
                                                       {:id               dashcard-id-2
@@ -2535,7 +2535,7 @@
                                       (format "dashboard/%d" dashboard-id)
                                       {:tabs      [(t2/select-one :model/DashboardTab :id dashtab-id-1)]
                                        :dashcards (remove #(= (:dashboard_tab_id %) dashtab-id-2) (current-cards dashboard-id))})))
-        (testing "deteted 1 tab, we should have"
+        (testing "deleted 1 tab, we should have"
           (testing "1 card left"
             (is (= 1
                    (t2/count :model/DashboardCard :dashboard_id dashboard-id))))
@@ -2891,7 +2891,7 @@
   (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
-        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
@@ -2899,7 +2899,7 @@
 
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
-        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permisisons."
+        (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
           (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
@@ -3498,7 +3498,7 @@
     ;; for the `values_source_config.value_field`, so we need to test to make sure
     ;; the id is a valid field that we could use to retrieve values.
       (mt/with-temp
-      ;; card with agggregation and binning columns
+      ;; card with aggregation and binning columns
         [Card {mbql-card-id :id} (merge (mt/card-with-source-metadata-for-query
                                          (mt/mbql-query venues
                                            {:limit 5
@@ -5324,7 +5324,7 @@
                                      :month))
                      lib/append-stage)
           [category created-at _count subtotal quantity] (lib/filterable-columns base)
-          ;; Second stage: filtering to those categoies and months where a category sold 100 total units;
+          ;; Second stage: filtering to those categories and months where a category sold 100 total units;
           ;; *then* aggregating on the avg subtotal per category.
           query  (-> base
                      (lib/filter (lib/>= quantity 100))

@@ -377,7 +377,7 @@
               (test-automagic-analysis (t2/select-one :model/Card :id card-id) 6))))))))
 
 (deftest ensure-field-dimension-bindings-test
-  (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
+  (testing "A very simple card with two plain fields should return the single assigned dimension for each field."
     (mt/dataset test-data
       (mt/with-non-admin-groups-no-root-collection-perms
         (let [source-query (mt/mbql-query products

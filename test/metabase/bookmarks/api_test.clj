@@ -32,7 +32,7 @@
         (is (= (u/the-id dashboard)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))
                     :dashboard_id))))
-      (testing "check that we can retreive the user's bookmarks"
+      (testing "check that we can retrieve the user's bookmarks"
         (let [result (mt/user-http-request :rasta :get 200 "bookmark")]
           (is (= #{"card" "collection" "dashboard"}
                  (into #{} (map :type) result)))))

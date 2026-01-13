@@ -302,7 +302,7 @@
 
 (defmacro with-emoji-progress-bar
   "Run BODY with access to a function that makes using our amazing emoji-progress-bar easy like Sunday morning.
-  Calling the function will return the approprate string output for logging and automatically increment an internal
+  Calling the function will return the appropriate string output for logging and automatically increment an internal
   counter as needed.
 
     (with-emoji-progress-bar [progress-bar 10]
@@ -450,7 +450,7 @@
   (format "Field ''%s''" field-name))
 
 (mu/defn calculate-duration-str :- :string
-  "Given two datetimes, caculate the time between them, return the result as a string"
+  "Given two datetimes, calculate the time between them, return the result as a string"
   [begin-time :- (ms/InstanceOfClass Temporal)
    end-time   :- (ms/InstanceOfClass Temporal)]
   (u/format-nanoseconds (.toNanos (t/duration begin-time end-time))))

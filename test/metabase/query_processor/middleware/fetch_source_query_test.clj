@@ -349,7 +349,7 @@
                                   :type     :query
                                   :query    {:source-table "card__2"}}))))))
 
-;; Alow complex dependency topologies such as:
+;; Allow complex dependency topologies such as:
 ;;
 ;;   A
 ;:   | \

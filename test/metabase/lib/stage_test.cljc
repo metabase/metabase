@@ -877,7 +877,7 @@
 
 ;;; TODO (Cam 8/7/25) -- move these tests that test [[lib.equality/=]] to [[metabase.lib.equality-test]]
 (deftest ^:parallel test-QUE-1607
-  (testing "do not add duplicate columns whne join uses name refs in :fields (QUE-1607)"
+  (testing "do not add duplicate columns when join uses name refs in :fields (QUE-1607)"
     (is (lib.equality/=
          {:base-type                    :type/Integer
           :display-name                 "Sum of Quantity"

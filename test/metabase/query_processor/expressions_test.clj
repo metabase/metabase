@@ -338,7 +338,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions :date-arithmetics)
     (doseq [[op interval] [[:+ [:interval -31 :day]]
                            [:- [:interval 31 :day]]]]
-      (testing (str "Test interaction of datetime arithmetics with truncation using " op " operator")
+      (testing (str "Test interaction of datetime arithmetic with truncation using " op " operator")
         (is (= (robust-dates
                 ["2014-09-02T00:00:00"
                  "2014-07-02T00:00:00"

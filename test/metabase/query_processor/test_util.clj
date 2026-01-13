@@ -267,7 +267,7 @@
     :else        (throw (ex-info "value is not boolish" {:value x}))))
 
 (defn format-rows-by
-  "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
+  "Format the values in result `rows` with the fns at the corresponding indices in `format-fns`. `rows` can be a
   sequence or any of the common map formats we expect in QP tests.
 
     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
@@ -282,7 +282,7 @@
 
     (format-rows-by [identity 4.0] ...) ;-> (format-rows-by [identity (partial u/round-to-decimals 4)] ...)
 
-  By default, does't call fns on `nil` values; pass a truthy value as optional param `format-nil-values`? to override
+  By default, doesn't call fns on `nil` values; pass a truthy value as optional param `format-nil-values`? to override
   this behavior."
   {:style/indent [:form]}
   ([format-fns response]

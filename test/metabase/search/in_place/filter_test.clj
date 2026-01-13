@@ -390,7 +390,7 @@
                 (merge default-search-ctx {:verified true}))))))))
 
 (deftest ^:parallel build-filter-throw-error-for-unsuported-filters-test
-  (testing "throw error for filtering with unsupport models"
+  (testing "throw error for filtering with unsupported models"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #":created-by filter for database is not supported"

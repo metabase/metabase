@@ -209,7 +209,7 @@
             (let [queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
               (doseq [deletable-persisted [deletable punmodeled parchived]]
                 (is (contains? queued-for-deletion (u/the-id deletable-persisted))))))
-            ;; we manually pass in the deleteable ones to not catch others in a running instance
+            ;; we manually pass in the deletable ones to not catch others in a running instance
           (#'task.persist-refresh/prune-deletables! test-refresher [deletable parchived punmodeled])
           (testing "We delete persisted_info records for all of the pruned"
             (let [persisted-records (t2/select :model/PersistedInfo :id [:in (map :id [parchived punmodeled deletable])])
@@ -244,7 +244,7 @@
 
 (deftest save-task-history-test-2
   (mt/with-model-cleanup [:model/TaskHistory]
-    (testing "if the task fails, task history should have status is faield"
+    (testing "if the task fails, task history should have status is failed"
       (let [task-name (mt/random-name)]
         (#'task.persist-refresh/save-task-history! task-name (mt/id)
                                                    (fn []

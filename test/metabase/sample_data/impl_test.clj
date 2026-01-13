@@ -102,7 +102,7 @@
              (-> (field db "PEOPLE" "NAME")
                  ;; it should be `nil` after sync but get set to `search` by the auto-inference. We only set `list` in
                  ;; sync and setting anything else is reserved for admins, however we fill in what we think should be
-                 ;; the appropiate value with the hydration fn
+                 ;; the appropriate value with the hydration fn
                  (t2/hydrate :has_field_values)
                  (select-keys [:name :description :database_type :semantic_type :has_field_values :active :visibility_type
                                :preview_display :display_name :fingerprint :base_type])))))))

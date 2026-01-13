@@ -288,7 +288,7 @@
          ;; Sometimes we pick a column with no filter operators, and result is nil. Recur in that case to roll again.
          (if (= result ::no-operators)
            (if (>= recursion-depth 20)
-             (throw (ex-info "Deep recusion in gen-filter* - no filterable columns, or none with valid :operators?"
+             (throw (ex-info "Deep recursion in gen-filter* - no filterable columns, or none with valid :operators?"
                              {:filterable-columns *filterable-columns*}))
              (recur (inc recursion-depth)))
            result))))))

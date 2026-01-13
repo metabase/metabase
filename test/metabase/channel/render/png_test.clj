@@ -79,7 +79,7 @@
     (let [content                       [:span "안녕"]
           ^BufferedImage broken-render  (render-without-wrapping content 200)
           ^BufferedImage working-render (render-with-wrapping content 200)]
-      ;; The broken-render's width is around 17px. It is the width of 2 `[?]` charaters
+      ;; The broken-render's width is around 17px. It is the width of 2 `[?]` characters
       ;; We assert that the working render is wider based on the assumption (verified manually by
       ;; actually looking at the rendered images) that the correctly rendered glyphs are wider.
       (is (< (.getWidth broken-render) (.getWidth working-render))))))

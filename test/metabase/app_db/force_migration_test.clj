@@ -31,7 +31,7 @@
 ;; This test tests 4 (on h2) or 3 (on others) things:
 ;; - It forces release the locks if there is one (only on h2, others use a session lock that can't be forced)
 ;; - When running migrations, when a migration fails, ignores it and move on to the next migration
-;; - All custom migrations are executed in a transaction, if it fails, nothing should be commited
+;; - All custom migrations are executed in a transaction, if it fails, nothing should be committed
 ;; - All migrations are executed in the order it's defined
 (deftest force-migration-test
   (mt/test-drivers #{:h2 :mysql :postgres}

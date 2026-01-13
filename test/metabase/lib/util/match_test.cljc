@@ -13,7 +13,7 @@
                [:field & _])))))
 
 (t/deftest ^:parallel match-keywords-test
-  (t/testing "is `match` nice enought to automatically wrap raw keywords in appropriate patterns for us?"
+  (t/testing "is `match` nice enough to automatically wrap raw keywords in appropriate patterns for us?"
     (t/is (= [[:field 1 nil]]
              (lib.util.match/match {:fields [[:field 1 nil] [:expression "wow"]]}
                :field)))))

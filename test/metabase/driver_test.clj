@@ -39,7 +39,7 @@
   (testing (str "calling `the-driver` should set the context classloader if the driver is not registered yet,"
                 "important because driver plugin code exists there but not elsewhere")
     (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
-    (with-redefs [driver.impl/hierarchy (make-hierarchy)] ;; To simulate :h2 not being registed yet.
+    (with-redefs [driver.impl/hierarchy (make-hierarchy)] ;; To simulate :h2 not being registered yet.
       (driver/the-driver :h2))
     (is (= @classloader/shared-context-classloader
            (.getContextClassLoader (Thread/currentThread))))))

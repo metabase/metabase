@@ -6,7 +6,7 @@
    [toucan2.core :as t2]))
 
 (defn sync-steps-run-to-completion
-  "Returns the number of sync steps that run succesfully by counting entries in `TaskHistory`"
+  "Returns the number of sync steps that run successfully by counting entries in `TaskHistory`"
   []
   (data/with-temp-copy-of-db
     ;; `sync-database!` does both sync an analysis steps

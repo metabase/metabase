@@ -12,7 +12,7 @@
 ;; Password Complexity testing
 
 (deftest ^:parallel count-occurrences-test
-  (testing "Check that password occurance counting works"
+  (testing "Check that password occurrence counting works"
     (doseq [[input expected] {"abc"        {:total 3, :lower 3, :upper 0, :letter 3, :digit 0, :special 0}
                               "PASSWORD"   {:total 8, :lower 0, :upper 8, :letter 8, :digit 0, :special 0}
                               "123"        {:total 3, :lower 0, :upper 0, :letter 0, :digit 3, :special 0}

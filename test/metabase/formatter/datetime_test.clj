@@ -252,7 +252,7 @@
                                                         ::mb.viz/date-abbreviate]
                                                        true)]
                      (format-temporal-str "UTC" time-str col common-viz-settings)))))
-          (testing "...and we abbreviate the custome column formatting as well"
+          (testing "...and we abbreviate the custom column formatting as well"
             (is (= "Mon, Dec 11, 2023, 9:51:57.265 PM"
                    (let [col                 (assoc col :name "CUSTOM_DATETIME")
                          common-viz-settings (assoc-in common-viz-settings

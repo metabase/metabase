@@ -67,7 +67,7 @@
              :stages     [{:source-table 1}]
              :alias      "Cat"
              :conditions [[:= {} [:field {} 2] [:field {:join-alias "Cat"} 3]]]
-             :conditon   (symbol "nil #_\"key is not present.\"")
+             :condition  (symbol "nil #_\"key is not present.\"")
              :fields     [[:field {} 4]]}
             (lib/normalize
              ::lib.schema.join/join

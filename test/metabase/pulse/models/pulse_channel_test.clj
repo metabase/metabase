@@ -412,7 +412,7 @@
         (t2/update! :model/PulseChannel pc-id {:enabled false})
         (is (empty? (send-pulse-triggers pulse-id))))
 
-      (testing "reenable PC will add its trigger"
+      (testing "re-enable PC will add its trigger"
         (t2/update! :model/PulseChannel pc-id {:enabled true})
         (is (=? #{(pulse->trigger-info pulse-id daily-at-7pm [pc-id])}
                 (send-pulse-triggers pulse-id))))

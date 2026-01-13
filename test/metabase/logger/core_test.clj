@@ -75,7 +75,7 @@
       (with-open [_ (logger/for-ns baos 'metabase.logger.core-test {:additive false})]
         (log/info "just a test"))
       (log/info "this line is not going into our stream")
-      (testing "We catched the line we needed and did not catch the other one"
+      (testing "We caught the line we needed and did not catch the other one"
         (is (=? [#".*just a test.+"]
                 (line-seq (io/reader (.toByteArray baos)))))))))
 

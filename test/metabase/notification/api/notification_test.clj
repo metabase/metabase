@@ -551,7 +551,7 @@
                   ;; move it back
                   (move-card-collection (mt/user->id :rasta)))))
 
-            (testing "other than that noone can update"
+            (testing "other than that no one can update"
               (update! :lucky 403))
 
             (mt/when-ee-evailable

@@ -98,7 +98,7 @@
              (system.settings/site-locale! "")))
         (is (= "en_US"
                (system.settings/site-locale)))))
-    (testing "non-existant locale"
+    (testing "non-existent locale"
       (mt/with-temporary-setting-values [site-locale "en_US"]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo

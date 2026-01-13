@@ -672,8 +672,8 @@
     [:value {:base-type :type/Boolean} false]    false
     [:value {:base-type :type/BigInteger} "123"] (u.number/bigint "123")))
 
-(deftest ^:parallel coalese-type-test
-  (testing "Should be able to calculate type info for :coalese with field refs without type info (#30397, QUE-147)"
+(deftest ^:parallel coalesce-type-test
+  (testing "Should be able to calculate type info for :coalesce with field refs without type info (#30397, QUE-147)"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))
           price (-> (lib/ref (meta/field-metadata :venues :price))
                     (lib.options/update-options dissoc :base-type :effective-type))]

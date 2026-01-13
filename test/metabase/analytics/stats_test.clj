@@ -595,7 +595,7 @@
             "There are never more query executions in the 24h version than all-of-time.")))))
 
 (deftest snowplow-setting-tests
-  (testing "snowplow formated settings"
+  (testing "snowplow formatted settings"
     (let [instance-stats (#'stats/instance-settings)
           snowplow-settings (#'stats/snowplow-settings instance-stats)]
       (testing "matches expected schema"

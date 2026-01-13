@@ -99,7 +99,7 @@
                (StdSchedulerFactory. (doto (java.util.Properties.)
                                        (.setProperty "org.quartz.scheduler.instanceName" (str (gensym "card-api-test")))
                                        (.setProperty "org.quartz.scheduler.instanceID" "AUTO")
-                                       (.setProperty "org.quartz.properties" "non-existant")
+                                       (.setProperty "org.quartz.properties" "non-existent")
                                        (.setProperty "org.quartz.threadPool.threadCount" "6")
                                        (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
     ;; a binding won't work since we need to cross thread boundaries

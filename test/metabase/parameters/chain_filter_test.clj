@@ -715,7 +715,7 @@
           has_field_values (t2/select-one-fn :has_field_values :model/Field :id field-id)
           fvs              (t2/select :model/FieldValues :field_id field-id)]
       ;; switch to "list" to prevent [[field-values/create-or-update-full-field-values!]]
-      ;; from changing this to `nil` if the field is `auto-list` and exceeds threshholds
+      ;; from changing this to `nil` if the field is `auto-list` and exceeds thresholds
       (t2/update! :model/Field field-id {:has_field_values "list"})
       (t2/delete! :model/FieldValues :field_id field-id)
       (try
@@ -734,7 +734,7 @@
 (deftest chain-filter-has-more-values-test
   (testing "the `has_more_values` property should be correct\n"
     (testing "for cached fields"
-      (testing "without contraints"
+      (testing "without constraints"
         (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`false` for field has values less than [[field-values/*total-max-length*]] threshold"
             (is (= false
@@ -753,7 +753,7 @@
               (is (true?
                    (:has_more_values (chain-filter categories.name {}))))))))
 
-      (testing "with contraints"
+      (testing "with constraints"
         (with-clean-field-values-for-field! (mt/id :categories :name)
           (testing "`false` for field has values less than [[field-values/*total-max-length*]] threshold"
             (is (= false
@@ -773,7 +773,7 @@
                    (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
 
     (testing "for non-cached fields"
-      (testing "with contraints"
+      (testing "with constraints"
         (with-clean-field-values-for-field! (mt/id :venues :latitude)
           (testing "`false` if we don't specify limit"
             (is (= false

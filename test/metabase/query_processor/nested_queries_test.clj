@@ -721,7 +721,7 @@
                    (completed-status))))))))
 
 (deftest ^:parallel macroexpansion-test
-  (testing "Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)"
+  (testing "Make sure that macro expansion works inside of a nested query, when using a compound filter clause (#5974)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
       (qp.store/with-metadata-provider (-> (mt/metadata-provider)
                                            (lib.tu/mock-metadata-provider
@@ -947,7 +947,7 @@
 
 ;;; TODO make this work for other drivers supporting :nested-queries
 ;;;
-;;; TODO now that this is easily overrideable by third-party driver authors we should remove `:starburst` from the list
+;;; TODO now that this is easily overridable by third-party driver authors we should remove `:starburst` from the list
 ;;; below and ask them to implement it in their own test code.
 (doseq [driver [:vertica :sqlite :presto-jdbc :starburst]]
   (defmethod driver/database-supports? [driver ::two-of-the-same-aggregations-test]

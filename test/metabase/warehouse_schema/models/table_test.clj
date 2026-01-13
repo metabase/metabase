@@ -35,7 +35,7 @@
                                              (mt/id :venues :longitude)
                                              (mt/id :venues :price)
                                              (mt/id :venues :id)]))))
-  (testing "Field ordering is invalid if some fields are from a differnt table"
+  (testing "Field ordering is invalid if some fields are from a different table"
     (is (false? (#'table/valid-field-order? (mt/id :venues)
                                             [(mt/id :venues :name)
                                              (mt/id :venues :category_id)
@@ -43,7 +43,7 @@
                                              (mt/id :venues :longitude)
                                              (mt/id :venues :price)
                                              (mt/id :checkins :id)]))))
-  (testing "Only active fields should be considerd when checking field order"
+  (testing "Only active fields should be considered when checking field order"
     (one-off-dbs/with-blank-db
       (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
                          "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"

@@ -351,7 +351,7 @@
 
 (deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expression-aggregations)
-    (testing "check that we can use cumlative count in expression aggregations"
+    (testing "check that we can use cumulative count in expression aggregations"
       (is (= [[1000]]
              (mt/format-rows-by
               [int]

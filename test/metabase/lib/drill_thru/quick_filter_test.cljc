@@ -15,7 +15,7 @@
 (use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel quick-filter-availability-test
-  (testing "quick-filter is avaiable for cell clicks on non-PK/FK columns"
+  (testing "quick-filter is available for cell clicks on non-PK/FK columns"
     (canned/canned-test
      :drill-thru/quick-filter
      (fn [test-case {:keys [column dimensions] :as _context} {:keys [click column-kind column-type]}]

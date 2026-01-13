@@ -145,7 +145,7 @@
                                                     :port               "5432"
                                                     :dbname             "cool"
                                                     :additional-options "prepareThreshold=0"}))))
-  (testing "user-specified SSL options should always take precendence over defaults"
+  (testing "user-specified SSL options should always take precedence over defaults"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
             :subname                       "//localhost:5432/bird_sightings"
@@ -1960,7 +1960,7 @@
                  ;; match on type
                  decimal?
                  ;; we don't have an easy way to recognize a datetime string. assuming if it's a string and query
-                 ;; doesnt error then it worked
+                 ;; doesn't error then it worked
                  string?]
                 (-> results :data :rows deref first)))))))
 

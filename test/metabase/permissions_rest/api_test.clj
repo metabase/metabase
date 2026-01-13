@@ -546,11 +546,11 @@
                    :model/PermissionsGroup           {group-id :id} {}
                    :model/PermissionsGroupMembership _              {:group_id group-id
                                                                      :user_id  user-id}]
-      (testing "requires superuser permisisons"
+      (testing "requires superuser permissions"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (format "permissions/membership/%d/clear" group-id)))))
 
-      (testing "Membership of a group can be cleared succesfully, while preserving the group itself"
+      (testing "Membership of a group can be cleared successfully, while preserving the group itself"
         (is (= 1 (t2/count :model/PermissionsGroupMembership :group_id group-id)))
         (mt/user-http-request :crowberto :put 204 (format "permissions/membership/%d/clear" group-id))
         (is (true? (t2/exists? :model/PermissionsGroup :id group-id)))

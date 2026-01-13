@@ -907,7 +907,7 @@
 
 (deftest ^:parallel canonicalize-filter-test-2
   (normalize-tests
-   "`:inside` filters should get implict Field IDs for the first two args"
+   "`:inside` filters should get implicit Field IDs for the first two args"
    {{:query {:filter [:inside 1 2 90 -90 90 -90]}}
     {:query {:filter [:inside [:field 1 nil] [:field 2 nil] 90 -90 90 -90]}}}))
 

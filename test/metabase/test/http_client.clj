@@ -468,7 +468,7 @@
       (-client parsed))))
 
 (defn client
-  "Perform a mock API call and return the response body (for test puposes).
+  "Perform a mock API call and return the response body (for test purposes).
   To make an actual http call use [[real-client]].
 
    The first arg after `url` will be passed as a JSON-encoded body if it is a map.

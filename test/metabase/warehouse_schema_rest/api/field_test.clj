@@ -105,7 +105,7 @@
     (testing "test that we can do basic field update work, including unsetting some fields such as semantic-type"
       (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
         (let [original-val (simple-field-details (t2/select-one :model/Field :id field-id))]
-          (testing "orignal value"
+          (testing "original value"
             (is (= {:name               "Field Test"
                     :display_name       "Field Test"
                     :description        nil
@@ -564,7 +564,7 @@
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1)))))
           ;; now change something unrelated: description
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id-1)
-                                {:description "something diffrent"})
+                                {:description "something different"})
           (testing "after API request"
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id-1))))))))))
@@ -851,7 +851,7 @@
                   (testing "yet json_unfolding is enabled by default at the field level"
                     (is (true? (:json_unfolding (get-field)))))
                   (testing "nested fields are added automatically when json unfolding is enabled for the field,
-                            and json unfolding is alread enabled for the DB"
+                            and json unfolding is already enabled for the DB"
                     (set-json-unfolding-for-field! false)
                     (set-json-unfolding-for-db! true)
                     (set-json-unfolding-for-field! true)

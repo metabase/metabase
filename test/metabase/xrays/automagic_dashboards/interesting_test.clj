@@ -446,7 +446,7 @@
                                :type            :model}]
             (let [{{:keys [entity_type]} :source :as root} (#'magic/->root card)
                   base-context       (#'magic/make-base-context root)
-                  ;; These typically come from the dashboard templates, but can be mocked (injected dyamically if desired) easily.
+                  ;; These typically come from the dashboard templates, but can be mocked (injected dynamically if desired) easily.
                   dimensions         [{"GenericNumber" {:field_type [:type/Number], :score 70}}
                                       {"GenericNumber" {:field_type [:entity/GenericTable :type/Number], :score 80}}
                                       {"Lat" {:field_type [:type/Latitude], :score 90}}

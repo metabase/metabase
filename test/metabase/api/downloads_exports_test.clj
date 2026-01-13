@@ -1311,7 +1311,7 @@
                    (update-vals formatted-results first)))))))))
 
 (deftest pivot-non-numeric-values-in-aggregations
-  (testing "A pivot table with an aggegation that results in non-numeric values (eg. Dates) will still work (#49353)."
+  (testing "A pivot table with an aggregation that results in non-numeric values (eg. Dates) will still work (#49353)."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display                :pivot
                                        :dataset_query          (mt/mbql-query products

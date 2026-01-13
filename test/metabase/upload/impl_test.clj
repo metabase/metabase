@@ -95,12 +95,12 @@
   `(do-with-mysql-local-infile-on-and-off (fn [] ~@body)))
 
 (defmacro ^:private with-mysql-local-infile-on
-  "Exectute the body with local_infile on"
+  "Execute the body with local_infile on"
   [& body]
   `(do-with-mysql-local-infile-on (fn [] ~@body)))
 
 (defmacro ^:private with-mysql-local-infile-off
-  "Exectute the body with local_infile off"
+  "Execute the body with local_infile off"
   [& body]
   `(do-with-mysql-local-infile-off (fn [] ~@body)))
 

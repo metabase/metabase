@@ -204,10 +204,10 @@
         (with-scheduler-setup
           (mt/with-temp [Database database db-info]
             ;; deref the promises in parallel so they all get sufficient time to run.
-            (into {} (pmap (fn [[k promis]]
+            (into {} (pmap (fn [[k promise]]
                              (let [wait-time-ms (or (get waits k)
                                                     (throw (ex-info (str "Don't know how long to wait for " k) {})))]
-                               [k (deref promis wait-time-ms false)]))
+                               [k (deref promise wait-time-ms false)]))
                            {:ran-sync?                sync-db-metadata-ran?
                             :ran-analyze?             analyze-db-ran?
                             :ran-update-field-values? update-field-values-ran?})))))))

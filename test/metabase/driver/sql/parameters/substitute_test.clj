@@ -80,7 +80,7 @@
 ;;; ------------------------------------------------- Field Filters --------------------------------------------------
 
 (defn- date-field-filter-value
-  "Field filter 'values' returned by the `values` namespace are actualy `FieldFilter` record types that contain
+  "Field filter 'values' returned by the `values` namespace are actually `FieldFilter` record types that contain
   information about"
   []
   (params/map->FieldFilter

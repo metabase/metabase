@@ -11,7 +11,7 @@
     (letfn [(threshold [version]
               (with-redefs [config/current-major-version (constantly version)]
                 (version.settings/upgrade-threshold)))]
-      ;; asserting that across 10 versions we have at leaset 5 distinct values
+      ;; asserting that across 10 versions we have at least 5 distinct values
       (let [thresholds (into [] (map threshold) (range 50 60))]
         ;; kinda the same but very explicit: it's not the same value across versions
         (is (> (count (distinct thresholds)) 1) "value should change between versions")

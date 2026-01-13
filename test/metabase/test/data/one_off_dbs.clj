@@ -33,7 +33,7 @@
 (defmacro with-blank-db
   "An empty canvas upon which you may paint your dreams.
 
-  Creates a one-off tempory in-memory H2 database and binds this DB with `data/with-db` so you can use `data/db` and
+  Creates a one-off temporary in-memory H2 database and binds this DB with `data/with-db` so you can use `data/db` and
   `data/id` to access it. `*conn*` is bound to a JDBC connection spec so you can execute DDL statements to populate it
   as needed."
   {:style/indent 0}

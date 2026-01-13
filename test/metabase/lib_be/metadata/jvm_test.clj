@@ -210,7 +210,7 @@
       (testing "getting card should invoke the tracker"
         (is (some? (lib.metadata/field mp (mt/id :orders :id))))
         (is (= [(mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column))))
-      (testing "2nd call, card shoudld should be cached by now, but invocation still keeping track of ids"
+      (testing "2nd call, card should be cached by now, but invocation still keeping track of ids"
         (is (some? (lib.metadata/field mp (mt/id :orders :id))))
         (is (= [(mt/id :orders :id) (mt/id :orders :id)] (lib.metadata/invoked-ids mp :metadata/column)))))))
 

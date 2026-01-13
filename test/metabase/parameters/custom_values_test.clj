@@ -284,7 +284,7 @@
   ;; bind to an admin to bypass the permissions check
   (mt/with-current-user (mt/user->id :crowberto)
     (testing "call to default-case-fn if "
-      (testing "souce card is archived"
+      (testing "source card is archived"
         (mt/with-temp [:model/Card card {:archived true}]
           (let [mock-default-result {:has_more_values false
                                      :values [["archived"]]}]

@@ -58,7 +58,7 @@
 (deftest email-smtp-security-override
   (mt/with-temporary-setting-values [email-smtp-security-override nil]
     (mt/with-premium-features []
-      (testing "requires cloud-custom-smtp feat´ure to be enabled"
+      (testing "requires cloud-custom-smtp feature to be enabled"
         (is (thrown-with-msg? Exception #"Setting email-smtp-security-override is not enabled because feature :cloud-custom-smtp is not available"
                               (channel.settings/email-smtp-security-override! "ssl")))))
     (mt/with-premium-features [:cloud-custom-smtp]

@@ -266,7 +266,7 @@
                  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))))
 
 (deftest ^:parallel should-add-default-values-source-test
-  (testing "shoudld add default if not exists"
+  (testing "should add default if not exists"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
                                                                       :slug   "category_name"
                                                                       :id     "_CATEGORY_NAME_"
@@ -278,7 +278,7 @@
               (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 
 (deftest ^:parallel should-add-default-values-source-test-2
-  (testing "shoudld not override if existsed "
+  (testing "should not override if existed "
     (mt/with-temp [:model/Card      {card-id :id} {}
                    :model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
                                                                       :slug   "category_name"

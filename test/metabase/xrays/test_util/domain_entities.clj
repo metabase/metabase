@@ -11,7 +11,7 @@
         {:name                "Venues"
          :required_attributes [{:field "Category"} ; Price
                                {:field "FK"} ; Category ID
-                               ;; These are here just for uniquness
+                               ;; These are here just for uniqueness
                                {:field "Longitude"}
                                {:field "Latitude"}]
          :refines             "Venues parent"

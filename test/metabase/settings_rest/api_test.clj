@@ -70,7 +70,7 @@
 
 (deftest fetch-setting-test
   (testing "GET /api/setting"
-    (testing "Check that we can fetch all Settings as an admin, except `:visiblity :internal` ones"
+    (testing "Check that we can fetch all Settings as an admin, except `:visibility :internal` ones"
       (models.setting-test/test-setting-1! nil)
       (models.setting-test/test-setting-2! "FANCY")
       (models.setting-test/test-setting-3! "oh hai") ; internal setting that should not be returned

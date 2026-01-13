@@ -999,7 +999,7 @@
                    (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
-  (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
+  (testing "If the All Users group doesn't have perms to view a Table they shouldn't see it (#16855)"
     (mt/with-temp [:model/Database                   {db-id :id} {}
                    :model/Table                      table {:name "RoundTable", :db_id db-id}]
       (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))

@@ -477,7 +477,7 @@
                               [["a" "b"] ["c" "d"]]))))))
 
 (deftest column-title-test
-  (testing "::mb.viz/column-title precedence over :display_name, which takes precendence over :name"
+  (testing "::mb.viz/column-title precedence over :display_name, which takes precedence over :name"
     (is (= ["Display name"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
     (is (= ["Column title"]

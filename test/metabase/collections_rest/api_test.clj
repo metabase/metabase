@@ -1080,7 +1080,7 @@
 
 (deftest collection-items-include-latest-revision-test
   (testing "GET /api/collection/:id/items"
-    (testing "Results have the lastest revision timestamp"
+    (testing "Results have the latest revision timestamp"
       (mt/with-temp [:model/Collection {collection-id :id}              {:name "Collection with Items"}
                      :model/User       {failuser-id :id}                {:first_name "failure" :last_name "failure" :email "failure@example.com"}
                      :model/User       {passuser-id :id}                {:first_name "pass" :last_name "pass" :email "pass@example.com"}

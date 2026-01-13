@@ -50,7 +50,7 @@
          (get-in [:query :filter])))))
 
 (deftest ^:parallel optimize-day-bucketed-filter-test
-  (testing "Make sure we aren't doing anything wacky when optimzing filters against fields bucketed by day"
+  (testing "Make sure we aren't doing anything wacky when optimizing filters against fields bucketed by day"
     (letfn [(optimize [filter-type]
               (optimize-filter
                [filter-type

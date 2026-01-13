@@ -65,7 +65,7 @@
   (is (= false (valid-period? #t "2015-01-01" #t "2015-04-03" :month)))
   (is (= false (valid-period? #t "2015-01" #t "2015-02" nil))))
 
-;; Make sure we don't return nosense results like infinitiy coeficients
+;; Make sure we don't return nonsense results like infinity coefficients
 ;; Fixes https://github.com/metabase/metabase/issues/9070
 
 ;; Keep the size of this dataset below `insights/validation-set-size` else result might depend on which

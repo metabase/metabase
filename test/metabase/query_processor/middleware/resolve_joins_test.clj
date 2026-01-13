@@ -122,7 +122,7 @@
                          :condition    [:= $category-id 2]}]}))))))
 
 (deftest ^:parallel resolve-explicit-joins-when-implicit-joins-are-present-test
-  (testing "test that resolving explicit joins still works if implict joins are present"
+  (testing "test that resolving explicit joins still works if implicit joins are present"
     (is (=? (lib.tu.macros/mbql-query checkins
               {:source-table $$checkins
                :aggregation  [[:sum &USERS__via__USER_ID.users.id]]

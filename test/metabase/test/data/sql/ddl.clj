@@ -11,7 +11,7 @@
    [metabase.util.honey-sql-2 :as h2x]))
 
 (defmulti drop-db-ddl-statements
-  "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensons namespace, if
+  "Return a sequence of DDL statements for dropping a DB using the multimethods in the SQL test extensions namespace, if
   applicable."
   {:arglists '([driver dbdef & {:as _options}])}
   tx/dispatch-on-driver-with-test-extensions

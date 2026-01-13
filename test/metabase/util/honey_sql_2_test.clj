@@ -92,7 +92,7 @@
            (sql/format {:select [[(h2x/identifier :field "A" :B "C.D" :E.F)]]}
                        {:dialect :mysql}))))
 
-  (testing "`identifer` should handle slashes"
+  (testing "`identifier` should handle slashes"
     (is (= ["SELECT `A/B`.`C\\D`.`E/F`"]
            (sql/format {:select [[(h2x/identifier :field "A/B" "C\\D" :E/F)]]}
                        {:dialect :mysql}))))

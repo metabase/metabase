@@ -195,7 +195,7 @@
                     (let [table (t2/select-one :model/Table :db_id (:id database) :name "foo")
                           fields (t2/select :model/Field :table_id (:id table))]
                       (is (= #{"val" "newly_added"} (into #{} (map :name) fields)))))
-                  (testing "We get a 404 for non-existant tables"
+                  (testing "We get a 404 for non-existent tables"
                     (is (= 404 (:status (post {:schema_name "public" :table_name "bar"} 404)))))
                   ;; Create two more tables that are not yet synced
                   (exec! spec ["CREATE TABLE public.BAR (val bigint NOT NULL);"

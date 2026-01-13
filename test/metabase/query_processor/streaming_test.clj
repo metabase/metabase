@@ -489,7 +489,7 @@
 
 (deftest join-export-test
   (do-test!
-   "A query with a join can be exported succesfully"
+   "A query with a join can be exported successfully"
    {:query       {:database (mt/id)
                   :query
                   {:source-table (mt/id :venues)
@@ -578,7 +578,7 @@
 (deftest native-query-test
   (mt/with-full-data-perms-for-all-users!
     (do-test!
-     "A native query can be exported succesfully, and duplicate fields work in CSV/XLSX"
+     "A native query can be exported successfully, and duplicate fields work in CSV/XLSX"
      {:query (mt/native-query {:query "SELECT id, id, name FROM venues LIMIT 1;"})
 
       :assertions {:csv (fn [results]

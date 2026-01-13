@@ -243,7 +243,7 @@
                                                               ;; year, quarter, month, day, week is extracted
                                                               ;; correctly TODO: it's better to use a literal for
                                                               ;; this, but the function is not working properly with
-                                                              ;; OffsetDatetime for all drivers, so we'll go wit this
+                                                              ;; OffsetDatetime for all drivers, so we'll go with this
                                                               ;; for now
                                                               "shifted-hour" [:datetime-subtract
                                                                               [:expression "shifted-day"]
@@ -288,7 +288,7 @@
                 :query    {:filter [:< [:get-year [:field (mt/id :times :dt) nil]] 2005]
                            :fields [[:field (mt/id :times :index) nil]]}}
 
-               {:title    "Nested expression in fitler"
+               {:title    "Nested expression in filter"
                 :expected [1]
                 :query    {:filter [:= [:* [:get-year [:field (mt/id :times :dt) nil]] 2] 4008]
                            :fields [[:field (mt/id :times :index) nil]]}}]]
@@ -377,7 +377,7 @@
                    (test-extract-week (mt/id :weeks :d) :instance)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Date arithmetics tests                                            |
+;;; |                                              Date arithmetic tests                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datetime-math
@@ -472,7 +472,7 @@
                                      report-timezone "UTC"]
     (mt/dataset times-mixed
       (mt/test-drivers (mt/normal-drivers-with-feature :date-arithmetics)
-        (testing "date arithmetics with literal date"
+        (testing "date arithmetic with literal date"
           (is (= ["2008-08-20 00:00:00" "2008-04-20 00:00:00"]
                  (->> (mt/run-mbql-query times
                         {:expressions {"add" [:datetime-add "2008-06-20T00:00:00" 2 :month]

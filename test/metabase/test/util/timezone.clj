@@ -18,7 +18,7 @@
       (thunk)
       (do
         (mb.hawk.parallel/assert-test-is-not-parallel "with-system-timezone-id!")
-        ;; Pre-emptively __wrapping__ try block in [[driver.tu/wrap-notify-all-databases-updated]]. I'm not sure that
+        ;; Preemptively __wrapping__ try block in [[driver.tu/wrap-notify-all-databases-updated]]. I'm not sure that
         ;; is currently necessary and I'm doing that to avoid surprises as with issue #36852 in future.
         (driver.tu/wrap-notify-all-databases-updated!
          (try

@@ -97,7 +97,7 @@
 (deftest cannot-set-audit-permissions-for-non-admins-test
   (clear-graph-revisions!)
   (mt/with-premium-features #{}
-    (testing "Cannot set write permissiosn with no feature flag"
+    (testing "Cannot set write permissions with no feature flag"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
           (with-redefs [audit/default-audit-collection (constantly collection)]
@@ -105,7 +105,7 @@
             (is (= {:revision 0
                     :groups {(u/the-id (perms-group/admin)) {:root :write, :COLLECTION :read}}}
                    (replace-collection-ids collection (graph :clear-revisions? true, :collections [collection]))))))))
-    (testing "Cannot set read permissiosn with no feature flag"
+    (testing "Cannot set read permissions with no feature flag"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp [:model/Collection collection {:namespace "analytics"}]
           (with-redefs [audit/default-audit-collection (constantly collection)]
@@ -303,7 +303,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- update-graph-and-wait!
-  "`graph/update-graph!` updates the before and after values in the graph asyncronously, so we need to wait for them to be written"
+  "`graph/update-graph!` updates the before and after values in the graph asynchronously, so we need to wait for them to be written"
   ([new-graph] (update-graph-and-wait! nil new-graph))
   ([namespaze new-graph]
    (when-let [future (graph/update-graph! namespaze new-graph false)]

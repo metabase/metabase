@@ -341,8 +341,8 @@
                                                                    "?venue_id=200"))))))))))
 
 (deftest dashcard-editable-query-params-test
-  (testing (str "Check that editable query params work correctly and keys get coverted from strings to keywords, even "
-                "if they're something that our middleware doesn't normally assume is implicitly convertable to a "
+  (testing (str "Check that editable query params work correctly and keys get converted from strings to keywords, even "
+                "if they're something that our middleware doesn't normally assume is implicitly convertible to a "
                 "keyword. See `ring.middleware.keyword-params/keyword-syntax?` (#6783)")
     (embed-test/with-embedding-enabled-and-new-secret-key!
       (embed-test/with-temp-dashcard [dashcard {:dash {:enable_embedding true

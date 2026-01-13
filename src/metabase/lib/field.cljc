@@ -705,7 +705,7 @@
                                                         {:query  query
                                                          :stage  stage-number
                                                          :source source}))
-          ;; Default case: do nothing and return the query unchaged.
+          ;; Default case: do nothing and return the query unchanged.
           ;; Generate a warning - we should aim to capture every `:source/*` value above.
           (do
             (log/warnf "Cannot remove-field with unknown source %s" (pr-str source))

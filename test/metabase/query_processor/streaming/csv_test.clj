@@ -27,7 +27,7 @@
   [_driver _feature _database]
   true)
 
-;; The following drivers are excluded from this test because their date types are acutally date times
+;; The following drivers are excluded from this test because their date types are actually date times
 (defmethod driver/database-supports? [:mongo ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)

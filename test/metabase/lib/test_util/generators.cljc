@@ -480,7 +480,7 @@
         :else                   :step))))
 
 (def ^{:arglists '([])} step-control:default
-  "Defaults to 0.04 probability of reset, plus 0.16 probabilty of popping one level.
+  "Defaults to 0.04 probability of reset, plus 0.16 probability of popping one level.
 
   ```
    X
@@ -641,7 +641,7 @@
 ;; misc ========================================================================
 
 (defn random-query
-  "Genereate single random query, card or table based."
+  "Generate single random query, card or table based."
   [mp]
   (let [tables (lib.metadata/tables mp)
         cards *available-cards*]

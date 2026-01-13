@@ -265,7 +265,7 @@
                    (:is-group-manager? (#'mw.session/current-user-info-for-session test-session-key nil))))))
 
         (testing "is `true` if advanced-permisison is enabled"
-          ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
+          ;; a trick to run this test in OSS because even if advanced-permission is enabled but EE ns is not available
           ;; `enable-advanced-permissions?` will still return false
           (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
             (is (true?
@@ -274,7 +274,7 @@
         (t2/delete! :model/Session :id test-session-id)))))
 
 (deftest current-user-info-for-session-test-4
-  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
+  (testing "full-app-embed sessions shouldn't come back if we don't explicitly specify the anti-csrf token"
     (try
       (t2/insert! :model/Session {:id              test-session-id
                                   :key_hashed      test-session-key-hashed
@@ -285,7 +285,7 @@
       (finally
         (t2/delete! :model/Session :id test-session-id)))
 
-    (testing "...but if we do specifiy the token, they should come back"
+    (testing "...but if we do specify the token, they should come back"
       (try
         (t2/insert! :model/Session {:id              test-session-id
                                     :key_hashed      test-session-key-hashed

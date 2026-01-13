@@ -80,7 +80,7 @@
                   :mariadb
                   db-type)]
     (->> (:databaseChangeLog content)
-      ;; if the changelog has filter by dbms, remove the ones that doens't apply for the current lb-type
+      ;; if the changelog has filter by dbms, remove the ones that doesn't apply for the current lb-type
          (remove (fn [{{:keys [dbms]} :changeSet}] (and (not (str/blank? dbms))
                                                         (not (str/includes? dbms (name lb-type))))))
       ;; remove ignored changeSets

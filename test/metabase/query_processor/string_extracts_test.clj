@@ -123,8 +123,8 @@
                        [:regex-match-first [:field (mt/id :venues :name) nil] "^Taylor's"]
                        [:= [:field (mt/id :venues :name) nil] "Taylor's Prime Steak House"])))))
 
-(deftest ^:parallel regex-extract-in-explict-join-test
-  (testing "Should be able to use regex extra in an explict join (#17790)"
+(deftest ^:parallel regex-extract-in-explicit-join-test
+  (testing "Should be able to use regex extra in an explicit join (#17790)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
       (mt/dataset test-data
         (let [query (mt/mbql-query orders

@@ -263,7 +263,7 @@
 (mu/defn db-qualified-table-name :- :string
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
-  where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
+  where this is disallowed on RDS. (Since Oracle can't create separate DBs, we just create various tables in the same
   DB; thus their names must be qualified to differentiate them effectively.)
 
   Asserts that the resulting name has fewer than 30 characters, because databases like Oracle have limits on the
@@ -643,13 +643,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private DatasetFieldDefinition
-  "Schema for a Field in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  ;; this is acutally the same schema as the one for `FieldDefinition`, i.e. the format in EDN files is the same as
+  "Schema for a Field in a test dataset defined by a `defdataset` form or in a dataset definition EDN file."
+  ;; this is actually the same schema as the one for `FieldDefinition`, i.e. the format in EDN files is the same as
   ;; the one we use elsewhere
   FieldDefinitionSchema)
 
 (def ^:private DatasetTableDefinition
-  "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
+  "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset definition EDN file."
   [:tuple
    ms/NonBlankString
    [:sequential DatasetFieldDefinition]
@@ -660,14 +660,14 @@
 
 (mu/defn- dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
-  comsumption by various test-data-loading methods."
+  consumption by various test-data-loading methods."
   [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
 (mu/defn- dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
-  comsumption by various test-data-loading methods."
+  consumption by various test-data-loading methods."
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
@@ -681,7 +681,7 @@
 
 (mu/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
-  comsumption by various test-data-loading methods."
+  consumption by various test-data-loading methods."
   ([database-name :- ms/NonBlankString
     table-definitions]
    (dataset-definition database-name table-definitions {}))

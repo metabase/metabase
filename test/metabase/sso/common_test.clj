@@ -131,7 +131,7 @@
                  (group-memberships user))))))))
 
 (deftest sync-groups-test-10
-  (testing "Make sure the delete last admin exception is catched"
+  (testing "Make sure the delete last admin exception is caught"
     (mt/with-log-level :warn
       (mt/with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]

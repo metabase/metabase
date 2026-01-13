@@ -30,7 +30,7 @@
       (request/as-admin
        ;; Current user ID remains the same
         (is (= (mt/user->id :rasta) *current-user-id*))
-       ;; *is-superuser?* and permissions set are overrided
+       ;; *is-superuser?* and permissions set are overridden
         (is (true? api/*is-superuser?*))
         (is (= #{"/"} @api/*current-user-permissions-set*)))))
   (testing "as-admin preserves any locale settings"

@@ -190,7 +190,7 @@
               (map lib.ref/ref cols))))))
 
 (deftest ^:parallel card-source-query-visible-columns-test
-  (testing "Explicitly joined fields do not also appear as implictly joinable"
+  (testing "Explicitly joined fields do not also appear as implicitly joinable"
     (let [base       (lib/query meta/metadata-provider (meta/table-metadata :orders))
           join       (lib/join-clause (meta/table-metadata :products)
                                       [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
@@ -410,7 +410,7 @@
                                                     [:native 3 4]]]
               (testing (str "query type = " query-type " Model card id = " card-id)
                 (let [metadata    (:result-metadata (lib.metadata/card mp card-id))
-                      ;; simulate updating metadat with user changed stuff
+                      ;; simulate updating metadata with user changed stuff
                       user-edited (add-user-edits metadata)
                       edited-mp   (lib.tu/merged-mock-metadata-provider
                                    mp

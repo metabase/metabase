@@ -11,7 +11,7 @@
   (lib.convert/->legacy-MBQL (lib.tu.gen/random-query mp)))
 
 (defmacro with-random-cards
-  "Generate random cards (questions or models) and make those availble to caller through `&cards` anaphor.
+  "Generate random cards (questions or models) and make those available to caller through `&cards` anaphor.
 
   Wraps `body` in sequence of nesting `(with-temp..(binding..))` forms. Each for generates a temp card and adds it
   to [[lib.tu.gen/*available-cards*]] so this card can be used in generation of next card. Testing context is added

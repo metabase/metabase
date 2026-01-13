@@ -693,7 +693,7 @@
         (mt/with-actions [{_card-id :id}           {:dataset_query (mt/mbql-query checkins) :type :model}
                           {update-action :action-id} {:type :implicit
                                                       :kind "row/update"}]
-          (testing "an error in SQL will be caught and parsed to a readable erorr message"
+          (testing "an error in SQL will be caught and parsed to a readable error message"
 
             (is (= {:message "Unable to update the record."
                     :errors {:user_id "This value does not exist in table \"users\"."}}

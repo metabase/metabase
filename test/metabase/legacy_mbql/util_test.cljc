@@ -131,7 +131,7 @@
             [:and
              [:= [:field 2 nil] 200]
              [:= [:field 3 nil] 300]]))
-        "Should be able to combine into an exisiting compound clause")
+        "Should be able to combine into an existing compound clause")
   (t/is (= [:and
             [:= [:field 1 nil] 100]
             [:= [:field 2 nil] 200]

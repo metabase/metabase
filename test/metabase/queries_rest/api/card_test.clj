@@ -494,7 +494,7 @@
       (is (= "Card with type table is not compatible to have series"
              (:message (mt/user-http-request :crowberto :get 400 (format "card/%d/series" card-id)))))))
 
-  (testing "404 if the card does not exsits"
+  (testing "404 if the card does not exist"
     (is (= "Not found."
            (mt/user-http-request :crowberto :get 404 (format "card/%d/series" Integer/MAX_VALUE))))))
 
@@ -527,7 +527,7 @@
                                     (mt/mbql-query venues {:aggregation [[:sum $venues.price]]}))
                                    {:name "Another Metric" :type :metric :display :scalar})
 
-       ;; compatible but user doesn't have access so should not be readble
+       ;; compatible but user doesn't have access so should not be readable
        :model/Card _       (simple-mbql-chart-query {:name "A Line with no access"   :display :line})
        ;; incomptabile cards
        :model/Card pie     (simple-mbql-chart-query {:name "A pie" :display :pie})
@@ -1640,7 +1640,7 @@
                                        {:embedding_params {:abc "enabled"}})))))
 
       (mt/with-temporary-setting-values [enable-embedding-static true]
-        (testing "Non-admin should not be allowed to update Card's embedding parms"
+        (testing "Non-admin should not be allowed to update Card's embedding params"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card))
                                        {:embedding_params {:abc "enabled"}}))))
@@ -1745,7 +1745,7 @@
                                                (format "collection/%s/items" (u/the-id collection-or-collection-id))))))
 
 (defmacro with-ordered-items
-  "Macro for creating many sequetial collection_position model instances, putting each in `collection`"
+  "Macro for creating many sequential collection_position model instances, putting each in `collection`"
   {:style/indent :defn}
   [collection model-and-name-syms & body]
   `(mt/with-temp ~(vec (mapcat (fn [idx [model-instance name-sym]]
@@ -3124,7 +3124,7 @@
           (testing query-type
             (query! card-id)            ; populate metadata by running the query.
             (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
-                  ;; simulate updating metadat with user changed stuff
+                  ;; simulate updating metadata with user changed stuff
                   user-edited (add-preserved metadata)]
               (t2/update! :model/Card card-id {:result_metadata user-edited})
               (testing "Saved metadata preserves user edits"

@@ -69,8 +69,8 @@
                               [4 5 6]
                               [7 8 9]
                               [7 8 (formatter/map->NumericWrapper {:num-str "4.5" :num-value 4.5})]
-                              [7 8 (formatter/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point seperator .
-                              [7 8 (formatter/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point seperator is ,
+                              [7 8 (formatter/map->NumericWrapper {:num-str "1,001.5" :num-value 1001.5})]    ;; default floating point separator .
+                              [7 8 (formatter/map->NumericWrapper {:num-str "1.001,5" :num-value 1001.5})]]}] ;; floating point separator is ,
     (is (= {"1"       nil
             "2"       nil
             "3"       "rgba(0, 255, 0, 0.75)"

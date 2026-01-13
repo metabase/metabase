@@ -207,7 +207,7 @@
              (run-query))))))
 
 (deftest expired-results-test
-  (testing "If cached resutls are past their TTL, the cached results shouldn't be returned"
+  (testing "If cached results are past their TTL, the cached results shouldn't be returned"
     (with-mock-cache! [save-chan]
       (run-query :cache-strategy (assoc (ttl-strategy) :multiplier 0.1))
       (mt/wait-for-result save-chan)

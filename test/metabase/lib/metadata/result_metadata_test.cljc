@@ -23,7 +23,7 @@
   (result-metadata/returned-columns query initial-columns))
 
 (deftest ^:parallel col-info-field-ids-test
-  (testing "make sure columns are comming back the way we'd expect for :field clauses"
+  (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (lib.tu.macros/$ids venues
       (is (=? [{:source    :fields
                 :field-ref $price}]
@@ -586,7 +586,7 @@
 
 (deftest ^:parallel computed-columns-inference-2c
   (testing "Case"
-    (testing "Make sure we skip nils when infering case return type"
+    (testing "Make sure we skip nils when inferring case return type"
       (is (=? {:base-type :type/Number}
               (infered-col-type [:case [[[:< [:field (meta/id :venues :price) nil] 10] [:value nil {:base-type :type/Number}]]
                                         [[:> [:field (meta/id :venues :price) nil] 2]  10]]]))))))

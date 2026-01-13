@@ -167,7 +167,7 @@
                                   [nil "C" nil 4]]
                          []      [[nil nil nil 12]]}
             :primary-rows-key [0 1 2]}
-           ;; Dissoc :columns beacuse this is the same as the result of `columns-without-pivot-group-test`, tested above
+           ;; Dissoc :columns because this is the same as the result of `columns-without-pivot-group-test`, tested above
            (dissoc (pivot/split-pivot-data pivot-test-data) :columns)))))
 
 (deftest get-subtotal-values-test

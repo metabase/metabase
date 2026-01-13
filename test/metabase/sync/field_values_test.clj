@@ -217,7 +217,7 @@
              (into {} (t2/select-one [:model/FieldValues :values :human_readable_values]
                                      :field_id (mt/id :blueberries_consumed :str))))))
 
-    (testing "If the total length of all values exceeded the length threshold, it should get stay as auto list but be limitted"
+    (testing "If the total length of all values exceeded the length threshold, it should get stay as auto list but be limited"
       (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 10 "B"))
                                           (str/join (repeat (+ 100 field-values/*total-max-length*) "X"))
                                           (str/join (repeat 10 "Z"))])

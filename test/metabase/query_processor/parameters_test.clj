@@ -312,7 +312,7 @@
                                :value  ["US" "MX"]}]})))))))
 
 (deftest ^:parallel native-with-param-options-different-than-tag-type-test
-  (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
+  (testing "Overriding the widget type in parameters should drop case-sensitive option when incompatible"
     (mt/dataset airports
       (is (= {:lib/type :mbql.stage/native
               :query    "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
@@ -333,7 +333,7 @@
                              :value  ["US"]}]}))))))
 
 (deftest ^:parallel native-with-param-options-different-than-tag-type-test-2
-  (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
+  (testing "Overriding the widget type in parameters should not drop case-sensitive option when compatible"
     (mt/dataset airports
       (is (= {:lib/type :mbql.stage/native
               :query    "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"

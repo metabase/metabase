@@ -153,7 +153,7 @@
 (defmethod standalone-table-comment-sql :sql/test-extensions [_ _ _] nil)
 
 (defn standard-standalone-table-comment-sql
-  "Implementation of `standalone-table-comment-sql` for driver test extenstions that wish to use it."
+  "Implementation of `standalone-table-comment-sql` for driver test extensions that wish to use it."
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
   (when (seq table-comment)
     (format "COMMENT ON TABLE %s IS '%s';"
@@ -244,7 +244,7 @@
   "Return the driver-specific equivalent of 'GENERATED ALWAYS AS $expr' (SQL:2003) to be appended to a column definition.
   The expression should be given as a string.
 
-  Implementor notes:
+  Implementer notes:
   If a driver does not support adding generated columns for tests, return nil."
   {:arglists '([driver expr])}
   tx/dispatch-on-driver-with-test-extensions

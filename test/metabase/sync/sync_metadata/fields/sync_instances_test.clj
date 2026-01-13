@@ -56,7 +56,7 @@
 ;; don't want to get into that in this change.
 
 (deftest resync-nested-fields-test
-  (testing "Make sure nested fields get resynced correctly if their parent field didnt' change"
+  (testing "Make sure nested fields get resynced correctly if their parent field didn't change"
     (mt/with-temp [:model/Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)

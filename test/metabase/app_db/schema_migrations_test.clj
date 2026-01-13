@@ -167,7 +167,7 @@
 
 (deftest ^:mb/old-migrations-test rollback-test
   (testing "Migrating to latest version, rolling back to v44, and then migrating up again"
-    ;; using test-migrations to excercise all drivers
+    ;; using test-migrations to exercise all drivers
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
       (let [get-last-id (fn []
                           (-> {:datasource (mdb/app-db)}
@@ -433,7 +433,7 @@
                         {:row 23 :col 0  :size_x 18 :size_y 2}
                         {:row 5  :col 0  :size_x 18 :size_y 2}
                         {:row 0  :col 0  :size_x 18 :size_y 2}
-                        ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
+                        ;; these 2 last cases is a special case where the last card has (width, height) = (1, 1)
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove these cards
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
@@ -2694,7 +2694,7 @@
       (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk"))))))
 
 (deftest ^:mb/old-migrations-test populate-embedding-origin-settings-works-2
-  (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
+  (testing "Check that embedding-origins settings are propagated when embedding-app-origin is set to some value"
     (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
       (t2/delete! :model/Setting :key "embedding-app-origin")
       (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})
@@ -2711,7 +2711,7 @@
           (migrate!)
           (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-interactive")))
           (is (= nil (t2/select-one :model/Setting :key "embedding-app-origins-sdk")))))
-      (testing "Check that embedding-origins settings are propigated when embedding-app-origin is set to some value"
+      (testing "Check that embedding-origins settings are propagated when embedding-app-origin is set to some value"
         (impl/test-migrations "v51.2024-09-26T03:04:00" [migrate!]
           (t2/delete! :model/Setting :key "embedding-app-origin")
           (t2/insert! :model/Setting {:key "embedding-app-origin" :value "1.2.3.4:5555"})

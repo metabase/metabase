@@ -12,7 +12,7 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]))
 
 (deftest ^:parallel mark-selected-columns-with-duplicate-names-test
-  (testing "Should be able to distinguish columns with the same name and differen join alias (#39033)"
+  (testing "Should be able to distinguish columns with the same name and different join alias (#39033)"
     (let [card1 (-> (lib.tu/mock-cards)
                     :orders/native
                     (update :result-metadata #(filterv (comp #{"ID" "PRODUCT_ID" "TOTAL"} :name) %)))

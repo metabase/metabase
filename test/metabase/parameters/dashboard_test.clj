@@ -161,7 +161,7 @@
                      (mt/id :orders)   {:perms/create-queries :no}
                      products-table-id {:perms/create-queries :no}}
                     (data-perms/disable-perms-cache
-                     ;; Mimicks the API endpoint (required):
+                     ;; Mimics the API endpoint (required):
                      (binding [qp.perms/*param-values-query* true]
                        (let [remapped-values (parameters.dashboard/dashboard-param-remapped-value dashboard (:id parameter) 1)]
 
@@ -173,7 +173,7 @@
                     :perms/view-data :blocked
                     (binding [api/*current-user-id* (mt/user->id :rasta)]
                       (data-perms/disable-perms-cache
-                       ;; Mimicks the API endpoint (required):
+                       ;; Mimics the API endpoint (required):
                        (binding [qp.perms/*param-values-query* true]
                          (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                                parameter (first (:parameters dashboard))]
@@ -212,7 +212,7 @@
                 (binding [api/*current-user-id* (mt/user->id :rasta)]
                   (let [dashboard (t2/select-one :model/Dashboard :id dashboard-id)
                         parameter (first (:parameters dashboard))]
-                  ;; Mimicks the API endpoint (required):
+                  ;; Mimics the API endpoint (required):
                     (binding [qp.perms/*param-values-query* true]
                     ;; Important to check all the mappings here because sometimes they match up by coincidence
                     ;; and pass even when the bug is still present.

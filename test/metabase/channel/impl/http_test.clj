@@ -160,7 +160,7 @@
           (is (= {:request-status 400
                   :request-body   "Bad request"}
                  (exception-data (can-connect?* get-302-redirect-400)))))
-        (testing "failed to conenct to a 400"
+        (testing "failed to connect to a 400"
           (is (= {:request-status 400
                   :request-body   "Bad request"}
                  (exception-data (can-connect?* get-400)))))
@@ -239,7 +239,7 @@
                                               :auth-info   {:token "WRONG_TOKEN"}}))))))))
 
 (deftest can-connect?-errors-test
-  (testing "throws an appriopriate errors if details are invalid"
+  (testing "throws an appropriate errors if details are invalid"
     (testing "invalid url"
       (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
              (exception-data (can-connect? {:url         "not-an-url"

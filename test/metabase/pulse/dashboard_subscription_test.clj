@@ -418,7 +418,7 @@
 (deftest virtual-card-heading-test
   (tests!
    {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
-   "Dashboard subscription that includes a virtual card. For heading cards we escape markdown, add a heading markdown, and don't subsitute tags."
+   "Dashboard subscription that includes a virtual card. For heading cards we escape markdown, add a heading markdown, and don't substitute tags."
    {:card (pulse.test-util/checkins-query-card {})
 
     :fixture
@@ -803,7 +803,7 @@
              (execute-dashboard (:id dashboard) (mt/user->id :rasta) (:parameters dashboard)))))))
 
 (deftest no-native-perms-test
-  (testing "A native query on a dashboard executes succesfully even if the subscription creator does not have native
+  (testing "A native query on a dashboard executes successfully even if the subscription creator does not have native
            query permissions (#28947)"
     (mt/with-full-data-perms-for-all-users!
       (mt/with-temp [:model/Dashboard {dashboard-id :id, :as dashboard} {:name "Dashboard"}
@@ -1245,7 +1245,7 @@
                                                    :dataset_query (mt/mbql-query orders
                                                                     {:aggregation [[:sum $orders.total]]
                                                                      :breakout [$orders.created_at]})}
-     :model/Card                {card-2 :id}      {:name          "Serie card"
+     :model/Card                {card-2 :id}      {:name          "Series card"
                                                    :display       "line"
                                                    :dataset_query (mt/mbql-query orders
                                                                     {:aggregation [[:sum $orders.subtotal]]

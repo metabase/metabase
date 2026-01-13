@@ -87,7 +87,7 @@
      :model/Collection coll {:name "A collection"}]
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (let [columns     (disj (set/difference (set (keys card)) @#'impl.card/excluded-columns-for-card-revision)
-                              ;; we only record result metadata for models, so we'll test that seperately
+                              ;; we only record result metadata for models, so we'll test that separately
                               :result_metadata)
             update-col  (fn [col value]
                           (cond

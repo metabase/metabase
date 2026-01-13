@@ -477,7 +477,7 @@
                         {:row 23 :col 0  :size_x 18 :size_y 2}
                         {:row 5  :col 0  :size_x 18 :size_y 2}
                         {:row 0  :col 0  :size_x 18 :size_y 2}
-                        ;; these 2 last cases is a specical case where the last card has (width, height) = (1, 1)
+                        ;; these 2 last cases is a special case where the last card has (width, height) = (1, 1)
                         ;; it's to test an edge case to make sure downgrade from 24 -> 18 does not remove this card
                         {:row 36 :col 0  :size_x 17 :size_y 1}
                         {:row 36 :col 17 :size_x 1  :size_y 1}]
@@ -489,7 +489,7 @@
                                                         :timestamp :%now}))]
 
       (migrate!)
-      (testing "forward migration migrate correclty"
+      (testing "forward migration migrate correctly"
         (is (= [{:row 15 :col 0  :size_x 16 :size_y 8}
                 {:row 7  :col 16 :size_x 8  :size_y 8}
                 {:row 2  :col 7  :size_x 6  :size_y 3}
@@ -532,7 +532,7 @@
                                                         :timestamp :%now}))]
 
       (migrate!)
-      (testing "forward migration migrate correclty and ignore failures"
+      (testing "forward migration migrate correctly and ignore failures"
         (is (= [{:id 1 :row 0 :col 0 :size_x 5 :size_y 4}
                 {:id 2 :row 0 :col 0 :size_x 5 :size_y 4}
                 {:id 3 :row 0 :col 0 :size_x 5 :size_y 4}
@@ -611,7 +611,7 @@
   (let [migrated-to-18   (map @#'custom-migrations/migrate-dashboard-grid-from-18-to-24 big-random-dashboard-cards)
         rollbacked-to-24 (map @#'custom-migrations/migrate-dashboard-grid-from-24-to-18 migrated-to-18)]
 
-    (testing "make sure the initial arry is good to start with"
+    (testing "make sure the initial array is good to start with"
       (is (true? (no-cards-are-out-of-grid-and-has-size-0? big-random-dashboard-cards 18)))
       (is (true? (no-cards-are-overlap? big-random-dashboard-cards))))
 

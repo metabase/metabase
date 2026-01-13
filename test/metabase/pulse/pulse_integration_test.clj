@@ -1,7 +1,7 @@
 (ns metabase.pulse.pulse-integration-test
   "Tests that demonstrate the full capability of static-viz as distributed via pulses.
 
-  These tests should build content then mock out distrubution by usual channels (e.g. email) and check the results of
+  These tests should build content then mock out distribution by usual channels (e.g. email) and check the results of
   the distributed content for correctness."
   (:require
    [clojure.data.csv :as csv]

@@ -45,7 +45,7 @@
 (deftest basic-record-event-test
   (mt/with-premium-features #{:audit-app}
     (mt/with-test-user :rasta
-      (testing "Test that `record-event!` succesfully records basic card events"
+      (testing "Test that `record-event!` successfully records basic card events"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create {:object card})
           ;; Not an exhaustive match since we're mainly testing that the event is recorded
@@ -57,7 +57,7 @@
                 :details  {:name "Test card"}}
                (t2/select-one :model/AuditLog :model_id card-id)))))
 
-      (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
+      (testing "Test that `record-event!` successfully records basic card events with the user, model, and model ID specified"
         (mt/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create
                                    {:object card
