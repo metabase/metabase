@@ -1,8 +1,9 @@
 import type { BaseQueryFn } from "@reduxjs/toolkit/query";
 import type { TypedUseLazyQuery } from "@reduxjs/toolkit/src/query/react/buildHooks";
 import type { ComponentType } from "react";
-import type React from "react";
+import React from "react";
 
+import type { MetabotContext } from "metabase/metabot";
 import { useMetabotSQLSuggestion } from "metabase/metabot/hooks";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type Question from "metabase-lib/v1/Question";
@@ -60,6 +61,9 @@ type PluginMetabotType = {
     hide?: boolean;
     config?: PluginMetabotConfig;
   }) => React.ReactElement | null;
+  defaultMetabotContextValue: MetabotContext;
+  MetabotContext: React.Context<MetabotContext>;
+  getMetabotProvider: () => ComponentType<{ children: React.ReactNode }>;
   getAdminPaths: () => AdminPath[];
   getAdminRoutes: () => React.ReactElement;
   getMetabotRoutes: () => React.ReactElement | null;
@@ -112,10 +116,31 @@ const getDefaultPluginAIEntityAnalysis = (): PluginAIEntityAnalysis => ({
 export const PLUGIN_AI_ENTITY_ANALYSIS: PluginAIEntityAnalysis =
   getDefaultPluginAIEntityAnalysis();
 
+const getDefaultMetabotContextValue = (): MetabotContext => ({
+  prompt: "",
+  setPrompt: () => {},
+  promptInputRef: undefined,
+  getChatContext: () => ({}) as any,
+  registerChatContextProvider: () => () => {},
+});
+
+const defaultMetabotContextValue: MetabotContext =
+  getDefaultMetabotContextValue();
+
 const getDefaultPluginMetabot = (): PluginMetabotType => ({
   isEnabled: () => false,
   Metabot: (_props: { hide?: boolean; config?: PluginMetabotConfig }) =>
     null as React.ReactElement | null,
+  defaultMetabotContextValue,
+  MetabotContext: React.createContext(defaultMetabotContextValue),
+  getMetabotProvider: () => {
+    return ({ children }) =>
+      React.createElement(
+        PLUGIN_METABOT.MetabotContext.Provider,
+        { value: PLUGIN_METABOT.defaultMetabotContextValue },
+        children,
+      );
+  },
   getAdminPaths: () => [],
   getAdminRoutes: () => PluginPlaceholder as unknown as React.ReactElement,
   getMetabotRoutes: () => null,

@@ -2,7 +2,7 @@
 import "./MetabotQuestion";
 
 import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
-import { MetabotProvider } from "metabase/metabot/context";
+import { MetabotProvider } from "metabase-enterprise/metabot/context";
 
 METABOT_SDK_EE_PLUGIN.MetabotProvider = MetabotProvider;
 
