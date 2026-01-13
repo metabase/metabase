@@ -278,7 +278,7 @@
     (let [existing-synced-ids (t2/select-pks-set :model/Collection :is_remote_synced true)]
       (try
         (when (seq existing-synced-ids)
-          (t2/update! :model/Collection {:is_remote_synced false} :id [:in existing-synced-ids]))
+          (t2/update! :model/Collection :id [:in existing-synced-ids] {:is_remote_synced false}))
         (mt/dataset test-data
           (mt/with-temporary-setting-values [remote-sync-type :read-write]
             (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})]
@@ -299,7 +299,7 @@
                       (is (= 0.3 (:progress (first @progress-calls)))))))))))
         (finally
           (when (seq existing-synced-ids)
-            (t2/update! :model/Collection {:is_remote_synced true} :id [:in existing-synced-ids])))))))
+            (t2/update! :model/Collection :id [:in existing-synced-ids] {:is_remote_synced true})))))))
 
 (deftest import!-resets-remote-sync-object-table-test
   (testing "import! deletes and recreates RemoteSyncObject table with synced status"
