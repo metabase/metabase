@@ -18,19 +18,19 @@
   (compojure/routes
    (GET "/sync" [] {:status 200 :headers {} :body "you got it sync"})
    (GET "/hold" []
-        (a/>!! hit-chan :hit)
-        (let [timeout (a/timeout 500)
-              [ch _val] (a/alts!! [hold-chan timeout])]
-          (if (= ch timeout)
-            (throw (ex-info "We timed out!" {}))
-            {:status 200 :headers {} :body "you got held"})))
+     (a/>!! hit-chan :hit)
+     (let [timeout (a/timeout 500)
+           [ch _val] (a/alts!! [hold-chan timeout])]
+       (if (= ch timeout)
+         (throw (ex-info "We timed out!" {}))
+         {:status 200 :headers {} :body "you got held"})))
    (GET "/async" []
-        (fn [_req respond _raise]
-          (respond {:status 200 :headers {} :body "you got it async"})))
+     (fn [_req respond _raise]
+       (respond {:status 200 :headers {} :body "you got it async"})))
    (GET "/blowup" []
-        (throw (ex-info "Kaboom. you get a 500" {})))
+     (throw (ex-info "Kaboom. you get a 500" {})))
    (GET "/reroute" []
-        {:status 301 :headers {"Location" "http://localhost:3000/app"} :body "go somewher else"})))
+     {:status 301 :headers {"Location" "http://localhost:3000/app"} :body "go somewher else"})))
 
 (defmacro with-server
   [[hold-chan hit-chan] f]
