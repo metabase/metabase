@@ -6,7 +6,9 @@
    [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.time Clock Instant ZoneId)))
 
 (set! *warn-on-reflection* true)
 
@@ -151,15 +153,16 @@
   (mt/with-model-cleanup [:model/TaskHistory]
     (testing "logs are captured on success"
       (let [task-name (mt/random-name)]
-        (task-history/with-task-history {:task task-name}
-          (log/info "info message")
-          (log/warn "warning message")
-          (log/error "error message"))
+        (binding [task-history/*log-capture-clock* (Clock/fixed (Instant/ofEpochMilli 1000) (ZoneId/of "UTC"))]
+          (task-history/with-task-history {:task task-name}
+            (log/info "info message")
+            (log/warn "warning message")
+            (log/error "error message")))
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :success status))
-          (is (= [{:level "info", :msg "info message"}
-                  {:level "warn", :msg "warning message"}
-                  {:level "error", :msg "error message"}]
+          (is (= [{:level "info", :msg "info message", :ts 1000}
+                  {:level "warn", :msg "warning message", :ts 1000}
+                  {:level "error", :msg "error message", :ts 1000}]
                  logs)))))
 
     (testing "logs are captured on failure"
@@ -170,7 +173,7 @@
             (throw (ex-info "Test failure" {:reason :test}))))
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :failed status))
-          (is (= [{:level "info", :msg "before exception"}] logs)))))
+          (is (=? [{:level "info", :msg "before exception", :ts int?}] logs)))))
 
     (testing "exception details are captured in logs"
       (let [task-name (mt/random-name)]
@@ -180,10 +183,10 @@
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :success status))
           (is (=? [{:level "error"
-                    :msg "error message"
-                    :ex {:type "class java.lang.Exception"
-                         :message "Test exception"
-                         :stacktrace (mt/malli=? vector?)}}]
+                    :msg   "error message"
+                    :ex    {:type       "class java.lang.Exception"
+                            :message    "Test exception"
+                            :stacktrace (mt/malli=? vector?)}}]
                   logs)))))
 
     (testing "task with no logs"

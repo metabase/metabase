@@ -13,7 +13,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import (java.time Clock)))
 
 (set! *warn-on-reflection* true)
 
@@ -147,12 +148,17 @@
                             info)]
     (t2/update! :model/TaskHistory th-id updated-info)))
 
+(def ^:dynamic ^Clock *log-capture-clock*
+  "The java.time.Clock used for captured log message `:ts` values. Can be overriden for tests."
+  (Clock/systemUTC))
+
 (defn- log-capture-entry [level msg ^Throwable e]
   ;; TODO: should we save ex-data
   ;;  - what about cause chains
   ;;  - security
   (cond->
    {:level level
+    :ts    (.millis *log-capture-clock*)
     :msg   msg}
     e (assoc :ex
              {:type       (class e)
