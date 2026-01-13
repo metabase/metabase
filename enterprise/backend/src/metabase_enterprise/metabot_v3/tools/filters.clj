@@ -162,13 +162,11 @@
                         lib/remove-all-breakouts)
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix metric-id)
         visible-cols (lib/visible-columns base-query)
+        resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
         ;; Separate segment filters from field filters before column resolution
-        segment-filters (filter :segment-id filters)
-        field-filters (remove :segment-id filters)
-        resolved-field-filters (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) field-filters)
-        all-filters (concat resolved-field-filters segment-filters)
+        resolved-filters (map #(if (:segment-id %) % (resolve-visible-column %)) filters)
         query (as-> base-query $q
-                (reduce add-filter $q all-filters)
+                (reduce add-filter $q resolved-filters)
                 (reduce add-breakout
                         $q
                         (map #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols) group-by)))
@@ -255,7 +253,7 @@
         base-query (lib/query mp (lib.metadata/card mp model-id))
         field-id-prefix (metabot-v3.tools.u/card-field-id-prefix model-id)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
+        resolve-visible-column #(metabot-v3.tools.u/resolve-column % field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
@@ -317,7 +315,7 @@
   [{:keys [fields filters aggregations group-by order-by limit] :as arguments}]
   (let [[filter-field-id-prefix base-query] (resolve-datasource arguments)
         visible-cols (lib/visible-columns base-query)
-        resolve-visible-column  #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
+        resolve-visible-column #(metabot-v3.tools.u/resolve-column % filter-field-id-prefix visible-cols)
         resolve-order-by-column (fn [{:keys [field direction]}] {:field (resolve-visible-column field) :direction direction})
         projection (map (comp (juxt filter-bucketed-column (fn [{:keys [column bucket]}]
                                                              (let [column (cond-> column
