@@ -92,12 +92,11 @@
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn- get-workspace-enabled-status
-  "Get the workspace enabled status for a database from its settings.
+  "Get the workspace enabled status for a database from its columns.
    Returns {:enabled true/false, :reason \"...\" (optional)}"
   [db]
-  (let [settings (:settings db)
-        enabled? (get settings :workspaces-enabled false)
-        cache    (get settings :workspace-permissions-cache)]
+  (let [enabled? (:workspaces_enabled db)
+        cache    (:workspace_permissions_status db)]
     (cond
       enabled?
       {:enabled true}
@@ -355,11 +354,11 @@
                                                             [:reason {:optional true} :string]]]]]
   "Get a list of databases that support workspaces, with their enablement status.
    A database is enabled if:
-   1. The workspace permission check has passed (cached in Database.settings)
-   2. The workspaces-enabled setting is true"
+   1. The workspace permission check has passed (cached in workspace_permissions_status column)
+   2. The workspaces_enabled column is true"
   [_url-params
    _query-params]
-  (let [databases (->> (t2/select [:model/Database :id :name :engine :settings]
+  (let [databases (->> (t2/select [:model/Database :id :name :engine :workspaces_enabled :workspace_permissions_status]
                                   :is_audit false :is_sample false {:order-by [:name]})
                        (filter #(driver.u/supports? (:engine %) :workspace %)))]
     {:databases (mapv (fn [db]

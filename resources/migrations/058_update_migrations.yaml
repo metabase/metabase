@@ -4902,6 +4902,57 @@ databaseChangeLog:
             tableName: workspace_transform
             columnName: last_run_status
 
+  - changeSet:
+      id: v58.2026-01-13T10:00:00
+      author: qnkhuat
+      comment: Add workspaces_enabled column to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: workspaces_enabled
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: workspaces_enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether workspaces are enabled for this database
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspaces_enabled
+
+  - changeSet:
+      id: v58.2026-01-13T10:00:01
+      author: qnkhuat
+      comment: Add workspace_permissions_status column to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: workspace_permissions_status
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: workspace_permissions_status
+                  type: ${text.type}
+                  remarks: Status of workspace isolation permission check (JSON)
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspace_permissions_status
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

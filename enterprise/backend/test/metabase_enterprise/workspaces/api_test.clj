@@ -1645,19 +1645,19 @@
 
 (deftest workspace-database-listing-test
   (testing "GET /api/ee/workspace/database"
-    (testing "databases with workspaces-enabled=true show as enabled"
+    (testing "databases with workspaces_enabled=true show as enabled"
       (mt/with-temp [:model/Database {db-enabled :id} {:name "DB Enabled"
                                                        :engine :h2
                                                        :is_audit false
                                                        :is_sample false
-                                                       :settings {:workspaces-enabled true
-                                                                  :workspace-permissions-cache {:status "ok" :checked_at "2025-01-01"}}}
+                                                       :workspaces_enabled true
+                                                       :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}}
                      :model/Database {db-disabled :id} {:name "DB Disabled"
                                                         :engine :h2
                                                         :is_audit false
                                                         :is_sample false
-                                                        :settings {:workspaces-enabled false
-                                                                   :workspace-permissions-cache {:status "ok" :checked_at "2025-01-01"}}}]
+                                                        :workspaces_enabled false
+                                                        :workspace_permissions_status {:status "ok" :checked_at "2025-01-01"}}]
         (let [response      (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               enabled-entry (m/find-first #(= (:id %) db-enabled) (:databases response))
               disabled-entry (m/find-first #(= (:id %) db-disabled) (:databases response))]
@@ -1669,7 +1669,7 @@
                                                       :engine :h2
                                                       :is_audit false
                                                       :is_sample false
-                                                      :settings {:workspace-permissions-cache {:status "failed" :error "permission denied" :checked_at "2025-01-01"}}}]
+                                                      :workspace_permissions_status {:status "failed" :error "permission denied" :checked_at "2025-01-01"}}]
         (let [response   (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               fail-entry (m/find-first #(= (:id %) db-failed) (:databases response))]
           (is (false? (:enabled fail-entry)))
@@ -1679,8 +1679,7 @@
       (mt/with-temp [:model/Database {db-uncached :id} {:name "DB Uncached"
                                                         :engine :h2
                                                         :is_audit false
-                                                        :is_sample false
-                                                        :settings nil}]
+                                                        :is_sample false}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/workspace/database")
               entry    (m/find-first #(= (:id %) db-uncached) (:databases response))]
           ;; Should not be enabled and should show reason

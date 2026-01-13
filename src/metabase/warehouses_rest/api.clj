@@ -1243,6 +1243,33 @@
                           "Database does not support workspaces")]
     (database/check-and-cache-workspace-permissions! db)))
 
+(api.macros/defendpoint :post "/:id/workspaces"
+  :- [:map
+      [:enabled :boolean]
+      [:permissions_status {:optional true}
+       [:map
+        [:status :string]
+        [:checked_at :string]
+        [:error {:optional true} :string]]]]
+  "Enable or disable workspaces for this database.
+   When enabling, runs the workspace isolation permissions check first.
+   Returns the new workspace status."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   {:keys [enabled]} :- [:map [:enabled :boolean]]]
+  (api/check-superuser)
+  (let [db (api/check-404 (t2/select-one :model/Database id))
+        _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
+                          "Database does not support workspaces")]
+    (if enabled
+      (let [result (database/check-and-cache-workspace-permissions! db)]
+        (when (= "ok" (:status result))
+          (t2/update! :model/Database id {:workspaces_enabled true}))
+        {:enabled (= "ok" (:status result)) :permissions_status result})
+      (do
+        (t2/update! :model/Database id {:workspaces_enabled false})
+        {:enabled false}))))
+
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
 (defenterprise current-user-can-manage-schema-metadata?
