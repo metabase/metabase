@@ -5,7 +5,6 @@ import type { IconName } from "metabase/ui";
 import type {
   Collection,
   CollectionId,
-  RemoteSyncEntity,
   RemoteSyncEntityModel,
   RemoteSyncEntityStatus,
 } from "metabase-types/api";
@@ -182,30 +181,14 @@ export const getCollectionPathSegments = (
 /**
  * Models that are children of tables (get their collection from a parent table)
  */
-const TABLE_CHILD_MODELS: RemoteSyncEntityModel[] = ["field", "segment"];
+const TABLE_CHILD_MODELS: Set<RemoteSyncEntityModel> = new Set([
+  "field",
+  "segment",
+]);
 
 /**
  * Check if a model type is a child of a table (field or segment)
  */
-export const isTableChildModel = (
-  model: RemoteSyncEntityModel,
-): model is "field" | "segment" => {
-  return TABLE_CHILD_MODELS.includes(model);
-};
-
-export type TableInfo = {
-  id: number;
-  name: string;
-};
-
-/**
- * Get parent table info from an entity if it's a table child model
- */
-export const getParentTableInfo = (
-  entity: RemoteSyncEntity,
-): TableInfo | null => {
-  if (isTableChildModel(entity.model) && entity.table_id && entity.table_name) {
-    return { id: entity.table_id, name: entity.table_name };
-  }
-  return null;
+export const isTableChildModel = (model: RemoteSyncEntityModel): boolean => {
+  return TABLE_CHILD_MODELS.has(model);
 };

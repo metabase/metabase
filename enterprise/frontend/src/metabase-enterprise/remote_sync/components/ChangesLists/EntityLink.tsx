@@ -1,32 +1,20 @@
 import { useMemo } from "react";
 
-import { type IconModel, getIcon } from "metabase/lib/icon";
+import { type IconData, type IconModel, getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
-import type { IconName } from "metabase/ui";
 import { Anchor, Group, Icon } from "metabase/ui";
-import type {
-  RemoteSyncEntity,
-  RemoteSyncEntityModel,
-} from "metabase-types/api";
+import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";
 
 import S from "./EntityLink.module.css";
-
-/**
- * Map of sync entity models to their icon names.
- * Used for models not covered by the standard getIcon function.
- */
-const SYNC_ENTITY_ICON_MAP: Partial<Record<RemoteSyncEntityModel, IconName>> = {
-  field: "field",
-};
 
 interface EntityLinkProps {
   entity: RemoteSyncEntity;
 }
 
 export const EntityLink = ({ entity }: EntityLinkProps) => {
-  const entityIcon = useMemo(() => {
+  const entityIcon = useMemo((): IconData => {
     if (entity.model === "field") {
       return { name: "field" };
     }

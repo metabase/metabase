@@ -39,7 +39,7 @@ export const setupRemoteSyncBranchesEndpoint = (
 /**
  * Setup the remote-sync current-task endpoint
  */
-export const setupRemoteSyncCurrentTaskEndpoint = (
+const setupRemoteSyncCurrentTaskEndpoint = (
   status: "idle" | "running" | "completed" = "idle",
 ) => {
   fetchMock.removeRoute("remote-sync-current-task");
@@ -67,6 +67,5 @@ export const setupRemoteSyncEndpoints = ({
   setupRemoteSyncCurrentTaskEndpoint("idle");
   fetchMock.post("path:/api/ee/remote-sync/import", {});
   fetchMock.post("path:/api/ee/remote-sync/create-branch", {});
-  fetchMock.get("path:/api/ee/remote-sync/current-task", { status: "idle" });
   fetchMock.put("path:/api/ee/remote-sync/settings", { success: true });
 };

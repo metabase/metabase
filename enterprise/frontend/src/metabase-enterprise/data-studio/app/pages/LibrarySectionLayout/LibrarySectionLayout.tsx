@@ -77,23 +77,32 @@ export function LibrarySectionLayout() {
     useSetting("remote-sync-enabled"),
   );
 
-  const libraryCollection = collections.find(isLibraryCollection);
+  const libraryCollection = useMemo(
+    () => collections.find(isLibraryCollection),
+    [collections],
+  );
 
-  const tableCollection =
-    libraryCollection &&
-    getAccessibleCollection(
-      libraryCollection,
-      "library-data",
-      isInstanceRemoteSyncEnabled,
-    );
+  const tableCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(
+        libraryCollection,
+        "library-data",
+        isInstanceRemoteSyncEnabled,
+      ),
+    [libraryCollection, isInstanceRemoteSyncEnabled],
+  );
 
-  const metricCollection =
-    libraryCollection &&
-    getAccessibleCollection(
-      libraryCollection,
-      "library-metrics",
-      isInstanceRemoteSyncEnabled,
-    );
+  const metricCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(
+        libraryCollection,
+        "library-metrics",
+        isInstanceRemoteSyncEnabled,
+      ),
+    [libraryCollection, isInstanceRemoteSyncEnabled],
+  );
 
   const handleItemSelect = useCallback(
     (item: TreeItem) => {
@@ -132,8 +141,10 @@ export function LibrarySectionLayout() {
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);
 
-  const libraryHasContent = combinedTree.some(
-    (node) => node.children && node.children.length > 0,
+  const libraryHasContent = useMemo(
+    () =>
+      combinedTree.some((node) => node.children && node.children.length > 0),
+    [combinedTree],
   );
 
   const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(

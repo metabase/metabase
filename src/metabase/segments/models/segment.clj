@@ -136,12 +136,6 @@
      :id
      {:default false})))
 
-(t2/define-before-update :model/Segment [segment]
-  ;; throw an Exception if someone tries to update creator_id
-  (when (contains? (t2/changes segment) :creator_id)
-    (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment."))))
-  segment)
-
 (defn- migrated-segment-definition
   [{:keys [definition], table-id :table_id}]
   (let [database-id (t2/select-one-fn :db_id :model/Table :id table-id)]

@@ -115,10 +115,9 @@ export function SearchNew({
   });
   const { data: databases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
-  const { isExpanded: getIsExpanded, toggle } = useExpandedState(
-    {
-      defaultExpanded: true,
-    },
+  const { isExpanded, toggle } = useExpandedState(
+    {},
+    { defaultExpanded: true },
   );
 
   const allowedDatabaseIds = useMemo(

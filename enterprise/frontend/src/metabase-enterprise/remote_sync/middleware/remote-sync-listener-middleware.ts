@@ -345,7 +345,6 @@ remoteSyncListenerMiddleware.startListening({
   matcher: isAnyOf(
     segmentApi.endpoints.createSegment.matchFulfilled,
     segmentApi.endpoints.updateSegment.matchFulfilled,
-    segmentApi.endpoints.deleteSegment.matchFulfilled,
   ),
   effect: async (_action, { dispatch }) => {
     invalidateRemoteSyncTags(dispatch);
