@@ -1,5 +1,6 @@
 (ns metabase.task-history.models.task-history
   (:require
+   [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
@@ -145,7 +146,18 @@
                             info)]
     (t2/update! :model/TaskHistory th-id updated-info)))
 
-(defn- log-capture-factory [base-factory log-atom]
+(defn- log-capture-entry [level msg ^Throwable e]
+  ;; TODO: should we save ex-data
+  ;;  - what about cause chains
+  ;;  - security
+  {:level level
+   :msg   msg
+   :ex    (when e
+            {:type       (class e)
+             :message    (.getMessage e)
+             :stacktrace (u/filtered-stacktrace e)})})
+
+(defn- log-capture-factory [base-factory logs-atom]
   (reify log.impl/LoggerFactory
     (name [_] "metabase.task_history")
     (get-logger [_ logger-ns]
@@ -153,7 +165,7 @@
         (reify log.impl/Logger
           (enabled? [_ level] (log.impl/enabled? base-logger level))
           (write! [_ level ex msg]
-            (swap! log-atom conj {:level level, :msg msg, :ex ex})
+            (swap! logs-atom conj (log-capture-entry level msg ex))
             (log.impl/write! base-logger level ex msg)))))))
 
 (mu/defn do-with-task-history
@@ -167,23 +179,27 @@
                                                  (cond-> (assoc info
                                                                 :status     :started
                                                                 :started_at (t/instant))
-                                                   task-run/*run-id* (assoc :run_id task-run/*run-id*)))]
-    (try
-      (u/prog1 (f)
-        (update-task-history! th-id start-time-ns (on-success-info {:status       :success
-                                                                    :task_details (:task_details info)}
-                                                                   <>)))
-      (catch Throwable e
-        (update-task-history! th-id start-time-ns
-                              (on-fail-info {:task_details {:status        :failed
-                                                            :exception     (class e)
-                                                            :message       (.getMessage e)
-                                                            :stacktrace    (u/filtered-stacktrace e)
-                                                            :ex-data       (ex-data e)
-                                                            :original-info (:task_details info)}
-                                             :status       :failed}
-                                            e))
-        (throw e)))))
+                                                   task-run/*run-id* (assoc :run_id task-run/*run-id*)))
+        logs-atom       (atom [])]
+    (binding [log/*logger-factory* (log-capture-factory log/*logger-factory* logs-atom)]
+      (try
+        (u/prog1 (f)
+          (update-task-history! th-id start-time-ns (on-success-info {:status       :success
+                                                                      :task_details (:task_details info)
+                                                                      :logs         (json/encode @logs-atom)}
+                                                                     <>)))
+        (catch Throwable e
+          (update-task-history! th-id start-time-ns
+                                (on-fail-info {:task_details {:status        :failed
+                                                              :exception     (class e)
+                                                              :message       (.getMessage e)
+                                                              :stacktrace    (u/filtered-stacktrace e)
+                                                              :ex-data       (ex-data e)
+                                                              :original-info (:task_details info)
+                                                              :logs          (json/encode @logs-atom)}
+                                               :status       :failed}
+                                              e))
+          (throw e))))))
 
 (defmacro with-task-history
   "Record a TaskHistory before executing the body, updating TaskHistory accordingly when the body completes.
