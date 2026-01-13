@@ -94,19 +94,24 @@
   "Wrap a root flow to group all tasks under a single run.
    `run-info` should contain :run_type, :entity_type, :entity_id.
 
+   If `run-info` is nil or already inside a task run, just executes body without
+   creating a new task run (prevents nesting).
+
    For async flows (e.g., async notifications), use :auto-complete false and
-   call [[complete-task-run!]] manually when all async work is done. "
+   call [[complete-task-run!]] manually when all async work is done."
   {:style/indent 1}
   [run-info & body]
-  `(let [info#          ~run-info
-         auto-complete# (get info# :auto-complete true)
-         run-id#        (create-task-run! info#)]
-     (if auto-complete#
-       (try
+  `(if (or *run-id* (nil? ~run-info))
+     (do ~@body)
+     (let [info#          ~run-info
+           auto-complete# (get info# :auto-complete true)
+           run-id#        (create-task-run! info#)]
+       (if auto-complete#
+         (try
+           (binding [*run-id* run-id#]
+             ~@body)
+           (finally
+             (complete-task-run! run-id#)))
+         ;; Async: caller is responsible for calling complete-task-run!
          (binding [*run-id* run-id#]
-           ~@body)
-         (finally
-           (complete-task-run! run-id#)))
-       ;; Async: caller is responsible for calling complete-task-run!
-       (binding [*run-id* run-id#]
-         ~@body))))
+           ~@body)))))
