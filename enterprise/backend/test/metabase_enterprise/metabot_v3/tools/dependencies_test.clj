@@ -52,12 +52,17 @@
               result (metabot.dependencies/check-transform-dependencies
                       {:id transform1-id
                        :source modified-source})]
-          (is (false? (get-in result [:structured_output :success])))
-          (is (= 1 (get-in result [:structured_output :bad_transform_count])))
-          (let [bad-transforms (get-in result [:structured_output :bad_transforms])]
-            (is (= 1 (count bad-transforms)))
-            (is (= transform2-id (get-in (first bad-transforms) [:transform :id])))
-            (is (= "Transform 2" (get-in (first bad-transforms) [:transform :name])))))))))
+          (is (=? {:structured_output
+                   {:success false
+                    :bad_transform_count 1
+                    :bad_transforms [{:transform {:id transform2-id
+                                                  :name "Transform 2"}}]}}
+                  result))
+          ;; Verify the error is about the missing TOTAL column (case-insensitive check)
+          (let [errors (-> result :structured_output :bad_transforms first :errors)]
+            (is (= 1 (count errors)))
+            (is (= :validate/missing-column (:type (first errors))))
+            (is (re-matches #"(?i)total" (:name (first errors))))))))))
 
 (deftest check-transform-dependencies-limit-test
   (testing "max-reported-broken-transforms limit"

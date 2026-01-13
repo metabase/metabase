@@ -92,30 +92,58 @@
 
     @by-db))
 
+(mu/defn- baseline-provider :- ::lib.schema.metadata/metadata-provider
+  "Creates a metadata provider for baseline checking.
+
+  For transforms being edited, we need to create an OverridingMetadataProvider with the original (unmodified)
+  transforms to properly compute output table columns via `setup-transforms!`. Without this,
+  the raw base-provider won't have proper column information for transform output tables.
+
+  Takes the `edits` map to determine which transforms were originally edited, since those are the ones
+  whose output tables need proper column setup for baseline validation."
+  [base-provider :- ::lib.schema.metadata/metadata-provider
+   edits         :- ::updates-map]
+  (let [edited-transform-ids (keep :id (:transform edits))]
+    (if (seq edited-transform-ids)
+      ;; Create an overriding provider with original transforms to trigger setup-transforms!
+      (let [original-transforms (for [id edited-transform-ids
+                                      :let [t (lib.metadata/transform base-provider id)]
+                                      :when t]
+                                  t)]
+        (deps.provider/override-metadata-provider
+         base-provider
+         {:transform original-transforms}
+         {}))  ; Empty dependents - we just need transform setup
+      base-provider)))
+
 (mu/defn- diff-with-baseline :- ::errors-map
   "Given proposed errors and a base metadata provider, computes which errors are NEW.
 
   For each entity with proposed errors, checks what errors existed in the baseline (unmodified) state.
-  Returns only errors that are new (not present in baseline)."
+  Returns only errors that are new (not present in baseline).
+
+  Takes `edits` to properly set up the baseline provider with original transforms."
   [base-provider   :- ::lib.schema.metadata/metadata-provider
+   edits           :- ::updates-map
    proposed-errors :- ::errors-map]
-  (reduce-kv
-   (fn [result entity-type entity-errors]
-     (let [new-entity-errors
-           (reduce-kv
-            (fn [acc entity-id errors]
-              (let [baseline (deps.analysis/check-entity base-provider entity-type entity-id)
-                    new-errors (set/difference errors baseline)]
-                (if (seq new-errors)
-                  (assoc acc entity-id new-errors)
-                  acc)))
-            {}
-            entity-errors)]
-       (if (seq new-entity-errors)
-         (assoc result entity-type new-entity-errors)
-         result)))
-   {}
-   proposed-errors))
+  (let [baseline-mp (baseline-provider base-provider edits)]
+    (reduce-kv
+     (fn [result entity-type entity-errors]
+       (let [new-entity-errors
+             (reduce-kv
+              (fn [acc entity-id errors]
+                (let [baseline (deps.analysis/check-entity baseline-mp entity-type entity-id)
+                      new-errors (set/difference errors baseline)]
+                  (if (seq new-errors)
+                    (assoc acc entity-id new-errors)
+                    acc)))
+              {}
+              entity-errors)]
+         (if (seq new-entity-errors)
+           (assoc result entity-type new-entity-errors)
+           result)))
+     {}
+     proposed-errors)))
 
 (mu/defn errors-from-proposed-edits :- ::errors-map
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
@@ -138,7 +166,7 @@
                                          check-query-soundness)
                      ;; Clear the cache before baseline check to avoid pollution from the proposed check.
                      _ (lib.metadata.protocols/clear-cache! base-provider)
-                     new-errors (diff-with-baseline base-provider proposed-errors)]
+                     new-errors (diff-with-baseline base-provider edits proposed-errors)]
                  (merge errors new-errors)))
              {} by-db)))
 
@@ -156,7 +184,7 @@
      ;; The overriding provider delegates cache operations to base-provider, so cached values
      ;; from the proposed check could affect the baseline check.
      (lib.metadata.protocols/clear-cache! base-provider)
-     (diff-with-baseline base-provider proposed-errors))))
+     (diff-with-baseline base-provider edits proposed-errors))))
 
 (mu/defn downstream-errors-from-proposed-edits :- ::errors-map
   "Like [[errors-from-proposed-edits]], but excludes errors for the entity being edited.

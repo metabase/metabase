@@ -6,6 +6,7 @@
    ;; TODO (Cam 10/1/25) -- Isn't having drivers use Macaw directly against the spirt of all the work we did to make a
    ;; Driver API namespace?
    [macaw.core :as macaw]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
@@ -215,14 +216,24 @@
 
 (defmethod resolve-field :all-columns
   [driver metadata-provider col-spec]
-  (or (some->> (:table col-spec)
-               (find-table-or-transform driver (driver-api/tables metadata-provider) (driver-api/transforms metadata-provider))
-               :table
-               (driver-api/active-fields metadata-provider)
-               (map #(-> (assoc % :lib/desired-column-alias (:name %))
-                         sql.references/wrap-col)))
-      [{:error (driver-api/missing-table-alias-error
-                (sql.references/table-name (:table col-spec)))}]))
+  (let [norm-spec (some->> (:table col-spec) (normalize-table-spec driver))
+        ;; Normalize table/transform names in metadata for case-insensitive matching.
+        ;; SQL parsers may return uppercase names (e.g., H2) while metadata may have lowercase.
+        normalize-table (fn [t]
+                          (-> t
+                              (update :name #(sql.normalize/normalize-name driver %))
+                              (m/update-existing :schema #(some->> % (sql.normalize/normalize-name driver)))))
+        normalize-transform #(m/update-existing % :target normalize-table)
+        tables (map normalize-table (driver-api/tables metadata-provider))
+        transforms (map normalize-transform (driver-api/transforms metadata-provider))
+        found (find-table-or-transform driver tables transforms norm-spec)]
+    (or (some->> found
+                 :table
+                 (driver-api/active-fields metadata-provider)
+                 (map #(-> (assoc % :lib/desired-column-alias (:name %))
+                           sql.references/wrap-col)))
+        [{:error (driver-api/missing-table-alias-error
+                  (sql.references/table-name (:table col-spec)))}])))
 
 (defmethod resolve-field :single-column
   [driver metadata-provider {:keys [alias] :as col-spec}]
