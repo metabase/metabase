@@ -85,8 +85,6 @@ export interface WorkspaceContextValue {
   hasTransformEdits: (
     originalTransform: Transform | WorkspaceTransform,
   ) => boolean;
-  isWorkspaceExecuting: boolean;
-  setIsWorkspaceExecuting: (value: boolean) => void;
   unsavedTransforms: Transform[];
   addUnsavedTransform: (transform: Transform) => void;
   removeUnsavedTransform: (transformId: number) => void;
@@ -131,8 +129,6 @@ export const WorkspaceProvider = ({
   const [workspaceStates, setWorkspaceStates] = useState<
     Map<number, WorkspaceState>
   >(new Map());
-  const [isWorkspaceExecuting, setIsWorkspaceExecuting] = useState(false);
-
   const currentState = useMemo(() => {
     const existing = workspaceStates.get(workspaceId);
     if (existing) {
@@ -688,8 +684,6 @@ export const WorkspaceProvider = ({
       updateTab,
       hasUnsavedChanges,
       hasTransformEdits,
-      isWorkspaceExecuting,
-      setIsWorkspaceExecuting,
       unsavedTransforms: currentState.unsavedTransforms,
       addUnsavedTransform,
       removeUnsavedTransform,
@@ -718,7 +712,6 @@ export const WorkspaceProvider = ({
       updateTab,
       hasUnsavedChanges,
       hasTransformEdits,
-      isWorkspaceExecuting,
       addUnsavedTransform,
       removeUnsavedTransform,
     ],

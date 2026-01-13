@@ -131,7 +131,6 @@ function WorkspacePageContent({
     addOpenedTransform,
     patchEditedTransform,
     hasUnsavedChanges,
-    setIsWorkspaceExecuting,
     unsavedTransforms,
   } = useWorkspace();
 
@@ -618,7 +617,6 @@ function WorkspacePageContent({
               hasUnsavedChanges ||
               workspaceTransforms.length === 0
             }
-            onExecute={() => setIsWorkspaceExecuting(true)}
           />
           <Button
             variant="filled"

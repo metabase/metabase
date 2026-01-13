@@ -972,14 +972,22 @@ describe("scenarios > data studio > workspaces", () => {
       });
 
       Workspaces.openDataTab();
-      Workspaces.getWorkspaceSidebar().findByText(`${TARGET_SCHEMA}.${SOURCE_TABLE}`).should("be.visible");
-      Workspaces.getWorkspaceSidebar().findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).as("outputTable").should("be.visible").realHover();
-      cy.root().findByText("Run transform to see the results").should("be.visible");
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${SOURCE_TABLE}`)
+        .should("be.visible");
+      Workspaces.getWorkspaceSidebar()
+        .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
+        .as("outputTable")
+        .should("be.visible")
+        .realHover();
+      cy.root()
+        .findByText("Run transform to see the results")
+        .should("be.visible");
 
       cy.get("@outputTable").realHover().click();
 
       Workspaces.getWorkspaceContent().within(() => {
-      cy.findByText("Loading...").should("be.visible");
+        cy.findByText("Loading...").should("be.visible");
         H.assertTableData({
           columns: ["Name", "Score"],
           firstRows: [["Duck", "10"]],
@@ -994,8 +1002,11 @@ describe("scenarios > data studio > workspaces", () => {
         ]);
       });
 
-
-      Workspaces.getWorkspaceSidebar().findByLabelText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`).findByLabelText("Open transform").as("transformLink").realHover();
+      Workspaces.getWorkspaceSidebar()
+        .findByLabelText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
+        .findByLabelText("Open transform")
+        .as("transformLink")
+        .realHover();
       cy.root().findByText("Open transform").should("be.visible");
       cy.get("@transformLink").click();
 
@@ -1099,11 +1110,11 @@ describe("scenarios > data studio > workspaces", () => {
         "data-loading",
         "true",
       );
-
       Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",
       );
+      verifyAndCloseToast("Transforms ran successfully");
 
       Workspaces.getWorkspaceContent()
         .findByText("Last ran a few seconds ago successfully.")
@@ -1170,11 +1181,11 @@ describe("scenarios > data studio > workspaces", () => {
         "data-loading",
         "true",
       );
-
       Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",
       );
+      verifyAndCloseToast("Transforms ran successfully");
 
       cy.findByRole("tab", { name: "SQL transform" }).click();
 
