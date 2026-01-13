@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useGenerateSqlMutation } from "metabase/api";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import type { DatabaseId } from "metabase-types/api";
 
 export function useMetabotSQLSuggestion(
@@ -61,6 +62,8 @@ export function useMetabotSQLSuggestion(
     // no-op for OSS - upgrade to enterprise if you want the agent to be smarter after rejecting an edit!
   }, []);
 
+  const suggestionModels: SuggestionModel[] = useMemo(() => ["table"], []);
+
   return {
     source,
     isLoading,
@@ -70,5 +73,6 @@ export function useMetabotSQLSuggestion(
     clear,
     reject,
     reset,
+    suggestionModels,
   };
 }

@@ -1,7 +1,8 @@
 import { isFulfilled, isRejected } from "@reduxjs/toolkit";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import {
   useMetabotDispatch,
   useMetabotSelector,
@@ -84,6 +85,11 @@ export function useMetabotSQLSuggestion(
     dispatch(resetConversation({ agentId: "sql" }));
   }, [dispatch, bufferId]);
 
+  const suggestionModels: SuggestionModel[] = useMemo(
+    () => ["dataset", "card", "table"],
+    [],
+  );
+
   return {
     source,
     isLoading: isDoingScience,
@@ -93,5 +99,6 @@ export function useMetabotSQLSuggestion(
     clear,
     reject,
     reset,
+    suggestionModels,
   };
 }

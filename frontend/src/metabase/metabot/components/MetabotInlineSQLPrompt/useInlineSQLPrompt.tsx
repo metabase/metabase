@@ -85,6 +85,7 @@ export function useInlineSQLPrompt(
     clear: clearSuggestion,
     reset: resetSuggestionState,
     reject,
+    suggestionModels,
   } = PLUGIN_METABOT.useMetabotSQLSuggestion(databaseId, bufferId);
 
   const hideInput = useCallback(() => {
@@ -202,6 +203,7 @@ export function useInlineSQLPrompt(
               error={error}
               generate={generate}
               cancelRequest={cancelRequest}
+              suggestionModels={suggestionModels}
             />,
             portalTarget.container,
           )

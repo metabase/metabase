@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -16,6 +17,7 @@ interface MetabotInlineSQLPromptProps {
   error: string | undefined;
   generate: (value: string) => Promise<void>;
   cancelRequest: () => void;
+  suggestionModels: SuggestionModel[];
 }
 
 export const MetabotInlineSQLPrompt = ({
@@ -25,6 +27,7 @@ export const MetabotInlineSQLPrompt = ({
   error,
   generate,
   cancelRequest,
+  suggestionModels,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
@@ -72,13 +75,7 @@ export const MetabotInlineSQLPrompt = ({
           onChange={setValue}
           onStop={handleClose}
           suggestionConfig={{
-            suggestionModels: [
-              "dataset",
-              "metric",
-              "card",
-              "table",
-              "database",
-            ],
+            suggestionModels,
             searchOptions: databaseId ? { table_db_id: databaseId } : undefined,
           }}
         />

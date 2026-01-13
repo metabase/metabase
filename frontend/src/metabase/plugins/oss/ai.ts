@@ -6,6 +6,7 @@ import React from "react";
 import type { MetabotContext } from "metabase/metabot";
 import { useMetabotSQLSuggestion } from "metabase/metabot/hooks";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensions/shared/types";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CollectionId,
@@ -97,6 +98,7 @@ type PluginMetabotType = {
     clear: () => void;
     reject: () => void;
     reset: () => void;
+    suggestionModels: SuggestionModel[];
   };
 };
 
