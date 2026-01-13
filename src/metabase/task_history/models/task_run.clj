@@ -1,6 +1,7 @@
 (ns metabase.task-history.models.task-run
   "Model for TaskRun - groups related tasks from a single operation (subscription, alert, sync, fingerprint)."
   (:require
+   [clojure.tools.logging.impl :as log.impl]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -89,6 +90,17 @@
     (t2/update! :model/TaskRun run-id
                 {:status   status
                  :ended_at (t/instant)})))
+
+(defn- log-capture-factory [base-factory log-atom]
+  (reify log.impl/LoggerFactory
+    (name [_] "metabase.task_history")
+    (get-logger [_ logger-ns]
+      (let [base-logger (log.impl/get-logger base-factory logger-ns)]
+        (reify log.impl/Logger
+          (enabled? [_ level] (log.impl/enabled? base-logger level))
+          (write! [_ level ex msg]
+            (swap! log-atom conj {:level level, :msg msg, :ex ex})
+            (log.impl/write! base-logger level ex msg)))))))
 
 (defmacro with-task-run
   "Wrap a root flow to group all tasks under a single run.
