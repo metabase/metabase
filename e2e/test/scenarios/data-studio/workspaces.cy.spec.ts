@@ -50,20 +50,7 @@ describe("scenarios > data studio > workspaces", () => {
     );
     cy.intercept("POST", "/api/ee/workspace/*/run").as("runTransforms");
     cy.intercept("POST", "/api/dataset").as("dataset");
-    // cy.intercept("PUT", "/api/field/*").as("updateField");
-    // cy.intercept("PUT", "/api/ee/transform/*").as("updateTransform");
-    // cy.intercept("DELETE", "/api/ee/transform/*").as("deleteTransform");
-    // cy.intercept("DELETE", "/api/ee/transform/*/table").as(
-    //   "deleteTransformTable",
-    // );
-    // cy.intercept("POST", "/api/ee/transform-tag").as("createTag");
-    // cy.intercept("PUT", "/api/ee/transform-tag/*").as("updateTag");
-    // cy.intercept("DELETE", "/api/ee/transform-tag/*").as("deleteTag");
   });
-
-  // afterEach(() => {
-  //   H.expectNoBadSnowplowEvents();
-  // });
 
   describe("should be able to create, navigate, archive, unarchive, rename, and delete workspaces", () => {
     it("creates, navigates, archives, renames and deletes workspaces", () => {
@@ -162,6 +149,39 @@ describe("scenarios > data studio > workspaces", () => {
           Workspaces.getWorkspaceItem("Renamed workspace").should("be.visible");
         });
       });
+    });
+
+    it("shows unsaved changes warning", () => {
+      createTransforms({ visit: false });
+      Workspaces.visitWorkspaces();
+      createWorkspace();
+
+      Workspaces.getMainlandTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(" LIMIT 2");
+
+      cy.log("try to navigate away with unsaved changes - cancel navigation");
+      DataStudio.nav().findByText("Glossary").click();
+      H.modal().findByText("Discard your changes?").should("be.visible");
+      H.modal().button("Cancel").click();
+
+      Workspaces.getSaveTransformButton().click();
+      Workspaces.getSaveTransformButton().should("be.disabled");
+
+      cy.log("try to navigate away without unsaved changes");
+      DataStudio.nav().findByText("Glossary").click();
+      H.modal().should("not.exist");
+      cy.location("pathname").should("eq", "/data-studio/glossary");
+      cy.go("back");
+
+      Workspaces.getWorkspaceTransforms().findByText("SQL transform").click();
+      H.NativeEditor.type(";");
+
+      cy.log("try to navigate away with unsaved changes - discard changes");
+      DataStudio.nav().findByText("Glossary").click();
+      H.modal().findByText("Discard your changes?").should("be.visible");
+      H.modal().button("Discard changes").click();
+      H.modal().should("not.exist");
+      cy.location("pathname").should("eq", "/data-studio/glossary");
     });
 
     it("preserves workspace tabs state", () => {
@@ -1256,7 +1276,10 @@ describe("scenarios > data studio > workspaces", () => {
         verifyAndCloseToast("Workspace archived successfully");
 
         // Verify it's archived
-        Workspaces.getWorkspaceItem(workspaceName).should("contain.text", "Archived");
+        Workspaces.getWorkspaceItem(workspaceName).should(
+          "contain.text",
+          "Archived",
+        );
 
         // Delete the archived workspace
         Workspaces.getWorkspaceItemActions(workspaceName).click();

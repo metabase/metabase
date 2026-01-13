@@ -81,7 +81,7 @@ export interface WorkspaceContextValue {
   runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
   updateTab: <T extends WorkspaceTab>(tabId: string, patch: Partial<T>) => void;
-  hasUnsavedChanges: () => boolean;
+  hasUnsavedChanges: boolean;
   hasTransformEdits: (
     originalTransform: Transform | WorkspaceTransform,
   ) => boolean;
@@ -495,12 +495,9 @@ export const WorkspaceProvider = ({
     [updateWorkspaceState],
   );
 
-  const hasUnsavedChanges = useCallback(() => {
-    return (
-      currentState.editedTransforms.size > 0 ||
-      currentState.unsavedTransforms.length > 0
-    );
-  }, [currentState.editedTransforms, currentState.unsavedTransforms]);
+  const hasUnsavedChanges =
+    currentState.editedTransforms.size > 0 ||
+    currentState.unsavedTransforms.length > 0;
 
   const hasTransformEdits = useCallback(
     (originalTransform: Transform | WorkspaceTransform) => {

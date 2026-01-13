@@ -12,12 +12,14 @@ import {
 import classNames from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ResizableBox } from "react-resizable";
+import type { Route } from "react-router";
 import { push, replace } from "react-router-redux";
 import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { Sortable } from "metabase/common/components/Sortable";
 import { useDispatch } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
@@ -89,6 +91,7 @@ type WorkspacePageProps = {
   params: {
     workspaceId: string;
   };
+  route: Route;
   transformId?: string;
 };
 
@@ -102,7 +105,11 @@ type MetabotConversationSnapshot = Pick<
   | "conversationId"
 > & { suggestedTransforms: MetabotSuggestedTransform[] };
 
-function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
+function WorkspacePageContent({
+  params,
+  route,
+  transformId,
+}: WorkspacePageProps) {
   const dispatch = useDispatch();
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const pointerSensor = useSensor(PointerSensor, {
@@ -608,7 +615,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             workspaceId={id}
             disabled={
               isArchived ||
-              hasUnsavedChanges() ||
+              hasUnsavedChanges ||
               workspaceTransforms.length === 0
             }
             onExecute={() => setIsWorkspaceExecuting(true)}
@@ -619,7 +626,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
             loading={isMerging}
             disabled={
               isArchived ||
-              hasUnsavedChanges() ||
+              hasUnsavedChanges ||
               workspaceTransforms.length === 0
             }
             size="xs"
@@ -925,11 +932,13 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
           workspaceTransforms={workspaceTransforms}
         />
       )}
+
+      <LeaveRouteConfirmModal isEnabled={hasUnsavedChanges} route={route} />
     </Stack>
   );
 }
 
-export const WorkspacePage = ({ params }: WorkspacePageProps) => {
+export const WorkspacePage = ({ params, route }: WorkspacePageProps) => {
   const workspaceId = Number(params.workspaceId);
   const { search } = useLocation();
   const transformId = new URLSearchParams(search).get("transformId");
@@ -939,6 +948,7 @@ export const WorkspacePage = ({ params }: WorkspacePageProps) => {
       <WorkspacePageContent
         key={workspaceId}
         params={params}
+        route={route}
         transformId={transformId ?? undefined}
       />
     </WorkspaceProvider>
