@@ -1,5 +1,6 @@
 (ns metabase.task-history.models.task-history
   (:require
+   [clojure.tools.logging.impl :as log.impl]
    [java-time.api :as t]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -143,6 +144,17 @@
                              :duration (ns->ms (- (System/nanoTime) startime-ns))}
                             info)]
     (t2/update! :model/TaskHistory th-id updated-info)))
+
+(defn- log-capture-factory [base-factory log-atom]
+  (reify log.impl/LoggerFactory
+    (name [_] "metabase.task_history")
+    (get-logger [_ logger-ns]
+      (let [base-logger (log.impl/get-logger base-factory logger-ns)]
+        (reify log.impl/Logger
+          (enabled? [_ level] (log.impl/enabled? base-logger level))
+          (write! [_ level ex msg]
+            (swap! log-atom conj {:level level, :msg msg, :ex ex})
+            (log.impl/write! base-logger level ex msg)))))))
 
 (mu/defn do-with-task-history
   "Impl for `with-task-history` macro; see documentation below."
