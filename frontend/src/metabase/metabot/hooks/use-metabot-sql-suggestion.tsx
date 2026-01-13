@@ -37,9 +37,7 @@ export function useMetabotSQLSuggestion(
           setError(t`Something went wrong. Please try again.`);
         }
       } catch (err) {
-        if ((err as Error)?.name !== "AbortError") {
-          setError(t`Something went wrong. Please try again.`);
-        }
+        setError(t`Something went wrong. Please try again.`);
       }
     },
     [generateSql, bufferId, databaseId],
@@ -55,12 +53,12 @@ export function useMetabotSQLSuggestion(
   }, []);
 
   const reset = useCallback(() => {
-    setSource(undefined);
+    clear();
     setError(undefined);
-  }, []);
+  }, [clear]);
 
   const reject = useCallback(() => {
-    // No-op for OSS (enterprise sends feedback to agent)
+    // no-op for OSS - upgrade to enterprise if you want the agent to be smarter after rejecting an edit!
   }, []);
 
   return {

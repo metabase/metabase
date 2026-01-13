@@ -65,6 +65,9 @@ export function useInlineSQLPrompt(
   const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
 
+  // TODO: this should get moved into the EE implementation
+  // PLUGIN_METABOT.useMetabotSQLSuggestion should take the portalTarget?.view thing
+  // we can make the extractMetabotBufferContext part OSS
   useRegisterCodeEditorMetabotContext(
     portalTarget?.view,
     question.databaseId(),
@@ -74,7 +77,7 @@ export function useInlineSQLPrompt(
   const databaseId = question.databaseId();
 
   const {
-    source,
+    source: generatedSource,
     isLoading,
     error,
     generate,
@@ -96,15 +99,15 @@ export function useInlineSQLPrompt(
 
   useEffect(
     function autoCloseOnResult() {
-      if (source) {
+      if (generatedSource) {
         hideInput();
       }
     },
-    [source, hideInput],
+    [generatedSource, hideInput],
   );
 
-  const generatedSqlRef = useRef(source);
-  generatedSqlRef.current = source;
+  const generatedSqlRef = useRef(generatedSource);
+  generatedSqlRef.current = generatedSource;
 
   const clearSuggestionRef = useRef(clearSuggestion);
   useEffect(() => {
@@ -135,20 +138,22 @@ export function useInlineSQLPrompt(
 
   const proposedQuestion = useMemo(
     () =>
-      source
-        ? question.setQuery(Lib.withNativeQuery(question.query(), source))
+      generatedSource
+        ? question.setQuery(
+            Lib.withNativeQuery(question.query(), generatedSource),
+          )
         : undefined,
-    [source, question],
+    [generatedSource, question],
   );
 
-  const handleRejectProposed = source
+  const handleRejectProposed = generatedSource
     ? () => {
         resetInput();
         reject();
       }
     : undefined;
 
-  const handleAcceptProposed = source ? resetInput : undefined;
+  const handleAcceptProposed = generatedSource ? resetInput : undefined;
 
   const extensions = useMemo(
     () =>
