@@ -232,7 +232,7 @@
 (defn- strategy-not-nocache? [cache-strategy]
   (not= (:type cache-strategy) :nocache))
 
-(defn- get-cache-eligibility-details [{:keys [cache-strategy], :as _query}]
+(defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
   "Returns a map with :eligible? and :description detailing cache eligibility."
   (let [enabled?    (caching-enabled?)
         has-strat?  (has-cache-strategy? cache-strategy)
@@ -263,7 +263,7 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
-    (let [{:keys [eligible? description]} (get-cache-eligibility-details query)]
+    (let [{:keys [eligible? description]} (is-cacheable? query)]
       (log/tracef "Query is %scacheable: %s" (if-not eligible? "not ") description)
       (if eligible?
         (run-query-with-cache qp query rff)
