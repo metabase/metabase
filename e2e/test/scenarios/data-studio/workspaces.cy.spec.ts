@@ -956,7 +956,6 @@ describe("scenarios > data studio > workspaces", () => {
   });
 
   describe("data tab", () => {
-
     it("should list input and output tables", () => {
       createTransforms();
       Workspaces.visitWorkspaces();
@@ -1008,29 +1007,6 @@ describe("scenarios > data studio > workspaces", () => {
           "SQL transform",
         ]);
       });
-
-
-
-      // H.undoToast().findByText("Failed to run transform");
-      // Workspaces.getWorkspaceContent().findByText(
-      //   "This transform hasn't been run before.",
-      // );
-
-      // H.NativeEditor.type(" 1;");
-      // Workspaces.getSaveTransformButton().click();
-      // Workspaces.getRunTransformButton().click();
-
-      // // The run button state change happens very fast and behaves flaky. Not sure if we need to test it.
-      // // Workspaces.getWorkspaceContent().findByText("Ran successfully");
-      // Workspaces.getWorkspaceContent().findByText(
-      //   "Last ran a few seconds ago successfully.",
-      // );
-
-      // H.NativeEditor.type("{backspace}{backspace}");
-      // Workspaces.getSaveTransformButton().click();
-      // Workspaces.getRunTransformButton().click();
-
-      // H.undoToast().findByText("Failed to run transform");
     });
   });
 
