@@ -294,4 +294,3 @@
                     (binding [api/*current-user-id* (:id user)]
                       (is (false? (transforms.util/source-tables-readable? transform))
                           "User who cannot read all source tables should have source_readable=false"))))))))))))
-
