@@ -576,6 +576,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover().findByRole("option", { name: "Writable Postgres12" }).click();
 
       cy.log("Verify database was changed");
+      verifyAndCloseToast("Successfully updated workspace database");
       Workspaces.getWorkspaceDatabaseSelect().should(
         "have.value",
         "Writable Postgres12",
