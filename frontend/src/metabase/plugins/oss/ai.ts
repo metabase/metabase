@@ -95,6 +95,16 @@ type PluginMetabotType = {
     BaseQueryFn
   >;
   MetabotThinkingStyles: { [key: string]: string };
+  useMetabotSQLSuggestion: (bufferId: string) => {
+    source: string | undefined;
+    isLoading: boolean;
+    generate: (value: string) => Promise<void>;
+    error: string | undefined;
+    cancelRequest: () => void;
+    clear: () => void;
+    reject: () => void;
+    reset: () => void;
+  };
 };
 
 const getDefaultMetabotContextValue = (): MetabotContext => ({
@@ -154,6 +164,16 @@ const getDefaultPluginMetabot = (): PluginMetabotType => ({
   useLazyMetabotGenerateContentQuery:
     (() => []) as unknown as PluginMetabotType["useLazyMetabotGenerateContentQuery"],
   MetabotThinkingStyles: {},
+  useMetabotSQLSuggestion: () => ({
+    source: undefined,
+    isLoading: false,
+    generate: async () => {},
+    error: undefined,
+    cancelRequest: () => {},
+    clear: () => {},
+    reject: () => {},
+    reset: () => {},
+  }),
 });
 export const PLUGIN_METABOT: PluginMetabotType = getDefaultPluginMetabot();
 

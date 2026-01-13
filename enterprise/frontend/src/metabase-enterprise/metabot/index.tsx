@@ -20,6 +20,7 @@ import { MetabotQueryBuilder } from "./components/MetabotQueryBuilder";
 import { getMetabotQuickLinks } from "./components/MetabotQuickLinks";
 import { getNewMenuItemAIExploration } from "./components/NewMenuItemAIExploration";
 import { MetabotContext, MetabotProvider, defaultContext } from "./context";
+import { useMetabotSQLSuggestion } from "./hooks";
 import { getMetabotVisible, metabotReducer } from "./state";
 
 /**
@@ -110,4 +111,5 @@ export function initializePlugin() {
     PLUGIN_METABOT.MetabotThinkingStyles = MetabotThinkingStyles;
   }
   PLUGIN_METABOT.useInlineSQLPrompt = useInlineSQLPrompt;
+  PLUGIN_METABOT.useMetabotSQLSuggestion = useMetabotSQLSuggestion;
 }

@@ -1,28 +1,9 @@
 import type { EditorView } from "@codemirror/view";
-import { isFulfilled } from "@reduxjs/toolkit";
 
-import type { useMetabotAgent } from "metabase-enterprise/metabot/hooks";
 import type {
   DatabaseId,
   MetabotCodeEditorBufferContext,
 } from "metabase-types/api";
-
-type SubmitInputResult = Awaited<
-  ReturnType<ReturnType<typeof useMetabotAgent>["submitInput"]>
->;
-
-export const responseHasCodeEdit = (action: SubmitInputResult) => {
-  return (
-    isFulfilled(action) &&
-    action.payload.data?.processedResponse.data.some(
-      (dp) =>
-        typeof dp === "object" &&
-        dp !== null &&
-        "type" in dp &&
-        (dp as { type: string }).type === "code_edit",
-    )
-  );
-};
 
 export function extractMetabotBufferContext(
   view: EditorView,

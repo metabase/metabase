@@ -12,16 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
-import {
-  useMetabotDispatch,
-  useMetabotSelector,
-} from "metabase-enterprise/metabot/hooks/use-metabot-store";
-import {
-  addDeveloperMessage,
-  getMetabotSuggestedCodeEdit,
-  removeSuggestedCodeEdit,
-  resetConversation,
-} from "metabase-enterprise/metabot/state";
+import { useMetabotSQLSuggestion } from "metabase-enterprise/metabot/hooks/use-metabot-sql-suggestion";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatabaseId, DatasetQuery } from "metabase-types/api";
@@ -78,10 +69,12 @@ export function useInlineSQLPrompt(
     bufferId,
   );
 
-  const dispatch = useMetabotDispatch();
-  const generatedSql = useMetabotSelector((state) =>
-    getMetabotSuggestedCodeEdit(state, bufferId),
-  )?.value;
+  const {
+    source,
+    clear: clearSuggestion,
+    reset: resetSuggestionState,
+    reject,
+  } = useMetabotSQLSuggestion(bufferId);
 
   const hideInput = useCallback(() => {
     portalTarget?.view.dispatch({ effects: hideEffect.of() });
@@ -95,19 +88,15 @@ export function useInlineSQLPrompt(
 
   useEffect(
     function autoCloseOnResult() {
-      if (generatedSql) {
+      if (source) {
         hideInput();
       }
     },
-    [generatedSql, hideInput],
+    [source, hideInput],
   );
 
-  const generatedSqlRef = useRef(generatedSql);
-  generatedSqlRef.current = generatedSql;
-
-  const clearSuggestion = useCallback(() => {
-    dispatch(removeSuggestedCodeEdit(bufferId));
-  }, [dispatch, bufferId]);
+  const generatedSqlRef = useRef(source);
+  generatedSqlRef.current = source;
 
   const clearSuggestionRef = useRef(clearSuggestion);
   useEffect(() => {
@@ -119,17 +108,16 @@ export function useInlineSQLPrompt(
     function resetOnDbChangeAndUnmount() {
       return () => {
         hideInputRef.current();
-        dispatch(removeSuggestedCodeEdit(bufferId));
-        dispatch(resetConversation({ agentId: "sql" }));
+        resetSuggestionState();
       };
     },
-    [dispatch, databaseId, bufferId],
+    [resetSuggestionState, databaseId],
   );
 
   const resetInput = useCallback(() => {
-    dispatch(removeSuggestedCodeEdit(bufferId));
+    clearSuggestion();
     hideInput();
-  }, [dispatch, hideInput, bufferId]);
+  }, [clearSuggestion, hideInput]);
 
   // NOTE: ref is needed for the extension to not be recalculated in the useMemo
   // below, while still being able to reset the suggestion state on close
@@ -140,25 +128,20 @@ export function useInlineSQLPrompt(
 
   const proposedQuestion = useMemo(
     () =>
-      generatedSql
-        ? question.setQuery(Lib.withNativeQuery(question.query(), generatedSql))
+      source
+        ? question.setQuery(Lib.withNativeQuery(question.query(), source))
         : undefined,
-    [generatedSql, question],
+    [source, question],
   );
 
-  const handleRejectProposed = generatedSql
+  const handleRejectProposed = source
     ? () => {
         resetInput();
-        dispatch(
-          addDeveloperMessage({
-            agentId: "sql",
-            message: `User rejected the following suggestion:\n\n${generatedSql}`,
-          }),
-        );
+        reject();
       }
     : undefined;
 
-  const handleAcceptProposed = generatedSql ? resetInput : undefined;
+  const handleAcceptProposed = source ? resetInput : undefined;
 
   const extensions = useMemo(
     () => [
@@ -198,6 +181,7 @@ export function useInlineSQLPrompt(
       ? createPortal(
           <MetabotInlineSQLPrompt
             databaseId={databaseId}
+            bufferId={bufferId}
             onClose={hideInput}
           />,
           portalTarget.container,
