@@ -1330,6 +1330,36 @@
                      :last_run_message some?}
                     (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
 
+(deftest run-workspace-transform-bad-column-test
+  (testing "POST /api/ee/workspace/:id/transform/:txid/run with non-existent column"
+    (transforms.tu/with-transform-cleanup! [output-table "ws_api_badcol"]
+      (ws.tu/with-workspaces! [ws {:name "Workspace for bad column test"}]
+        (let [bad-transform {:name   "Bad Column Transform"
+                             :source {:type  "query"
+                                      :query (mt/native-query {:query "SELECT nocolumn FROM orders"})}
+                             :target {:type     "table"
+                                      :database (mt/id)
+                                      :schema   "public"
+                                      :name     output-table}}
+              ref-id        (:ref_id
+                             (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") bad-transform))
+              ws            (ws.tu/ws-ready (:id ws))]
+          (testing "returns failed status with error message mentioning the bad column"
+            (let [result (mt/with-log-level [metabase-enterprise.transforms.query-impl :fatal]
+                           (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "transform" ref-id "run")))]
+              (is (=? {:status     "failed"
+                       :message    #"(?s).*nocolumn.*"
+                       :start_time some?
+                       :end_time   some?
+                       :table      {:schema (:schema ws)
+                                    :name   (str "public__" output-table)}}
+                      result))))
+          (testing "transform has last_run_message mentioning the bad column"
+            (is (=? {:last_run_at      some?
+                     :last_run_status  "failed"
+                     :last_run_message #"(?s).*nocolumn.*"}
+                    (mt/user-http-request :crowberto :get 200 (ws-url (:id ws) "transform" ref-id))))))))))
+
 (deftest execute-workspace-test
   (testing "POST /api/ee/workspace/:id/execute"
     (ws.tu/with-workspaces! [ws-1 {:name "Workspace 1"}

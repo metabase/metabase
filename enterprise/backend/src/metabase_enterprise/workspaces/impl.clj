@@ -134,9 +134,6 @@
                                       [:or [:= :woe.isolated_table_id nil] [:not= :t.id :woe.isolated_table_id]]]}))]
     (t2/update! :model/WorkspaceOutputExternal {:transform_id transform-id} {:isolated_table_id table-id})))
 
-(defn- db-time []
-  (:t (first (t2/query {:select [[:%now :t]]}))))
-
 (defn run-transform!
   "Execute the given workspace transform or enclosed external transform."
   ([workspace transform]
@@ -144,6 +141,8 @@
   ([workspace transform remapping]
    (let [ref-id      (:ref_id transform)
          external-id (:id transform)
+         ;; The database timezone may differ from the app server, or their clocks could be out of sync.
+         db-time     #(:t (first (t2/query {:select [[:%now :t]]})))
          start-time  (db-time)
          result      (try
                        (ws.isolation/with-workspace-isolation
