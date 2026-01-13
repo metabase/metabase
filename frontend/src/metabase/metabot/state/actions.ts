@@ -296,6 +296,7 @@ export const sendAgentRequest = createAsyncThunk<
 
       const response = await aiStreamingQuery(
         {
+          // TODO: we need an OSS route for this param...
           url: "/api/ee/metabot-v3/agent-streaming",
           // NOTE: StructuredDatasetQuery as part of the EntityInfo in MetabotChatContext
           // is upsetting the types, casting for now
