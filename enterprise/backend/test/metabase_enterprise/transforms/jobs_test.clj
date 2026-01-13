@@ -6,7 +6,11 @@
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.jobs :as jobs]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
-   [metabase.test :as mt]))
+   [metabase-enterprise.transforms.test-dataset :as transforms-dataset]
+   [metabase-enterprise.transforms.test-util :as transforms.tu :refer [with-transform-cleanup! delete-schema!]]
+   [metabase.lib.core :as lib]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (deftest basic-deps-test
   (let [ordering {1 #{2 3}
@@ -141,3 +145,66 @@
               "Should not log warnings when feature is enabled")
           (is @run-called?
               "Should call run-mbql-transform! when feature is enabled"))))))
+
+(deftest execute-test
+  (mt/with-premium-features #{:transforms}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (let [mp (mt/metadata-provider)
+              table (t2/select-one :model/Table (mt/id :transforms_products))]
+          (with-transform-cleanup! [target1 {:type   "table"
+                                             :schema (:schema table)
+                                             :name   "t1"}
+                                    target2 {:type   "table"
+                                             :schema (:schema table)
+                                             :name   "t2"}
+                                    target3 {:type   "table"
+                                             :schema (:schema table)
+                                             :name   "t3"}]
+            (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
+                           :model/TransformJob job {:name "test-job"
+                                                    :schedule "0 0 * * * ? *"}
+                           :model/TransformJobTransformTag _ {:job_id (:id job)
+                                                              :tag_id (:id tag)
+                                                              :position 0}
+                           ;; faulty transform
+                           :model/Transform t1 {:name   "transform1"
+                                                :source {:type  :query
+                                                         :query (lib/native-query mp (str "SELECT bame from \"" (:name table) "\";"))}
+                                                :target target1}
+                           :model/TransformTransformTag _tag1 {:transform_id (:id t1)
+                                                               :tag_id (:id tag)
+                                                               :position 0}
+                           ;; depends on faulty transform
+                           :model/Transform t2 {:name   "transform2"
+                                                :source {:type  :query
+                                                         :query (lib/native-query mp (str "SELECT name from \"" (:name target1) "\";"))}
+                                                :target target2}
+                           :model/TransformTransformTag _tag2 {:transform_id (:id t2)
+                                                               :tag_id (:id tag)
+                                                               :position 0}
+                           ;; independent transform
+                           :model/Transform t3 {:name   "transform1"
+                                                :source {:type  :query
+                                                         :query (lib/native-query mp (str "SELECT name from " (:name table) ";"))}
+                                                :target target3}
+                           :model/TransformTransformTag _tag3 {:transform_id (:id t3)
+                                                               :tag_id (:id tag)
+                                                               :position 0}]
+              (let [run-id (jobs/run-job! (:id job) {:run-method :manual})]
+                (try
+                  (is (=? {:status :failed
+                           :message string?}
+                          (t2/select-one :model/TransformJobRun :id run-id)))
+                  ;; will fail because wrong column name
+                  (is (=? [{:status :failed
+                            :message string?}]
+                          (t2/select :model/TransformRun :transform_id (:id t1))))
+                  ;; will not run
+                  (is (= []
+                         (t2/select :model/TransformRun :transform_id (:id t2))))
+                  ;; should still succeed
+                  (is (=? [{:status :succeeded}]
+                          (t2/select :model/TransformRun :transform_id (:id t3))))
+                  (finally ;; I don't know why transform_job_run is not cascaded from transform_job
+                    (t2/delete! :model/TransformJobRun :id run-id)))))))))))

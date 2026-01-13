@@ -98,7 +98,7 @@
           (run-transform! run-id run-method transform)
           (vswap! successful conj (:id transform))
           (catch Exception e
-            (vswap! messages conj (str "Tranform " (:name transform) " failed: " (.getMessage e)))))))
+            (vswap! messages conj (str (:name transform) ":\n" (.getMessage e)))))))
 
     (if @messages
       {:status :failed
@@ -138,7 +138,8 @@
                 :failed (transforms.job-run/fail-started-run! run-id {:message (:message result)})))
             (catch Throwable t
               (transforms.job-run/fail-started-run! run-id {:message (.getMessage t)})
-              (throw t))))))))
+              (throw t))))
+        run-id))))
 
 (def ^:private job-key "metabase-enterprise.transforms.jobs.timeout-job")
 
