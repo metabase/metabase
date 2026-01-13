@@ -428,7 +428,14 @@
     "ajv-draft-04>ajv": "^8.17.1",
     "domhandler": "4.2.2",
     "domelementtype": "2.3.0",
-    "@popperjs/core": "2.10.2"
+    "@popperjs/core": "2.10.2",
+    "@codemirror/state": "6.5.2",
+    "@codemirror/view": "6.36.3",
+    "@codemirror/language": "6.10.8",
+    "@codemirror/commands": "6.8.0",
+    "@codemirror/autocomplete": "6.18.6",
+    "@codemirror/lint": "6.8.4",
+    "@codemirror/search": "6.5.9"
   },
   "scripts": {
     "mage": "./bin/mage",
