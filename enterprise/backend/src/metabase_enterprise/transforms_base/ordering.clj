@@ -1,10 +1,13 @@
-(ns metabase-enterprise.transforms.ordering
+(ns metabase-enterprise.transforms-base.ordering
+  "Transform dependency ordering and cycle detection.
+
+   Pure functions for computing execution order based on table dependencies."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
-   [metabase-enterprise.transforms.interface :as transforms.i]
-   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.transforms-base.interface :as transforms-base.i]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase.driver :as driver]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -17,10 +20,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod transforms.i/table-dependencies :query
+(defmethod transforms-base.i/table-dependencies :query
   [{:keys [source]}]
   (let [query (-> (:query source)
-                  transforms.util/massage-sql-query
+                  transforms-base.util/massage-sql-query
                   qp.preprocess/preprocess)
         driver (-> query
                    lib.metadata/database
@@ -34,7 +37,7 @@
 
 (defn- dependency-map [transforms]
   (into {}
-        (map (juxt :id transforms.i/table-dependencies))
+        (map (juxt :id transforms-base.i/table-dependencies))
         transforms))
 
 (mu/defn- output-table-map
@@ -78,7 +81,7 @@
   (let [;; Group all transforms by their database
         transforms-by-db (->> transforms
                               (map (fn [transform]
-                                     (let [db-id (transforms.i/target-db-id transform)]
+                                     (let [db-id (transforms-base.i/target-db-id transform)]
                                        {db-id [transform]})))
                               (apply merge-with into))
         transform-ids    (into #{} (map :id) transforms)
@@ -144,7 +147,7 @@
         output-tables    (output-table-map mp db-transforms)
         transform-ids    (into #{} (map :id) db-transforms)
         target-refs      (target-ref-map transforms)
-        node->children   #(->> % transforms-by-id transforms.i/table-dependencies
+        node->children   #(->> % transforms-by-id transforms-base.i/table-dependencies
                                (keep (fn [dep] (resolve-dependency dep output-tables transform-ids target-refs))))
         id->name         (comp :name transforms-by-id)
         cycle            (find-cycle node->children [transform-id])]

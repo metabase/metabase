@@ -5,10 +5,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase-enterprise.transforms-python.python-runner :as python-runner]
    [metabase-enterprise.transforms-python.s3 :as s3]
    [metabase-enterprise.transforms-python.settings :as transforms-python.settings]
-   [metabase-enterprise.transforms.util :as transforms.util]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.sync.core :as sync]
@@ -452,7 +452,7 @@
                                     {:name "created_date"  :type :type/Date     :nullable? true}
                                     {:name "description"   :type :type/Text     :nullable? true}]}
             _ (mt/as-admin
-                (transforms.util/create-table-from-schema! driver db-id table-schema))
+                (transforms-base.util/create-table-from-schema! driver db-id table-schema))
 
             row-values   [[1
                            19.99

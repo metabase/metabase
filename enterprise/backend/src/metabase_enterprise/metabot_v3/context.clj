@@ -3,7 +3,7 @@
    [clojure.java.io :as io]
    [medley.core :as m]
    [metabase-enterprise.metabot-v3.table-utils :as table-utils]
-   [metabase-enterprise.transforms.util :as transforms.util]
+   [metabase-enterprise.transforms-base.util :as transforms-base.util]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -146,9 +146,9 @@
                   (try
                     (if (and (= (:type item) "transform")
                              (not (:source_type item)))
-                      (let [transform (transforms.util/normalize-transform item)]
+                      (let [transform (transforms-base.util/normalize-transform item)]
                         (assoc transform
-                               :source_type (transforms.util/transform-source-type (:source transform))))
+                               :source_type (transforms-base.util/transform-source-type (:source transform))))
                       item)
                     (catch Exception e
                       (log/error e "Error annotating transform source type for metabot context")
