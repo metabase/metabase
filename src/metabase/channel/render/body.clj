@@ -523,6 +523,11 @@
                              [k value])) funnel-viz raw-rows)]
       (remove nil? rows-data))))
 
+(defn- numeric-col?
+  "Check if a column is numeric (can be used as a metric)."
+  [col]
+  (isa? (:base_type col) :type/Number))
+
 (defn- get-funnel-axis-fns
   "Return [x-axis-fn y-axis-fn] tuple for indexing into the funnel data for the appropriate axis' data"
   [card dashcard data]
@@ -533,7 +538,35 @@
       (if x-axis-is-first
         [first second]
         [second first]))
-    (formatter/graphing-column-row-fns card data)))
+    ;; For regular cards, check funnel.dimension/funnel.metric settings first (#28568)
+    (let [funnel-dimension (get-in #p card [:visualization_settings :funnel.dimension])
+          cols             (:cols #p data)]
+      (cond
+        ;; If funnel.dimension is explicitly set, use it
+        funnel-dimension
+        (let [x-axis-is-first (= (:name (first #p cols)) funnel-dimension)]
+          (if x-axis-is-first
+            [first second]
+            [second first]))
+
+        ;; For funnel charts with 2 columns, auto-detect based on column types:
+        ;; The numeric column should be the metric (y-axis), non-numeric is dimension (x-axis)
+        (and (= (count cols) 2)
+             (= :funnel (:display card)))
+        (let [[col1 col2] cols
+              col1-numeric? (numeric-col? col1)
+              col2-numeric? (numeric-col? col2)]
+          (cond
+            ;; First col is dimension (non-numeric), second is metric (numeric) - standard order
+            (and (not col1-numeric?) col2-numeric?) [first second]
+            ;; First col is metric (numeric), second is dimension (non-numeric) - swap!
+            (and col1-numeric? (not col2-numeric?)) [second first]
+            ;; Both numeric or both non-numeric - fall back to default
+            :else [first second]))
+
+        ;; Fall back to graph.dimensions/graph.metrics for other chart types
+        :else
+        (formatter/graphing-column-row-fns card data)))))
 
 (mu/defmethod render :funnel_normal :- ::RenderedPartCard
   [_chart-type render-type _timezone-id card dashcard {:keys [rows cols viz-settings] :as data}]
