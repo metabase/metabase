@@ -9,6 +9,7 @@
   about how the cache backends themselves."
   (:refer-clojure :exclude [get-in])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core :as cache]
@@ -229,9 +230,9 @@
         all-conditions-met? (and caching-enabled? has-strategy? not-nocache?)]
     (if all-conditions-met?
       {:cacheable? true
-       :conditions [(str "query caching is enabled")
+       :conditions ["query caching is enabled"
                     (str "cache strategy provided: " (pr-str cache-strategy))
-                    (str "cache strategy type is not :nocache")]}
+                    "cache strategy type is not :nocache"]}
       {:cacheable? false
        :reasons    (cond-> []
                      (not caching-enabled?) (conj "query caching is disabled")
@@ -254,8 +255,8 @@
   (fn maybe-return-cached-results* [query rff]
     (let [{:keys [cacheable? reasons conditions]} (is-cacheable? query)]
       (if cacheable?
-        (log/tracef "Query is cacheable: %s" (clojure.string/join "; " conditions))
-        (log/tracef "Query is not cacheable: %s" (clojure.string/join ", " reasons)))
+        (log/tracef "Query is cacheable: %s" (str/join "; " conditions))
+        (log/tracef "Query is not cacheable: %s" (str/join ", " reasons)))
       (if cacheable?
         (run-query-with-cache qp query rff)
         (qp query rff)))))
