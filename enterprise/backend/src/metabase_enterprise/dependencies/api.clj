@@ -692,8 +692,8 @@
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]
-                                                  :limit limit
-                                                  :offset offset))
+                                      :limit limit
+                                      :offset offset))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
@@ -805,8 +805,8 @@
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query :order-by [[:sort_key :asc]]
-                                                  :limit limit
-                                                  :offset offset))
+                                      :limit limit
+                                      :offset offset))
                      (map (fn [{:keys [entity_id entity_type]}]
                             [(keyword entity_type) entity_id])))
         downstream-graph (graph/cached-graph (readable-graph-dependents graph-opts))
@@ -814,10 +814,10 @@
                              :from [[union-query :subquery]]})
                   first
                   :total)]
-    {:data   (expanded-nodes downstream-graph all-ids {:include-errors? true}
+    {:data   (expanded-nodes downstream-graph all-ids {:include-errors? true})
      :limit  limit
      :offset offset
-     :total  total})))
+     :total  total}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

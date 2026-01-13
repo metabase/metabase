@@ -14,8 +14,10 @@ import { getCardTypes, getDependencyTypes, isSameNode } from "../../utils";
 import S from "./DependencyList.module.css";
 import { ListBody } from "./ListBody";
 import { ListHeader } from "./ListHeader";
+import { ListPaginationControls } from "./ListPaginationControls";
 import { ListSearchBar } from "./ListSearchBar";
 import { ListSidebar } from "./ListSidebar";
+import { PAGE_SIZE } from "./constants";
 import type { DependencyListMode } from "./types";
 import { getAvailableGroupTypes } from "./utils";
 
@@ -38,17 +40,17 @@ export function DependencyList({
       : useListUnreferencedGraphNodesQuery;
   const availableGroupTypes = getAvailableGroupTypes(mode);
 
-  const {
-    data: nodes = [],
-    isFetching,
-    isLoading,
-    error,
-  } = useListGraphNodesQuery({
+  const { data, isFetching, isLoading, error } = useListGraphNodesQuery({
     query: params.query,
     types: getDependencyTypes(params.groupTypes ?? availableGroupTypes),
     card_types: getCardTypes(params.groupTypes ?? availableGroupTypes),
     include_personal_collections: params.includePersonalCollections,
+    offset: (params.page ?? 0) * PAGE_SIZE,
+    limit: PAGE_SIZE,
   });
+
+  const nodes = data?.data ?? [];
+  const totalNodesCount = data?.total ?? 0;
 
   const selectedNode =
     selectedEntry != null
@@ -75,6 +77,14 @@ export function DependencyList({
             mode={mode}
             isLoading={isLoading}
             onSelect={setSelectedEntry}
+          />
+        )}
+        {!isLoading && error == null && (
+          <ListPaginationControls
+            params={params}
+            pageNodesCount={nodes.length}
+            totalNodesCount={totalNodesCount}
+            onParamsChange={onParamsChange}
           />
         )}
       </Stack>
