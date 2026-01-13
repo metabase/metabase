@@ -24,6 +24,7 @@
    [metabase.native-query-snippets.core :as native-query-snippets]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
+   [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -660,9 +661,7 @@
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]
-   [:offset {:optional true} nat-int?]
-   [:limit {:optional true} ms/PositiveInt]])
+   [:include_personal_collections {:optional true} :boolean]])
 
 (def ^:private unreferenced-items-response
   [:map
@@ -693,10 +692,10 @@
    {:keys [types card_types query archived include_personal_collections offset limit]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false
-         offset 0
-         limit 50}} :- unreferenced-items-args]
-  (let [include-archived-items (if archived :all :exclude)
+         include_personal_collections false}} :- unreferenced-items-args]
+  (let [offset (or (request/offset) 0)
+        limit (or (request/limit) 50)
+        include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
@@ -736,9 +735,7 @@
                                   [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
    [:query {:optional true} :string]
    [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]
-   [:offset {:optional true} nat-int?]
-   [:limit {:optional true} ms/PositiveInt]])
+   [:include_personal_collections {:optional true} :boolean]])
 
 (def ^:private broken-items-response
   [:map
@@ -768,10 +765,10 @@
    {:keys [types card_types query archived include_personal_collections offset limit]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false
-         offset 0
-         limit 50}} :- broken-items-args]
-  (let [include-archived-items (if archived :all :exclude)
+         include_personal_collections false}} :- broken-items-args]
+  (let [offset (or (request/offset) 0)
+        limit (or (request/limit) 50)
+        include-archived-items (if archived :all :exclude)
         graph-opts {:include-archived-items include-archived-items}
         selected-types (cond->> (if (sequential? types) types [types])
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
