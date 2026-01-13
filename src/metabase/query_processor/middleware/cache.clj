@@ -233,22 +233,28 @@
   (not= (:type cache-strategy) :nocache))
 
 (defn- is-cacheable?
-  "Returns a map with :eligible? and :description detailing cache eligibility."
+  "Returns true if query caching is enabled and the query has a valid cache strategy."
+  [{:keys [cache-strategy], :as _query}]
+  (let [enabled?    (caching-enabled?)
+        has-strat?  (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)]
+    (and enabled? has-strat? not-nocache?)))
+
+(defn- get-cache-eligibility-description
+  "Returns a descriptive string explaining why a query is or isn't cacheable."
   [{:keys [cache-strategy], :as _query}]
   (let [enabled?    (caching-enabled?)
         has-strat?  (has-cache-strategy? cache-strategy)
         not-nocache? (strategy-not-nocache? cache-strategy)]
     (if (and enabled? has-strat? not-nocache?)
-      {:eligible? true
-       :description (str "query caching is enabled; "
-                         "cache strategy provided: " (pr-str cache-strategy) "; "
-                         "cache strategy type is not :nocache")}
-      {:eligible? false
-       :description (str/join ", "
-                              (cond-> []
-                                (not enabled?)     (conj "query caching is disabled")
-                                (not has-strat?)   (conj "no cache strategy provided")
-                                (not not-nocache?) (conj "cache strategy is :nocache")))})))
+      (str "query caching is enabled; "
+           "cache strategy provided: " (pr-str cache-strategy) "; "
+           "cache strategy type is not :nocache")
+      (str/join ", "
+                (cond-> []
+                  (not enabled?)     (conj "query caching is disabled")
+                  (not has-strat?)   (conj "no cache strategy provided")
+                  (not not-nocache?) (conj "cache strategy is :nocache"))))))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
@@ -264,8 +270,9 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
-    (let [{:keys [eligible? description]} (is-cacheable? query)]
-      (log/tracef "Query is %scacheable: %s" (if-not eligible? "not " "") description)
-      (if eligible?
+    (let [cacheable? (is-cacheable? query)
+          description (get-cache-eligibility-description query)]
+      (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") description)
+      (if cacheable?
         (run-query-with-cache qp query rff)
         (qp query rff)))))
