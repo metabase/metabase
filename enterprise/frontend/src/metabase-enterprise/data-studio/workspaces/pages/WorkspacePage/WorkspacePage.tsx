@@ -118,7 +118,6 @@ function WorkspacePageContent({
 
   const {
     openedTabs,
-    activeTab,
     activeTransform,
     activeEditedTransform,
     activeTable,
@@ -162,6 +161,8 @@ function WorkspacePageContent({
     isLoadingWorkspace ||
     isLoadingExternalTransforms ||
     isLoadingWorkspaceTransforms;
+
+  const { tab, setTab, ref: tabsListRef } = useWorkspaceUiTabs();
 
   useEffect(() => {
     // Initialize transform tab if redirected from transform page.
@@ -217,6 +218,7 @@ function WorkspacePageContent({
     sendErrorToast,
     workspaceTransforms,
     fetchWorkspaceTransform,
+    setTab,
   ]);
 
   const {
@@ -264,7 +266,7 @@ function WorkspacePageContent({
       setTab("metabot");
       setActiveTab(undefined);
     }
-  }, [isMetabotAvailable, isMetabotVisible, setActiveTab]);
+  }, [isMetabotAvailable, isMetabotVisible, setActiveTab, setTab]);
 
   const sourceDb = databases?.data.find(
     (db) => db.id === workspace?.database_id,
@@ -294,36 +296,8 @@ function WorkspacePageContent({
     [unsavedTransforms, workspaceTransforms],
   );
 
-  const tabsListRef = useRef<HTMLDivElement>(null);
-  const [tab, setTab] = useState<string>("setup");
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
-
-  useEffect(() => {
-    // Sync UI tabs with active tab changes from workspace.
-    if (activeTab) {
-      setTab(activeTab.id);
-    } else {
-      setTab("setup");
-    }
-  }, [id, activeTab, setTab]);
-
   const isArchived = workspace?.status === "archived";
-
-  useEffect(() => {
-    // Scroll to active tab on change.
-    if (tabsListRef.current && tab) {
-      const activeTabElement = tabsListRef.current.querySelector(
-        `[data-active="true"]`,
-      ) as HTMLElement;
-
-      if (activeTabElement) {
-        activeTabElement.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
-  }, [tab]);
 
   useEffect(() => {
     if (
@@ -503,7 +477,7 @@ function WorkspacePageContent({
       addOpenedTab(tableTab);
       setTab(tableTab.id);
     },
-    [addOpenedTab],
+    [addOpenedTab, setTab],
   );
 
   const handleRunTransformAndShowPreview = useCallback(
@@ -953,3 +927,36 @@ export const WorkspacePage = ({ params, route }: WorkspacePageProps) => {
     </WorkspaceProvider>
   );
 };
+
+function useWorkspaceUiTabs() {
+  const { activeTab } = useWorkspace();
+  const tabsListRef = useRef<HTMLDivElement>(null);
+  const [tab, setTab] = useState<string>("setup");
+
+  useEffect(() => {
+    // Sync UI tabs with active tab changes from workspace.
+    if (activeTab) {
+      setTab(activeTab.id);
+    } else {
+      setTab("setup");
+    }
+  }, [activeTab, setTab]);
+
+  useEffect(() => {
+    // Scroll to active tab on change.
+    if (tabsListRef.current && tab) {
+      const activeTabElement = tabsListRef.current.querySelector(
+        `[data-active="true"]`,
+      ) as HTMLElement;
+
+      if (activeTabElement) {
+        activeTabElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [tab]);
+
+  return { tab, setTab, ref: tabsListRef };
+}
