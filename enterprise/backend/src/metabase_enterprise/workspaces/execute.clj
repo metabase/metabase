@@ -80,6 +80,22 @@
 
 (def ^:private no-mapping {})
 
+(defn remapped-target
+  "Extracts and applies remapping to a transform's target table reference.
+
+   Used when needing to determine the isolated table location without running the full transform.
+   Useful for error reporting and result construction.
+
+   `remapping` is a map with:
+   - `:tables`          - map of table references to isolated table specs
+   - `:target-fallback` - function to generate fallback mappings for unmapped targets
+
+   Returns the remapped target as a map with `:type`, `:database`, `:schema`, and `:name`."
+  [{:keys [target] :as _transform} remapping]
+  (let [table-mapping   (:tables remapping no-mapping)
+        target-fallback (:target-fallback remapping no-mapping)]
+    (remap-target table-mapping target-fallback target)))
+
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.
 
