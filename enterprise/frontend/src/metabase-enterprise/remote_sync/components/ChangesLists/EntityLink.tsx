@@ -27,10 +27,8 @@ interface EntityLinkProps {
 
 export const EntityLink = ({ entity }: EntityLinkProps) => {
   const entityIcon = useMemo(() => {
-    // Handle models that aren't in IconModel (like "field")
-    const customIcon = SYNC_ENTITY_ICON_MAP[entity.model];
-    if (customIcon) {
-      return { name: customIcon };
+    if (entity.model === "field") {
+      return { name: "field" };
     }
 
     return getIcon({
