@@ -8,3 +8,8 @@
 .Container:has(.BrandingFooter) {
   grid-template-rows: 1fr auto;
 }
+
+.Dashboard {
+  height: 100%;
+  min-height: unset;
+}

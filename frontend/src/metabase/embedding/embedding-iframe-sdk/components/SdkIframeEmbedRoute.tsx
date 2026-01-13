@@ -37,7 +37,6 @@ import {
   SdkIframeExistingUserSessionInProductionError,
   SdkIframeInvalidLicenseError,
 } from "./SdkIframeError";
-import { DASHBOARD_STYLES } from "./constants";
 
 const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
   // Tell the SDK whether to use the existing user session or not.
@@ -170,12 +169,12 @@ const SdkIframeEmbedView = ({
           return (
             <StaticDashboard
               key={rerenderKey}
+              className={SdkIframeEmbedRouteS.Dashboard}
               {...entityProps}
               withTitle={settings.withTitle}
               withDownloads={settings.withDownloads}
               initialParameters={settings.initialParameters}
               hiddenParameters={settings.hiddenParameters}
-              style={DASHBOARD_STYLES}
             />
           );
         },
@@ -190,6 +189,7 @@ const SdkIframeEmbedView = ({
         (settings) => (
           <InteractiveDashboard
             key={rerenderKey}
+            className={SdkIframeEmbedRouteS.Dashboard}
             dashboardId={settings.dashboardId ?? null}
             token={settings.token}
             withTitle={settings.withTitle}
@@ -199,7 +199,6 @@ const SdkIframeEmbedView = ({
             hiddenParameters={settings.hiddenParameters}
             drillThroughQuestionHeight="100%"
             drillThroughQuestionProps={{ isSaveEnabled: false }}
-            style={DASHBOARD_STYLES}
           />
         ),
       )
