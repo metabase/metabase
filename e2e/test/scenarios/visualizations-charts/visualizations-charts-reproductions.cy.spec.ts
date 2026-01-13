@@ -87,7 +87,8 @@ describe("issue 45255", () => {
 
     // Can reorder (empty)
     H.getDraggableElements().eq(2).should("have.text", "(empty)");
-    H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+    H.getDraggableElements().first().as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
     H.getDraggableElements().eq(1).should("have.text", "(empty)");
 
     // Has (empty) in the chart
