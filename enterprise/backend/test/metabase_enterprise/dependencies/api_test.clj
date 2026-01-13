@@ -1340,21 +1340,20 @@
 (deftest ^:sequential unreferenced-pagination-test
   (testing "GET /api/ee/dependencies/unreferenced - should paginate results"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)]
-        (mt/with-temp [:model/Table {table1-id :id} {:name "Table 1 - unreftest"}
-                       :model/Table {table2-id :id} {:name "Table 2 - unreftest"}
-                       :model/Table {table3-id :id} {:name "Table 3 - unreftest"}]
-          (while (#'dependencies.backfill/backfill-dependencies!))
-          (is (=? {:data   [{:id table1-id} {:id table2-id}]
-                   :total  3
-                   :offset 0
-                   :limit  2}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=0&limit=2")))
-          (is (=? {:data   [{:id table3-id}]
-                   :total  3
-                   :offset 2
-                   :limit  2}
-                  (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=2&limit=2"))))))))
+      (mt/with-temp [:model/Table {table1-id :id} {:name "Table 1 - unreftest"}
+                     :model/Table {table2-id :id} {:name "Table 2 - unreftest"}
+                     :model/Table {table3-id :id} {:name "Table 3 - unreftest"}]
+        (while (#'dependencies.backfill/backfill-dependencies!))
+        (is (=? {:data   [{:id table1-id} {:id table2-id}]
+                 :total  3
+                 :offset 0
+                 :limit  2}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=0&limit=2")))
+        (is (=? {:data   [{:id table3-id}]
+                 :total  3
+                 :offset 2
+                 :limit  2}
+                (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=unreftest&offset=2&limit=2")))))))
 
 (deftest ^:sequential broken-questions-test
   (testing "GET /api/ee/dependencies/broken - only broken questions are returned"
