@@ -1,0 +1,17 @@
+diff --git a/node_modules/@types/redux-auth-wrapper/history3/redirect.d.ts b/node_modules/@types/redux-auth-wrapper/history3/redirect.d.ts
+index 10f8d72..99f3225 100644
+--- a/node_modules/@types/redux-auth-wrapper/history3/redirect.d.ts
++++ b/node_modules/@types/redux-auth-wrapper/history3/redirect.d.ts
+@@ -1,3 +1,4 @@
++import { Context } from 'react';
+ import { Location, LocationDescriptorObject } from "history";
+ import { Action, Store } from "redux";
+ import { AuthBaseConfig, AuthConfig, AuthWrapperDecorator, StateSelector } from "..";
+@@ -17,6 +18,7 @@ export interface ConnectedRouterRedirectConfig<OwnProps = {}, State = {}> extend
+     redirectAction?(location: Location): Action;
+     allowRedirectBack?: boolean | StateSelector<State, OwnProps, boolean> | undefined;
+     redirectQueryParamName?: string | undefined;
++    context: Context<any>;
+ }
+ 
+ export function connectedRouterRedirect<OwnProps = {}, State = {}>(
