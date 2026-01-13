@@ -10,9 +10,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent.atomic AtomicInteger)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
