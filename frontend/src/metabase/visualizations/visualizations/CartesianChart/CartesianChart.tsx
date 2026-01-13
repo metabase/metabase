@@ -6,7 +6,6 @@ import { t } from "ttag";
 
 import { isWebkit } from "metabase/lib/browser";
 import { setUIControls } from "metabase/query_builder/actions";
-import { Button, Card, Center, Group, Stack, Text } from "metabase/ui";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
@@ -23,9 +22,14 @@ import {
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
 
 import { useChartDebug } from "./use-chart-debug";
-import { useAreAllDataPointsOutOfRange } from "./use-data-points-visible";
 import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings } from "./utils";
+import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
+import {
+  replaceCardWithVisualization,
+  setEditingDashboard,
+  updateDashboardAndCards,
+} from "metabase/dashboard/actions";
 
 const HIDE_X_AXIS_LABEL_WIDTH_THRESHOLD = 360;
 const HIDE_Y_AXIS_LABEL_WIDTH_THRESHOLD = 200;
@@ -52,6 +56,7 @@ function _CartesianChart(props: VisualizationProps) {
     actionButtons,
     isDashboard,
     isEditing,
+    isVisualizer,
     isQueryBuilder,
     isVisualizerViz,
     isFullscreen,
@@ -62,6 +67,8 @@ function _CartesianChart(props: VisualizationProps) {
     titleMenuItems,
     onUpdateVisualizationSettings,
     dispatch,
+    onEditVisualization,
+    getVisualizerInitialState,
   } = props;
 
   const settings = useMemo(() => {
@@ -153,7 +160,45 @@ function _CartesianChart(props: VisualizationProps) {
 
   useCloseTooltipOnScroll(chartRef);
 
-  const val = useAreAllDataPointsOutOfRange(chartModel, settings);
+  const handleAutoChange = async () => {
+    if (isDashboard) {
+      const visualizerInitialState = getVisualizerInitialState();
+      visualizerInitialState.settings["graph.y_axis.auto_range"] = true;
+
+      console.log("in dashboard", visualizerInitialState);
+
+      await dispatch(
+        replaceCardWithVisualization({
+          dashcardId: props.dashcard?.id,
+          visualization: {
+            columnValuesMapping: visualizerInitialState.columnValuesMapping,
+            display: visualizerInitialState.display,
+            settings: visualizerInitialState.settings,
+          },
+        }),
+      );
+      await dispatch(updateDashboardAndCards());
+    } else {
+      onUpdateVisualizationSettings({
+        ...settings,
+        "graph.y_axis.auto_range": true,
+      });
+    }
+  };
+
+  const handleOpenSettings = () => {
+    if (isDashboard) {
+      dispatch(setEditingDashboard(props.dashboard));
+      onEditVisualization();
+    } else {
+      dispatch(
+        setUIControls({
+          isShowingChartSettingsSidebar: true,
+          initialChartSetting: { section: "Axes" },
+        }),
+      );
+    }
+  };
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
@@ -197,39 +242,14 @@ function _CartesianChart(props: VisualizationProps) {
         />
       </CartesianChartLegendLayout>
       {seriesColorsCss}
-      {val && (
-        <Center pos="absolute" right={0} left={0} pt="xl">
-          <Card withBorder py="sm">
-            <Stack gap="xs">
-              <Text>{t`Every data point is off-screen because of your y-axis settings`}</Text>
-              <Group justify="center" gap="lg">
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  onClick={() => {
-                    onUpdateVisualizationSettings({
-                      ...settings,
-                      "graph.y_axis.auto_range": true,
-                    });
-                  }}
-                >{t`Change to auto y-axis`}</Button>
-                <Button
-                  variant="subtle"
-                  size="compact-sm"
-                  onClick={() => {
-                    dispatch(
-                      setUIControls({
-                        isShowingChartSettingsSidebar: true,
-                        initialChartSetting: { section: "Axes" },
-                      }),
-                    );
-                  }}
-                >{t`Open axis settings`}</Button>
-              </Group>
-            </Stack>
-          </Card>
-        </Center>
-      )}
+      <DataPointsVisiblePopover
+        isDashboard={isDashboard}
+        isVisualizer={isVisualizer}
+        chartModel={chartModel}
+        settings={settings}
+        autoChange={handleAutoChange}
+        openSettings={handleOpenSettings}
+      />
     </CartesianChartRoot>
   );
 }

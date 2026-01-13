@@ -247,6 +247,7 @@ export function DashCardVisualization({
   showClickBehaviorSidebar,
   onUpdateVisualizationSettings,
   onEditVisualization,
+  getVisualizerInitialState,
 }: DashCardVisualizationProps) {
   const {
     cardTitled,
@@ -625,6 +626,8 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          onEditVisualization={onEditVisualization}
+          getVisualizerInitialState={getVisualizerInitialState}
         />
       </EmbeddingEntityContextProvider>
     </div>

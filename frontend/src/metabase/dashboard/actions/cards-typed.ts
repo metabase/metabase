@@ -285,6 +285,7 @@ export const addCardWithVisualization =
     tabId: number | null;
   }) =>
   async (dispatch: Dispatch, getState: GetState) => {
+    console.log(visualization);
     const cardIds = getCardIdsFromColumnValueMappings(
       visualization.columnValuesMapping,
     );

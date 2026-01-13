@@ -39,7 +39,7 @@ interface VisualizerUiProviderProps {
 
 export function VisualizerUiProvider({ children }: VisualizerUiProviderProps) {
   const [isDataSidebarOpen, setDataSidebarOpen] = useState(true);
-  const [isVizSettingsSidebarOpen, setVizSettingsSidebarOpen] = useState(false);
+  const [isVizSettingsSidebarOpen, setVizSettingsSidebarOpen] = useState(true);
   const [isSwapAffordanceVisible, setSwapAffordanceVisible] = useState(false);
 
   const dataSourceCount = useSelector(

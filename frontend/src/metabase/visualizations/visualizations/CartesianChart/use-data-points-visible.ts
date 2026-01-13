@@ -11,7 +11,7 @@ export const useAreAllDataPointsOutOfRange = (
 
   const { "graph.y_axis.min": yMin, "graph.y_axis.max": yMax } = settings;
 
-  if (!yMax || !yMin) {
+  if (yMax === undefined || yMin === undefined) {
     return true;
   }
 
@@ -21,7 +21,8 @@ export const useAreAllDataPointsOutOfRange = (
   return chartModel.dataset.every((data) =>
     dataKeys.every((key) => {
       const value = data[key] as number;
-      return yMin > value || value > yMax;
+
+      return value < yMin || yMax < value;
     }),
   );
 };

@@ -326,6 +326,16 @@ function DashCardInner({
     onEditVisualization(dashcard, initialState);
   }, [dashcard, series, onEditVisualization, datasets]);
 
+  const getVisualizerInitialState = () => {
+    if (isVisualizerDashboardCard(dashcard)) {
+      return getInitialStateForVisualizerCard(dashcard, datasets);
+    } else if (series.length > 1) {
+      return getInitialStateForMultipleSeries(series);
+    } else {
+      return getInitialStateForCardDataSource(series[0].card, series[0]);
+    }
+  };
+
   const metadata = useSelector(getMetadata);
   const question = useMemo(() => {
     return isQuestionCard(dashcard.card)
@@ -415,11 +425,8 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onTogglePreviewing={handlePreviewToggle}
-          onEditVisualization={
-            isVisualizerDashboardCard(dashcard)
-              ? onEditVisualizationClick
-              : undefined
-          }
+          onEditVisualization={onEditVisualizationClick}
+          getVisualizerInitialState={getVisualizerInitialState}
         />
       </Box>
     </ErrorBoundary>

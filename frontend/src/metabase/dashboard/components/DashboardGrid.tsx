@@ -525,6 +525,8 @@ class DashboardGridInner extends Component<
       return;
     }
 
+    console.log({ visualization });
+
     this.props.replaceCardWithVisualization({
       dashcardId: visualizerModalStatus.dashcardId,
       visualization,

@@ -918,6 +918,7 @@ class Visualization extends PureComponent<
                     isEmbeddingSdk={isEmbeddingSdk}
                     isFullscreen={!!isFullscreen}
                     isMobile={!!isMobile}
+                    isVisualizer={this.props.isVisualizer}
                     isVisualizerViz={isVisualizerViz}
                     isObjectDetail={isObjectDetail}
                     isPreviewing={isPreviewing}
@@ -971,6 +972,10 @@ class Visualization extends PureComponent<
                     rowChecked={rowChecked}
                     onAllSelectClick={onAllSelectClick}
                     onRowSelectClick={onRowSelectClick}
+                    onEditVisualization={this.props.onEditVisualization}
+                    getVisualizerInitialState={
+                      this.props.getVisualizerInitialState
+                    }
                   />
                 </VisualizationRenderedWrapper>
                 {hasDevWatermark && <Watermark card={series[0].card} />}
