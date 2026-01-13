@@ -36,7 +36,7 @@
     "@reduxjs/toolkit": "^2.5.0",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tanstack/react-table": "^8.21.2",
-    "@tanstack/react-virtual": "^3.13.2",
+    "@tanstack/react-virtual": "3.13.2",
     "@tippyjs/react": "^4.2.6",
     "@tiptap/core": "^3.2.0",
     "@tiptap/extension-bubble-menu": "^3.2.0",

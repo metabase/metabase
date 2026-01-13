@@ -7,20 +7,16 @@ const esmPackages = [
   "character-reference-invalid",
   "comma-separated-tokens",
   "csv-parse",
-  "csv-stringify",
-  "d3-.*",
+  "d3-*",
   "d3",
   "decode-named-character-reference",
-  "delaunator",
   "devlop",
   "echarts",
-  "escape-string-regexp",
   "estree.*",
   "fetch-mock",
   "hast.*",
   "html-url-attributes",
   "html-void-elements",
-  "internmap",
   "is-alphabetical",
   "is-alphanumerical",
   "is-decimal",
@@ -36,9 +32,7 @@ const esmPackages = [
   "property-information",
   "react-markdown",
   "rehype-external-links",
-  "rehype-.*",
   "remark.*",
-  "robust-predicates",
   "space-separated-tokens",
   "stringify-entities",
   "trim-lines",
@@ -61,8 +55,13 @@ const baseConfig = {
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$":
       "<rootDir>/frontend/test/__mocks__/fileMock.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
+    "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "\\.svg\\?(component|source)":
       "<rootDir>/frontend/test/__mocks__/svgMock.jsx",
+    "csv-parse/browser/esm/sync":
+      "<rootDir>/node_modules/csv-parse/dist/cjs/sync",
+    "csv-stringify/browser/esm/sync":
+      "<rootDir>/node_modules/csv-stringify/dist/cjs/sync",
     /**
      * SDK components import root SDK folder (`embedding-sdk`) that contains the ee plugins.
      * This isn't a problem in the core app because we seem to not import to entry file directly
@@ -84,8 +83,7 @@ const baseConfig = {
     "docs/(.*)$": "<rootDir>/docs/$1",
   },
   transformIgnorePatterns: [
-    // Pattern to handle bun's node_modules structure
-    `/node_modules/(?!(${esmPackages.join("|")})/)`,
+    `<rootDir>/node_modules/(?!(${esmPackages.join("|")})/)`,
   ],
   testPathIgnorePatterns: [
     "<rootDir>/frontend/.*/.*.tz.unit.spec.{js,jsx,ts,tsx}",
