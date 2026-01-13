@@ -10,8 +10,7 @@ export function useMetabotSQLSuggestion(
 ) {
   const [source, setSource] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
-  const [generateSql, { isLoading, reset: resetMutation }] =
-    useGenerateSqlMutation();
+  const [generateSql, { isLoading }] = useGenerateSqlMutation();
   const requestRef = useRef<ReturnType<typeof generateSql> | null>(null);
 
   const generate = useCallback(
@@ -58,8 +57,7 @@ export function useMetabotSQLSuggestion(
   const reset = useCallback(() => {
     setSource(undefined);
     setError(undefined);
-    resetMutation();
-  }, [resetMutation]);
+  }, []);
 
   const reject = useCallback(() => {
     // No-op for OSS (enterprise sends feedback to agent)

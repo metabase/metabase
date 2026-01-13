@@ -1,6 +1,7 @@
 (ns metabase.llm.settings
   "Settings for OSS LLM integration."
   (:require
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -23,3 +24,10 @@
   "Returns true if LLM SQL generation is enabled (i.e., an OpenAI API key is configured)."
   []
   (some? (llm-openai-api-key)))
+
+(defsetting llm-sql-generation-enabled
+  (deferred-tru "Whether AI-assisted SQL generation is enabled.")
+  :visibility :public
+  :type       :boolean
+  :setter     :none
+  :getter     (fn [] (or (llm-enabled?) (premium-features/enable-metabot-v3?))))

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { useSetting } from "metabase/common/hooks";
 import { useRegisterMetabotContextProvider } from "metabase/metabot/context";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import * as Lib from "metabase-lib";
@@ -61,6 +62,7 @@ export function useInlineSQLPrompt(
   question: Question,
   bufferId: string,
 ): UseInlineSqlEditResult {
+  const llmSqlGenerationEnabled = useSetting("llm-sql-generation-enabled");
   const [portalTarget, setPortalTarget] = useState<PortalTarget | null>(null);
 
   useRegisterCodeEditorMetabotContext(
@@ -73,6 +75,10 @@ export function useInlineSQLPrompt(
 
   const {
     source,
+    isLoading,
+    error,
+    generate,
+    cancelRequest,
     clear: clearSuggestion,
     reset: resetSuggestionState,
     reject,
@@ -145,51 +151,62 @@ export function useInlineSQLPrompt(
   const handleAcceptProposed = source ? resetInput : undefined;
 
   const extensions = useMemo(
-    () => [
-      createPromptInputExtension(setPortalTarget),
-      keymap.of([
-        {
-          key: `Mod-Shift-i`,
-          run: (view) => {
-            resetInputRef.current();
-            view.dispatch({ effects: toggleEffect.of({ view }) });
-            return true;
-          },
-        },
-      ]),
-      EV.updateListener.of((update) => {
-        if (!update.docChanged || !generatedSqlRef.current) {
-          return;
-        }
-        // Only clear suggestion if change was from user input, not programmatic
-        const isUserEdit = update.transactions.some(
-          (tr) =>
-            tr.isUserEvent("input") ||
-            tr.isUserEvent("delete") ||
-            tr.isUserEvent("move"),
-        );
-        if (isUserEdit) {
-          clearSuggestionRef.current();
-        }
-      }),
-    ],
-    [],
+    () =>
+      llmSqlGenerationEnabled
+        ? [
+            createPromptInputExtension(setPortalTarget),
+            keymap.of([
+              {
+                key: `Mod-Shift-i`,
+                run: (view) => {
+                  resetInputRef.current();
+                  view.dispatch({ effects: toggleEffect.of({ view }) });
+                  return true;
+                },
+              },
+            ]),
+            EV.updateListener.of((update) => {
+              if (!update.docChanged || !generatedSqlRef.current) {
+                return;
+              }
+              // Only clear suggestion if change was from user input, not programmatic
+              const isUserEdit = update.transactions.some(
+                (tr) =>
+                  tr.isUserEvent("input") ||
+                  tr.isUserEvent("delete") ||
+                  tr.isUserEvent("move"),
+              );
+              if (isUserEdit) {
+                clearSuggestionRef.current();
+              }
+            }),
+          ]
+        : [],
+    [llmSqlGenerationEnabled],
   );
 
   return {
     extensions,
-    portalElement: portalTarget
-      ? createPortal(
-          <MetabotInlineSQLPrompt
-            databaseId={databaseId}
-            bufferId={bufferId}
-            onClose={hideInput}
-          />,
-          portalTarget.container,
-        )
-      : null,
-    proposedQuestion,
-    handleRejectProposed,
-    handleAcceptProposed,
+    portalElement:
+      llmSqlGenerationEnabled && portalTarget
+        ? createPortal(
+            <MetabotInlineSQLPrompt
+              databaseId={databaseId}
+              onClose={hideInput}
+              isLoading={isLoading}
+              error={error}
+              generate={generate}
+              cancelRequest={cancelRequest}
+            />,
+            portalTarget.container,
+          )
+        : null,
+    proposedQuestion: llmSqlGenerationEnabled ? proposedQuestion : undefined,
+    handleRejectProposed: llmSqlGenerationEnabled
+      ? handleRejectProposed
+      : undefined,
+    handleAcceptProposed: llmSqlGenerationEnabled
+      ? handleAcceptProposed
+      : undefined,
   };
 }

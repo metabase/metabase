@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
 import { MetabotPromptInput } from "metabase/metabot/components/MetabotPromptInput";
-import { PLUGIN_METABOT } from "metabase/plugins";
 import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import type { DatabaseId } from "metabase-types/api";
 
@@ -12,19 +11,23 @@ import S from "./MetabotInlineSQLPrompt.module.css";
 
 interface MetabotInlineSQLPromptProps {
   databaseId: DatabaseId | null;
-  bufferId: string;
   onClose: () => void;
+  isLoading: boolean;
+  error: string | undefined;
+  generate: (value: string) => Promise<void>;
+  cancelRequest: () => void;
 }
 
 export const MetabotInlineSQLPrompt = ({
   databaseId,
-  bufferId,
   onClose,
+  isLoading,
+  error,
+  generate,
+  cancelRequest,
 }: MetabotInlineSQLPromptProps) => {
   const inputRef = useRef<MetabotPromptInputRef>(null);
   const [value, setValue] = useState("");
-  const { isLoading, error, generate, cancelRequest } =
-    PLUGIN_METABOT.useMetabotSQLSuggestion(databaseId, bufferId);
 
   const disabled = !value.trim() || isLoading;
 
