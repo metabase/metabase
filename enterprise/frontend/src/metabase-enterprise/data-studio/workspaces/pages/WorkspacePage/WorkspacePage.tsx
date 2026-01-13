@@ -9,10 +9,11 @@ import {
   arrayMove,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
+import classNames from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ResizableBox } from "react-resizable";
 import { push, replace } from "react-router-redux";
-import { useLatest, useLocation } from "react-use";
+import { useLocation } from "react-use";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -126,6 +127,8 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
     setIsWorkspaceExecuting,
     unsavedTransforms,
   } = useWorkspace();
+
+  const [isResizing, setIsResizing] = useState(false);
 
   // RTK
   const id = Number(params.workspaceId);
@@ -288,7 +291,7 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   const tabsListRef = useRef<HTMLDivElement>(null);
   const [tab, setTab] = useState<string>("setup");
   const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+
   useEffect(() => {
     // Sync UI tabs with active tab changes from workspace.
     if (activeTab) {
@@ -576,7 +579,14 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
   }
 
   return (
-    <Stack data-testid="workspace-page" h="100%" gap={0}>
+    <Stack
+      className={classNames({
+        [styles.resizing]: isResizing,
+      })}
+      data-testid="workspace-page"
+      h="100%"
+      gap={0}
+    >
       <Group
         px="md"
         py="sm"
@@ -830,13 +840,14 @@ function WorkspacePageContent({ params, transformId }: WorkspacePageProps) {
 
         <ResizableBox
           axis="x"
-          width={sidebarWidth}
+          width={DEFAULT_SIDEBAR_WIDTH}
           height={Infinity}
           resizeHandles={["w"]}
           handle={<ResizeHandle />}
           minConstraints={[250, Infinity]}
           maxConstraints={[600, Infinity]}
-          onResize={(_e, { size }) => setSidebarWidth(size.width)}
+          onResizeStart={() => setIsResizing(true)}
+          onResizeStop={() => setIsResizing(false)}
           className={styles.sidebarResizableBox}
         >
           <Box data-testid="workspace-sidebar" h="100%" w="100%">
