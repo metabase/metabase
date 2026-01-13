@@ -1,26 +1,47 @@
 import dayjs from "dayjs";
 import type React from "react";
 import { createContext, useCallback, useRef, useState } from "react";
+import { type RefObject, useContext, useEffect, useMemo } from "react";
 import _ from "underscore";
 
 import { useStore } from "metabase/lib/redux";
-import type {
-  ChatContextProviderFn,
-  MetabotContext as MetabotCtx,
-  MetabotPromptInputRef,
-} from "metabase/metabot";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import type { MetabotChatContext } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
-export const defaultContext = {
+export type ChatContextProviderFn = (
+  state: State,
+) => Promise<Partial<MetabotChatContext> | void>;
+
+export type DeregisterChatContextProviderFn = () => void;
+
+// internal type so we can support tiptap editor and textarea as inputs
+export type MetabotPromptInputRef = {
+  focus: () => void;
+  getValue?: () => string;
+  scrollHeight: number;
+  scrollTop: number;
+};
+
+export interface IMetabotContext {
+  prompt: string;
+  setPrompt: (prompt: string) => void;
+  promptInputRef: RefObject<MetabotPromptInputRef> | undefined;
+
+  getChatContext: () => Promise<MetabotChatContext>;
+  registerChatContextProvider: (
+    fn: ChatContextProviderFn,
+  ) => DeregisterChatContextProviderFn;
+}
+
+export const defaultContext: IMetabotContext = {
   prompt: "",
   setPrompt: () => {},
   promptInputRef: undefined,
-
   getChatContext: () =>
     Promise.resolve({
       user_is_viewing: [],
@@ -43,7 +64,31 @@ const mergeCtx = (
   };
 };
 
-export const MetabotContext = createContext<MetabotCtx>(defaultContext);
+export const useMetabotContext = () => {
+  const context = useContext(MetabotContext);
+  if (!context) {
+    throw new Error("useMetabotContext must be used within a MetabotProvider");
+  }
+
+  return context;
+};
+
+export const useRegisterMetabotContextProvider = (
+  providerFn: ChatContextProviderFn,
+  dependencies: React.DependencyList = [],
+) => {
+  const { registerChatContextProvider } = useMetabotContext();
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cachedProviderFn = useMemo(() => providerFn, dependencies);
+
+  useEffect(() => {
+    const deregister = registerChatContextProvider(cachedProviderFn);
+    return () => deregister();
+  }, [cachedProviderFn, registerChatContextProvider]);
+};
+
+export const MetabotContext = createContext<IMetabotContext>(defaultContext);
 
 export const MetabotProvider = ({
   children,

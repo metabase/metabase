@@ -13,6 +13,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { MetabotProvider } from "metabase/metabot/context";
 import {
   type MockStreamedEndpointParams,
   createMockReadableStream,
@@ -28,7 +29,6 @@ import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
-import { MetabotProvider } from "../context";
 import {
   type MetabotAgentId,
   type MetabotState,
