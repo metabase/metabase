@@ -17,5 +17,6 @@ skip =
     frontend/src/metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/language.ts,
     frontend/src/metabase/static-viz/constants/char-sizes.ts,
     frontend/src/metabase/visualizations/lib/mapping_codes.ts,
+    frontend/*/mocks/*,
     modules/drivers/mongo/src/metabase/driver/mongo/operators.clj,
 ignore-words = .codespellignore
