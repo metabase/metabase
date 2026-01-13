@@ -803,3 +803,31 @@
                               (mt/first-row
                                (mt/run-mbql-query venues
                                  {:aggregation [[:count]]}))))))))))))))))
+
+(deftest clickhouse-double-hyphen-test
+  (testing "can use impersonation on clickhouse with role containing a double hyphen (#57016)"
+    (mt/test-driver :clickhouse
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a "role--with--double--hyphens"]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                (sync/sync-database! database {:scan :schema})
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" role-a}}
+                  (is (= [[100]]
+                         (mt/formatted-rows [int]
+                                            (mt/run-mbql-query venues
+                                              {:aggregation [[:count]]}))))
+                  (is (thrown?
+                       java.lang.Exception
+                       (mt/run-mbql-query checkins
+                         {:aggregation [[:count]]}))))))))))))

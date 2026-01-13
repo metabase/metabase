@@ -562,3 +562,105 @@
         (is (= coll1-id (-> hydrated first :collection :id)))
         (is (= coll2-id (-> hydrated second :collection :id)))
         (is (nil? (-> hydrated (nth 2) :collection)))))))
+
+;;; ---------------------------------------- can-read? permission tests ----------------------------------------
+
+(deftest table-can-read?-with-view-data-and-create-queries-permission-test
+  (testing "User with view-data and create-queries permission can read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+
+(deftest table-can-read?-with-view-data-permission-test
+  (testing "User with view-data and create-queries permission can read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table table-id)))))))))
+
+(deftest table-can-read?-with-manage-table-metadata-permission-test
+  (testing "User with manage-table-metadata permission can read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+
+(deftest table-can-read?-without-permissions-test
+  (testing "User with neither permission cannot read table"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+
+;;; ---------------------------------------- can-query? permission tests ----------------------------------------
+
+(deftest table-can-query?-requires-both-view-data-and-create-queries-test
+  (testing "User needs BOTH view-data AND create-queries to query"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      ;; Only view-data - not enough
+      (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-query? (t2/select-one :model/Table table-id)))))
+      ;; Add create-queries - now can query
+      (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+
+(deftest table-can-query?-manage-table-metadata-does-not-grant-query-access-test
+  (testing "manage-table-metadata alone does NOT grant query access"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-id :id} {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
+      (mt/with-test-user :rasta
+        (is (false? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+
+;;; ---------------------------------------- can_query hydration test ----------------------------------------
+
+(deftest table-can-query-hydration-test
+  (testing ":can_query hydration works for tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table table {:db_id db-id}
+                   :model/PermissionsGroup pg {}]
+      (perms/add-user-to-group! (mt/user->id :rasta) pg)
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      (mt/with-test-user :rasta
+        (let [hydrated (t2/hydrate table :can_query)]
+          (is (contains? hydrated :can_query))
+          (is (boolean? (:can_query hydrated))))))))

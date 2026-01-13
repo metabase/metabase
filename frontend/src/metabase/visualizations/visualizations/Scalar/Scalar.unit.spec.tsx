@@ -65,4 +65,22 @@ describe("Scalar", () => {
     );
     expect(screen.getByText("null")).toBeInTheDocument();
   });
+
+  it("should not apply text-overflow ellipsis to the container", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(1234567)}
+        rawSeries={series(1234567)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+    const container = screen.getByTestId("scalar-container");
+    const styles = window.getComputedStyle(container);
+    // The container should not have text-overflow: ellipsis
+    // as the ScalarValue component handles sizing to fit
+    expect(styles.textOverflow).not.toBe("ellipsis");
+  });
 });
