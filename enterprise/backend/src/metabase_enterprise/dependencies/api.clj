@@ -689,7 +689,7 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections offset limit]
+   {:keys [types card_types query archived include_personal_collections]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
          include_personal_collections false}} :- unreferenced-items-args]
@@ -762,7 +762,7 @@
    - `offset`: Applied offset
    - `limit`: Applied limit"
   [_route-params
-   {:keys [types card_types query archived include_personal_collections offset limit]
+   {:keys [types card_types query archived include_personal_collections]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
          include_personal_collections false}} :- broken-items-args]
