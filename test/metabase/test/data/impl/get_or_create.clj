@@ -139,11 +139,25 @@
 
 (defn- insert-fake-field!
   "Insert a Field row from a FieldDefinition, returning the inserted field."
-  [_driver table position {:keys [field-name base-type semantic-type visibility-type
-                                  effective-type coercion-strategy field-comment fk pk?]}]
-  ;; For fake sync, database_type is informational only - tests query by base_type.
-  ;; Using (name base-type) as a simple placeholder avoids the sql.tx dependency.
-  (let [database-type (name base-type)
+  [driver table position {:keys [field-name base-type semantic-type visibility-type
+                                 effective-type coercion-strategy field-comment fk pk?]}]
+  ;; Handle three forms of base-type (mirrors sql.clj:282-290):
+  ;; 1. {:native "BINARY(8)"} - driver-specific native type string
+  ;; 2. {:natives {:postgres "BYTEA" :redshift "VARBYTE"}} - per-driver native types
+  ;; 3. :type/Text - standard base type keyword
+  (let [database-type (cond
+                        (and (map? base-type) (contains? base-type :native))
+                        (:native base-type)
+
+                        (and (map? base-type) (contains? base-type :natives))
+                        (get-in base-type [:natives driver])
+
+                        :else
+                        (name base-type))
+        ;; For native types, base_type should use effective-type or a wildcard
+        actual-base-type (if (map? base-type)
+                           (or effective-type :type/*)
+                           base-type)
         ;; Set semantic type based on context
         semantic-type (cond
                         pk?        :type/PK
@@ -155,8 +169,8 @@
                                       :name              field-name
                                       :display_name      (humanization/name->human-readable-name :simple field-name)
                                       :database_type     database-type
-                                      :base_type         base-type
-                                      :effective_type    (or effective-type base-type)
+                                      :base_type         actual-base-type
+                                      :effective_type    (or effective-type actual-base-type)
                                       :semantic_type     semantic-type
                                       :coercion_strategy coercion-strategy
                                       :visibility_type   (or visibility-type :normal)
