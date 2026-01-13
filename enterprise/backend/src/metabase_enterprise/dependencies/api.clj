@@ -571,7 +571,7 @@
                          (or (not= dependent_type :card)
                              (= (-> % :data :type) dependent_card_type))))))))
 
-(defn- dependency-list-query
+(defn- dependency-items-query
   [{:keys [query-type entity-type card-types query include-archived-items include-personal-collections]}]
   (let [table-name (case entity-type
                      :card :report_card
@@ -651,7 +651,7 @@
               personal-filter
               (conj [:and personal-filter]))}))
 
-(def ^:private unreferenced-items-args
+(def ^:private dependency-items-args
   [:map
    [:types {:optional true} [:or
                              ::deps.dependency-types/dependency-types
@@ -663,14 +663,14 @@
    [:archived {:optional true} :boolean]
    [:include_personal_collections {:optional true} :boolean]])
 
-(def ^:private unreferenced-items-response
+(def ^:private dependency-items-response
   [:map
    [:data [:sequential ::entity]]
    [:total nat-int?]
    [:offset nat-int?]
    [:limit ms/PositiveInt]])
 
-(api.macros/defendpoint :get "/graph/unreferenced" :- unreferenced-items-response
+(api.macros/defendpoint :get "/graph/unreferenced" :- dependency-items-response
   "Returns a list of all unreferenced items in the instance.
    An unreferenced item is one that is not a dependency of any other item.
 
@@ -692,7 +692,7 @@
    {:keys [types card_types query archived include_personal_collections]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- unreferenced-items-args]
+         include_personal_collections false}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
@@ -701,12 +701,12 @@
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(dependency-list-query {:query-type :unreferenced
-                                                    :entity-type %
-                                                    :card-types card-types
-                                                    :query query
-                                                    :include-archived-items include-archived-items
-                                                    :include-personal-collections include_personal_collections})
+        union-queries (map #(dependency-items-query {:query-type :unreferenced
+                                                     :entity-type %
+                                                     :card-types card-types
+                                                     :query query
+                                                     :include-archived-items include-archived-items
+                                                     :include-personal-collections include_personal_collections})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
@@ -725,26 +725,7 @@
      :offset offset
      :total  total}))
 
-(def ^:private broken-items-args
-  [:map
-   [:types {:optional true} [:or
-                             ::deps.dependency-types/dependency-types
-                             [:sequential ::deps.dependency-types/dependency-types]]]
-   [:card_types {:optional true} [:or
-                                  (ms/enum-decode-keyword lib.schema.metadata/card-types)
-                                  [:sequential (ms/enum-decode-keyword lib.schema.metadata/card-types)]]]
-   [:query {:optional true} :string]
-   [:archived {:optional true} :boolean]
-   [:include_personal_collections {:optional true} :boolean]])
-
-(def ^:private broken-items-response
-  [:map
-   [:data [:sequential ::entity]]
-   [:total nat-int?]
-   [:offset nat-int?]
-   [:limit ms/PositiveInt]])
-
-(api.macros/defendpoint :get "/graph/broken" :- broken-items-response
+(api.macros/defendpoint :get "/graph/broken" :- dependency-items-response
   "Returns a list of all items with broken queries.
 
    Accepts optional parameters for filtering:
@@ -765,7 +746,7 @@
    {:keys [types card_types query archived include_personal_collections]
     :or {types (vec deps.dependency-types/dependency-types)
          card_types (vec lib.schema.metadata/card-types)
-         include_personal_collections false}} :- broken-items-args]
+         include_personal_collections false}} :- dependency-items-args]
   (let [offset (or (request/offset) 0)
         limit (or (request/limit) 50)
         include-archived-items (if archived :all :exclude)
@@ -774,12 +755,12 @@
                          ;; Sandboxes don't support query filtering, so exclude them when a query is provided
                          query (remove #{:sandbox}))
         card-types (if (sequential? card_types) card_types [card_types])
-        union-queries (map #(dependency-list-query {:query-type :broken
-                                                    :entity-type %
-                                                    :card-types card-types
-                                                    :query query
-                                                    :include-archived-items include-archived-items
-                                                    :include-personal-collections include_personal_collections})
+        union-queries (map #(dependency-items-query {:query-type :broken
+                                                     :entity-type %
+                                                     :card-types card-types
+                                                     :query query
+                                                     :include-archived-items include-archived-items
+                                                     :include-personal-collections include_personal_collections})
                            selected-types)
         union-query {:union-all union-queries}
         all-ids (->> (t2/query (assoc union-query
