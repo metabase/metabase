@@ -16,7 +16,6 @@ jobs:
         with:
           # keep this list in sync with the list in `mage/src/mage/codespell.clj`
           path: >-
-            dev
             docs
             enterprise
             frontend
