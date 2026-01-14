@@ -314,11 +314,11 @@
           ;; if the ResultSet returns anything we know the table is already loaded.
           (.next rset)))))))
 
-(defmethod tx/use-fake-sync? :redshift
-  [_driver]
-  ;; Redshift sync can take ~10 minutes due to network RTT to AWS.
-  ;; Use fake sync to directly insert Table/Field rows from the dbdef, skipping network calls entirely.
-  true)
+(defmethod driver/database-supports? [:redshift :test/use-fake-sync]
+  [_driver _feature _database]
+  ;; Use real sync in tests on master/release branches to catch sync regressions.
+  ;; Use fake sync in tests on feature branches for speed (~10 min savings per test run).
+  (not (tx/on-master-or-release-branch?)))
 
 (defmethod tx/fake-sync-schema :redshift
   [_driver]

@@ -10,6 +10,7 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.core.memoize :as memoize]
+   [clojure.java.shell :as shell]
    [clojure.string :as str]
    [clojure.test :as t]
    [clojure.tools.reader.edn :as edn]
@@ -515,28 +516,9 @@
   [_driver _dbdef]
   false)
 
-(defmulti use-fake-sync?
-  "Return true if this driver should use 'fake sync' - directly inserting Table/Field rows from the dbdef instead
-   of calling `sync-database!`. This is useful for drivers with slow network sync (e.g., Redshift where sync can
-   take ~10 minutes due to RTT to AWS).
-
-   When enabled, the test infrastructure will:
-   1. Insert Table rows directly from the dbdef's table-definitions
-   2. Insert Field rows directly from the dbdef's field-definitions
-   3. Set up FK relationships based on the `:fk` key in field definitions
-
-   This skips all network calls to the actual database for metadata discovery."
-  {:arglists '([driver]), :added "0.56.0"}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod use-fake-sync? ::test-extensions
-  [_driver]
-  false)
-
 (defmulti fake-sync-schema
   "Return the schema name to use for fake sync Table rows. Returns nil by default.
-   Drivers opting into fake sync (via [[use-fake-sync?]]) should implement this to return
+   Drivers opting into fake sync (via `:test/use-fake-sync` feature) should implement this to return
    their session schema name."
   {:arglists '([driver]), :added "0.56.0"}
   dispatch-on-driver-with-test-extensions
@@ -545,6 +527,40 @@
 (defmethod fake-sync-schema ::test-extensions
   [_driver]
   nil)
+
+(defn on-master-or-release-branch?
+  "Returns true if running on master or a release-* branch.
+   Detection methods (in priority order):
+   1. GITHUB_REF_NAME env var (set in GitHub Actions CI)
+   2. Git branch name via shell (local development)
+
+   Used to conditionally enable features like fake-sync that should be disabled
+   on master/release branches to ensure full test coverage."
+  []
+  (let [branch-name (or (System/getenv "GITHUB_REF_NAME")
+                        (try (-> (shell/sh "git" "rev-parse" "--abbrev-ref" "HEAD")
+                                 :out
+                                 str/trim)
+                             (catch Exception _ nil)))]
+    (boolean
+     (and branch-name
+          (or (= branch-name "master")
+              (str/starts-with? branch-name "release-"))))))
+
+(defmacro with-driver-supports-feature!
+  "Temporarily override `driver/database-supports?` to return a specific value for a driver/feature combo.
+   Useful for testing code paths that depend on driver features.
+
+   Example:
+     (with-driver-supports-feature! [:redshift :test/use-fake-sync false]
+       (do-something-that-requires-real-sync))"
+  [[driver feature value] & body]
+  `(let [original-db-supports?# driver/database-supports?]
+     (with-redefs [driver/database-supports? (fn [ddriver# ffeature# db#]
+                                               (if (and (= ddriver# ~driver) (= ffeature# ~feature))
+                                                 ~value
+                                                 (original-db-supports?# ddriver# ffeature# db#)))]
+       ~@body)))
 
 (defmulti track-dataset
   "Track the creation or the usage of the database.

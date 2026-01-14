@@ -119,75 +119,106 @@
 ;;; -------------------------------------------------- Fake Sync --------------------------------------------------
 ;; For drivers with slow network sync (e.g., Redshift), we can skip sync-database! and directly insert
 ;; Table/Field rows from the dbdef. This saves ~10 minutes per test run.
+;;
+;; Architecture: The code is split into two parts for testability:
+;; 1. Pure transformation functions (field-def->row, table-def->rows, dbdef->fake-sync-rows)
+;;    - Convert database definitions into row maps ready for insertion
+;;    - No database side effects, easily testable
+;; 2. Insertion functions (insert-fake-sync-rows!, resolve-fk-relationships!)
+;;    - Actually insert the rows into the app DB
+;;    - Stateful, requires database connection
 
-(defn- insert-fake-table!
-  "Insert a Table row from a TableDefinition, returning the inserted table."
-  [driver db {:keys [table-name table-comment]} database-name]
-  (let [schema         (tx/fake-sync-schema driver)
-        qualified-name (tx/db-qualified-table-name database-name table-name)]
-    (first
-     (t2/insert-returning-instances! :model/Table
-                                     {:db_id               (:id db)
-                                      :name                qualified-name
-                                      :schema              schema
-                                      :display_name        (humanization/name->human-readable-name :simple table-name)
-                                      :description         table-comment
-                                      :active              true
-                                      :visibility_type     nil
-                                      :initial_sync_status "complete"
-                                      :field_order         "database"}))))
+;; ---------------------- Pure Transformation Functions ----------------------
 
-(defn- insert-fake-field!
-  "Insert a Field row from a FieldDefinition, returning the inserted field."
-  [driver table position {:keys [field-name base-type semantic-type visibility-type
-                                 effective-type coercion-strategy field-comment fk pk?]}]
-  ;; Handle three forms of base-type (mirrors sql.clj:282-290):
-  ;; 1. {:native "BINARY(8)"} - driver-specific native type string
-  ;; 2. {:natives {:postgres "BYTEA" :redshift "VARBYTE"}} - per-driver native types
-  ;; 3. :type/Text - standard base type keyword
-  (let [database-type (cond
-                        (and (map? base-type) (contains? base-type :native))
-                        (:native base-type)
+(defn- field-def->row
+  "Convert a FieldDefinition to a Field row map (without table_id, added during insertion).
+   Handles three forms of base-type:
+   1. {:native \"BINARY(8)\"} - driver-specific native type string
+   2. {:natives {:postgres \"BYTEA\" :redshift \"VARBYTE\"}} - per-driver native types
+   3. :type/Text - standard base type keyword"
+  [driver position {:keys [field-name base-type semantic-type visibility-type
+                           effective-type coercion-strategy field-comment fk pk?]}]
+  (let [database-type    (cond
+                           (and (map? base-type) (contains? base-type :native))
+                           (:native base-type)
 
-                        (and (map? base-type) (contains? base-type :natives))
-                        (get-in base-type [:natives driver])
+                           (and (map? base-type) (contains? base-type :natives))
+                           (get-in base-type [:natives driver])
 
-                        :else
-                        (name base-type))
-        ;; For native types, base_type should use effective-type or a wildcard
+                           :else
+                           (name base-type))
         actual-base-type (if (map? base-type)
                            (or effective-type :type/*)
                            base-type)
-        ;; Set semantic type based on context
-        semantic-type (cond
-                        pk?        :type/PK
-                        (some? fk) :type/FK
-                        :else      semantic-type)]
-    (first
-     (t2/insert-returning-instances! :model/Field
-                                     {:table_id          (:id table)
-                                      :name              field-name
-                                      :display_name      (humanization/name->human-readable-name :simple field-name)
-                                      :database_type     database-type
-                                      :base_type         actual-base-type
-                                      :effective_type    (or effective-type actual-base-type)
-                                      :semantic_type     semantic-type
-                                      :coercion_strategy coercion-strategy
-                                      :visibility_type   (or visibility-type :normal)
-                                      :description       field-comment
-                                      :position          position
-                                      :database_position position
-                                      :active            true}))))
+        semantic-type    (cond
+                           pk?        :type/PK
+                           (some? fk) :type/FK
+                           :else      semantic-type)]
+    {:name              field-name
+     :display_name      (humanization/name->human-readable-name :simple field-name)
+     :database_type     database-type
+     :base_type         actual-base-type
+     :effective_type    (or effective-type actual-base-type)
+     :semantic_type     semantic-type
+     :coercion_strategy coercion-strategy
+     :visibility_type   (or visibility-type :normal)
+     :description       field-comment
+     :position          position
+     :database_position position
+     :active            true}))
 
-(defn- insert-auto-pk-field!
-  "Insert the auto-generated PK field (id) for a table that doesn't define custom PKs."
-  [driver table]
-  ;; pk-field-name is "id" for all SQL drivers that would use fake sync
-  (let [pk-base-type (tx/id-field-type driver)]
-    (insert-fake-field! driver table 0
-                        {:field-name "id"
-                         :base-type  pk-base-type
-                         :pk?        true})))
+(defn- table-def->rows
+  "Convert a TableDefinition to a map of {:table-name, :table-row, :field-rows}.
+   This is a pure function - no database insertion."
+  [driver db-id database-name {:keys [table-name table-comment field-definitions] :as _table-def}]
+  (let [schema         (tx/fake-sync-schema driver)
+        qualified-name (tx/db-qualified-table-name database-name table-name)
+        has-custom-pk? (some :pk? field-definitions)
+        table-row      {:db_id               db-id
+                        :name                qualified-name
+                        :schema              schema
+                        :display_name        (humanization/name->human-readable-name :simple table-name)
+                        :description         table-comment
+                        :active              true
+                        :visibility_type     nil
+                        :initial_sync_status "complete"
+                        :field_order         "database"}
+        ;; Build field rows: auto PK (if needed) + user-defined fields
+        pk-field-row   (when-not has-custom-pk?
+                         (field-def->row driver 0
+                                         {:field-name "id"
+                                          :base-type  (tx/id-field-type driver)
+                                          :pk?        true}))
+        user-field-rows (map-indexed
+                         (fn [idx field-def]
+                           (field-def->row driver (if has-custom-pk? idx (inc idx)) field-def))
+                         field-definitions)
+        field-rows     (if pk-field-row
+                         (cons pk-field-row user-field-rows)
+                         user-field-rows)]
+    {:table-name  table-name
+     :table-row   table-row
+     :field-rows  (vec field-rows)}))
+
+(defn- dbdef->fake-sync-rows
+  "Convert database definition to table and field rows for fake sync.
+   This is a pure function - no database insertion.
+   Returns a vector of {:table-name, :table-row, :field-rows} maps."
+  [driver db-id {:keys [database-name table-definitions]}]
+  (mapv #(table-def->rows driver db-id database-name %) table-definitions))
+
+;; ---------------------- Insertion Functions ----------------------
+
+(defn- insert-fake-sync-rows!
+  "Insert pre-computed table and field rows into the app DB.
+   Returns map of table-name -> inserted table for FK resolution."
+  [rows]
+  (into {}
+        (for [{:keys [table-name table-row field-rows]} rows]
+          (let [table (first (t2/insert-returning-instances! :model/Table table-row))]
+            (doseq [field-row field-rows]
+              (t2/insert-returning-instances! :model/Field (assoc field-row :table_id (:id table))))
+            [table-name table]))))
 
 (defn- resolve-fk-relationships!
   "Second pass: resolve FK relationships by setting fk_target_field_id on FK fields."
@@ -209,30 +240,16 @@
         (t2/update! :model/Field (:id source-field)
                     {:fk_target_field_id (:id target-pk-field)})))))
 
+;; ---------------------- Main Entry Point ----------------------
+
 (defn- fake-sync-database!
   "Insert Table and Field rows directly from the dbdef instead of calling sync-database!.
    This skips network calls entirely, which is useful for slow remote databases like Redshift."
-  [driver {:keys [database-name table-definitions] :as database-definition} db]
+  [driver {:keys [database-name] :as database-definition} db]
   (log/infof "Using FAKE SYNC for %s Database %s (skipping network calls to database)" driver database-name)
-  ;; First pass: insert all tables and their fields
-  (let [table-name->table
-        (into {}
-              (for [{:keys [table-name field-definitions] :as table-def} table-definitions]
-                (let [table           (insert-fake-table! driver db table-def database-name)
-                      has-custom-pk?  (some :pk? field-definitions)]
-                  ;; Only insert auto-generated PK if no custom PK is defined
-                  (when-not has-custom-pk?
-                    (insert-auto-pk-field! driver table))
-                  ;; Insert fields with positions (0-indexed if custom PK, 1-indexed if auto PK)
-                  (dorun
-                   (map-indexed
-                    (fn [idx field-def]
-                      (let [position (if has-custom-pk? idx (inc idx))]
-                        (insert-fake-field! driver table position field-def)))
-                    field-definitions))
-                  [table-name table])))]
-    ;; Second pass: resolve FK relationships
-    (resolve-fk-relationships! table-name->table database-definition)))
+  (let [rows            (dbdef->fake-sync-rows driver (:id db) database-definition)
+        table-name->tbl (insert-fake-sync-rows! rows)]
+    (resolve-fk-relationships! table-name->tbl database-definition)))
 
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
@@ -241,7 +258,7 @@
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
-      (if (tx/use-fake-sync? driver)
+      (if (driver/database-supports? driver :test/use-fake-sync nil)
         ;; Use fake sync - directly insert Table/Field rows from dbdef, skipping network calls
         (fake-sync-database! driver database-definition db)
         ;; Original sync path - call sync-database! against the actual database

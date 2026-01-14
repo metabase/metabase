@@ -6,7 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
@@ -134,12 +133,12 @@
 ;; stored as textfile
 ;; location 's3://mb-rs-test/tickit/spectrum/sales/'
 ;; table properties ('numRows'='172000');
-;;
+
 (deftest ^:parallel test-external-table
   ;; The extsales table is an AWS Redshift Spectrum external table that only exists in the real
   ;; Redshift database - it's not part of our test data definitions. Skip this test when using
   ;; fake sync since the table won't be synced.
-  (when-not (tx/use-fake-sync? :redshift)
+  (when (tx/on-master-or-release-branch?)
     (mt/test-driver :redshift
       (testing "expects spectrum schema to exist"
         (is (=? [{:table_id        (mt/id :extsales)
@@ -577,7 +576,8 @@
 (deftest real-sync-validation-test
   (mt/test-driver :redshift
     (testing "Forces a real sync for a minimal dataset to test real sync logic"
-      (with-redefs [tx/use-fake-sync? (constantly false)]
+      ;; Disable fake sync for this test to force a real sync
+      (tx/with-driver-supports-feature! [:redshift :test/use-fake-sync false]
         (mt/dataset (mt/dataset-definition "real-sync-validation"
                                            [["sync_test_table"
                                              [{:field-name "text_col" :base-type :type/Text}
