@@ -1602,15 +1602,46 @@
           {input-id     :id
            input-schema :schema
            input-table  :name} (t2/select-one :model/Table (id-map :t0))
+          ;; Look up output table IDs for transform targets
+          tx-1-table-id  (t2/select-one-fn :id :model/Table :db_id (mt/id) :schema tx-schema :name tx-1-output)
+          tx-2-table-id  (t2/select-one-fn :id :model/Table :db_id (mt/id) :schema tx-schema :name tx-2-output)
+          tx-3-table-id  (t2/select-one-fn :id :model/Table :db_id (mt/id) :schema tx-schema :name tx-3-output)
           tx-1-input     (str (mt/id) "-" input-schema "-" input-table)
           t1-ref         (:ref_id tx-1)
           t3-ref         (:ref_id tx-3)]
 
       (testing "returns enclosed external transform too"
-        (is (= {:nodes #{{:type "input-table", :id tx-1-input, :data {:db (mt/id), :schema input-schema, :table input-table, :id input-id}, :dependents_count {:workspace-transform 1}}
-                         {:type "workspace-transform", :id t1-ref,     :data {:ref_id t1-ref, :name (:name tx-1), :target {:db (mt/id), :schema tx-schema, :table tx-1-output}}, :dependents_count {:external-transform 1}}
-                         {:type "external-transform",  :id (:id tx-2), :data {:id (:id tx-2), :name (:name tx-2), :target {:db (mt/id), :schema tx-schema, :table tx-2-output}}, :dependents_count {:workspace-transform 1}}
-                         {:type "workspace-transform", :id t3-ref,     :data {:ref_id t3-ref, :name (:name tx-3), :target {:db (mt/id), :schema tx-schema, :table tx-3-output}}, :dependents_count {}}},
+        (is (= {:nodes #{{:type             "input-table"
+                          :id               tx-1-input
+                          :data             {:db (mt/id), :schema input-schema, :table input-table, :id input-id}
+                          :dependents_count {:workspace-transform 1}}
+                         {:type             "workspace-transform"
+                          :id               t1-ref
+                          :data             {:ref_id t1-ref
+                                             :name   (:name tx-1)
+                                             :target {:db       (mt/id)
+                                                      :schema   tx-schema
+                                                      :table    tx-1-output
+                                                      :table_id tx-1-table-id}}
+                          :dependents_count {:external-transform 1}}
+                         {:type             "external-transform"
+                          :id               (:id tx-2)
+                          :data             {:id     (:id tx-2)
+                                             :name   (:name tx-2)
+                                             :target {:db       (mt/id)
+                                                      :schema   tx-schema
+                                                      :table    tx-2-output
+                                                      :table_id tx-2-table-id}}
+                          :dependents_count {:workspace-transform 1}}
+                         {:type             "workspace-transform"
+                          :id               t3-ref
+                          :data             {:ref_id t3-ref
+                                             :name   (:name tx-3)
+                                             :target {:db       (mt/id)
+                                                      :schema   tx-schema
+                                                      :table    tx-3-output
+                                                      :table_id tx-3-table-id}}
+                          :dependents_count {}}},
                 :edges #{{:to_entity_type   "input-table"
                           :to_entity_id     tx-1-input
                           :from_entity_type "workspace-transform"
