@@ -20,7 +20,12 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
-(defn- mbql-graph [mp]
+(defn- mbql-graph
+  "Returns a graph that is limited to sandboxes, segments, measures, and mbql cards.
+
+  All other types of nodes are ignored and are neither included in the graph or traversed to find transitive
+  dependents."
+  [mp]
   (-> (models.dependency/filtered-graph-dependents
        nil
        (fn [type-field _id-field]
@@ -38,6 +43,7 @@
       graph/cached-graph))
 
 (mu/defn- dependent-mbql-cards :- [:sequential ::lib.schema.id/card]
+  "Returns a list of all card dependencies in the transitive children of `[start-type start-id]` using `graph`."
   [graph
    start-type :- ::deps.dependency-types/dependency-types
    start-id   :- ::deps.dependency-types/entity-id]
@@ -125,7 +131,7 @@
    metadata-type   :- :keyword]
   ;; Notes on metadata providers:
   ;;
-  ;; The key thing here is that lib.metadata/card caches very aggressively (as of 2025/01, at least).  Instead of
+  ;; The key thing here is that lib.metadata/card caches very aggressively (as of 2026/01, at least).  Instead of
   ;; going through the normal cache mechanism, it grabs the card normally, normalizes the query, and then caches the
   ;; result using a special key.  The next time it gets called, it will check for that key first and never actually
   ;; hit the standard card fetch flow at all.  Meanwhile, override metadata providers delegate all caching to their
@@ -140,8 +146,8 @@
   ;; fetch the current state of the world before any updates that happen in this function.
   ;;
   ;; Second, we have a "pre-update" metadata provider.  This is an override metadata provider based on a "fresh"
-  ;; metadata provider with no cached data.  This is intended to match the state of the world before whatever update
-  ;; triggered this function call.
+  ;; metadata provider with no cached data.  This has overrides intended to match the state of the world before
+  ;; whatever update triggered this function call.
   ;;
   ;; Third, we have a "updated" metadata provider.  This another override metadata provider based on a fresh metadata
   ;; provider, but this one has no initial overrides.  Instead, it is set to use our returned-columns logic and asked
@@ -173,9 +179,8 @@
         updates (->> (graph/transitive-children-of graph [start])
                      (graph/keep-children
                       (fn [[node-type node-id :as node]]
-                        (if (or (not= node-type :card)
-                                (= node start))
-                          nil
+                        (when (and (= node-type :card)
+                                   (not= node start))
                           (let [new-metadata (-> (lib.metadata/card updated-mp node-id)
                                                  :result-metadata)
                                 old-metadata (-> (lib.metadata/card original-mp node-id)
