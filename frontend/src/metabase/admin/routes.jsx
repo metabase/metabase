@@ -133,6 +133,11 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <Route path=":groupId" component={GroupDetailApp} />
           </Route>
 
+          {/* Tenants */}
+          <Route path="tenants" component={createTenantsRouteGuard()}>
+            {PLUGIN_TENANTS.tenantsRoutes}
+          </Route>
+
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />
             {PLUGIN_TENANTS.userStrategyRoute}
@@ -217,11 +222,6 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       {/* PERMISSIONS */}
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
-      </Route>
-
-      {/* Tenants */}
-      <Route path="tenants" component={createTenantsRouteGuard()}>
-        {PLUGIN_TENANTS.tenantsRoutes}
       </Route>
 
       {/* PERFORMANCE */}

@@ -218,7 +218,11 @@
   (.append writer (or database_type "UNKNOWN")))
 
 (defn- format-table-ddl
-  [{:keys [schema columns], table-name :name} ^Writer writer]
+  [{:keys [schema columns description], table-name :name} ^Writer writer]
+  (when (not-empty description)
+    (.append writer "-- ")
+    (.append writer ^String description)
+    (.append writer "\n"))
   (.append writer "CREATE TABLE ")
   (when (seq schema)
     (format-escaped schema writer)
@@ -278,9 +282,10 @@
                 tables-with-columns
                 (keep (fn [[table-id table]]
                         (when-let [columns (seq (fetch-table-columns mp table-id))]
-                          {:name    (:name table)
-                           :schema  (:schema table)
-                           :columns columns}))
+                          {:name        (:name table)
+                           :schema      (:schema table)
+                           :description (:description table)
+                           :columns     columns}))
                       accessible-tables)
 
                 ;; Gather all columns for batch operations

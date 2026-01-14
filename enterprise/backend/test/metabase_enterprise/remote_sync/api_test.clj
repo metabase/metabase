@@ -543,7 +543,7 @@
       (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
-  (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
+  (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
     (with-redefs [remote-sync.object/dirty-global? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -779,3 +779,55 @@
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
           (is (= 1 @export-calls)))))))
+
+;;; ------------------------------------------- Token Preservation Tests -------------------------------------------
+
+(deftest settings-preserves-token-when-switching-to-read-only-test
+  (testing "PUT /api/ee/remote-sync/settings preserves token when switching from read-write to read-only"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-type :read-only})]
+            (wait-for-task-completion task_id)
+            (is (= {:success true :task_id task_id} resp))
+            (is (= :read-only (settings/remote-sync-type)))
+            (is (= "secret-token-value" (settings/remote-sync-token))
+                "Token should be preserved when not included in request")))))))
+
+(deftest settings-preserves-token-when-changing-branch-test
+  (testing "PUT /api/ee/remote-sync/settings preserves token when changing branch"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-branch "develop"})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (= "develop" (settings/remote-sync-branch)))
+            (is (= "secret-token-value" (settings/remote-sync-token))
+                "Token should be preserved when not included in request")))))))
+
+(deftest settings-clears-token-when-explicitly-nil-test
+  (testing "PUT /api/ee/remote-sync/settings clears token when explicitly set to nil"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-token nil})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (nil? (settings/remote-sync-token))
+                "Token should be cleared when explicitly set to nil")))))))

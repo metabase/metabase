@@ -25,6 +25,7 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
+import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
@@ -54,7 +55,6 @@ import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
@@ -193,11 +193,7 @@ const SdkDashboardInner = ({
     token: rawToken ?? undefined,
   });
 
-  useEffect(() => {
-    if (isGuestEmbed && token) {
-      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-    }
-  }, [isGuestEmbed, token]);
+  useSetupContentTranslations({ token });
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,

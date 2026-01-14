@@ -108,7 +108,7 @@ const TasksAppBase = ({ children, location }: TasksAppProps) => {
         />
       </SettingsSection>
       {
-        // render 'children' so that the invididual task modals show up
+        // render 'children' so that the individual task modals show up
         children
       }
     </SettingsPageWrapper>

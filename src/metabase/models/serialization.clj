@@ -1109,7 +1109,7 @@
 (defn- mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   [form]
-  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment} form))
+  (mbql.normalize/is-clause? #{:field :field-id :fk-> :dimension :metric :segment :measure} form))
 
 (defn- normalize [mbql]
   (if-not (mbql-entity-reference? mbql)
@@ -1149,7 +1149,10 @@
         [:metric (*export-fk* id 'Card)]
 
         [:segment (id :guard integer?)]
-        [:segment (*export-fk* id 'Segment)])))
+        [:segment (*export-fk* id 'Segment)]
+
+        [:measure (id :guard integer?)]
+        [:measure (*export-fk* id 'Measure)])))
 
 (defn- export-source-table
   [source-table]
@@ -1242,6 +1245,9 @@
     [(:or :segment "segment") (fully-qualified-name :guard portable-id?)]
     [:segment (*import-fk* fully-qualified-name 'Segment)]
 
+    [(:or :measure "measure") (fully-qualified-name :guard portable-id?)]
+    [:measure (*import-fk* fully-qualified-name 'Measure)]
+
     (_ :guard (every-pred map? #(vector? (:source-table %))))
     (-> &match
         (assoc :source-table (*import-table-fk* (:source-table &match)))
@@ -1292,6 +1298,8 @@
     ["metric"   (field :guard portable-id?)] #{[{:model "Card" :id field}]}
     [:segment   (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
     ["segment"  (field :guard portable-id?)] #{[{:model "Segment" :id field}]}
+    [:measure   (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
+    ["measure"  (field :guard portable-id?)] #{[{:model "Measure" :id field}]}
     :else (reduce #(cond
                      (map? %2)    (into %1 (mbql-deps-map %2))
                      (vector? %2) (into %1 (mbql-deps-vector %2))

@@ -11,7 +11,7 @@
   downstream entities in any order."
   (:require
    [medley.core :as m]
-   [metabase-enterprise.dependencies.native-validation :as deps.native]
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -112,12 +112,9 @@
                     (assoc-in m ks v))
                   % kvs)))
 
-(defn- get-returned-columns [mp queryable]
-  (let [query (lib/query mp queryable)]
-    (if (lib/native-only-query? query)
-      (deps.native/native-result-metadata (:engine (lib.metadata/database mp))
-                                          query)
-      (lib/returned-columns query))))
+(defn- returned-columns [mp queryable]
+  (deps.analysis/returned-columns (:engine (lib.metadata/database mp))
+                                  (lib/query mp queryable)))
 
 (defmethod add-override :card [^OverridingMetadataProvider mp _entity-type id updates]
   (with-overrides mp
@@ -129,7 +126,7 @@
                                              (dissoc :result-metadata)))
                                        updates))
      ;; This uses the outer OMP and so the overrides are visible!
-     [::card-columns id] (delay (get-returned-columns mp (lib.metadata/card mp id)))}))
+     [::card-columns id] (delay (returned-columns mp (lib.metadata/card mp id)))}))
 
 (defonce ^:private last-fake-id (atom 2000000000))
 
@@ -158,7 +155,7 @@
                          (lib/returned-columns (lib/query (inner-mp mp) existing-table)))
         output-cols    (delay
                          ;; Note that this will analyze the query with any upstream changes included!
-                         (let [new-cols (get-returned-columns mp (:query source))
+                         (let [new-cols (returned-columns mp (:query source))
                                by-name  (m/index-by :lib/desired-column-alias existing-cols)]
                            (into [] (for [col new-cols
                                           :let [old-col (by-name (:lib/desired-column-alias col))]]

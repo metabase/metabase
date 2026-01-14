@@ -239,7 +239,7 @@ export const DatabasePane = ({
     isLoading: isLoadingSchemas,
     error: schemasError,
   } = useListDatabaseSchemasQuery(
-    databaseId != null ? { id: databaseId } : skipToken,
+    databaseId != null ? { id: databaseId, "can-query": true } : skipToken,
   );
 
   const {

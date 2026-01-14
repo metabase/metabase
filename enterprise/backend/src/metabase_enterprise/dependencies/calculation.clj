@@ -109,7 +109,7 @@
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
                                          (cond
                                            (and (= prose-mirror/smart-link-type type)
-                                                (#{"card" "dashboard" "table"} (:model attrs)))
+                                                (#{"card" "dashboard" "table" "document"} (:model attrs)))
                                            [(keyword (:model attrs)) (:entityId attrs)]
 
                                            (= prose-mirror/card-embed-type type)

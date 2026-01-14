@@ -7,8 +7,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
-   [metabase.llm.openai :as llm.openai]
    [metabase.llm.settings :as llm.settings]
    [metabase.llm.streaming :as llm.streaming]
    [metabase.server.streaming-response :as sr]
@@ -158,13 +158,16 @@
 ;;; ------------------------------------------ Response Formatting ------------------------------------------
 
 (defn- parse-sql-response
-  "Parse the structured JSON response from OpenAI and extract the SQL.
-   Falls back to the raw string if JSON parsing fails."
-  [json-str]
-  (try
-    (:sql (json/decode+kw json-str))
-    (catch Exception _
-      json-str)))
+  "Parse the structured JSON response and extract the SQL.
+   Handles both map (from non-streaming) and string (from streaming accumulator) responses."
+  [response]
+  (cond
+    (map? response)    (:sql response)
+    (string? response) (try
+                         (:sql (json/decode+kw response))
+                         (catch Exception _
+                           response))
+    :else              response))
 
 (defn- make-code-edit-part
   "Create an AI SDK v5 data part for a code edit suggestion."
@@ -175,21 +178,32 @@
              :mode      "rewrite"
              :value     sql}})
 
+(defn- make-context-part
+  "Create an AI SDK v5 context data part for sync responses."
+  [{:keys [system-prompt dialect table-ids]}]
+  {:type    "context"
+   :version 1
+   :value   {:system_prompt system-prompt
+             :dialect       dialect
+             :table_ids     (vec table-ids)}})
+
 (api.macros/defendpoint :post "/generate-sql"
   "Generate SQL from a natural language prompt.
 
    Requires:
-   - LLM to be configured (OpenAI API key set in admin settings)
+   - LLM to be configured (Anthropic API key set in admin settings)
    - At least one table mention in the prompt using [Name](metabase://table/ID) format
    - A database_id parameter
 
-   Returns AI SDK v5 data part format for frontend compatibility."
+   Returns AI SDK v5 data part format for frontend compatibility.
+   If include_context is true, includes a context part with the system prompt."
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
-            [:buffer_id {:optional true} :string]]]
+            [:buffer_id {:optional true} :string]
+            [:include_context {:optional true} :boolean]]]
   :- [:map
       [:parts [:sequential [:map
                             [:type :string]
@@ -197,10 +211,10 @@
                             [:value :map]]]]]
   ;; 1. Validate LLM is configured
   (when-not (llm.settings/llm-enabled?)
-    (throw (ex-info (tru "LLM SQL generation is not configured. Please set an OpenAI API key in admin settings.")
+    (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
 
-  (let [{:keys [prompt database_id buffer_id]} body
+  (let [{:keys [prompt database_id buffer_id include_context]} body
         buffer-id (or buffer_id "qb")
         ;; 2. Parse table mentions from prompt
         table-ids (llm.context/parse-table-mentions prompt)]
@@ -229,18 +243,23 @@
         (when (debug-logging-enabled?)
           (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
-        ;; 7. Call LLM (returns raw JSON content)
-        (let [json-response (llm.openai/chat-completion
-                             {:system   system-prompt
-                              :messages [{:role "user" :content prompt}]})]
+        ;; 7. Call LLM (returns map with :sql and :explanation from tool response)
+        (let [response (llm.anthropic/chat-completion
+                        {:system   system-prompt
+                         :messages [{:role "user" :content prompt}]})]
 
-          ;; 8. Log the full JSON response (if debug logging enabled)
+          ;; 8. Log the response (if debug logging enabled)
           (when (debug-logging-enabled?)
-            (log-to-file! (str timestamp "_response.txt") json-response))
+            (log-to-file! (str timestamp "_response.txt") (pr-str response)))
 
           ;; 9. Parse and return AI SDK formatted result
-          (let [sql (parse-sql-response json-response)]
-            {:parts [(make-code-edit-part buffer-id sql)]}))))))
+          (let [sql   (parse-sql-response response)
+                parts (cond-> [(make-code-edit-part buffer-id sql)]
+                        include_context
+                        (conj (make-context-part {:system-prompt system-prompt
+                                                  :dialect       dialect
+                                                  :table-ids     table-ids})))]
+            {:parts parts}))))))
 
 ;;; ------------------------------------------ Streaming Endpoint ------------------------------------------
 
@@ -252,10 +271,10 @@
 
 (defn- validate-and-prepare-context
   "Validate request and prepare context for SQL generation.
-   Returns {:dialect :system-prompt :buffer-id} or throws appropriate error."
+   Returns {:dialect :system-prompt :buffer-id :table-ids} or throws appropriate error."
   [{:keys [prompt database_id buffer_id]}]
   (when-not (llm.settings/llm-enabled?)
-    (throw (ex-info (tru "LLM SQL generation is not configured. Please set an OpenAI API key in admin settings.")
+    (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
   (let [table-ids (llm.context/parse-table-mentions prompt)]
     (when (empty? table-ids)
@@ -273,35 +292,38 @@
                                                        :dialect-instructions dialect-instructions})]
         {:dialect       dialect
          :system-prompt system-prompt
-         :buffer-id     (or buffer_id "qb")}))))
+         :buffer-id     (or buffer_id "qb")
+         :table-ids     table-ids}))))
 
 (api.macros/defendpoint :post "/generate-sql-streaming"
   "Generate SQL from a natural language prompt with streaming response.
 
    Requires:
-   - LLM to be configured (OpenAI API key set in admin settings)
+   - LLM to be configured (Anthropic API key set in admin settings)
    - At least one table mention in the prompt using [Name](metabase://table/ID) format
    - A database_id parameter
 
    Returns SSE stream in AI SDK v5 format:
    - 0:\"text\" - Text delta chunks as SQL is generated
    - 2:{...}   - Final code_edit data part with complete SQL
+   - 2:{...}   - Context data part (if include_context is true)
    - d:{...}   - Finish message"
   [_route-params
    _query-params
    body :- [:map
             [:prompt :string]
             [:database_id pos-int?]
-            [:buffer_id {:optional true} :string]]]
-  (let [{:keys [prompt]} body
-        {:keys [system-prompt buffer-id]} (validate-and-prepare-context body)
+            [:buffer_id {:optional true} :string]
+            [:include_context {:optional true} :boolean]]]
+  (let [{:keys [prompt include_context]} body
+        {:keys [system-prompt buffer-id dialect table-ids]} (validate-and-prepare-context body)
         timestamp (current-timestamp)]
 
     (when (debug-logging-enabled?)
       (log-to-file! (str timestamp "_prompt.txt") system-prompt))
 
     (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os canceled-chan]
-      (let [llm-chan (llm.openai/chat-completion-stream
+      (let [llm-chan (llm.anthropic/chat-completion-stream
                       {:system   system-prompt
                        :messages [{:role "user" :content prompt}]})
             text-acc (StringBuilder.)]
@@ -319,6 +341,13 @@
                 (write-sse! os (llm.streaming/format-sse-line
                                 :data
                                 (llm.streaming/format-code-edit-part buffer-id final-sql)))
+                (when include_context
+                  (write-sse! os (llm.streaming/format-sse-line
+                                  :data
+                                  (llm.streaming/format-context-part
+                                   {:system-prompt system-prompt
+                                    :dialect       dialect
+                                    :table-ids     table-ids}))))
                 (write-sse! os (llm.streaming/format-sse-line
                                 :finish-message
                                 (llm.streaming/format-finish-message "stop"))))
@@ -331,7 +360,7 @@
               (= (:type chunk) :text-delta)
               (do
                 ;; Accumulate JSON silently - don't stream raw JSON to frontend.
-                ;; With structured outputs, the streamed content is JSON like {"sql": "..."}
+                ;; With tool_use, the streamed content is JSON like {"sql": "..."}
                 ;; which isn't useful to display. We extract the SQL at the end.
                 (.append text-acc (:delta chunk))
                 (recur))

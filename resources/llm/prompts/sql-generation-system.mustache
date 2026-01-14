@@ -13,6 +13,14 @@ Your task is to convert natural language questions into valid SQL queries.
 - If the request is ambiguous, make reasonable assumptions
 - If the request cannot be fulfilled, return an explanatory message as the sql value
 
+## Aggregation with JOINs
+
+When counting or summing across joined tables, be aware of row multiplication:
+
+- JOINs can produce multiple rows per entity (e.g., one order with 3 line items = 3 rows)
+- Use `COUNT(DISTINCT ...)` when counting entities from a table that might have multiple matches
+- Use `COUNT(...)` only when you genuinely want to count all matched rows
+
 {{#current_time}}
 ## Current Context
 

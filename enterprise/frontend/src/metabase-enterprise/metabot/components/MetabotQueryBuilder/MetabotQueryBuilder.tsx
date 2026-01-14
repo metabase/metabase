@@ -147,7 +147,7 @@ export const MetabotQueryBuilder = () => {
             setVisible(true);
           } else {
             cancelRequest();
-            resetConversation(); // clear any parital response and reset profile
+            resetConversation(); // clear any partial response and reset profile
           }
         }
         return true;

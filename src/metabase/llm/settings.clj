@@ -5,25 +5,25 @@
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
-(defsetting llm-openai-api-key
-  (deferred-tru "OpenAI API key for AI-assisted SQL generation.")
+(defsetting llm-anthropic-api-key
+  (deferred-tru "Anthropic API key for AI-assisted SQL generation.")
   :encryption :when-encryption-key-set
   :visibility :settings-manager
   :export? false
   :doc false)
 
-(defsetting llm-openai-model
-  (deferred-tru "OpenAI model for AI-assisted SQL generation (e.g., ''gpt-4o-mini'', ''gpt-4o'').")
+(defsetting llm-anthropic-model
+  (deferred-tru "Anthropic model for AI-assisted SQL generation.")
   :encryption :no
   :visibility :settings-manager
-  :default "gpt-4o-mini"
+  :default "claude-sonnet-4-20250514"
   :export? false
   :doc false)
 
 (defn llm-enabled?
-  "Returns true if LLM SQL generation is enabled (i.e., an OpenAI API key is configured)."
+  "Returns true if LLM SQL generation is enabled (i.e., an Anthropic API key is configured)."
   []
-  (some? (llm-openai-api-key)))
+  (some? (llm-anthropic-api-key)))
 
 (defsetting llm-sql-generation-enabled
   (deferred-tru "Whether AI-assisted SQL generation is enabled.")
