@@ -4,16 +4,13 @@
    [clojure.test :refer :all]
    [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
-   [metabase.notification.task.send :as notification.task.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
-   [metabase.pulse.task.send-pulses :as send-pulses]
    [metabase.pulse.test-util :as pulse.tu]
    [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.test :as mt]
-   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -257,13 +254,13 @@
             outer-step  (mt/random-name)
             inner-step  (mt/random-name)
             outer-steps [(sync-util/create-sync-step outer-step
-                           (fn [_]
+                                                     (fn [_]
                              ;; Nested sync operation
-                             (sync-util/sync-operation :sync mock-db "Inner sync"
-                               (sync-util/run-sync-operation "inner"
-                                 mock-db
-                                 [(sync-util/create-sync-step inner-step (fn [_] {:inner true}))]))
-                             {:outer true}))]]
+                                                       (sync-util/sync-operation :sync mock-db "Inner sync"
+                                                         (sync-util/run-sync-operation "inner"
+                                                                                       mock-db
+                                                                                       [(sync-util/create-sync-step inner-step (fn [_] {:inner true}))]))
+                                                       {:outer true}))]]
         (sync-util/sync-operation :sync mock-db "Outer sync"
           (sync-util/run-sync-operation "outer" mock-db outer-steps))
         (is (= 1 (t2/count :model/TaskRun :entity_id 997))
@@ -277,12 +274,12 @@
   (testing "pulse->task-run-info extracts correct info"
     (testing "dashboard subscription"
       (is (= {:run_type :subscription :entity_type :dashboard :entity_id 123}
-             (send-pulses/pulse->task-run-info {:dashboard_id 123}))))
+             (pulse.send/pulse->task-run-info {:dashboard_id 123}))))
     (testing "legacy pulse with cards"
       (is (= {:run_type :subscription :entity_type :card :entity_id 456}
-             (send-pulses/pulse->task-run-info {:cards [{:id 456} {:id 789}]}))))
+             (pulse.send/pulse->task-run-info {:cards [{:id 456} {:id 789}]}))))
     (testing "pulse with neither returns nil"
-      (is (nil? (send-pulses/pulse->task-run-info {}))))))
+      (is (nil? (pulse.send/pulse->task-run-info {}))))))
 
 (deftest pulse-send-creates-task-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
@@ -317,15 +314,15 @@
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "sending a card notification creates a task run with type :alert"
       (notification.tu/with-notification-testing-setup!
-        (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+        (notification.tu/with-channel-fixtures [:channel/email]
           (notification.tu/with-card-notification
-            [notification {:handlers [{:channel_type notification.tu/test-channel-type
-                                       :channel_id   (:id chn)
+            [notification {:handlers [{:channel_type :channel/email
                                        :recipients   [{:type :notification-recipient/user
                                                        :user_id (mt/user->id :crowberto)}]}]}]
             (let [card-id (-> notification :payload :card_id)]
-              (notification.tu/with-captured-channel-send!
-                (notification.send/send-notification! notification :notification/sync? true))
+              (notification.tu/with-javascript-visualization-stub
+                (notification.tu/with-mock-inbox-email!
+                  (notification.send/send-notification! notification :notification/sync? true)))
               (let [run (t2/select-one :model/TaskRun :entity_type :card :entity_id card-id)]
                 (is (some? run) "task run was created")
                 (is (= :alert (:run_type run)))
@@ -336,27 +333,27 @@
   (testing "notification->task-run-info extracts correct info"
     (testing "card notification (alert)"
       (is (= {:run_type :alert :entity_type :card :entity_id 123}
-             (notification.task.send/notification->task-run-info
+             (notification.send/notification->task-run-info
               {:payload_type :notification/card
                :payload      {:card_id 123}}))))
     (testing "card notification with nil card_id returns nil"
-      (is (nil? (notification.task.send/notification->task-run-info
+      (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/card
                   :payload      {:card_id nil}}))))
     (testing "dashboard notification (subscription)"
       (is (= {:run_type :subscription :entity_type :dashboard :entity_id 456}
-             (notification.task.send/notification->task-run-info
+             (notification.send/notification->task-run-info
               {:payload_type :notification/dashboard
                :payload      {:dashboard_id 456}}))))
     (testing "dashboard notification with nil dashboard_id returns nil"
-      (is (nil? (notification.task.send/notification->task-run-info
+      (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/dashboard
                   :payload      {:dashboard_id nil}}))))
     (testing "system-event notification returns nil"
-      (is (nil? (notification.task.send/notification->task-run-info
+      (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/system-event
                   :payload      {}}))))
     (testing "testing notification returns nil"
-      (is (nil? (notification.task.send/notification->task-run-info
+      (is (nil? (notification.send/notification->task-run-info
                  {:payload_type :notification/testing
                   :payload      {}}))))))

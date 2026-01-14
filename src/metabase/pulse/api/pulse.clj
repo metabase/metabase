@@ -27,10 +27,8 @@
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.send :as pulse.send]
-   [metabase.pulse.task.send-pulses :as send-pulses]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -464,9 +462,8 @@
                   (assoc :disable_links
                          (embed.util/modular-embedding-or-modular-embedding-sdk-context?
                           (get-in request [:headers "x-metabase-client"]))))]
-    (task-history/with-task-run (send-pulses/pulse->task-run-info pulse)
-      (notification/with-default-options {:notification/sync? true}
-        (pulse.send/send-pulse! pulse))))
+    (notification/with-default-options {:notification/sync? true}
+      (pulse.send/send-pulse! pulse)))
   {:ok true})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

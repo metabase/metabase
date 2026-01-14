@@ -97,28 +97,6 @@
     (log/infof "Deleting trigger for subscription %d" notification-subscription-id)
     (task/delete-trigger! (-> trigger :key triggers/key))))
 
-(defn notification->task-run-info
-  "Extract task run info from a notification for use with [[metabase.task-history.core/with-task-run]].
-   - Card notifications (alerts): run_type :alert, entity_type :card
-   - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
-   - Returns nil for other notification types or if entity_id would be nil.
-   Handles both hydrated notifications (with :payload) and non-hydrated (with :payload_id)."
-  [{:keys [payload_type payload payload_id]}]
-  (case payload_type
-    :notification/card      (when-let [card-id (or (:card_id payload)
-                                                   (some->> payload_id
-                                                            (t2/select-one-fn :card_id :model/NotificationCard :id)))]
-                              {:run_type    :alert
-                               :entity_type :card
-                               :entity_id   card-id})
-    :notification/dashboard (when-let [dashboard-id (or (:dashboard_id payload)
-                                                        (some->> payload_id
-                                                                 (t2/select-one-fn :dashboard_id :model/NotificationDashboard :id)))]
-                              {:run_type    :subscription
-                               :entity_type :dashboard
-                               :entity_id   dashboard-id})
-    nil))
-
 (defn- send-notification*
   [subscription-id]
   (let [subscription    (t2/select-one :model/NotificationSubscription subscription-id)
@@ -129,7 +107,7 @@
 
       (cond
         (:active notification)
-        (task-history/with-task-run (some-> (notification->task-run-info notification) (assoc :auto-complete false))
+        (task-history/with-task-run (some-> (notification.send/notification->task-run-info notification) (assoc :auto-complete false))
           (try
             (log/info "Submitting to the notification queue")
             (task-history/with-task-history {:task         "notification-trigger"

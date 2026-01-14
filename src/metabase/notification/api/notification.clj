@@ -12,8 +12,6 @@
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
    [metabase.notification.models :as models.notification]
-   [metabase.notification.task.send :as task.send]
-   [metabase.task-history.core :as task-history]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
@@ -228,8 +226,7 @@
                        (seq handler_ids)
                        (update :handlers (fn [handlers] (filter (comp (set handler_ids) :id) handlers))))]
     (api/read-check notification)
-    (task-history/with-task-run (task.send/notification->task-run-info notification)
-      (notification/send-notification! notification :notification/sync? true))))
+    (notification/send-notification! notification :notification/sync? true)))
 
 (defn- promote-to-t2-instance
   [notification]
@@ -254,8 +251,7 @@
   (let [notification (-> body
                          (assoc :creator_id api/*current-user-id*)
                          promote-to-t2-instance)]
-    (task-history/with-task-run (task.send/notification->task-run-info notification)
-      (notification/send-notification! notification :notification/sync? true))))
+    (notification/send-notification! notification :notification/sync? true)))
 
 (defn unsubscribe-user!
   "Unsubscribe a user from a notification."
