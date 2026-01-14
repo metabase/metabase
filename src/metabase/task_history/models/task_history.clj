@@ -15,7 +15,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import (clojure.lang PersistentQueue)
-           (java.time Clock)))
+           (java.time Clock)
+           (org.apache.commons.lang3.exception ExceptionUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -150,46 +151,56 @@
     (t2/update! :model/TaskHistory th-id updated-info)))
 
 (def ^:dynamic ^Clock *log-capture-clock*
-  "The java.time.Clock used for captured log message `:ts` values. Can be overriden for tests."
+  "The java.time.Clock used for captured log message `:timestamp` values. Can be overriden for tests."
   (Clock/systemUTC))
 
 (def ^:private log-capture-truncation-threshold 1000)
 
 (defn- log-capture-atom []
   (atom {:queue PersistentQueue/EMPTY
-         :trunc {:start-ts -1, :last-ts -1 :levels {}}}))
+         :trunc {:start-timestamp nil, :last-timestamp nil :levels {}}}))
+
+(defn- elide-string
+  "Elides the string to the specified length, adding '...' if it exceeds that length."
+  [s max-length]
+  (if (> (count s) max-length)
+    (str (subs s 0 (- max-length 3)) "...")
+    s))
+
+(defn- format-timestamp
+  "Format a timestamp from the clock as an ISO instant string."
+  [^Clock clock]
+  (t/format :iso-instant (t/instant clock)))
 
 (defn- log-capture-entries [{:keys [queue trunc]}]
-  (if (= -1 (:last-ts trunc))
+  (if (nil? (:last-timestamp trunc))
     (vec queue)
-    (into [{:level  :info
-            :ts     (:last-ts trunc)
-            :msg    (format "[truncated] %d messages" (apply + (vals (:levels trunc))))
-            :trunc  trunc}]
+    (into [{:level     :info
+            :timestamp (:last-timestamp trunc)
+            :fqns      "metabase.task-history"
+            :msg       (format "[truncated] %d messages" (apply + (vals (:levels trunc))))
+            :trunc     trunc}]
           queue)))
 
-(defn- log-capture-entry [level msg ^Throwable e]
-  ;; TODO: should we save ex-data
-  ;;  - what about cause chains
-  ;;  - security
+(defn- log-capture-entry [fqns level msg ^Throwable e]
   (cond->
-   {:level level
-    :ts    (.millis *log-capture-clock*)
-    :msg   msg}
-    e (assoc :ex
-             {:type       (class e)
-              :message    (.getMessage e)
-              :stacktrace (u/filtered-stacktrace e)})))
+   {:level     level
+    :timestamp (format-timestamp *log-capture-clock*)
+    :fqns      (str fqns)
+    :msg       (elide-string (str msg) 4000)}
+    e (assoc :exception
+             (take 20 (map #(elide-string (str %) 500)
+                           (seq (ExceptionUtils/getStackFrames e)))))))
 
 (defn- add-log-capture-entry [{:keys [queue, trunc]} entry]
   (if (< (count queue) log-capture-truncation-threshold)
     {:queue (conj queue entry), :trunc trunc}
-    (let [removed   (peek queue)
-          {:keys [start-ts, levels]} trunc]
+    (let [removed                           (peek queue)
+          {:keys [start-timestamp, levels]} trunc]
       {:queue (conj (pop queue) entry)
-       :trunc {:levels (update levels (:level removed) (fnil inc 0))
-               :start-ts (if (= -1 start-ts) (:ts removed) start-ts)
-               :last-ts  (:ts removed)}})))
+       :trunc {:levels          (update levels (:level removed) (fnil inc 0))
+               :start-timestamp (or start-timestamp (:timestamp removed))
+               :last-timestamp  (:timestamp removed)}})))
 
 (defn- log-capture-factory [base-factory logs-atom]
   (reify clojure.tools.logging.impl/LoggerFactory
@@ -201,7 +212,7 @@
           (write! [_ level ex msg]
             (case level
               (:fatal :error :warn :info)
-              (swap! logs-atom add-log-capture-entry (log-capture-entry level msg ex))
+              (swap! logs-atom add-log-capture-entry (log-capture-entry logger-ns level msg ex))
               nil)
             (clojure.tools.logging.impl/write! base-logger level ex msg)))))))
 

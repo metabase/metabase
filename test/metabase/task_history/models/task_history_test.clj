@@ -160,10 +160,10 @@
             (log/error "error message")))
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :success status))
-          (is (= [{:level "info", :msg "info message", :ts 1000}
-                  {:level "warn", :msg "warning message", :ts 1000}
-                  {:level "error", :msg "error message", :ts 1000}]
-                 logs)))))
+          (is (=? [{:level "info",  :msg "info message",    :timestamp "1970-01-01T00:00:01Z", :fqns string?}
+                   {:level "warn",  :msg "warning message", :timestamp "1970-01-01T00:00:01Z", :fqns string?}
+                   {:level "error", :msg "error message",   :timestamp "1970-01-01T00:00:01Z", :fqns string?}]
+                  logs)))))
 
     (testing "logs are captured on failure"
       (let [task-name (mt/random-name)]
@@ -173,7 +173,7 @@
             (throw (ex-info "Test failure" {:reason :test}))))
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :failed status))
-          (is (=? [{:level "info", :msg "before exception", :ts int?}] logs)))))
+          (is (=? [{:level "info", :msg "before exception", :timestamp string?, :fqns string?}] logs)))))
 
     (testing "exception details are captured in logs"
       (let [task-name (mt/random-name)]
@@ -182,11 +182,11 @@
             (log/error (Exception. "Test exception") "error message")))
         (let [{:keys [logs status]} (t2/select-one :model/TaskHistory :task task-name)]
           (is (= :success status))
-          (is (=? [{:level "error"
-                    :msg   "error message"
-                    :ex    {:type       "class java.lang.Exception"
-                            :message    "Test exception"
-                            :stacktrace (mt/malli=? vector?)}}]
+          (is (=? [{:level     "error"
+                    :msg       "error message"
+                    :timestamp string?
+                    :fqns      string?
+                    :exception (mt/malli=? [:sequential string?])}]
                   logs)))))
 
     (testing "debug/trace are elided"
@@ -223,22 +223,22 @@
           (testing "logs include truncation message plus threshold entries"
             (is (= (inc threshold) (count logs))))
           (testing "first entry is truncation message"
-            (let [{:keys [level ts msg trunc]} (first logs)]
+            (let [{:keys [level timestamp msg trunc]} (first logs)]
               (is (= "info" level))
-              (is (= 1007 ts) ":ts is of the last message")
+              (is (= "1970-01-01T00:00:01.007Z" timestamp) ":timestamp is of the last removed message")
               (is (= "[truncated] 15 messages" msg))
               (testing "truncation metadata tracks removed messages by level"
-                (let [{:keys [start-ts last-ts levels]} trunc]
-                  (is (= 1000 start-ts))
-                  (is (= 1007 last-ts))
+                (let [{:keys [start-timestamp last-timestamp levels]} trunc]
+                  (is (= "1970-01-01T00:00:01Z" start-timestamp))
+                  (is (= "1970-01-01T00:00:01.007Z" last-timestamp))
                   (is (= {:info 8, :warn 7} levels))))))
           (testing "remaining entries are the most recent messages"
             (let [remaining-logs (rest logs)]
               (is (= threshold (count remaining-logs)))
               ;; The last 5 entries should be the final messages
-              (is (= [{:level "warn" :msg "warning 7" :ts 1007}
-                      {:level "info" :msg "message 8" :ts 1008}
-                      {:level "warn" :msg "warning 8" :ts 1008}
-                      {:level "info" :msg "message 9" :ts 1009}
-                      {:level "warn" :msg "warning 9" :ts 1009}]
-                     remaining-logs)))))))))
+              (is (=? [{:level "warn" :msg "warning 7" :timestamp "1970-01-01T00:00:01.007Z" :fqns string?}
+                       {:level "info" :msg "message 8" :timestamp "1970-01-01T00:00:01.008Z" :fqns string?}
+                       {:level "warn" :msg "warning 8" :timestamp "1970-01-01T00:00:01.008Z" :fqns string?}
+                       {:level "info" :msg "message 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}
+                       {:level "warn" :msg "warning 9" :timestamp "1970-01-01T00:00:01.009Z" :fqns string?}]
+                      remaining-logs)))))))))
