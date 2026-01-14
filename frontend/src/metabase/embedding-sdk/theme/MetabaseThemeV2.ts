@@ -5,10 +5,13 @@ import type {
 } from "metabase/lib/colors";
 
 /**
- * Colors exposed to Modular Embedding.
+ * Color keys exposed to Modular Embedding.
  * Excludes colors that are internal, such as admin and Metabase brand colors.
  */
-type MetabaseEmbeddingColorKeyV2 = Exclude<MetabaseColorKey, ProtectedColorKey>;
+export type MetabaseEmbeddingColorKeyV2 = Exclude<
+  MetabaseColorKey,
+  ProtectedColorKey
+>;
 
 /**
  * V2 theme configuration for embedded Metabase components.

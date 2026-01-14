@@ -1,12 +1,11 @@
 import type { MantineColorsTuple } from "@mantine/core";
 
-import { METABASE_LIGHT_THEME } from "metabase/lib/colors";
-import { getThemeFromColorScheme } from "metabase/lib/colors/theme";
-import type { ColorName } from "metabase/lib/colors/types";
-
-export const ALL_COLOR_NAMES = Object.keys(
-  METABASE_LIGHT_THEME.colors,
-) as string[];
+import {
+  ALL_COLOR_NAMES,
+  deriveFullMetabaseTheme,
+  getThemeFromColorScheme,
+} from "metabase/lib/colors";
+import type { ColorName, MetabaseColorKey } from "metabase/lib/colors/types";
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -41,10 +40,12 @@ export function getColorShades(colorName: string): MantineColorsTuple {
   ];
 }
 
-export function getThemeColors(
+export function getMantineThemeColors(
   colorScheme: "light" | "dark",
 ): Record<string, MantineColorsTuple> {
-  const { colors } = getThemeFromColorScheme(colorScheme);
+  const { colors } = deriveFullMetabaseTheme({
+    baseTheme: getThemeFromColorScheme(colorScheme),
+  });
 
   return {
     ...Object.fromEntries(
@@ -69,7 +70,7 @@ export function color(colorName: ColorName): string {
 }
 
 export const isColorName = (name?: string | null): name is ColorName => {
-  return !!name && ALL_COLOR_NAMES.includes(name);
+  return !!name && ALL_COLOR_NAMES.includes(name as MetabaseColorKey);
 };
 
 /**

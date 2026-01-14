@@ -1,11 +1,12 @@
-export type { MetabaseThemeV2, ChartColorV2 } from "./theme";
+export type {
+  ChartColorV2,
+  MetabaseThemeV2,
+  MetabaseDerivedThemeV2,
+} from "./theme";
+
 import type { PROTECTED_COLORS } from "../constants/protected-colors";
 
 import type { MetabaseColorKey } from "./color-keys";
-
-// Backward-compatible aliases
-export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;
-export type ColorName = MetabaseColorKey;
 
 export interface AccentColorOptions {
   main?: boolean;
@@ -16,3 +17,8 @@ export interface AccentColorOptions {
 }
 
 export type ProtectedColorKey = (typeof PROTECTED_COLORS)[number];
+
+export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;
+export type ColorName = MetabaseColorKey;
+
+export type * from "./color-keys";

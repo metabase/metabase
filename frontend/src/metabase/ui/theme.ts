@@ -57,7 +57,7 @@ import {
   titleOverrides,
   tooltipOverrides,
 } from "./components";
-import { getThemeColors } from "./utils/colors";
+import { getMantineThemeColors } from "./utils/colors";
 
 export const breakpoints = {
   xs: "23em",
@@ -73,7 +73,7 @@ export const getThemeOverrides = (
 ): MantineThemeOverride => ({
   focusClassName: Styles.focus,
   breakpoints,
-  colors: getThemeColors(colorScheme),
+  colors: getMantineThemeColors(colorScheme),
   primaryColor: "brand",
   primaryShade: 0,
   // Store colorScheme in other property for access later

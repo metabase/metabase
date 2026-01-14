@@ -10,10 +10,6 @@ import {
   isThemeV1,
   isThemeV2,
 } from "metabase/embedding-sdk/theme/theme-version";
-import {
-  getThemeFromColorScheme,
-  resolveTheme,
-} from "metabase/lib/colors/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -23,7 +19,7 @@ import { getColorShades } from "metabase/ui/utils/colors";
  * Computes the Mantine theme override for the embedding SDK.
  *
  * For V2 themes: Resolves theme using the layered override system
- * (baseTheme > whitelabelColors > userThemeOverride).
+ * (baseTheme > whitelabelColors > embeddingThemeOverride).
  *
  * For V1 themes: Uses the existing processing pipeline with global color mutation.
  */
@@ -45,15 +41,15 @@ export function useEmbeddingThemeOverride(
     }
 
     if (isThemeV2(theme)) {
-      const resolvedTheme = resolveTheme({
+      const derivedTheme = deriveFullMetabaseTheme({
         baseTheme: getThemeFromColorScheme("light"),
         whitelabelColors: appColors ?? {},
-        userThemeOverride: theme,
+        embeddingThemeOverride: theme,
       });
 
       // Convert resolved colors to Mantine color tuples
       const colors = Object.fromEntries(
-        Object.entries(resolvedTheme.colors).map(([key, value]) => [
+        Object.entries(derivedTheme.colors).map(([key, value]) => [
           key,
           getColorShades(value),
         ]),

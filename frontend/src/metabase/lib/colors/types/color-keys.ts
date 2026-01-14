@@ -1,20 +1,15 @@
+import type { ALL_ACCENT_COLOR_NAMES } from "../constants/color-names";
+
 /**
  * All color keys available in Metabase themes.
  *
  * Both the light and dark theme must define all of these colors.
  */
 export type MetabaseColorKey =
+  | MetabaseAccentColorKey
   | "accent-gray"
   | "accent-gray-dark"
   | "accent-gray-light"
-  | "accent0"
-  | "accent1"
-  | "accent2"
-  | "accent3"
-  | "accent4"
-  | "accent5"
-  | "accent6"
-  | "accent7"
   | "admin-navbar"
   | "admin-navbar-inverse"
   | "admin-navbar-secondary"
@@ -88,3 +83,5 @@ export type MetabaseColorKey =
   | "tooltip-text-secondary"
   | "warning"
   | "white";
+
+export type MetabaseAccentColorKey = (typeof ALL_ACCENT_COLOR_NAMES)[number];

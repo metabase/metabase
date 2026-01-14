@@ -9,14 +9,27 @@ import {
   SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING,
   SDK_UNCHANGEABLE_COLORS,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { getThemeFromColorScheme } from "metabase/lib/colors/theme";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
+import type { ColorSettings } from "metabase-types/api/settings";
 
-const createColorVars = (colorScheme: "light" | "dark"): string =>
-  Object.entries(getThemeFromColorScheme(colorScheme).colors)
+/** Whitelabel colors from MetabaseBootstrap, applied at startup. */
+const win = typeof window !== "undefined" ? window : ({} as Window);
+const tokenFeatures = win.MetabaseBootstrap?.["token-features"] ?? {};
+const shouldWhitelabel = !!tokenFeatures["whitelabel"];
+const whitelabelColors: ColorSettings =
+  (shouldWhitelabel && win.MetabaseBootstrap?.["application-colors"]) || {};
+
+const createColorVars = (colorScheme: "light" | "dark"): string => {
+  const theme = deriveFullMetabaseTheme({
+    baseTheme: getThemeFromColorScheme(colorScheme),
+    whitelabelColors,
+  });
+
+  return Object.entries(theme.colors)
     .map(([name, value]) => `--mb-color-${name}: ${value};`)
     .join("\n");
+};
 
 /**
  * Defines the CSS variables used across Metabase.

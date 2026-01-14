@@ -1,11 +1,14 @@
 /* eslint-disable no-color-literals */
 import type { MetabaseThemeV2 } from "../types";
 
+import { DEFAULT_CHART_COLORS } from "./chart-colors";
+
 /**
  * The default light theme for Metabase.
  */
 export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
   version: 2,
+  chartColors: DEFAULT_CHART_COLORS,
   colors: {
     "accent-gray-dark": "hsla(195, 6%, 87%, 1)",
     "accent-gray-light": "hsla(240, 11%, 98%, 1)",
@@ -82,14 +85,6 @@ export const METABASE_LIGHT_THEME: MetabaseThemeV2 = {
     info: "hsla(205, 6%, 60%, 1)",
     "background-info": "hsla(240, 4%, 95%, 1)",
     white: "hsla(0, 0%, 100%, 1.00)",
-    accent0: "#509EE3",
-    accent1: "#88BF4D",
-    accent2: "#A989C5",
-    accent3: "#EF8C8C",
-    accent4: "#F9D45C",
-    accent5: "#F2A86F",
-    accent6: "#98D9D9",
-    accent7: "#7172AD",
     border: "hsla(195, 6%, 87%, 1)",
     "border-strong": "hsla(204, 66%, 8%, 0.51)",
     "border-subtle": "hsla(204, 66%, 8%, 0.05)",

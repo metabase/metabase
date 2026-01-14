@@ -16,10 +16,7 @@ export const PROTECTED_COLORS = [
   // Colors based on specific base colors
   "bg-ocean-alpha-light",
 
-  // Accent colors should be set through the `chartColors` API, not set directly
-  "accent-gray",
-  "accent-gray-dark",
-  "accent-gray-light",
+  // Accent colors must be set thru the `chartColors` API, not set directly
   "accent0",
   "accent1",
   "accent2",
@@ -28,4 +25,9 @@ export const PROTECTED_COLORS = [
   "accent5",
   "accent6",
   "accent7",
+
+  // Grey accent colors shouldn't be overrideable?
+  "accent-gray",
+  "accent-gray-dark",
+  "accent-gray-light",
 ] as const satisfies readonly MetabaseColorKey[];
