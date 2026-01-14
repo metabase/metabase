@@ -75,12 +75,12 @@
 (mr/def ::TaskRun
   [:map
    [:id          ms/PositiveInt]
-   [:run_type    (into [:enum] (map name task-run/run-types))]
-   [:entity_type (into [:enum] (map name task-run/entity-types))]
+   [:run_type    (into [:enum] task-run/run-types)]
+   [:entity_type (into [:enum] task-run/entity-types)]
    [:entity_id   ms/PositiveInt]
    [:started_at  :any]
    [:ended_at    [:maybe :any]]
-   [:status      [:enum "started" "success" "failed"]]
+   [:status      [:enum :started :success :failed]]
    [:entity_name {:optional true} [:maybe :string]]
    [:task_count  {:optional true} :int]
    [:success_count {:optional true} :int]
@@ -100,7 +100,7 @@
    [:started_at   :any]
    [:ended_at     [:maybe :any]]
    [:duration     [:maybe :int]]
-   [:status       [:enum "started" "success" "failed" "unknown"]]
+   [:status       [:enum :started :success :failed :unknown]]
    [:task_details {:optional true} [:maybe :map]]
    [:run_id       {:optional true} [:maybe ms/PositiveInt]]
    [:logs         {:optional true} [:maybe :any]]])
@@ -112,7 +112,7 @@
 
 (mr/def ::RunEntity
   [:map
-   [:entity_type (into [:enum] (map name task-run/entity-types))]
+   [:entity_type (into [:enum] task-run/entity-types)]
    [:entity_id   ms/PositiveInt]
    [:entity_name {:optional true} [:maybe :string]]])
 
