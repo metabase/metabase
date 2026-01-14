@@ -27,7 +27,7 @@ export function deriveFullMetabaseTheme({
   embeddingThemeOverride,
 }: {
   baseTheme: MetabaseThemeV2;
-  whitelabelColors?: ColorSettings;
+  whitelabelColors?: ColorSettings | null;
   embeddingThemeOverride?: MetabaseEmbeddingThemeV2;
 }): MetabaseDerivedThemeV2 {
   // Filter out protected colors from embedding theme overrides.

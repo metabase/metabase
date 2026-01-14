@@ -12,15 +12,18 @@ import {
 import {
   deriveFullMetabaseTheme,
   getThemeFromColorScheme,
-  getWhitelabelColors,
 } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
+import type { ColorSettings } from "metabase-types/api";
 
-const createColorVars = (colorScheme: "light" | "dark"): string => {
+const createColorVars = (
+  colorScheme: "light" | "dark",
+  whitelabelColors?: ColorSettings | null,
+): string => {
   const theme = deriveFullMetabaseTheme({
     baseTheme: getThemeFromColorScheme(colorScheme),
-    whitelabelColors: getWhitelabelColors(),
+    whitelabelColors,
   });
 
   return Object.entries(theme.colors)
@@ -31,7 +34,13 @@ const createColorVars = (colorScheme: "light" | "dark"): string => {
 /**
  * Defines the CSS variables used across Metabase.
  */
-export function getMetabaseCssVariables(theme: MantineTheme) {
+export function getMetabaseCssVariables({
+  theme,
+  whitelabelColors,
+}: {
+  theme: MantineTheme;
+  whitelabelColors?: ColorSettings | null;
+}) {
   const colorScheme = theme.other?.colorScheme || "light";
 
   return css`
@@ -39,18 +48,26 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-default-monospace-font-family: ${theme.fontFamilyMonospace};
 
       /* Semantic colors */
-      ${createColorVars(colorScheme)}
+      ${createColorVars(colorScheme, whitelabelColors)}
       ${getThemeSpecificCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
     }
   `;
 }
 
-export function getMetabaseSdkCssVariables(theme: MantineTheme, font: string) {
+export function getMetabaseSdkCssVariables({
+  theme,
+  font,
+  whitelabelColors,
+}: {
+  theme: MantineTheme;
+  font: string;
+  whitelabelColors?: ColorSettings | null;
+}) {
   return css`
     :root {
       --mb-default-font-family: ${font};
-      ${createColorVars("light")}
+      ${createColorVars("light", whitelabelColors)}
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

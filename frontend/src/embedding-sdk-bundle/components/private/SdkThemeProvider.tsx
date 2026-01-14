@@ -5,6 +5,7 @@ import { useContext, useId, useMemo } from "react";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/use-embedding-theme-override";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
+import { useSetting } from "metabase/common/hooks";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
@@ -50,14 +51,14 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
 
 function GlobalSdkCssVariables() {
   const theme = useMantineTheme();
+  const whitelabelColors = useSetting("application-colors");
 
   // the default is needed for when the sdk can't connect to the instance and get the default from there
   const font = useSelector(getFont) ?? DEFAULT_FONT;
 
-  const styles = useMemo(
-    () => getMetabaseSdkCssVariables(theme, font),
-    [theme, font],
-  );
+  const styles = useMemo(() => {
+    return getMetabaseSdkCssVariables({ theme, font, whitelabelColors });
+  }, [theme, font, whitelabelColors]);
 
   return <Global styles={styles} />;
 }

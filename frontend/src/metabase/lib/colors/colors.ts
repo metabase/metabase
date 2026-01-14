@@ -249,8 +249,6 @@ export const colors: Record<MetabaseColorKey, string> = {
   ...getColors(whitelabelColors),
 };
 
-export const getWhitelabelColors = () => whitelabelColors;
-
 export const mutateColors = (settings: ColorSettings) => {
   // Empty the `colors` object to make sure we don't hold onto previously defined (now undefined) values
   Object.keys(colors).forEach((key) => {
