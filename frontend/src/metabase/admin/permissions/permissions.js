@@ -251,8 +251,11 @@ export const saveCollectionPermissions = createThunkAction(
   },
 );
 
-// Tenant Collection Permissions
+// Shared Tenant Collection Permissions
 const TENANT_NAMESPACE = "shared-tenant-collection";
+
+// Tenant-Specific Collection Permissions
+const TENANT_SPECIFIC_NAMESPACE = "tenant-specific";
 
 const INITIALIZE_TENANT_COLLECTION_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_TENANT_COLLECTION_PERMISSIONS";
@@ -310,6 +313,63 @@ export const saveTenantCollectionPermissions = createThunkAction(
   },
 );
 
+// Tenant-Specific Collection Permissions Actions
+const INITIALIZE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/INITIALIZE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
+export const initializeTenantSpecificCollectionPermissions = createThunkAction(
+  INITIALIZE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
+  () => async (dispatch) => {
+    await Promise.all([
+      dispatch(loadTenantSpecificCollectionPermissions()),
+      dispatch(Groups.actions.fetchList()),
+    ]);
+  },
+);
+
+const LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
+export const loadTenantSpecificCollectionPermissions = createThunkAction(
+  LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
+  () => async () => {
+    return CollectionsApi.graph({ namespace: TENANT_SPECIFIC_NAMESPACE });
+  },
+);
+
+const UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION =
+  "metabase/admin/permissions/UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION";
+export const updateTenantSpecificCollectionPermission = createAction(
+  UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION,
+);
+
+const SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
+  "metabase/admin/permissions/data/SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
+export const saveTenantSpecificCollectionPermissions = createThunkAction(
+  SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
+  () => async (_dispatch, getState) => {
+    const {
+      originalTenantSpecificCollectionPermissions,
+      tenantSpecificCollectionPermissions,
+      tenantSpecificCollectionPermissionsRevision,
+    } = getState().admin.permissions;
+
+    const modifiedPermissions = getModifiedCollectionPermissionsGraphParts(
+      originalTenantSpecificCollectionPermissions,
+      tenantSpecificCollectionPermissions,
+    );
+
+    const result = await CollectionsApi.updateGraph({
+      namespace: TENANT_SPECIFIC_NAMESPACE,
+      revision: tenantSpecificCollectionPermissionsRevision,
+      groups: modifiedPermissions,
+    });
+
+    return {
+      ...result,
+      groups: tenantSpecificCollectionPermissions,
+    };
+  },
+);
+
 const CLEAR_SAVE_ERROR = "metabase/admin/permissions/CLEAR_SAVE_ERROR";
 export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
 
@@ -336,6 +396,10 @@ const saveError = handleActions(
     },
     [SAVE_TENANT_COLLECTION_PERMISSIONS]: savePermission,
     [LOAD_TENANT_COLLECTION_PERMISSIONS]: {
+      next: (state) => null,
+    },
+    [SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: savePermission,
+    [LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
       next: (state) => null,
     },
     [CLEAR_SAVE_ERROR]: { next: () => null },
@@ -638,6 +702,60 @@ const tenantCollectionPermissionsRevision = handleActions(
   null,
 );
 
+// Tenant-Specific Collection Permissions Reducers
+const tenantSpecificCollectionPermissions = handleActions(
+  {
+    [LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION]: {
+      next: (state, { payload }) => {
+        const { groupId, collection, value, shouldPropagate } = payload;
+        let newPermissions = assocIn(state, [groupId, collection.id], value);
+
+        if (shouldPropagate) {
+          for (const descendent of getDecendentCollections(collection)) {
+            newPermissions = assocIn(
+              newPermissions,
+              [groupId, descendent.id],
+              value,
+            );
+          }
+        }
+        return newPermissions;
+      },
+    },
+    [SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+  },
+  null,
+);
+
+const originalTenantSpecificCollectionPermissions = handleActions(
+  {
+    [LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.groups,
+    },
+    [SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
+      next: (state, { payload }) => payload.groups,
+    },
+  },
+  null,
+);
+
+const tenantSpecificCollectionPermissionsRevision = handleActions(
+  {
+    [LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+    [SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS]: {
+      next: (_state, { payload }) => payload.revision,
+    },
+  },
+  null,
+);
+
 export const TOGGLE_HELP_REFERENCE =
   "metabase/admin/permissions/TOGGLE_HELP_REFERENCE";
 export const toggleHelpReference = createAction(TOGGLE_HELP_REFERENCE);
@@ -702,6 +820,9 @@ export const permissions = combineReducers({
   tenantCollectionPermissions,
   originalTenantCollectionPermissions,
   tenantCollectionPermissionsRevision,
+  tenantSpecificCollectionPermissions,
+  originalTenantSpecificCollectionPermissions,
+  tenantSpecificCollectionPermissionsRevision,
   isHelpReferenceOpen,
   hasRevisionChanged,
 });

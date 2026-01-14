@@ -60,6 +60,7 @@ type Props = {
   collections: CollectionTreeItem[];
   selectedItems: SelectedItem[];
   sharedTenantCollections?: Collection[];
+  canAccessTenantSpecific: boolean;
   canCreateSharedCollection: boolean;
   showExternalCollectionsSection: boolean;
   handleCloseNavbar: () => void;
@@ -84,6 +85,7 @@ export function MainNavbarView({
   handleCreateNewCollection,
   handleCloseNavbar,
   sharedTenantCollections,
+  canAccessTenantSpecific,
   canCreateSharedCollection,
   showExternalCollectionsSection,
 }: Props) {
@@ -233,6 +235,7 @@ export function MainNavbarView({
           {/* Tenant users don't see the section about "External collections" */}
           {showExternalCollectionsSection && (
             <PLUGIN_TENANTS.MainNavSharedCollections
+              canAccessTenantSpecific={canAccessTenantSpecific}
               canCreateSharedCollection={canCreateSharedCollection}
               sharedTenantCollections={sharedTenantCollections}
             />

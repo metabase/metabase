@@ -43,6 +43,7 @@ const getDefaultPluginTenants = () => ({
     null as React.ReactElement | null,
   TenantGroupHintIcon: PluginPlaceholder,
   MainNavSharedCollections: PluginPlaceholder as React.ComponentType<{
+    canAccessTenantSpecific: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>,
@@ -51,6 +52,9 @@ const getDefaultPluginTenants = () => ({
   TenantSpecificCollectionsItemList: (_props: { pathIndex: number }) =>
     null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
+  CanAccessTenantSpecificRoute: PluginPlaceholder as React.ComponentType<{
+    children: React.ReactNode;
+  }>,
   TenantUsersList: PluginPlaceholder,
   TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
     params: { tenantId: string };
@@ -71,6 +75,7 @@ const getDefaultPluginTenants = () => ({
     null as string | null,
   getFlattenedCollectionsForNavbar: () => [],
   useTenantMainNavbarData: () => ({
+    canAccessTenantSpecific: false,
     canCreateSharedCollection: false,
     showExternalCollectionsSection: false,
     sharedTenantCollections: [],
@@ -81,6 +86,7 @@ export const PLUGIN_TENANTS: {
   isEnabled: boolean;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
+    canAccessTenantSpecific: boolean;
     canCreateSharedCollection: boolean;
     showExternalCollectionsSection: boolean;
     sharedTenantCollections: Collection[] | undefined;
@@ -103,6 +109,7 @@ export const PLUGIN_TENANTS: {
   }) => React.ReactElement | null;
   TenantGroupHintIcon: React.ComponentType;
   MainNavSharedCollections: React.ComponentType<{
+    canAccessTenantSpecific: boolean;
     canCreateSharedCollection: boolean;
     sharedTenantCollections: Collection[] | undefined;
   }>;
@@ -113,6 +120,9 @@ export const PLUGIN_TENANTS: {
     pathIndex: number;
   }) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
+  CanAccessTenantSpecificRoute: React.ComponentType<{
+    children: React.ReactNode;
+  }>;
   TenantUsersList: React.ComponentType;
   TenantUsersPersonalCollectionList: React.ComponentType<{
     params: { tenantId: string };
