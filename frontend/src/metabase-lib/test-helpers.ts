@@ -426,6 +426,7 @@ type TestQueryStage = {
   aggregations?: TestQueryAggregation[];
   expressions?: TestQueryNamedExpression[];
   breakouts?: TestQueryBreakout[];
+  orderBy?: TestQueryOrderBy[];
 };
 
 type TestQueryTableSource = { type: "table"; id: TableId };
@@ -484,6 +485,12 @@ type TestQueryBreakout = {
   binningCount?: number | "auto";
 };
 
+type TestQueryOrderBy = {
+  name: string;
+  table?: string;
+  direction: Lib.OrderByDirection;
+};
+
 export function createTestQuery({
   databaseId,
   metadata = SAMPLE_METADATA,
@@ -525,6 +532,7 @@ function appendTestQueryStage(
     filters = [],
     aggregations = [],
     breakouts = [],
+    orderBy = [],
   } = stage;
 
   const queryWithStage = Lib.appendStage(query);
@@ -605,7 +613,17 @@ function appendTestQueryStage(
     return Lib.breakout(query, stageIndex, clause);
   }, queryWithAggregations);
 
-  return queryWithBreakouts;
+  const queryWithOrderBys = orderBy.reduce((query, orderBy) => {
+    const columns = Lib.orderableColumns(query, stageIndex);
+    const column = findColumn(query, stageIndex, columns, {
+      type: "column",
+      name: orderBy.name,
+      table: orderBy.table,
+    });
+    return Lib.orderBy(query, stageIndex, column, orderBy.direction);
+  }, queryWithBreakouts);
+
+  return queryWithOrderBys;
 }
 
 function findSource(
