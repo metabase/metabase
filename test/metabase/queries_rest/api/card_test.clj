@@ -3882,7 +3882,7 @@
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
             ;; card-id-1 is deleted, so it should return 404
-              (is (= "Not found."
+            (is (= "Not found."
                    (query-metadata 404 card-id-1)))
             ;; card-id-2 still exists but its source is gone, so it should return empty metadata
             (is (=? {:fields empty?
