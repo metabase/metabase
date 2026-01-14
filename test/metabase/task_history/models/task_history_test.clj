@@ -1,11 +1,11 @@
 (ns metabase.task-history.models.task-history-test
   (:require
    [clojure.test :refer :all]
-   [clojure.tools.logging :as log]
    [java-time.api :as t]
    [metabase.task-history.models.task-history :as task-history]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (java.time Clock Instant ZoneId)))
