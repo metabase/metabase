@@ -244,7 +244,7 @@ jobs:
           github_token: ${{ steps.claude-app-token.outputs.token }}
           prompt: ${{ env.BUG_FIX_PROMPT }}
           claude_args: |
-            --allowedTools "Bash(yarn test-unit*),Bash(yarn lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
+            --allowedTools "Bash(bun run test-unit*),Bash(bun run lint-eslint-pure),Bash(./bin/mage*),Bash(clojure*),Bash(find*),Bash(ls*),Bash(grep*),Write,Read,Glob,Grep,Edit,MultiEdit"
             --disallowedTools "Bash(git commit*),Bash(git push*),Bash(gh*)"
 
       - name: Clean up scratchpad directory

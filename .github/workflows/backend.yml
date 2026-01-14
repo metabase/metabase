@@ -104,7 +104,7 @@ jobs:
         with:
           java-version: "${{ matrix.java-version }}"
       - name: Build static-viz frontend
-        run: yarn build-static-viz
+        run: bun run build-static-viz
         env:
           MB_EDITION: ${{ matrix.job.edition }}
 

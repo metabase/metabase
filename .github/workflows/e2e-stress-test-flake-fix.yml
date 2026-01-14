@@ -115,7 +115,7 @@ jobs:
 
       - name: Build Embedding SDK package
         if: ${{ needs.determine-test-type.outputs.type == 'component' }}
-        run: yarn build-embedding-sdk-package
+        run: bun run build-embedding-sdk-package
 
       - name: Prepare Cypress environment
         id: cypress-prep

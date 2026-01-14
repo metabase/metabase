@@ -41,13 +41,13 @@ jobs:
     strategy:
       matrix:
         project:
-          - name: Main Frontend (yarn)
-            file: yarn.lock
-            package-manager: yarn
-            category: main-frontend-yarn
+          - name: Main Frontend (bun)
+            file: bun.lock
+            package-manager: npm # bun isn't supported by snyk yet, but bun.lock is compatible with npm
+            category: main-frontend-bun
           - name: Release Helper
-            file: release/yarn.lock
-            package-manager: yarn
+            file: release/bun.lock
+            package-manager: npm
             category: release-helper
     steps:
       - uses: actions/checkout@v4
