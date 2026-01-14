@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
-import { Flex, Group, Icon, Loader, Stack, Text } from "metabase/ui";
+import { Flex, Loader, Stack, Text } from "metabase/ui";
 import type {
   WorkspaceId,
   WorkspaceTransformListItem,
@@ -14,6 +14,8 @@ import type {
 
 import S from "../MergeWorkspaceModal.module.css";
 import { useTransformSources } from "../hooks/useTransformSources";
+
+import { TransformTargetDiff } from "./TransformTargetDiff";
 
 type DiffViewProps = {
   transform: WorkspaceTransformListItem;
@@ -67,46 +69,13 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
     <Stack gap={0} h="100%">
       {oldTarget && newTarget && targetChanged && (
         <Stack
-          gap="xs"
           px="md"
           py="sm"
           style={{
             borderBottom: "1px solid var(--mb-color-border)",
           }}
         >
-          <Text component="label" fw="bold">{t`Transform target`}</Text>
-
-          <Group gap="sm">
-            <Group gap="xs">
-              <Icon c="text-secondary" name="folder" />
-
-              {schemaChanged && (
-                <Text c="danger" component="s" td="line-through">
-                  {oldTarget.schema}
-                </Text>
-              )}
-
-              <Text c={schemaChanged ? "success" : undefined}>
-                {newTarget.schema}
-              </Text>
-            </Group>
-
-            <Divider />
-
-            <Group gap="xs">
-              <Icon c="text-secondary" name="table2" />
-
-              {tableChanged && (
-                <Text c="danger" component="s" td="line-through">
-                  {oldTarget.name}
-                </Text>
-              )}
-
-              <Text c={tableChanged ? "success" : undefined}>
-                {newTarget.name}
-              </Text>
-            </Group>
-          </Group>
+          <TransformTargetDiff newTarget={newTarget} oldTarget={oldTarget} />
         </Stack>
       )}
       <CodeMirror
@@ -119,7 +88,3 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
     </Stack>
   );
 };
-
-function Divider() {
-  return <Icon name="chevronright" size={8} />;
-}
