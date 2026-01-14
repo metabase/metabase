@@ -4,10 +4,12 @@
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
+   [metabase-enterprise.dependencies.dependency-types :as deps.dependency-types]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -25,6 +27,44 @@
   ;; TODO: Make this more specific.
   [:map-of ::entity-type [:sequential [:map [:id {:optional true} :int]]]])
 
+(mr/def ::node-list
+  [:sequential ::deps.dependency-types/node])
+
+(def ^:private query-lookup
+  {:card :dataset_query
+   :transform :query
+   :segment :definition})
+
+(defn- native-lookup-map [children]
+  (let [grouped (-> (graph/all-map-nodes children)
+                    deps.graph/group-nodes)
+        node-factory (fn [node-type]
+                       (fn [node-id]
+                         [node-type node-id]))]
+    (into {}
+          (mapcat (fn [[node-type ids]]
+                    (let [query-key (query-lookup node-type)
+                          model (deps.dependency-types/dependency-type->model node-type)]
+                      (when query-key
+                        (t2/select-fn-vec (fn [entity]
+                                            [[node-type (:id entity)]
+                                             (some-> entity query-key lib/any-native-stage?)])
+                                          model :id [:in ids])))))
+          grouped)))
+
+(defn- mbql-children
+  ([updated-entities]
+   (mbql-children nil updated-entities))
+  ([graph updated-entities]
+   (let [start-nodes (deps.graph/entities->nodes updated-entities)
+         children (graph/transitive-children-of (or graph (deps.graph/graph-dependents)) start-nodes)
+         native-lookup (native-lookup-map children)]
+     (->> (graph/keep-children (fn [node]
+                                 (when-not (native-lookup node)
+                                   node))
+                               children)
+          deps.graph/group-nodes))))
+
 (mu/defn- metadata-provider :- ::lib.schema.metadata/metadata-provider
   "Constructs a `MetadataProvider` with some pending edits applied.
 
@@ -39,7 +79,7 @@
     & {:keys [graph dependents]}]
    ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
    (lib.metadata.protocols/clear-cache! base-provider)
-   (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
+   (let [dependents (or dependents (mbql-children graph updated-entities))]
      (deps.provider/override-metadata-provider
       {:base-provider base-provider
        :updated-entities updated-entities
@@ -98,7 +138,7 @@
   The output is a map: `{entity-type {id [errors...]}}`; an empty map is returned when there are no errors
   detected."
   ([edits :- ::updates-map]
-   (let [all-deps (deps.graph/transitive-dependents edits)
+   (let [all-deps (mbql-children edits)
          by-db    (group-by-db all-deps)]
      (reduce (fn [errors [db-id deps]]
                (-> (lib-be/application-database-metadata-provider db-id)

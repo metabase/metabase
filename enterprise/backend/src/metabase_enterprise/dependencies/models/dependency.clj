@@ -153,6 +153,19 @@
   ([destination-filter-fn source-filter-fn]
    (filtered-graph key-dependents destination-filter-fn source-filter-fn)))
 
+(defn entities->nodes
+  "Converts a map of entities `{entity-type [{:id 1, ...} ...]}` into a list of nodes `[[entity-type entity-id]]`."
+  [entities-map]
+  (for [[entity-type entities] entities-map
+        entity entities
+        :when (:id entity)]
+    [entity-type (:id entity)]))
+
+(defn group-nodes
+  "Groups a list of nodes `[[entity-type entity-id]]` by their type."
+  [nodes]
+  (u/group-by first second conj #{} nodes))
+
 (defn transitive-dependents
   "Given a map of updated entities `{entity-type [{:id 1, ...} ...]}`, return a map of its transitive dependents
   as `{entity-type #{4 5 6}}` - that is, a map from downstream entity type to a set of IDs.
@@ -166,12 +179,9 @@
   ([updated-entities] (transitive-dependents nil updated-entities))
   ([graph updated-entities]
    (let [graph (or graph (graph-dependents))
-         starters (for [[entity-type updates] updated-entities
-                        entity updates
-                        :when (:id entity)]
-                    [entity-type (:id entity)])]
+         starters (entities->nodes updated-entities)]
      (->> (graph/transitive graph starters) ; This returns a flat list.
-          (u/group-by first second conj #{})))))
+          group-nodes))))
 
 (defn replace-dependencies!
   "Replace the dependencies of the entity of type `entity-type` with id `entity-id` with
