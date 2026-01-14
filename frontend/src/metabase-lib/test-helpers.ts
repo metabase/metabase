@@ -425,6 +425,7 @@ type TestQueryStage = {
   filters?: TestQueryFilter[];
   aggregations?: TestQueryAggregation[];
   expression?: TestQueryNamedExpression[];
+  breakouts?: TestQueryBreakout[];
 };
 
 type TestQueryTableSource = { type: "table"; id: TableId };
@@ -476,6 +477,13 @@ type TestQueryOperatorExpression = {
   args: TestQueryExpression[];
 };
 
+type TestQueryBreakout = {
+  name: string;
+  table?: string;
+  unit?: string;
+  binningCount?: number | "auto";
+};
+
 export function createTestQuery({
   databaseId,
   metadata = SAMPLE_METADATA,
@@ -510,7 +518,13 @@ function appendTestQueryStage(
   query: Lib.Query,
   stageIndex: number,
 ): Lib.Query {
-  const { source, joins = [], filters = [], aggregations = [] } = stage;
+  const {
+    source,
+    joins = [],
+    filters = [],
+    aggregations = [],
+    breakouts = [],
+  } = stage;
 
   const queryWithStage = Lib.appendStage(query);
 
@@ -567,7 +581,19 @@ function appendTestQueryStage(
     return Lib.aggregate(query, stageIndex, aggregationClause);
   }, queryWithFilters);
 
-  return queryWithAggregations;
+  // Add breakouts
+  const queryWithBreakouts = breakouts.reduce((query, breakout) => {
+    const clause = createTestBreakoutClause(
+      metadataProvider,
+      sourceMetadata,
+      query,
+      stageIndex,
+      breakout,
+    );
+    return Lib.breakout(query, stageIndex, clause);
+  }, queryWithAggregations);
+
+  return queryWithBreakouts;
 }
 
 function findSource(
@@ -767,4 +793,58 @@ function createTestAggregationClause(
     aggregation,
   );
   return clause;
+}
+
+function createTestBreakoutClause(
+  _metadataProvider: Lib.MetadataProvider,
+  _sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
+  query: Lib.Query,
+  stageIndex: number,
+  breakout: TestQueryBreakout,
+): Lib.ColumnMetadata {
+  const columns = Lib.breakoutableColumns(query, stageIndex);
+  const column = findColumn(query, stageIndex, columns, {
+    type: "column",
+    name: breakout.name,
+    table: breakout.table,
+  });
+
+  if (breakout.unit) {
+    const buckets = Lib.availableTemporalBuckets(query, stageIndex, column);
+    const bucket = buckets.find((candidate) => {
+      const info = Lib.displayInfo(query, stageIndex, candidate);
+      return info.displayName === breakout.unit;
+    });
+
+    if (!bucket) {
+      throw new Error(`Could not find temporal bucket ${breakout.unit}`);
+    }
+
+    return Lib.withTemporalBucket(column, bucket);
+  }
+
+  if (breakout.binningCount) {
+    const strategies = Lib.availableBinningStrategies(
+      query,
+      stageIndex,
+      column,
+    );
+    const strategy = strategies.find((candidate) => {
+      const info = Lib.displayInfo(query, stageIndex, candidate);
+      return (
+        (breakout.binningCount === "auto" && info.displayName === "Auto bin") ||
+        info.displayName === `${breakout.binningCount} bins`
+      );
+    });
+
+    if (!strategy) {
+      throw new Error(
+        `Could not find binning strategy: ${breakout.binningCount}`,
+      );
+    }
+
+    return Lib.withBinning(column, strategy);
+  }
+
+  return column;
 }
