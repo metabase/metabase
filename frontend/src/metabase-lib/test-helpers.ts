@@ -530,7 +530,6 @@ function appendTestQueryStage(
   stageIndex: number,
 ): Lib.Query {
   const {
-    source,
     limit,
     joins = [],
     expressions = [],
@@ -542,8 +541,6 @@ function appendTestQueryStage(
 
   const queryWithStage = Lib.appendStage(query);
 
-  const sourceMetadata = findSource(metadataProvider, source);
-
   const queryWithLimit =
     limit == null
       ? queryWithStage
@@ -553,7 +550,6 @@ function appendTestQueryStage(
   const queryWithJoins = joins.reduce((query, join) => {
     const joinClause = createTestJoinClause(
       metadataProvider,
-      sourceMetadata,
       query,
       stageIndex,
       join,
@@ -686,7 +682,6 @@ function findColumn(
 
 function createTestJoinClause(
   metadataProvider: Lib.MetadataProvider,
-  sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
   query: Lib.Query,
   stageIndex: number,
   join: TestQueryJoin,
@@ -700,7 +695,7 @@ function createTestJoinClause(
   const conditions =
     join.conditions == null
       ? // If no conditions are specified, use the suggested conditions
-        Lib.suggestedJoinConditions(query, stageIndex, sourceMetadata)
+        Lib.suggestedJoinConditions(query, stageIndex, targetMetadata)
       : // If conditions are specified, use them
         join.conditions.map((condition) => {
           const lhs = expressionToJoinConditionExpression(
@@ -720,7 +715,7 @@ function createTestJoinClause(
           return Lib.joinConditionClause(condition.operator, lhs, rhs);
         });
 
-  return Lib.joinClause(sourceMetadata, conditions, joinStrategy);
+  return Lib.joinClause(targetMetadata, conditions, joinStrategy);
 }
 
 function findJoinStrategy(
