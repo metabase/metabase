@@ -664,3 +664,45 @@
         (let [hydrated (t2/hydrate table :can_query)]
           (is (contains? hydrated :can_query))
           (is (boolean? (:can_query hydrated))))))))
+
+(deftest serdes-descendants-includes-fields-and-segments-test
+  (testing "Table descendants includes Fields and Segments"
+    (mt/with-temp [:model/Database {db-id :id}      {:name "Test DB"}
+                   :model/Table    {table-id :id}   {:name "Test Table" :db_id db-id}
+                   :model/Field    {field1-id :id}  {:name "Field 1" :table_id table-id :base_type :type/Integer}
+                   :model/Field    {field2-id :id}  {:name "Field 2" :table_id table-id :base_type :type/Text}
+                   :model/Segment  {segment-id :id} {:name "Test Segment" :table_id table-id :definition {}}]
+      (let [descendants (serdes/descendants "Table" table-id {})]
+        (testing "Fields are included"
+          (is (contains? descendants ["Field" field1-id]))
+          (is (contains? descendants ["Field" field2-id])))
+        (testing "Segments are included"
+          (is (contains? descendants ["Segment" segment-id]))))))
+  (testing "Table with no fields or segments returns empty map"
+    (mt/with-temp [:model/Database {db-id :id}    {:name "Test DB"}
+                   :model/Table    {table-id :id} {:name "Empty Table" :db_id db-id}]
+      (is (= {} (serdes/descendants "Table" table-id {}))))))
+
+(deftest serdes-descendants-skip-archived-segments-test
+  (testing "Table descendants respects skip-archived option for Segments"
+    (mt/with-temp [:model/Database {db-id :id}           {:name "Test DB"}
+                   :model/Table    {table-id :id}        {:name "Test Table" :db_id db-id}
+                   :model/Field    {field-id :id}        {:name "Test Field" :table_id table-id :base_type :type/Integer}
+                   :model/Segment  {active-seg-id :id}   {:name "Active Segment" :table_id table-id :definition {} :archived false}
+                   :model/Segment  {archived-seg-id :id} {:name "Archived Segment" :table_id table-id :definition {} :archived true}]
+      (testing "archived segments are excluded when skip-archived: true"
+        (let [descendants (serdes/descendants "Table" table-id {:skip-archived true})]
+          (is (contains? descendants ["Field" field-id])
+              "Fields are still included")
+          (is (contains? descendants ["Segment" active-seg-id])
+              "Active segments are included")
+          (is (not (contains? descendants ["Segment" archived-seg-id]))
+              "Archived segments are excluded")))
+      (testing "archived segments are included when skip-archived: false"
+        (let [descendants (serdes/descendants "Table" table-id {:skip-archived false})]
+          (is (contains? descendants ["Segment" active-seg-id]))
+          (is (contains? descendants ["Segment" archived-seg-id]))))
+      (testing "archived segments are included when skip-archived is not specified"
+        (let [descendants (serdes/descendants "Table" table-id {})]
+          (is (contains? descendants ["Segment" active-seg-id]))
+          (is (contains? descendants ["Segment" archived-seg-id])))))))
