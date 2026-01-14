@@ -26,7 +26,7 @@ export const PROTECTED_COLORS = [
   "accent6",
   "accent7",
 
-  // Grey accent colors shouldn't be overrideable?
+  // Grey accent colors
   "accent-gray",
   "accent-gray-dark",
   "accent-gray-light",
