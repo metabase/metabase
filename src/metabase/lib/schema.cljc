@@ -137,16 +137,17 @@
                                                  (into #{}
                                                        (keep #(:source-field-name (lib.options/options %)))
                                                        field-refs)))
-        remove-source-field-name? (fn [[_tag {:keys [source-field source-field-name], :as _opts} _id-or-name :as _ref]]
+        ignore-source-field-name? (fn [[_tag {:keys [source-field source-field-name], :as _opts} _id-or-name :as _ref]]
                                     (when source-field-name
                                       (let [source-field-names-for-source-field (source-field->names source-field)]
                                         (< (count source-field-names-for-source-field) 2))))]
-    (m/distinct-by
-     (fn [field-ref]
-       (lib.schema.util/mbql-clause-distinct-key
-        (cond-> field-ref
-          (remove-source-field-name? field-ref)
-          (lib.options/update-options dissoc :source-field-name))))
+    (into
+     []
+     (m/distinct-by (fn [field-ref]
+                      (lib.schema.util/mbql-clause-distinct-key
+                       (cond-> field-ref
+                         (ignore-source-field-name? field-ref)
+                         (lib.options/update-options dissoc :source-field-name)))))
      fields)))
 
 (mr/def ::deduplicate-refs-ignoring-source-field-name-when-possible
