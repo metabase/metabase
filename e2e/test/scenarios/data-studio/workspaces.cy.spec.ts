@@ -441,7 +441,7 @@ describe("scenarios > data studio > workspaces", () => {
         'SELECT * FROM "Schema A"."Animals" LIMIT 2',
       );
       Transforms.runTab().click();
-      runTransformAndWaitForSuccess();
+      runTransformAndWaitForSuccessOnTransformsPage();
       Transforms.settingsTab().click();
       getTableLink().should("contain.text", TARGET_TABLE_SQL).click();
 
@@ -1463,6 +1463,15 @@ function getTableLink({ isActive = true }: { isActive?: boolean } = {}) {
 function runTransformAndWaitForSuccess() {
   Workspaces.getRunTransformButton().click();
   Workspaces.getRunTransformButton().should("have.text", "Ran successfully");
+}
+
+function runTransformAndWaitForSuccessOnTransformsPage() {
+  getRunButton().click();
+  getRunButton().should("have.text", "Ran successfully");
+}
+
+function getRunButton(options: { timeout?: number } = {}) {
+  return cy.findAllByTestId("run-button").eq(0, options);
 }
 
 function verifyAndCloseToast(message: string) {
