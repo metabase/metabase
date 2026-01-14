@@ -1,4 +1,3 @@
-/* eslint-disable no-color-literals */
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 
 import type { ColorSettings } from "metabase-types/api/settings";
