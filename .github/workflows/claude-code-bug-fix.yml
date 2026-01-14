@@ -230,6 +230,12 @@ jobs:
           mkdir -p .claude-scratchpad
           echo "Scratchpad directory created for Claude's temporary verification files"
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+
       - name: Generate GitHub App Token for Claude
         uses: actions/create-github-app-token@v1
         id: claude-app-token

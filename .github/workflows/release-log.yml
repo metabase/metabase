@@ -38,6 +38,10 @@ jobs:
         with:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Install Dependencies
         run: bun install --cwd release --frozen-lockfile && npm i -g tsx
       - name: Build release scripts

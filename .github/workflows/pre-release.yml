@@ -34,6 +34,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && bun install && bun run build
       # note: this block can be removed after we stop needing to be able to test versions before v55
@@ -256,6 +260,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: release
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && bun install && bun run build
       - name: Send tests complete message
