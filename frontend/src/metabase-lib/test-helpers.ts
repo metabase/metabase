@@ -419,7 +419,7 @@ type CreateTestQueryOpts = {
 };
 
 type TestQueryStage = {
-  source: TestQuerySource;
+  source?: TestQuerySource;
   limit?: Lib.Limit;
   fields?: TestQueryColumnExpression[] | "all";
   joins?: TestQueryJoin[];
@@ -499,6 +499,10 @@ export function createTestQuery({
 }: CreateTestQueryOpts): Lib.Query {
   if (stages.length === 0) {
     throw new Error("query must have at least one stage");
+  }
+
+  if (!stages[0].source) {
+    throw new Error("query must have a source in the first stage");
   }
 
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
