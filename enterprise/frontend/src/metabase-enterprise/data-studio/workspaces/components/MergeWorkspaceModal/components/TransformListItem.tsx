@@ -29,6 +29,7 @@ export const TransformListItem = ({
       py="sm"
       className={cx(S.sidebarItem, isSelected && S.sidebarItemActive)}
       onClick={onClick}
+      data-testid={`transform-list-item`}
     >
       <Flex align="center" gap="sm" style={{ overflow: "hidden" }}>
         <Icon name="code_block" size={14} c="text-medium" />

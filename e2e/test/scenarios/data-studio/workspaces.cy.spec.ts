@@ -412,7 +412,8 @@ describe("scenarios > data studio > workspaces", () => {
 
         cy.log("Transform diffs are displayed");
         cy.findByText("Modified transforms").should("exist");
-        cy.contains('[class*="sidebarItem"]', "SQL transform")
+        cy.findByTestId("transform-list-item")
+          .should("contain.text", "SQL transform")
           .should("be.visible")
           .should(($el) => {
             expect($el.text()).to.include("SQL transform");
