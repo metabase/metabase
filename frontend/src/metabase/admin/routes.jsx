@@ -35,7 +35,6 @@ import {
   ModelCachePage,
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
-import { TasksApp } from "metabase/admin/tools/components/TasksApp";
 import { ToolsApp } from "metabase/admin/tools/components/ToolsApp";
 import { getTasksRoutes } from "metabase/admin/tools/routes";
 import { EmbeddingHubAdminSettingsPage } from "metabase/embedding/embedding-hub";
@@ -275,9 +274,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
               />
             )}
           </Route>
-          <Route path="tasks" component={TasksApp}>
-            {getTasksRoutes()}
-          </Route>
+          <Route path="tasks">{getTasksRoutes()}</Route>
           <Route path="jobs" component={JobInfoApp}>
             <ModalRoute
               path=":jobKey"

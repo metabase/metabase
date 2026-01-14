@@ -1,3 +1,5 @@
+import type { Log } from "metabase-types/api/util";
+
 import type { DatabaseId } from "./database";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { SortingOptions } from "./sorting";
@@ -14,7 +16,7 @@ export interface Task {
   task: string;
   task_details: Record<string, unknown> | null;
   status: TaskStatus;
-  logs: string[] | null;
+  logs: Log[] | null;
 }
 
 export type ListTasksSortColumn = "started_at" | "ended_at" | "duration";

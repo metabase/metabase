@@ -4,15 +4,12 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 
 import { TaskListPage } from "./components/TaskListPage";
 import { TaskModal } from "./components/TaskModal";
-import { TaskRunModal } from "./components/TaskRunModal";
+import { TaskRunDetailsPage } from "./components/TaskRunDetailsPage";
 import { TaskRunsPage } from "./components/TaskRunsPage";
 
 export const getTasksRoutes = () => (
   <>
-    <IndexRedirect to="runs" />
-    <Route path="runs" component={TaskRunsPage}>
-      <ModalRoute path=":runId" modal={TaskRunModal} />
-    </Route>
+    <IndexRedirect to="list" />
     <Route path="list" component={TaskListPage}>
       <ModalRoute
         path=":taskId"
@@ -22,5 +19,7 @@ export const getTasksRoutes = () => (
         }}
       />
     </Route>
+    <Route path="runs" component={TaskRunsPage} />
+    <Route path="runs/:runId" component={TaskRunDetailsPage} />
   </>
 );

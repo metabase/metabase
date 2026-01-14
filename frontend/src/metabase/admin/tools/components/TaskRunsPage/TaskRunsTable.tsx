@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/common/components/Ellipsified";
@@ -8,8 +7,14 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Flex } from "metabase/ui";
+import { Badge, Box, Flex } from "metabase/ui";
 import type { TaskRun } from "metabase-types/api";
+
+import {
+  formatTaskRunStatus,
+  formatTaskRunType,
+  getTaskRunStatusColor,
+} from "../../utils";
 
 type TaskRunsTableProps = {
   error: unknown;
@@ -75,12 +80,7 @@ export const TaskRunsTable = ({
                 onClick={() => onClickTaskRun(taskRun)}
               >
                 <td className={CS.textBold}>
-                  {match(taskRun.run_type)
-                    .with("subscription", () => t`Subscription`)
-                    .with("alert", () => t`Alert`)
-                    .with("sync", () => t`Sync`)
-                    .with("fingerprint", () => t`Fingerprint`)
-                    .exhaustive()}
+                  {formatTaskRunType(taskRun.run_type)}
                 </td>
                 <td>
                   <Ellipsified style={{ maxWidth: 200 }}>
@@ -98,11 +98,9 @@ export const TaskRunsTable = ({
                   </Ellipsified>
                 </td>
                 <td>
-                  {match(taskRun.status)
-                    .with("started", () => t`Started`)
-                    .with("success", () => t`Success`)
-                    .with("failed", () => t`Failed`)
-                    .exhaustive()}
+                  <Badge color={getTaskRunStatusColor(taskRun.status)}>
+                    {formatTaskRunStatus(taskRun.status)}
+                  </Badge>
                 </td>
                 <td>
                   <span>{taskRun.task_count} </span>

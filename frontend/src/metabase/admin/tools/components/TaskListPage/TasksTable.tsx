@@ -1,6 +1,5 @@
 import cx from "classnames";
 import { push } from "react-router-redux";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,9 +9,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Flex } from "metabase/ui";
+import { Badge, Box, Flex } from "metabase/ui";
 import type { Database, ListTasksSortColumn, Task } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
+
+import { formatTaskStatus, getTaskStatusColor } from "../../utils";
 
 interface Props {
   databases: Database[];
@@ -121,14 +122,10 @@ export const TasksTable = ({
                   </td>
                   <td>{task.duration}</td>
                   <td>
-                    {match(task.status)
-                      .with("failed", () => t`Failed`)
-                      .with("started", () => t`Started`)
-                      .with("success", () => t`Success`)
-                      .with("unknown", () => t`Unknown`)
-                      .exhaustive()}
+                    <Badge color={getTaskStatusColor(task.status)}>
+                      {formatTaskStatus(task.status)}
+                    </Badge>
                   </td>
-                  <td></td>
                 </tr>
               );
             })}

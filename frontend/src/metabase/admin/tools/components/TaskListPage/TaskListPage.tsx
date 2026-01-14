@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from "react";
 import { type WithRouterProps, withRouter } from "react-router";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
@@ -9,6 +8,7 @@ import { Flex } from "metabase/ui";
 
 import { TaskPicker } from "../TaskPicker";
 import { TaskStatusPicker } from "../TaskStatusPicker";
+import { TasksTabs } from "../TasksTabs";
 
 import { TasksTable } from "./TasksTable";
 import { urlStateConfig } from "./utils";
@@ -56,44 +56,42 @@ const TaskListPageBase = ({
   const error = tasksError || databasesError;
 
   return (
-    <>
-      <SettingsSection>
-        <Flex gap="md" justify="space-between">
-          <Flex gap="md">
-            <TaskPicker
-              value={task}
-              onChange={(task) => patchUrlState({ task, page: 0 })}
-            />
+    <TasksTabs>
+      <Flex gap="md" justify="space-between">
+        <Flex gap="md">
+          <TaskPicker
+            value={task}
+            onChange={(task) => patchUrlState({ task, page: 0 })}
+          />
 
-            <TaskStatusPicker
-              value={status}
-              onChange={(status) => patchUrlState({ status, page: 0 })}
-            />
-          </Flex>
-
-          <PaginationControls
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
-            page={page}
-            pageSize={PAGE_SIZE}
-            itemsLength={tasks.length}
-            total={total}
+          <TaskStatusPicker
+            value={status}
+            onChange={(status) => patchUrlState({ status, page: 0 })}
           />
         </Flex>
 
-        <TasksTable
-          databases={databases}
-          error={error}
-          isLoading={isLoading}
-          sortingOptions={sortingOptions}
-          tasks={tasks}
-          onSortingOptionsChange={(sortingOptions) =>
-            patchUrlState({ ...sortingOptions, page: 0 })
-          }
+        <PaginationControls
+          onPreviousPage={() => patchUrlState({ page: page - 1 })}
+          onNextPage={() => patchUrlState({ page: page + 1 })}
+          page={page}
+          pageSize={PAGE_SIZE}
+          itemsLength={tasks.length}
+          total={total}
         />
-      </SettingsSection>
+      </Flex>
+
+      <TasksTable
+        databases={databases}
+        error={error}
+        isLoading={isLoading}
+        sortingOptions={sortingOptions}
+        tasks={tasks}
+        onSortingOptionsChange={(sortingOptions) =>
+          patchUrlState({ ...sortingOptions, page: 0 })
+        }
+      />
       {children}
-    </>
+    </TasksTabs>
   );
 };
 

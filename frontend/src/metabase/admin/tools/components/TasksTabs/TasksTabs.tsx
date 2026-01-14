@@ -1,9 +1,11 @@
-import type { PropsWithChildren } from "react";
 import { type WithRouterProps, withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/admin/components/SettingsSection";
 import { useDispatch } from "metabase/lib/redux";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
 
@@ -24,13 +26,14 @@ const getActiveTab = (
   return tabs.find((tab) => tab.value === firstSegment)?.value;
 };
 
-const TasksAppBase = ({
-  children,
-  location,
-}: PropsWithChildren<WithRouterProps>) => {
+type TasksTabsProps = WithRouterProps & {
+  children: React.ReactNode;
+};
+
+const TasksTabsBase = ({ children, location }: TasksTabsProps) => {
   const tabs: TabConfig[] = [
-    { value: "runs", label: t`Runs` },
     { value: "list", label: t`Tasks` },
+    { value: "runs", label: t`Runs` },
   ];
   const DEFAULT_TAB = tabs[0].value;
   const dispatch = useDispatch();
@@ -44,26 +47,28 @@ const TasksAppBase = ({
 
   return (
     <SettingsPageWrapper>
-      <Flex align="center" gap="sm">
-        <Title order={1}>{t`Troubleshooting logs`}</Title>
-        <Tooltip
-          label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
-        >
-          <Icon name="info" />
-        </Tooltip>
-      </Flex>
-      <Tabs value={activeTab} onChange={handleTabChange}>
-        <Tabs.List>
-          {tabs.map((tab) => (
-            <Tabs.Tab key={tab.value} value={tab.value}>
-              {tab.label}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
-      </Tabs>
-      {children}
+      <SettingsSection>
+        <Flex align="center" gap="sm">
+          <Title order={1}>{t`Troubleshooting logs`}</Title>
+          <Tooltip
+            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+          >
+            <Icon name="info" />
+          </Tooltip>
+        </Flex>
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          <Tabs.List>
+            {tabs.map((tab) => (
+              <Tabs.Tab key={tab.value} value={tab.value}>
+                {tab.label}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
+        </Tabs>
+        {children}
+      </SettingsSection>
     </SettingsPageWrapper>
   );
 };
 
-export const TasksApp = withRouter(TasksAppBase);
+export const TasksTabs = withRouter(TasksTabsBase);

@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { LogsContent } from "metabase/admin/tools/components/Logs/Logs.styled";
+import { LogsViewer } from "metabase/admin/tools/components/Logs/LogsViewer";
 import { useGetTaskQuery } from "metabase/api";
-import { AnsiLogs } from "metabase/common/components/AnsiLogs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -24,7 +23,6 @@ export const TaskModal = ({ params, onClose }: Props) => {
   const hasLogs = task?.logs?.length !== 0;
   const code = formatTaskDetails(task);
   const linesCount = useMemo(() => code.split("\n").length, [code]);
-  const logsText = useMemo(() => task?.logs?.join("\n") ?? "", [task?.logs]);
 
   const handleDownload = () => {
     const filename = getFilename(task);
@@ -67,7 +65,7 @@ export const TaskModal = ({ params, onClose }: Props) => {
         {hasLogs && (
           <Tabs.Panel value="logs">
             <Box className={S.codeContainer} mt="md">
-              <AnsiLogs component={LogsContent}>{logsText}</AnsiLogs>
+              <LogsViewer logs={task?.logs ?? []}></LogsViewer>
             </Box>
           </Tabs.Panel>
         )}

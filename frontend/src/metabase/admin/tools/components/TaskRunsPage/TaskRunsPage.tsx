@@ -1,25 +1,30 @@
-import type { PropsWithChildren } from "react";
 import { type WithRouterProps, withRouter } from "react-router";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListTaskRunsQuery } from "metabase/api";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Flex } from "metabase/ui";
 
-import { RunTypePicker } from "../RunTypePicker";
+import { TaskRunTypePicker } from "../RunTypePicker";
+import { TaskRunEntityPicker } from "../TaskRunEntityPicker";
 import { TaskRunStatusPicker } from "../TaskRunStatusPicker";
+import { TasksTabs } from "../TasksTabs";
 
 import { TaskRunsTable } from "./TaskRunsTable";
 import { PAGE_SIZE } from "./constants";
 import { urlStateConfig } from "./utils";
 
-const TaskRunsPageBase = ({
-  location,
-  children,
-}: PropsWithChildren<WithRouterProps>) => {
-  const [{ page, "run-type": runType, status }, { patchUrlState }] =
-    useUrlState(location, urlStateConfig);
+const TaskRunsPageBase = ({ location }: WithRouterProps) => {
+  const [
+    {
+      page,
+      "run-type": runType,
+      "entity-type": entityType,
+      "entity-id": entityId,
+      status,
+    },
+    { patchUrlState },
+  ] = useUrlState(location, urlStateConfig);
 
   const {
     data: taskRunsData,
@@ -30,6 +35,8 @@ const TaskRunsPageBase = ({
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
       "run-type": runType ?? undefined,
+      "entity-type": entityType ?? undefined,
+      "entity-id": entityId ?? undefined,
       status: status ?? undefined,
     },
     {
@@ -40,42 +47,54 @@ const TaskRunsPageBase = ({
   const taskRuns = taskRunsData?.data ?? [];
   const total = taskRunsData?.total ?? 0;
 
+  const entityValue = entityType && entityId ? { entityType, entityId } : null;
+
   return (
-    <>
-      <SettingsSection>
-        <Flex gap="md" justify="space-between">
-          <Flex gap="md">
-            <RunTypePicker
-              value={runType}
-              onChange={(runType) =>
-                patchUrlState({ "run-type": runType, page: 0 })
-              }
-            />
+    <TasksTabs>
+      <Flex gap="md" justify="space-between">
+        <Flex gap="md">
+          <TaskRunTypePicker
+            value={runType}
+            onChange={(runType) =>
+              patchUrlState({
+                "run-type": runType,
+                "entity-type": null,
+                "entity-id": null,
+                page: 0,
+              })
+            }
+          />
 
-            <TaskRunStatusPicker
-              value={status}
-              onChange={(status) => patchUrlState({ status, page: 0 })}
-            />
-          </Flex>
+          <TaskRunEntityPicker
+            runType={runType}
+            value={entityValue}
+            onChange={(entity) =>
+              patchUrlState({
+                "entity-type": entity?.entityType ?? null,
+                "entity-id": entity?.entityId ?? null,
+                page: 0,
+              })
+            }
+          />
 
-          <PaginationControls
-            onPreviousPage={() => patchUrlState({ page: page - 1 })}
-            onNextPage={() => patchUrlState({ page: page + 1 })}
-            page={page}
-            pageSize={PAGE_SIZE}
-            itemsLength={taskRuns.length}
-            total={total}
+          <TaskRunStatusPicker
+            value={status}
+            onChange={(status) => patchUrlState({ status, page: 0 })}
           />
         </Flex>
 
-        <TaskRunsTable
-          error={error}
-          isLoading={isLoading}
-          taskRuns={taskRuns}
+        <PaginationControls
+          onPreviousPage={() => patchUrlState({ page: page - 1 })}
+          onNextPage={() => patchUrlState({ page: page + 1 })}
+          page={page}
+          pageSize={PAGE_SIZE}
+          itemsLength={taskRuns.length}
+          total={total}
         />
-      </SettingsSection>
-      {children}
-    </>
+      </Flex>
+
+      <TaskRunsTable error={error} isLoading={isLoading} taskRuns={taskRuns} />
+    </TasksTabs>
   );
 };
 

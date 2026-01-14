@@ -4,12 +4,19 @@ import { t } from "ttag";
 import { Select, type SelectProps } from "metabase/ui";
 import type { TaskRunType } from "metabase-types/api";
 
-interface Props extends Omit<SelectProps, "data" | "value" | "onChange"> {
+type TaskRunTypePickerProps = Omit<
+  SelectProps,
+  "data" | "value" | "onChange"
+> & {
   value: TaskRunType | null;
   onChange: (value: TaskRunType | null) => void;
-}
+};
 
-export const RunTypePicker = ({ value, onChange, ...props }: Props) => {
+export const TaskRunTypePicker = ({
+  value,
+  onChange,
+  ...props
+}: TaskRunTypePickerProps) => {
   const data = useMemo(() => getData(), []);
 
   return (
