@@ -11,8 +11,8 @@ import {
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
+  METABASE_LIGHT_THEME,
   deriveFullMetabaseTheme,
-  getThemeFromColorScheme,
 } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
@@ -41,7 +41,7 @@ export function useEmbeddingThemeOverride(
 
     if (isEmbeddingThemeV2(theme)) {
       const derivedTheme = deriveFullMetabaseTheme({
-        baseTheme: getThemeFromColorScheme("light"),
+        baseTheme: METABASE_LIGHT_THEME,
         whitelabelColors: appColors ?? {},
         embeddingThemeOverride: theme,
       });
