@@ -149,7 +149,12 @@
                                   :from     :task_history
                                   :where    [:in :run_id run-ids]
                                   :group-by [:run_id]})
-          counts-by-id (into {} (map (juxt :run_id identity) counts))]
+          ;; Coerce counts to int (MySQL may return BigDecimal)
+          counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
+                                       [run_id {:task_count    (int task_count)
+                                                :success_count (int success_count)
+                                                :failed_count  (int failed_count)}])
+                                     counts))]
       (map #(merge {:task_count 0 :success_count 0 :failed_count 0}
                    %
                    (get counts-by-id (:id %)))
