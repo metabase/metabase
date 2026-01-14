@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.field :as lib.field]
@@ -12,7 +11,6 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -173,26 +171,25 @@
   ;; foreign key constraints in generated columns. #44866
   (t2/delete! :model/Field :parent_id (:id field)))
 
-(defn- field->db-id
-  [{table-id :table_id, {db-id :db_id} :table}]
-  (or db-id (database/table-id->database-id table-id)))
+(defn- field->table
+  "Get the Table for a Field, either from hydration or by fetching."
+  [instance]
+  (or (:table instance)
+      (t2/select-one :model/Table :id (:table_id instance))))
 
 (defmethod mi/can-read? :model/Field
+  ;; Field permissions delegate to the parent Table. User can read this field if they can read its table.
   ([instance]
-   (and (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/view-data
-         :unrestricted
-         (field->db-id instance)
-         (:table_id instance))
-        (perms/user-has-permission-for-table?
-         api/*current-user-id*
-         :perms/create-queries
-         :query-builder
-         (field->db-id instance)
-         (:table_id instance))))
+   (mi/can-read? (field->table instance)))
   ([model pk]
    (mi/can-read? (t2/select-one model pk))))
+
+(defmethod mi/can-query? :model/Field
+  ;; Field permissions delegate to the parent Table. User can query this field if they can query its table.
+  ([instance]
+   (mi/can-query? (field->table instance)))
+  ([model pk]
+   (mi/can-query? (t2/select-one model pk))))
 
 (defenterprise current-user-can-write-field?
   "OSS implementation. Returns a boolean whether the current user can write the given field."

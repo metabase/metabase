@@ -9,6 +9,7 @@ import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
 const GRADIENT_ALPHA = 0.75;
+const MIN_ALPHA = 0.000001; // 1e-6, just above scientific notation threshold
 
 // for simplicity when typing assume all values are numbers, since you can only pick numeric columns
 
@@ -145,9 +146,7 @@ export function compileFormatter(
       format.colors.map((c) => {
         const color = Color(c);
         const alpha = color.alpha();
-        return color
-          .alpha(alpha > GRADIENT_ALPHA ? GRADIENT_ALPHA : alpha)
-          .toString();
+        return color.alpha(clampAlpha(alpha)).toString();
       }),
     ).clamp(true);
     return (value) => {
@@ -161,6 +160,20 @@ export function compileFormatter(
     console.warn("Unknown format type", format.type);
     return () => null;
   }
+}
+
+/**
+ * Clamps the alpha value to prevent values very close to 0 from being converted to scientific notation.
+ *
+ * @param {number} alpha - The alpha value to clamp
+ * @returns {number} The clamped alpha value. Returns 0 if input is 0, otherwise clamps between MIN_ALPHA (0.000001) and GRADIENT_ALPHA (0.75)
+ */
+function clampAlpha(alpha) {
+  if (alpha === 0) {
+    return 0;
+  }
+
+  return Math.min(GRADIENT_ALPHA, Math.max(MIN_ALPHA, alpha));
 }
 
 // NOTE: implement `extent` like this rather than using d3.extent since rows may

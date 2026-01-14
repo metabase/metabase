@@ -7,11 +7,10 @@
 
 (def ^:private codespell-dirs
   "Keep these in sync with the list of directories in `.github/workflows/codespell.yml`."
-  [#_"dev"
-   "docs"
+  ["docs"
    #_"e2e"
    "enterprise"
-   #_"frontend"
+   "frontend"
    "modules/drivers"
    #_"src"
    #_"test"])

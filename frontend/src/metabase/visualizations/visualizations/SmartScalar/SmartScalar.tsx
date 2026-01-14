@@ -22,7 +22,7 @@ import type {
   VisualizationProps,
 } from "metabase/visualizations/types";
 
-import { ScalarContainer } from "../Scalar/Scalar.styled";
+import { ScalarValueContainer } from "../Scalar/ScalarValueContainer";
 
 import { PreviousValueComparison } from "./PreviousValueComparison";
 import { ScalarPeriod } from "./ScalarPeriod";
@@ -113,9 +113,8 @@ export function SmartScalar({
 
   return (
     <ScalarWrapper>
-      <ScalarContainer
+      <ScalarValueContainer
         className={DashboardS.fullscreenNormalText}
-        data-testid="scalar-container"
         tooltip={fullScalarValue}
         alwaysShowTooltip={fullScalarValue !== displayValue}
         isClickable={isClickable}
@@ -130,7 +129,7 @@ export function SmartScalar({
             width={getValueWidth(width)}
           />
         </span>
-      </ScalarContainer>
+      </ScalarValueContainer>
       {isPeriodVisible(innerHeight) && <ScalarPeriod period={display.date} />}
 
       {comparisonsCount === 1 && (
