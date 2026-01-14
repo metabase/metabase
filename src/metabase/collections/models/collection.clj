@@ -1428,6 +1428,19 @@
          :location [:like (str (children-location collection) "%")]
          additional-conditions))
 
+(mu/defn perms-for-unarchiving :- [:set perms/PathSchema]
+  "Return the set of Permissions needed to unarchive a `collection`. Since unarchiving is
+  *recursive* (all descendants archived together get unarchived), we require write ('curate')
+  permissions for the collection and all descendants being unarchived."
+  [collection :- CollectionWithLocationAndIDOrRoot]
+  (let [archive-operation-id (:archive_operation_id collection)
+        descendant-ids (collection->descendant-ids collection
+                                                   :archive_operation_id [:= archive-operation-id]
+                                                   :archived [:= true])]
+    (set
+     (cons (perms/collection-readwrite-path collection)
+           (map perms/collection-readwrite-path descendant-ids)))))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1472,9 +1485,6 @@
    ;; between specifying a `nil` parent_id (move to the root) and not specifying a parent_id.
    updates :- [:map [:parent_id {:optional true} [:maybe ms/PositiveInt]]]]
   (assert (:archive_operation_id collection))
-  (when (not (contains? updates :parent_id))
-    (api/check-400
-     (:can_restore (t2/hydrate collection :can_restore))))
   (let [archive-operation-id    (:archive_operation_id collection)
         current-parent-id       (:parent_id (t2/hydrate collection :parent_id))
         new-parent-id           (if (contains? updates :parent_id)
@@ -1493,6 +1503,16 @@
                                                                   :archived [:= true]))]
     (api/check-400
      (and (some? new-parent) (not (:archived new-parent))))
+
+    (if (contains? updates :parent_id)
+      (api/check-403
+       (and (mi/can-write? new-parent)
+            (perms/set-has-full-permissions-for-set?
+             @api/*current-user-permissions-set*
+             (perms-for-unarchiving collection))))
+      ;; Restoring to original location, use `can_restore` for a single source of truth
+      (api/check-403
+       (:can_restore (t2/hydrate collection :can_restore))))
 
     (t2/with-transaction [_conn]
       (t2/update! :model/Collection (u/the-id collection)
@@ -2169,22 +2189,34 @@
 
 (defmethod hydrate-can-restore :model/Collection [_model colls]
   (when (seq colls)
-    (let [coll-id->parent-id (into {} (map (fn [{:keys [id parent_id]}]
-                                             [id parent_id])
-                                           (t2/hydrate (filter :archived colls) :parent_id)))
+    (let [archived-colls (filter :archived colls)
+          ;; Batch: get parent info
+          coll-id->parent-id (into {} (map (fn [{:keys [id parent_id]}] [id parent_id])
+                                           (t2/hydrate archived-colls :parent_id)))
           parent-ids (keep val coll-id->parent-id)
           parent-id->archived? (when (seq parent-ids)
-                                 (t2/select-pk->fn :archived :model/Collection :id [:in parent-ids]))]
+                                 (t2/select-pk->fn :archived :model/Collection :id [:in parent-ids]))
+          ;; Batch: get all descendants for all archive_operation_ids
+          op-ids (keep :archive_operation_id archived-colls)
+          all-descendants (when (seq op-ids)
+                            (t2/select :model/Collection
+                                       :archive_operation_id [:in op-ids]
+                                       :archived true))
+          op-id->descendant-ids (update-vals (group-by :archive_operation_id all-descendants)
+                                             #(map :id %))]
       (for [coll colls
             :let [parent-id (coll-id->parent-id (:id coll))
                   archived-directly? (:archived_directly coll)
-                  parent-archived? (get parent-id->archived? parent-id false)]]
+                  parent-archived? (get parent-id->archived? parent-id false)
+                  descendant-ids (get op-id->descendant-ids (:archive_operation_id coll) [])
+                  perm-paths (set (cons (perms/collection-readwrite-path coll)
+                                        (map perms/collection-readwrite-path descendant-ids)))]]
         (assoc coll :can_restore (boolean (and (:archived coll)
                                                archived-directly?
                                                (not parent-archived?)
                                                (perms/set-has-full-permissions-for-set?
                                                 @api/*current-user-permissions-set*
-                                                (perms-for-archiving coll)))))))))
+                                                perm-paths))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
   (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
