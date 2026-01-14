@@ -12,7 +12,7 @@ export function MiniPickerPane() {
   const isRoot = path.length === 0;
 
   return (
-    <Stack mah="30rem" w="20rem" gap={0}>
+    <Stack mah="30rem" w={searchQuery ? "40rem" : "20rem"} gap={0}>
       {!isRoot && !searchQuery && <MiniPickerHeader />}
       <MiniPickerItemList />
       {(isRoot || searchQuery) && <MiniPickerFooter />}

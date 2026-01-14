@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_alerts
+table_id: [Internal Metabase Database, public, v_alerts]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -24,33 +21,23 @@ dataset_query:
   database: Internal Metabase Database
   query:
     aggregation:
-    - - count
+    - [count]
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - archived
-      - base-type: type/Boolean
+      - [Internal Metabase Database, public, v_alerts, archived]
+      - {base-type: type/Boolean}
     - false
     joins:
     - alias: People - Creator
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_alerts
-          - creator_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_alerts, creator_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - Creator
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - Creator}
       fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
@@ -59,23 +46,17 @@ dataset_query:
 result_metadata:
 - base_type: type/Integer
   display_name: Count
-  field_ref:
-  - aggregation
-  - 0
+  field_ref: [aggregation, 0]
   name: count
   semantic_type: type/Quantity
   source: aggregation
-visualization_settings:
-  column_settings: null
-  table.cell_column: recipient_external
-  table.pivot_column: name
+visualization_settings: {column_settings: null, table.cell_column: recipient_external, table.pivot_column: name}
+card_schema: 23
 serdes/meta:
-- id: JPERH6xYVcj3m2Zw0YVY1
-  label: active_alerts
-  model: Card
+- {id: JPERH6xYVcj3m2Zw0YVY1, label: active_alerts, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: DHMhMa1FYxiyIgM7_xdgR
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

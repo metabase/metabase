@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.fix-bad-field-id-refs
   "Middleware that adds `:join-alias` info to `:field` clauses where needed."
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.field.resolution :as lib.field.resolution]
@@ -7,7 +8,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- fix-bad-field-id-refs-in-stage :- [:maybe ::lib.schema/stage]
   [query :- ::lib.schema/query

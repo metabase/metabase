@@ -72,7 +72,7 @@ export const EmbeddingSdkSettings = () => {
 
   return (
     <EmbeddingSettingsCard
-      title={t`Enable SDK for React`}
+      title={t`Enable modular embedding SDK`}
       description={t`Embed the full power of Metabase into your application to build a custom analytics experience and programmatically manage dashboards and data.`}
       settingKey="enable-embedding-sdk"
       links={[

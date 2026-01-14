@@ -28,7 +28,6 @@ describe("document comments", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
     H.resetSnowplow();
   });
 
@@ -725,7 +724,7 @@ describe("document comments", () => {
       startNewCommentIn1ParagraphDocument();
 
       cy.realType("@");
-      H.documentSuggestionDialog().within(() => {
+      H.documentMentionDialog().within(() => {
         cy.findByText("Lorem ipsum").should("be.visible");
         cy.findByText("First collection").should("be.visible");
         cy.findByText("Browse all").should("be.visible");
@@ -733,15 +732,14 @@ describe("document comments", () => {
       });
 
       cy.realType("tAbLe");
-      H.documentSuggestionDialog().within(() => {
+      H.documentMentionDialog().within(() => {
         cy.findByText("Lorem ipsum").should("not.exist");
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("No Collection Tableton").should("be.visible");
-        cy.findByText("Most viewed content").should("be.visible");
       });
 
       cy.realType("s");
-      H.documentSuggestionDialog().within(() => {
+      H.documentMentionDialog().within(() => {
         cy.findByText("Bobby Tables").should("be.visible");
         cy.findByText("Bobby Tables's Personal Collection").should(
           "be.visible",
@@ -750,17 +748,17 @@ describe("document comments", () => {
       });
 
       cy.realPress("Enter");
-      H.documentSuggestionDialog().should("not.exist");
+      H.documentMentionDialog().should("not.exist");
 
       cy.log("closes suggestion dialog but not the comments modal on Esc");
       cy.realType(" @no");
-      H.documentSuggestionDialog().should("be.visible");
+      H.documentMentionDialog().should("be.visible");
       cy.realPress("Escape");
-      H.documentSuggestionDialog().should("not.exist");
+      H.documentMentionDialog().should("not.exist");
       Comments.getSidebar().should("be.visible");
 
       cy.realType("{backspace}{backspace}{backspace}@none");
-      H.documentSuggestionDialog().findByText("None Tableton").click();
+      H.documentMentionDialog().findByText("None Tableton").click();
 
       Comments.getSidebar().within(() => {
         Comments.getNewThreadInput()
@@ -1054,7 +1052,7 @@ describe("document comments", () => {
 
     it("opens a link to a resolved comment correctly", () => {
       cy.get<number>("@headingCommentId").then((commentId) => {
-        cy.request("PUT", `/api/ee/comment/${commentId}`, {
+        cy.request("PUT", `/api/comment/${commentId}`, {
           is_resolved: true,
         });
         H.visitDocumentComment("@documentId", HEADING_1_ID, commentId);

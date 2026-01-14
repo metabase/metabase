@@ -1,5 +1,5 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some empty? not-empty])
+  (:refer-clojure :exclude [mapv some empty? not-empty get-in])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -24,7 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [mapv some empty? not-empty]]
+   [metabase.util.performance :refer [mapv some empty? not-empty get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
@@ -325,7 +325,7 @@
   "_PARTITIONTIME")
 
 (def ^:private partitioned-date-field-name
-  "This is also a pseudo-column, similiar to [[partitioned-time-field-name]].
+  "This is also a pseudo-column, similar to [[partitioned-time-field-name]].
   In fact _PARTITIONDATE is _PARTITIONTIME truncated to DATE.
   See https://cloud.google.com/bigquery/docs/querying-partitioned-tables#query_an_ingestion-time_partitioned_table"
   "_PARTITIONDATE")
@@ -555,7 +555,7 @@
 ;;;     - Execution passes to `execute-bigquery`
 ;;; 3. `execute-bigquery`
 ;;;     - Makes the initial query and checks `cancel-chan` in case the browser cancels execution.
-;;;     - Either throws approriate exceptions or takes the initial page `TableResult` to the next step.
+;;;     - Either throws appropriate exceptions or takes the initial page `TableResult` to the next step.
 ;;;     - Execution passes to `execute-bigquery`
 ;;; 4. `bigquery-execute-response`
 ;;;     - Builds `cols` metadata response.
@@ -775,30 +775,31 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone                 true
-                              :describe-fields                  true
-                              :nested-fields                    true
+                              :database-routing                 true
                               :datetime-diff                    true
+                              :describe-fields                  true
+                              :expression-literals              true
                               :expressions                      true
+                              :expressions/date                 true
+                              :expressions/float                true
+                              :expressions/integer              true
+                              :expressions/text                 true
+                              :identifiers-with-spaces          true
+                              :metadata/key-constraints         false
+                              :metadata/table-existence-check   true
+                              :nested-fields                    true
                               :now                              true
                               :percentile-aggregations          true
-                              ;; we can't support `alter table .. rename ..`  in general
-                              ;; since it won't work for streaming tables
+                              :regex/lookaheads-and-lookbehinds false
+                              ;; we can't support `alter table .. rename ..` in general since it won't work for
+                              ;; streaming tables
                               :rename                           false
-                              :metadata/key-constraints         false
-                              :identifiers-with-spaces          true
-                              :expressions/integer              true
-                              :expressions/float                true
-                              :expressions/date                 true
-                              :expressions/text                 true
-                              :split-part                       true
                               ;; BigQuery uses timezone operators and arguments on calls like extract() and
                               ;; timezone_trunc() rather than literally using SET TIMEZONE, but we need to flag it as
                               ;; supporting set-timezone anyway so that reporting timezones are returned and used, and
                               ;; tests expect the converted values.
                               :set-timezone                     true
-                              :expression-literals              true
-                              :database-routing                 true
-                              :metadata/table-existence-check   true
+                              :split-part                       true
                               :transforms/python                true
                               :transforms/table                 true}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
@@ -823,7 +824,7 @@
   * any associated Table instances will be updated to have schema set (to the dataset-id value)
   * the Database model itself will be updated to persist this change to db-details back to the app DB
 
-  Returns the passed `database` parameter with the aformentioned changes having been made and persisted."
+  Returns the passed `database` parameter with the aforementioned changes having been made and persisted."
   [database dataset-id]
   (let [db-id (u/the-id database)]
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
@@ -853,7 +854,7 @@
   (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
     (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                      " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
-                     " be automatically migrated to the newer driver (since it *requires* service-account-json intead);"
+                     " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
                      " this database must therefore be updated by an administrator (by adding a service-account-json)"
                      " before sync and queries will work again")
                 (u/the-id database)))

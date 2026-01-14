@@ -1,20 +1,21 @@
 import type { ReactNode } from "react";
 
-import { Flex, Stack } from "metabase/ui";
+import { Flex, type FlexProps, Stack } from "metabase/ui";
 
 import S from "./ColumnLayout.module.css";
 
 type ColumnLayoutProps = {
   children?: ReactNode;
   "data-testid"?: string;
-};
+} & FlexProps;
 
 export function ColumnLayout({
   children,
   "data-testid": dataTestId,
+  ...flexProps
 }: ColumnLayoutProps) {
   return (
-    <Flex direction="column" h="100%" data-testid={dataTestId}>
+    <Flex direction="column" h="100%" data-testid={dataTestId} {...flexProps}>
       {children}
     </Flex>
   );
@@ -33,7 +34,7 @@ export function ColumnLayoutBody({ children }: ColumnLayoutBodyProps) {
       pt="3.5rem"
       pb="xl"
       px="xl"
-      bg="bg-light"
+      bg="background-secondary"
     >
       <Stack flex={1} gap="3.5rem" maw="50rem">
         {children}

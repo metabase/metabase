@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [clojure.tools.logging :as log]
-   [metabase-enterprise.transforms.interface :as transforms.i]
+   [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase-enterprise.transforms.jobs :as jobs]
    [metabase-enterprise.transforms.models.transform-run :as transform-run]
    [metabase.test :as mt]))
@@ -134,8 +134,8 @@
         (with-redefs [log/log* (fn [_ level _ message]
                                  (swap! logged-messages conj {:level level :message message}))
                       transform-run/running-run-for-transform-id (constantly nil)
-                      transforms.i/execute! (fn [_ _]
-                                              (reset! run-called? true))]
+                      transforms.execute/execute! (fn [_ _]
+                                                    (reset! run-called? true))]
           (#'jobs/run-transform! run-id :scheduled query-transform)
           (is (empty? (filter (comp #{:warn} :level) @logged-messages))
               "Should not log warnings when feature is enabled")

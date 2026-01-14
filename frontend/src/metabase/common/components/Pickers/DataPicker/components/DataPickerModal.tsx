@@ -59,7 +59,7 @@ const QUESTION_PICKER_MODELS: QuestionPickerModel[] = [
   "dataset",
   "metric",
   "dashboard",
-  "table", // yes, tables are in the question picker now, I'm sorry
+  "table",
 ];
 
 const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
@@ -82,7 +82,7 @@ export const DataPickerModal = ({
   onClose,
   shouldDisableItem,
   options,
-  models,
+  models = ["card", "dataset", "metric", "table"],
 }: Props) => {
   options = {
     ...OPTIONS,
@@ -195,7 +195,9 @@ export const DataPickerModal = ({
       DataPickerItem
     >[] = [];
 
-    if (!hasNestedQueriesEnabled) {
+    const hasOnlyTableModels =
+      models != null && models.length === 1 && models[0] === "table";
+    if (hasOnlyTableModels || !hasNestedQueriesEnabled) {
       computedTabs.push({
         id: "tables-tab",
         displayName: t`Tables`,
@@ -217,19 +219,17 @@ export const DataPickerModal = ({
       computedTabs.push({
         id: "questions-tab",
         displayName: t`Data`,
-        models: [
-          "card" as const,
-          "dataset" as const,
-          "metric" as const,
-          "table" as const,
-        ],
+        models,
         folderModels: ["collection", "dashboard", "schema", "database"],
         icon: "folder",
         extraButtons: [filterButton],
         render: ({ onItemSelect }) => (
           <QuestionPicker
             initialValue={value}
-            models={QUESTION_PICKER_MODELS}
+            models={[
+              ...models,
+              ...(models.includes("card") ? ["dashboard" as const] : []),
+            ]}
             options={options}
             path={questionsPath}
             shouldShowItem={shouldShowItem}

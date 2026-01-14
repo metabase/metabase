@@ -21,9 +21,9 @@ import {
 } from "metabase/common/components/Pickers/CollectionPicker";
 import SnippetCollectionName from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
-import Dashboard from "metabase/entities/dashboards";
+import { Dashboards } from "metabase/entities/dashboards";
 import { useSelector } from "metabase/lib/redux";
 import { Button, Flex, Icon } from "metabase/ui";
 import type { CollectionId, DashboardId } from "metabase-types/api";
@@ -46,7 +46,7 @@ function ItemName({
     return (
       <Flex align="center" gap="sm">
         <Icon name="dashboard" c="brand" />
-        <Dashboard.Name id={dashboardId} />
+        <Dashboards.Name id={dashboardId} />
       </Flex>
     );
   }
@@ -80,6 +80,11 @@ interface FormCollectionPickerProps extends HTMLAttributes<HTMLDivElement> {
   entityType?: EntityType;
   zIndex?: number;
   collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
+  /**
+   * When set to "collection", allows saving to namespace root collections
+   * (like tenant root). When null/undefined, namespace roots are disabled.
+   */
+  savingModel?: "collection" | null;
 }
 
 export function FormCollectionAndDashboardPicker({
@@ -94,6 +99,7 @@ export function FormCollectionAndDashboardPicker({
   dashboardIdFieldName,
   dashboardTabIdFieldName,
   entityType,
+  savingModel,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
 
@@ -128,7 +134,7 @@ export function FormCollectionAndDashboardPicker({
 
   const selectedItem = useSelector(
     (state) =>
-      Dashboard.selectors.getObject(state, {
+      Dashboards.selectors.getObject(state, {
         entityId: dashboardIdInput.value,
       }) ||
       Collections.selectors.getObject(state, {
@@ -168,8 +174,14 @@ export function FormCollectionAndDashboardPicker({
         item === "dashboard"
           ? t`Select this dashboard`
           : t`Select this collection`,
+      savingModel,
     }),
-    [filterPersonalCollections, type, showCreateNewCollectionOption],
+    [
+      filterPersonalCollections,
+      type,
+      showCreateNewCollectionOption,
+      savingModel,
+    ],
   );
 
   const [fetchDashboard] = useLazyGetDashboardQuery();

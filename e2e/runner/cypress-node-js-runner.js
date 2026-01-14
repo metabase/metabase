@@ -16,7 +16,7 @@ const cypress = require("cypress");
  * @throws {Error} When Cypress fails to run (e.g., config error) or any tests fail
  */
 const runCypress = async (options) => {
-  const openMode = process.env.OPEN_UI === "true";
+  const openMode = process.env.CYPRESS_GUI === "true";
 
   // Open mode is interactive - no results to validate
   if (openMode) {

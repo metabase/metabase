@@ -27,23 +27,106 @@
   []
   (t2/select-pks-vec :model/Collection :is_remote_synced true))
 
+(defn- model-fields-for-sync
+  "Returns the fields to select for a given model type when syncing."
+  [model-name]
+  (case model-name
+    "Card" [:id :name :collection_id :display]
+    "NativeQuerySnippet" [:id :name]
+    "Collection" [:id :name [:id :collection_id]]
+    "Segment" [:id :name :table_id]
+    [:id :name :collection_id]))
+
 (defn- sync-objects!
   "Populates the remote-sync-object table with imported entities. Deletes all existing RemoteSyncObject records and
   inserts new ones for each imported entity, marking them as 'synced' with the given timestamp.
 
-  Takes a timestamp instant and a map of imported entities grouped by model name, where each model maps to a set of
-  entity IDs that were imported."
-  [timestamp imported-entities-by-model]
+  Takes a timestamp instant, a map of imported entities grouped by model name (for standard models with entity_id),
+  and separate path collections for Table and Field models which use name-based identity."
+  [timestamp imported-entities-by-model table-paths field-paths]
   (t2/delete! :model/RemoteSyncObject)
-  (let [inserts (->> imported-entities-by-model
-                     (mapcat (fn [[model entity-ids]]
-                               (t2/select [(keyword "model" model) :id] :entity_id [:in entity-ids])))
-                     (map (fn [{:keys [id] :as model}]
-                            {:model_type (name (t2/model model))
-                             :model_id id
-                             :status "synced"
-                             :status_changed_at timestamp})))]
-    (t2/insert! :model/RemoteSyncObject inserts)))
+  (let [;; Standard models use entity_id UUIDs (excluding Segment which needs special handling)
+        standard-inserts (->> (dissoc imported-entities-by-model "Segment")
+                              (mapcat (fn [[model entity-ids]]
+                                        (when (seq entity-ids)
+                                          (let [fields (model-fields-for-sync model)
+                                                model-kw (keyword "model" model)]
+                                            (t2/select (into [model-kw] fields) :entity_id [:in entity-ids])))))
+                              (map (fn [{:keys [id name collection_id display] :as model}]
+                                     {:model_type (clojure.core/name (t2/model model))
+                                      :model_id id
+                                      :model_name name
+                                      :model_collection_id collection_id
+                                      :model_display (some-> display clojure.core/name)
+                                      :model_table_id nil
+                                      :model_table_name nil
+                                      :status "synced"
+                                      :status_changed_at timestamp})))
+        ;; Segments: need to join to get table info
+        segment-entity-ids (get imported-entities-by-model "Segment")
+        segment-inserts (when (seq segment-entity-ids)
+                          (->> (t2/query {:select [:s.id :s.name :s.table_id [:t.name :table_name] [:t.collection_id :collection_id]]
+                                          :from [[:segment :s]]
+                                          :join [[:metabase_table :t] [:= :s.table_id :t.id]]
+                                          :where [:in :s.entity_id segment-entity-ids]})
+                               (map (fn [{:keys [id name table_id table_name collection_id]}]
+                                      {:model_type "Segment"
+                                       :model_id id
+                                       :model_name name
+                                       :model_collection_id collection_id
+                                       :model_display nil
+                                       :model_table_id table_id
+                                       :model_table_name table_name
+                                       :status "synced"
+                                       :status_changed_at timestamp}))))
+        ;; Tables: batch lookup using join - include name and collection_id
+        ;; For tables, table_id = self id, table_name = self name
+        table-inserts (when (seq table-paths)
+                        (->> (t2/query {:select [:t.id :t.name :t.collection_id]
+                                        :from [[:metabase_table :t]]
+                                        :join [[:metabase_database :db] [:= :db.id :t.db_id]]
+                                        :where (into [:or]
+                                                     (for [{:keys [db_name schema table_name]} table-paths]
+                                                       [:and
+                                                        [:= :db.name db_name]
+                                                        (if schema [:= :t.schema schema] [:is :t.schema nil])
+                                                        [:= :t.name table_name]]))})
+                             (map (fn [{:keys [id name collection_id]}]
+                                    {:model_type "Table"
+                                     :model_id id
+                                     :model_name name
+                                     :model_collection_id collection_id
+                                     :model_display nil
+                                     :model_table_id id
+                                     :model_table_name name
+                                     :status "synced"
+                                     :status_changed_at timestamp}))))
+        ;; Fields: batch lookup using join through table - include name and collection_id from table
+        field-inserts (when (seq field-paths)
+                        (->> (t2/query {:select [:f.id :f.name :f.table_id [:t.collection_id :collection_id] [:t.name :table_name]]
+                                        :from [[:metabase_field :f]]
+                                        :join [[:metabase_table :t] [:= :t.id :f.table_id]
+                                               [:metabase_database :db] [:= :db.id :t.db_id]]
+                                        :where (into [:or]
+                                                     (for [{:keys [db_name schema table_name field_name]} field-paths]
+                                                       [:and
+                                                        [:= :db.name db_name]
+                                                        (if schema [:= :t.schema schema] [:is :t.schema nil])
+                                                        [:= :t.name table_name]
+                                                        [:= :f.name field_name]]))})
+                             (map (fn [{:keys [id name table_id table_name collection_id]}]
+                                    {:model_type "Field"
+                                     :model_id id
+                                     :model_name name
+                                     :model_collection_id collection_id
+                                     :model_display nil
+                                     :model_table_id table_id
+                                     :model_table_name table_name
+                                     :status "synced"
+                                     :status_changed_at timestamp}))))
+        all-inserts (concat standard-inserts segment-inserts table-inserts field-inserts)]
+    (when (seq all-inserts)
+      (t2/insert! :model/RemoteSyncObject all-inserts))))
 
 (defn- remove-unsynced!
   "Deletes any remote sync content that was NOT part of the import.
@@ -94,6 +177,9 @@
     (str/includes? (ex-message e) "branch")
     "Branch error: Please check the specified branch exists"
 
+    (some-> e ex-cause ex-message (str/includes? "Can't create a tenant collection without tenants enabled"))
+    "This repository contains tenant collections, but the tenants feature is disabled on your instance."
+
     :else
     (format "Failed to reload from git repository: %s" (ex-message e))))
 
@@ -139,20 +225,42 @@
                       :version (source.p/version snapshot)
                       :message (format "Skipping import: snapshot version %s matches last imported version" snapshot-version)}
               (log/infof (:message <>)))
-            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*"]})
+            (let [ingestable-snapshot (->> (source.p/->ingestable snapshot {:path-filters [#"collections/.*" #"databases/.*"]})
                                            (source.ingestable/wrap-progress-ingestable task-id 0.7))
                   load-result (serdes/with-cache
                                 (serialization/load-metabase! ingestable-snapshot))
-                  imported-entities-by-model (->> (:seen load-result)
-                                                  (map last) ; Get the last element of each path (the entity itself)
+                  seen-paths (:seen load-result)
+                  data-model-models #{"Table" "Field"}
+                  ;; For standard models (Collection, Card, Segment, etc.), extract entity_id as before
+                  imported-entities-by-model (->> seen-paths
+                                                  (remove #(data-model-models (:model (last %))))
+                                                  (map last)
                                                   (group-by :model)
                                                   (map (fn [[model entities]]
                                                          [model (set (map :id entities))]))
-                                                  (into {}))]
+                                                  (into {}))
+                  ;; For Tables, capture full path for unique identification
+                  ;; Path format: [{:model "Database" :id db-name} {:model "Schema" :id schema}? {:model "Table" :id table-name}]
+                  table-paths (->> seen-paths
+                                   (filter #(= "Table" (:model (last %))))
+                                   (map (fn [path]
+                                          {:db_name    (-> path first :id)
+                                           :schema     (when (= 3 (count path)) (-> path second :id))
+                                           :table_name (-> path last :id)})))
+                  ;; For Fields, path format includes Table
+                  ;; [{:model "Database"} {:model "Schema"}? {:model "Table"} {:model "Field" :id field-name}]
+                  field-paths (->> seen-paths
+                                   (filter #(= "Field" (:model (last %))))
+                                   (map (fn [path]
+                                          (let [table-idx (dec (count path))]
+                                            {:db_name    (-> path first :id)
+                                             :schema     (when (> (count path) 3) (-> path second :id))
+                                             :table_name (-> path (nth (dec table-idx)) :id)
+                                             :field_name (-> path last :id)}))))]
               (remote-sync.task/update-progress! task-id 0.8)
               (t2/with-transaction [_conn]
                 (remove-unsynced! (all-top-level-remote-synced-collections) imported-entities-by-model)
-                (sync-objects! sync-timestamp imported-entities-by-model)
+                (sync-objects! sync-timestamp imported-entities-by-model table-paths field-paths)
                 (when (and (nil? (collection/remote-synced-collection)) (= :read-write (settings/remote-sync-type)))
                   (collection/create-remote-synced-collection!)))
               (remote-sync.task/update-progress! task-id 0.95)
@@ -199,8 +307,58 @@
                                                  :continue-on-error false
                                                  :skip-archived true})]
               (remote-sync.task/update-progress! task-id 0.3)
-              (let [written-version (source/store! models snapshot task-id message)]
+              (let [top-level-removed-prefixes (->> (t2/query {:select [:c.entity_id]
+                                                               :from [[:collection :c]]
+                                                               :join [[:remote_sync_object :rso]
+                                                                      [:and [:= :rso.model_type [:inline "Collection"]]
+                                                                       [:= :rso.status [:inline "removed"]]
+                                                                       [:= :rso.model_id :c.id]]]
+                                                               :where [:= :location "/"]})
+                                                    (map #(str "collections/" (:entity_id %))))
+                    ;; Add removed table paths - join to get db_name + schema in one query
+                    removed-table-paths (->> (t2/query {:select [[:t.name :table_name] :t.schema [:db.name :db_name]]
+                                                        :from [[:metabase_table :t]]
+                                                        :join [[:remote_sync_object :rso]
+                                                               [:and [:= :rso.model_type [:inline "Table"]]
+                                                                [:= :rso.status [:inline "removed"]]
+                                                                [:= :rso.model_id :t.id]]
+                                                               [:metabase_database :db]
+                                                               [:= :db.id :t.db_id]]})
+                                             (map (fn [{:keys [table_name schema db_name]}]
+                                                    (str/join "/" (cond-> ["databases" db_name]
+                                                                    schema (conj "schemas" schema)
+                                                                    true   (conj "tables" table_name))))))
+                    ;; Add removed/deleted segment paths - join to get all path components in one query
+                    ;; Segments use entity_id for path construction
+                    ;; Include both "removed" (moved out of remote-synced collection) and "delete" (archived)
+                    removed-segment-paths (->> (t2/query {:select [:s.entity_id
+                                                                   [:t.name :table_name]
+                                                                   :t.schema
+                                                                   [:db.name :db_name]]
+                                                          :from [[:segment :s]]
+                                                          :join [[:remote_sync_object :rso]
+                                                                 [:and [:= :rso.model_type [:inline "Segment"]]
+                                                                  [:in :rso.status [[:inline "removed"] [:inline "delete"]]]
+                                                                  [:= :rso.model_id :s.id]]
+                                                                 [:metabase_table :t] [:= :t.id :s.table_id]
+                                                                 [:metabase_database :db] [:= :db.id :t.db_id]]})
+                                               (map (fn [{:keys [entity_id table_name schema db_name]}]
+                                                      (str/join "/" (cond-> ["databases" db_name]
+                                                                      schema (conj "schemas" schema)
+                                                                      true   (conj "tables" table_name "segments" entity_id))))))
+                    all-delete-prefixes (concat top-level-removed-prefixes
+                                                removed-table-paths
+                                                removed-segment-paths)
+                    written-version (source/store! models all-delete-prefixes snapshot task-id message)]
                 (remote-sync.task/set-version! task-id written-version))
+              ;; Delete removed Table/Field/Segment entries (they've been deleted from remote)
+              (t2/delete! :model/RemoteSyncObject
+                          :model_type [:in ["Table" "Field" "Segment"]]
+                          :status "removed")
+              ;; Also delete archived Segment entries (status "delete")
+              (t2/delete! :model/RemoteSyncObject
+                          :model_type "Segment"
+                          :status "delete")
               (t2/update! :model/RemoteSyncObject {:status "synced" :status_changed_at sync-timestamp})))
           {:status :success
            :version (source.p/version snapshot)}

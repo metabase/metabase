@@ -12,7 +12,7 @@ There are two basic ways to secure stuff on the internet:
 1. **Authentication** looks at _who_ someone is (using standards such as [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)).
 2. **Authorization** looks at _what_ someone has access to (using standards such as OAuth 2.0).
 
-In this guide, we'll talk primarily about authentication. 
+In this guide, we'll talk primarily about authentication.
 
 ## Public embedding
 
@@ -58,41 +58,41 @@ https://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b
 
 Loading the public link without the query parameter would remove the "Status = Active" filter from the data. The person would get access to the original Accounts data, including the rows with inactive accounts.
 
-## Static embeds are authorized with JWT
+## Guest embeds are authorized with JWT
 
-Static embedding uses a [JWT authorization flow](#static-embedding-with-jwt-authorization) to do two things:
+Guest embedding uses a [JWT authorization flow](#guest-embedding-with-jwt-authorization) to do two things:
 
 - Sign resources (e.g., the URLs of charts or dashboards) to ensure that only your embedding application can ask for data from your Metabase.
 - Sign parameters (e.g., dashboard filters) to prevent people from [changing the filters](#example-filters-in-public-links-dont-secure-data) and getting access to other data.
 
-### Static embeds don't have user sessions
+### Guest embeds don't have user sessions
 
-Static embeds don't authenticate people's identities on the Metabase side, so people can view a static embed without creating a Metabase account. However, without a Metabase account, Metabase won't have a way to remember a user or their session, which means:
+Guest embeds don't authenticate people's identities on the Metabase side, so people can view a guest embed without creating a Metabase account. However, without a Metabase account, Metabase won't have a way to remember a user or their session, which means:
 
-- Metabase [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) won't work --- if you need to lock down sensitive data, you must set up [locked parameters](#example-securing-data-with-locked-parameters-on-a-static-embed) for _each_ of your static embeds.
-- Any filter selections in a static embed will reset once the signed JWT expires.
-- All Static embed usage will show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md) under "External user".
+- Metabase [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) won't work --- if you need to lock down sensitive data, you must set up [locked parameters](#example-securing-data-with-locked-parameters-on-a-guest-embed) for _each_ of your guest embeds.
+- Any filter selections in a guest embed will reset once the signed JWT expires.
+- All guest embed usage will show up in [usage analytics](../usage-and-performance-tools/usage-analytics.md) under "External user".
 
-## Security in static embedding vs. modular and interactive embedding
+## Security in guest embedding vs. modular and full app embedding
 
-Static embedding only guarantees authorized access to your Metabase data (you decide _what_ is accessible).
+Guest embedding only guarantees authorized access to your Metabase data (you decide _what_ is accessible).
 
-If you want to secure your static embeds based on someone's identity (you decide _who_ gets access to _what_), you'll need to set up your own authentication flow and manually wire that up to [locked parameters](#example-sending-user-attributes-to-a-locked-parameter) on each of your static embeds. Note that locked parameters are essentially filters, so you can only set up **row-level** restrictions in a static embed.
+If you want to secure your guest embeds based on someone's identity (you decide _who_ gets access to _what_), you'll need to set up your own authentication flow and manually wire that up to [locked parameters](#example-sending-user-attributes-to-a-locked-parameter) on each of your guest embeds. Note that locked parameters are essentially filters, so you can only set up **row-level** restrictions in a guest embed.
 
-If you want an easier way to embed different views of data for different customers (without allowing the customers to see each other’s data), learn how [Modular and interactive embedding authenticates and authorizes people in one flow](#modular-and-interactive-embedding-auth-with-jwt-or-saml).
+If you want an easier way to embed different views of data for different customers (without allowing the customers to see each other’s data), learn how [Modular and full app embedding authenticates and authorizes people in one flow](#modular-and-full-app-embedding-auth-with-jwt-or-saml).
 
-### Static embedding with JWT authorization
+### Guest embedding with JWT authorization
 
-![Static embedding with JWT authorization.](./images/signed-embedding-jwt.png)
+![Guest embedding with JWT authorization.](./images/signed-embedding-jwt.png)
 
 This diagram illustrates how an embed gets secured by a signed JWT:
 
 1. **Visitor arrives**: your frontend gets a request to display a Metabase [embedding URL](./static-embedding.md#adding-the-embedding-url-to-your-website).
-2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./static-embedding.md#how-static-embedding-works). The signed JWT should encode any query [parameters](./static-embedding-parameters.md) you're using to filter your data.
+2. **Signed request**: your backend generates a Metabase embedding URL with a [signed JWT](./guest-embedding.md#how-guest-embedding-works). The signed JWT should encode any query [parameters](./static-embedding-parameters.md) you're using to filter your data.
 3. **Response**: your Metabase backend returns data based on the query parameters encoded in the signed JWT.
 4. **Success**: your frontend displays the embedded Metabase page with the correct data.
 
-### Example: securing data with locked parameters on a static embed
+### Example: securing data with locked parameters on a guest embed
 
 In the [public embedding example](#example-filters-in-public-links-dont-secure-data), we showed you (perhaps unwisely) how someone could exploit a unique public link by editing its query parameters.
 
@@ -118,13 +118,13 @@ https://my-metabase.com/public/dashboard/184f819c-2c80-4b2d-80f8-26bffaae5d8b?st
 | 2          | Basic   | Active |
 | 5          | Premium | Active |
 
-With static embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./static-embedding-parameters.md). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the static embedding URL:
+With guest embeds, we can "lock" the filter by encoding the query parameter in a signed JWT. For example, say we set up the "Status = Active" filter as a [locked parameter](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters). The `?status=active` query parameter will be encoded in the signed JWT, so it won't be visible or editable from the guest embedding URL:
 
 ```plaintext
 https://my-metabase.com/dashboard/your_signed_jwt
 ```
 
-If someone tries to add an (unsigned) query parameter to the end of the static embedding URL like this:
+If someone tries to add an (unsigned) query parameter to the end of the guest embedding URL like this:
 
 ```plaintext
 https://my-metabase.com/dashboard/your_signed_jwt?status=inactive
@@ -154,27 +154,27 @@ The flow might look something like this:
 
 1. A customer logs into our web app.
 2. Our app backend looks up the customer's `account_id` based on the account email used during login.
-3. Our app backend uses Metabase's [secret key](./static-embedding.md#regenerating-the-static-embedding-secret-key) to [generate the embedding URL](./static-embedding.md#how-static-embedding-works) with a signed JWT. The signed JWT encodes the query parameters to filter the Accounts dashboard on `Account ID = account_id`.
-4. Metabase returns the filtered dashboard at the static embedding URL.
+3. Our app backend uses Metabase's [secret key](./guest-embedding.md#regenerating-the-embedding-secret-key) to [generate the embedding URL](./guest-embedding.md#how-guest-embedding-works) with a signed JWT. The signed JWT encodes the query parameters to filter the Accounts dashboard on `Account ID = account_id`.
+4. Metabase returns the filtered dashboard at the guest embedding URL.
 5. Our app frontend displays the filtered dashboard in an iframe.
 
-For code samples, see the [static embedding reference app](https://github.com/metabase/embedding-reference-apps).
+## Modular and full app embedding auth with JWT or SAML
 
-## Modular and interactive embedding auth with JWT or SAML
+{% include plans-blockquote.html feature="Authenticated embeds" is_plural=true %}
 
-Modular embedding (using Embedded Analytics [SDK](./sdk/introduction.md) or [JS](./embedded-analytics-js.md) components), and [interactive full-app embedding](./interactive-embedding.md) integrate  with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
+Modular embedding (including using the [SDK](./sdk/introduction.md)), and [full-app embedding](./full-app-embedding.md) integrate with SSO (either [JWT](../people-and-groups/authenticating-with-jwt.md) or [SAML](../people-and-groups/authenticating-with-saml.md)) to authenticate and authorize people in one flow. The auth integration makes it easy to map user attributes (such as a person's role or department) to granular levels of data access, including:
 
 - [Tables](../permissions/data.md)
 - [Rows](../permissions/row-and-column-security.md#row-level-security-filter-by-a-column-in-the-table)
 - [Columns](../permissions/row-and-column-security.md#custom-row-and-column-security-use-a-sql-question-to-create-a-custom-view-of-a-table)
 - [Other data permissions](../permissions/data.md), such as data download permissions or SQL access.
 
-![Interactive embedding with SSO.](./images/full-app-embedding-sso.png)
+![Full app embedding with SSO.](./images/full-app-embedding-sso.png)
 
-This diagram shows you how an interactive embed gets secured with [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans):
+This diagram shows you how a full app embed gets secured with [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans):
 
 1. **Visitor arrives**: your frontend gets a request to display all content, including a Metabase component (such as a React component).
-2. **Load embed**: your frontend component loads the Metabase frontend using your [embedding URL](./interactive-embedding.md#pointing-an-iframe-to-a-metabase-url).
+2. **Load embed**: your frontend component loads the Metabase frontend using your [embedding URL](./full-app-embedding.md#pointing-an-iframe-to-a-metabase-url).
 3. **Check session**: to display data at the embedding URL, your Metabase backend checks for a valid session (a logged-in visitor).
 4. **If there's no valid session**:
    - **Redirect to SSO**: your Metabase frontend redirects the visitor to your SSO login page.
@@ -188,9 +188,9 @@ The mechanics of step 4 will vary a bit depending on whether you use [JWT](../pe
 
 ### Example: securing data with SSO and row and column security
 
-In our static embedding example, we used [locked parameters](#example-securing-data-with-locked-parameters-on-a-static-embed) to display secure filtered views of the Accounts table.
+In our guest embedding example, we used [locked parameters](#example-securing-data-with-locked-parameters-on-a-guest-embed) to display secure filtered views of the Accounts table.
 
-The nice thing about modular/interactive embedding and [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans) integration is that we don't have to manually manage locked parameters for each embed. Instead, we can map user attributes from our identity provider (IdP) to [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) in Metabase. People can get authenticated and authorized to self-serve specific subsets of data from their very first login.
+The nice thing about modular and full app embedding and [SSO](../people-and-groups/start.md#sso-for-metabase-pro-and-enterprise-plans) integration is that we don't have to manually manage locked parameters for each embed. Instead, we can map user attributes from our identity provider (IdP) to [permissions](../permissions/introduction.md) and [row and column security](../permissions/row-and-column-security.md) in Metabase. People can get authenticated and authorized to self-serve specific subsets of data from their very first login.
 
 Let's expand on our Accounts example to include a Tenant ID. The Tenant ID represents the parent org for a group of customers:
 
@@ -243,9 +243,9 @@ When Customer 1 logs in, they'll see a different filtered version of the Account
 
 - [Modular embedding demo](https://embedded-analytics-sdk-demo.metabase.com)
 - [Modular embedding with SDK reference app](https://github.com/metabase/metabase-nodejs-react-sdk-embedding-sample)
-- [Interactive embedding demo](https://embedding-demo.metabase.com/)
-- [Interactive embedding reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
-- [Static embedding reference app](https://github.com/metabase/embedding-reference-apps)
+- [Full app embedding demo](https://embedding-demo.metabase.com/)
+- [Full app embedding reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example)
+- [Guest embedding reference app](https://github.com/metabase/embedding-reference-apps)
 
 ## Further reading
 

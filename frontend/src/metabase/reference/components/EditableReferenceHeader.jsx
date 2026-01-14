@@ -6,10 +6,9 @@ import { t } from "ttag";
 
 import Button from "metabase/common/components/Button";
 import { Ellipsified } from "metabase/common/components/Ellipsified";
-import InputBlurChange from "metabase/common/components/InputBlurChange";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Icon, TextInputBlurChange } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
 
@@ -45,7 +44,7 @@ const EditableReferenceHeader = ({
         }
       >
         {isEditing && name === "Details" ? (
-          <InputBlurChange
+          <TextInputBlurChange
             className={S.headerTextInput}
             type="text"
             name={
@@ -64,7 +63,7 @@ const EditableReferenceHeader = ({
             <Ellipsified
               key="1"
               className={!headerLink && CS.flexFull}
-              tooltipMaxWidth="auto"
+              tooltipProps={{ w: "auto" }}
             >
               {name === "Details"
                 ? hasDisplayName

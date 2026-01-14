@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { DependencyGroupType, DependencyNode } from "metabase-types/api";
 
-import { getNodeLabel } from "../../utils";
+import { getNodeLabel } from "../../../../utils";
 
 export function getHeaderLabel(
   node: DependencyNode,
@@ -31,5 +31,9 @@ export function getHeaderLabel(
       return t`Documents that use ${nodeLabel}`;
     case "sandbox":
       return t`Row and column security rules that use ${nodeLabel}`;
+    case "segment":
+      return t`Segments that use ${nodeLabel}`;
+    case "measure":
+      return t`Measures that use ${nodeLabel}`;
   }
 }

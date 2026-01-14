@@ -1,3 +1,4 @@
+import type { DataStudioTableMetadataTab } from "metabase/lib/urls/data-studio";
 import type {
   DatabaseId,
   FieldId,
@@ -10,6 +11,7 @@ export type RouteParams = {
   databaseId?: string;
   schemaId?: SchemaId;
   tableId?: string;
+  tab?: string;
   fieldId?: string;
 };
 
@@ -17,6 +19,7 @@ export type ParsedRouteParams = {
   databaseId: DatabaseId | undefined;
   schemaName: SchemaName | undefined;
   tableId: TableId | undefined;
+  tab: DataStudioTableMetadataTab;
   fieldId?: FieldId;
 };
 
@@ -27,12 +30,3 @@ export interface ColumnSizeConfig {
   min: number;
   max: number | string;
 }
-
-export type MetadataEditAnalyticsDetail =
-  | "type_casting"
-  | "semantic_type_change"
-  | "visibility_change"
-  | "filtering_change"
-  | "display_values"
-  | "json_unfolding"
-  | "formatting";

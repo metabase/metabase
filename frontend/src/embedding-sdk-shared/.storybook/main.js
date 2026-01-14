@@ -30,6 +30,10 @@ module.exports = {
       rootRepoPath,
       "enterprise/frontend/src/embedding-sdk-ee/**/*.stories.tsx",
     ),
+    path.resolve(
+      rootRepoPath,
+      "enterprise/frontend/src/embedding-sdk-package/**/*.stories.tsx",
+    ),
   ],
   staticDirs: [
     path.resolve(rootRepoPath, "resources/frontend_client"),

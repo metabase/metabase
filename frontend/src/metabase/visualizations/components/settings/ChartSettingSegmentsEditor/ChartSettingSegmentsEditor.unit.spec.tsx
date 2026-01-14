@@ -68,7 +68,7 @@ it("Should allow you to remove a segment", async () => {
   ]);
 });
 
-it("Should allow you to add a new segment with apropriate defaults", async () => {
+it("Should allow you to add a new segment with appropriate defaults", async () => {
   const { onChange } = setup();
 
   await userEvent.click(
@@ -85,4 +85,32 @@ it("Should allow you to add a new segment with apropriate defaults", async () =>
       color: expect.anything(),
     }),
   ]);
+});
+
+it("Should handle floating point values", async () => {
+  const { onChange } = setup();
+
+  const min = await screen.findByDisplayValue("0");
+
+  await userEvent.clear(min);
+  await userEvent.type(min, "12.5");
+  fireEvent.blur(min);
+
+  expect(onChange).toHaveBeenCalledWith(
+    expect.arrayContaining([
+      expect.objectContaining({ ...DEFAULT_VALUE[0], min: 12.5 }),
+      expect.objectContaining(DEFAULT_VALUE[1]),
+    ]),
+  );
+});
+
+it("Should not call onChange when blurring without changing value", async () => {
+  const { onChange } = setup();
+
+  const min = await screen.findByDisplayValue("0");
+
+  fireEvent.focus(min);
+  fireEvent.blur(min);
+
+  expect(onChange).not.toHaveBeenCalled();
 });

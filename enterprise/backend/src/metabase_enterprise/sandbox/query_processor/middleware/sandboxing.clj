@@ -164,7 +164,7 @@
     ;; log the query at this point, it's useful for some purposes
     (log/debugf "Fetched query from Card %s:\n%s" card-id (u/cprint-to-str (select-keys query [:stages :parameters])))
     (cond-> query
-      ;; This will be applied, if still appropriate, by the peristence middleware
+      ;; This will be applied, if still appropriate, by the persistence middleware
       persisted?
       (assoc :persisted-info/native
              (qp.persisted/persisted-info-native-query
@@ -285,28 +285,43 @@
         original-table-cols))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
-                                     [:sequential {:min 2} ::lib.schema/stage]
+                                     [:sequential {:min 1} ::lib.schema/stage]
                                      ::lib.schema.util/unique-uuids]
   "Apply a Sandbox to a `stage`, returning a vector of replacement stages."
   [query                            :- ::lib.schema/query
+   path                             :- ::lib.walk/path
    {:keys [source-table] :as stage} :- ::lib.schema/stage
    sandbox                          :- ::sandbox]
-  (let [sandbox-query       (sandbox->query query sandbox)
-        sandbox-query       (project-only-columns-from-original-table query sandbox-query source-table)
-        new-source-stages   (mapv (fn [stage]
-                                    (-> stage
-                                        (assoc :query-permissions/sandboxed-table source-table)
-                                        lib/fresh-uuids))
-                                  (:stages sandbox-query))
+  (let [sandbox-query      (sandbox->query query sandbox)
+        sandbox-query      (project-only-columns-from-original-table query sandbox-query source-table)
+        new-source-stages  (mapv (fn [stage]
+                                   (-> stage
+                                       (assoc :query-permissions/sandboxed-table source-table)
+                                       lib/fresh-uuids))
+                                 (:stages sandbox-query))
         ;; merge stage metadata in the last source stage if needed
-        new-source-stages   (m/update-existing-in new-source-stages
-                                                  [(dec (count new-source-stages)) :lib/stage-metadata :columns]
-                                                  (fn [cols]
-                                                    (merge-original-table-metadata
-                                                     cols
-                                                     (lib/returned-columns query (lib.metadata/table query source-table)))))
-        replacement-stages  (conj new-source-stages
-                                  (dissoc stage :source-table))]
+        new-source-stages  (m/update-existing-in new-source-stages
+                                                 [(dec (count new-source-stages)) :lib/stage-metadata :columns]
+                                                 (fn [cols]
+                                                   (merge-original-table-metadata
+                                                    cols
+                                                    (lib/returned-columns query (lib.metadata/table query source-table)))))
+        is-stage-in-join?  (->> path          ; [:stages 0 :joins 0 :stages 0]
+                                (drop-last 3) ; [:stages 0 :joins]
+                                last
+                                (= :joins))
+        ;; don't add a new additional stage IF WE'RE RECURSING INTO A JOIN and it only contains `:fields` and the last
+        ;; of the `new-source-stages` already contains `:fields` anyway... the `:fields` for the join will just
+        ;; basically be `SELECT *`, so at best this is completely unnecessary and at worst it can cause query failures
+        ;; because the stuff in `:fields` can be wrong if some of those fields have been filtered out by the
+        ;; sandbox (see #66781)
+        skip-final-stage?  (and is-stage-in-join?
+                                (:fields (last new-source-stages))
+                                (empty? (->> (keys stage)
+                                             (remove #{:source-table :fields})
+                                             (remove qualified-keyword?))))
+        replacement-stages (cond-> new-source-stages
+                             (not skip-final-stage?) (conj (dissoc stage :source-table)))]
     (log/tracef "Applied Sandbox: replaced stage\n\n%s\n\nwith stages\n\n%s"
                 (u/cprint-to-str stage)
                 (u/cprint-to-str replacement-stages))
@@ -321,7 +336,7 @@
   ;; `::sandbox?` key
   (lib.walk/walk-stages
    query
-   (fn [query _path stage]
+   (fn [query path stage]
      (when (and (= (:lib/type stage) :mbql.stage/mbql)
                 (:source-table stage)
                 (not (::sandbox? stage)))
@@ -331,7 +346,7 @@
          (mapv (fn [stage]
                  (cond-> stage
                    (:source-table stage) (assoc ::sandbox? true)))
-               (apply-sandbox-to-stage query stage sandbox)))))))
+               (apply-sandbox-to-stage query path stage sandbox)))))))
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
   [query :- ::lib.schema/query]

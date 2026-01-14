@@ -17,9 +17,15 @@ import CS from "metabase/css/core/index.css";
 import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import type { GroupId, GroupInfo, Member, User } from "metabase-types/api";
+import type {
+  GroupId,
+  GroupInfo,
+  Member,
+  User,
+  UserTenancy,
+} from "metabase-types/api";
 
-import { USER_STATUS, type UserStatus } from "../constants";
+import { ACTIVE_STATUS, type ActiveStatus } from "../constants";
 
 import { PeopleListRow } from "./PeopleListRow";
 
@@ -28,9 +34,10 @@ const defaultUsersValue: User[] = [];
 interface PeopleListQueryProps {
   query: {
     searchText: string;
-    status: UserStatus;
+    status: ActiveStatus;
     page: number;
     pageSize: number;
+    tenancy: UserTenancy;
   };
 }
 
@@ -40,6 +47,8 @@ interface PeopleListProps extends PeopleListQueryProps {
   isAdmin: boolean;
   onNextPage?: () => void;
   onPreviousPage: () => void;
+  external?: boolean;
+  noResultsMessage: string;
 }
 
 export const PeopleList = ({
@@ -49,6 +58,8 @@ export const PeopleList = ({
   query,
   onNextPage,
   onPreviousPage,
+  external = false,
+  noResultsMessage,
 }: PeopleListProps) => {
   const { modalContent, show } = useConfirmation();
 
@@ -57,6 +68,7 @@ export const PeopleList = ({
     status: query.status === "active" ? undefined : query.status,
     limit: query.pageSize,
     offset: query.pageSize * query.page,
+    tenancy: query.tenancy,
   });
 
   const users = data?.data || defaultUsersValue;
@@ -74,7 +86,7 @@ export const PeopleList = ({
   const { page, pageSize, status } = query;
 
   const isCurrentUser = (u: User) => currentUser.id === u.id;
-  const showDeactivated = status === USER_STATUS.deactivated;
+  const showDeactivated = status === ACTIVE_STATUS.deactivated;
   const hasUsers = users.length > 0;
 
   const handleChange = async (
@@ -159,7 +171,7 @@ export const PeopleList = ({
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
-      <Box component="section" pb="xl">
+      <Box component="section">
         <table
           data-testid="admin-people-list-table"
           className={cx(AdminS.ContentTable, CS.borderBottom)}
@@ -171,12 +183,13 @@ export const PeopleList = ({
               <th>{t`Email`}</th>
               {showDeactivated ? (
                 <Fragment>
+                  {external && <th>{t`Tenant`}</th>}
                   <th>{t`Deactivated`}</th>
                   <th />
                 </Fragment>
               ) : (
                 <Fragment>
-                  <th>{t`Groups`}</th>
+                  {external ? <th>{t`Tenant`}</th> : <th>{t`Groups`}</th>}
                   <th>{t`Last Login`}</th>
                   <th />
                 </Fragment>
@@ -238,12 +251,15 @@ export const PeopleList = ({
             align="center"
             justify="center"
             direction="column"
-            p="xl"
+            px="xl"
+            pt="xl"
             ta="center"
           >
             <Box my="lg">
               <Icon name="search" mb="sm" size={32} />
-              <Text c="text-light" fz="lg" fw={700}>{t`No results found`}</Text>
+              <Text c="text-tertiary" fz="lg" fw={700}>
+                {noResultsMessage}
+              </Text>
             </Box>
           </Flex>
         )}

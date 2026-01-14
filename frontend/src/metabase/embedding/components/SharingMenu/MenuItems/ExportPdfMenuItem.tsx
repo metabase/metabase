@@ -25,7 +25,13 @@ const handleClick = async (dashboard: Dashboard, includeBranding: boolean) => {
   });
 };
 
-export const ExportPdfMenuItem = ({ dashboard }: { dashboard: Dashboard }) => {
+export const ExportPdfMenuItem = ({
+  dashboard,
+  loading,
+}: {
+  dashboard: Dashboard;
+  loading?: boolean;
+}) => {
   const isWhitelabeled = useHasTokenFeature("whitelabel");
   const includeBranding = !isWhitelabeled;
 
@@ -34,6 +40,8 @@ export const ExportPdfMenuItem = ({ dashboard }: { dashboard: Dashboard }) => {
       data-testid="dashboard-export-pdf-button"
       leftSection={<Icon name="document" />}
       onClick={() => handleClick(dashboard, includeBranding)}
+      disabled={loading}
+      style={loading ? { cursor: "wait" } : undefined}
     >
       {getExportTabAsPdfButtonText(dashboard.tabs)}
     </Menu.Item>

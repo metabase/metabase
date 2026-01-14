@@ -25,14 +25,19 @@ import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
+import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
-import type { DashboardEventHandlersProps } from "embedding-sdk-bundle/types/dashboard";
+import type {
+  DashboardEventHandlersProps,
+  SdkDashboardId,
+} from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
+  closeSidebarIfSubscriptionsSidebarOpen,
   setEditingDashboard,
   toggleSidebar,
   updateDashboardAndCards,
@@ -46,9 +51,10 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/lib/errors/is-static-embedding-entity-loading-error";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
 import { dismissAllUndo } from "metabase/redux/undo";
@@ -96,6 +102,26 @@ export type SdkDashboardProps = PropsWithChildren<
      * Props of a question component when drilled from the dashboard to a question level.
      */
     drillThroughQuestionProps?: DrillThroughQuestionProps;
+
+    /**
+     * The ID of the dashboard.
+     *  <br/>
+     * This is either:
+     *  <br/>
+     *  - the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+     *  <br/>
+     *  - the string ID found in the `entity_id` key of the dashboard object when using the API directly or using the SDK Collection Browser to return data
+     */
+    dashboardId: SdkDashboardId;
+
+    /**
+     * Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+     * <br/>
+     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * <br/>
+     * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+     */
+    initialParameters?: ParameterValues;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
     EditableDashboardOwnProps
@@ -133,6 +159,7 @@ const SdkDashboardInner = ({
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
+  withSubscriptions = false,
   hiddenParameters = [],
   drillThroughQuestionHeight,
   plugins,
@@ -166,11 +193,7 @@ const SdkDashboardInner = ({
     token: rawToken ?? undefined,
   });
 
-  useEffect(() => {
-    if (isGuestEmbed && token) {
-      PLUGIN_CONTENT_TRANSLATION.setEndpointsForStaticEmbedding(token);
-    }
-  }, [isGuestEmbed, token]);
+  useSetupContentTranslations({ token });
 
   const { handleLoad, handleLoadWithoutCards } = useDashboardLoadHandlers({
     onLoad,
@@ -182,6 +205,7 @@ const SdkDashboardInner = ({
 
   const { displayOptions } = useSdkDashboardParams({
     withDownloads,
+    withSubscriptions,
     withTitle,
     withCardTitle,
     hiddenParameters,
@@ -246,6 +270,12 @@ const SdkDashboardInner = ({
     }
   }, [dispatch, dashboardId]);
 
+  useEffect(() => {
+    if (!withSubscriptions) {
+      dispatch(closeSidebarIfSubscriptionsSidebarOpen());
+    }
+  }, [dispatch, withSubscriptions]);
+
   const { modalContent, show } = useConfirmation();
   const isDashboardDirty = useSelector(getIsDirty);
 
@@ -297,115 +327,120 @@ const SdkDashboardInner = ({
   }
 
   return (
-    <DashboardContextProvider
-      ref={dashboardContextProviderRef}
-      dashboardId={dashboardId}
-      token={token}
-      isGuestEmbed={isGuestEmbed}
-      parameterQueryParams={initialParameters}
-      navigateToNewCardFromDashboard={
-        navigateToNewCardFromDashboard !== undefined
-          ? navigateToNewCardFromDashboard
-          : onNavigateToNewCardFromDashboard
-      }
-      onNewQuestion={() => {
-        if (isDashboardDirty) {
-          show({
-            title: t`Save your changes?`,
-            message: t`You’ll need to save your changes before leaving to create a new question.`,
-            confirmButtonText: t`Save changes`,
-            onConfirm: async () => {
-              /**
-               * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
-               * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
-               */
-              setRenderMode("queryBuilder");
-              dispatch(dismissAllUndo());
-              await dispatch(updateDashboardAndCards());
-              // After saving the dashboard, it will exit the editing mode.
-              dispatch(setEditingDashboard(dashboard));
-            },
-            confirmButtonProps: {
-              color: "brand",
-            },
-          });
-        } else {
-          setRenderMode("queryBuilder");
+    <EmbeddingEntityContextProvider uuid={null} token={token}>
+      <DashboardContextProvider
+        ref={dashboardContextProviderRef}
+        dashboardId={dashboardId}
+        isGuestEmbed={isGuestEmbed}
+        parameterQueryParams={initialParameters}
+        navigateToNewCardFromDashboard={
+          navigateToNewCardFromDashboard !== undefined
+            ? navigateToNewCardFromDashboard
+            : onNavigateToNewCardFromDashboard
         }
-      }}
-      downloadsEnabled={displayOptions.downloadsEnabled}
-      background={displayOptions.background}
-      bordered={displayOptions.bordered}
-      hideParameters={displayOptions.hideParameters}
-      titled={displayOptions.titled}
-      cardTitled={displayOptions.cardTitled}
-      theme={displayOptions.theme}
-      onLoad={handleLoad}
-      onLoadWithoutCards={handleLoadWithoutCards}
-      onError={(error) => dispatch(setErrorPage(error))}
-      getClickActionMode={getClickActionMode}
-      dashcardMenu={finalDashcardMenu}
-      dashboardActions={dashboardActions}
-      onAddQuestion={(dashboard) => {
-        dispatch(setEditingDashboard(dashboard));
-        dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
-      }}
-      autoScrollToDashcardId={autoScrollToDashcardId}
-    >
-      {match({ finalRenderMode, isGuestEmbed })
-        .with({ finalRenderMode: "question" }, () => (
-          <SdkDashboardStyledWrapperWithRef className={className} style={style}>
-            <SdkAdHocQuestion
-              // `adhocQuestionUrl` would have value if renderMode is "question"
-              questionPath={adhocQuestionUrl!}
-              onNavigateBack={onNavigateBackToDashboard}
-              {...drillThroughQuestionProps}
-              onVisualizationChange={onVisualizationChange}
+        onNewQuestion={() => {
+          if (isDashboardDirty) {
+            show({
+              title: t`Save your changes?`,
+              message: t`You’ll need to save your changes before leaving to create a new question.`,
+              confirmButtonText: t`Save changes`,
+              onConfirm: async () => {
+                /**
+                 * Dispatch the same actions as in the DashboardLeaveConfirmationModal.
+                 * @see {@link https://github.com/metabase/metabase/blob/4453fa8363eb37062a159f398050d050d91397a9/frontend/src/metabase/dashboard/components/DashboardLeaveConfirmationModal/DashboardLeaveConfirmationModal.tsx#L30-L34}
+                 */
+                setRenderMode("queryBuilder");
+                dispatch(dismissAllUndo());
+                await dispatch(updateDashboardAndCards());
+                // After saving the dashboard, it will exit the editing mode.
+                dispatch(setEditingDashboard(dashboard));
+              },
+              confirmButtonProps: {
+                color: "brand",
+              },
+            });
+          } else {
+            setRenderMode("queryBuilder");
+          }
+        }}
+        downloadsEnabled={displayOptions.downloadsEnabled}
+        withSubscriptions={displayOptions.withSubscriptions}
+        background={displayOptions.background}
+        bordered={displayOptions.bordered}
+        hideParameters={displayOptions.hideParameters}
+        titled={displayOptions.titled}
+        cardTitled={displayOptions.cardTitled}
+        theme={displayOptions.theme}
+        onLoad={handleLoad}
+        onLoadWithoutCards={handleLoadWithoutCards}
+        onError={(error) => dispatch(setErrorPage(error))}
+        getClickActionMode={getClickActionMode}
+        dashcardMenu={finalDashcardMenu}
+        dashboardActions={dashboardActions}
+        onAddQuestion={(dashboard) => {
+          dispatch(setEditingDashboard(dashboard));
+          dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
+        }}
+        autoScrollToDashcardId={autoScrollToDashcardId}
+      >
+        {match({ finalRenderMode, isGuestEmbed })
+          .with({ finalRenderMode: "question" }, () => (
+            <SdkDashboardStyledWrapperWithRef
+              className={className}
+              style={style}
             >
-              {AdHocQuestionView && <AdHocQuestionView />}
-            </SdkAdHocQuestion>
-          </SdkDashboardStyledWrapperWithRef>
-        ))
-        .with({ finalRenderMode: "dashboard" }, () => (
-          <SdkDashboardProvider
-            plugins={plugins}
-            onEditQuestion={onEditQuestion}
-          >
-            {children ?? (
-              <SdkDashboardStyledWrapperWithRef
-                className={className}
-                style={style}
+              <SdkAdHocQuestion
+                // `adhocQuestionUrl` would have value if renderMode is "question"
+                questionPath={adhocQuestionUrl!}
+                onNavigateBack={onNavigateBackToDashboard}
+                {...drillThroughQuestionProps}
+                onVisualizationChange={onVisualizationChange}
               >
-                <Dashboard className={EmbedFrameS.EmbedFrame} />
-              </SdkDashboardStyledWrapperWithRef>
-            )}
-          </SdkDashboardProvider>
-        ))
-        .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
-          isGuestEmbed ? (
-            <SdkDashboardStyledWrapper className={className} style={style}>
-              <SdkError
-                message={t`You can't save questions in Guest Embed mode`}
+                {AdHocQuestionView && <AdHocQuestionView />}
+              </SdkAdHocQuestion>
+            </SdkDashboardStyledWrapperWithRef>
+          ))
+          .with({ finalRenderMode: "dashboard" }, () => (
+            <SdkDashboardProvider
+              plugins={plugins}
+              onEditQuestion={onEditQuestion}
+            >
+              {children ?? (
+                <SdkDashboardStyledWrapperWithRef
+                  className={className}
+                  style={style}
+                >
+                  <Dashboard className={EmbedFrameS.EmbedFrame} />
+                </SdkDashboardStyledWrapperWithRef>
+              )}
+            </SdkDashboardProvider>
+          ))
+          .with({ finalRenderMode: "queryBuilder" }, ({ isGuestEmbed }) =>
+            isGuestEmbed ? (
+              <SdkDashboardStyledWrapper className={className} style={style}>
+                <SdkError
+                  message={t`You can't save questions in Guest Embed mode`}
+                />
+              </SdkDashboardStyledWrapper>
+            ) : (
+              <DashboardQueryBuilder
+                onCreate={(question) => {
+                  setNewDashboardQuestionId(question.id);
+                  setRenderMode("dashboard");
+                  dashboardContextProviderRef.current?.refetchDashboard();
+                }}
+                onNavigateBack={() => {
+                  setRenderMode("dashboard");
+                }}
+                dataPickerProps={dataPickerProps}
+                onVisualizationChange={onVisualizationChange}
               />
-            </SdkDashboardStyledWrapper>
-          ) : (
-            <DashboardQueryBuilder
-              onCreate={(question) => {
-                setNewDashboardQuestionId(question.id);
-                setRenderMode("dashboard");
-                dashboardContextProviderRef.current?.refetchDashboard();
-              }}
-              onNavigateBack={() => {
-                setRenderMode("dashboard");
-              }}
-              dataPickerProps={dataPickerProps}
-              onVisualizationChange={onVisualizationChange}
-            />
-          ),
-        )
-        .exhaustive()}
-      {modalContent}
-    </DashboardContextProvider>
+            ),
+          )
+          .exhaustive()}
+        {modalContent}
+      </DashboardContextProvider>
+    </EmbeddingEntityContextProvider>
   );
 };
 
@@ -421,6 +456,7 @@ export const SdkDashboard = withPublicComponentWrapper(SdkDashboardInner, {
     | "ParametersList"
     | "FullscreenButton"
     | "ExportAsPdfButton"
+    | "SubscriptionsButton"
     | "InfoButton"
     | "RefreshPeriod"
   >;
@@ -432,6 +468,7 @@ SdkDashboard.Tabs = Dashboard.Tabs;
 SdkDashboard.ParametersList = Dashboard.ParametersList;
 SdkDashboard.FullscreenButton = Dashboard.FullscreenButton;
 SdkDashboard.ExportAsPdfButton = Dashboard.ExportAsPdfButton;
+SdkDashboard.SubscriptionsButton = Dashboard.SubscriptionsButton;
 SdkDashboard.InfoButton = Dashboard.InfoButton;
 SdkDashboard.RefreshPeriod = Dashboard.RefreshPeriod;
 

@@ -13,10 +13,8 @@ import type {
 export const EMBED_RESOURCE_LIST_MAX_RECENTS = 6;
 
 export const getEmbedExperiences = ({
-  isSimpleEmbedFeatureAvailable,
   isMetabotAvailable,
 }: {
-  isSimpleEmbedFeatureAvailable: boolean;
   isMetabotAvailable: boolean;
 }) =>
   [
@@ -24,23 +22,29 @@ export const getEmbedExperiences = ({
       value: "dashboard",
       title: t`Dashboard`,
       description: t`Embed an entire dashboard with multiple charts and filters`,
+      supportsOss: true,
+      supportsGuestEmbed: true,
     },
     {
       value: "chart",
       title: t`Chart`,
       description: t`Embed a single chart`,
+      supportsOss: true,
+      supportsGuestEmbed: true,
     },
     {
       value: "exploration",
       title: t`Exploration`,
       description: t`Embed an interactive data exploration experience`,
-      showUpsell: !isSimpleEmbedFeatureAvailable,
+      supportsOss: false,
+      supportsGuestEmbed: false,
     },
     {
       value: "browser",
       title: t`Browser`,
       description: t`Embed a browser to manage dashboards and charts`,
-      showUpsell: !isSimpleEmbedFeatureAvailable,
+      supportsOss: false,
+      supportsGuestEmbed: false,
     },
     ...(isMetabotAvailable
       ? [
@@ -48,7 +52,8 @@ export const getEmbedExperiences = ({
             value: "metabot" as const,
             title: t`Metabot`,
             description: t`Embed a Metabot chat interface`,
-            showUpsell: !isSimpleEmbedFeatureAvailable,
+            supportsOss: false,
+            supportsGuestEmbed: false,
           },
         ]
       : []),
@@ -56,7 +61,8 @@ export const getEmbedExperiences = ({
     title: string;
     description: string;
     value: SdkIframeEmbedSetupExperience;
-    showUpsell?: boolean;
+    supportsOss: boolean;
+    supportsGuestEmbed: boolean;
   }[];
 
 type EmbedStepConfig = {

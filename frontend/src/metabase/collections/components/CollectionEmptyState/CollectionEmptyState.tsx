@@ -85,10 +85,10 @@ const DefaultCollectionEmptyState = ({
 
 function getDefaultEmptyStateMessages(collection: Collection | undefined) {
   switch (PLUGIN_DATA_STUDIO.getLibraryCollectionType(collection?.type)) {
-    case "models":
+    case "data":
       return {
-        title: t`No models yet`,
-        description: t`Put models in the Library to see them here.`,
+        title: t`No published tables yet`,
+        description: t`Publish tables in the Library to see them here.`,
       };
     case "metrics":
       return {
@@ -115,7 +115,7 @@ export const EmptyStateTitle = ({ children }: PropsWithChildren) => {
   const theme = useMantineTheme();
   return (
     <Box
-      c="text-dark"
+      c="text-primary"
       fz={theme.other.collectionBrowser.emptyContent.title.fontSize}
       fw="bold"
       lh="2rem"
@@ -132,7 +132,7 @@ export const EmptyStateSubtitle = ({ children }: PropsWithChildren) => {
   return (
     <Text
       fz={theme.other.collectionBrowser.emptyContent.subtitle.fontSize}
-      c="text-medium"
+      c="text-secondary"
       ta="center"
       mb="1.5rem"
       maw="25rem"

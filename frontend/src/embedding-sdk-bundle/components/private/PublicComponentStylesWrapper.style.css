@@ -3,10 +3,12 @@
   all: initial;
   text-decoration: none;
   font-style: normal;
+  /* Fix the issue with ExplicitSize not resizing when this container is wrapped in a grid container */
+  min-width: 0;
   width: 100%;
   height: 100%;
   font-weight: 400;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-family: var(--mb-default-font-family);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

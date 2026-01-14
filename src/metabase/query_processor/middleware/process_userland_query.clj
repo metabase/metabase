@@ -5,18 +5,19 @@
 
   ViewLog recording is triggered indirectly by the call to [[events/publish-event!]] with the `:event/card-query`
   event -- see [[metabase.view-log.events.view-log]]."
-  (:refer-clojure :exclude [every? empty?])
+  (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.events.core :as events]
+   [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? empty?]]
+   [metabase.util.performance :refer [every? empty? get-in]]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -168,6 +169,9 @@
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/any-query
           rff   :- ::qp.schema/rff]
+    ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
+    ;; This has to live somewhere and while processing each query seems like a natural place.
+    (analytics/set! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))

@@ -1,4 +1,4 @@
-import { collections as Collections } from "metabase/entities";
+import { Collections } from "metabase/entities/collections";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 
 describe("Collection selectors", () => {

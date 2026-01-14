@@ -50,6 +50,7 @@ import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_METABOT,
   PLUGIN_SUPPORT,
+  PLUGIN_TENANTS,
 } from "metabase/plugins";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
@@ -57,7 +58,11 @@ import { StrategyEditorForDatabases } from "./performance/components/StrategyEdi
 import { PerformanceTabId } from "./performance/types";
 import { getSettingsRoutes } from "./settingsRoutes";
 import { ToolsUpsell } from "./tools/components/ToolsUpsell";
-import { RedirectToAllowedSettings, createAdminRouteGuard } from "./utils";
+import {
+  RedirectToAllowedSettings,
+  createAdminRouteGuard,
+  createTenantsRouteGuard,
+} from "./utils";
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route path="/admin" component={CanAccessSettings}>
@@ -96,8 +101,12 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
           />
           <Route component={DataModelV1}>
             <Route path="segments" component={SegmentListApp} />
-            <Route path="segment/create" component={SegmentApp} />
-            <Route path="segment/:id" component={SegmentApp} />
+            <Route path="segment/create" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
+            <Route path="segment/:id" component={IsAdmin}>
+              <IndexRoute component={SegmentApp} />
+            </Route>
             <Route
               path="segment/:id/revisions"
               component={RevisionHistoryApp}
@@ -124,8 +133,14 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             <Route path=":groupId" component={GroupDetailApp} />
           </Route>
 
+          {/* Tenants */}
+          <Route path="tenants" component={createTenantsRouteGuard()}>
+            {PLUGIN_TENANTS.tenantsRoutes}
+          </Route>
+
           <Route path="" component={PeopleListingApp}>
             <ModalRoute path="new" modal={NewUserModal} noWrap />
+            {PLUGIN_TENANTS.userStrategyRoute}
           </Route>
 
           <Route path=":userId" component={PeopleListingApp}>
@@ -208,6 +223,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       <Route path="permissions" component={IsAdmin}>
         {getAdminPermissionsRoutes(store)}
       </Route>
+
       {/* PERFORMANCE */}
       <Route
         path="performance"

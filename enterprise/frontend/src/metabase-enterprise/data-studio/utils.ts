@@ -1,10 +1,11 @@
 import { useMemo } from "react";
+import { match } from "ts-pattern";
 
 import { skipToken, useListCollectionItemsQuery } from "metabase/api";
 import type { LibraryCollectionType } from "metabase/plugins";
-import type { UserWithApplicationPermissions } from "metabase/plugins/oss/permissions";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
-import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import type {
   CollectionItem,
@@ -13,15 +14,15 @@ import type {
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+// Must be in sync with CanAccessDataStudio in frontend/src/metabase/route-guards.tsx
 export function canAccessDataStudio(state: State) {
   if (getIsEmbeddingIframe(state)) {
     return false;
   }
-  if (getUserIsAdmin(state)) {
-    return true;
-  }
-  const user = getUser(state) as UserWithApplicationPermissions | null;
-  return user?.permissions?.can_access_data_studio ?? false;
+  return (
+    getUserIsAdmin(state) ||
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state)
+  );
 }
 
 export function getLibraryCollectionType(
@@ -30,8 +31,8 @@ export function getLibraryCollectionType(
   switch (type) {
     case "library":
       return "root";
-    case "library-models":
-      return "models";
+    case "library-data":
+      return "data";
     case "library-metrics":
       return "metrics";
   }
@@ -55,8 +56,8 @@ export function canPlaceEntityInCollection(
     return false;
   }
 
-  if (collectionType === "library-models") {
-    return entityType === "dataset";
+  if (collectionType === "library-data") {
+    return entityType === "table";
   }
 
   if (collectionType === "library-metrics") {
@@ -76,7 +77,7 @@ export function canPlaceEntityInCollectionOrDescendants(
 
   if (collectionType === "library") {
     return (
-      canPlaceEntityInCollection(entityType, "library-models") ||
+      canPlaceEntityInCollection(entityType, "library-data") ||
       canPlaceEntityInCollection(entityType, "library-metrics")
     );
   }
@@ -84,23 +85,26 @@ export function canPlaceEntityInCollectionOrDescendants(
   return false;
 }
 
+const isLibrary = (
+  collection: CollectionItem | { data: null } | undefined,
+): collection is CollectionItem => !!collection && "name" in collection;
+
 export const useGetLibraryCollection = ({
   skip = false,
 }: { skip?: boolean } = {}) => {
-  const { data: libraryCollection, isLoading: isLoadingCollection } =
-    useGetLibraryCollectionQuery(undefined, { skip });
+  const { data, isLoading: isLoadingCollection } = useGetLibraryCollectionQuery(
+    undefined,
+    { skip },
+  );
 
-  const data = useMemo(
-    () =>
-      libraryCollection
-        ? { ...libraryCollection, model: "collection" as const }
-        : undefined,
-    [libraryCollection],
+  const maybeLibrary = useMemo(
+    () => (isLibrary(data) ? data : undefined),
+    [data],
   );
 
   return {
     isLoading: isLoadingCollection,
-    data,
+    data: maybeLibrary,
   };
 };
 
@@ -111,10 +115,7 @@ export const useGetLibraryChildCollectionByType = ({
   skip?: boolean;
   type: CollectionType;
 }) => {
-  const { data: rootLibraryCollection } = useGetLibraryCollectionQuery(
-    undefined,
-    { skip },
-  );
+  const { data: rootLibraryCollection } = useGetLibraryCollection({ skip });
   const { data: libraryCollections } = useListCollectionItemsQuery(
     rootLibraryCollection ? { id: rootLibraryCollection.id } : skipToken,
   );
@@ -125,4 +126,44 @@ export const useGetLibraryChildCollectionByType = ({
       ),
     [libraryCollections, type],
   );
+};
+
+// This hook will return the library collection if there are both metrics and models in the library,
+// the library-metrics collection if the library has no models, or the library-data collection
+// if the library has no metrics
+export const useGetResolvedLibraryCollection = ({
+  skip = false,
+}: { skip?: boolean } = {}) => {
+  const { data: libraryCollection, isLoading: isLoadingCollection } =
+    useGetLibraryCollection({ skip });
+
+  const hasStuff = Boolean(
+    libraryCollection &&
+      (libraryCollection?.below?.length || libraryCollection?.here?.length),
+  );
+  const { data: libraryItems, isLoading: isLoadingItems } =
+    useListCollectionItemsQuery(
+      libraryCollection && hasStuff ? { id: libraryCollection.id } : skipToken,
+    );
+
+  const subcollectionsWithStuff =
+    libraryItems?.data.filter(
+      (item) =>
+        item.model === "collection" &&
+        (item.here?.length || item.below?.length),
+    ) ?? [];
+
+  const showableLibrary = match({ subcollectionsWithStuff, hasStuff })
+    .when(
+      // if there's only one subcollection with stuff, we want to go straight into it
+      ({ subcollectionsWithStuff }) => subcollectionsWithStuff?.length === 1,
+      () => subcollectionsWithStuff[0],
+    )
+    .with({ hasStuff: true }, () => libraryCollection)
+    .otherwise(() => undefined);
+
+  return {
+    isLoading: isLoadingCollection || isLoadingItems,
+    data: showableLibrary,
+  };
 };

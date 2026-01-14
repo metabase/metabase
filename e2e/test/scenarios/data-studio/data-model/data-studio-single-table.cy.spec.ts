@@ -9,14 +9,9 @@ interface MetadataResponse {
   view_count: number;
 }
 
-interface PublishModelResponse {
-  models: {
-    id: number;
-  }[];
-}
-
 describe("Table editing", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
@@ -34,8 +29,11 @@ describe("Table editing", () => {
     cy.intercept("POST", "/api/field/*/dimension").as("updateFieldDimension");
     cy.intercept("PUT", "/api/table").as("updateTables");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-    cy.intercept("POST", "/api/ee/data-studio/table/publish-model").as(
-      "publishModel",
+    cy.intercept("POST", "/api/ee/data-studio/table/publish-tables").as(
+      "publishTables",
+    );
+    cy.intercept("POST", "/api/ee/data-studio/table/unpublish-tables").as(
+      "unpublishTables",
     );
   });
 
@@ -58,15 +56,16 @@ describe("Table editing", () => {
       cy.findByLabelText("Dependencies").should("have.text", "0");
       cy.findByLabelText("Dependents").should("have.text", "0");
 
-      cy.findByRole("link", { name: "Dependency graph" }).click();
-      cy.findByRole("heading", { name: "Dependency graph" }).should(
-        "be.visible",
-      );
+      H.DataModel.TableSection.get()
+        .findByRole("link", { name: "Dependency graph" })
+        .click();
+
+      H.DataStudio.Dependencies.graph().should("be.visible");
     });
   });
 
   it(
-    "should publish single table to a collection",
+    "should publish a single table to a collection and unpublish",
     { tags: ["@external"] },
     () => {
       H.restore("mysql-8");
@@ -75,48 +74,27 @@ describe("Table editing", () => {
       TablePicker.getDatabase("QA MySQL8").click();
       TablePicker.getTable("Orders").click();
 
-      // Shows publish model information modal
+      cy.log("publish the table and verify it's published");
       cy.findByRole("button", { name: /Publish/ }).click();
-      cy.findByRole("button", { name: /Got it/ }).click();
-      H.modal().within(() => {
-        cy.findByRole("button", { name: /Cancel/ }).click();
+      H.modal().findByText("Create my Library").click();
+      H.modal().findByText("Publish this table").click();
+      cy.wait("@publishTables");
+      H.undoToastListContainer().within(() => {
+        cy.findByText("Published").should("be.visible");
+        cy.findByRole("button", { name: /Go to Data/ }).click();
       });
-
-      // Don't show this again, info should not be shown later
-      cy.findByRole("button", { name: /Publish/ }).click();
-      cy.findByLabelText("Don’t show this to me again").check();
-      cy.findByRole("button", { name: /Got it/ }).click();
-      H.modal().within(() => {
-        cy.findByRole("button", { name: /Cancel/ }).click();
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_studio_table_published",
       });
-
-      cy.findByRole("button", { name: /Publish/ }).click();
-      H.pickEntity({
-        tab: "Collections",
-        path: ["Our analytics"],
-      });
-      cy.findByRole("button", { name: /Publish here/ }).click();
-
-      cy.wait<PublishModelResponse>("@publishModel").then(() => {
-        H.undoToast().within(() => {
-          cy.findByText("Published").should("be.visible");
-          cy.findByRole("button", { name: /See it/ }).click();
-        });
-        cy.findByTestId("head-crumbs-container").within(() => {
-          cy.findByText("Our analytics").should("be.visible");
-          cy.findByText("Model based on ORDERS").should("be.visible");
-        });
-      });
-
-      // Should not show info modal again
+      H.DataStudio.Library.tableItem("Orders").should("be.visible");
       cy.go("back");
 
-      cy.findByRole("button", { name: /Publish/ }).click();
-      H.modal().within(() => {
-        cy.findByText("Pick the collection to publish this table in").should(
-          "be.visible",
-        );
-      });
+      cy.log("unpublish the table and verify it's unpublished");
+      cy.findByRole("button", { name: /Unpublish/ }).click();
+      H.modal().findByText("Unpublish this table").click();
+      cy.wait("@unpublishTables");
+      H.DataStudio.nav().findByLabelText("Library").click();
+      H.DataStudio.Library.allTableItems().should("have.length", 0);
     },
   );
 
@@ -127,7 +105,7 @@ describe("Table editing", () => {
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
-    H.selectHasValue("Owner", "Unspecified").click();
+    H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
     H.undoToastListContainer()
       .findByText("Table owner updated")

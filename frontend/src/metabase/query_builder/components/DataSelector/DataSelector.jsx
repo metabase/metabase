@@ -8,15 +8,15 @@ import _ from "underscore";
 import EmptyState from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
-import Questions from "metabase/entities/questions";
-import Schemas from "metabase/entities/schemas";
-import Search from "metabase/entities/search";
-import Tables from "metabase/entities/tables";
+import { Databases } from "metabase/entities/databases";
+import { Questions } from "metabase/entities/questions";
+import { Schemas } from "metabase/entities/schemas";
+import { Search } from "metabase/entities/search";
+import { Tables } from "metabase/entities/tables";
 import { connect } from "metabase/lib/redux";
-import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { canUserCreateQueries } from "metabase/selectors/user";
 import { Box, Popover } from "metabase/ui";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
@@ -537,7 +537,7 @@ export class UnconnectedDataSelector extends Component {
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
   skipSteps() {
-    const { readOnly } = this.props;
+    const { readOnly, databaseIsDisabled } = this.props;
     const { activeStep } = this.state;
 
     if (readOnly) {
@@ -550,8 +550,11 @@ export class UnconnectedDataSelector extends Component {
       this.props.selectedDatabaseId == null
     ) {
       const databases = this.getDatabases();
-      if (databases && databases.length === 1) {
-        this.onChangeDatabase(databases[0]);
+      const enabledDatabases = databases.filter(
+        (db) => !databaseIsDisabled?.(db),
+      );
+      if (enabledDatabases.length >= 1) {
+        this.onChangeDatabase(enabledDatabases[0]);
       }
     }
     if (
@@ -620,7 +623,7 @@ export class UnconnectedDataSelector extends Component {
     if (!nextStep) {
       await this.setStateWithComputedState({
         ...stateChange,
-        isPopoverOpen: !this.state.isPopoverOpen,
+        isPopoverOpen: false,
       });
     } else {
       await this.switchToStep(nextStep, stateChange, skipSteps);
@@ -1071,19 +1074,19 @@ const DataSelector = _.compose(
       databases:
         ownProps.databases ||
         Databases.selectors.getList(state, {
-          entityQuery: ownProps.databaseQuery,
+          entityQuery: { ...ownProps.databaseQuery, "can-query": true },
         }) ||
         [],
       hasLoadedDatabasesWithTablesSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables", saved: true },
+        entityQuery: { include: "tables", saved: true, "can-query": true },
       }),
       hasLoadedDatabasesWithSaved: Databases.selectors.getLoaded(state, {
-        entityQuery: { saved: true },
+        entityQuery: { saved: true, "can-query": true },
       }),
       hasLoadedDatabasesWithTables: Databases.selectors.getLoaded(state, {
-        entityQuery: { include: "tables" },
+        entityQuery: { include: "tables", "can-query": true },
       }),
-      hasDataAccess: getHasDataAccess(ownProps.allDatabases ?? []),
+      hasDataAccess: canUserCreateQueries(state),
       hasNestedQueriesEnabled: getSetting(state, "enable-nested-queries"),
       selectedQuestion: Questions.selectors.getObject(state, {
         entityId: getQuestionIdFromVirtualTableId(ownProps.selectedTableId),
@@ -1091,10 +1094,11 @@ const DataSelector = _.compose(
     }),
     {
       fetchDatabases: (databaseQuery) =>
-        Databases.actions.fetchList(databaseQuery),
+        Databases.actions.fetchList({ ...databaseQuery, "can-query": true }),
       fetchSchemas: (databaseId) =>
-        Schemas.actions.fetchList({ dbId: databaseId }),
-      fetchSchemaTables: (schemaId) => Schemas.actions.fetch({ id: schemaId }),
+        Schemas.actions.fetchList({ dbId: databaseId, "can-query": true }),
+      fetchSchemaTables: (schemaId) =>
+        Schemas.actions.fetch({ id: schemaId, "can-query": true }),
       fetchFields: (tableId) => Tables.actions.fetchMetadata({ id: tableId }),
       fetchQuestion: (id) =>
         Questions.actions.fetch({

@@ -267,6 +267,7 @@
   format-env-key
   priv-key->base64-uri
   latest-audit-log-entry
+  all-entries-for
   let-url
   metric-value
   obj->json->obj

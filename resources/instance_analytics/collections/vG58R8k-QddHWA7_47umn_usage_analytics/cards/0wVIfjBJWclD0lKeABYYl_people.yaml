@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: 12
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_users
+table_id: [Internal Metabase Database, public, v_users]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -23,10 +20,7 @@ parameter_mappings: []
 dataset_query:
   database: Internal Metabase Database
   query:
-    source-table:
-    - Internal Metabase Database
-    - public
-    - v_users
+    source-table: [Internal Metabase Database, public, v_users]
   type: query
 result_metadata:
 - base_type: type/Integer
@@ -36,17 +30,10 @@ result_metadata:
   effective_type: type/Integer
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - user_id
+  - [Internal Metabase Database, public, v_users, user_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - user_id
+  id: [Internal Metabase Database, public, v_users, user_id]
   name: user_id
   semantic_type: type/PK
   settings: null
@@ -58,17 +45,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - entity_qualified_id
+  - [Internal Metabase Database, public, v_users, entity_qualified_id]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - entity_qualified_id
+  id: [Internal Metabase Database, public, v_users, entity_qualified_id]
   name: entity_qualified_id
   semantic_type: null
   settings: null
@@ -80,17 +60,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - type
+  - [Internal Metabase Database, public, v_users, type]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - type
+  id: [Internal Metabase Database, public, v_users, type]
   name: type
   semantic_type: type/Category
   settings: null
@@ -102,17 +75,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - email
+  - [Internal Metabase Database, public, v_users, email]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - email
+  id: [Internal Metabase Database, public, v_users, email]
   name: email
   semantic_type: type/Name
   settings: null
@@ -124,17 +90,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - first_name
+  - [Internal Metabase Database, public, v_users, first_name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - first_name
+  id: [Internal Metabase Database, public, v_users, first_name]
   name: first_name
   semantic_type: type/Name
   settings: null
@@ -146,17 +105,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - last_name
+  - [Internal Metabase Database, public, v_users, last_name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - last_name
+  id: [Internal Metabase Database, public, v_users, last_name]
   name: last_name
   semantic_type: type/Name
   settings: null
@@ -168,17 +120,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - full_name
+  - [Internal Metabase Database, public, v_users, full_name]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - full_name
+  id: [Internal Metabase Database, public, v_users, full_name]
   name: full_name
   semantic_type: type/Name
   settings: null
@@ -190,17 +135,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - date_joined
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_users, date_joined]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - date_joined
+  id: [Internal Metabase Database, public, v_users, date_joined]
   name: date_joined
   semantic_type: type/JoinTimestamp
   settings: null
@@ -213,17 +151,10 @@ result_metadata:
   effective_type: type/DateTimeWithLocalTZ
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - last_login
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_users, last_login]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - last_login
+  id: [Internal Metabase Database, public, v_users, last_login]
   name: last_login
   semantic_type: null
   settings: null
@@ -236,17 +167,10 @@ result_metadata:
   effective_type: type/DateTime
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - updated_at
-  - temporal-unit: default
+  - [Internal Metabase Database, public, v_users, updated_at]
+  - {temporal-unit: default}
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - updated_at
+  id: [Internal Metabase Database, public, v_users, updated_at]
   name: updated_at
   semantic_type: type/UpdatedTimestamp
   settings: null
@@ -259,17 +183,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - is_admin
+  - [Internal Metabase Database, public, v_users, is_admin]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - is_admin
+  id: [Internal Metabase Database, public, v_users, is_admin]
   name: is_admin
   semantic_type: type/Category
   settings: null
@@ -281,17 +198,10 @@ result_metadata:
   effective_type: type/Boolean
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - is_active
+  - [Internal Metabase Database, public, v_users, is_active]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - is_active
+  id: [Internal Metabase Database, public, v_users, is_active]
   name: is_active
   semantic_type: type/Category
   settings: null
@@ -303,17 +213,10 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - sso_source
+  - [Internal Metabase Database, public, v_users, sso_source]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - sso_source
+  id: [Internal Metabase Database, public, v_users, sso_source]
   name: sso_source
   semantic_type: type/Source
   settings: null
@@ -325,32 +228,21 @@ result_metadata:
   effective_type: type/Text
   field_ref:
   - field
-  - - Internal Metabase Database
-    - public
-    - v_users
-    - locale
+  - [Internal Metabase Database, public, v_users, locale]
   - null
   fk_target_field_id: null
-  id:
-  - Internal Metabase Database
-  - public
-  - v_users
-  - locale
+  id: [Internal Metabase Database, public, v_users, locale]
   name: locale
   semantic_type: null
   settings: null
   visibility_type: normal
-visualization_settings:
-  column_settings: null
-  table.cell_column: locale
-  table.pivot_column: sso_source
+visualization_settings: {column_settings: null, table.cell_column: locale, table.pivot_column: sso_source}
+card_schema: 23
 serdes/meta:
-- id: 0wVIfjBJWclD0lKeABYYl
-  label: people
-  model: Card
+- {id: 0wVIfjBJWclD0lKeABYYl, label: people, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: null
-metabase_version: null
+document_id: null
+embedding_type: null
 source_card_id: null
 type: model

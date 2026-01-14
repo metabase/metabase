@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { msgid, ngettext } from "ttag";
 
-import Schemas from "metabase/entities/schemas";
+import { Schemas } from "metabase/entities/schemas";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type { State } from "metabase-types/store";

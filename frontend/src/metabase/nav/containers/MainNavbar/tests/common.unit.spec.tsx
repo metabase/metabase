@@ -357,6 +357,24 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
+
+      expect(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not display the new collection button if a user has no write permissions", async () => {
+      await setup({
+        user: createMockUser({ can_write_any_collection: false }),
+      });
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Our analytics/i }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("button", { name: "Create a new collection" }),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -36,7 +36,7 @@ function getBubbleDiameterScale(
     .scaleLinear()
     .domain(bubbleSizeDomain)
     // D3 will take a value from the domain (bubble size column) and normalize it (`t` is between 0,1).
-    // Then we plug the normalized value `t` into the `areaScale` to get the corrseponding area for that diameter.
+    // Then we plug the normalized value `t` into the `areaScale` to get the corresponding area for that diameter.
     // We then take this area and convert it back to a diameter value
     // if area = π × (diameter ÷ 2)², then diameter = 2 × √(area ÷ π)
     .interpolate(() => (t) => 2 * Math.sqrt(areaScale(t) / Math.PI))
@@ -69,7 +69,7 @@ export function buildEChartsScatterSeries(
     itemStyle: {
       color: seriesModel.color,
       opacity: CHART_STYLE.opacity.scatter,
-      borderColor: renderingContext.getColor("bg-white"),
+      borderColor: renderingContext.getColor("background-primary"),
       borderWidth: 1,
     },
     emphasis: {

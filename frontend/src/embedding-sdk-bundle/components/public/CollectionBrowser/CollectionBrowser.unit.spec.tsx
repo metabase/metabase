@@ -15,9 +15,11 @@ import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import type { Collection, CollectionItem, User } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockUser,
 } from "metabase-types/api/mocks";
 
 jest.mock("metabase/common/hooks/use-locale", () => ({
@@ -93,29 +95,130 @@ describe("CollectionBrowser", () => {
 
     expect(columnNames).toStrictEqual(["Type", "Name"]);
   });
+
+  it("should NOT include description column by default", async () => {
+    await setup();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
+    });
+
+    const columnNames: (string | null)[] = [];
+
+    within(screen.getByTestId("items-table-head"))
+      .getAllByRole("button")
+      .forEach((el) => {
+        columnNames.push(el.textContent);
+      });
+
+    expect(columnNames).not.toContain("Description");
+  });
+
+  it("should show description column when explicitly included", async () => {
+    await setup({
+      props: {
+        visibleColumns: ["type", "name", "description"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
+    });
+
+    const columnNames: (string | null)[] = [];
+
+    within(screen.getByTestId("items-table-head"))
+      .getAllByRole("button")
+      .forEach((el) => {
+        columnNames.push(el.textContent);
+      });
+
+    expect(columnNames).toStrictEqual(["Type", "Name", "Description"]);
+  });
+
+  it("should display description column as configured", async () => {
+    await setup({
+      props: {
+        visibleColumns: ["type", "name", "description"],
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("items-table-head")).toBeInTheDocument();
+    });
+
+    const headerRow = screen.getByTestId("items-table-head");
+    const columnHeaders = within(headerRow).getAllByRole("button");
+    const columnTexts = columnHeaders.map((header) => header.textContent);
+
+    expect(columnTexts).toContain("Description");
+  });
+
+  it("should resolve collectionId=tenant to user's tenant collection", async () => {
+    const tenantCollection = createMockCollection({
+      id: 999,
+      name: "Tenant Collection: Acme Inc",
+      archived: false,
+      can_write: true,
+      description: null,
+      location: "/",
+    });
+
+    const dashboardItem = createMockCollectionItem({
+      id: 4,
+      name: "Acme Dashboard",
+      model: "dashboard",
+    });
+
+    await setup({
+      props: { collectionId: "tenant" },
+      collections: [tenantCollection],
+      rootCollection: tenantCollection,
+      currentUser: createMockUser({
+        tenant_collection_id: tenantCollection.id,
+      }),
+      collectionItems: [dashboardItem],
+    });
+
+    expect(await screen.findByText(tenantCollection.name)).toBeInTheDocument();
+    expect(await screen.findByText(dashboardItem.name)).toBeInTheDocument();
+  });
 });
 
 async function setup({
   props,
+  collections = TEST_COLLECTIONS,
+  rootCollection = ROOT_TEST_COLLECTION,
+  currentUser,
+  collectionItems = [
+    createMockCollectionItem({ id: 2, model: "dashboard" }),
+    createMockCollectionItem({ id: 3, model: "card" }),
+  ],
 }: {
   props?: Partial<ComponentProps<typeof CollectionBrowserInner>>;
+  collections?: Collection[];
+  rootCollection?: Collection;
+  currentUser?: User;
+  collectionItems?: CollectionItem[];
 } = {}) {
   useLocaleMock.mockReturnValue({ isLocaleLoading: false });
 
   setupCollectionsEndpoints({
-    collections: TEST_COLLECTIONS,
-    rootCollection: ROOT_TEST_COLLECTION,
+    collections,
+    rootCollection,
   });
+
+  // Mock individual collection endpoint if it has a numeric ID
+  if (typeof rootCollection.id === "number") {
+    fetchMock.get(`path:/api/collection/${rootCollection.id}`, rootCollection);
+  }
 
   setupCollectionItemsEndpoint({
-    collection: ROOT_TEST_COLLECTION,
-    collectionItems: [
-      createMockCollectionItem({ id: 2, model: "dashboard" }),
-      createMockCollectionItem({ id: 3, model: "card" }),
-    ],
+    collection: rootCollection,
+    collectionItems,
   });
 
-  const state = setupSdkState();
+  const state = setupSdkState(currentUser ? { currentUser } : {});
 
   renderWithSDKProviders(
     <CollectionBrowserInner collectionId="root" {...props} />,
@@ -132,7 +235,7 @@ async function setup({
   await waitFor(() => {
     expect(
       fetchMock.callHistory.calls(
-        `path:/api/collection/${ROOT_TEST_COLLECTION.id}/items`,
+        `path:/api/collection/${rootCollection.id}/items`,
       ),
     ).toHaveLength(1);
   });

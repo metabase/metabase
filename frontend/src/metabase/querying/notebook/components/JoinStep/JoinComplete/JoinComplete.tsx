@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
+import type { ColorName } from "metabase/lib/colors/types";
 import { Flex, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -22,7 +23,7 @@ interface JoinCompleteProps {
   stageIndex: number;
   join: Lib.Join;
   joinPosition: number;
-  color: string;
+  color: ColorName;
   isReadOnly: boolean;
   onJoinChange: (newJoin: Lib.Join) => void;
   onQueryChange: (newQuery: Lib.Query) => void;
@@ -160,7 +161,7 @@ export function JoinComplete({
                 }
                 onRemove={() => handleRemoveCondition(index)}
               />
-              {!isLast && <Text color="text-dark">{t`and`}</Text>}
+              {!isLast && <Text color="text-primary">{t`and`}</Text>}
               {isLast && !isReadOnly && !isAddingNewCondition && (
                 <NotebookCellAdd
                   color={color}

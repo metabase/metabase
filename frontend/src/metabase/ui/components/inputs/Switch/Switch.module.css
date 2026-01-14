@@ -9,11 +9,11 @@
 
   &[data-disabled] {
     .track {
-      background-color: var(--mb-color-bg-medium);
+      background-color: var(--mb-color-background-tertiary);
     }
 
     .thumb {
-      background-color: var(--mb-color-bg-light);
+      background-color: var(--mb-color-background-secondary);
     }
   }
 
@@ -41,12 +41,12 @@
 
   &[data-disabled] {
     .label {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
       cursor: default;
     }
 
     .description {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
   }
 }
@@ -62,7 +62,7 @@
   padding: 0;
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--mb-bolor-text-medium);
+  color: var(--mb-color-text-secondary);
   line-height: 1rem;
 }
 
@@ -70,7 +70,7 @@
   padding: 0;
   margin-top: 0.5rem;
   font-size: 0.75rem;
-  color: var(--mb-bolor-text-error);
+  color: var(--mb-color-error);
 }
 
 .track {
@@ -81,7 +81,7 @@
   background-color: var(--mb-color-switch-off);
 
   input:not(:checked) + & {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
   }
 
   input:checked + & {
@@ -89,17 +89,17 @@
   }
 
   input:disabled + & {
-    background-color: var(--mb-color-bg-medium);
+    background-color: var(--mb-color-background-tertiary);
   }
 }
 
 .thumb {
-  background-color: var(--mb-color-text-white);
+  background-color: var(--mb-color-text-primary-inverse);
   border: none;
   border-radius: 1.375rem;
 
   input:disabled + * > & {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
 
   &::before {

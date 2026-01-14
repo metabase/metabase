@@ -79,12 +79,10 @@ async function setup({
 
   const result = createSearchResult({ model, ...resultProps });
 
-  const getUrl = jest.fn(() => "a/b/c");
   const getCollection = jest.fn(() => result.collection);
 
   const wrappedResult: WrappedResult = {
     ...result,
-    getUrl,
     getCollection,
   };
 
@@ -102,7 +100,6 @@ async function setup({
   await waitForLoadingTextToBeRemoved();
 
   return {
-    getUrl,
     getCollection,
   };
 }
@@ -164,9 +161,25 @@ describe("InfoText", () => {
       );
     });
 
-    it("shows table's schema", async () => {
+    it("shows table's collection when the table is in a collection", async () => {
       await setup({
         model: "table",
+      });
+
+      const collectionLink = screen.getByText("Collection Name");
+      expect(collectionLink).toBeInTheDocument();
+      expect(collectionLink).toHaveAttribute(
+        "href",
+        `/collection/${MOCK_COLLECTION.id}-collection-name`,
+      );
+    });
+
+    it("shows table's schema when the table is not in a collection", async () => {
+      await setup({
+        model: "table",
+        resultProps: {
+          collection: createMockCollection({ id: undefined, name: undefined }),
+        },
       });
 
       const databaseLink = screen.getByText("Database Name");

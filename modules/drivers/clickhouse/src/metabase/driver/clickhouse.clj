@@ -20,7 +20,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import  [com.clickhouse.client.api.query QuerySettings]
-            [java.sql SQLException]))
+            [java.sql SQLException PreparedStatement]
+            [java.time LocalDate]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,35 +34,36 @@
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
-(doseq [[feature supported?] {:standard-deviation-aggregations true
-                              :now                             true
-                              :set-timezone                    true
-                              :convert-timezone                false
-                              :test/jvm-timezone-setting       false
-                              :test/date-time-type             false
-                              :test/time-type                  false
-                              :datetime-diff                   true
-                              :expression-literals             true
-                              :expressions/integer             true
-                              :expressions/float               true
-                              :expressions/text                true
-                              :expressions/date                true
-                              :split-part                      true
-                              :upload-with-auto-pk             false
-                              :window-functions/offset         false
-                              :window-functions/cumulative     (not driver-api/is-test?)
-                              :left-join                       (not driver-api/is-test?)
-                              :describe-fks                    false
-                              :rename                          true
-                              :actions                         false
-                              :metadata/key-constraints        false
-                              :database-routing                false
-                              :transforms/python               true
-                              :transforms/table                true
+(doseq [[feature supported?] {:actions                          false
+                              :convert-timezone                 false
+                              :database-routing                 false
+                              :datetime-diff                    true
+                              :describe-default-expr            true
+                              :describe-fks                     false
                               ;; JDBC driver always provides "NO" for the IS_GENERATEDCOLUMN JDBC metadata
-                              :describe-is-generated           false
-                              :describe-is-nullable            true
-                              :describe-default-expr           true}]
+                              :describe-is-generated            false
+                              :describe-is-nullable             true
+                              :expression-literals              true
+                              :expressions/date                 true
+                              :expressions/float                true
+                              :expressions/integer              true
+                              :expressions/text                 true
+                              :left-join                        (not driver-api/is-test?)
+                              :metadata/key-constraints         false
+                              :now                              true
+                              :regex/lookaheads-and-lookbehinds false
+                              :rename                           true
+                              :set-timezone                     true
+                              :split-part                       true
+                              :standard-deviation-aggregations  true
+                              :test/date-time-type              false
+                              :test/jvm-timezone-setting        false
+                              :test/time-type                   false
+                              :transforms/python                true
+                              :transforms/table                 true
+                              :upload-with-auto-pk              false
+                              :window-functions/cumulative      (not driver-api/is-test?)
+                              :window-functions/offset          false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:clickhouse :schemas]
@@ -346,3 +348,9 @@
   [_driver _database _table]
   (log/warn "Clickhouse does not support foreign keys. `describe-table-fks` should not have been called!")
   #{})
+
+;; Override clickhouse to not pass in the Types/DATE parameter due to jdbc
+;; driver issue: https://github.com/ClickHouse/clickhouse-java/issues/2701
+(defmethod sql-jdbc.execute/set-parameter [:clickhouse LocalDate]
+  [_ ^PreparedStatement prepared-statement i object]
+  (.setObject prepared-statement i object))

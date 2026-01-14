@@ -76,9 +76,10 @@ export const PublicOrEmbeddedDashCardMenu = ({
           <QuestionDownloadWidget
             question={question}
             result={result}
-            onDownload={(opts) => {
+            onDownload={async (opts) => {
               close();
-              handleDownload(opts);
+
+              await handleDownload(opts);
             }}
           />
         ) : (

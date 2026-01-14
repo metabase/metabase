@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
+  isDedicatedTenantCollectionRoot,
   isInstanceAnalyticsCustomCollection,
   isPersonalCollection,
   isRootCollection,
@@ -11,7 +12,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useHasDashboardQuestionCandidates } from "metabase/common/components/MoveQuestionsIntoDashboardsModal/hooks";
 import { UserHasSeenAll } from "metabase/common/components/UserHasSeen/UserHasSeenAll";
 import * as Urls from "metabase/lib/urls";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import { ActionIcon, Icon, Indicator, Menu, Tooltip } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -44,11 +45,14 @@ export const CollectionMenu = ({
   const isPersonal = isPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
+  const isSharedTenantCollection =
+    PLUGIN_TENANTS.isTenantCollection(collection);
 
   const canWrite = collection.can_write;
   const canMove =
     !isRoot &&
     !isRootPersonalCollection(collection) &&
+    !isDedicatedTenantCollectionRoot(collection) &&
     canWrite &&
     !isInstanceAnalyticsCustom;
 
@@ -77,7 +81,12 @@ export const CollectionMenu = ({
     );
   }
 
-  if (isAdmin && !isPersonal) {
+  if (
+    isAdmin &&
+    !isPersonal &&
+    !isDedicatedTenantCollectionRoot(collection) &&
+    !isSharedTenantCollection
+  ) {
     editItems.push(
       <Menu.Item
         key="collection-edit"
@@ -143,7 +152,7 @@ export const CollectionMenu = ({
                 data-testid="menu-indicator-root"
               >
                 <ActionIcon size={32} variant="viewHeader">
-                  <Icon name="ellipsis" color="text-dark" />
+                  <Icon name="ellipsis" c="text-primary" />
                 </ActionIcon>
               </Indicator>
             </Tooltip>

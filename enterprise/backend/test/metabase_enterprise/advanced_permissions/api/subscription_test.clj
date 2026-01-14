@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
-  "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
+  "Permissions tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   (:require
    [clojure.test :refer :all]
    [metabase.permissions.core :as perms]
@@ -20,8 +20,12 @@
   (testing "/api/pulse/*"
     (with-subscription-disabled-for-all-users!
       (mt/with-user-in-groups [group {:name "New Group"}
-                               user  [group]]
-        (mt/with-temp [:model/Card  card {}
+                               user [group]]
+        (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products
+                                                          {:aggregation [[:sum $price]
+                                                                         [:avg $price]]
+                                                           :breakout    [$category
+                                                                         !year.created_at]})}
                        :model/Pulse pulse {:creator_id (u/the-id user)}]
           (let [pulse-default {:name     "A Pulse"
                                :cards    [{:id          (:id card)

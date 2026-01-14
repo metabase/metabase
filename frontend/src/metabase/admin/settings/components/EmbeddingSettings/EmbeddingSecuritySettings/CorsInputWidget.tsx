@@ -24,13 +24,13 @@ export const CorsInputWidget = () => {
       title={t`Cross-Origin Resource Sharing (CORS)`}
       description={
         <Group align="center" gap="sm">
-          <Text c="text-medium" fz="md">
-            {jt`Add the website domains where you want to allow Embedded Analytics JS and SDK. SDK using API keys can only run on localhost.. ${(
+          <Text c="text-secondary" fz="md">
+            {jt`Add the website domains where you want to allow modular embedding (with or without SDK). API keys can only be used on localhost. ${(
               <HoverCard key="embedding-cors-hint" position="bottom">
                 <HoverCard.Target>
                   <Icon
                     name="info"
-                    c="text-medium"
+                    c="text-secondary"
                     cursor="pointer"
                     ml="sm"
                     style={{ verticalAlign: "middle" }}
@@ -38,8 +38,8 @@ export const CorsInputWidget = () => {
                 </HoverCard.Target>
 
                 <HoverCard.Dropdown>
-                  <Box p="md" w={270} bg="white">
-                    <Text lh="lg" c="text-medium">
+                  <Box p="md" w={270}>
+                    <Text lh="lg" c="text-secondary">
                       {corsHintText}
                     </Text>
                   </Box>

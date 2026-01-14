@@ -1,5 +1,6 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
@@ -32,7 +33,10 @@ const collectionItemModels = [
 
 export const setup = async (
   props: Partial<MiniPickerProps> = {},
-  tokenFeatures: TokenFeatures | null = null,
+  {
+    tokenFeatures = null,
+    hasAccessToRoot = true,
+  }: { tokenFeatures?: TokenFeatures | null; hasAccessToRoot?: boolean } = {},
 ) => {
   const onChangeSpy = jest.fn();
   const onCloseSpy = jest.fn();
@@ -111,6 +115,16 @@ export const setup = async (
     ],
   });
   setupDatabasesEndpoints([db, db2, db3]);
+
+  const ROOT_COLLECTION = createMockCollection({
+    id: "root",
+    name: "Our analytics",
+  });
+
+  setupCollectionByIdEndpoint({
+    collections: [ROOT_COLLECTION],
+    error: hasAccessToRoot ? undefined : "You can't do that Ryan",
+  });
 
   setupCollectionItemsEndpoint({
     collection: createMockCollection({ id: "root", name: "Our analytics" }),
@@ -199,9 +213,52 @@ export const setup = async (
   setupSearchEndpoints([
     createMockSearchResult({ id: 301, model: "card", name: "Lucas" }),
     createMockSearchResult({ id: 302, model: "dataset", name: "Forster" }),
-    createMockSearchResult({ id: 303, model: "metric", name: "Bingley" }),
+    createMockSearchResult({
+      id: 303,
+      model: "metric",
+      name: "Bingley",
+      collection: {
+        id: 789,
+        name: "Misc Metrics",
+      },
+    }),
+    createMockSearchResult({
+      id: 303,
+      model: "table",
+      name: "Kitty",
+      database_name: "big_secret",
+      table_schema: "also_secret",
+      collection: {
+        id: 7891,
+        name: "Misc Tables",
+      },
+    }),
     createMockSearchResult({ id: 304, model: "document", name: "Wickham" }),
     createMockSearchResult({ id: 305, model: "collection", name: "Reynolds" }),
+    createMockSearchResult({
+      id: 306,
+      model: "metric",
+      name: "Fanny",
+      collection: {
+        // @ts-expect-error - can be null in search results
+        id: null,
+        // @ts-expect-error - can be null in search results
+        name: null,
+      },
+    }),
+    createMockSearchResult({
+      id: 401,
+      model: "table",
+      name: "wickham",
+      table_schema: "lydia",
+      database_name: "london",
+      collection: {
+        // @ts-expect-error - can be null in search results
+        id: null,
+        // @ts-expect-error - can be null in search results
+        name: null,
+      },
+    }),
   ]);
 
   setupRecentViewsAndSelectionsEndpoints([], ["selections", "views"], {}, true);

@@ -55,7 +55,7 @@ export function PythonEditorBody({
 }: PythonEditorBodyProps) {
   return (
     <MaybeResizableBox resizable={withDebugger}>
-      <Flex h="100%" align="end" bg="bg-light" pos="relative">
+      <Flex h="100%" align="end" bg="background-secondary" pos="relative">
         <PythonEditor
           value={source}
           proposedValue={proposedSource}
@@ -93,18 +93,14 @@ export function PythonEditorBody({
               </Tooltip>
             </>
           )}
-          {withDebugger && (
-            <Box p="md">
-              <RunButtonWithTooltip
-                disabled={!isRunnable}
-                isRunning={isRunning}
-                isDirty={isDirty}
-                onRun={onRun}
-                onCancel={onCancel}
-                getTooltip={() => t`Run Python script`}
-              />
-            </Box>
-          )}
+          <RunButtonWithTooltip
+            disabled={!isRunnable}
+            isRunning={isRunning}
+            isDirty={isDirty}
+            onRun={onRun}
+            onCancel={onCancel}
+            getTooltip={() => t`Run Python script`}
+          />
         </Stack>
         <SharedLibraryActions source={source} onChange={onChange} />
       </Flex>
@@ -174,7 +170,7 @@ function SharedLibraryImportButton({
   return (
     <Tooltip label={label}>
       <ActionIcon aria-label={label} onClick={handleToggleSharedLib}>
-        <Icon name="reference" c="text-dark" />
+        <Icon name="reference" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );
@@ -191,7 +187,7 @@ function SharedLibraryEditLink() {
         aria-label={label}
         to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
       >
-        <Icon name="pencil" c="text-dark" />
+        <Icon name="pencil" c="text-primary" />
       </ActionIcon>
     </Tooltip>
   );

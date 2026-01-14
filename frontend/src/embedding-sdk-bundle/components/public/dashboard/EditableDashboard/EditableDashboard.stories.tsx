@@ -32,12 +32,7 @@ const meta = {
 
     "dataPickerProps.entityTypes": {
       control: "check",
-      options: [
-        "model",
-        "table",
-        "question",
-      ] satisfies SdkQuestionProps["entityTypes"],
-      description: "`question` doesn't have effect on simple data picker",
+      options: ["model", "table"] satisfies SdkQuestionProps["entityTypes"],
     },
 
     // Display options
@@ -60,6 +55,15 @@ const meta = {
     withDownloads: {
       control: { type: "boolean" },
       description: "Whether to enable download functionality for cards",
+      table: {
+        type: { summary: "boolean" },
+        defaultValue: { summary: "false" },
+      },
+    },
+    withSubscriptions: {
+      control: { type: "boolean" },
+      description:
+        "Whether to allow users to subscribe themselves to the dashboard",
       table: {
         type: { summary: "boolean" },
         defaultValue: { summary: "false" },

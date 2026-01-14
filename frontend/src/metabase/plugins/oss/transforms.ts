@@ -1,6 +1,9 @@
+import type { BaseQueryFn, QueryDefinition } from "@reduxjs/toolkit/query";
 import type { ComponentType, Context, ReactNode } from "react";
 import { createContext } from "react";
 
+import type { TagType } from "metabase/api/tags";
+import type { UseQuery } from "metabase/entities/containers/rtk-query/types/rtk";
 import {
   NotFoundPlaceholder,
   PluginPlaceholder,
@@ -34,6 +37,9 @@ export type TransformsPlugin = {
   canAccessTransforms: (state: State) => boolean;
   getDataStudioTransformRoutes(): ReactNode;
   TransformPicker: ComponentType<TransformPickerProps>;
+  useGetTransformQuery: UseQuery<
+    QueryDefinition<TransformId, BaseQueryFn, TagType, Transform>
+  >;
 };
 
 export type PythonTransformEditorProps = {
@@ -70,6 +76,7 @@ export type PythonTransformsPlugin = {
 type DependenciesPlugin = {
   isEnabled: boolean;
   getDataStudioDependencyRoutes: () => ReactNode;
+  getDataStudioTasksRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
@@ -138,6 +145,8 @@ const getDefaultPluginTransforms = (): TransformsPlugin => ({
   canAccessTransforms: () => false,
   getDataStudioTransformRoutes: () => null,
   TransformPicker: PluginPlaceholder,
+  useGetTransformQuery:
+    (() => []) as unknown as TransformsPlugin["useGetTransformQuery"],
 });
 
 export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
@@ -158,6 +167,7 @@ export const PLUGIN_TRANSFORMS_PYTHON = getDefaultPluginTransformsPython();
 const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   isEnabled: false,
   getDataStudioDependencyRoutes: () => null,
+  getDataStudioTasksRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
   CheckDependenciesForm: PluginPlaceholder,

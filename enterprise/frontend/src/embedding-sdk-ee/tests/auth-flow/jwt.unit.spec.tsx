@@ -29,10 +29,25 @@ const setup = ({
   locale,
 }: Pick<MetabaseProviderProps, "authConfig" | "locale">) => {
   setupMockJwtEndpoints();
+
+  const getFirstSsoDiscoveryCall = () => {
+    // This is `/auth/sso` or `auth/sso?preferred_method=...`
+    // that returns the method (jwt/saml) and the url of the sso provider
+    // `auth/sso?jwt=...` is the second call and should be excluded from this
+    return fetchMock.callHistory
+      .calls()
+      .filter(
+        (call) =>
+          new URL(call.url).pathname === "/auth/sso" &&
+          !new URL(call.url).searchParams.has("jwt"),
+      );
+  };
+
   return {
     ...baseSetup({ authConfig, locale }),
     getLastAuthProviderApiCall: () =>
       fetchMock.callHistory.lastCall(`${MOCK_JWT_PROVIDER_URI}?response=json`),
+    getFirstSsoDiscoveryCall,
   };
 };
 
@@ -46,7 +61,7 @@ describe("Auth Flow - JWT", () => {
       metabaseInstanceUrl: MOCK_INSTANCE_URL,
     });
 
-    const { rerender } = setup({ authConfig });
+    const { rerender, getFirstSsoDiscoveryCall } = setup({ authConfig });
 
     await waitForLoaderToBeRemoved();
     expect(
@@ -64,6 +79,8 @@ describe("Auth Flow - JWT", () => {
     expect(
       fetchMock.callHistory.calls(`${MOCK_JWT_PROVIDER_URI}?response=json`),
     ).toHaveLength(1);
+
+    expect(getFirstSsoDiscoveryCall()).toHaveLength(1);
 
     const loader = screen.queryByTestId("loading-indicator");
     expect(loader).not.toBeInTheDocument();
@@ -104,6 +121,21 @@ describe("Auth Flow - JWT", () => {
     );
   });
 
+  it("should skip the initial /auth/sso request when jwtProviderUri is provided", async () => {
+    const authConfig = defineMetabaseAuthConfig({
+      metabaseInstanceUrl: MOCK_INSTANCE_URL,
+      jwtProviderUri: MOCK_JWT_PROVIDER_URI,
+    });
+
+    const { getLastAuthProviderApiCall, getFirstSsoDiscoveryCall } = setup({
+      authConfig,
+    });
+
+    await waitForRequest(() => getLastAuthProviderApiCall());
+
+    expect(getFirstSsoDiscoveryCall()).toHaveLength(0);
+  });
+
   it("should use `fetchRequestToken` if provided", async () => {
     const customFetchFunction = jest.fn().mockImplementation(() => ({
       jwt: MOCK_VALID_JWT_RESPONSE,
@@ -115,13 +147,19 @@ describe("Auth Flow - JWT", () => {
       fetchRequestToken: customFetchFunction,
     });
 
-    const { getLastCardQueryApiCall, getLastUserApiCall } = setup({
+    const {
+      getLastCardQueryApiCall,
+      getLastUserApiCall,
+      getFirstSsoDiscoveryCall,
+    } = setup({
       authConfig,
     });
 
     await waitForRequest(() => getLastUserApiCall());
 
     expect(customFetchFunction).toHaveBeenCalled();
+
+    expect(getFirstSsoDiscoveryCall()).toHaveLength(1);
 
     expect(getLastUserApiCall()?.options.headers).toHaveProperty(
       "x-metabase-session",

@@ -38,7 +38,7 @@ export type SdkQuestionEntityPublicProps =
 export interface SdkQuestionState {
   question?: InternalQuestion;
   originalQuestion?: InternalQuestion;
-  token?: string | null;
+  token?: SdkEntityToken | null;
   queryResults?: any[];
   parameterValues?: ParameterValuesMap;
 }

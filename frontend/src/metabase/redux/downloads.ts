@@ -18,6 +18,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 import type { DownloadsState, State } from "metabase-types/store";
 
 import { trackDownloadResults } from "./downloads-analytics";
@@ -30,8 +31,8 @@ export interface DownloadQueryResultsOpts {
   enablePivot?: boolean;
   dashboardId?: DashboardId;
   dashcardId?: DashCardId;
-  uuid?: string;
-  token?: string | null;
+  uuid?: EntityUuid | null;
+  token?: EntityToken | null;
   documentUuid?: string;
   documentId?: number;
   params?: Record<string, unknown>;
@@ -161,7 +162,7 @@ export const downloadQueryResults = createAsyncThunk(
         dispatch(downloadToImage(false));
       }
     } else {
-      dispatch(downloadDataset({ opts, id: Date.now() }));
+      await dispatch(downloadDataset({ opts, id: Date.now() }));
     }
   },
 );
@@ -228,7 +229,7 @@ const getPublicDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/public/document/${documentUuid}/card/${cardId}/${type}`,
+  url: `/api/public/document/${documentUuid}/card/${cardId}/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,
@@ -255,7 +256,7 @@ const getPublicQuestionParams = (
 };
 
 const getEmbedDashcardParams = (
-  token: string,
+  token: EntityToken,
   cardId: number,
   dashcardId: DashCardId,
   type: string,
@@ -271,7 +272,7 @@ const getEmbedDashcardParams = (
 });
 
 const getEmbedQuestionParams = (
-  token: string,
+  token: EntityToken,
   type: string,
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => {
@@ -327,7 +328,7 @@ const getInternalDocumentCardParams = (
   exportParams: ExportParams,
 ): DownloadQueryResultsParams => ({
   method: "POST",
-  url: `/api/ee/document/${documentId}/card/${cardId}/query/${type}`,
+  url: `/api/document/${documentId}/card/${cardId}/query/${type}`,
   body: {
     parameters: result?.json_query?.parameters ?? [],
     ...exportParams,

@@ -65,7 +65,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
         onChange={handleChange}
         label={
           <Text
-            color="text-light"
+            color="text-tertiary"
             fw="normal"
           >{t`Let us know your plans with Metabase so that we can best guide you`}</Text>
         }

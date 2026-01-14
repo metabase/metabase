@@ -71,7 +71,7 @@
                       (binding [sync-util/*log-exceptions-and-continue?* false]
                         (thunk))))
 
-(deftest sanity-check-test
+(deftest ^:sequential sanity-check-test
   (mt/test-driver
     :snowflake
     (mt/dataset
@@ -1421,3 +1421,25 @@
         (let [result (qp/process-query (collation-query collation))]
           (is (str/includes? (-> result :data :native_form :query) exp-filter))
           (is (= exp-rows (mt/rows result))))))))
+
+(deftest snowflake-with-dbname-in-details-gets-synced-test
+  (testing "db with a valid db and an invalid dbname in details should be synced with db correctly"
+    (mt/test-driver :snowflake
+      (let [priv-key-val (mt/priv-key->base64-uri (tx/db-test-env-var-or-throw :snowflake :private-key))]
+        (mt/with-temp [:model/Database db {:engine :snowflake
+                                           :details (-> (:details (mt/db))
+                                                        (dissoc :private-key-id)
+                                                        (assoc :private-key-options "uploaded")
+                                                        (assoc :private-key-value priv-key-val)
+                                                        (assoc :use-password false)
+                                                        (assoc :dbname nil))}]
+          (is (= {:tables
+                  #{{:name "users",      :schema "PUBLIC", :description nil}
+                    {:name "venues",     :schema "PUBLIC", :description nil}
+                    {:name "checkins",   :schema "PUBLIC", :description nil}
+                    {:name "categories", :schema "PUBLIC", :description nil}
+                    {:name "orders",     :schema "PUBLIC", :description nil}
+                    {:name "people",     :schema "PUBLIC", :description nil}
+                    {:name "products",   :schema "PUBLIC", :description nil}
+                    {:name "reviews",    :schema "PUBLIC", :description nil}}}
+                 (driver/describe-database :snowflake db))))))))

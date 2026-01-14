@@ -5,7 +5,7 @@ import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
 } from "embedding-sdk-bundle/types/usage-problem";
-import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 import { getIsLocalhost } from "./get-is-localhost";
@@ -156,9 +156,9 @@ const toWarning = (type: SdkUsageProblemKey): SdkUsageProblem => ({
 });
 
 const getTitle = () => {
-  if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.isSimpleEmbedding) {
+  if (isEmbeddingEajs()) {
     // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.
-    return "This embed is powered by the Metabase Embedded Analytics JS";
+    return "This embed is powered by Metabase";
   }
 
   // eslint-disable-next-line no-literal-metabase-strings -- only shown in development or config error.

@@ -7,11 +7,11 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    hasEnterprisePlugins: true,
     tokenFeatures: {
       embedding_sdk: true,
       embedding_simple: true,
     },
+    enterprisePlugins: ["embedding"],
     ...opts,
   });
 
@@ -27,12 +27,14 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     expect(toggles).toHaveLength(2);
 
     expect(
-      screen.getByRole("switch", { name: "Enable SDK for React toggle" }),
+      screen.getByRole("switch", {
+        name: "Enable modular embedding SDK toggle",
+      }),
     ).toBeInTheDocument();
 
     expect(
       screen.getByRole("switch", {
-        name: "Enable Embedded Analytics JS toggle",
+        name: "Enable modular embedding toggle",
       }),
     ).toBeInTheDocument();
   });
@@ -48,7 +50,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     // Enable Embedded Analytics JS
     const toggle = await screen.findByRole("switch", {
-      name: "Enable Embedded Analytics JS toggle",
+      name: "Enable modular embedding toggle",
     });
 
     await userEvent.click(toggle);
@@ -68,7 +70,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
     });
 
     const toggle = await screen.findByRole("switch", {
-      name: "Enable Embedded Analytics JS toggle",
+      name: "Enable modular embedding toggle",
     });
 
     await userEvent.click(toggle);
@@ -94,9 +96,7 @@ describe("EmbeddingSdkSettings (EE with Simple Embedding feature)", () => {
 
     const card = screen
       .getAllByTestId("sdk-setting-card")
-      .find((card) =>
-        card.textContent?.includes("Enable Embedded Analytics JS"),
-      );
+      .find((card) => card.textContent?.includes("Enable modular embedding"));
 
     expect(card).toHaveTextContent("New embed");
     expect(card).toHaveTextContent("Documentation");

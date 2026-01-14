@@ -6,9 +6,14 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import type { SnippetCollectionMenuProps } from "metabase/plugins";
 import { addUndo } from "metabase/redux/undo";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Box, Button, Icon, Menu } from "metabase/ui";
-
-import S from "./SnippetCollectionMenu.module.css";
+import {
+  ActionIcon,
+  Box,
+  FixedSizeIcon,
+  Icon,
+  Menu,
+  Tooltip,
+} from "metabase/ui";
 
 export function SnippetCollectionMenu({
   collection,
@@ -53,20 +58,21 @@ export function SnippetCollectionMenu({
     }
   };
 
+  const optionsLabel = t`Snippet folder options`;
+
   return (
-    <Box onClick={(e) => e.stopPropagation()} className={S.root}>
+    <Box onClick={(e) => e.stopPropagation()}>
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button
-            variant="subtle"
-            p={0}
-            h={20}
-            w={20}
-            c="text-medium"
-            aria-label={t`Collection options`}
+          <Tooltip
+            label={optionsLabel}
+            onClick={(e) => e.stopPropagation()}
+            openDelay={1000}
           >
-            <Icon name="ellipsis" size={16} />
-          </Button>
+            <ActionIcon aria-label={optionsLabel} size="md">
+              <FixedSizeIcon name="ellipsis" size={16} />
+            </ActionIcon>
+          </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
           {isArchived ? (

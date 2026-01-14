@@ -8,7 +8,6 @@
    [metabase.analytics.stats :as stats :refer [legacy-anonymous-usage-stats]]
    [metabase.app-db.core :as mdb]
    [metabase.channel.settings :as channel.settings]
-   [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.premium-features.settings :as premium-features.settings]
@@ -89,7 +88,7 @@
 
 (deftest anonymous-usage-stats-test
   (with-redefs [channel.settings/email-configured? (constantly false)
-                slack/slack-configured? (constantly false)]
+                channel.settings/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
@@ -127,7 +126,7 @@
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
     (with-redefs [channel.settings/email-configured? (constantly false)
-                  slack/slack-configured? (constantly false)]
+                  channel.settings/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
@@ -456,25 +455,25 @@
       (mt/with-temp [:model/Database _ {:engine :postgres}]
         (with-redefs [config/current-major-version (constantly 46)
                       config/current-minor-version (constantly 0)]
-          (is false? (@#'stats/csv-upload-available?)))
+          (is (false? (@#'stats/csv-upload-available?))))
 
         (with-redefs [config/current-major-version (constantly 47)
                       config/current-minor-version (constantly 1)]
-          (is true? (@#'stats/csv-upload-available?))))
+          (is (true? (@#'stats/csv-upload-available?))))))
 
-      (mt/with-temp [:model/Database _ {:engine :redshift}]
-        (with-redefs [config/current-major-version (constantly 49)
-                      config/current-minor-version (constantly 5)]
-          (is false? (@#'stats/csv-upload-available?)))
+    (mt/with-temp [:model/Database _ {:engine :redshift}]
+      (with-redefs [config/current-major-version (constantly 49)
+                    config/current-minor-version (constantly 5)]
+        (is (false? (@#'stats/csv-upload-available?))))
 
-        (with-redefs [config/current-major-version (constantly 49)
-                      config/current-minor-version (constantly 6)]
-          (is true? (@#'stats/csv-upload-available?))))
+      (with-redefs [config/current-major-version (constantly 49)
+                    config/current-minor-version (constantly 6)]
+        (is (true? (@#'stats/csv-upload-available?))))))
 
-      ;; If we can't detect the MB version, return nil
-      (with-redefs [config/current-major-version (constantly nil)
-                    config/current-minor-version (constantly nil)]
-        (is false? (@#'stats/csv-upload-available?))))))
+  ;; If we can't detect the MB version, return nil
+  (with-redefs [config/current-major-version (constantly nil)
+                config/current-minor-version (constantly nil)]
+    (is (false? (@#'stats/csv-upload-available?)))))
 
 (deftest starburst-legacy-test
   (testing "starburst with impersonation"
@@ -628,3 +627,21 @@
         (is (= "metabase" (get-in snowplow-settings [3 :value]))))
       (testing "converts boolean changed? to string"
         (is (= "default" (get-in snowplow-settings [4 :value])))))))
+
+(deftest document-metrics-test
+  (mt/with-empty-h2-app-db!
+    (testing "with no documents"
+      (is (=? {:documents {}}
+              (#'stats/document-metrics))))
+    (testing "with documents"
+      (mt/with-temp [:model/Document _ {}
+                     :model/Document _ {:archived true}]
+        (is (=? {:documents {:total 2
+                             :archived 1}}
+                (#'stats/document-metrics)))))))
+
+(deftest transform-metrics-test
+  (testing "ee-transform-metrics should return zeros for OSS"
+    (mt/with-empty-h2-app-db!
+      (is (= {:transforms 0, :transform_runs_last_24h 0}
+             (stats/ee-transform-metrics))))))

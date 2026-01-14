@@ -4,7 +4,6 @@ import { type SetupOpts, setup as baseSetup } from "./setup";
 
 const setup = (opts: SetupOpts = {}) =>
   baseSetup({
-    hasEnterprisePlugins: true,
     tokenFeatures: { embedding_sdk: opts.isEmbeddingSdkEnabled },
     ...opts,
   });
@@ -15,6 +14,11 @@ describe("EmbeddingSdkSettings (EE)", () => {
       isEmbeddingSdkEnabled: false,
       showSdkEmbedTerms: false,
       isHosted: true,
+      enterprisePlugins: [
+        "embedding-sdk",
+        "embedding_iframe_sdk",
+        "embedding_iframe_sdk_setup",
+      ],
     });
     expect(
       screen.getByText(
@@ -30,5 +34,19 @@ describe("EmbeddingSdkSettings (EE)", () => {
     expect(
       alertInfo.getByText("implement JWT or SAML SSO"),
     ).toBeInTheDocument();
+  });
+
+  it("should show Tenants in related settings when tenants feature is available", async () => {
+    await setup({
+      tokenFeatures: { tenants: true },
+      enterprisePlugins: [
+        "embedding-sdk",
+        "embedding_iframe_sdk",
+        "embedding_iframe_sdk_setup",
+        "tenants",
+      ],
+    });
+
+    expect(screen.getByText("Tenants")).toBeInTheDocument();
   });
 });

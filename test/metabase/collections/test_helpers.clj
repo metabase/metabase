@@ -23,7 +23,7 @@
                  :type collection/library-collection-type
                  {:type nil})
      (t2/update! (t2/table-name :model/Collection)
-                 :type collection/library-models-collection-type
+                 :type collection/library-data-collection-type
                  {:type nil})
      (t2/update! (t2/table-name :model/Collection)
                  :type collection/library-metrics-collection-type
@@ -35,5 +35,5 @@
          ;; Clean up any created library collections
          (t2/delete! :model/Collection
                      :type [:in [collection/library-collection-type
-                                 collection/library-models-collection-type
+                                 collection/library-data-collection-type
                                  collection/library-metrics-collection-type]])))))

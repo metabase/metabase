@@ -144,19 +144,16 @@ describe("Search", () => {
       TablePicker.getTable(table).should("be.visible");
     });
 
-    TablePicker.getDatabase(sampleDatabaseName).click();
-    TablePicker.getDatabase(sampleDatabaseName).click();
+    TablePicker.getDatabaseToggle(sampleDatabaseName).click();
     sampleDbTables.forEach((table) => {
       TablePicker.getTable(table).should("not.exist");
     });
 
     TablePicker.getTable("Animals").should("have.length", 2);
-    TablePicker.getSchema(domesticSchema).click();
-    TablePicker.getSchema(domesticSchema).click();
+    TablePicker.getSchemaToggle(domesticSchema).click();
     TablePicker.getTable("Animals").should("have.length", 1);
 
-    TablePicker.getDatabase(postgres).click();
-    TablePicker.getDatabase(postgres).click();
+    TablePicker.getDatabaseToggle(postgres).click();
     TablePicker.getTables().should("have.length", 0);
     TablePicker.getDatabases().should("have.length", 2);
   });

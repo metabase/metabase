@@ -8,6 +8,7 @@ import {
 } from "react";
 import { match } from "ts-pattern";
 
+import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
@@ -35,8 +36,12 @@ declare global {
 }
 
 const SdkIframeEmbedPreviewInner = () => {
-  const { experience, settings, guestEmbedSignedTokenForPreview } =
-    useSdkIframeEmbedSetupContext();
+  const {
+    isSimpleEmbedFeatureAvailable,
+    experience,
+    settings,
+    guestEmbedSignedTokenForPreview,
+  } = useSdkIframeEmbedSetupContext();
   const [isLoading, setIsLoading] = useState(true);
 
   const instanceUrl = useSetting("site-url");
@@ -60,7 +65,11 @@ const SdkIframeEmbedPreviewInner = () => {
     }
   }, []);
 
-  const derivedTheme = useMemo(() => {
+  const theme = useMemo(() => {
+    if (settings.theme?.preset) {
+      return applyThemePreset(settings.theme);
+    }
+
     // TODO(EMB-696): There is a bug in the SDK where if we set the theme back to undefined,
     // some color will not be reset to the default (e.g. text color, CSS variables).
     // We can remove this block once EMB-696 is fixed.
@@ -74,20 +83,23 @@ const SdkIframeEmbedPreviewInner = () => {
       ),
     };
 
-    return getDerivedDefaultColorsForEmbedFlow(
-      settings.theme ?? defaultTheme,
-      applicationColors ?? undefined,
-    );
-  }, [applicationColors, settings.theme]);
+    const derivedTheme = getDerivedDefaultColorsForEmbedFlow({
+      isSimpleEmbedFeatureAvailable,
+      theme: settings.theme ?? defaultTheme,
+      applicationColors: applicationColors ?? undefined,
+    });
+
+    return derivedTheme;
+  }, [isSimpleEmbedFeatureAvailable, applicationColors, settings.theme]);
 
   const metabaseConfig = useMemo(
     () => ({
       instanceUrl,
-      theme: derivedTheme,
+      theme,
       useExistingUserSession: true,
       isGuest: settings.isGuest,
     }),
-    [instanceUrl, derivedTheme, settings.isGuest],
+    [instanceUrl, theme, settings.isGuest],
   );
 
   // initial configuration, needed so that the element finds the config on first render
@@ -135,7 +147,7 @@ const SdkIframeEmbedPreviewInner = () => {
     <Card
       className={S.EmbedPreviewIframe}
       id="iframe-embed-container"
-      bg={settings.theme?.colors?.background}
+      style={{ backgroundColor: theme?.colors?.background }}
       h="100%"
       ref={containerRef}
       pos="relative"
@@ -161,7 +173,7 @@ const SdkIframeEmbedPreviewInner = () => {
 
       <EmbedPreviewLoadingOverlay
         isVisible={isLoading}
-        bg={settings.theme?.colors?.background}
+        bg={theme?.colors?.background}
       />
     </Card>
   );

@@ -6,6 +6,7 @@ import { useSetting } from "metabase/common/hooks";
 import { trackEmbedWizardOpened } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useEmbeddingParameters } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import { useGetGuestEmbedSignedToken } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-get-guest-embed-signed-token";
+import { useIsSsoEnabledAndConfigured } from "metabase/embedding/embedding-iframe-sdk-setup/hooks/use-is-sso-enabled-and-configured";
 import {
   PLUGIN_EMBEDDING_IFRAME_SDK_SETUP,
   type SdkIframeEmbedSetupModalInitialState,
@@ -20,6 +21,7 @@ import {
   useGetCurrentResource,
   useParametersValues,
   useRecentItems,
+  useSdkIframeEmbedNavigation,
 } from "../hooks";
 import { useSdkIframeEmbedSettings } from "../hooks/use-sdk-iframe-embed-settings";
 import type { SdkIframeEmbedSetupStep } from "../types";
@@ -37,13 +39,15 @@ export const SdkIframeEmbedSetupProvider = ({
   onClose,
 }: SdkIframeEmbedSetupProviderProps) => {
   const isSimpleEmbedFeatureAvailable =
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
 
   const isSimpleEmbeddingEnabled = useSetting("enable-embedding-simple");
   const isSimpleEmbeddingTermsAccepted = !useSetting("show-simple-embed-terms");
 
   const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
   const isGuestEmbedsTermsAccepted = !useSetting("show-static-embed-terms");
+
+  const isSsoEnabledAndConfigured = useIsSsoEnabledAndConfigured();
 
   useMount(() => {
     trackEmbedWizardOpened();
@@ -92,6 +96,7 @@ export const SdkIframeEmbedSetupProvider = ({
     modelCount,
     isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
   });
 
   // Which embed experience are we setting up?
@@ -141,20 +146,43 @@ export const SdkIframeEmbedSetupProvider = ({
     embeddingParameters,
   });
 
+  const { handleNext, handleBack, canGoBack, isFirstStep, isLastStep } =
+    useSdkIframeEmbedNavigation({
+      isSimpleEmbedFeatureAvailable,
+      isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
+      initialState,
+      experience,
+      resource,
+      currentStep,
+      defaultStep,
+      setCurrentStep,
+      settings,
+      defaultSettings,
+      embeddingParameters,
+    });
+
   const value: SdkIframeEmbedSetupContextType = {
     isSimpleEmbedFeatureAvailable,
     isSimpleEmbeddingEnabled,
     isSimpleEmbeddingTermsAccepted,
     isGuestEmbedsEnabled,
     isGuestEmbedsTermsAccepted,
+    isSsoEnabledAndConfigured,
     currentStep,
     setCurrentStep,
+    handleNext,
+    handleBack,
+    canGoBack,
+    isFirstStep,
+    isLastStep,
     initialState,
     experience,
     resource,
     isError,
     isLoading,
     isFetching,
+    isRecentsLoading,
     settings,
     defaultSettings,
     replaceSettings,

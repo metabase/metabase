@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -913,10 +914,19 @@
                                      :name   table-name}}]
             (test-transform-revisions :put (str "ee/transform/" transform-id) widget-req 2)))))))
 
+(defmethod driver/database-supports? [::driver/driver ::extract-columns-from-query]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:clickhouse :redshift :bigquery-cloud-sdk :snowflake]]
+  (defmethod driver/database-supports? [driver ::extract-columns-from-query]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel extract-columns-from-query-test
   (testing "POST /api/ee/transform/extract-columns"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :transforms/table)
-                           :clickhouse :redshift :bigquery-cloud-sdk)
+    (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table
+                                                           ::extract-columns-from-query]})
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
           (letfn [(make-native-query [sql]
@@ -995,20 +1005,42 @@
           (is (false? (:is_simple response)))
           (is (= "Contains a CTE" (:reason response))))))))
 
-(deftest permissions-test
-  (testing "Transform endpoints require superuser"
-    (mt/with-premium-features #{:transforms}
-      (mt/with-temp [:model/Transform transform {}]
-        (testing "Regular users get 403"
-          (mt/user-http-request :rasta :get 403 "ee/transform")
-          (mt/user-http-request :rasta :get 403 (str "ee/transform/" (:id transform)))
-          (mt/user-http-request :rasta :post 403 "ee/transform"
-                                {:name   "Test"
-                                 :source {:type  "query"
-                                          :query {:database (mt/id)
-                                                  :type     "native"
-                                                  :native   {:query "SELECT 1"}}}
-                                 :target {:type "table" :name "test_table"}})
-          (mt/user-http-request :rasta :put 403 (str "ee/transform/" (:id transform))
-                                {:name "Updated"})
-          (mt/user-http-request :rasta :delete 403 (str "ee/transform/" (:id transform))))))))
+;;; ------------------------------------------------------------
+;;; Collection Items Integration Tests
+;;; ------------------------------------------------------------
+
+(deftest collection-items-include-transforms-test
+  (testing "GET /api/collection/:id/items"
+    (testing "Includes transforms in collection items"
+      (mt/with-premium-features #{:transforms}
+        (mt/with-temp [:model/Collection {collection-id :id} {:name "Transforms Collection"
+                                                              :namespace :transforms}
+                       :model/Transform  {transform-id :id}
+                       {:name "Test Transform"
+                        :description "A test transform"
+                        :collection_id collection-id}]
+          ;; Test 1: Transform appears in unfiltered results
+          (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                   (format "collection/%d/items" collection-id)))]
+            (is (= 1 (count items)))
+            (is (= "transform" (:model (first items))))
+            (is (= "Test Transform" (:name (first items)))))
+
+          ;; Test 2: Transform appears when filtered by models=transform
+          (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                   (format "collection/%d/items" collection-id)
+                                                   :models "transform"))]
+            (is (= 1 (count items)))
+            (is (= transform-id (:id (first items)))))
+
+          ;; Test 3: Transform NOT returned when filtering for other models only
+          (let [items (:data (mt/user-http-request :crowberto :get 200
+                                                   (format "collection/%d/items" collection-id)
+                                                   :models "card"))]
+            (is (empty? items)))
+
+          ;; Test 4: Non-admin users don't see transforms
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
+          (let [items (:data (mt/user-http-request :rasta :get 200
+                                                   (format "collection/%d/items" collection-id)))]
+            (is (empty? items))))))))

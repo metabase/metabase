@@ -31,7 +31,7 @@ export function SharedCombinedEmbeddingSettings({
   showContentTranslationSettings,
 }: Props) {
   const isSimpleEmbedFeatureAvailable =
-    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isFeatureEnabled();
+    PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled();
   const isGuestEmbedsEnabled = useSetting("enable-embedding-static");
 
   const upgradeUrl = useSelector((state) =>
@@ -47,8 +47,8 @@ export function SharedCombinedEmbeddingSettings({
   return (
     <>
       <EmbeddingSettingsCard
-        title={t`Guest embeds`}
-        description={t`A secure way to embed charts and dashboards when you don’t want to offer ad-hoc querying or chart drill-through.`}
+        title={t`Enable guest embeds`}
+        description={t`A secure way to embed charts and dashboards, without single sign-on, when you don’t want to offer ad-hoc querying or chart drill-through. Enables modular embedding and static embedding.`}
         settingKey="enable-embedding-static"
         actionButton={<NewEmbedButton />}
         dependentSettingKeys={dependentSettingKeys}
@@ -65,7 +65,7 @@ export function SharedCombinedEmbeddingSettings({
           buttonLink={upgradeUrl}
           dismissible
         >
-          <Text c="text-medium" lh="md">
+          <Text c="text-secondary" lh="md">
             {t`Embed charts, dashboards with drill-throughs, or even the query builder into your own application using customizable components. Secure your embeds with single sign-on.`}
           </Text>
         </UpsellBanner>

@@ -58,7 +58,7 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"missing required parameters: #\{:x\}"
                             (substitute nil [(param :x)]))))
-    (testing "params preceeded or followed by strings should get combined into a single string"
+    (testing "params preceded or followed by strings should get combined into a single string"
       (is (= "2100"
              (substitute {:x 100} ["2" (param :x)]))
           "\"2{{x}}\" with x = 100 should be replaced with string \"2100\""))
@@ -480,3 +480,72 @@
                                                                             :snippet-name "first 3 checkins"
                                                                             :snippet-id   (:id snippet)}}}
                   :parameters []}))))))))
+
+(deftest ^:parallel field-filter-variable-with-alias-test
+  (testing "native query with field filter variable and a field alias works"
+    (mt/test-driver :mongo
+      (let [query (mt/native-query
+                   {:collection "orders"
+                    :query (json/encode
+                            [{"$lookup" {"from" "products"
+                                         "localField" "product_id"
+                                         "foreignField" "_id"
+                                         "as" "join_alias_Products"}}
+                             {"$unwind" "$join_alias_Products"}
+                             {"$match" (json/raw-json-generator "{{category_filter}}")}
+                             {"$count" "count"}])
+                    :template-tags {"category_filter" {:id "category_filter_id"
+                                                       :name "category_filter"
+                                                       :display-name "Category Filter"
+                                                       :type :dimension
+                                                       :dimension [:field (mt/id :products :category) nil]
+                                                       :alias "join_alias_Products.category"
+                                                       :widget-type :string/=
+                                                       :default ["Gizmo"]}}})]
+        (is (seq (-> query qp/process-query mt/rows)))))))
+
+(deftest ^:parallel field-filter-date-range-with-alias-test
+  (testing "native query with date range filter and a field alias works"
+    (mt/test-driver :mongo
+      (let [query (mt/native-query
+                   {:collection "orders"
+                    :query (json/encode
+                            [{"$lookup" {"from" "products"
+                                         "localField" "product_id"
+                                         "foreignField" "_id"
+                                         "as" "join_alias_Products"}}
+                             {"$unwind" "$join_alias_Products"}
+                             {"$match" (json/raw-json-generator "{{date_filter}}")}
+                             {"$count" "count"}])
+                    :template-tags {"date_filter" {:id "date_filter_id"
+                                                   :name "date_filter"
+                                                   :display-name "Date Filter"
+                                                   :type :dimension
+                                                   :dimension [:field (mt/id :products :created_at) nil]
+                                                   :alias "join_alias_Products.created_at"
+                                                   :widget-type :date/all-options
+                                                   :default "past10years"}}})]
+        (is (seq (-> query qp/process-query mt/rows)))))))
+
+(deftest ^:parallel field-filter-single-date-with-alias-test
+  (testing "native query with date field filter and a field alias works"
+    (mt/test-driver :mongo
+      (let [query (mt/native-query
+                   {:collection "orders"
+                    :query (json/encode
+                            [{"$lookup" {"from" "products"
+                                         "localField" "product_id"
+                                         "foreignField" "_id"
+                                         "as" "join_alias_Products"}}
+                             {"$unwind" "$join_alias_Products"}
+                             {"$match" (json/raw-json-generator "{{date_filter}}")}
+                             {"$count" "count"}])
+                    :template-tags {"date_filter" {:id "date_filter_id"
+                                                   :name "date_filter"
+                                                   :display-name "Date Filter"
+                                                   :type :dimension
+                                                   :dimension [:field (mt/id :products :created_at) nil]
+                                                   :alias "join_alias_Products.created_at"
+                                                   :widget-type :date/single
+                                                   :default "2019-04-02"}}})]
+        (is (seq (-> query qp/process-query mt/rows)))))))

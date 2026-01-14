@@ -1,7 +1,7 @@
 (ns metabase.lib.underlying
   "Helpers for getting at \"underlying\" or \"top-level\" queries and columns.
   This logic is shared by a handful of things like drill-thrus."
-  (:refer-clojure :exclude [empty? #?(:clj for)])
+  (:refer-clojure :exclude [empty? not-empty #?(:clj for)])
   (:require
    [clojure.set :as set]
    [metabase.lib.aggregation :as lib.aggregation]
@@ -16,7 +16,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [empty? #?(:clj for)]]))
+   [metabase.util.performance :refer [empty? not-empty #?(:clj for)]]))
 
 (mu/defn- pop-until-aggregation-or-breakout :- [:tuple [:maybe ::lib.schema/query] [:int {:max -1}]]
   "Strips off any trailing stages that do not contain aggregations or breakouts.
@@ -138,3 +138,17 @@
    column :- [:maybe ::lib.schema.metadata/column]]
   (and (not (aggregation-sourced? column))
        (aggregation-sourced? query column)))
+
+(mu/defn traceable-dimensions :- [:maybe [:sequential :map]]
+  "Filter dimensions to only those whose columns can be traced back to the top-level query.
+
+  Returns nil if the result would be empty. This is used by drill-thrus to ensure they don't try to create filters
+  on columns (like expressions defined in later stages) that don't exist in the top-level query.
+
+  See issue #66715."
+  [query :- ::lib.schema/query
+   dimensions :- [:maybe [:sequential :map]]]
+  (not-empty
+   (for [dim   dimensions
+         :when (top-level-column query (:column dim))]
+     dim)))

@@ -89,6 +89,10 @@
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -170,6 +174,10 @@
   (let [card-id (api/check-404 (t2/select-one-pk :model/Card :public_uuid uuid, :archived false))]
     (apply process-query-for-card-with-id card-id export-format parameters options)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -181,7 +189,12 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
   credentials. Public sharing must be enabled."
@@ -250,6 +263,10 @@
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid"
   "Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
@@ -292,6 +309,10 @@
       (binding [api/*current-user-id* nil]
         (m/mapply qp.dashboard/process-query-for-dashcard options)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
@@ -311,6 +332,10 @@
      :export-format :api
      :parameters    parameters)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
                                :export-format qp.schema/export-formats-regex]
   "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the
@@ -344,6 +369,10 @@
                               :format-rows?          format_rows
                               :pivot?                pivot_results}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
   [{:keys [uuid dashcard-id]} :- [:map
@@ -359,6 +388,10 @@
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Execute the associated Action in the context of a `Dashboard` and `DashboardCard` that includes it.
 
@@ -398,6 +431,10 @@
                          :height      height
                          :frameborder 0}]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/oembed"
   "oEmbed endpoint used to retrieve embed code and metadata for a (public) Metabase URL."
   [_route-params
@@ -420,6 +457,10 @@
 
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/action/:uuid"
   "Fetch a publicly-accessible Action. Does not require auth credentials. Public sharing must be enabled."
   [{:keys [uuid]} :- [:map
@@ -435,6 +476,10 @@
 
 ;;; ------------------------------------------------ Param Values -------------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/values"
   "Fetch values for a parameter on a public card."
   [{:keys [uuid param-key]} :- [:map
@@ -445,6 +490,10 @@
     (request/as-admin
       (queries/card-param-values card param-key))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
   [{:keys [uuid param-key query]} :- [:map
@@ -456,6 +505,10 @@
     (request/as-admin
       (queries/card-param-values card param-key query))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of card with UUID `uuid`."
   [{:keys [uuid param-key]} :- [:map
@@ -466,6 +519,10 @@
     (request/as-admin
       (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
   [{:keys [uuid param-key]} :- [:map
@@ -477,6 +534,10 @@
       (binding [qp.perms/*param-values-query* true]
         (parameters.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [{:keys [uuid param-key query]} :- [:map
@@ -489,6 +550,10 @@
       (binding [qp.perms/*param-values-query* true]
         (parameters.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/dashboard/:uuid/params/:param-key/remapping"
   "Fetch the remapped value for the given `value` of parameter with ID `:param-key` of dashboard with UUID `uuid`."
   [{:keys [uuid param-key]} :- [:map
@@ -503,6 +568,11 @@
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
 ;; TODO -- why do these endpoints START with `/pivot/` whereas the version in Dash
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
@@ -513,6 +583,10 @@
   (process-query-for-card-with-public-uuid uuid :api (json/decode+kw parameters)
                                            :qp qp.pivot/run-pivot-query))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
   sharing must be enabled."
@@ -543,6 +617,10 @@
                            :attempt-ttl-ms 1000
                            :delay-exponent 1))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/action/:uuid/execute"
   "Execute the Action.
 
@@ -580,6 +658,10 @@
 
 ;;; ----------------------------------------------------- Map Tiles --------------------------------------------------
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tiles/card/:uuid/:zoom/:x/:y"
   "Generates a single tile image for a publicly-accessible Card using the map visualization. Does not require auth
   credentials. Public sharing must be enabled."
@@ -602,6 +684,10 @@
     (request/as-admin
       (api.tiles/process-tiles-query-for-card card-id parameters zoom x y lat-field lon-field))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/tiles/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a Card using the map visualization in a publicly-accessible Dashboard. Does not
   require auth credentials. Public sharing must be enabled."
@@ -625,6 +711,115 @@
         lon-field    (json/decode+kw lonField)]
     (request/as-admin
       (api.tiles/process-tiles-query-for-dashcard dashboard-id dashcard-id card-id parameters zoom x y lat-field lon-field))))
+
+;;; ------------------------------------------------ Public Documents -------------------------------------------------
+
+(defn- remove-document-non-public-columns
+  "Remove sensitive fields from a document before exposing it publicly.
+
+  We filter out collection_id, creator_id, public_uuid, and other sensitive fields to prevent unauthenticated users
+  from discovering internal organizational structure, permissions boundaries, or who created the document. Only the
+  document content itself, basic metadata, and embedded cards are safe to expose publicly."
+  [document]
+  (select-keys document [:id :name :document :created_at :updated_at :cards]))
+
+(defn- public-document
+  "Fetch a public document with all embedded cards hydrated upfront.
+
+  We hydrate cards eagerly (rather than requiring separate requests per card) to avoid N+1 queries and provide a
+  consistent experience with public dashboards. This also allows us to filter sensitive fields from all cards at
+  once before exposing them to unauthenticated users. The document and all cards must not be archived to be
+  accessible publicly."
+  [& conditions]
+  (let [document (-> (api/check-404 (apply t2/select-one [:model/Document :id :name :document :content_type :created_at :updated_at]
+                                           :archived false, conditions))
+                     ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
+                     (t2/hydrate :cards))]
+    (-> document
+        ;; Filter sensitive fields from all cards before exposing publicly
+        (update :cards #(update-vals % remove-card-non-public-columns))
+        (dissoc :content_type)
+        remove-document-non-public-columns)))
+
+(defn- validate-card-in-public-document
+  "Ensure a card is actually embedded in the specified public document before running queries.
+
+  We validate the document-card association to prevent users from querying arbitrary cards by guessing IDs. Only
+  cards explicitly embedded in the public document (via document_id FK) are accessible through public document
+  endpoints. This prevents bypassing collection permissions by accessing cards through public document routes."
+  [uuid card-id]
+  (let [document-id (api/check-404 (t2/select-one-pk :model/Document :public_uuid uuid :archived false))]
+    (api/check-404 (t2/select-one-pk :model/Card :id card-id :document_id document-id :archived false))))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/document/:uuid"
+  "Fetch a publicly-accessible Document. Does not require auth credentials. Public sharing must be enabled.
+
+  Returns a Document with sensitive fields removed (excludes collection_id, permissions, creator details, etc.).
+  Includes all embedded Cards with their metadata hydrated so the frontend doesn't need to make separate
+  requests for each card — just like public Dashboards do."
+  [{:keys [uuid]} :- [:map
+                      [:uuid ms/UUIDString]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (let [document (public-document :public_uuid uuid)]
+    (events/publish-event! :event/document-read {:object-id (:id document), :user-id api/*current-user-id*})
+    document))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/document/:uuid/card/:card-id"
+  "Run a query for a Card that's embedded in a public Document. Doesn't require auth credentials. Public sharing must
+  be enabled."
+  [{:keys [uuid card-id]} :- [:map
+                              [:uuid    ms/UUIDString]
+                              [:card-id ms/PositiveInt]]
+   {:keys [parameters]} :- [:map
+                            [:parameters {:optional true} [:maybe ms/JSONString]]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (validate-card-in-public-document uuid card-id)
+  ;; Run the query as admin since public documents are available to everyone anyway
+  (u/prog1 (process-query-for-card-with-id
+            card-id
+            :api
+            (json/decode+kw parameters)
+            :constraints (qp.constraints/default-query-constraints))
+    (events/publish-event! :event/card-read {:object-id card-id :user-id api/*current-user-id* :context :question})))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/document/:uuid/card/:card-id/:export-format"
+  "Fetch a Card embedded in a public Document and return query results in the specified format.
+  Does not require auth credentials. Public sharing must be enabled."
+  [{:keys [uuid card-id export-format]} :- [:map
+                                            [:uuid          ms/UUIDString]
+                                            [:card-id       ms/PositiveInt]
+                                            [:export-format ::qp.schema/export-format]]
+   _query-params
+   {:keys [parameters format_rows pivot_results]} :- [:map
+                                                      [:parameters    {:optional true} [:maybe [:or
+                                                                                                [:sequential ms/Map]
+                                                                                                ms/JSONString]]]
+                                                      [:format_rows   {:default false} ms/BooleanValue]
+                                                      [:pivot_results {:default false} ms/BooleanValue]]]
+  (public-sharing.validation/check-public-sharing-enabled)
+  (validate-card-in-public-document uuid card-id)
+  (process-query-for-card-with-id
+   card-id
+   export-format
+   (cond-> parameters
+     (string? parameters) json/decode+kw)
+   :constraints nil
+   :middleware {:process-viz-settings? true
+                :js-int-to-string?     false
+                :format-rows?          format_rows
+                :pivot?                pivot_results}))
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

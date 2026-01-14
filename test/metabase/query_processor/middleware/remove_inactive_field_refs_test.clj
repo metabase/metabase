@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.remove-inactive-field-refs-test
-  "See also [[metabase.query-processor-test.inactive-fields-test]] (for e2e tests related to inactive fields in other
+  "See also [[metabase.query-processor.inactive-fields-test]] (for e2e tests related to inactive fields in other
   situations)."
   (:require
    [clojure.test :refer :all]

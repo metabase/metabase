@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.fk-details-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
@@ -11,6 +11,8 @@
    [metabase.lib.test-util.metadata-providers.merged-mock :as merged-mock]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel fk-details-availability-test
   (testing "FK details is available for cell clicks on non-NULL FKs"

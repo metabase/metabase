@@ -39,6 +39,8 @@ function _PulsesListSidebar({
   editPulse,
   parameters,
 }) {
+  const createSubscriptionLabel = t`Set up a new schedule`;
+  const closeSidebarLabel = t`Close`;
   return (
     <Sidebar>
       <div
@@ -53,8 +55,9 @@ function _PulsesListSidebar({
         <Subhead>{t`Subscriptions`}</Subhead>
 
         <SidebarActions>
-          <Tooltip label={t`Set up a new schedule`}>
+          <Tooltip label={createSubscriptionLabel}>
             <Button
+              aria-label={createSubscriptionLabel}
               leftSection={<Icon name="add" size={16} />}
               variant="subtle"
               mr="1rem"
@@ -62,11 +65,12 @@ function _PulsesListSidebar({
             />
           </Tooltip>
 
-          <Tooltip label={t`Close`}>
+          <Tooltip label={closeSidebarLabel}>
             <Button
+              aria-label={closeSidebarLabel}
               leftSection={<Icon name="close" size={16} />}
               variant="subtle"
-              color="text-medium"
+              color="text-secondary"
               mr="-1rem"
               onClick={onCancel}
             />

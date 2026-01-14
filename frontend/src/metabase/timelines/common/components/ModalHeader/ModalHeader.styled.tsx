@@ -11,7 +11,7 @@ export const HeaderLink = styled.div`
   align-items: center;
   min-width: 0;
   margin-right: auto;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   cursor: ${(props) => props.onClick && "pointer"};
 
   &:hover {
@@ -19,11 +19,7 @@ export const HeaderLink = styled.div`
   }
 `;
 
-interface HeaderTitleProps {
-  tooltipMaxWidth?: string;
-}
-
-export const HeaderTitle = styled(Ellipsified)<HeaderTitleProps>`
+export const HeaderTitle = styled(Ellipsified)`
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: bold;
@@ -46,5 +42,5 @@ export const HeaderCloseButton = styled(IconButtonWrapper)`
   height: 36px;
   width: 36px;
   flex: 0 0 auto;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;

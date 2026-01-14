@@ -770,6 +770,8 @@ export function formatDateTimeForParameter(
     return m.format("[Q]Q-YYYY");
   } else if (unit === "day") {
     return m.format("YYYY-MM-DD");
+  } else if (unit === "hour" || unit === "minute") {
+    return m.format("YYYY-MM-DDTHH:mm");
   } else if (unit) {
     return formatDateToRangeForParameter(value, unit);
   }
@@ -787,17 +789,27 @@ export function formatDateToRangeForParameter(
   }
 
   const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  const end = getEndOfInterval(start, unit);
 
   if (!start.isValid() || !end.isValid()) {
     return String(value);
   }
 
-  const isSameDay = start.isSame(end, "day");
+  if (unit === "hour" || unit === "minute") {
+    return `${start.format("YYYY-MM-DDTHH:mm")}~${end.format("YYYY-MM-DDTHH:mm")}`;
+  }
 
+  const isSameDay = start.isSame(end, "day");
   return isSameDay
     ? start.format("YYYY-MM-DD")
     : `${start.format("YYYY-MM-DD")}~${end.format("YYYY-MM-DD")}`;
+}
+
+function getEndOfInterval(start: Dayjs, unit: DatetimeUnit | null) {
+  if (unit === "hour" || unit === "minute") {
+    return start.clone().add(1, unit);
+  }
+  return start.clone().endOf(unit);
 }
 
 export function normalizeDateTimeRangeWithUnit(
@@ -825,6 +837,193 @@ export function normalizeDateTimeRangeWithUnit(
   return [shiftedStart, shiftedEnd, shift];
 }
 
+/**
+ * Generates custom format specs for week ranges based on date_style setting.
+ * This allows week ranges to respect user's preferred date format (numeric vs text, component order, etc.)
+ */
+function getWeekFormatSpecsWithDateStyle(
+  dateStyle: string,
+  dateSeparator: string = "/",
+): DateRangeFormatSpec[] {
+  const M = DATE_RANGE_MONTH_PLACEHOLDER;
+  const D = "D";
+  const Y = "YYYY";
+
+  // Handle numeric date formats (M/D/YYYY, D/M/YYYY, YYYY/M/D)
+  if (dateStyle === "M/D/YYYY") {
+    return [
+      {
+        same: "month",
+        format: [`M${dateSeparator}D`, `D, ${Y}`],
+        removedYearFormat: [`M${dateSeparator}D`, D],
+        tests: {
+          verbose: {
+            output: "1/1–7, 2017",
+            input: ["2017-01-01", "2017-01-07"],
+          },
+        },
+      },
+      {
+        same: "year",
+        format: [`M${dateSeparator}D`, `M${dateSeparator}D, ${Y}`],
+        removedYearFormat: [`M${dateSeparator}D`, `M${dateSeparator}D`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1 – 5/14, 2017",
+            input: ["2017-01-01", "2017-05-14"],
+          },
+        },
+      },
+      {
+        same: null,
+        format: [
+          `M${dateSeparator}D${dateSeparator}${Y}`,
+          `M${dateSeparator}D${dateSeparator}${Y}`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1/2017 – 2/4/2018",
+            input: ["2017-01-01", "2018-02-04"],
+          },
+        },
+      },
+    ];
+  } else if (dateStyle === "D/M/YYYY") {
+    return [
+      {
+        same: "month",
+        format: [`D${dateSeparator}M`, `D, ${Y}`],
+        removedYearFormat: [`D${dateSeparator}M`, D],
+        tests: {
+          verbose: {
+            output: "1/1–7, 2017",
+            input: ["2017-01-01", "2017-01-07"],
+          },
+        },
+      },
+      {
+        same: "year",
+        format: [`D${dateSeparator}M`, `D${dateSeparator}M, ${Y}`],
+        removedYearFormat: [`D${dateSeparator}M`, `D${dateSeparator}M`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1 – 14/5, 2017",
+            input: ["2017-01-01", "2017-05-14"],
+          },
+        },
+      },
+      {
+        same: null,
+        format: [
+          `D${dateSeparator}M${dateSeparator}${Y}`,
+          `D${dateSeparator}M${dateSeparator}${Y}`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1/1/2017 – 4/2/2018",
+            input: ["2017-01-01", "2018-02-04"],
+          },
+        },
+      },
+    ];
+  } else if (dateStyle === "YYYY/M/D") {
+    return [
+      {
+        same: "month",
+        format: [`${Y}${dateSeparator}M${dateSeparator}D`, D],
+        removedYearFormat: [`M${dateSeparator}D`, D],
+        tests: {
+          verbose: {
+            output: "2017/1/1–7",
+            input: ["2017-01-01", "2017-01-07"],
+          },
+        },
+      },
+      {
+        same: "year",
+        format: [
+          `${Y}${dateSeparator}M${dateSeparator}D`,
+          `M${dateSeparator}D`,
+        ],
+        removedYearFormat: [`M${dateSeparator}D`, `M${dateSeparator}D`],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "2017/1/1 – 5/14",
+            input: ["2017-01-01", "2017-05-14"],
+          },
+        },
+      },
+      {
+        same: null,
+        format: [
+          `${Y}${dateSeparator}M${dateSeparator}D`,
+          `${Y}${dateSeparator}M${dateSeparator}D`,
+        ],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "2017/1/1 – 2018/2/4",
+            input: ["2017-01-01", "2018-02-04"],
+          },
+        },
+      },
+    ];
+  }
+
+  // Handle text-based date formats
+  if (dateStyle === "D MMMM, YYYY") {
+    // Day-first text format
+    const MD = `D ${M}`;
+    const MDY = `D ${M}, ${Y}`;
+    const DY = `D, ${Y}`;
+
+    return [
+      {
+        same: "month",
+        format: [MD, DY],
+        removedYearFormat: [MD, D],
+        tests: {
+          verbose: {
+            output: "1 January–7, 2017",
+            input: ["2017-01-01", "2017-01-07"],
+          },
+        },
+      },
+      {
+        same: "year",
+        format: [MD, MDY],
+        removedYearFormat: [MD, MD],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1 January – 14 May, 2017",
+            input: ["2017-01-01", "2017-05-14"],
+          },
+        },
+      },
+      {
+        same: null,
+        format: [MDY, MDY],
+        dashPad: " ",
+        tests: {
+          verbose: {
+            output: "1 January, 2017 – 4 February, 2018",
+            input: ["2017-01-01", "2018-02-04"],
+          },
+        },
+      },
+    ];
+  }
+
+  // Default to the existing week specs for MMMM D, YYYY and dddd, MMMM D, YYYY
+  return DATE_RANGE_FORMAT_SPECS.week;
+}
+
 /** This formats a time with unit as a date range */
 export function formatDateTimeRangeWithUnit(
   values: [DateVal] | [DateVal, DateVal],
@@ -847,7 +1046,17 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  const specs = DATE_RANGE_FORMAT_SPECS[unit];
+  let specs = DATE_RANGE_FORMAT_SPECS[unit];
+
+  // Use custom format specs for week unit when date_style is provided
+  if (unit === "week" && options.date_style && options.type === "cell") {
+    const customSpecs = getWeekFormatSpecsWithDateStyle(
+      options.date_style as string,
+      (options.date_separator as string) || "/",
+    );
+    specs = customSpecs;
+  }
+
   const defaultSpec = specs.find((spec) => spec.same === null);
   const matchSpec =
     specs.find((spec) => start.isSame(end, spec.same)) ?? defaultSpec;
@@ -1110,7 +1319,11 @@ export function formatDateTimeWithUnit(
   }
 
   if (unit === "week-of-year") {
-    return dayjs().localeData().ordinal(m.isoWeek()).slice(1, -1);
+    const ordinal = String(dayjs().localeData().ordinal(m.isoWeek()));
+    if (ordinal.startsWith("[") && ordinal.endsWith("]")) {
+      return ordinal.slice(1, -1);
+    }
+    return ordinal;
   }
 
   // expand "week" into a range in specific contexts

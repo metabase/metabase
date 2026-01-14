@@ -85,13 +85,13 @@ export function TableSelector({
           <Stack gap={0} align="start" justify="center">
             {table ? (
               <>
-                <Box fz="sm" c="text-medium" fw="normal">
+                <Box fz="sm" c="text-secondary" fw="normal">
                   {table?.db?.name} / {table?.schema}
                 </Box>
-                <Box c="text-dark">{table?.display_name}</Box>
+                <Box c="text-primary">{table?.display_name}</Box>
               </>
             ) : (
-              <Box c="text-dark">{t`Select a table…`}</Box>
+              <Box c="text-primary">{t`Select a table…`}</Box>
             )}
           </Stack>
         </Button>
@@ -102,14 +102,14 @@ export function TableSelector({
             pr="sm"
             aria-label={t`Remove this table`}
           >
-            <Icon name="close" c="text-dark" />
+            <Icon name="close" c="text-primary" />
           </ActionIcon>
         </Tooltip>
       </Group>
       {isOpened && (
         <DataPickerModal
           title={t`Pick a table`}
-          value={getDataPickerValue(table) as TablePickerValue}
+          value={getDataPickerValue(table)}
           databaseId={database}
           onChange={handleChange}
           onClose={close}
@@ -126,12 +126,14 @@ export function TableSelector({
   );
 }
 
-function getDataPickerValue(table: Table | undefined) {
+function getDataPickerValue(
+  table: Table | undefined,
+): TablePickerValue | undefined {
   if (!table) {
-    return { model: "table", id: null };
+    return;
   }
   return {
-    model: "table" as const,
+    model: "table",
     id: table.id,
     name: table.display_name,
     db_id: table.db_id,

@@ -15,6 +15,7 @@
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.postgres :as postgres]
    [metabase.driver.postgres.actions :as postgres.actions]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.actions-test :as sql-jdbc.actions-test]
@@ -1048,6 +1049,25 @@
                      (is (=? {:data {:rows [["Rasta" "good bird" "sad bird" "toucan"]]}}
                              (qp/process-query query))))))))))))))
 
+(deftest filtering-on-enum-from-source-bad-effective-type-test
+  (mt/test-driver
+    :postgres
+    (do-with-enums-db!
+     (fn [enums-db]
+       (mt/with-db enums-db
+         (testing "filtering on enum column should cast properly (#67440)"
+           (let [mp (-> (mt/metadata-provider)
+                        (lib.tu/merged-mock-metadata-provider
+                         {:fields [{:id (mt/id :birds :status)
+                                    :effective-type :type/Text}]}))
+                 query (as-> (lib/query mp (lib.metadata/table mp (mt/id :birds))) $q
+                         (lib/filter $q (lib/= (m/find-first (comp #{"status"} :name)
+                                                             (lib/filterable-columns $q))
+                                               "good bird")))
+                 sql (:query (qp.compile/compile query))]
+             (is (re-find #"CAST" sql))
+             (is (some? (mt/rows (qp/process-query query)))))))))))
+
 ;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-violate-not-null-constraint-test
   (testing "violate not null constraint"
@@ -1968,21 +1988,22 @@
                       (qp/process-query)
                       (mt/rows)))))))))
 
+(defn- pg-obj [type val]
+  (doto (PGobject.) (.setType type) (.setValue val)))
+
 (deftest pgobject-freeze-thaw-test
-  (letfn [(make-pgobject [type value]
-            (doto (PGobject.) (.setType type) (.setValue value)))
-          (test-pgobject-caching [obj]
+  (letfn [(test-pgobject-caching [obj]
             (is (= obj (-> obj nippy/freeze nippy/thaw))))]
     (testing "Simple PGobject instances can be frozen and thawed"
-      (test-pgobject-caching (make-pgobject "foo_type" "abc_val")))
+      (test-pgobject-caching (pg-obj "foo_type" "abc_val")))
     (testing "PGobjects in an array can be frozen and thawed"
-      (let [pg-obj-1 (make-pgobject "foo_type" "abc_val")
-            pg-obj-2 (make-pgobject "foo_type" "xyz_val")
+      (let [pg-obj-1 (pg-obj "foo_type" "abc_val")
+            pg-obj-2 (pg-obj "foo_type" "xyz_val")
             pg-obj-arr [pg-obj-1 pg-obj-2]]
         (test-pgobject-caching pg-obj-arr)))
     (testing "PGobjects in a map can be frozen and thawed"
-      (let [pg-obj (make-pgobject "foo_type" "abc_val")
-            pg-obj-map {:data [pg-obj] :metadata {:type "test"}}]
+      (let [pg-object (pg-obj "foo_type" "abc_val")
+            pg-obj-map {:data [pg-object] :metadata {:type "test"}}]
         (test-pgobject-caching pg-obj-map)))))
 
 (deftest canceled-query-no-stacktrace-test
@@ -2037,3 +2058,95 @@
             (is (= "ERROR: canceling statement due to user request" (:error response)))
             (let [bad-messages (into [] (cancel-messages) (messages))]
               (is (empty? bad-messages)))))))))
+
+(deftest bit-strings-can-be-filtered
+  (mt/test-driver :postgres
+    (mt/dataset (mt/dataset-definition
+                 "bit_string_dataset"
+                 [["bit_string_table"
+                   [{:field-name "single_bit", :base-type {:native "BIT"}}
+                    {:field-name "fixed_bit", :base-type {:native "BIT(8)"}}
+                    {:field-name "var_bit", :base-type {:native "VARBIT(16)"}}
+                    {:field-name "bit_varying", :base-type {:native "BIT VARYING(32)"}}]
+                   [[(pg-obj "BIT" "1") (pg-obj "BIT" "10101010") (pg-obj "BIT" "1101") (pg-obj "BIT" "111000111")]
+                    [(pg-obj "BIT" "0") (pg-obj "BIT" "00001111") (pg-obj "BIT" "10101") (pg-obj "BIT" "1001001")]
+                    [nil nil nil nil]]]])
+      (let [mp (mt/metadata-provider)
+            base-query (lib/query mp (lib.metadata/table mp (mt/id :bit_string_table)))]
+        (testing "can query all rows"
+          (is (= [[1 "1" "10101010" "1101" "111000111"]
+                  [2 "0" "00001111" "10101" "1001001"]
+                  [3 nil nil nil nil]]
+                 (mt/rows (qp/process-query base-query)))))
+        (testing "can filter by single_bit column"
+          (let [single-bit-col (mt/id :bit_string_table :single_bit)
+                query (-> base-query
+                          (lib/filter (lib/= (lib.metadata/field mp single-bit-col)
+                                             "1")))]
+            (is (= [[1 "1" "10101010" "1101" "111000111"]]
+                   (mt/rows (qp/process-query query))))))
+        (testing "can filter by fixed_bit column"
+          (let [fixed-bit-col (mt/id :bit_string_table :fixed_bit)
+                query (-> base-query
+                          (lib/filter (lib/= (lib.metadata/field mp fixed-bit-col)
+                                             "00001111")))]
+            (is (= [[2 "0" "00001111" "10101" "1001001"]]
+                   (mt/rows (qp/process-query query))))))
+        (testing "can filter by var_bit column"
+          (let [var-bit-col (mt/id :bit_string_table :var_bit)
+                query (-> base-query
+                          (lib/filter (lib/= (lib.metadata/field mp var-bit-col)
+                                             "1101")))]
+            (is (= [[1 "1" "10101010" "1101" "111000111"]]
+                   (mt/rows (qp/process-query query))))))
+        (testing "can filter by bit_varying column"
+          (let [bit-varying-col (mt/id :bit_string_table :bit_varying)
+                query (-> base-query
+                          (lib/filter (lib/= (lib.metadata/field mp bit-varying-col)
+                                             "1001001")))]
+            (is (= [[2 "0" "00001111" "10101" "1001001"]]
+                   (mt/rows (qp/process-query query))))))
+        (let [fixed-bit-col (mt/id :bit_string_table :fixed_bit)]
+          (testing "can filter with not equals"
+            (let [query (-> base-query
+                            (lib/filter (lib/!= (lib.metadata/field mp fixed-bit-col)
+                                                "00001111")))]
+              (is (= [[1 "1" "10101010" "1101" "111000111"]
+                      [3 nil nil nil nil]]
+                     (mt/rows (qp/process-query query))))))
+          (testing "can filter with is empty"
+            (let [query (-> base-query
+                            (lib/filter (lib/is-empty (lib.metadata/field mp fixed-bit-col))))]
+              (is (= [[3 nil nil nil nil]]
+                     (mt/rows (qp/process-query query))))))
+          (testing "can filter with is not empty"
+            (let [query (-> base-query
+                            (lib/filter (lib/not-empty (lib.metadata/field mp fixed-bit-col))))]
+              (is (= [[1 "1" "10101010" "1101" "111000111"]
+                      [2 "0" "00001111" "10101" "1001001"]]
+                     (mt/rows (qp/process-query query)))))))))))
+
+(deftest set-network-timeout-test
+  (mt/test-driver :postgres
+    (testing "network hangs are interrupted after *network-timeout-ms*"
+      (binding [driver.settings/*network-timeout-ms* 3000]
+        (is (thrown-with-msg?
+             org.postgresql.util.PSQLException
+             #"An I/O error occurred while sending to the backend"
+             (try
+               (sql-jdbc.execute/do-with-connection-with-options
+                driver/*driver* (mt/id) nil
+                (fn [^Connection conn]
+                  (with-open [stmt (.createStatement conn)]
+                    (.execute stmt "SELECT pg_sleep(6)"))))
+               (catch Exception e
+                 (is (true? (some #(instance? java.net.SocketTimeoutException %)
+                                  (u/full-exception-chain e))))
+                 (throw e)))))))
+    (testing "network hangs are not interrupted before *network-timeout-ms*"
+      (is (true?
+           (sql-jdbc.execute/do-with-connection-with-options
+            driver/*driver* (mt/id) nil
+            (fn [^Connection conn]
+              (with-open [stmt (.createStatement conn)]
+                (.execute stmt "SELECT pg_sleep(6)")))))))))

@@ -75,7 +75,7 @@ describe("Collections plugin utils", () => {
     });
 
     it("should return the default icon for a regular question", () => {
-      expect(getIcon({ model: "card" })).toEqual({ name: "table" });
+      expect(getIcon({ model: "card" })).toEqual({ name: "table2" });
     });
 
     describe("enterprise icons", () => {
@@ -89,6 +89,18 @@ describe("Collections plugin utils", () => {
         expect(
           getIcon({ model: "collection", authority_level: "official" }),
         ).toEqual({ name: "official_collection", color: "saturated-yellow" });
+      });
+
+      it("should return the correct icon for a remote synced collection", () => {
+        expect(
+          getIcon({ model: "collection", is_remote_synced: true }),
+        ).toEqual({ name: "synced_collection" });
+      });
+
+      it("should return the correct icon for a remote synced entity", () => {
+        expect(getIcon({ model: "dashboard", is_remote_synced: true })).toEqual(
+          { name: "dashboard" },
+        );
       });
 
       it("official collection in search", () => {

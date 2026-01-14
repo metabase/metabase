@@ -1,4 +1,5 @@
 (ns metabase.driver.mongo.parameters
+  (:refer-clojure :exclude [get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -15,7 +16,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf])
+   [metabase.util.performance :as perf :refer [get-in]])
   (:import
    (java.time ZoneOffset)
    (java.time.temporal Temporal)
@@ -63,24 +64,22 @@
     (pr-str x)))
 
 (mu/defn- field->name
-  ([field]
-   (field->name field true))
+  [field :- driver-api/schema.metadata.column
+   alias]
+  (let [name (if (str/blank? alias)
+               (mongo.qp/field->name field ".")
+               alias)]
+    (pr-str name)))
 
-  ([field :- driver-api/schema.metadata.column
-    pr?]
-   ;; for native parameters we serialize and don't need the extra pr
-   (cond-> (mongo.qp/field->name field ".")
-     pr? pr-str)))
-
-(defn- substitute-one-field-filter-date-range [{field :field, {value :value} :value}]
+(defn- substitute-one-field-filter-date-range [{field :field, alias :alias, {value :value} :value}]
   (let [{:keys [start end]} (params.dates/date-string->range value {:inclusive-end? false})
         start-condition     (when start
                               (format "{%s: {$gte: %s}}"
-                                      (field->name field)
+                                      (field->name field alias)
                                       (param-value->str field (u.date/parse start ZoneOffset/UTC))))
         end-condition       (when end
                               (format "{%s: {$lt: %s}}"
-                                      (field->name field)
+                                      (field->name field alias)
                                       (param-value->str field (u.date/parse end ZoneOffset/UTC))))]
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
@@ -89,8 +88,8 @@
 
 ;; Field filter value is either params/no-value (handled in `substitute-param`, a map with `:type` and `:value`, or a
 ;; sequence of those maps.
-(defn- substitute-one-field-filter [{field :field, {param-type :type, value :value} :value, :as field-filter}]
-  ;; convert relative dates to approprate date range representations
+(defn- substitute-one-field-filter [{field :field, alias :alias, {param-type :type, value :value} :value, :as field-filter}]
+  ;; convert relative dates to appropriate date range representations
   (cond
     (params.dates/not-single-date-type? param-type)
     (substitute-one-field-filter-date-range field-filter)
@@ -100,18 +99,18 @@
          (string? value))
     (let [t (u.date/parse value)]
       (format "{$and: [%s, %s]}"
-              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str field t))
-              (format "{%s: {$lt: %s}}"  (field->name field) (param-value->str field (u.date/add t :day 1)))))
+              (format "{%s: {$gte: %s}}" (field->name field alias) (param-value->str field t))
+              (format "{%s: {$lt: %s}}"  (field->name field alias) (param-value->str field (u.date/add t :day 1)))))
 
     :else
-    (format "{%s: %s}" (field->name field) (param-value->str field value))))
+    (format "{%s: %s}" (field->name field alias) (param-value->str field value))))
 
 (mu/defn- substitute-field-filter
-  [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                [:field driver-api/schema.metadata.column]
-                                                                [:value [:map [:value :any]]]]]
+  [{field :field, alias :alias, {:keys [value]} :value, :as field-filter} :- [:map
+                                                                              [:field driver-api/schema.metadata.column]
+                                                                              [:value [:map [:value :any]]]]]
   (if (sequential? value)
-    (format "{%s: %s}" (field->name field) (param-value->str field value))
+    (format "{%s: %s}" (field->name field alias) (param-value->str field value))
     (substitute-one-field-filter field-filter)))
 
 (defn- substitute-native-query-snippet [[acc missing] v]
@@ -130,10 +129,13 @@
           (params.ops/operator? (get-in v [:value :type]))
           #_{:clj-kondo/ignore [:deprecated-var]}
           (let [param (:value v)
+                field-name (if (str/blank? (:alias v))
+                             (mongo.qp/field->name (:field v) ".")
+                             (:alias v))
                 compiled-clause (-> (assoc param
                                            :target
                                            [:dimension
-                                            [:field (field->name (:field v) false)
+                                            [:field field-name
                                              {:base-type (get-in v [:field :base-type])}]])
                                     params.ops/to-clause
                                     ;; desugar only impacts :does-not-contain -> [:not [:contains ... but it prevents

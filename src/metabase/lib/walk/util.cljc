@@ -78,6 +78,34 @@
            nil))))
     (not-empty (persistent! @metric-ids))))
 
+(mu/defn all-segment-ids :- [:maybe [:set {:min 1} ::lib.schema.id/segment]]
+  "Return a set of all segment IDs anywhere in the query."
+  [query]
+  (let [segment-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:segment _opts (id :guard pos-int?)]
+         (do
+           (vswap! segment-ids conj! id)
+           nil))))
+    (not-empty (persistent! @segment-ids))))
+
+(mu/defn all-measure-ids :- [:maybe [:set {:min 1} ::lib.schema.id/measure]]
+  "Return a set of all measure IDs anywhere in the query."
+  [query]
+  (let [measure-ids (volatile! (transient #{}))]
+    (lib.walk/walk-clauses
+     query
+     (fn [_query _path-type _stage-or-join-path clause]
+       (lib.util.match/match-lite clause
+         [:measure _opts (id :guard pos-int?)]
+         (do
+           (vswap! measure-ids conj! id)
+           nil))))
+    (not-empty (persistent! @measure-ids))))
+
 (defn- all-template-tag-card-ids [query]
   (not-empty
    (into #{}

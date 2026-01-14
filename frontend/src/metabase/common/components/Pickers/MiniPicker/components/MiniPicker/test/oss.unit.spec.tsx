@@ -45,6 +45,17 @@ describe("MiniPicker", () => {
     });
   });
 
+  it("shows 'Collections' when an adult decides you can't have access to Our analytics", async () => {
+    await setup({}, { hasAccessToRoot: false });
+
+    expect(await screen.findByText("Collections")).toBeInTheDocument();
+    expect(screen.queryByText("Our analytics")).not.toBeInTheDocument();
+
+    // Should still be able to navigate into collections
+    await userEvent.click(await screen.findByText("Collections"));
+    expect(await screen.findByText("more things")).toBeInTheDocument();
+  });
+
   describe("tables", () => {
     it("can pick a table from a db with multiple schemas", async () => {
       const { onChangeSpy } = await setup();
@@ -174,6 +185,7 @@ describe("MiniPicker", () => {
           name: "Rosings",
           collection_id: 101,
           collection: createMockCollection({
+            id: 101,
             effective_location: "/",
           }),
         }),
@@ -198,6 +210,34 @@ describe("MiniPicker", () => {
       await setup({ searchQuery: "e" });
       expect(await screen.findByText("Forster")).toBeInTheDocument();
       expect(await screen.findByText("Bingley")).toBeInTheDocument();
+    });
+
+    it("shows the collection name for collection items in search results", async () => {
+      await setup({ searchQuery: "bing" });
+      expect(await screen.findByText("Bingley")).toBeInTheDocument();
+      expect(await screen.findByText("Misc Metrics")).toBeInTheDocument();
+    });
+
+    it("shows the collection name for our analytics", async () => {
+      await setup({ searchQuery: "Fan" });
+      expect(await screen.findByText("Fanny")).toBeInTheDocument();
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+    });
+
+    it("shows db and schema names for table items in search results", async () => {
+      await setup({ searchQuery: "wick" });
+      expect(await screen.findByText("wickham")).toBeInTheDocument();
+      expect(await screen.findByText("london (lydia)")).toBeInTheDocument();
+    });
+
+    it("shows collection name for a table in a collection", async () => {
+      await setup({ searchQuery: "kit" });
+      expect(await screen.findByText("Kitty")).toBeInTheDocument();
+      expect(await screen.findByText("Misc Tables")).toBeInTheDocument();
+
+      // should not show table or schema
+      expect(screen.queryByText(/big_secret/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/also_secret/)).not.toBeInTheDocument();
     });
 
     it("properly filters search results", async () => {

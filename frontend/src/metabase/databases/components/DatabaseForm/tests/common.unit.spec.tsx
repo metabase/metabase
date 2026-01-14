@@ -61,7 +61,10 @@ describe("DatabaseForm", () => {
         ...TEST_ENGINES.h2,
         "details-fields":
           TEST_ENGINES.h2["details-fields"]?.map((field) => {
-            if (field.name === "is-destination-database") {
+            if (
+              field.type !== "group" &&
+              field.name === "is-destination-database"
+            ) {
               return {
                 name: "is-destination-database",
                 type: "hidden",
@@ -69,7 +72,10 @@ describe("DatabaseForm", () => {
               };
             }
 
-            if (field.name === "let-user-control-scheduling") {
+            if (
+              field.type !== "group" &&
+              field.name === "let-user-control-scheduling"
+            ) {
               return {
                 name: "let-user-control-scheduling",
                 type: "boolean",
@@ -106,6 +112,45 @@ describe("DatabaseForm", () => {
 
     expect(screen.getByPlaceholderText("Our H2")).toBeInTheDocument();
   });
+
+  describe("updating existing database", () => {
+    it("should mark form as dirty only when actual fields are changed (#66684)", async () => {
+      setup({
+        initialValues: {
+          id: 1,
+          name: "My Original H2 Database name",
+          details: {
+            db: "file:/somewhere",
+          },
+        },
+      });
+      const getSaveButton = () =>
+        screen.getByRole("button", { name: "Save changes" });
+      const getNameInput = () => screen.getByLabelText("Display name");
+      const getRefingerprintToggle = () =>
+        screen.getByLabelText(/Periodically refingerprint tables/);
+
+      expect(getSaveButton()).toBeDisabled();
+      await userEvent.click(screen.getByText("Show advanced options"));
+      // Still disabled after opening up advanced options
+      await waitFor(() => expect(getSaveButton()).toBeDisabled());
+
+      // Button gets enabled when a field is changed, and disabled again when it is reset
+      await userEvent.clear(getNameInput());
+      await userEvent.type(getNameInput(), "My updated name");
+      await waitFor(() => expect(getSaveButton()).toBeEnabled());
+
+      await userEvent.clear(getNameInput());
+      await userEvent.type(getNameInput(), "My Original H2 Database name");
+      await waitFor(() => expect(getSaveButton()).toBeDisabled());
+
+      // Check also for a toggle field in advanced options
+      await userEvent.click(getRefingerprintToggle());
+      await waitFor(() => expect(getSaveButton()).toBeEnabled());
+      await userEvent.click(getRefingerprintToggle());
+      await waitFor(() => expect(getSaveButton()).toBeDisabled());
+    });
+  });
 });
 
 describe("DatabaseForm with provider name", () => {
@@ -117,7 +162,7 @@ describe("DatabaseForm with provider name", () => {
     });
 
     const connectionString =
-      "jdbc:postgresql://user:passs@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
+      "jdbc:postgresql://user:pass@pooler.ap-southeast-1.aws.neon.tech:5432/mydb";
     await userEvent.type(
       screen.getByLabelText("Connection string (optional)"),
       connectionString,
@@ -142,7 +187,7 @@ describe("DatabaseForm with provider name", () => {
       },
     });
 
-    const connectionString = "jdbc:postgresql://user:passs@localhost:5432/mydb";
+    const connectionString = "jdbc:postgresql://user:pass@localhost:5432/mydb";
     await userEvent.type(
       screen.getByLabelText("Connection string (optional)"),
       connectionString,

@@ -1,0 +1,10 @@
+export const DEFAULT_ROW_HEIGHT = 44;
+export const DEFAULT_INDENT_WIDTH = 20;
+export const DEFAULT_OVERSCAN = 5;
+export const CHECKBOX_COLUMN_WIDTH = 32;
+export const EXPAND_BUTTON_WIDTH = 24;
+export const MIN_COLUMN_WIDTH = 50;
+export const MEASUREMENT_ROW_COUNT = 10;
+export const LONGEST_VALUES_SAMPLE_COUNT = 3;
+export const CELL_HORIZONTAL_PADDING = 24;
+export const TREE_CELL_BASE_PADDING = 16;

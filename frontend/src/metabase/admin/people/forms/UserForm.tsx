@@ -11,7 +11,10 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User, UserId } from "metabase-types/api";
 
@@ -21,11 +24,17 @@ const localUserSchema = Yup.object({
   email: Yup.string().email().required(Errors.required),
 });
 
+const externalUserSchema = localUserSchema.shape({
+  tenant_id: Yup.number().required(Errors.required),
+});
+
 interface UserFormProps {
   initialValues?: Partial<User>;
   onSubmit: (val: Partial<User>) => void;
   onCancel: () => void;
   submitText?: string;
+  external?: boolean;
+  edit?: boolean;
   userId?: UserId | null;
 }
 
@@ -34,12 +43,15 @@ export const UserForm = ({
   onSubmit,
   onCancel,
   submitText = t`Update`,
+  external = false,
+  edit = false,
   userId,
 }: UserFormProps) => {
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={localUserSchema}
+      validationSchema={external ? externalUserSchema : localUserSchema}
+      validateOnMount
       enableReinitialize
       onSubmit={onSubmit}
     >
@@ -70,7 +82,19 @@ export const UserForm = ({
             required
             mb="md"
           />
-          <FormGroupsWidget name="user_group_memberships" />
+          <FormGroupsWidget
+            name="user_group_memberships"
+            external={external}
+            title={PLUGIN_TENANTS.getFormGroupsTitle(external) ?? t`Groups`}
+          />
+          {external && (
+            <PLUGIN_TENANTS.FormTenantWidget
+              required
+              name="tenant_id"
+              placeholder={t`Select a tenant`}
+              disabled={edit}
+            />
+          )}
           <PLUGIN_ADMIN_USER_FORM_FIELDS.FormLoginAttributes userId={userId} />
           <FormFooter>
             <FormErrorMessage inline />

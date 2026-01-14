@@ -117,7 +117,7 @@
             ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
-;; These look like the macros from metabase.query-processor-test.expressions-test
+;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows

@@ -102,22 +102,22 @@ const UserCanAccessDataModel = connectedReduxRedirect<Props, State>({
   context: MetabaseReduxContext,
 });
 
-const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
-  wrapperDisplayName: "UserCanAccessTransforms",
-  redirectPath: "/unauthorized",
-  allowRedirectBack: false,
-  authenticatedSelector: (state) =>
-    PLUGIN_TRANSFORMS.canAccessTransforms(state),
-  redirectAction: routerActions.replace,
-  context: MetabaseReduxContext,
-});
-
 const UserCanAccessDataStudio = connectedReduxRedirect<Props, State>({
   wrapperDisplayName: "UserCanAccessDataStudio",
   redirectPath: "/unauthorized",
   allowRedirectBack: false,
   authenticatedSelector: (state) =>
     PLUGIN_DATA_STUDIO.canAccessDataStudio(state),
+  redirectAction: routerActions.replace,
+  context: MetabaseReduxContext,
+});
+
+const UserCanAccessTransforms = connectedReduxRedirect<Props, State>({
+  wrapperDisplayName: "UserCanAccessTransforms",
+  redirectPath: "/unauthorized",
+  allowRedirectBack: false,
+  authenticatedSelector: (state) =>
+    PLUGIN_TRANSFORMS.canAccessTransforms(state),
   redirectAction: routerActions.replace,
   context: MetabaseReduxContext,
 });
@@ -141,9 +141,10 @@ export const CanAccessOnboarding = UserCanAccessOnboarding(
   ({ children }) => children,
 );
 
+// Must be in sync with canAccessDataStudio in enterprise/frontend/src/metabase-enterprise/data-studio/utils.ts
 export const CanAccessDataStudio = MetabaseIsSetup(
   UserIsAuthenticated(
-    AvailableInEmbedding(UserCanAccessDataStudio(({ children }) => children)),
+    UserCanAccessDataStudio(AvailableInEmbedding(({ children }) => children)),
   ),
 );
 

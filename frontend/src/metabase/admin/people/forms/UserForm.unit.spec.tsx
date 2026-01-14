@@ -1,11 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import type { Tenant } from "metabase-types/api";
 import {
   createMockGroup,
+  createMockTenant,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -14,11 +17,11 @@ import { createMockState } from "metabase-types/store/mocks";
 import { UserForm } from "./UserForm";
 
 const GROUPS = [
-  createMockGroup(),
-  createMockGroup({ id: 2, name: "Administrators" }),
-  createMockGroup({ id: 3, name: "foo" }),
-  createMockGroup({ id: 4, name: "bar" }),
-  createMockGroup({ id: 5, name: "flamingos" }),
+  createMockGroup({ id: 1, magic_group_type: "all-internal-users" }),
+  createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
+  createMockGroup({ id: 3, name: "foo", magic_group_type: null }),
+  createMockGroup({ id: 4, name: "bar", magic_group_type: null }),
+  createMockGroup({ id: 5, name: "flamingos", magic_group_type: null }),
 ];
 
 const USER = createMockUser({
@@ -31,22 +34,39 @@ const USER = createMockUser({
   ],
 });
 
-const setup = ({ hasEnterprisePlugins = false, initialValues = USER } = {}) => {
+interface SetupOpts {
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  initialValues?: typeof USER;
+  external?: boolean;
+  tenants?: Tenant[];
+}
+
+const setup = ({
+  enterprisePlugins,
+  initialValues = USER,
+  external = false,
+  tenants = [] as Tenant[],
+}: SetupOpts = {}) => {
   const onSubmit = jest.fn();
   const onCancel = jest.fn();
 
   fetchMock.get("path:/api/permissions/group", GROUPS);
 
+  setupTenantEntpoints(tenants);
+
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
         sandboxes: true,
+        tenants: true,
       }),
     }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   renderWithProviders(
@@ -54,6 +74,7 @@ const setup = ({ hasEnterprisePlugins = false, initialValues = USER } = {}) => {
       onSubmit={onSubmit}
       onCancel={onCancel}
       initialValues={initialValues}
+      external={external}
     />,
     {
       storeInitialState: state,
@@ -173,7 +194,7 @@ describe("UserForm", () => {
 
     it("should show login attributes widget", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -188,7 +209,7 @@ describe("UserForm", () => {
 
     it("should allow you to add a login attribute", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -223,7 +244,7 @@ describe("UserForm", () => {
 
     it("should allow you to remove a login attribute", async () => {
       const { onSubmit } = setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -246,7 +267,7 @@ describe("UserForm", () => {
 
     it("should should not change the order of the inputs when working with numbers (#35316)", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
@@ -264,16 +285,16 @@ describe("UserForm", () => {
 
     it("should show errors messages and disable form submit when 2 login attributes have the same key (#30196)", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["sandboxes", "tenants"],
         initialValues: eeUser,
       });
 
       await userEvent.click(await screen.findByText("Add an attribute"));
 
       // We need a delay in typing into the form so that the error
-      // state is handled apropriately. Formik clears errors when you call
+      // state is handled appropriately. Formik clears errors when you call
       // setValue, so we need to ensure that no other setValue calls are in
-      // flight before typing the letter can causes the error.
+      // flight before typing the letter can cause the error.
       await userEvent.type(
         (await screen.findAllByPlaceholderText("Key"))[1],
         "team",
@@ -289,6 +310,74 @@ describe("UserForm", () => {
           await screen.findByRole("button", { name: "Update" }),
         ).toBeDisabled(),
       );
+    });
+  });
+
+  describe("Tenant users", () => {
+    const TENANTS = [
+      createMockTenant({ id: 1, name: "Acme Corp" }),
+      createMockTenant({ id: 2, name: "TechStart Inc" }),
+    ];
+
+    it("should require tenant_id for tenant users", async () => {
+      setup({
+        enterprisePlugins: ["sandboxes", "tenants"],
+        external: true,
+        tenants: TENANTS,
+        initialValues: {
+          ...USER,
+          tenant_id: null,
+        },
+      });
+
+      // Wait for form to render
+      await screen.findByLabelText(/Email/);
+
+      // The submit button should be disabled initially because tenant_id is required but not set
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+    });
+
+    it("should allow you to submit when tenant_id is selected", async () => {
+      const { onSubmit } = setup({
+        enterprisePlugins: ["sandboxes", "tenants"],
+        external: true,
+        tenants: TENANTS,
+        initialValues: {
+          ...USER,
+          tenant_id: null,
+        },
+      });
+
+      // Wait for form to render
+      await screen.findByLabelText(/Email/);
+
+      // Initially disabled because tenant_id is required but not set
+      expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
+
+      // Select a tenant
+      await userEvent.click(
+        await screen.findByRole("textbox", { name: "Tenant" }),
+      );
+      await userEvent.click(await screen.findByText("Acme Corp"));
+
+      // Now the button should be enabled because form is dirty and valid
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
+      });
+
+      // Submit the form
+      await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+      // Verify form was submitted with the selected tenant_id
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            ...USER,
+            tenant_id: 1,
+          }),
+          expect.anything(),
+        );
+      });
     });
   });
 });

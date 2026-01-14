@@ -16,6 +16,10 @@
 
 (set! *warn-on-reflection* true)
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
   Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single
@@ -65,7 +69,12 @@
                         :table_name  table-name}))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/db/attached_datawarehouse"
   "Sync the attached datawarehouse. Can provide in the body:
   - table_name and schema_name: both strings. Will look for an existing table and sync it, otherwise will try to find a
@@ -90,6 +99,10 @@
         (find-and-sync-new-table database table_name schema_name))))
   {:success true})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/db/:id/new-table"
   "Sync a new table without running a full database sync. Requires `schema_name` and `table_name`. Will throw an error
   if the table already exists in Metabase or cannot be found."

@@ -135,7 +135,8 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should allow you to show/hide and reorder columns", () => {
-      H.moveDnDKitElement(H.getDraggableElements().eq(0), { vertical: 100 });
+      H.getDraggableElements().eq(0).as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
 
       cy.findAllByTestId("legend-item").eq(0).should("contain.text", "Gadget");
       cy.findAllByTestId("legend-item").eq(1).should("contain.text", "Gizmo");
@@ -174,7 +175,8 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     it("should gracefully handle removing filtered items, and adding new items to the end of the list", () => {
-      H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+      H.getDraggableElements().first().as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
 
       H.getDraggableElements().eq(1).icon("close").click({ force: true }); // Hide Gizmo
 
@@ -953,8 +955,10 @@ describe("scenarios > visualizations > bar chart", () => {
         .should("have.length", 5);
 
       // Test can move series in/out of "Other" series
-      H.moveDnDKitElement(H.getDraggableElements().eq(3), { vertical: 150 }); // Move AZ into "Other"
-      H.moveDnDKitElement(H.getDraggableElements().eq(6), { vertical: -150 }); // Move CT out of "Other"
+      H.getDraggableElements().eq(3).as("AZ");
+      H.moveDnDKitElementByAlias("@AZ", { vertical: 150 }); // Move AZ into "Other"
+      H.getDraggableElements().eq(6).as("CT");
+      H.moveDnDKitElementByAlias("@CT", { vertical: -150 }); // Move CT out of "Other"
 
       H.queryBuilderMain()
         .findAllByTestId("legend-item")
@@ -980,7 +984,7 @@ describe("scenarios > visualizations > bar chart", () => {
 
       // Test "graph.other_category_aggregation_fn" for native queries
       H.openNotebook();
-      H.queryBuilderHeader().button("View SQL").click();
+      H.queryBuilderHeader().findByLabelText("View SQL").click();
       cy.findByTestId("native-query-preview-sidebar")
         .button("Convert this question to SQL")
         .click();
@@ -1040,6 +1044,49 @@ describe("scenarios > visualizations > bar chart", () => {
     H.popover().within(() => {
       cy.findByText("Goal:").should("exist");
       cy.findByText("87.5%").should("exist");
+    });
+  });
+
+  it("should display all axis labels for 12 months of data (metabase#60475)", () => {
+    cy.viewport(1600, 800);
+
+    // Create a bar chart showing count of orders by month for the last 12 months
+    H.visitQuestionAdhoc({
+      display: "bar",
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
+          ],
+          filter: [
+            "time-interval",
+            ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
+            -12,
+            "month",
+          ],
+        },
+        database: SAMPLE_DB_ID,
+      },
+    });
+
+    // Wait for the chart to render
+    cy.wait("@dataset");
+    H.echartsContainer().should("be.visible");
+
+    // Get all x-axis labels
+    H.echartsContainer().within(() => {
+      // ECharts renders axis labels as text elements in SVG
+      // We should see labels for all 12 months
+      cy.get('svg text[text-anchor="middle"]')
+        .should("have.length.at.least", 12)
+        .should("be.visible");
     });
   });
 });

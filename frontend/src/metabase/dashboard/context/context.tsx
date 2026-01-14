@@ -13,6 +13,7 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
 import type {
   Dashboard,
@@ -20,6 +21,7 @@ import type {
   DashboardId,
   ParameterValuesMap,
 } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -51,7 +53,6 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  token?: string | null;
   parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
@@ -63,13 +64,12 @@ export type DashboardContextOwnProps = {
   dashcardMenu?: DashboardCardMenu | null;
   dashboardActions?:
     | DashboardActionButtonList
-    | (({
-        isEditing,
-        downloadsEnabled,
-      }: Pick<
-        DashboardContextReturned,
-        "isEditing" | "downloadsEnabled"
-      >) => DashboardActionButtonList);
+    | ((
+        props: Pick<
+          DashboardContextReturned,
+          "isEditing" | "downloadsEnabled" | "withSubscriptions"
+        >,
+      ) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
   isGuestEmbed?: boolean;
   /**
@@ -119,7 +119,6 @@ const DashboardContextProviderInner = forwardRef(
   function DashboardContextProviderInner(
     {
       dashboardId,
-      token,
       parameterQueryParams = {},
       onLoad,
       onLoadWithoutCards,
@@ -138,6 +137,12 @@ const DashboardContextProviderInner = forwardRef(
       font = null,
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
+      /**
+       * TODO: (Kelvin 2025-11-17) See if we could communicate better how these default values are derived from. E.g. some are passed via the SDK props
+       * which already have default values and we're setting another default values here again. One thing we could do is to have a constant file that
+       * multiple places could refer to.
+       */
+      withSubscriptions = false,
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
@@ -180,6 +185,8 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
+    const { token } = useEmbeddingEntityContext();
+
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
       parameterQueryParams,
@@ -209,7 +216,7 @@ const DashboardContextProviderInner = forwardRef(
           token,
         }: {
           dashboardId: DashboardId;
-          token: string | null | undefined;
+          token: EntityToken | null | undefined;
         },
         option: FetchOption = {},
       ) => {
@@ -365,7 +372,11 @@ const DashboardContextProviderInner = forwardRef(
 
     const dashboardActions =
       typeof initDashboardActions === "function"
-        ? initDashboardActions({ isEditing, downloadsEnabled })
+        ? initDashboardActions({
+            isEditing,
+            downloadsEnabled,
+            withSubscriptions,
+          })
         : (initDashboardActions ?? null);
 
     // Determine if the dashboard is editable.
@@ -389,7 +400,6 @@ const DashboardContextProviderInner = forwardRef(
       <DashboardContext.Provider
         value={{
           dashboardId,
-          token,
           dashboard: dashboardWithFilteredCards,
           parameterQueryParams,
           onLoad,
@@ -417,6 +427,7 @@ const DashboardContextProviderInner = forwardRef(
           font,
           hideParameters,
           downloadsEnabled,
+          withSubscriptions,
           autoScrollToDashcardId,
           reportAutoScrolledToDashcard,
           cardTitled,

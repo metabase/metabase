@@ -21,7 +21,7 @@ export function printUsageProblemToConsole(problem: SdkUsageProblem | null) {
 
   const message =
     // eslint-disable-next-line no-literal-metabase-strings -- console messages should not be white-labelled
-    `%cMetabase Embedding SDK for React\n\n` +
+    `%cMetabase modular embedding SDK for React\n\n` +
     `%c${problem.message}\n` +
     `See the documentation for more information:\n\n` +
     `%c${problem.documentationUrl}\n\n`;

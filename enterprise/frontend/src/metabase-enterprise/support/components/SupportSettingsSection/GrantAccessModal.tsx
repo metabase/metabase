@@ -70,7 +70,7 @@ export const GrantAccessModal = ({ onClose }: GrantAccessModalProps) => {
             {t`You are about to allow a Metabase team member to access your instance.`}{" "}
           </Text>
           <Text fw="bold" display="inline">
-            {t`The support agent will have full admin access until the grant expires or is revoked.`}
+            {t`The Success Engineer will have full admin access until the grant expires or is revoked.`}
           </Text>
         </Box>
         <FormProvider initialValues={initialValues} onSubmit={handleSubmit}>

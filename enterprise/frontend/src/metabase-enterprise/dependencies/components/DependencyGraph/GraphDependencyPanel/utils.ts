@@ -10,7 +10,7 @@ import {
   getNodeLabel,
   getNodeLocationInfo,
   getNodeViewCount,
-} from "../utils";
+} from "../../../utils";
 
 import { FILTER_OPTIONS } from "./constants";
 import type {
@@ -42,36 +42,11 @@ function isMatchingSearchQuery(
 }
 
 const FILTERS: Record<FilterOption, FilterCallback> = {
-  verified: (node) => {
-    switch (node.type) {
-      case "card":
-      case "dashboard": {
-        const lastReview = node.data.moderation_reviews?.find(
-          (review) => review.most_recent,
-        );
-        return lastReview != null && lastReview.status === "verified";
-      }
-      default:
-        return false;
-    }
-  },
   "in-dashboard": (node) => {
     switch (node.type) {
       case "card": {
         const dashboard = node.data.dashboard;
         return dashboard != null;
-      }
-      default:
-        return false;
-    }
-  },
-  "in-official-collection": (node) => {
-    switch (node.type) {
-      case "card":
-      case "dashboard":
-      case "document": {
-        const collection = node.data.collection;
-        return collection != null && collection.authority_level === "official";
       }
       default:
         return false;
@@ -97,14 +72,6 @@ export function canFilterByOption(
 ): boolean {
   const type = getDependencyType(groupType);
   switch (option) {
-    case "verified":
-      switch (type) {
-        case "card":
-        case "dashboard":
-          return true;
-        default:
-          return false;
-      }
     case "in-dashboard":
       switch (type) {
         case "card":
@@ -112,7 +79,6 @@ export function canFilterByOption(
         default:
           return false;
       }
-    case "in-official-collection":
     case "not-in-personal-collection":
       switch (type) {
         case "card":
@@ -147,13 +113,13 @@ const COMPARATORS: Record<SortColumn, SortCallback> = {
     return label1.localeCompare(label2);
   },
   location: (node1, node2) => {
-    const parts1 = getNodeLocationInfo(node1) ?? [];
-    const parts2 = getNodeLocationInfo(node2) ?? [];
-    const minParts = parts1.length < parts2.length ? parts1 : parts2;
-    const result = minParts
-      .map((_link, i) => parts1[i].label.localeCompare(parts2[i].label))
+    const links1 = getNodeLocationInfo(node1)?.links ?? [];
+    const links2 = getNodeLocationInfo(node2)?.links ?? [];
+    const minLinks = links1.length < links2.length ? links1 : links2;
+    const result = minLinks
+      .map((_link, i) => links1[i].label.localeCompare(links2[i].label))
       .find((result) => result !== 0);
-    return result ?? parts1.length - parts2.length;
+    return result ?? links1.length - links2.length;
   },
   "view-count": (node1, node2) => {
     const count1 = getNodeViewCount(node1) ?? 0;

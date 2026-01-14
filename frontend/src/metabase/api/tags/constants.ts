@@ -14,13 +14,17 @@ export const TAG_TYPES = [
   "dashboard",
   "dashboard-question-candidates",
   "database",
+  "dataset",
   "document",
+  "public-document",
+  "comment",
   "embedding-hub-checklist",
   "field",
   "field-values",
   "glossary",
   "indexed-entity",
   "logger-preset",
+  "measure",
   "model-index",
   "notification",
   "parameter-values",
@@ -48,6 +52,7 @@ export const TAG_TYPES = [
   "public-action",
   "unique-tasks",
   "user-key-value",
+  "tenant",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -58,6 +63,7 @@ export const TAG_TYPE_MAPPING = {
   database: "database",
   document: "document",
   "indexed-entity": "indexed-entity",
+  measure: "measure",
   table: "table",
   dataset: "card",
   action: "action",

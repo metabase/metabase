@@ -149,6 +149,8 @@
                                          remote-sync-branch "main"]
         (t2/insert! :model/RemoteSyncObject {:model_type "Card"
                                              :model_id 1
+                                             :model_name "Test Card"
+                                             :model_collection_id 1
                                              :status "updated"
                                              :status_changed_at (java.time.OffsetDateTime/now)})
         (with-redefs [source/source-from-settings (constantly mock-main)]
@@ -382,6 +384,8 @@
                                        :name "Test Card"}
                      :model/RemoteSyncObject _ {:model_type "Card"
                                                 :model_id (:id card)
+                                                :model_name "Test Card"
+                                                :model_collection_id (:id remote-col)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (is (= {:is_dirty true}
@@ -421,16 +425,22 @@
                                         :name "Card 2"}
                      :model/Dashboard dashboard {:collection_id (:id remote-col1)
                                                  :name "Dashboard 1"}
-                     :model/RemoteSyncObject _ {:model_type "Card"
+                     :model/RemoteSyncObject _ {:model_type "card"
                                                 :model_id (:id card1)
+                                                :model_name "Card 1"
+                                                :model_collection_id (:id remote-col1)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}
-                     :model/RemoteSyncObject _ {:model_type "Card"
+                     :model/RemoteSyncObject _ {:model_type "card"
                                                 :model_id (:id card2)
+                                                :model_name "Card 2"
+                                                :model_collection_id (:id remote-col2)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}
-                     :model/RemoteSyncObject _ {:model_type "Dashboard"
+                     :model/RemoteSyncObject _ {:model_type "dashboard"
                                                 :model_id (:id dashboard)
+                                                :model_name "Dashboard 1"
+                                                :model_collection_id (:id remote-col1)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
@@ -453,7 +463,9 @@
                                                    :location (str "/" (:id remote-col) "/")}
                      :model/Card nested-card {:collection_id (:id nested-col)
                                               :name "Nested Card"}
-                     :model/RemoteSyncObject _ {:model_type "Card"
+                     :model/RemoteSyncObject _ {:model_type "card"
+                                                :model_name "Nested Card"
+                                                :model_collection_id (:id nested-col)
                                                 :model_id (:id nested-card)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
@@ -473,6 +485,8 @@
                                        :name "Test Card"}
                      :model/RemoteSyncObject _ {:model_type "Card"
                                                 :model_id (:id card)
+                                                :model_name "Test Card"
+                                                :model_collection_id (:id remote-col)
                                                 :status "pending"
                                                 :status_changed_at (java.time.OffsetDateTime/now)}]
         (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
@@ -529,7 +543,7 @@
       (is (= "Invalid Repository URL format" (:error response))))))
 
 (deftest settings-cannot-change-with-dirty-data
-  (testing "PUT /api/ee/remote-sync/settings doesn't allow loosing dirty data"
+  (testing "PUT /api/ee/remote-sync/settings doesn't allow losing dirty data"
     (with-redefs [remote-sync.object/dirty-global? (constantly true)
                   settings/check-and-update-remote-settings! #(throw (Exception. "Should not be called"))]
       (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
@@ -543,6 +557,187 @@
                                         :remote-sync-branch "main"
                                         :remote-sync-url "https://github.com/test/repo.git"
                                         :remote-sync-token "test-token"}))))))))
+
+;;; ------------------------------------------- Settings Collections Tests -------------------------------------------
+
+(deftest settings-collections-enables-remote-sync-on-single-collection-test
+  (testing "PUT /api/ee/remote-sync/settings with collections enables remote sync on a single collection"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:collections {coll-id true}})]
+            (is (= {:success true} response))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))))))
+
+(deftest settings-collections-disables-remote-sync-on-single-collection-test
+  (testing "PUT /api/ee/remote-sync/settings with collections disables remote sync on a single collection"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced true}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:collections {coll-id false}})]
+            (is (= {:success true} response))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))))))
+
+(deftest settings-collections-enables-multiple-collections-test
+  (testing "PUT /api/ee/remote-sync/settings with collections enables remote sync on multiple collections"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
+                     :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced false}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:collections {coll1-id true coll2-id true}})]
+            (is (= {:success true} response))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id))))))))))
+
+(deftest settings-collections-mixed-enable-disable-test
+  (testing "PUT /api/ee/remote-sync/settings with collections handles mixed enable/disable operations"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced false}
+                     :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:collections {coll1-id true coll2-id false}})]
+            (is (= {:success true} response))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll1-id))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll2-id))))))))))
+
+(deftest settings-collections-cascades-to-descendants-test
+  (testing "PUT /api/ee/remote-sync/settings with collections cascades to descendants"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced false}
+                     :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced false}
+                     :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced false}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:collections {parent-id true}})]
+            (is (= {:success true} response))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id))))))))))
+
+(deftest settings-collections-cascades-disable-to-descendants-test
+  (testing "PUT /api/ee/remote-sync/settings with collections cascades disable to descendants"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {parent-id :id} {:name "Parent" :location "/" :is_remote_synced true}
+                     :model/Collection {child-id :id} {:name "Child" :location (format "/%d/" parent-id) :is_remote_synced true}
+                     :model/Collection {grandchild-id :id} {:name "Grandchild" :location (format "/%d/%d/" parent-id child-id) :is_remote_synced true}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:collections {parent-id false}})]
+            (is (= {:success true} response))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id parent-id))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id child-id))))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id grandchild-id))))))))))
+
+(deftest settings-collections-errors-on-non-remote-synced-dependencies-test
+  (testing "PUT /api/ee/remote-sync/settings with collections errors when enabling a collection with non-remote-synced dependencies"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote Synced" :location "/" :is_remote_synced false}
+                     :model/Collection {regular-coll-id :id} {:name "Regular" :location "/" :is_remote_synced false}
+                     :model/Card {source-card-id :id} {:name "Source Card"
+                                                       :collection_id regular-coll-id
+                                                       :database_id (mt/id)
+                                                       :dataset_query (mt/mbql-query venues)}
+                     :model/Card _ {:name "Dependent Card"
+                                    :collection_id remote-synced-coll-id
+                                    :database_id (mt/id)
+                                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                               {:collections {remote-synced-coll-id true}})]
+            (is (= "Uses content that is not remote synced." (:error response)))))))))
+
+(deftest settings-collections-errors-on-remote-synced-dependents-test
+  (testing "PUT /api/ee/remote-sync/settings with collections errors when disabling a collection that has remote-synced dependents"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll1-id :id} {:name "Collection 1" :location "/" :is_remote_synced true}
+                     :model/Collection {coll2-id :id} {:name "Collection 2" :location "/" :is_remote_synced true}
+                     :model/Card {source-card-id :id} {:name "Source Card"
+                                                       :collection_id coll1-id
+                                                       :database_id (mt/id)
+                                                       :dataset_query (mt/mbql-query venues)}
+                     :model/Card _ {:name "Dependent Card"
+                                    :collection_id coll2-id
+                                    :database_id (mt/id)
+                                    :dataset_query (mt/mbql-query nil {:source-table (str "card__" source-card-id)})}]
+        (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                      impl/finish-remote-config! (constantly nil)]
+          (let [response (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                               {:collections {coll1-id false}})]
+            (is (= "Used by remote synced content." (:error response)))))))))
+
+(deftest settings-collections-empty-is-no-op-test
+  (testing "PUT /api/ee/remote-sync/settings with empty collections is a no-op"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
+      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                    impl/finish-remote-config! (constantly nil)]
+        (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                             {:collections {}})]
+          (is (= {:success true} response))
+          (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))
+
+(deftest settings-collections-requires-superuser-test
+  (testing "PUT /api/ee/remote-sync/settings with collections requires superuser permissions"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :put 403 "ee/remote-sync/settings"
+                                   {:collections {coll-id true}}))))))
+
+(deftest settings-collections-rejects-changes-in-read-only-mode-test
+  (testing "PUT /api/ee/remote-sync/settings rejects collection changes when remote-sync-type is read-only"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}
+                   :model/Collection {synced-coll-id :id} {:name "Synced Collection" :location "/" :is_remote_synced true}]
+      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                    impl/finish-remote-config! (constantly nil)]
+        (testing "rejects enabling collections when remote-sync-type is explicitly read-only"
+          (is (= "Cannot change synced collections when remote-sync-type is read-only."
+                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                       {:remote-sync-type :read-only
+                                        :collections {coll-id true}}))))
+        (testing "rejects disabling collections when remote-sync-type is explicitly read-only"
+          (is (= "Cannot change synced collections when remote-sync-type is read-only."
+                 (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                       {:remote-sync-type :read-only
+                                        :collections {synced-coll-id false}}))))
+        (testing "rejects collection changes when remote-sync-type is already read-only (default)"
+          (mt/with-temporary-setting-values [remote-sync-type :read-only]
+            (is (= "Cannot change synced collections when remote-sync-type is read-only."
+                   (mt/user-http-request :crowberto :put 400 "ee/remote-sync/settings"
+                                         {:collections {coll-id true}})))))))))
+
+(deftest settings-collections-allows-changes-in-read-write-mode-test
+  (testing "PUT /api/ee/remote-sync/settings allows collection changes when remote-sync-type is read-write"
+    (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :location "/" :is_remote_synced false}]
+      (with-redefs [settings/check-and-update-remote-settings! (constantly nil)
+                    impl/finish-remote-config! (constantly nil)]
+        (testing "allows enabling collections when remote-sync-type is explicitly read-write"
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:remote-sync-type :read-write
+                                                :collections {coll-id true}})]
+            (is (= {:success true} response))
+            (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))
+        (testing "allows disabling collections when remote-sync-type is explicitly read-write"
+          (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                               {:remote-sync-type :read-write
+                                                :collections {coll-id false}})]
+            (is (= {:success true} response))
+            (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id))))))
+        (testing "allows collection changes when remote-sync-type is already read-write"
+          (mt/with-temporary-setting-values [remote-sync-type :read-write]
+            (let [response (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                 {:collections {coll-id true}})]
+              (is (= {:success true} response))
+              (is (true? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))))))))))
 
 (deftest create-branch
   (testing "POST /api/ee/remote-sync/create-branch creates a new branch")
@@ -570,6 +765,8 @@
                                        remote-sync-type :read-write]
       (mt/with-temp [:model/RemoteSyncObject remote-sync {:model_type "Card"
                                                           :model_id 1
+                                                          :model_name "Test Card"
+                                                          :model_collection_id 1
                                                           :status "updated"
                                                           :status_changed_at (java.time.OffsetDateTime/now)}]
         (with-redefs [source/source-from-settings (constantly mock-source)
@@ -582,3 +779,55 @@
           (is (= #{["main" "main-ref"] ["develop" "develop-ref"] ["feature-branch" "feature-branch-ref"]}
                  (set (source.p/branches mock-source))))
           (is (= 1 @export-calls)))))))
+
+;;; ------------------------------------------- Token Preservation Tests -------------------------------------------
+
+(deftest settings-preserves-token-when-switching-to-read-only-test
+  (testing "PUT /api/ee/remote-sync/settings preserves token when switching from read-write to read-only"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:keys [task_id] :as resp} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-type :read-only})]
+            (wait-for-task-completion task_id)
+            (is (= {:success true :task_id task_id} resp))
+            (is (= :read-only (settings/remote-sync-type)))
+            (is (= "secret-token-value" (settings/remote-sync-token))
+                "Token should be preserved when not included in request")))))))
+
+(deftest settings-preserves-token-when-changing-branch-test
+  (testing "PUT /api/ee/remote-sync/settings preserves token when changing branch"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-branch "develop"})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (= "develop" (settings/remote-sync-branch)))
+            (is (= "secret-token-value" (settings/remote-sync-token))
+                "Token should be preserved when not included in request")))))))
+
+(deftest settings-clears-token-when-explicitly-nil-test
+  (testing "PUT /api/ee/remote-sync/settings clears token when explicitly set to nil"
+    (let [mock-source (test-helpers/create-mock-source)]
+      (with-redefs [settings/check-git-settings! (constantly nil)
+                    source/source-from-settings (constantly mock-source)]
+        (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                           remote-sync-token "secret-token-value"
+                                           remote-sync-branch "main"
+                                           remote-sync-type :read-write]
+          (let [{:as resp :keys [task_id]} (mt/user-http-request :crowberto :put 200 "ee/remote-sync/settings"
+                                                                 {:remote-sync-token nil})]
+            (wait-for-task-completion task_id)
+            (is (=? {:success true} resp))
+            (is (nil? (settings/remote-sync-token))
+                "Token should be cleared when explicitly set to nil")))))))

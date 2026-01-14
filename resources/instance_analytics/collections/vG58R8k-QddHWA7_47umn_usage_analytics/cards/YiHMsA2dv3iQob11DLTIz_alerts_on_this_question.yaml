@@ -10,10 +10,7 @@ collection_preview: true
 collection_position: null
 query_type: query
 database_id: Internal Metabase Database
-table_id:
-- Internal Metabase Database
-- public
-- v_alerts
+table_id: [Internal Metabase Database, public, v_alerts]
 enable_embedding: false
 embedding_params: null
 made_public_by_id: null
@@ -25,85 +22,48 @@ dataset_query:
   query:
     fields:
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - entity_id
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_alerts, entity_id]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - created_at
-      - base-type: type/DateTimeWithLocalTZ
+      - [Internal Metabase Database, public, v_alerts, created_at]
+      - {base-type: type/DateTimeWithLocalTZ}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - alert_condition
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_alerts, alert_condition]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - schedule_type
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_alerts, schedule_type]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - schedule_day
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_alerts, schedule_day]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - schedule_hour
-      - base-type: type/Integer
+      - [Internal Metabase Database, public, v_alerts, schedule_hour]
+      - {base-type: type/Integer}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - recipient_type
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_alerts, recipient_type]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - recipients
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_alerts, recipients]
+      - {base-type: type/Text}
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - recipient_external
-      - base-type: type/Text
+      - [Internal Metabase Database, public, v_alerts, recipient_external]
+      - {base-type: type/Text}
     filter:
     - =
     - - field
-      - - Internal Metabase Database
-        - public
-        - v_alerts
-        - archived
-      - base-type: type/Boolean
+      - [Internal Metabase Database, public, v_alerts, archived]
+      - {base-type: type/Boolean}
     - false
     joins:
     - alias: Content - Card Qualified
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_alerts
-          - card_qualified_id
-        - base-type: type/Text
+        - [Internal Metabase Database, public, v_alerts, card_qualified_id]
+        - {base-type: type/Text}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_content
-          - entity_qualified_id
-        - base-type: type/Text
-          join-alias: Content - Card Qualified
+        - [Internal Metabase Database, public, v_content, entity_qualified_id]
+        - {base-type: type/Text, join-alias: Content - Card Qualified}
       fields: none
       source-table: AxSackBiyXVRUzM_TyyQY
       strategy: left-join
@@ -111,35 +71,258 @@ dataset_query:
       condition:
       - =
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_alerts
-          - creator_id
-        - base-type: type/Integer
+        - [Internal Metabase Database, public, v_alerts, creator_id]
+        - {base-type: type/Integer}
       - - field
-        - - Internal Metabase Database
-          - public
-          - v_users
-          - user_id
-        - base-type: type/Integer
-          join-alias: People - Creator
+        - [Internal Metabase Database, public, v_users, user_id]
+        - {base-type: type/Integer, join-alias: People - Creator}
       fields: none
       source-table: 0wVIfjBJWclD0lKeABYYl
       strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
-result_metadata: null
-visualization_settings:
-  column_settings: null
-  table.cell_column: card_id
-  table.pivot_column: schedule_day
+result_metadata:
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, entity_id]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, entity_id]
+  name: entity_id
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: entity_id
+  lib/model-display-name: Entity ID
+  lib/original-display-name: Entity ID
+  lib/original-name: entity_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, created_at]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, created_at]
+  name: created_at
+  position: 2
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/model-display-name: Created At
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: created_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Alert Condition
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, alert_condition]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, alert_condition]
+  name: alert_condition
+  position: 7
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: alert_condition
+  lib/desired-column-alias: alert_condition
+  lib/model-display-name: Alert Condition
+  lib/original-display-name: Alert Condition
+  lib/original-name: alert_condition
+  lib/source: source/previous-stage
+  lib/source-column-alias: alert_condition
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Schedule Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, schedule_type]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, schedule_type]
+  name: schedule_type
+  position: 8
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: schedule_type
+  lib/desired-column-alias: schedule_type
+  lib/model-display-name: Schedule Type
+  lib/original-display-name: Schedule Type
+  lib/original-name: schedule_type
+  lib/source: source/previous-stage
+  lib/source-column-alias: schedule_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Schedule Day
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, schedule_day]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, schedule_day]
+  name: schedule_day
+  position: 9
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: schedule_day
+  lib/desired-column-alias: schedule_day
+  lib/model-display-name: Schedule Day
+  lib/original-display-name: Schedule Day
+  lib/original-name: schedule_day
+  lib/source: source/previous-stage
+  lib/source-column-alias: schedule_day
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Schedule Hour
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, schedule_hour]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, schedule_hour]
+  name: schedule_hour
+  position: 10
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: schedule_hour
+  lib/desired-column-alias: schedule_hour
+  lib/model-display-name: Schedule Hour
+  lib/original-display-name: Schedule Hour
+  lib/original-name: schedule_hour
+  lib/source: source/previous-stage
+  lib/source-column-alias: schedule_hour
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Recipient Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, recipient_type]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, recipient_type]
+  name: recipient_type
+  position: 12
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: recipient_type
+  lib/desired-column-alias: recipient_type
+  lib/model-display-name: Recipient Type
+  lib/original-display-name: Recipient Type
+  lib/original-name: recipient_type
+  lib/source: source/previous-stage
+  lib/source-column-alias: recipient_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Recipients
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, recipients]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, recipients]
+  name: recipients
+  position: 13
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: recipients
+  lib/desired-column-alias: recipients
+  lib/model-display-name: Recipients
+  lib/original-display-name: Recipients
+  lib/original-name: recipients
+  lib/source: source/previous-stage
+  lib/source-column-alias: recipients
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Recipient External
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_alerts, recipient_external]
+  - null
+  id: [Internal Metabase Database, public, v_alerts, recipient_external]
+  name: recipient_external
+  position: 14
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_alerts]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 292
+  lib/deduplicated-name: recipient_external
+  lib/desired-column-alias: recipient_external
+  lib/model-display-name: Recipient External
+  lib/original-display-name: Recipient External
+  lib/original-name: recipient_external
+  lib/source: source/previous-stage
+  lib/source-column-alias: recipient_external
+  qp/implicit-field?: true
+visualization_settings: {column_settings: null, table.cell_column: card_id, table.pivot_column: schedule_day}
+card_schema: 23
 serdes/meta:
-- id: YiHMsA2dv3iQob11DLTIz
-  label: alerts_on_this_question
-  model: Card
+- {id: YiHMsA2dv3iQob11DLTIz, label: alerts_on_this_question, model: Card}
 archived_directly: false
-card_schema: 20
 dashboard_id: jm7KgY6IuS6pQjkBZ7WUI
-metabase_version: vUNKNOWN (13e6090)
+document_id: null
+embedding_type: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

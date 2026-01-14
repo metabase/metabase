@@ -4,7 +4,7 @@ export const AlertTriggerIcon = () => {
   return (
     <Center
       p="0.625rem"
-      bg="var(--mb-color-brand)"
+      bg="brand"
       w="2.5rem"
       h="2.5rem"
       style={{

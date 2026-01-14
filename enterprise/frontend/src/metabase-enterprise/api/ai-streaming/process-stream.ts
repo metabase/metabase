@@ -50,7 +50,7 @@ function parseDataStreamPart(line: string) {
 
   const prefix = line.slice(0, firstSeparatorIndex);
   if (!StreamingPartTypes.includes(prefix as StreamingPartType)) {
-    console.warn(`Recieved invalid message code: ${prefix}`);
+    console.warn(`Received invalid message code: ${prefix}`);
     return;
   }
 
@@ -197,7 +197,7 @@ export type AIStreamingConfig = {
   onError?: (error: StreamPartValue<"error">) => void;
 };
 
-interface ProcessedChatResponse extends AccumulatedStreamParts {
+export interface ProcessedChatResponse extends AccumulatedStreamParts {
   aborted: boolean;
 }
 

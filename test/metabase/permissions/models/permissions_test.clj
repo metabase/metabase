@@ -2,13 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.impl :as audit.impl]
-   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
-   [metabase.collections.test-helpers :refer [without-library]]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.permissions.path :as permissions.path]
    [metabase.permissions.util :as perms.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -230,18 +227,24 @@
       ;; to think about how this works since the collection ID will be `NULL`.
       "/collection/root/" {})))
 
-(deftest cannot-grant-application-permissions-to-tenant-groups
+(deftest cannot-grant-non-subscription-application-permissions-to-tenant-groups
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
-                          (perms/grant-application-permissions! tenant-group-id :subscription)))))
+    (testing "Setting and monitoring permissions should still be blocked"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                            (perms/grant-application-permissions! tenant-group-id :setting)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot grant application permission to a tenant group\."
+                            (perms/grant-application-permissions! tenant-group-id :monitoring))))
+    (testing "Subscription permissions should be allowed"
+      (is (nil? (perms/grant-application-permissions! tenant-group-id :subscription))))))
 
-(deftest cannot-grant-write-permissions-to-tenant-group
+(deftest cannot-grant-collection-permissions-to-tenant-group
+  ;; right now, with no tenant collections, you can't grant any permissions on any collection to a tenant group
   (mt/with-temp [:model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
-                 :model/Collection {coll-id :id} {:location "/"}]
-    ;; just call grant/revoke to show that nothing here throws
-    (perms/grant-collection-read-permissions! tenant-group-id coll-id)
+                 :model/Collection {coll-id :id} {:location "/" :type "tenant-collection"}]
     (perms/revoke-collection-permissions! tenant-group-id coll-id)
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot have write access to any collections\."
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
+                          (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot have write access to any collections\."
                           (perms/grant-collection-readwrite-permissions! tenant-group-id coll-id)))))
 
 (deftest cannot-grant-read-or-write-permissions-on-analytics-to-tenant-group
@@ -249,7 +252,7 @@
                  :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
     (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant Groups cannot receive any access to the audit collection\."
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group
       (perms/grant-collection-read-permissions! normal-group-id coll-id))))
@@ -287,20 +290,3 @@
 
         (testing "admin can create dashboard in root collection"
           (is (true? (mi/can-create? :model/Dashboard {}))))))))
-
-(deftest assigning-data-studio-gives-library-access
-  (testing "If there is no library, nothing extra gets created"
-    (mt/with-temp [:model/PermissionsGroup {group-id :id}]
-      (perms/grant-application-permissions! group-id :data-studio)
-      (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/application-perms-path :data-studio)))))
-    (testing "Granting data-studio application permission also grants read-write access to Library collections"
-      (without-library
-       (let [library (collections/create-library-collection!)
-             models-col (t2/select-one :model/Collection :type collection/library-models-collection-type)
-             metrics-col (t2/select-one :model/Collection :type collection/library-metrics-collection-type)]
-         (mt/with-temp [:model/PermissionsGroup {group-id :id}]
-           (perms/grant-application-permissions! group-id :data-studio)
-           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/application-perms-path :data-studio))))
-           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/collection-readwrite-path library))))
-           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/collection-readwrite-path models-col))))
-           (is (= #{group-id} (t2/select-fn-set :group_id [:model/Permissions :group_id] :object (permissions.path/collection-readwrite-path metrics-col))))))))))

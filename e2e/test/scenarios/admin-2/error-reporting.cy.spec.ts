@@ -47,7 +47,7 @@ describe("error reporting modal", () => {
 
     H.commandPaletteButton().click();
     H.commandPaletteInput().type("Error");
-    H.commandPaletteAction(/Report an issue/).click();
+    H.commandPaletteAction(/Download diagnostics/).click();
 
     cy.findByRole("dialog", { name: "Gather diagnostic information" }).should(
       "be.visible",

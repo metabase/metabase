@@ -3,8 +3,7 @@ import type { GroupId } from "metabase-types/api";
 export type ApplicationPermissionKey =
   | "subscription"
   | "monitoring"
-  | "setting"
-  | "data-studio";
+  | "setting";
 export type ApplicationPermissionValue = "yes" | "no";
 
 export type GroupApplicationPermissions = {

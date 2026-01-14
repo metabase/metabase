@@ -14,7 +14,11 @@ export function MetabotPurchasePage(): ReactElement {
 
   return (
     <SettingsPageWrapper title={t`Metabot AI`}>
-      <Text maw="26rem">{t`Metabot helps you move faster and understand your data better. You can ask it to generate SQL, and build or explain queries.`}</Text>
+      <Text>
+        {t`Metabot helps you move faster and understand your data better.`}
+        <br />
+        {t`You can ask it to generate SQL, and build or explain queries.`}
+      </Text>
       {isStoreUser ? (
         <MetabotPurchasePageForStoreUser />
       ) : (

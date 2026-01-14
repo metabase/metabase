@@ -7,8 +7,8 @@ import type {
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
+  SdkIframeEmbedBaseSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 
 import type {
   SdkIframeEmbedSetupExperience,
@@ -18,17 +18,31 @@ import type {
 import { getCommonEmbedSettings } from "./get-common-embed-settings";
 
 export const getDefaultSdkIframeEmbedSettings = ({
-  initialState,
   experience,
   resourceId,
+  isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
+  isGuest,
+  useExistingUserSession,
 }: {
-  initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
-  resourceId: SdkDashboardId | SdkQuestionId;
+  resourceId: SdkDashboardId | SdkQuestionId | null;
+  isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
+  isGuest: boolean;
+  useExistingUserSession: boolean;
 }): SdkIframeEmbedSetupSettings => {
-  const defaults = match(experience)
+  const baseSettingsDefaults: Partial<SdkIframeEmbedBaseSettings> = {
+    useExistingUserSession: true,
+    // When `simple embed` feature is not available, we allow to set only a theme preset, so we default it to `light`
+    ...(!isSimpleEmbedFeatureAvailable && {
+      theme: { preset: "light" },
+    }),
+  };
+
+  const experienceSettingsDefaults = match(experience)
     .with(
       "dashboard",
       (): DashboardEmbedOptions => ({
@@ -36,6 +50,7 @@ export const getDefaultSdkIframeEmbedSettings = ({
         dashboardId: resourceId,
         drills: true,
         withDownloads: false,
+        withSubscriptions: false,
         withTitle: true,
       }),
     )
@@ -75,12 +90,14 @@ export const getDefaultSdkIframeEmbedSettings = ({
     .exhaustive();
 
   return {
-    useExistingUserSession: true,
-    ...defaults,
+    ...baseSettingsDefaults,
+    ...experienceSettingsDefaults,
     ...getCommonEmbedSettings({
-      state: initialState,
       experience,
       isGuestEmbedsEnabled,
+      isSsoEnabledAndConfigured,
+      isGuest,
+      useExistingUserSession,
     }),
   };
 };

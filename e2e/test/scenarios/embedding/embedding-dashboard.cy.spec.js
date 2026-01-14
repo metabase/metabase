@@ -418,49 +418,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
   });
 
-  it("should allow searching dashboard parameters in preview embed modal", () => {
-    H.visitDashboard("@dashboardId");
-
-    cy.get("@dashboardId").then((dashboardId) => {
-      H.openLegacyStaticEmbeddingModal({
-        resource: "dashboard",
-        resourceId: dashboardId,
-        activeTab: "parameters",
-        previewMode: "preview",
-      });
-    });
-
-    H.modal().within(() => {
-      // Set the Name parameter to enabled so we can test searching
-      cy.findByText("Name")
-        .parent()
-        .within(() => {
-          cy.findByText("Disabled").click();
-        });
-    });
-
-    H.popover().findByText("Editable").click();
-
-    // Test the preview iframe parameter search functionality
-    H.getIframeBody().within(() => {
-      // Open the Name filter dropdown
-      cy.findByTestId("dashboard-parameters-widget-container")
-        .findByText("Name")
-        .click();
-
-      // Test searching for names containing specific text
-      cy.findByPlaceholderText("Search by Name").type("Af");
-
-      // Verify that search results are filtered
-      H.popover().within(() => {
-        // Should show names containing "Af"
-        cy.findByText("Afton Lesch").should("be.visible");
-        // Should not show names that don't match the search
-        cy.findByText("Lina Heaney").should("not.exist");
-      });
-    });
-  });
-
   it("should render error message when `params` is not an object (metabase#14474)", () => {
     cy.get("@dashboardId").then((dashboardId) => {
       cy.request("PUT", `/api/dashboard/${dashboardId}`, {

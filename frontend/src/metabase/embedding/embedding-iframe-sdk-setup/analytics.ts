@@ -4,6 +4,7 @@ import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
 } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
 import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import { trackSimpleEvent } from "metabase/lib/analytics";
@@ -20,9 +21,12 @@ import {
   getResourceIdFromSettings,
 } from "./utils/get-default-sdk-iframe-embed-setting";
 
+export const UTM_LOCATION = "embedded_analytics_js_wizard";
+
 export const UPSELL_CAMPAIGN_EXPERIENCE = "embedding_experience";
-export const UPSELL_CAMPAIGN_AUTH = "embedding_auth";
 export const UPSELL_CAMPAIGN_BEHAVIOR = "embedding_behavior";
+
+export const SETUP_SSO_CAMPAIGN = "embedding_get_code";
 
 /**
  * Tracking every embed settings would bloat Snowplow, so we only track
@@ -32,6 +36,7 @@ const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
   "drills",
   "withTitle",
   "withDownloads",
+  "withSubscriptions",
   "isSaveEnabled",
   "readOnly",
   "layout",
@@ -52,15 +57,29 @@ const EMBED_SETTINGS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
 export const trackEmbedWizardOpened = () =>
   trackSimpleEvent({ event: "embed_wizard_opened" });
 
-export const trackEmbedWizardExperienceCompleted = (
-  experience: SdkIframeEmbedSetupExperience,
-  defaultExperience: SdkIframeEmbedSetupExperience,
-) =>
+export const trackEmbedWizardExperienceCompleted = ({
+  experience,
+  defaultExperience,
+  settings,
+}: {
+  experience: SdkIframeEmbedSetupExperience;
+  defaultExperience: SdkIframeEmbedSetupExperience;
+  settings: Partial<SdkIframeEmbedSetupSettings>;
+}) => {
+  const authType = getAuthTypeForSettings(settings);
+  const isDefaultExperience = experience === defaultExperience;
+
+  const eventDetailsParts: string[] = [
+    `authType=${authType}`,
+    `experience=${experience}`,
+    `isDefaultExperience=${isDefaultExperience}`,
+  ];
+
   trackSimpleEvent({
     event: "embed_wizard_experience_completed",
-    event_detail:
-      experience === defaultExperience ? "default" : `custom=${experience}`,
+    event_detail: buildEventDetails(eventDetailsParts),
   });
+};
 
 export const trackEmbedWizardResourceSelectionCompleted = ({
   experience,
@@ -89,26 +108,32 @@ const getEmbedSettingsToCompare = (settings: Partial<SdkIframeEmbedSettings>) =>
   _.omit(_.omit(settings, ...EMBED_SETTINGS_TO_IGNORE), _.isUndefined);
 
 export const trackEmbedWizardOptionsCompleted = ({
-  initialState,
   experience,
   resource,
   settings,
+  isSimpleEmbedFeatureAvailable,
   isGuestEmbedsEnabled,
+  isSsoEnabledAndConfigured,
   embeddingParameters,
 }: {
   initialState: SdkIframeEmbedSetupModalInitialState | undefined;
   experience: SdkIframeEmbedSetupExperience;
   resource: Dashboard | Card | null;
   settings: Partial<SdkIframeEmbedSetupSettings>;
+  isSimpleEmbedFeatureAvailable: boolean;
   isGuestEmbedsEnabled: boolean;
+  isSsoEnabledAndConfigured: boolean;
   embeddingParameters: EmbeddingParameters;
 }) => {
   // Get defaults for this experience type (with a dummy resource ID)
   const defaultSettings = getDefaultSdkIframeEmbedSettings({
-    initialState,
     experience,
     resourceId: 0,
+    isSimpleEmbedFeatureAvailable,
     isGuestEmbedsEnabled,
+    isSsoEnabledAndConfigured,
+    isGuest: !!settings.isGuest,
+    useExistingUserSession: !!settings.useExistingUserSession,
   });
 
   // Does the embed settings diverge from the experience defaults?
@@ -130,7 +155,7 @@ export const trackEmbedWizardOptionsCompleted = ({
       ...[
         `experience=${experience}`,
         ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-        `auth=${authType}`,
+        `authType=${authType}`,
         ...buildEventDetailsPartsForSettings(settings),
         ...(settings.isGuest ? [`params=${JSON.stringify(params)}`] : []),
         `theme=${hasCustomTheme ? "custom" : "default"}`,
@@ -155,13 +180,13 @@ export const trackEmbedWizardCodeCopied = ({
   snippetType: "frontend" | "server";
   settings: SdkIframeEmbedSetupSettings;
 }) => {
-  const authType = getAuthTypeForSettings(settings);
+  const authSubType = getAuthSubTypeForSettings(settings);
 
   const eventDetailsParts: (string | null)[] = [
     `experience=${experience}`,
     `snippetType=${snippetType}`,
     ...buldEventDetailsPartsForGuestEmbedResource({ resource, settings }),
-    `auth=${authType}`,
+    `authSubType=${authSubType}`,
   ];
 
   trackSimpleEvent({
@@ -203,7 +228,7 @@ const buildEventDetailsPartsForSettings = (
 
     const value = settings[optionKey];
 
-    if (value === undefined) {
+    if (value === undefined || value === null) {
       continue;
     }
 

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
+import { isInternalUser } from "metabase/lib/urls";
 import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -22,7 +23,11 @@ export function initializePlugin() {
     const menuItemFunction = (user) => [
       <Menu.Item
         component={ForwardRefLink}
-        to={`/admin/people/${user.id}/unsubscribe`}
+        to={
+          isInternalUser(user)
+            ? `/admin/people/${user.id}/unsubscribe`
+            : `/admin/people/tenants/people/${user.id}/unsubscribe`
+        }
         key="unsubscribe"
       >
         {t`Unsubscribe from all subscriptions / alerts`}

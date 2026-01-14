@@ -90,6 +90,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           tag("database"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     updateTableList: builder.mutation<Table[], UpdateTableListRequest>({
@@ -99,7 +100,12 @@ export const tableApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [tag("table"), tag("database"), tag("card")]),
+        invalidateTags(error, [
+          tag("table"),
+          tag("database"),
+          tag("card"),
+          tag("dataset"),
+        ]),
     }),
     updateTableFieldsOrder: builder.mutation<
       Table,
@@ -116,6 +122,7 @@ export const tableApi = Api.injectEndpoints({
           idTag("table", id),
           listTag("field"),
           tag("card"),
+          tag("dataset"),
         ]),
     }),
     rescanTableFieldValues: builder.mutation<void, TableId>({
@@ -166,3 +173,31 @@ export const {
   useSyncTableSchemaMutation,
   useDiscardTableFieldValuesMutation,
 } = tableApi;
+
+/**
+ * Fetches metadata for all foreign tables referenced by the given table's foreign key fields.
+ * Dispatches queries to load metadata for each related table.
+ *
+ * @param table - The table containing foreign key fields
+ * @param params - Optional parameters to pass to the metadata query (excluding 'id')
+ * @returns A thunk function that dispatches metadata fetch actions for all foreign tables
+ */
+export const fetchForeignTablesMetadata = (
+  table: Table,
+  params?: Omit<GetTableQueryMetadataRequest, "id">,
+) => {
+  return (dispatch: (action: unknown) => void) => {
+    const fkTableIds = new Set<TableId>();
+    for (const field of table.fields ?? []) {
+      if (field.target?.table_id != null) {
+        fkTableIds.add(field.target.table_id);
+      }
+    }
+
+    fkTableIds.forEach((id) =>
+      dispatch(
+        tableApi.endpoints.getTableQueryMetadata.initiate({ id, ...params }),
+      ),
+    );
+  };
+};

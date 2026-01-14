@@ -2,6 +2,7 @@ import cx from "classnames";
 import {
   Component,
   type ForwardedRef,
+  type ReactNode,
   createRef,
   forwardRef,
   useCallback,
@@ -11,9 +12,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/common/components/ExplicitSize";
-import Databases from "metabase/entities/databases";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import Snippets from "metabase/entities/snippets";
+import { Databases } from "metabase/entities/databases";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { Snippets } from "metabase/entities/snippets";
 import { useDispatch } from "metabase/lib/redux";
 import {
   runOrCancelQuestionOrSelectedQuery,
@@ -115,6 +116,7 @@ type OwnProps = {
   closeSnippetModal?: () => void;
   onSetDatabaseId?: (id: DatabaseId) => void;
   databaseIsDisabled?: (database: Database) => boolean;
+  topBarInnerContent?: ReactNode;
 };
 
 interface ExplicitSizeProps {
@@ -237,7 +239,6 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
         snippets: true,
         promptInput: true,
         formatQuery: true,
-        aiGeneration: true,
       },
       hasTopBar = true,
       hasEditingSidebar = true,
@@ -259,6 +260,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
       runQuery,
       highlightedLineNumbers,
       placeholder,
+      extensions,
     } = this.props;
 
     const dragHandle = resizable ? (
@@ -308,7 +310,10 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
             setDatasetQuery={this.props.setDatasetQuery}
             onFormatQuery={canFormatQuery ? this.handleFormatQuery : undefined}
             databaseIsDisabled={this.props.databaseIsDisabled}
-          />
+            readOnly={readOnly}
+          >
+            {this.props.topBarInnerContent}
+          </NativeQueryEditorTopBar>
         )}
         <div
           className={S.editorWrapper}
@@ -349,6 +354,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                 readOnly={readOnly}
                 placeholder={placeholder}
                 highlightedLineNumbers={highlightedLineNumbers}
+                extensions={extensions}
                 onChange={this.onChange}
                 onRunQuery={runQuery}
                 onSelectionChange={setNativeEditorSelectedRange}
@@ -405,6 +411,7 @@ class NativeQueryEditor extends Component<Props, NativeQueryEditorState> {
                       this.props.nativeEditorSelectedText
                     }
                     runQuery={this.props.runQuery}
+                    questionErrors={Lib.validateTemplateTags(question.query())}
                   />
                 )}
               </Stack>

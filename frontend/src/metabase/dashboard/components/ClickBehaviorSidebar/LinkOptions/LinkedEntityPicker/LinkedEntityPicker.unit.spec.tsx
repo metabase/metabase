@@ -5,6 +5,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
+  setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
@@ -88,7 +89,6 @@ function setup({
 }: SetupOpts) {
   mockGetBoundingClientRect();
   setupCollectionsEndpoints({ collections: COLLECTIONS });
-
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
   setupSearchEndpoints(searchResults);
   setupCollectionItemsEndpoint({
@@ -104,6 +104,7 @@ function setup({
     collectionItems: [],
   });
   setupRecentViewsAndSelectionsEndpoints([]);
+  setupDatabasesEndpoints([]);
 
   fetchMock.get("path:/api/user/recipients", { data: [] });
 

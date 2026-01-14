@@ -44,9 +44,10 @@ const InteractiveDashboardInner = (props: InteractiveDashboardProps) => {
     <SdkDashboard
       {...props}
       getClickActionMode={getClickActionMode}
-      dashboardActions={({ downloadsEnabled }) => {
-        return downloadsEnabled.pdf ? [DASHBOARD_ACTION.DOWNLOAD_PDF] : [];
-      }}
+      dashboardActions={[
+        DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTIONS,
+        DASHBOARD_ACTION.DOWNLOAD_PDF,
+      ]}
       dashcardMenu={({ dashcard, result, downloadsEnabled }) =>
         downloadsEnabled?.results &&
         isQuestionCard(dashcard.card) &&

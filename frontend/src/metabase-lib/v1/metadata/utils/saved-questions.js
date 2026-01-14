@@ -15,17 +15,9 @@ export function getCollectionVirtualSchemaName(collection) {
     : collection.schemaName || collection.name;
 }
 
-export function getCollectionVirtualSchemaId(collection, { isDatasets } = {}) {
+export function getCollectionVirtualSchemaId(collection) {
   const collectionName = getCollectionVirtualSchemaName(collection);
-  return generateSchemaId(
-    SAVED_QUESTIONS_VIRTUAL_DB_ID,
-    collectionName,
-    isDatasets ? { isDatasets } : undefined,
-  );
-}
-
-export function getRootCollectionVirtualSchemaId({ isModels }) {
-  return getCollectionVirtualSchemaId(null, { isDatasets: isModels });
+  return generateSchemaId(SAVED_QUESTIONS_VIRTUAL_DB_ID, collectionName);
 }
 
 export function getQuestionVirtualTableId(id) {
@@ -52,6 +44,7 @@ export function convertSavedQuestionToVirtualTable(card) {
     moderated_status: card.moderated_status,
     // we may not have permissions
     db_id: card.dataset_query?.database,
+    type: "question",
     schema: getCollectionVirtualSchemaId(card.collection),
     schema_name: getCollectionVirtualSchemaName(card.collection),
   };

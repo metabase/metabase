@@ -12,7 +12,8 @@
    [metabase.api.util.handlers :as handlers]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.schema :as ms]))
 
 (defn get-python-library-by-path
   "Get Python library details by path for use by other APIs."
@@ -22,21 +23,33 @@
       api/check-404
       (select-keys [:source :path :created_at :updated_at])))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/library/:path"
   "Get the Python library for user modules."
-  [{:keys [path]} :- [:map [:path :string]]
+  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params]
   (get-python-library-by-path path))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/library/:path"
   "Update the Python library source code for user modules."
-  [{:keys [path]} :- [:map [:path :string]]
+  [{:keys [path]} :- [:map [:path ms/NonBlankString]]
    _query-params
    body :- [:map {:closed true}
             [:source :string]]]
   (api/check-superuser)
   (python-library/update-python-library-source! path (:source body)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/test-run"
   :- [:map
       [:logs :string]

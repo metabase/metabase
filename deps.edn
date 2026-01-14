@@ -47,8 +47,6 @@
   com.github.jknack/handlebars              ^:antq/exclude                      ; 4.4.0 requires java 17+
                                             {:mvn/version "4.3.1"}              ; templating engine
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
-  com.github.pangloss/transducers           {:git/sha "c91d39046c8c64dc31b84ebb27154a8084fcda4c" ; like medley for transducers
-                                             :git/url "https://github.com/pangloss/transducers"}
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1350"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
   com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.8"}              ; Telemetry library
@@ -77,7 +75,6 @@
                                                            commons-logging/commons-logging]}
   compojure/compojure                       {:mvn/version "1.7.2"               ; HTTP Routing library built on Ring
                                              :exclusions  [ring/ring-codec]}
-  crypto-random/crypto-random               {:mvn/version "1.2.1"}              ; library for generating cryptographically secure random bytes and strings
   diehard/diehard                           {:mvn/version "0.12.0"}
   dk.ative/docjure                          {:mvn/version "1.22.0"              ; excel export
                                              :exclusions  [org.apache.poi/poi
@@ -90,10 +87,8 @@
   io.github.eerohele/pp                     {#_#_:git/tag "2024-11-13.77"       ; super fast pretty-printing library
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
-  ;; TODO: replace back to normal artifact
-  io.github.metabase/macaw                  {:mvn/version "0.2.29"}             ; Parse native SQL queries
-  io.github.resilience4j/resilience4j-retry ^:antq/exclude                      ; 2.x do not support Java 8
-                                            {:mvn/version "1.7.1"}              ; Support for retrying operations
+  io.github.metabase/macaw                  {:mvn/version "0.2.30"}             ; Parse native SQL queries
+  io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
@@ -109,7 +104,8 @@
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
   methodical/methodical                     {:mvn/version "1.0.127"}            ; drop-in replacements for Clojure multimethods and adds several advanced features
-  metosin/malli                             {:mvn/version "0.20.0"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:git/url "https://github.com/metabase/malli" ; Data-driven Schemas for Clojure/Script and babashka
+                                             :git/sha "b4a2d78647a049870b316753d7aae7fb4ade3ae5"} ; patched to resolve an issue causing OOM
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.23.0"
                                              :exclusions  [lambdaisland/uri]}   ; OpenAI
@@ -121,11 +117,11 @@
   net.thisptr/jackson-jq                    {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3          {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
-  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.2"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.2"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.2"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.2"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.2"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.3"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.3"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl        {:mvn/version "2.25.3"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul        {:mvn/version "2.25.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
   {:mvn/version "2.25.2"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
@@ -150,11 +146,9 @@
   org.clojure/clojure                       {:mvn/version "1.12.3"}
   org.clojure/core.async                    {:mvn/version "1.7.701"
                                              :exclusions  [org.clojure/tools.reader]}
-  org.clojure/core.logic                    {:mvn/version "1.1.0"}              ; optimized pattern matching library for Clojure
   org.clojure/core.match                    {:mvn/version "1.1.0"}
   org.clojure/core.memoize                  {:mvn/version "1.1.266"}            ; useful FIFO, LRU, etc. caching mechanisms
   org.clojure/data.csv                      {:mvn/version "1.1.0"}              ; CSV parsing / generation
-  org.clojure/data.xml                      {:mvn/version "0.2.0-alpha9"}       ; XML parsing / generation
   org.clojure/java.classpath                {:mvn/version "1.1.0"}              ; examine the Java classpath from Clojure programs
   org.clojure/java.jdbc                     {:mvn/version "0.7.12"}             ; basic JDBC access from Clojure
   org.clojure/java.jmx                      {:mvn/version "1.1.0"}              ; JMX bean library, for exporting diagnostic info
@@ -199,7 +193,7 @@
                                                            org.eclipse.jetty.ee9/jetty-ee9-servlet
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
-  software.amazon.awssdk/s3                 {:mvn/version "2.36.2"}             ; AWS SDK v2 for S3
+  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"}             ; AWS SDK v2 for S3
   software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
   software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
@@ -266,8 +260,6 @@
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
-    peridot/peridot              {:git/url "https://github.com/piranha/peridot.git"
-                                  :sha "db627c627db3b527a63caf472f0422e4cbfdf574"} ; mocking Ring requests; waiting for upstream release of commit 0fc7c01 (explicit charset)
     pjstadig/humane-test-output  {:mvn/version "0.11.0"}
     refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}                   ; refactoring helpers for cider
     reifyhealth/specmonstah      {:mvn/version "2.1.0"
@@ -349,6 +341,41 @@
    :jvm-opts  ["-Dmb.run.mode=dev"
                "-Dmacaw.run.mode=dev"
                "-Djava.awt.headless=true"]}                   ; prevent Java icon from randomly popping up in macOS dock
+
+  ;; Cypress end-to-end tests require a highly specific setup, which includes both the environment and the H2 database
+  ;; initialized with the correct set of settings. This alias orchestrates those pieces.
+  ;; Prefer using it when running local backend for Cypress end-to-end tests.
+  ;; Two things you can still control via env vars: MB_JETTY_PORT and MB_DB_FILE
+  ;;
+  ;; clojure -M:dev:drivers:(oss|ee):run:e2e
+  :e2e
+  {:jvm-opts  ["-Dmb.run.mode=e2e"
+               "-Dmetastore.dev.server.url=https://token-check.staging.metabase.com"
+               ;; prevent Java icon from randomly popping up in macOS dock
+               "-Djava.awt.headless=true"
+               ;; ignore options that aren't recognized by older versions of Java
+               "-XX:+IgnoreUnrecognizedVMOptions"
+               ;; test self-signed certificates for testing
+               "-Dmail.smtps.ssl.trust=*"
+               ;; Writes all logs to a file logs/test.log
+               "-Dlog4j.configurationFile=file:frontend/test/__runner__/log4j2.xml"
+               "-Duser.timezone=US/Pacific"
+               "-Dmb.db.type=h2"
+               "-Dmb.enable.test.endpoints=true"
+               "-Dmb.dangerous.unsafe.enable.testing.h2.connections.do.not.enable=true"
+               ;; Ignore connection URI in favor of the MB_DB_FILE
+               "-Dmb.db.connection.uri="
+               ;; Ignore config.yml
+               "-Dmb.config.file.path=__cypress__"
+               ;; We use Snowplow micro in e2e tests
+               "-Dmb.snowplow.available=true"
+               "-Dmb.snowplow.url=http://localhost:9090"
+               ;; See: https://github.com/metabase/metabase/pull/38280
+               "-Dmb.last.analytics.checksum=-1"
+               "-Dmb.experimental.search.block.on.queue=true"
+               "-Dmb.search.engine=appdb"
+               ;; We use a local webhook service for testing
+               "-Dmb.http.channel.host.strategy=allow-all"]}
 
   ;; run the prod server when generating docs
   ;; as some default values differ between dev and prod
@@ -640,7 +667,7 @@
                                    "test/metabase/channel/render/png_test.clj"
                                    "#.+#$"
                                    "\\.transit\\.json$"
-                                   "enterprise/frontend/src/metabase-enterprise/documents/components/Editor/data/data\\.json$"]}}
+                                   "frontend/src/metabase/documents/components/Editor/data/data\\.json$"]}}
 
   ;; clojure -X:dev:ee:ee-dev:test:cloverage
   :cloverage
@@ -848,7 +875,6 @@
   ;;    clj -X:dev:ee:ee-dev:test:test/qp
   :test/qp
   {:exec-args {:only ["test/metabase/query_processor"
-                      "test/metabase/query_processor_test"
                       metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test
@@ -875,7 +901,6 @@
                       "test/metabase/lib_be"
                       "test/metabase/legacy_mbql"
                       "test/metabase/query_processor"
-                      "test/metabase/query_processor_test"
                       metabase.driver.sql.query-processor-test
                       metabase-enterprise.advanced-permissions.models.permissions.block-permissions-test
                       metabase-enterprise.advanced-permissions.query-processor.middleware.permissions-test

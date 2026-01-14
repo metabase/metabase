@@ -96,10 +96,7 @@ export default function QueryVisualization(props) {
             onUpdateWarnings={setWarnings}
           />
         ) : !isRunning && !isDirtyStateShown ? (
-          <VisualizationEmptyState
-            className={CS.spread}
-            isCompact={isNativeEditorOpen}
-          >
+          <VisualizationEmptyState className={CS.spread}>
             {t`Here's where your results will appear`}
           </VisualizationEmptyState>
         ) : null}
@@ -108,28 +105,22 @@ export default function QueryVisualization(props) {
   );
 }
 
-const VisualizationEmptyState = ({ isCompact, children }) => {
+const VisualizationEmptyState = ({ children }) => {
   const keyboardShortcut = getRunQueryShortcut();
 
   return (
-    <Flex
-      w="100%"
-      h="100%"
-      align={isCompact ? "flex-start" : "center"}
-      justify="center"
-      mt={isCompact ? "3rem" : "auto"}
-    >
+    <Flex w="100%" h="100%" align="center" justify="center">
       <Stack maw="25rem" gap={0} ta="center" align="center">
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
           )}`}
         </Text>
-        <Text c="text-medium">{children}</Text>
+        <Text c="text-secondary">{children}</Text>
       </Stack>
     </Flex>
   );
@@ -202,7 +193,7 @@ export const VisualizationDirtyState = ({
         isRunning={isRunning}
         isDirty={isResultDirty}
       />
-      {!hidden && <Text c="text-medium">{keyboardShortcut}</Text>}
+      {!hidden && <Text c="text-secondary">{keyboardShortcut}</Text>}
     </Flex>
   );
 };

@@ -3,15 +3,15 @@
 
   Call [[errors-from-proposed-edits]] to find out what things will break downstream of a set of new/updated entities."
   (:require
+   [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.metadata-provider :as deps.provider]
    [metabase-enterprise.dependencies.models.dependency :as deps.graph]
-   [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase.graph.core :as graph]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -37,59 +37,12 @@
   ([base-provider    :- ::lib.schema.metadata/metadata-provider
     updated-entities :- ::updates-map
     & {:keys [graph dependents]}]
+   ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
+   (lib.metadata.protocols/clear-cache! base-provider)
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
      (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
 
-(mu/defn- check-query
-  "Find any bad refs in a `query`."
-  [driver :- :keyword
-   query  :- ::lib.schema/query]
-  (if (lib/any-native-stage? query)
-    (deps.native/validate-native-query driver query)
-    (lib/find-bad-refs query)))
-
-(defmulti ^:private check-entity
-  "Given a `MetadataProvider`, and entity type, and an entity id, find any bad refs in that entity."
-  {:arglists '([metadata-provider entity-type entity-id])}
-  (fn [_mp entity-type _entity-id]
-    entity-type))
-
-(defmethod check-entity :default
-  [_mp _entity-type _entity-id]
-  nil)
-
-;; TODO (Cam 10/2/25) -- we already have keywords for these things, `:model/Card` and `:model/Transform`, can use
-;; those for consistency and discoverability?
-(defmethod check-entity :card
-  [mp _entity-type card-id]
-  (let [query  (lib/query mp (:dataset-query (lib.metadata/card mp card-id)))
-        driver (:engine (lib.metadata/database query))]
-    (check-query driver query)))
-
-(defmethod check-entity :transform
-  [mp _entity-type entity-id]
-  (let [{{target-schema :schema target-name :name} :target
-         {query :query} :source
-         :as _transform} (lib.metadata/transform mp entity-id)
-        driver (:engine (lib.metadata/database mp))
-        query (lib/query mp query)
-        output-table (some #(when (and (= (:schema %) target-schema)
-                                       (= (:name %) target-name))
-                              %)
-                           (lib.metadata/tables mp))
-        output-fields (lib.metadata/active-fields mp (:id output-table))
-        {:keys [duplicate-fields]} (reduce (fn [{:keys [seen duplicate-fields]}
-                                                {name :name :as field}]
-                                             (if (seen name)
-                                               {:seen seen
-                                                :duplicate-fields (conj duplicate-fields field)}
-                                               {:seen (conj seen name)
-                                                :duplicate-fields duplicate-fields}))
-                                           {:seen #{}}
-                                           output-fields)]
-    (into duplicate-fields (check-query driver query))))
-
-(mu/defn- check-query-soundness ;; :- [:map-of ::lib.schema.id/card [:sequential ::lib.schema.mbql-clause/clause]]
+(mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents
   to check that everything is still sound.
 
@@ -106,7 +59,7 @@
         errors    (volatile! {})]
     (doseq [[entity-type ids] overrides
             id ids
-            :let [bad-refs (check-entity provider entity-type id)]]
+            :let [bad-refs (deps.analysis/check-entity provider entity-type id)]]
       (when (seq bad-refs)
         (vswap! errors assoc-in [entity-type id] bad-refs)))
     @errors))
@@ -133,10 +86,7 @@
 
     @by-db))
 
-;; TODO: (Braden 09/22/2025) More precise schemas for the errors this function returns. Currently they're pretty
-;; opaque, since the consumers of this function really care about "working/broken" and not the details of what's wrong
-;; with any particular card.
-(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:or :boolean [:sequential :any]]]]
+(mu/defn errors-from-proposed-edits :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a regular `MetadataProvider`, and a map of entity types (`:card`, `:transform`, `:snippet`) to lists of
   updated entities, this returns a map of `{entity-type {entity-id [bad-ref ...]}}`.
 

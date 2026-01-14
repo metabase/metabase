@@ -3,7 +3,7 @@
 
   * [[metabase.lib.card-test/returned-columns-31769-test]]
   * [[metabase.lib.join-test/join-source-card-with-in-previous-stage-with-joins-test]]
-  * [[metabase.query-processor-test.explicit-joins-test/test-31769]]"
+  * [[metabase.query-processor.explicit-joins-test/test-31769]]"
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]

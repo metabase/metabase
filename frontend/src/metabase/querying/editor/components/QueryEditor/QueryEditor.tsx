@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -25,6 +26,7 @@ type QueryEditorProps = {
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onAcceptProposed?: () => void;
   onRejectProposed?: () => void;
+  topBarInnerContent?: ReactNode;
 };
 
 export function QueryEditor({
@@ -36,6 +38,7 @@ export function QueryEditor({
   onChangeUiState,
   onAcceptProposed,
   onRejectProposed,
+  topBarInnerContent,
 }: QueryEditorProps) {
   const {
     question,
@@ -109,6 +112,7 @@ export function QueryEditor({
             onChangeNativeEditorSelection={setSelectionRange}
             onAcceptProposed={onAcceptProposed}
             onRejectProposed={onRejectProposed}
+            topBarInnerContent={topBarInnerContent}
           />
           <QueryEditorVisualization
             question={question}

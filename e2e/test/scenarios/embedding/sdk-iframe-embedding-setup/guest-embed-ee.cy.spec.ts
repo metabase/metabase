@@ -135,7 +135,9 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       // Experience step
       getEmbedSidebar().within(() => {
-        cy.findByTestId("upsell-gem").should("not.exist");
+        cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+
+        cy.findByTestId("upsell-card").should("not.exist");
 
         cy.findByText("Chart").click();
         cy.findByText("Next").click();
@@ -143,7 +145,8 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_experience_completed",
-        event_detail: "custom=chart",
+        event_detail:
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
       });
 
       // Entity selection step
@@ -167,8 +170,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       });
 
       // Options step
-      cy.findByLabelText("Guest").should("be.visible").should("be.checked");
-
+      cy.findByLabelText("Guest").should("not.exist");
       cy.findByLabelText("Allow people to drill through on data points")
         .should("be.visible")
         .should("be.disabled");
@@ -184,7 +186,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       cy.findAllByTestId("parameter-widget").find("input").type("Foo Bar Baz");
 
       getEmbedSidebar().within(() => {
-        cy.findByTestId("upsell-gem").should("not.exist");
+        cy.findByTestId("upsell-card").should("not.exist");
       });
 
       H.publishChanges("card");
@@ -194,6 +196,10 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         cy.findByText("Foo Bar Baz").should("be.visible");
       });
 
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("embedding-footer")
+        .should("not.exist");
+
       getEmbedSidebar().within(() => {
         cy.findByText("Get code").click();
       });
@@ -201,10 +207,28 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_options_completed",
         event_detail:
-          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest-embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
+          'settings=custom,experience=chart,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withTitle=true,isSaveEnabled=false,params={"disabled":0,"locked":1,"enabled":0},theme=default',
       });
 
       // Get code step
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("publish-guest-embed-link").should("not.exist");
+      });
+
+      H.unpublishChanges("card");
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("publish-guest-embed-link").should("be.visible");
+
+        cy.findByText(/Copy code/).should("not.exist");
+      });
+
+      H.publishChanges("card");
+
+      getEmbedSidebar().within(() => {
+        cy.findByTestId("publish-guest-embed-link").should("not.exist");
+      });
+
       getEmbedSidebar().within(() => {
         cy.findAllByText(/Copy code/)
           .first()
@@ -214,7 +238,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "embed_wizard_code_copied",
         event_detail:
-          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,auth=guest-embed",
+          "experience=chart,snippetType=frontend,guestEmbedEnabled=true,guestEmbedType=guest-embed,authSubType=none",
       });
 
       // Visit embed page
@@ -244,6 +268,8 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
 
         frame.within(() => {
           cy.findByText("Foo Bar Baz").should("be.visible");
+
+          cy.findByTestId("embedding-footer").should("not.exist");
         });
       });
     });
@@ -331,7 +357,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
         });
 
         getEmbedSidebar().within(() => {
-          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+          cy.findByLabelText("Guest").should("not.exist");
         });
 
         H.setEmbeddingParameter("Product ID", "Locked");
@@ -346,9 +372,14 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
           codeBlock().first().should("not.contain", "locked-parameters=");
 
           cy.findByText("Back").click();
+          cy.findByText("Back").click();
+          cy.findByText("Back").click();
 
-          cy.findByLabelText("Single sign-on (SSO)").click();
+          cy.findByLabelText("Guest").should("be.visible").should("be.checked");
+          cy.findByLabelText("Metabase account (SSO)").click();
 
+          cy.findByText("Next").click();
+          cy.findByText("Next").click();
           cy.findByText("Get code").click();
 
           codeBlock().first().should("contain", "dashboard-id=");

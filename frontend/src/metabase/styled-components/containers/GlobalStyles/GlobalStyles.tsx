@@ -4,6 +4,10 @@ import { useMemo } from "react";
 
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
 import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
@@ -45,7 +49,9 @@ export const GlobalStyles = (): JSX.Element => {
     ${saveDomImageStyles}
     body {
         font-size: 0.875em;
-        color-scheme: ${colorScheme};
+        ${isStaticEmbedding() || isPublicEmbedding()
+          ? ""
+          : `color-scheme: ${colorScheme};`}
         ${rootStyle}
       }
 

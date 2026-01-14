@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import Pulses from "metabase/entities/pulses";
+import { Pulses } from "metabase/entities/pulses";
 import { connect } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 

@@ -19,7 +19,8 @@ import type {
 import type { StrictUnion } from "metabase/embedding-sdk/types/utils";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 import type { CollectionId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
+import type { EntityToken } from "metabase-types/api/entity";
+import type { ModularEmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 /** Events that the embed.js script listens for */
 export type SdkIframeEmbedTagMessage =
@@ -68,13 +69,14 @@ export type SdkIframeEmbedReportAnalytics = {
 // --- Embed Option Interfaces ---
 
 export type DashboardEmbedOptions = StrictUnion<
-  { dashboardId: number | string } | { token: string }
+  { dashboardId: number | string | null } | { token: EntityToken }
 > & {
   componentName: "metabase-dashboard";
 
   drills?: boolean;
   withTitle?: boolean;
   withDownloads?: boolean;
+  withSubscriptions?: boolean;
 
   // parameters
   initialParameters?: ParameterValues;
@@ -86,7 +88,7 @@ export type DashboardEmbedOptions = StrictUnion<
 };
 
 export type QuestionEmbedOptions = StrictUnion<
-  { questionId: number | string } | { token: string }
+  { questionId: number | string | null } | { token: EntityToken }
 > & {
   componentName: "metabase-question";
 
@@ -139,7 +141,7 @@ export interface BrowserEmbedOptions {
   collectionEntityTypes?: CollectionBrowserEntityTypes[];
 
   /** Which entities to show on the question's data picker */
-  dataPickerEntityTypes?: EmbeddingEntityType[];
+  dataPickerEntityTypes?: ModularEmbeddingEntityType[];
 
   /** Whether to show the "New exploration" button. Defaults to true. */
   withNewQuestion?: boolean;
@@ -188,7 +190,8 @@ export type SdkIframeEmbedBaseSettings = {
   _isLocalhost?: boolean;
 };
 
-export type SdkIframeEmbedGuestEmbedSettings = {
+export type SdkIframeEmbedAuthTypeSettings = {
+  isSso: boolean;
   isGuest: boolean;
 };
 

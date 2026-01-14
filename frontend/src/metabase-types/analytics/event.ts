@@ -3,10 +3,6 @@ import type {
   ChecklistItemCTA,
   ChecklistItemValue,
 } from "metabase/home/components/Onboarding/types";
-import type {
-  MetadataEditAnalyticsDetail,
-  MetadataEventSource,
-} from "metabase/metadata/pages/DataModelV1/types";
 import type { KeyboardShortcutId } from "metabase/palette/shortcuts";
 import type { ClickActionSection } from "metabase/visualizations/types";
 import type {
@@ -98,7 +94,8 @@ export type MoveToTrashEvent = ValidateEvent<{
     | "dataset"
     | "indexed-entity"
     | "snippet"
-    | "document";
+    | "document"
+    | "table";
 }>;
 
 export type ErrorDiagnosticModalOpenedEvent = ValidateEvent<{
@@ -213,7 +210,7 @@ export type EmbedWizardOpenedEvent = ValidateEvent<{
 
 export type EmbedWizardExperienceCompletedEvent = ValidateEvent<{
   event: "embed_wizard_experience_completed";
-  event_detail: "default" | `custom=${SdkIframeEmbedSetupExperience}`;
+  event_detail: string;
 }>;
 
 export type EmbedWizardResourceSelectionCompletedEvent = ValidateEvent<{
@@ -403,17 +400,34 @@ export type MetabotEvent =
 
 export type RevertVersionEvent = ValidateEvent<{
   event: "revert_version_clicked";
-  event_detail: "card" | "dashboard";
+  event_detail: "card" | "dashboard" | "document" | "transform";
 }>;
 
 export type LearnAboutDataClickedEvent = ValidateEvent<{
   event: "learn_about_our_data_clicked";
 }>;
 
+export type MetadataEditEventDetail =
+  | "type_casting"
+  | "semantic_type_change"
+  | "visibility_change"
+  | "filtering_change"
+  | "display_values"
+  | "json_unfolding"
+  | "formatting";
+
+export type MetadataEditEventTriggeredFrom = "admin" | "data_studio";
+
 export type MetadataEditEvent = ValidateEvent<{
   event: "metadata_edited";
-  event_detail: MetadataEditAnalyticsDetail;
-  triggered_from: MetadataEventSource;
+  event_detail: MetadataEditEventDetail;
+  triggered_from: MetadataEditEventTriggeredFrom;
+}>;
+
+export type BookmarkTableEvent = ValidateEvent<{
+  event: "bookmark_added";
+  event_detail: "table";
+  triggered_from: "collection_list";
 }>;
 
 export type BookmarkQuestionEvent = ValidateEvent<{
@@ -459,7 +473,7 @@ export type ClickActionPerformedEvent = ValidateEvent<{
 
 export type RemoteSyncBranchSwitchedEvent = ValidateEvent<{
   event: "remote_sync_branch_switched";
-  triggered_from: "sidebar" | "admin-settings";
+  triggered_from: "admin-settings" | "app-bar";
 }>;
 
 export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
@@ -469,19 +483,19 @@ export type RemoteSyncBranchCreatedEvent = ValidateEvent<{
 
 export type RemoteSyncPullChangesEvent = ValidateEvent<{
   event: "remote_sync_pull_changes";
-  triggered_from: "sidebar" | "admin-settings";
+  triggered_from: "admin-settings" | "app-bar";
   event_detail?: "force";
 }>;
 
 export type RemoteSyncPushChangesEvent = ValidateEvent<{
   event: "remote_sync_push_changes";
-  triggered_from: "sidebar" | "conflict-modal";
+  triggered_from: "conflict-modal" | "app-bar";
   event_detail?: "force";
 }>;
 
 export type RemoteSyncSettingsChangedEvent = ValidateEvent<{
   event: "remote_sync_settings_changed";
-  triggered_from: "admin-settings";
+  triggered_from: "admin-settings" | "data-studio";
 }>;
 
 export type RemoteSyncDeactivatedEvent = ValidateEvent<{
@@ -498,12 +512,51 @@ export type RemoteSyncEvent =
   | RemoteSyncDeactivatedEvent;
 
 export type BookmarkEvent =
+  | BookmarkTableEvent
   | BookmarkQuestionEvent
   | BookmarkModelEvent
   | BookmarkMetricEvent
   | BookmarkDashboardEvent
   | BookmarkCollectionEvent
   | BookmarkDocumentEvent;
+
+export type DataStudioLibraryCreatedEvent = ValidateEvent<{
+  event: "data_studio_library_created";
+  target_id: number | null;
+}>;
+
+export type DataStudioTablePublishedEvent = ValidateEvent<{
+  event: "data_studio_table_published";
+  target_id: number | null;
+}>;
+
+export type DataStudioGlossaryCreatedEvent = ValidateEvent<{
+  event: "data_studio_glossary_term_created";
+  target_id: number | null;
+}>;
+
+export type DataStudioGlossaryEditedEvent = ValidateEvent<{
+  event: "data_studio_glossary_term_updated";
+  target_id: number | null;
+}>;
+
+export type DataStudioGlossaryDeletedEvent = ValidateEvent<{
+  event: "data_studio_glossary_term_deleted";
+  target_id: number | null;
+}>;
+
+export type DataStudioEvent =
+  | DataStudioLibraryCreatedEvent
+  | DataStudioTablePublishedEvent
+  | DataStudioGlossaryCreatedEvent
+  | DataStudioGlossaryEditedEvent
+  | DataStudioGlossaryDeletedEvent;
+
+export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
+  event: "unsaved_changes_warning_displayed";
+  triggered_from: "document";
+  target_id: number | null;
+}>;
 
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
@@ -556,4 +609,6 @@ export type SimpleEvent =
   | MetadataEditEvent
   | BookmarkEvent
   | RemoteSyncEvent
-  | ClickActionPerformedEvent;
+  | ClickActionPerformedEvent
+  | DataStudioEvent
+  | UnsavedChangesWarningDisplayedEvent;

@@ -39,6 +39,7 @@ export type DatabaseFeature =
   | "persist-models"
   | "persist-models-enabled"
   | "regex"
+  | "regex/lookaheads-and-lookbehinds"
   | "schemas"
   | "set-timezone"
   | "left-join"
@@ -146,6 +147,8 @@ export interface ListDatabasesRequest {
   include_only_uploadable?: boolean;
   include_analytics?: boolean;
   router_database_id?: DatabaseId;
+  "can-query"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabasesResponse {
@@ -162,6 +165,8 @@ export interface ListDatabaseSchemasRequest {
   id: DatabaseId;
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
+  "can-query"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -169,6 +174,8 @@ export interface ListDatabaseSchemaTablesRequest {
   schema: string;
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
+  "can-query"?: boolean;
+  "can-write-metadata"?: boolean;
 }
 
 export interface ListVirtualDatabaseTablesRequest {

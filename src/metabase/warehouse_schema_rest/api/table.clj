@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
+   [metabase.config.core :as config]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -14,6 +15,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor :as qp]
    ;; legacy usage -- don't do things like this going forward
@@ -61,10 +63,19 @@
 (mr/def ::data-sources
   (into [:enum {:decode/string keyword}] table/data-sources))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
-  "Get all `Tables`."
+  "Get all `Tables`.
+
+  Optional filters:
+  - `can-query=true` - filter to only tables the user can execute queries against
+  - `can-write=true` - filter to only tables the user can edit metadata for"
   [_
-   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only]}
+   {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
+           can-query can-write]}
    :- [:map
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -73,7 +84,9 @@
        [:owner-user-id {:optional true} [:maybe :int]]
        [:owner-email {:optional true} :string]
        [:orphan-only {:optional true} [:maybe ms/BooleanValue]]
-       [:unused-only {:optional true} [:maybe ms/BooleanValue]]]]
+       [:unused-only {:optional true} [:maybe ms/BooleanValue]]
+       [:can-query {:optional true} [:maybe ms/BooleanValue]]
+       [:can-write {:optional true} [:maybe ms/BooleanValue]]]]
   (let [like       (fn [field pattern]
                      (case (app-db/db-type)
                        (:h2 :postgres) [:ilike field pattern]
@@ -103,17 +116,24 @@
                                                   [:= :d.to_entity_id :metabase_table.id]
                                                   [:= :d.to_entity_type "table"]]}]))
         query      {:where where, :order-by [[:name :asc]]}
-        hydrations (cond-> [:db :published_as_model]
+        hydrations (cond-> [:db]
                      (premium-features/has-feature? :transforms) (conj :transform))]
     (as-> (t2/select :model/Table query) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
+                     (if can-query (filter mi/can-query?) identity)
+                     (if can-write (filter mi/can-write?) identity)
                      (map schema.table/present-table))
             tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Table` with ID."
   [{:keys [id]} :- [:map
@@ -128,15 +148,19 @@
                             api/write-check
                             api/read-check)]
     (-> (api-perm-check-fn :model/Table id)
-        (t2/hydrate :db :pk_field)
+        (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map [:table-id ms/PositiveInt]]]
   (let [table (t2/select-one :model/Table :id table-id)
         db-id (:db_id table)]
-    (api/read-check table)
+    (api/query-check table)
     (qp.store/with-metadata-provider db-id
       (let [mp       (qp.store/metadata-provider)
             query    (-> (lib/query mp (lib.metadata/table mp table-id))
@@ -210,8 +234,18 @@
           newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
+      ;; Publish update events for remote sync tracking, only when ee extensions are available to provide
+      ;; a handler for these events
+      (when config/ee-available?
+        (doseq [table updated-tables]
+          (events/publish-event! :event/table-update {:object  table
+                                                      :user-id api/*current-user-id*})))
       updated-tables)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update `Table` with ID."
   [{:keys [id]} :- [:map
@@ -233,6 +267,10 @@
             [:owner_user_id           {:optional true} [:maybe :int]]]]
   (first (update-tables! [id] body)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
@@ -257,8 +295,13 @@
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
-                      :metabase/validate-defendpoint-query-params-use-kebab-case]}
+                      :metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
@@ -281,16 +324,26 @@
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
 
-;; I think this endpoint can keep the `card__` part since it's a HACK to make IDs like `card__1` work
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
-;; I think this endpoint can keep the `card__` part since it's a HACK to make IDs like `card__1` work
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend."
@@ -298,23 +351,34 @@
                      [:id ms/PositiveInt]]]
   []) ; return empty array
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (t2/select-pks-set :model/Field, :table_id id, :visibility_type [:not= "retired"], :active true))]
-    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)]
+    (for [origin-field (t2/select :model/Field, :fk_target_field_id [:in field-ids], :active true)
+          :let [origin-field (-> (t2/hydrate origin-field [:table :db])
+                                 (update :table schema.table/present-table))]
+          :when (-> origin-field :table :active)]
       ;; it's silly to be hydrating some of these tables/dbs
       {:relationship   :Mt1
        :origin_id      (:id origin-field)
-       :origin         (-> (t2/hydrate origin-field [:table :db])
-                           (update :table schema.table/present-table))
+       :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
        :destination    (t2/hydrate (t2/select-one :model/Field :id (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
@@ -333,7 +397,12 @@
     {:status :success}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
@@ -344,6 +413,10 @@
     (t2/delete! (t2/table-name :model/FieldValues) :field_id [:in field-ids]))
   {:status :success})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
   [{:keys [id]} :- [:map
@@ -379,6 +452,10 @@
                              (tru "There was an error uploading the file"))}})
     (finally (io/delete-file (:file options) :silently))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/append-csv"
   "Inserts the rows of an uploaded CSV file into the table identified by `:id`. The table must have been created by
   uploading a CSV file."
@@ -399,6 +476,10 @@
                 :file     (get-in multipart-params ["file" :tempfile])
                 :action   :metabase.upload/append}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/replace-csv"
   "Replaces the contents of the table identified by `:id` with the rows of an uploaded CSV file. The table must have
   been created by uploading a CSV file."
@@ -425,13 +506,25 @@
   (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (t2/select-one :model/Table :id id))
-        database (api/write-check (warehouses/get-database (:db_id table) {:exclude-uneditable-details? true}))]
+  (let [table    (t2/select-one :model/Table :id id)
+        database (warehouses/get-database (:db_id table))]
+    (api/check-403
+     (perms/user-has-permission-for-table?
+      api/*current-user-id*
+      :perms/manage-table-metadata
+      :yes
+      (:id database)
+      id))
     ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
     ;; purposes of creating a new H2 database.
     (if-let [ex (try

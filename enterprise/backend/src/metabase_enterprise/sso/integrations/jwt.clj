@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase-enterprise.sso.api.interface :as sso.i]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-   [metabase-enterprise.sso.integrations.token-utils :as token-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
    [metabase.embedding.settings :as embed.settings]
@@ -52,7 +51,7 @@
 (defn- throw-simple-embedding-disabled
   []
   (throw
-   (ex-info (tru "Embedded Analytics JS is disabled. Enable it in the embedding settings.")
+   (ex-info (tru "You need to turn on modular embedding in the embedding settings.")
             {:status      "error-embedding-simple-disabled"
              :status-code 402})))
 
@@ -87,7 +86,7 @@
       (and is-embedded-analytics-js? (not (embed.settings/enable-embedding-simple)))
       (throw-simple-embedding-disabled)
 
-      (and is-modular-embedding? (token-utils/has-token request))
+      (and is-modular-embedding? jwt)
       (generate-response-token (:session result) (:jwt-data result))
 
       ;; JWT provided - use auth-identity/login!
@@ -99,8 +98,8 @@
 
       ;; No JWT - return IdP URL for modular embedding or redirect
       is-modular-embedding?
-      (response/response (token-utils/with-token {:url (sso-settings/jwt-identity-provider-uri)
-                                                  :method "jwt"}))
+      (response/response {:url (sso-settings/jwt-identity-provider-uri)
+                          :method "jwt"})
 
       :else
       (redirect-to-idp (sso-settings/jwt-identity-provider-uri) redirect))))

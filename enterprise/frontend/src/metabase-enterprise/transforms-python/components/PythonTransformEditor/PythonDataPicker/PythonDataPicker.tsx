@@ -10,6 +10,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import { Box, Button, Icon, Stack, Text } from "metabase/ui";
+import { doesDatabaseSupportTransforms } from "metabase-enterprise/transforms/utils";
 import type {
   Database,
   DatabaseId,
@@ -152,7 +153,7 @@ export function PythonDataPicker({
     >
       <Box>
         <Text fw="bold">{t`Source database`}</Text>
-        <Text size="sm" c="text-light" mb="sm">
+        <Text size="sm" c="text-tertiary" mb="sm">
           {t`Select the database that contains your source data.`}
         </Text>
 
@@ -162,6 +163,7 @@ export function PythonDataPicker({
           setDatabaseFn={handleDatabaseChange}
           databases={databases?.data ?? []}
           databaseIsDisabled={(database: Database) =>
+            !doesDatabaseSupportTransforms(database) ||
             !hasFeature(database, "transforms/python")
           }
         />
@@ -169,7 +171,7 @@ export function PythonDataPicker({
       {database && (
         <Box>
           <Text fw="bold">{t`Pick tables and alias them`}</Text>
-          <Text size="sm" c="text-light" mb="sm">
+          <Text size="sm" c="text-tertiary" mb="sm">
             {t`Select tables to use as data sources and provide aliases that can be referenced in your Python script.`}
           </Text>
           <Stack gap="md">

@@ -88,6 +88,7 @@
                               :database-routing         true
                               :transforms/table         true
                               :transforms/python        true
+                              :transforms/index-ddl     true
                               :metadata/table-existence-check true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -157,8 +158,10 @@
 (defmethod driver/connection-properties :postgres
   [_]
   (->>
-   [driver.common/default-host-details
-    (assoc driver.common/default-port-details :placeholder 5432)
+   [{:type :group
+     :container-style ["grid" "3fr 1fr"]
+     :fields [driver.common/default-host-details
+              (assoc driver.common/default-port-details :placeholder 5432)]}
     driver.common/default-dbname-details
     driver.common/default-user-details
     (driver.common/auth-provider-options)
@@ -169,50 +172,52 @@
      :type :schema-filters
      :display-name "Schemas"
      :visible-if {"destination-database" false}}
-    driver.common/default-ssl-details
-    {:name         "ssl-mode"
-     :display-name (trs "SSL Mode")
-     :type         :select
-     :options [{:name  "allow"
-                :value "allow"}
-               {:name  "prefer"
-                :value "prefer"}
-               {:name  "require"
-                :value "require"}
-               {:name  "verify-ca"
-                :value "verify-ca"}
-               {:name  "verify-full"
-                :value "verify-full"}]
-     :default "require"
-     :visible-if {"ssl" true}}
-    {:name         "ssl-root-cert"
-     :display-name (trs "SSL Root Certificate (PEM)")
-     :type         :secret
-     :secret-kind  :pem-cert
-     ;; only need to specify the root CA if we are doing one of the verify modes
-     :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
-    {:name         "ssl-use-client-auth"
-     :display-name (trs "Authenticate client certificate?")
-     :type         :boolean
-     ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
-     :visible-if   {"ssl" true}}
-    {:name         "ssl-client-cert"
-     :display-name (trs "SSL Client Certificate (PEM)")
-     :type         :secret
-     :secret-kind  :pem-cert
-     :visible-if   {"ssl-use-client-auth" true}}
-    {:name         "ssl-key"
-     :display-name (trs "SSL Client Key (PKCS-8/DER)")
-     :type         :secret
-     ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
-     :secret-kind  :binary-blob
-     :visible-if   {"ssl-use-client-auth" true}}
-    {:name         "ssl-key-password"
-     :display-name (trs "SSL Client Key Password")
-     :type         :secret
-     :secret-kind  :password
-     :visible-if   {"ssl-use-client-auth" true}}
-    driver.common/ssh-tunnel-preferences
+    {:type :group
+     :container-style ["component" "backdrop"]
+     :fields [driver.common/default-ssl-details
+              {:name         "ssl-mode"
+               :display-name (trs "SSL Mode")
+               :type         :select
+               :options [{:name  "allow"
+                          :value "allow"}
+                         {:name  "prefer"
+                          :value "prefer"}
+                         {:name  "require"
+                          :value "require"}
+                         {:name  "verify-ca"
+                          :value "verify-ca"}
+                         {:name  "verify-full"
+                          :value "verify-full"}]
+               :default "require"
+               :visible-if {"ssl" true}}
+              {:name         "ssl-root-cert"
+               :display-name (trs "SSL Root Certificate (PEM)")
+               :type         :secret
+               :secret-kind  :pem-cert
+               ;; only need to specify the root CA if we are doing one of the verify modes
+               :visible-if   {"ssl-mode" ["verify-ca" "verify-full"]}}
+              {:name         "ssl-use-client-auth"
+               :display-name (trs "Authenticate client certificate?")
+               :type         :boolean
+               ;; TODO: does this somehow depend on any of the ssl-mode vals?  it seems not (and is in fact orthogonal)
+               :visible-if   {"ssl" true}}
+              {:name         "ssl-client-cert"
+               :display-name (trs "SSL Client Certificate (PEM)")
+               :type         :secret
+               :secret-kind  :pem-cert
+               :visible-if   {"ssl-use-client-auth" true}}
+              {:name         "ssl-key"
+               :display-name (trs "SSL Client Key (PKCS-8/DER)")
+               :type         :secret
+               ;; since this can be either PKCS-8 or PKCS-12, we can't model it as a :keystore
+               :secret-kind  :binary-blob
+               :visible-if   {"ssl-use-client-auth" true}}
+              {:name         "ssl-key-password"
+               :display-name (trs "SSL Client Key Password")
+               :type         :secret
+               :secret-kind  :password
+               :visible-if   {"ssl-use-client-auth" true}}
+              driver.common/ssh-tunnel-preferences]}
     driver.common/advanced-options-start
     driver.common/json-unfolding
 
@@ -587,6 +592,7 @@
   (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
     (when (some? raw-value)
       (condp #(isa? %2 %1) base-type
+        :type/PostgresBitString (h2x/cast :varbit raw-value)
         :type/IPAddress    (h2x/cast :inet raw-value)
         :type/PostgresEnum (if (quoted? database-type)
                              (h2x/cast database-type raw-value)
@@ -807,7 +813,7 @@
   {:array         :type/*
    :bigint        :type/BigInteger
    :bigserial     :type/BigInteger
-   :bit           :type/*
+   :bit           :type/PostgresBitString
    :bool          :type/Boolean
    :boolean       :type/Boolean
    :box           :type/*
@@ -856,10 +862,10 @@
    :tsvector      :type/*
    :txid_snapshot :type/*
    :uuid          :type/UUID
-   :varbit        :type/*
+   :varbit        :type/PostgresBitString
    :varchar       :type/Text
    :xml           :type/Structured
-   (keyword "bit varying")                :type/*
+   (keyword "bit varying")                :type/PostgresBitString
    (keyword "character varying")          :type/Text
    (keyword "double precision")           :type/Float
    (keyword "time with time zone")        :type/Time
@@ -1006,6 +1012,15 @@
   (fn []
     (when-let [bytes (.getBytes rs i)]
       (str "\\x" (String. (Hex/encodeHex bytes))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/BIT]
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; convert bit strings to strings, leave booleans as objects
+  (if (= "bit" (.getColumnTypeName rsmeta i))
+    (fn []
+      (.getString rs i))
+    (fn []
+      (.getObject rs i))))
 
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :postgres
@@ -1276,7 +1291,9 @@
                {:name "Render" :pattern "\\.render\\.com$"}
                {:name "Scaleway" :pattern "\\.scw\\.cloud$"}
                {:name "Supabase" :pattern "(pooler\\.supabase\\.com|\\.supabase\\.co)$"}
-               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]})
+               {:name "Timescale" :pattern "(\\.tsdb\\.cloud|\\.timescale\\.com)$"}]
+   :field-groups [{:id "host-and-port"
+                   :container-style "host-and-port-section"}]})
 
 ;; Custom nippy handling for PGobject to enable proper caching of postgres domains in arrays (#55301)
 

@@ -23,7 +23,9 @@ export const getEmbedSidebar = () =>
 export const getRecentItemCards = () =>
   cy.findAllByTestId("embed-recent-item-card");
 
-export const visitNewEmbedPage = () => {
+export const visitNewEmbedPage = (
+  { waitForResource } = { waitForResource: true },
+) => {
   cy.intercept("GET", "/api/dashboard/*").as("dashboard");
 
   cy.visit("/admin/embedding");
@@ -42,9 +44,14 @@ export const visitNewEmbedPage = () => {
       embedModalEnableEmbedding();
     }
 
-    cy.wait("@dashboard");
+    if (waitForResource) {
+      cy.wait("@dashboard");
 
-    cy.get("[data-iframe-loaded]", { timeout: 20000 }).should("have.length", 1);
+      cy.get("[data-iframe-loaded]", { timeout: 20000 }).should(
+        "have.length",
+        1,
+      );
+    }
   });
 };
 
@@ -72,23 +79,31 @@ type NavigateToStepOptions =
   | {
       experience: "exploration" | "metabot";
       resourceName?: never;
+      preselectSso?: boolean;
     }
   | {
       experience: "dashboard" | "chart" | "browser";
       resourceName: string;
+      preselectSso?: boolean;
     };
 
 export const navigateToEntitySelectionStep = (
   options: NavigateToStepOptions,
 ) => {
-  const { experience } = options;
+  const { experience, preselectSso } = options;
 
   visitNewEmbedPage();
 
   cy.log("select an experience");
 
+  const isQuestionOrDashboardExperience =
+    experience === "chart" || experience === "dashboard";
   const hasEntitySelection =
     experience !== "exploration" && experience !== "metabot";
+
+  if (preselectSso || !isQuestionOrDashboardExperience) {
+    cy.findByLabelText("Metabase account (SSO)").click();
+  }
 
   const labelByExperience = match(experience)
     .with("chart", () => "Chart")
