@@ -481,23 +481,22 @@ export function createTestQuery({
   metadata = SAMPLE_METADATA,
   stages,
 }: CreateTestQueryOpts): Lib.Query {
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-
   if (stages.length === 0) {
     throw new Error("query must have at least one stage");
   }
 
-  const sourceMetadata = findSource(metadataProvider, stages[0].source);
+  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
+  const firstSource = findSource(metadataProvider, stages[0].source);
 
-  const query = Lib.queryFromTableOrCardMetadata(
+  const initialQuery = Lib.queryFromTableOrCardMetadata(
     metadataProvider,
-    sourceMetadata,
+    firstSource,
   );
 
   return stages.reduce(
     (query: Lib.Query, stage, stageIndex) =>
       appendTestQueryStage(metadataProvider, stage, query, stageIndex),
-    query,
+    initialQuery,
   );
 }
 
@@ -513,47 +512,19 @@ function appendTestQueryStage(
 ): Lib.Query {
   const { source, joins = [] } = stage;
 
-  const sourceMetadata = findSource(metadataProvider, source);
-
   const queryWithStage = Lib.appendStage(query);
+
+  const sourceMetadata = findSource(metadataProvider, source);
 
   // Add joins to stage
   const queryWithJoins = joins.reduce((query, join) => {
-    const targetMetadata = findSource(metadataProvider, join.source);
-
-    // Pick join strategy
-    const joinStrategy = findJoinStrategy(query, stageIndex, join.strategy);
-
-    // Build join conditions
-    const conditions =
-      join.conditions == null
-        ? // If no conditions are specified, use the suggested conditions
-          Lib.suggestedJoinConditions(query, stageIndex, sourceMetadata)
-        : // If conditions are specified, use them
-          join.conditions.map((condition) => {
-            const lhs = expressionToJoinConditionExpression(
-              query,
-              stageIndex,
-              Lib.joinConditionLHSColumns(query, stageIndex),
-              condition.left,
-            );
-
-            const rhs = expressionToJoinConditionExpression(
-              query,
-              stageIndex,
-              Lib.joinConditionRHSColumns(
-                query,
-                stageIndex,
-                targetMetadata,
-                lhs,
-              ),
-              condition.right,
-            );
-
-            return Lib.joinConditionClause(condition.operator, lhs, rhs);
-          });
-
-    const joinClause = Lib.joinClause(sourceMetadata, conditions, joinStrategy);
+    const joinClause = createTestJoinClause(
+      metadataProvider,
+      sourceMetadata,
+      query,
+      stageIndex,
+      join,
+    );
     return Lib.join(query, stageIndex, joinClause);
   }, queryWithStage);
 
@@ -614,6 +585,45 @@ function findColumn(
     // so they represent the same column. Return the first candidate.
     return candidates[0];
   }
+}
+
+function createTestJoinClause(
+  metadataProvider: Lib.MetadataProvider,
+  sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
+  query: Lib.Query,
+  stageIndex: number,
+  join: TestQueryJoin,
+) {
+  const targetMetadata = findSource(metadataProvider, join.source);
+
+  // Pick join strategy
+  const joinStrategy = findJoinStrategy(query, stageIndex, join.strategy);
+
+  // Build join conditions
+  const conditions =
+    join.conditions == null
+      ? // If no conditions are specified, use the suggested conditions
+        Lib.suggestedJoinConditions(query, stageIndex, sourceMetadata)
+      : // If conditions are specified, use them
+        join.conditions.map((condition) => {
+          const lhs = expressionToJoinConditionExpression(
+            query,
+            stageIndex,
+            Lib.joinConditionLHSColumns(query, stageIndex),
+            condition.left,
+          );
+
+          const rhs = expressionToJoinConditionExpression(
+            query,
+            stageIndex,
+            Lib.joinConditionRHSColumns(query, stageIndex, targetMetadata, lhs),
+            condition.right,
+          );
+
+          return Lib.joinConditionClause(condition.operator, lhs, rhs);
+        });
+
+  return Lib.joinClause(sourceMetadata, conditions, joinStrategy);
 }
 
 function findJoinStrategy(
