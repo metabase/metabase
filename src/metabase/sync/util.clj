@@ -13,7 +13,6 @@
    [metabase.query-processor.interface :as qp.i]
    [metabase.sync.interface :as i]
    [metabase.task-history.core :as task-history]
-   [metabase.task-history.models.task-run :as task-run]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
@@ -248,10 +247,10 @@
    f         :- fn?]
   (when (database/should-sync? database)
     (let [run-type (operation->run-type operation)]
-      (task-run/with-task-run (when run-type
-                                {:run_type    run-type
-                                 :entity_type :database
-                                 :entity_id   (u/the-id database)})
+      (task-history/with-task-run (when run-type
+                                    {:run_type    run-type
+                                     :entity_type :database
+                                     :entity_id   (u/the-id database)})
         ((with-duplicate-ops-prevented
           operation database
           (with-sync-events

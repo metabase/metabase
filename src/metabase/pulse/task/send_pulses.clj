@@ -16,7 +16,6 @@
    [metabase.pulse.send :as pulse.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
-   [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -54,9 +53,9 @@
                                                        :archived false
                                                        ;; alerts should all be migrated to notifications by now
                                                        :alert_condition nil)]
-      (task-run/with-task-run {:run_type    :subscription
-                               :entity_type :dashboard
-                               :entity_id   (:dashboard_id pulse)}
+      (task-history/with-task-run {:run_type    :subscription
+                                   :entity_type :dashboard
+                                   :entity_id   (:dashboard_id pulse)}
         (task-history/with-task-history {:task         "send-pulse"
                                          :task_details {:pulse-id    pulse-id
                                                         :channel-ids (seq channel-ids)}}

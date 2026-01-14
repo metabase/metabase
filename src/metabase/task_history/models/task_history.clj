@@ -1,7 +1,6 @@
 (ns metabase.task-history.models.task-history
   (:require
    ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [clojure.string :as str]
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [java-time.api :as t]

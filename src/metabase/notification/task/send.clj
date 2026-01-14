@@ -9,7 +9,6 @@
    [metabase.notification.send :as notification.send]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
-   [metabase.task-history.models.task-run :as task-run]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
@@ -120,7 +119,7 @@
 
       (cond
         (:active notification)
-        (task-run/with-task-run (notification->task-run-info notification)
+        (task-history/with-task-run (notification->task-run-info notification)
           (try
             (log/info "Submitting to the notification queue")
             (task-history/with-task-history {:task         "notification-trigger"
