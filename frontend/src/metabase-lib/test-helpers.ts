@@ -551,15 +551,14 @@ function expressionToJoinConditionExpression(
   }
 }
 
-function getSourceMetadata(
-  context: string,
+function findSource(
   provider: Lib.MetadataProvider,
   source: TestQuerySource,
 ): Lib.TableMetadata | Lib.CardMetadata {
   const metadata = Lib.tableOrCardMetadata(provider, source.id);
 
   if (!metadata) {
-    error(context, `Could not find source metadata for source: ${source.id}`);
+    throw new Error(`Could not find source metadata for source: ${source.id}`);
   }
 
   return metadata;
@@ -568,7 +567,6 @@ function getSourceMetadata(
 function findJoinStrategy(
   query: Lib.Query,
   stageIndex: number,
-  joinIndex: number,
   strategyName: JoinStrategy,
 ) {
   const availableJoinStrategies = Lib.availableJoinStrategies(
@@ -580,16 +578,9 @@ function findJoinStrategy(
       Lib.displayInfo(query, stageIndex, strategy).shortName === strategyName,
   );
   if (!joinStrategy) {
-    error(
-      `[stage ${stageIndex}, join ${joinIndex}]`,
-      `Could not find join strategy "${strategyName}"`,
-    );
+    throw new Error(`Could not find join strategy "${strategyName}"`);
   }
   return joinStrategy;
-}
-
-function error(context: string, message: string): never {
-  throw new Error(`[${context}]: ${message}`);
 }
 
 export function createTestQuery({
@@ -603,11 +594,7 @@ export function createTestQuery({
     throw new Error("query must have at least one stage");
   }
 
-  const sourceMetadata = getSourceMetadata(
-    `[stage 0]`,
-    metadataProvider,
-    stages[0].source,
-  );
+  const sourceMetadata = findSource(metadataProvider, stages[0].source);
 
   const query = Lib.queryFromTableOrCardMetadata(
     metadataProvider,
@@ -633,29 +620,16 @@ function appendTestQueryStage(
 ): Lib.Query {
   const { source, joins = [] } = stage;
 
-  const sourceMetadata = getSourceMetadata(
-    `[stage ${stageIndex}]`,
-    metadataProvider,
-    source,
-  );
+  const sourceMetadata = findSource(metadataProvider, source);
 
   const queryWithStage = Lib.appendStage(query);
 
   // Add joins to stage
-  const queryWithJoins = joins.reduce((query, join, joinIndex) => {
-    const targetMetadata = getSourceMetadata(
-      `[stage ${stageIndex}, join ${joinIndex}]`,
-      metadataProvider,
-      join.source,
-    );
+  const queryWithJoins = joins.reduce((query, join) => {
+    const targetMetadata = findSource(metadataProvider, join.source);
 
     // Pick join strategy
-    const joinStrategy = findJoinStrategy(
-      query,
-      stageIndex,
-      joinIndex,
-      join.strategy,
-    );
+    const joinStrategy = findJoinStrategy(query, stageIndex, join.strategy);
 
     // Build join conditions
     const conditions =
