@@ -155,6 +155,8 @@
    {:decode/normalize deduplicate-refs-ignoring-source-field-name-when-possible}
    :any])
 
+;; TODO (Cam 2026-01-13) -- we should ensure sequences like these are [[vector?]] and normalize them to vectors if
+;; they're not
 (mr/def ::fields
   [:and
    [:sequential {:min 1} [:ref ::ref/ref]]
