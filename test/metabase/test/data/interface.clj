@@ -556,10 +556,11 @@
        (do-something-that-requires-real-sync))"
   [[driver feature value] & body]
   `(let [original-db-supports?# driver/database-supports?]
-     (with-redefs [driver/database-supports? (fn [ddriver# ffeature# db#]
-                                               (if (and (= ddriver# ~driver) (= ffeature# ~feature))
-                                                 ~value
-                                                 (original-db-supports?# ddriver# ffeature# db#)))]
+     (with-redefs [driver/database-supports?
+                   (fn [driver-arg# feature-arg# db-arg#]
+                     (if (and (= driver-arg# ~driver) (= feature-arg# ~feature))
+                       ~value
+                       (original-db-supports?# driver-arg# feature-arg# db-arg#)))]
        ~@body)))
 
 (defmulti track-dataset
