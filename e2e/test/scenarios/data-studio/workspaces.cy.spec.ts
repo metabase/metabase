@@ -526,14 +526,14 @@ describe("scenarios > data studio > workspaces", () => {
       Workspaces.getSaveTransformButton().click();
       runTransformAndWaitForSuccess();
 
-      // Open the transform table tab
+      cy.log("Open the transform table tab");
       Workspaces.openDataTab();
       Workspaces.getWorkspaceSidebar()
         .findByText(`${TARGET_SCHEMA}.${TARGET_TABLE_SQL}`)
         .should("be.visible")
         .click();
 
-      // Verify both tabs are open
+      cy.log("Verify both tabs are open");
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe(TARGET_TABLE_SQL, [
           "Setup",
@@ -545,7 +545,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.openCodeTab();
 
-      // Remove the transform from the workspace
+      cy.log("Remove the transform from the workspace");
       Workspaces.getWorkspaceTransforms()
         .findByText("SQL transform")
         .realHover();
@@ -555,7 +555,7 @@ describe("scenarios > data studio > workspaces", () => {
       H.popover().findByText("Remove").click();
       verifyAndCloseToast("Transform removed from the workspace");
 
-      // Verify both transform tab and table tab have been closed
+      cy.log("Verify both transform tab and table tab have been closed");
       Workspaces.getWorkspaceContent().within(() => {
         H.tabsShouldBe("Setup", ["Setup", "Agent Chat"]);
       });
@@ -1461,12 +1461,8 @@ function getTableLink({ isActive = true }: { isActive?: boolean } = {}) {
 }
 
 function runTransformAndWaitForSuccess() {
-  getRunButton().click();
-  getRunButton().should("have.text", "Ran successfully");
-}
-
-function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button").eq(0, options);
+  Workspaces.getRunTransformButton().click();
+  Workspaces.getRunTransformButton().should("have.text", "Ran successfully");
 }
 
 function verifyAndCloseToast(message: string) {
