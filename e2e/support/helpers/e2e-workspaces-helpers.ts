@@ -124,6 +124,6 @@ export const Workspaces = {
   },
 
   getTransformStatusDot(name: string | RegExp) {
-    return cy.findByText(name).parent().find('[class*="statusDot"]');
+    return cy.findByText(name).parent().findByTestId("status-dot");
   },
 };
