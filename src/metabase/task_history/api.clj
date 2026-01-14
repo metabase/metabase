@@ -201,7 +201,8 @@
   [_
    params :- [:map [:run-type (into [:enum] (map name task-run/run-types))]]]
   (perms/check-has-application-permission :monitoring)
-  (-> (t2/query {:select-distinct [:entity_type :entity_id]
-                 :from            :task_run
-                 :where           [:= :run_type (:run-type params)]})
-      hydrate-entity-names))
+  (->> (t2/query {:select-distinct [:entity_type :entity_id]
+                  :from            :task_run
+                  :where           [:= :run_type (:run-type params)]})
+       (map #(update % :entity_type keyword))
+       hydrate-entity-names))
