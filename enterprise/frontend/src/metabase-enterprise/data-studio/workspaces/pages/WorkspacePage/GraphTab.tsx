@@ -6,16 +6,15 @@ import { useGetWorkspaceGraphQuery } from "metabase-enterprise/api";
 import { DependencyGraph as DependencyGraphComponent } from "metabase-enterprise/dependencies/components/DependencyGraph/DependencyGraph";
 import { WorkspaceGraphNode } from "metabase-enterprise/dependencies/components/DependencyGraph/GraphNode/WorkspaceGraphNode";
 import type {
-  DependencyEdge,
   DependencyEntry,
-  DependencyGraph,
-  DependencyNode,
-  TableDependencyNode,
+  WorkspaceDependencyGraph,
+  WorkspaceGraphDependencyEdge,
+  WorkspaceGraphDependencyNode,
   WorkspaceGraphResponse,
+  WorkspaceGraphTableNode,
+  WorkspaceGraphTransformNode,
   WorkspaceId,
-  WorkspaceTransformDependencyNode,
 } from "metabase-types/api";
-
 
 type GraphTabProps = {
   workspaceId: WorkspaceId;
@@ -33,12 +32,11 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
   } = useGetWorkspaceGraphQuery(workspaceId);
 
   const dependencyGraph = useDependencyGraph(graphData, workspaceId);
-  console.log('dependencyGraph WS', dependencyGraph);
 
   // Create a dummy entry to prevent DependencyGraph from clearing the graph
   // The workspace graph shows the entire workspace without filtering
   const dummyEntry: DependencyEntry = {
-    id: workspaceId.toString(), // Convert number to string
+    id: workspaceId, // Convert number to string
     type: "transform", // Using transform as the type since it's a valid dependency type
   };
 
@@ -69,8 +67,6 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
       <DependencyGraphComponent
         entry={dummyEntry}
         graph={dependencyGraph}
-        isFetching={isFetching}
-        error={error}
         getGraphUrl={getGraphUrl}
         withEntryPicker={false}
         nodeTypes={NODE_TYPES}
@@ -82,99 +78,98 @@ export function GraphTab({ workspaceId }: GraphTabProps) {
 function useDependencyGraph(
   graphData: WorkspaceGraphResponse | undefined,
   workspaceId: WorkspaceId,
-): DependencyGraph | undefined {
+): WorkspaceDependencyGraph | undefined {
   return useMemo(() => {
     if (!graphData) {
       return undefined;
     }
 
-    // Transform workspace graph data to match DependencyGraph format
+    // Transform workspace graph data to match WorkspaceDependencyGraph format
     // Data Studio graph doesn't have a concept of input and output tables,
     // so we need to transform the data to match the expected format.
-    const dependencyNodes = [...graphData.nodes].reduce<DependencyNode[]>(
-      (acc, node) => {
-        if (node.type === "input-table") {
-          const tableNode: TableDependencyNode = {
-            id: node.id,
+    const dependencyNodes = [...graphData.nodes].reduce<
+      WorkspaceGraphDependencyNode[]
+    >((acc, node) => {
+      if (node.type === "input-table") {
+        const tableNode: WorkspaceGraphTableNode = {
+          id: node.id,
+          type: "table",
+          data: {
+            name: node.data?.table || `Table ${node.id}`,
+            display_name: node.data?.table || `Table ${node.id}`,
+            description: null,
+            db_id: node.data?.db,
+            schema: node.data?.schema,
+            fields: [],
+            table_id: node.data?.id,
+          },
+          dependents_count: node.dependents_count,
+        };
+        acc.push(tableNode);
+      } else if (node.type === "workspace-transform") {
+        const transformNode: WorkspaceGraphTransformNode = {
+          id: node.id,
+          type: "workspace-transform",
+          data: {
+            name: node.data?.name || `Transform ${node.id}`,
+            workspace_id: workspaceId,
+            ref_id: node.data?.ref_id,
+            target: node.data?.target,
+          },
+          dependents_count: node.dependents_count,
+        };
+        acc.push(transformNode);
+
+        // Create target table node if target information is available
+        if (node.data?.target) {
+          const targetTableNode: WorkspaceGraphTableNode = {
+            id: `target-${node.id}`,
             type: "table",
             data: {
-              name: (node.data?.table) || `Table ${node.id}`,
-              display_name: (node.data?.table) || `Table ${node.id}`,
+              name: node.data.target.table || `Target Table ${node.id}`,
+              display_name: node.data.target.table || `Target Table ${node.id}`,
               description: null,
-              db_id: (node.data?.db),
-              schema: (node.data?.schema),
+              db_id: node.data.target.db,
+              schema: node.data.target.schema,
               fields: [],
-              table_id: node.data?.id,
+              table_id: node.data.target.table_id ?? undefined,
             },
-            dependents_count: node.dependents_count,
+            dependents_count: {},
           };
-          acc.push(tableNode);
-        } else if (node.type === "workspace-transform") {
-          const transformNode: WorkspaceTransformDependencyNode = {
-            id: node.id,
-            type: "workspace-transform",
-            data: {
-              name: (node.data?.name as string) || `Transform ${node.id}`,
-              description: null,
-              workspaceId: workspaceId,
-              ref_id: node.data?.ref_id as string | undefined,
-            },
-            dependents_count: node.dependents_count,
-          };
-          acc.push(transformNode);
-
-          // Create target table node if target information is available
-          if (node.data?.target) {
-            const targetTableNode: TableDependencyNode = {
-              id: `target-${node.id}`, // Use a unique ID for the target table
-              type: "table",
-              data: {
-                name: node.data.target.table || `Target Table ${node.id}`,
-                display_name: node.data.target.table || `Target Table ${node.id}`,
-                description: null,
-                db_id: node.data.target.db,
-                schema: node.data.target.schema,
-                fields: [],
-                table_id: node.data.target.id,
-              },
-              dependents_count: {}, // Target tables start with no dependents
-            };
-            acc.push(targetTableNode);
-          }
+          acc.push(targetTableNode);
         }
-        return acc;
-      },
-      []
-    );
+      }
+      return acc;
+    }, []);
 
-    // Transform edges to match DependencyEdge format
-    const dependencyEdges: DependencyEdge[] = [...graphData.edges].reverse().map((edge) => ({
-      from_entity_id: edge.to_entity_id, // Switch: use to_entity_id as from
-      from_entity_type:
-        edge.to_entity_type === "workspace-transform"
+    // Transform edges to match WorkspaceGraphDependencyEdge format
+    // Swap from/to since the backend returns edges in reverse order
+    const dependencyEdges: WorkspaceGraphDependencyEdge[] = [...graphData.edges]
+      .reverse()
+      .map((edge) => ({
+        from_entity_id: edge.to_entity_id,
+        from_entity_type: (edge.to_entity_type === "workspace-transform"
           ? "workspace-transform"
-          : (edge.to_entity_type as "table" | "transform"),
-      to_entity_id: edge.from_entity_id, // Switch: use from_entity_id as to
-      to_entity_type:
-        edge.from_entity_type === "input-table"
+          : "table") as "table" | "workspace-transform",
+        to_entity_id: edge.from_entity_id,
+        to_entity_type: (edge.from_entity_type === "input-table"
           ? "table"
-          : (edge.from_entity_type as "transform" | "workspace-transform"),
-    }));
+          : edge.from_entity_type) as "table" | "workspace-transform",
+      }));
 
     // Add edges from workspace-transforms to their target tables
     graphData.nodes.forEach((node) => {
       if (node.type === "workspace-transform" && node.data?.target) {
-        const targetEdge: DependencyEdge = {
-          to_entity_id: node.id,
-          to_entity_type: "workspace-transform",
-          from_entity_id: `target-${node.id}`, // Use the same ID as the target table node
-          from_entity_type: "table",
+        const targetEdge: WorkspaceGraphDependencyEdge = {
+          from_entity_id: node.id,
+          from_entity_type: "workspace-transform",
+          to_entity_id: `target-${node.id}`,
+          to_entity_type: "table",
         };
         dependencyEdges.push(targetEdge);
       }
     });
 
-    // Combine into DependencyGraph format
     return {
       nodes: dependencyNodes,
       edges: dependencyEdges,

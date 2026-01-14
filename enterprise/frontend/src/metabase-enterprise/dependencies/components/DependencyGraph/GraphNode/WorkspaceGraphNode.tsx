@@ -6,7 +6,8 @@ import {
   useNodesInitialized,
 } from "@xyflow/react";
 import cx from "classnames";
-import { memo, useContext, useEffect } from "react";
+import type { MouseEvent } from "react";
+import { memo, useContext } from "react";
 
 import { useLazyGetTableQueryMetadataQuery } from "metabase/api";
 import {
@@ -18,17 +19,20 @@ import {
   Stack,
   UnstyledButton,
 } from "metabase/ui";
+import type { DependencyNode } from "metabase-types/api";
 
-import { GraphContext } from "../GraphContext";
-import type { NodeType } from "../types";
 import {
+  getDependencyGroupType,
+  getDependencyGroupTypeInfo,
   getNodeIcon,
   getNodeLabel,
-  getNodeTypeInfo,
   isSameNode,
-} from "../utils";
+} from "../../../utils";
+import { GraphContext } from "../GraphContext";
+import type { GraphSelection, NodeType } from "../types";
 
 import S from "./GraphNode.module.css";
+import type { DependentGroup } from "./types";
 import {
   getDependencyGroupTitle,
   getDependentGroupLabel,
@@ -42,7 +46,7 @@ export const WorkspaceGraphNode = memo(function ItemNode({
 }: WorkspaceGraphNodeProps) {
   const { selection, setSelection } = useContext(GraphContext);
   const label = getNodeLabel(node);
-  const typeInfo = getNodeTypeInfo(node);
+  const typeInfo = getDependencyGroupTypeInfo(getDependencyGroupType(node));
   const groups = getDependentGroups(node);
   const sources = useNodeConnections({ handleType: "source" });
   const targets = useNodeConnections({ handleType: "target" });
@@ -50,19 +54,15 @@ export const WorkspaceGraphNode = memo(function ItemNode({
   const isInitialized = useNodesInitialized();
 
   // Fetch table data for input table nodes
-  const [fetchTableMetadata, { data: tableData }] = useLazyGetTableQueryMetadataQuery();
-
-  // // Update node.data with fields when table data is available
-  // useEffect(() => {
-  //   if (node.type === "table" && tableData?.fields) {
-  //     node.data.fields = tableData.fields;
-  //   }
-  // }, [node, tableData]);
+  const [fetchTableMetadata] = useLazyGetTableQueryMetadataQuery();
 
   const handleClick = async () => {
     // Fetch table metadata when a table node is clicked
     if (node.type === "table" && node.data.table_id) {
-      const tableData = await fetchTableMetadata({ id: node.data.table_id }, true).unwrap();
+      const tableData = await fetchTableMetadata(
+        { id: node.data.table_id },
+        true,
+      ).unwrap();
       node.data.fields = tableData.fields;
     }
 
@@ -95,12 +95,11 @@ export const WorkspaceGraphNode = memo(function ItemNode({
           </Box>
         </Stack>
         <Stack mt="md" gap="sm" align="start">
-
           {/* // TODO (@stasgavrylov 7/01/2025) - implement dependency groups */}
           <Box c="text-secondary" fz="sm" lh="1rem">
             {getDependencyGroupTitle(node, groups)}
           </Box>
-           {groups.map((group) => (
+          {groups.map((group) => (
             <DependencyGroupButton
               key={group.type}
               node={node}
@@ -149,7 +148,7 @@ function DependencyGroupButton({
     isSameNode(node, selection) &&
     selection.groupType === group.type;
 
-  const handleClick = (event: MouseEvent) => {
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
     event.stopPropagation();
     onSelectionChange({
       id: node.id,

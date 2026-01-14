@@ -305,6 +305,8 @@ export function provideDependencyNodeTags(
       return provideSegmentDependencyNodeTags(node);
     case "measure":
       return provideMeasureDependencyNodeTags(node);
+    case "workspace-transform":
+      return [idTag("workspace-transform", node.id)];
   }
 }
 

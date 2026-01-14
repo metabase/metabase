@@ -1,3 +1,4 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import {
   Background,
   Controls,
@@ -13,7 +14,7 @@ import { t } from "ttag";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
 import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
-import type { DependencyEntry } from "metabase-types/api";
+import type { DependencyGraph } from "metabase-types/api";
 
 import S from "./DependencyGraph.module.css";
 import { GraphContext } from "./GraphContext";
@@ -53,19 +54,21 @@ type DependencyGraphProps = {
 
 export function DependencyGraph({
   entry,
-  graph,
-  isFetching = false,
-  error,
+  graph: externalGraph,
+  isFetching: isFetchingExternally = false,
+  error: externalError,
   getGraphUrl,
   withEntryPicker,
   nodeTypes = NODE_TYPES,
   edgeTypes = EDGE_TYPES,
 }: DependencyGraphProps) {
-  const {
-    data: graph,
-    isFetching,
-    error,
-  } = useGetDependencyGraphQuery(entry ?? skipToken);
+  const shouldFetch = entry != null && !externalGraph;
+  const dependencyGraph = useGetDependencyGraphQuery(
+    shouldFetch ? entry : skipToken,
+  );
+  const isFetching = isFetchingExternally || dependencyGraph.isFetching;
+  const graph = externalGraph || dependencyGraph.data;
+  const error = externalError || dependencyGraph.error;
 
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);

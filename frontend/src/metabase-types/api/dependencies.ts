@@ -18,6 +18,7 @@ export const DEPENDENCY_TYPES = [
   "card",
   "table",
   "transform",
+  "workspace-transform",
   "snippet",
   "dashboard",
   "document",
@@ -61,7 +62,7 @@ type BaseDependencyNode<TType extends DependencyType, TData> = {
 export type TableDependencyNodeData = Pick<
   Table,
   "name" | "display_name" | "description" | "db_id" | "schema" | "db" | "fields"
-> & { table_id?: TableId;};
+> & { table_id?: TableId };
 
 export type TransformDependencyNodeData = Pick<
   Transform,
@@ -137,11 +138,6 @@ export type TransformDependencyNode = BaseDependencyNode<
   TransformDependencyNodeData
 >;
 
-export type WorkspaceTransformDependencyNode = BaseDependencyNode<
-  "workspace-transform",
-  TransformDependencyNodeData
->;
-
 export type CardDependencyNode = BaseDependencyNode<
   "card",
   CardDependencyNodeData
@@ -194,7 +190,6 @@ export type MeasureDependencyNode = BaseDependencyNode<
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
-  | WorkspaceTransformDependencyNode
   | CardDependencyNode
   | SnippetDependencyNode
   | DashboardDependencyNode
@@ -245,9 +240,9 @@ export type DependencyError =
   | ValidationErrorDependencyError;
 
 export type DependencyEdge = {
-  from_entity_id: DependencyId | string;
+  from_entity_id: DependencyId;
   from_entity_type: DependencyType;
-  to_entity_id: DependencyId | string;
+  to_entity_id: DependencyId;
   to_entity_type: DependencyType;
 };
 

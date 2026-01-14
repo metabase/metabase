@@ -32,7 +32,10 @@ export function isSameNode(
   return entry1.id === entry2.id && entry1.type === entry2.type;
 }
 
-export function getNodeId(id: DependencyId, type: DependencyType): NodeId {
+export function getNodeId(
+  id: DependencyId | string,
+  type: DependencyType | string,
+): NodeId {
   return `${id}-${type}`;
 }
 
@@ -51,6 +54,7 @@ export function getNodeDescription(node: DependencyNode): string | null {
   switch (node.type) {
     case "document":
     case "sandbox":
+    case "workspace-transform":
       return null;
     default:
       return node.data.description ?? "";
@@ -142,8 +146,11 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
         url: Urls.transform(node.id),
       };
     case "workspace-transform": {
-      const workspaceId = node.data.workspaceId;
+      const workspaceId = node.data.workspace_id;
       const refId = node.data.ref_id;
+      if (workspaceId == null) {
+        return null;
+      }
       return {
         label: t`View this workspace transform`,
         url: Urls.dataStudioWorkspace(workspaceId, refId),
@@ -328,6 +335,7 @@ export function getNodeLocationInfo(
       }
       return null;
     case "transform":
+    case "workspace-transform":
     case "sandbox":
       return null;
   }
@@ -344,6 +352,7 @@ export function getNodeCreatedAt(node: DependencyNode): string | null {
     case "transform":
       return node.data.created_at;
     case "table":
+    case "workspace-transform":
     case "sandbox":
       return null;
   }
@@ -360,6 +369,7 @@ export function getNodeCreatedBy(node: DependencyNode): UserInfo | null {
     case "transform":
       return node.data.creator ?? null;
     case "table":
+    case "workspace-transform":
     case "sandbox":
       return null;
   }
@@ -369,11 +379,12 @@ export function getNodeLastEditedAt(node: DependencyNode): string | null {
   switch (node.type) {
     case "card":
     case "dashboard":
-      return node.data["last-edit-info"]?.timestamp ?? null;
+      return node.data["last-edit-info"]?.timestamp || null;
     case "segment":
     case "measure":
     case "table":
     case "transform":
+    case "workspace-transform":
     case "snippet":
     case "document":
     case "sandbox":
@@ -390,6 +401,7 @@ export function getNodeLastEditedBy(node: DependencyNode): LastEditInfo | null {
     case "measure":
     case "table":
     case "transform":
+    case "workspace-transform":
     case "snippet":
     case "document":
     case "sandbox":
@@ -411,6 +423,7 @@ export function getNodeViewCount(node: DependencyNode): number | null {
     case "table":
     case "measure":
     case "transform":
+    case "workspace-transform":
     case "snippet":
     case "sandbox":
     case "segment":
