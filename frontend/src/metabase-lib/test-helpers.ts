@@ -591,7 +591,6 @@ function appendTestQueryStage(
   const queryWithFilters = filters.reduce((query, filter) => {
     const filterClause = createTestFilterClause(
       metadataProvider,
-      sourceMetadata,
       query,
       stageIndex,
       filter,
@@ -603,7 +602,6 @@ function appendTestQueryStage(
   const queryWithAggregations = aggregations.reduce((query, aggregation) => {
     const aggregationClause = createTestAggregationClause(
       metadataProvider,
-      sourceMetadata,
       query,
       stageIndex,
       aggregation,
@@ -615,7 +613,6 @@ function appendTestQueryStage(
   const queryWithBreakouts = breakouts.reduce((query, breakout) => {
     const clause = createTestBreakoutClause(
       metadataProvider,
-      sourceMetadata,
       query,
       stageIndex,
       breakout,
@@ -805,7 +802,6 @@ function expressionToJoinConditionExpression(
 
 function createTestFilterClause(
   _metadataProvider: Lib.MetadataProvider,
-  _sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
   query: Lib.Query,
   stageIndex: number,
   filter: TestQueryFilter,
@@ -820,7 +816,6 @@ function createTestFilterClause(
 
 function createTestAggregationClause(
   metadataProvider: Lib.MetadataProvider,
-  sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
   query: Lib.Query,
   stageIndex: number,
   aggregation: TestQueryAggregation,
@@ -828,7 +823,6 @@ function createTestAggregationClause(
   if ("name" in aggregation && "value" in aggregation) {
     const clause = createTestAggregationClause(
       metadataProvider,
-      sourceMetadata,
       query,
       stageIndex,
       aggregation.value,
@@ -847,7 +841,6 @@ function createTestAggregationClause(
 
 function createTestBreakoutClause(
   _metadataProvider: Lib.MetadataProvider,
-  _sourceMetadata: Lib.TableMetadata | Lib.CardMetadata,
   query: Lib.Query,
   stageIndex: number,
   breakout: TestQueryBreakout,
