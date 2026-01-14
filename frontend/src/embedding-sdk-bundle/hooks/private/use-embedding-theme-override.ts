@@ -20,12 +20,7 @@ import type { MantineThemeOverride } from "metabase/ui";
 import { getColorShades } from "metabase/ui/utils/colors";
 
 /**
- * Computes the Mantine theme override for the embedding SDK.
- *
- * For V2 themes: Resolves theme using the layered override system
- * (baseTheme > whitelabelColors > embeddingThemeOverride).
- *
- * For V1 themes: Uses the existing processing pipeline with global color mutation.
+ * Returns the Mantine theme override for Modular Embedding SDK.
  */
 export function useEmbeddingThemeOverride(
   theme?: MetabaseEmbeddingTheme,
@@ -59,10 +54,7 @@ export function useEmbeddingThemeOverride(
         ]),
       );
 
-      return {
-        colors,
-        fontFamily: font ?? DEFAULT_FONT,
-      };
+      return { colors, fontFamily: font ?? DEFAULT_FONT };
     }
   }, [appColors, theme, font]);
 }
