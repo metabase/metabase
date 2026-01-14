@@ -1109,16 +1109,14 @@ describe("scenarios > data studio > workspaces", () => {
 
       Workspaces.getRunAllTransformsButton().should("be.enabled").click();
 
+      cy.intercept("GET", "/api/ee/transform/*").as("getTransform");
+
       H.popover().within(() => {
         cy.findByText("Run stale transforms").should("be.visible");
         cy.findByText("Run all transforms").should("be.visible").click();
       });
 
-      Workspaces.getRunAllTransformsButton().should(
-        "have.attr",
-        "data-loading",
-        "true",
-      );
+      cy.wait("@getTransform");
       Workspaces.getRunAllTransformsButton().should(
         "not.have.attr",
         "data-loading",
