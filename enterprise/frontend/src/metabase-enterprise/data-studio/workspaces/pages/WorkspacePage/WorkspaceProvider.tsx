@@ -78,7 +78,6 @@ export interface WorkspaceContextValue {
     patch: Partial<EditedTransform>,
   ) => void;
   removeEditedTransform: (transformId: string | number) => void;
-  runTransforms: Set<number>;
   updateTransformState: (transform: WorkspaceTransform) => void;
   updateTab: <T extends WorkspaceTab>(tabId: string, patch: Partial<T>) => void;
   hasUnsavedChanges: boolean;
@@ -101,7 +100,6 @@ interface WorkspaceState {
   activeTable?: OpenTable;
   activeTab?: WorkspaceTab;
   editedTransforms: Map<number | string, EditedTransform>;
-  runTransforms: Set<number | string>;
   unsavedTransforms: Transform[];
   nextUnsavedTransformIndex: number;
 }
@@ -117,7 +115,6 @@ const createEmptyWorkspaceState = (): WorkspaceState => ({
   activeTable: undefined,
   activeTab: undefined,
   editedTransforms: new Map<number | string, EditedTransform>(),
-  runTransforms: new Set<number>(),
   unsavedTransforms: [],
   nextUnsavedTransformIndex: 0,
 });
@@ -372,8 +369,6 @@ export const WorkspaceProvider = ({
         } else {
           newEditedTransforms.delete(transformId);
         }
-        const newRunTransforms = new Set(state.runTransforms);
-        newRunTransforms.delete(transformId);
 
         const newOpenedTabs = state.openedTabs.map((tab) => {
           if (tab.type === "transform" && tab.transform.id === transformId) {
@@ -389,7 +384,6 @@ export const WorkspaceProvider = ({
           ...state,
           openedTabs: newOpenedTabs,
           editedTransforms: newEditedTransforms,
-          runTransforms: newRunTransforms,
         };
       });
     },
@@ -444,9 +438,6 @@ export const WorkspaceProvider = ({
           }
         }
 
-        const newRunTransforms = new Set(state.runTransforms);
-        newRunTransforms.delete(transform.id);
-
         return {
           ...state,
           openedTabs: newOpenedTabs,
@@ -455,7 +446,6 @@ export const WorkspaceProvider = ({
               ? transform
               : state.activeTransform,
           editedTransforms: newEditedTransforms,
-          runTransforms: newRunTransforms,
         };
       });
     },
@@ -679,7 +669,6 @@ export const WorkspaceProvider = ({
       editedTransforms: currentState.editedTransforms,
       patchEditedTransform,
       removeEditedTransform,
-      runTransforms: currentState.runTransforms,
       updateTransformState,
       updateTab,
       hasUnsavedChanges,
@@ -704,7 +693,6 @@ export const WorkspaceProvider = ({
       addOpenedTransform,
       removeWorkspaceTransform,
       currentState.editedTransforms,
-      currentState.runTransforms,
       currentState.unsavedTransforms,
       patchEditedTransform,
       removeEditedTransform,
