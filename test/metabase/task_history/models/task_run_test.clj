@@ -2,9 +2,18 @@
   "Tests for TaskRun model and with-task-run macro."
   (:require
    [clojure.test :refer :all]
+   [metabase.models.interface :as mi]
+   [metabase.notification.send :as notification.send]
+   [metabase.notification.task.send :as notification.task.send]
+   [metabase.notification.test-util :as notification.tu]
+   [metabase.pulse.send :as pulse.send]
+   [metabase.pulse.task.send-pulses :as send-pulses]
+   [metabase.pulse.test-util :as pulse.tu]
+   [metabase.sync.util :as sync-util]
    [metabase.task-history.core :as task-history]
    [metabase.task-history.models.task-run :as task-run]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -208,3 +217,146 @@
           :done)
         (let [th (t2/select-one :model/TaskHistory :task task-name)]
           (is (nil? (:run_id th)) "run_id is nil"))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Sync integration tests                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest sync-creates-task-run-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "sync-operation creates a task run with type :sync"
+      (let [mock-db    (mi/instance :model/Database {:name "test" :id 999 :engine :h2})
+            step-name  (mt/random-name)
+            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
+        (sync-util/sync-operation :sync-metadata mock-db "Test sync"
+          (sync-util/run-sync-operation "test-sync" mock-db sync-steps))
+        (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 999)]
+          (is (some? run) "task run was created")
+          (is (= :sync (:run_type run)))
+          (is (= :database (:entity_type run)))
+          (is (= 999 (:entity_id run)))
+          (is (= :success (:status run))))))))
+
+(deftest analyze-creates-fingerprint-run-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "analyze operation creates a task run with type :fingerprint"
+      (let [mock-db    (mi/instance :model/Database {:name "test" :id 998 :engine :h2})
+            step-name  (mt/random-name)
+            sync-steps [(sync-util/create-sync-step step-name (fn [_] {:done true}))]]
+        (sync-util/sync-operation :analyze mock-db "Test analyze"
+          (sync-util/run-sync-operation "test-analyze" mock-db sync-steps))
+        (let [run (t2/select-one :model/TaskRun :entity_type :database :entity_id 998)]
+          (is (some? run) "task run was created")
+          (is (= :fingerprint (:run_type run)))
+          (is (= :success (:status run))))))))
+
+(deftest nested-sync-operations-share-run-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "nested sync operations don't create multiple task runs"
+      (let [mock-db     (mi/instance :model/Database {:name "test" :id 997 :engine :h2})
+            outer-step  (mt/random-name)
+            inner-step  (mt/random-name)
+            outer-steps [(sync-util/create-sync-step outer-step
+                           (fn [_]
+                             ;; Nested sync operation
+                             (sync-util/sync-operation :sync mock-db "Inner sync"
+                               (sync-util/run-sync-operation "inner"
+                                 mock-db
+                                 [(sync-util/create-sync-step inner-step (fn [_] {:inner true}))]))
+                             {:outer true}))]]
+        (sync-util/sync-operation :sync mock-db "Outer sync"
+          (sync-util/run-sync-operation "outer" mock-db outer-steps))
+        (is (= 1 (t2/count :model/TaskRun :entity_id 997))
+            "only one task run created for nested operations")))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Pulse integration tests                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest pulse->task-run-info-test
+  (testing "pulse->task-run-info extracts correct info"
+    (testing "dashboard subscription"
+      (is (= {:run_type :subscription :entity_type :dashboard :entity_id 123}
+             (send-pulses/pulse->task-run-info {:dashboard_id 123}))))
+    (testing "legacy pulse with cards"
+      (is (= {:run_type :subscription :entity_type :card :entity_id 456}
+             (send-pulses/pulse->task-run-info {:cards [{:id 456} {:id 789}]}))))
+    (testing "pulse with neither returns nil"
+      (is (nil? (send-pulses/pulse->task-run-info {}))))))
+
+(deftest pulse-send-creates-task-run-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "sending a dashboard pulse creates a task run with type :subscription"
+      (notification.tu/with-notification-testing-setup!
+        (notification.tu/with-channel-fixtures [:channel/email]
+          (mt/with-temp [:model/Dashboard    {dash-id :id} {:name "Test Dashboard"}
+                         :model/Card         {card-id :id} {:name "Test Card"}
+                         :model/Pulse        {pulse-id :id} {:name         "Test Pulse"
+                                                             :dashboard_id dash-id}
+                         :model/PulseCard    _ {:pulse_id pulse-id
+                                                :card_id  card-id
+                                                :position 0}
+                         :model/PulseChannel {pc-id :id} {:pulse_id     pulse-id
+                                                          :channel_type "email"}
+                         :model/PulseChannelRecipient _ {:user_id          (pulse.tu/rasta-id)
+                                                         :pulse_channel_id pc-id}]
+            (notification.tu/with-javascript-visualization-stub
+              (pulse.tu/with-captured-channel-send-messages!
+                (pulse.send/send-pulse! (t2/select-one :model/Pulse pulse-id))))
+            (let [run (t2/select-one :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
+              (is (some? run) "task run was created")
+              (is (= :subscription (:run_type run)))
+              (is (= :dashboard (:entity_type run)))
+              (is (#{:success :failed} (:status run)) "task run completed"))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     Notification integration tests                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest notification-send-creates-task-run-test
+  (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+    (testing "sending a card notification creates a task run with type :alert"
+      (notification.tu/with-notification-testing-setup!
+        (mt/with-temp [:model/Channel chn notification.tu/default-can-connect-channel]
+          (notification.tu/with-card-notification
+            [notification {:handlers [{:channel_type notification.tu/test-channel-type
+                                       :channel_id   (:id chn)
+                                       :recipients   [{:type :notification-recipient/user
+                                                       :user_id (mt/user->id :crowberto)}]}]}]
+            (let [card-id (-> notification :payload :card_id)]
+              (notification.tu/with-captured-channel-send!
+                (notification.send/send-notification! notification :notification/sync? true))
+              (let [run (t2/select-one :model/TaskRun :entity_type :card :entity_id card-id)]
+                (is (some? run) "task run was created")
+                (is (= :alert (:run_type run)))
+                (is (= :card (:entity_type run)))
+                (is (#{:success :failed} (:status run)) "task run completed")))))))))
+
+(deftest notification->task-run-info-test
+  (testing "notification->task-run-info extracts correct info"
+    (testing "card notification (alert)"
+      (is (= {:run_type :alert :entity_type :card :entity_id 123}
+             (notification.task.send/notification->task-run-info
+              {:payload_type :notification/card
+               :payload      {:card_id 123}}))))
+    (testing "card notification with nil card_id returns nil"
+      (is (nil? (notification.task.send/notification->task-run-info
+                 {:payload_type :notification/card
+                  :payload      {:card_id nil}}))))
+    (testing "dashboard notification (subscription)"
+      (is (= {:run_type :subscription :entity_type :dashboard :entity_id 456}
+             (notification.task.send/notification->task-run-info
+              {:payload_type :notification/dashboard
+               :payload      {:dashboard_id 456}}))))
+    (testing "dashboard notification with nil dashboard_id returns nil"
+      (is (nil? (notification.task.send/notification->task-run-info
+                 {:payload_type :notification/dashboard
+                  :payload      {:dashboard_id nil}}))))
+    (testing "system-event notification returns nil"
+      (is (nil? (notification.task.send/notification->task-run-info
+                 {:payload_type :notification/system-event
+                  :payload      {}}))))
+    (testing "testing notification returns nil"
+      (is (nil? (notification.task.send/notification->task-run-info
+                 {:payload_type :notification/testing
+                  :payload      {}}))))))
