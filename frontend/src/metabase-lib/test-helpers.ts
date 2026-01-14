@@ -537,12 +537,16 @@ function appendTestQueryStage(
               Lib.joinConditionLHSColumns(query, stageIndex),
               condition.left,
             );
+
             const rhs = expressionToJoinConditionExpression(
               query,
               stageIndex,
-              // TODO: why does this return an empty array?
-              //   Lib.joinConditionRHSColumns(query, stageIndex),
-              Lib.joinableColumns(query, stageIndex, targetMetadata),
+              Lib.joinConditionRHSColumns(
+                query,
+                stageIndex,
+                targetMetadata,
+                lhs,
+              ),
               condition.right,
             );
 
