@@ -241,7 +241,7 @@ databaseChangeLog:
                   name: result
 
   - changeSet:
-      id: v58.2026-01-12T22:43:43
+      id: v59.2026-01-12T22:43:43
       author: galdre
       comment: "Clear source_card_id for native queries to prevent cascade deletion (#68080)"
       changes:
@@ -256,7 +256,7 @@ databaseChangeLog:
         # No rollback - we can't know what the original source_card_id values were
 
   - changeSet:
-      id: v58.2026-01-13T12:00:00
+      id: v59.2026-01-13T12:00:00
       author: galdre
       comment: "Drop source_card_id FK in preparation for changing to SET NULL (#68080)"
       changes:
@@ -274,7 +274,7 @@ databaseChangeLog:
             deleteCascade: true
 
   - changeSet:
-      id: v58.2026-01-13T12:00:01
+      id: v59.2026-01-13T12:00:01
       author: galdre
       comment: "Add source_card_id FK with ON DELETE SET NULL (#68080)"
       changes:
