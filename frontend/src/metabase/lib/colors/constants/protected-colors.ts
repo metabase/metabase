@@ -1,7 +1,7 @@
 import type { MetabaseColorKey } from "../types/color-keys";
 
 /**
- * Colors that should not be exposed to Modular Embedding users.
+ * Colors that should not be exposed to modular embedding.
  * For example, the Metabase brand color must not be modifiable.
  */
 export const PROTECTED_COLORS = [

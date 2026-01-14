@@ -20,7 +20,7 @@ import type { MantineThemeOverride } from "metabase/ui";
 import { getColorShades } from "metabase/ui/utils/colors";
 
 /**
- * Returns the Mantine theme override for Modular Embedding SDK.
+ * Returns the Mantine theme override for modular embedding.
  */
 export function useEmbeddingThemeOverride(
   theme?: MetabaseEmbeddingTheme,

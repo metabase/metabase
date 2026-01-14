@@ -5,7 +5,7 @@ import type {
 } from "metabase/lib/colors";
 
 /**
- * Color keys exposed to Modular Embedding.
+ * Color keys exposed to modular embedding.
  * Excludes colors that should not be exposed such as admin colors.
  */
 export type MetabaseEmbeddingColorKeyV2 = Exclude<
