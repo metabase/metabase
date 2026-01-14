@@ -105,7 +105,7 @@ describe("Table editing", () => {
     TablePicker.getDatabase("QA Postgres12").click();
     TablePicker.getTable("Orders").click();
 
-    H.selectHasValue("Owner", "Unspecified").click();
+    H.selectHasValue("Owner", "No owner").click();
     H.selectDropdown().contains("Bobby Tables").click();
     H.undoToastListContainer()
       .findByText("Table owner updated")

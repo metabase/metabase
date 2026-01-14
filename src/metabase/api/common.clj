@@ -352,6 +352,25 @@
   ([entity id & other-conditions]
    (write-check (apply t2/select-one entity :id id other-conditions))))
 
+(defn query-check
+  "Check whether we can query an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have query permissions, throw a 403. This is separate from [[read-check]] - for data model entities like
+  Tables and Databases, `query-check` means 'can execute queries against' while `read-check` means 'can see metadata'.
+  This will fetch the object if it was not already fetched, and returns `obj` if the check is successful."
+  ([obj]
+   (check-404 obj)
+   (try
+     (check-403 (mi/can-query? obj))
+     (catch clojure.lang.ExceptionInfo e
+       (events/publish-event! :event/read-permission-failure {:user-id *current-user-id*
+                                                              :object  obj})
+       (throw e)))
+   obj)
+  ([entity id]
+   (query-check (t2/select-one entity :id id)))
+  ([entity id & other-conditions]
+   (query-check (apply t2/select-one entity :id id other-conditions))))
+
 (defn create-check
   "NEW! Check whether the current user has permissions to CREATE a new instance of an object with properties in map `m`.
 
@@ -579,6 +598,7 @@
    "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
    "metric"            {:db-model :model/Card               :alias :card}
    "segment"           {:db-model :model/Segment            :alias :segment}
+   "measure"           {:db-model :model/Measure            :alias :measure}
    "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
    "table"             {:db-model :model/Table              :alias :table}
    "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}

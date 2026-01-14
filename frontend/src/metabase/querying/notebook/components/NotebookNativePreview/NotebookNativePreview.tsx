@@ -76,13 +76,13 @@ export const NotebookNativePreview = ({
       data-testid="native-query-preview-sidebar"
       w="100%"
       h="100%"
-      bg="bg-white"
+      bg="background-primary"
       display="flex"
       style={{ flexDirection: "column" }}
     >
       <Box
         component="header"
-        c="text-dark"
+        c="text-primary"
         fz={rem(20)}
         lh={rem(24)}
         fw="bold"

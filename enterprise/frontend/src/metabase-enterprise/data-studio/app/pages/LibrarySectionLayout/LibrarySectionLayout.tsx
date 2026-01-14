@@ -1,55 +1,70 @@
 import { useCallback, useMemo, useState } from "react";
 import { goBack, push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
 import DateTime from "metabase/common/components/DateTime";
+import { useSetting } from "metabase/common/hooks";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import type { TreeTableColumnDef } from "metabase/ui";
+import { useRouter } from "metabase/router";
 import {
-  Button,
   Card,
   EntityNameCell,
-  FixedSizeIcon,
   Flex,
   Icon,
-  Menu,
   Stack,
   TextInput,
   TreeTable,
+  type TreeTableColumnDef,
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
 import { CreateLibraryModal } from "metabase-enterprise/data-studio/common/components/CreateLibraryModal";
 import { DataStudioBreadcrumbs } from "metabase-enterprise/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase-enterprise/data-studio/common/components/PaneHeader";
+import type { ExpandedState } from "metabase-enterprise/data-studio/data-model/components/TablePicker/types";
 import { ListEmptyState } from "metabase-enterprise/transforms/components/ListEmptyState";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { SectionLayout } from "../../components/SectionLayout";
 
 import { CreateMenu } from "./CreateMenu";
+import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 import {
   useBuildSnippetTree,
   useBuildTreeForCollection,
   useErrorHandling,
 } from "./hooks";
 import { type TreeItem, isCollection } from "./types";
-import { getWritableCollection } from "./utils";
+import { getAccessibleCollection } from "./utils";
 
 export function LibrarySectionLayout() {
   usePageTitle(t`Library`);
   const dispatch = useDispatch();
+  const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
   );
   const [permissionsCollectionId, setPermissionsCollectionId] =
     useState<CollectionId | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const expandedIdsFromUrl = useMemo(() => {
+    const rawIds = location.query?.expandedId;
+    if (!rawIds) {
+      return null;
+    }
+
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    return _.object(
+      ids.map((id) => [`collection:${id}`, true]),
+    ) as ExpandedState;
+  }, [location.query?.expandedId]);
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
@@ -58,15 +73,36 @@ export function LibrarySectionLayout() {
       "include-library": true,
     });
 
-  const libraryCollection = collections.find(isLibraryCollection);
+  const isInstanceRemoteSyncEnabled = Boolean(
+    useSetting("remote-sync-enabled"),
+  );
 
-  const tableCollection =
-    libraryCollection &&
-    getWritableCollection(libraryCollection, "library-data");
+  const libraryCollection = useMemo(
+    () => collections.find(isLibraryCollection),
+    [collections],
+  );
 
-  const metricCollection =
-    libraryCollection &&
-    getWritableCollection(libraryCollection, "library-metrics");
+  const tableCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(
+        libraryCollection,
+        "library-data",
+        isInstanceRemoteSyncEnabled,
+      ),
+    [libraryCollection, isInstanceRemoteSyncEnabled],
+  );
+
+  const metricCollection = useMemo(
+    () =>
+      libraryCollection &&
+      getAccessibleCollection(
+        libraryCollection,
+        "library-metrics",
+        isInstanceRemoteSyncEnabled,
+      ),
+    [libraryCollection, isInstanceRemoteSyncEnabled],
+  );
 
   const handleItemSelect = useCallback(
     (item: TreeItem) => {
@@ -105,8 +141,10 @@ export function LibrarySectionLayout() {
   const isLoading = loadingTables || loadingMetrics || loadingSnippets;
   useErrorHandling(tablesError || metricsError || snippetsError);
 
-  const libraryHasContent = combinedTree.some(
-    (node) => node.children && node.children.length > 0,
+  const libraryHasContent = useMemo(
+    () =>
+      combinedTree.some((node) => node.children && node.children.length > 0),
+    [combinedTree],
   );
 
   const libraryColumnDef = useMemo<TreeTableColumnDef<TreeItem>[]>(
@@ -116,7 +154,7 @@ export function LibrarySectionLayout() {
         header: t`Name`,
         enableSorting: true,
         accessorKey: "name",
-        minWidth: 600,
+        minWidth: 200,
         cell: ({ row }) => (
           <EntityNameCell
             data-testid={`${row.original.model}-name`}
@@ -187,7 +225,7 @@ export function LibrarySectionLayout() {
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
     isFilterable: (node) => node.model !== "collection",
-    defaultExpanded: true,
+    defaultExpanded: expandedIdsFromUrl ?? true,
     onRowActivate: handleRowActivate,
   });
 
@@ -209,7 +247,7 @@ export function LibrarySectionLayout() {
           py={0}
         />
         <Stack
-          bg="background-light"
+          bg="background-secondary"
           data-testid="library-page"
           pb="2rem"
           px="3.5rem"
@@ -224,7 +262,10 @@ export function LibrarySectionLayout() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <CreateMenu metricCollectionId={metricCollection?.id} />
+            <CreateMenu
+              metricCollectionId={metricCollection?.id}
+              canWriteToMetricCollection={metricCollection?.can_write}
+            />
           </Flex>
           <Card withBorder p={0}>
             {isLoading ? (
@@ -269,37 +310,3 @@ export function LibrarySectionLayout() {
     </>
   );
 }
-
-const RootSnippetsCollectionMenu = ({
-  setPermissionsCollectionId,
-}: {
-  setPermissionsCollectionId: (id: CollectionId) => void;
-}) => {
-  return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <Button
-          w={24}
-          h={24}
-          c="text-medium"
-          size="compact-xs"
-          variant="subtle"
-          leftSection={<FixedSizeIcon name="ellipsis" size={16} />}
-          aria-label={t`Snippet collection options`}
-          onClick={(e) => e.stopPropagation()}
-        />
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          leftSection={<FixedSizeIcon name="lock" />}
-          onClick={(e) => {
-            e.stopPropagation();
-            setPermissionsCollectionId("root");
-          }}
-        >
-          {t`Change permissions`}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  );
-};

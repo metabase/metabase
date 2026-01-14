@@ -8,14 +8,13 @@
 
   Each graph defines an arbitrary **key**. This can be any hash map key, such as a number, a `[type id]` pair, etc."
   (:require
-   #?@(:cljs ([flatland.ordered.set :as oset]))
-   [metabase.util.malli.registry :as mr]
-   [potemkin :as p])
+   [metabase.util :as u]
+   [metabase.util.malli.registry :as mr])
   #?@(:clj ((:import java.util.LinkedHashSet))))
 
 #?(:clj (set! *warn-on-reflection* true))
 
-(p/defprotocol+ Graph
+(defprotocol Graph
   (children-of [graph key-seq]
     "Given a graph and a seq of keys, returns a map from each input key to the set of keys **directly reachable** from
     that key.
@@ -27,7 +26,7 @@
     - If a key is found in the graph, and it has no children, its value is `#{}`.
     - If the input `key-seq` is empty, return `{}`."))
 
-(p/deftype+ CachedGraph [graph cache]
+(deftype CachedGraph [graph cache]
   Graph
   (children-of [_this key-seq]
     (let [new-cache (swap! cache (fn [current-cache]
@@ -48,10 +47,10 @@
              {:insert-many! #(.addAll s %)
               :seen?        #(.contains s %)
               :->iterable   (constantly s)})
-     :cljs (let [s (volatile! (oset/ordered-set))]
-             {:insert-many! #(vswap! s into %)
-              :seen?        #(contains? @s %)
-              :->iterable   #(deref s)})))
+     :cljs (let [s (js/Set.)]
+             {:insert-many! #(doseq [x %] (.add s x))
+              :seen?        #(.has s %)
+              :->iterable   #(es6-iterator-seq (.values s))})))
 
 (defn transitive
   "Given a graph and `key-seq`, returns a seq of all transitive children of those starting keys.
@@ -75,7 +74,7 @@
           (recur new-children))
         (drop (count key-seq) (->iterable))))))
 
-(defn calc-edges-between
+(defn edges-between
   "Calculates the edges within `nodes`, based on `graph`."
   [graph nodes]
   (let [node-set (into #{} nodes)
@@ -102,7 +101,7 @@
    #'graph?])
 
 ;; ## In-memory Graphs
-(p/deftype+ InMemoryGraph [adjacency-map]
+(deftype InMemoryGraph [adjacency-map]
   Graph
   (children-of [_this key-seq]
     (select-keys adjacency-map key-seq)))
@@ -118,3 +117,32 @@
 ;; TODO: (Braden, 09/19/2025) We may find use for some extra helpers. For example, a wrapper that implements the
 ;; multi-key [[children-of]] on top of a single-key `(children graph key) => #{keys...}` function.
 ;; But YAGNI, so since I don't have a use-case in mind right now, I'm just leaving a note.
+
+(defn find-cycle
+  "Given a graph and starting keys, returns a cycle path if one is reachable, or nil if no cycle exists.
+
+  The returned cycle path is a vector of keys representing the cycle, starting and ending with the same key.
+  For example, `[1 2 3 1]` means 1 -> 2 -> 3 -> 1.
+
+  The cycle path excludes any prefix that leads to the cycle but is not part of it."
+  [graph key-seq]
+  (let [visited (volatile! #{})
+        dfs     (fn dfs [node path path-set]
+                  (cond
+                    (contains? path-set node)
+                    ;; Found a cycle - trim the path to start from the cycle node
+                    (let [cycle-start-idx (u/index-of #{node} path)]
+                      (conj (subvec path cycle-start-idx) node))
+
+                    (contains? @visited node)
+                    nil
+
+                    :else
+                    (let [children   (get (children-of graph [node]) node #{})
+                          path'      (conj path node)
+                          path-set'  (conj path-set node)
+                          result     (some #(dfs % path' path-set') children)]
+                      (when-not result
+                        (vswap! visited conj node))
+                      result)))]
+    (some #(dfs % [] #{}) key-seq)))

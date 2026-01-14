@@ -280,7 +280,7 @@ describe("ViewOnlyTag", () => {
 
   describe("implicit joins", () => {
     for (const visibility_type of HIDDEN_VISIBILITY_TYPES) {
-      it(`should not show the View-only badge when an implictly joined table is ${visibility_type}`, async () => {
+      it(`should not show the View-only badge when an implicitly joined table is ${visibility_type}`, async () => {
         setup({
           card: createCardFromQuery({ query: ORDERS_QUERY }),
           tables: [

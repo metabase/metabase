@@ -68,6 +68,7 @@
      :entity_type "entity/GenericTable"
      :field_order "database"
      :view_count  0
+     :measures    []
      :metrics     []
      :segments    []
      :is_writable (or (= driver :h2) nil)})))
@@ -159,7 +160,7 @@
 (deftest ^:parallel get-table-test
   (testing "GET /api/table/:id"
     (is (= (merge
-            (dissoc (table-defaults :h2) :segments :field_values :metrics)
+            (dissoc (table-defaults :h2) :segments :field_values :metrics :measures)
             (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                         :view_count]
                                        :id (mt/id :venues))
@@ -180,7 +181,7 @@
                                                         :entity_type  "entity/GenericTable"
                                                         :schema       nil}]
         (is (= (merge
-                (dissoc (table-defaults) :segments :field_values :metrics :db)
+                (dissoc (table-defaults) :segments :field_values :metrics :measures :db)
                 (t2/hydrate (t2/select-one [:model/Table :id :created_at :updated_at :initial_sync_status
                                             :view_count]
                                            :id table-id)
@@ -241,150 +242,152 @@
   (table-defaults))
 
 (deftest ^:parallel sensitive-fields-included-test
-  (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
-    (testing "Sensitive fields are included"
-      (is (= (merge
-              (query-metadata-defaults)
-              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                                         :id (mt/id :users))
-                          :collection)
-              {:schema       "PUBLIC"
-               :name         "USERS"
-               :display_name "Users"
-               :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
-                                     :semantic_type              "type/PK"
-                                     :table_id                   (mt/id :users)
-                                     :name                       "ID"
-                                     :display_name               "ID"
-                                     :database_type              "BIGINT"
-                                     :base_type                  "type/BigInteger"
-                                     :effective_type             "type/BigInteger"
-                                     :visibility_type            "normal"
-                                     :has_field_values           "none"
-                                     :database_required          false
+  (mt/with-premium-features #{}
+    (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
+      (testing "Sensitive fields are included"
+        (is (= (merge
+                (query-metadata-defaults)
+                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                           :id (mt/id :users))
+                            :collection)
+                {:schema       "PUBLIC"
+                 :name         "USERS"
+                 :display_name "Users"
+                 :entity_type  "entity/UserTable"
+                 :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
+                                       :semantic_type              "type/PK"
+                                       :table_id                   (mt/id :users)
+                                       :name                       "ID"
+                                       :display_name               "ID"
+                                       :database_type              "BIGINT"
+                                       :base_type                  "type/BigInteger"
+                                       :effective_type             "type/BigInteger"
+                                       :visibility_type            "normal"
+                                       :has_field_values           "none"
+                                       :database_required          false
                                      ;; Index sync is turned off across the application as it is not used ATM.
-                                     #_#_:database_indexed           true
-                                     :database_is_auto_increment true
-                                     :name_field                 {:base_type "type/Text",
-                                                                  :display_name "Name",
-                                                                  :fk_target_field_id nil,
-                                                                  :has_field_values "list",
-                                                                  :id (mt/id :users :name),
-                                                                  :name "NAME",
-                                                                  :semantic_type "type/Name",
-                                                                  :table_id (mt/id :users)})
-                              (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
-                                     :semantic_type              "type/Name"
-                                     :table_id                   (mt/id :users)
-                                     :name                       "NAME"
-                                     :display_name               "Name"
-                                     :database_type              "CHARACTER VARYING"
-                                     :base_type                  "type/Text"
-                                     :effective_type             "type/Text"
-                                     :visibility_type            "normal"
-                                     :has_field_values           "list"
-                                     :position                   1
-                                     :database_position          1
-                                     :database_required          false
-                                     :database_is_auto_increment false
-                                     :name_field                 nil)
-                              (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
-                                     :table_id                   (mt/id :users)
-                                     :name                       "LAST_LOGIN"
-                                     :display_name               "Last Login"
-                                     :database_type              "TIMESTAMP"
-                                     :base_type                  "type/DateTime"
-                                     :effective_type             "type/DateTime"
-                                     :visibility_type            "normal"
-                                     :has_field_values           "none"
-                                     :position                   2
-                                     :database_position          2
-                                     :database_required          false
-                                     :database_is_auto_increment false
-                                     :name_field                 nil)
-                              (assoc (field-details (t2/select-one :model/Field :table_id (mt/id :users), :name "PASSWORD"))
-                                     :semantic_type              "type/Category"
-                                     :table_id                   (mt/id :users)
-                                     :name                       "PASSWORD"
-                                     :display_name               "Password"
-                                     :database_type              "CHARACTER VARYING"
-                                     :base_type                  "type/Text"
-                                     :effective_type             "type/Text"
-                                     :visibility_type            "sensitive"
-                                     :has_field_values           "list"
-                                     :position                   3
-                                     :database_position          3
-                                     :database_required          false
-                                     :database_is_auto_increment false
-                                     :name_field                 nil)]
-               :id           (mt/id :users)})
-             (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
-          "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
+                                       #_#_:database_indexed           true
+                                       :database_is_auto_increment true
+                                       :name_field                 {:base_type "type/Text",
+                                                                    :display_name "Name",
+                                                                    :fk_target_field_id nil,
+                                                                    :has_field_values "list",
+                                                                    :id (mt/id :users :name),
+                                                                    :name "NAME",
+                                                                    :semantic_type "type/Name",
+                                                                    :table_id (mt/id :users)})
+                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
+                                       :semantic_type              "type/Name"
+                                       :table_id                   (mt/id :users)
+                                       :name                       "NAME"
+                                       :display_name               "Name"
+                                       :database_type              "CHARACTER VARYING"
+                                       :base_type                  "type/Text"
+                                       :effective_type             "type/Text"
+                                       :visibility_type            "normal"
+                                       :has_field_values           "list"
+                                       :position                   1
+                                       :database_position          1
+                                       :database_required          false
+                                       :database_is_auto_increment false
+                                       :name_field                 nil)
+                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                       :table_id                   (mt/id :users)
+                                       :name                       "LAST_LOGIN"
+                                       :display_name               "Last Login"
+                                       :database_type              "TIMESTAMP"
+                                       :base_type                  "type/DateTime"
+                                       :effective_type             "type/DateTime"
+                                       :visibility_type            "normal"
+                                       :has_field_values           "none"
+                                       :position                   2
+                                       :database_position          2
+                                       :database_required          false
+                                       :database_is_auto_increment false
+                                       :name_field                 nil)
+                                (assoc (field-details (t2/select-one :model/Field :table_id (mt/id :users), :name "PASSWORD"))
+                                       :semantic_type              "type/Category"
+                                       :table_id                   (mt/id :users)
+                                       :name                       "PASSWORD"
+                                       :display_name               "Password"
+                                       :database_type              "CHARACTER VARYING"
+                                       :base_type                  "type/Text"
+                                       :effective_type             "type/Text"
+                                       :visibility_type            "sensitive"
+                                       :has_field_values           "list"
+                                       :position                   3
+                                       :database_position          3
+                                       :database_required          false
+                                       :database_is_auto_increment false
+                                       :name_field                 nil)]
+                 :id           (mt/id :users)})
+               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
+            "Make sure that getting the User table *does* include info about the password field, but not actual values themselves")))))
 
 (deftest ^:parallel sensitive-fields-not-included-test
-  (testing "GET api/table/:id/query_metadata"
-    (testing "Sensitive fields should not be included"
-      (is (= (merge
-              (query-metadata-defaults)
-              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
-                                         :id (mt/id :users))
-                          :collection)
-              {:schema       "PUBLIC"
-               :name         "USERS"
-               :display_name "Users"
-               :entity_type  "entity/UserTable"
-               :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
-                                     :table_id         (mt/id :users)
-                                     :semantic_type    "type/PK"
-                                     :name             "ID"
-                                     :display_name     "ID"
-                                     :database_type    "BIGINT"
-                                     :base_type        "type/BigInteger"
-                                     :effective_type   "type/BigInteger"
-                                     :has_field_values "none"
+  (mt/with-premium-features #{}
+    (testing "GET api/table/:id/query_metadata"
+      (testing "Sensitive fields should not be included"
+        (is (= (merge
+                (query-metadata-defaults)
+                (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
+                                           :id (mt/id :users))
+                            :collection)
+                {:schema       "PUBLIC"
+                 :name         "USERS"
+                 :display_name "Users"
+                 :entity_type  "entity/UserTable"
+                 :fields       [(assoc (field-details (t2/select-one :model/Field :id (mt/id :users :id)))
+                                       :table_id         (mt/id :users)
+                                       :semantic_type    "type/PK"
+                                       :name             "ID"
+                                       :display_name     "ID"
+                                       :database_type    "BIGINT"
+                                       :base_type        "type/BigInteger"
+                                       :effective_type   "type/BigInteger"
+                                       :has_field_values "none"
                                      ;; Index sync is turned off across the application as it is not used ATM.
-                                     #_#_:database_indexed  true
-                                     :database_required false
-                                     :database_is_auto_increment true
-                                     :name_field {:base_type "type/Text",
-                                                  :display_name "Name",
-                                                  :fk_target_field_id nil,
-                                                  :has_field_values "list",
-                                                  :id (mt/id :users :name),
-                                                  :name "NAME",
-                                                  :semantic_type "type/Name",
-                                                  :table_id (mt/id :users)})
-                              (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
-                                     :table_id         (mt/id :users)
-                                     :semantic_type     "type/Name"
-                                     :name             "NAME"
-                                     :display_name     "Name"
-                                     :database_type    "CHARACTER VARYING"
-                                     :base_type        "type/Text"
-                                     :effective_type   "type/Text"
-                                     :has_field_values "list"
-                                     :position          1
-                                     :database_position 1
-                                     :database_required false
-                                     :database_is_auto_increment false
-                                     :name_field        nil)
-                              (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
-                                     :table_id                 (mt/id :users)
-                                     :name                     "LAST_LOGIN"
-                                     :display_name             "Last Login"
-                                     :database_type            "TIMESTAMP"
-                                     :base_type                "type/DateTime"
-                                     :effective_type           "type/DateTime"
-                                     :has_field_values         "none"
-                                     :position                 2
-                                     :database_position        2
-                                     :database_required        false
-                                     :database_is_auto_increment false
-                                     :name_field               nil)]
-               :id           (mt/id :users)})
-             (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
-          "Make sure that getting the User table does *not* include password info"))))
+                                       #_#_:database_indexed  true
+                                       :database_required false
+                                       :database_is_auto_increment true
+                                       :name_field {:base_type "type/Text",
+                                                    :display_name "Name",
+                                                    :fk_target_field_id nil,
+                                                    :has_field_values "list",
+                                                    :id (mt/id :users :name),
+                                                    :name "NAME",
+                                                    :semantic_type "type/Name",
+                                                    :table_id (mt/id :users)})
+                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :name)))
+                                       :table_id         (mt/id :users)
+                                       :semantic_type     "type/Name"
+                                       :name             "NAME"
+                                       :display_name     "Name"
+                                       :database_type    "CHARACTER VARYING"
+                                       :base_type        "type/Text"
+                                       :effective_type   "type/Text"
+                                       :has_field_values "list"
+                                       :position          1
+                                       :database_position 1
+                                       :database_required false
+                                       :database_is_auto_increment false
+                                       :name_field        nil)
+                                (assoc (field-details (t2/select-one :model/Field :id (mt/id :users :last_login)))
+                                       :table_id                 (mt/id :users)
+                                       :name                     "LAST_LOGIN"
+                                       :display_name             "Last Login"
+                                       :database_type            "TIMESTAMP"
+                                       :base_type                "type/DateTime"
+                                       :effective_type           "type/DateTime"
+                                       :has_field_values         "none"
+                                       :position                 2
+                                       :database_position        2
+                                       :database_required        false
+                                       :database_is_auto_increment false
+                                       :name_field               nil)]
+                 :id           (mt/id :users)})
+               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
+            "Make sure that getting the User table does *not* include password info")))))
 
 (deftest fk-target-permissions-test
   (testing "GET /api/table/:id/query_metadata"
@@ -398,7 +401,7 @@
                      :model/Field    _table-2-id {:table_id (u/the-id table-2), :name "id", :base_type :type/Integer, :semantic_type :type/PK}
                      :model/Field    _table-2-fk {:table_id (u/the-id table-2), :name "fk", :base_type :type/Integer, :semantic_type :type/FK, :fk_target_field_id (u/the-id table-1-id)}]
         (mt/with-no-data-perms-for-all-users!
-          ;; grant permissions only to table-2
+          ;; grant create-queries to table-2 only
           (data-perms/set-table-permission! (perms-group/all-users) table-2 :perms/create-queries :query-builder)
           (data-perms/set-database-permission! (perms-group/all-users) db :perms/view-data :unrestricted)
           ;; metadata for table-2 should show all fields for table-2, but the FK target info shouldn't be hydrated
@@ -420,7 +423,7 @@
                              :owner_user_id    (mt/user->id :crowberto)})
       (is (= (merge
               (-> (table-defaults)
-                  (dissoc :segments :field_values :metrics :updated_at)
+                  (dissoc :segments :field_values :metrics :measures :updated_at)
                   (update :db merge (select-keys (mt/db) [:details])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
@@ -609,7 +612,7 @@
                                             ;; Index sync is turned off across the application as it is not used ATM.
                                             #_#_:database_indexed  true
                                             :table         (merge
-                                                            (dissoc (table-defaults) :segments :field_values :metrics)
+                                                            (dissoc (table-defaults) :segments :field_values :metrics :measures)
                                                             (t2/select-one [:model/Table
                                                                             :id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
@@ -630,7 +633,7 @@
                                             ;; Index sync is turned off across the application as it is not used ATM.
                                             #_#_:database_indexed true
                                             :table            (merge
-                                                               (dissoc (table-defaults :h2) :db :segments :field_values :metrics)
+                                                               (dissoc (table-defaults :h2) :db :segments :field_values :metrics :measures)
                                                                (t2/select-one [:model/Table
                                                                                :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
@@ -645,53 +648,54 @@
              (mt/user-http-request :crowberto :get 200 "table/card__1000/fks"))))))
 
 (deftest ^:parallel basic-query-metadata-test
-  (testing "GET /api/table/:id/query_metadata"
-    (is (= (merge
-            (query-metadata-defaults)
-            (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
-                        :collection)
-            {:schema       "PUBLIC"
-             :name         "CATEGORIES"
-             :display_name "Categories"
-             :fields       [(merge
-                             (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
-                             {:table_id          (mt/id :categories)
-                              :semantic_type     "type/PK"
-                              :name              "ID"
-                              :display_name      "ID"
-                              :database_type     "BIGINT"
-                              :base_type         "type/BigInteger"
-                              :effective_type    "type/BigInteger"
-                              :has_field_values  "none"
-                              :database_required false
+  (mt/with-premium-features #{}
+    (testing "GET /api/table/:id/query_metadata"
+      (is (= (merge
+              (query-metadata-defaults)
+              (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
+                          :collection)
+              {:schema       "PUBLIC"
+               :name         "CATEGORIES"
+               :display_name "Categories"
+               :fields       [(merge
+                               (field-details (t2/select-one :model/Field :id (mt/id :categories :id)))
+                               {:table_id          (mt/id :categories)
+                                :semantic_type     "type/PK"
+                                :name              "ID"
+                                :display_name      "ID"
+                                :database_type     "BIGINT"
+                                :base_type         "type/BigInteger"
+                                :effective_type    "type/BigInteger"
+                                :has_field_values  "none"
+                                :database_required false
                               ;; Index sync is turned off across the application as it is not used ATM.
-                              #_#_:database_indexed  true
-                              :database_is_auto_increment true
-                              :name_field        {:base_type "type/Text",
-                                                  :display_name "Name",
-                                                  :fk_target_field_id nil,
-                                                  :has_field_values "list",
-                                                  :id (mt/id :categories :name),
-                                                  :name "NAME",
-                                                  :semantic_type "type/Name",
-                                                  :table_id (mt/id :categories)}})
-                            (merge
-                             (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
-                             {:table_id                   (mt/id :categories)
-                              :semantic_type              "type/Name"
-                              :name                       "NAME"
-                              :display_name               "Name"
-                              :database_type              "CHARACTER VARYING"
-                              :base_type                  "type/Text"
-                              :effective_type             "type/Text"
-                              :has_field_values           "list"
-                              :database_position          1
-                              :position                   1
-                              :database_required          true
-                              :database_is_auto_increment false
-                              :name_field                 nil})]
-             :id           (mt/id :categories)})
-           (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
+                                #_#_:database_indexed  true
+                                :database_is_auto_increment true
+                                :name_field        {:base_type "type/Text",
+                                                    :display_name "Name",
+                                                    :fk_target_field_id nil,
+                                                    :has_field_values "list",
+                                                    :id (mt/id :categories :name),
+                                                    :name "NAME",
+                                                    :semantic_type "type/Name",
+                                                    :table_id (mt/id :categories)}})
+                              (merge
+                               (field-details (t2/select-one :model/Field :id (mt/id :categories :name)))
+                               {:table_id                   (mt/id :categories)
+                                :semantic_type              "type/Name"
+                                :name                       "NAME"
+                                :display_name               "Name"
+                                :database_type              "CHARACTER VARYING"
+                                :base_type                  "type/Text"
+                                :effective_type             "type/Text"
+                                :has_field_values           "list"
+                                :database_position          1
+                                :position                   1
+                                :database_required          true
+                                :database_is_auto_increment false
+                                :name_field                 nil})]
+               :id           (mt/id :categories)})
+             (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories))))))))
 
 (deftest ^:parallel table-metric-query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
@@ -1365,3 +1369,71 @@
         (sync/sync-database! db {:scan :schema})
 
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
+
+;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
+
+(deftest list-tables-can-query-filter-returns-only-queryable-tables-test
+  (testing "can-query=true filters to only queryable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-1-id :id} {:db_id db-id :name "queryable_table" :active true}
+                   :model/Table {table-2-id :id} {:db_id db-id :name "not_queryable_table" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      ;; Block database-level access
+      (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+      ;; Grant both view-data and create-queries to table-1 (queryable)
+      (data-perms/set-table-permission! pg table-1-id :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! pg table-1-id :perms/create-queries :query-builder)
+      ;; Grant only view-data to table-2 (not queryable)
+      (data-perms/set-table-permission! pg table-2-id :perms/view-data :unrestricted)
+
+      (let [response (->> (mt/user-http-request :rasta :get 200 "table" :can-query true)
+                          (filter #(= (:db_id %) db-id)))]
+        (is (= 1 (count response)))
+        (is (= "queryable_table" (-> response first :name)))))))
+
+(deftest list-tables-can-write-filter-returns-only-editable-tables-test
+  (testing "can-write=true filters to only editable tables"
+    (mt/with-temp [:model/Database {db-id :id} {}
+                   :model/Table {table-1-id :id} {:db_id db-id :name "editable_table" :active true}
+                   :model/Table _ {:db_id db-id :name "not_editable_table" :active true}
+                   :model/PermissionsGroup {pg-id :id :as pg} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
+      (t2/delete! :model/DataPermissions :db_id db-id)
+      ;; Block database-level access
+      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
+      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
+      ;; Grant manage-table-metadata to table-1 only (editable)
+      (data-perms/set-table-permission! pg table-1-id :perms/manage-table-metadata :yes)
+      ;; table-2 gets no manage-table-metadata (not editable)
+
+      (let [response (->> (mt/user-http-request :crowberto :get 200 "table" :can-write true)
+                          (filter #(= (:db_id %) db-id)))]
+        ;; crowberto is an admin, so should see all tables when they have manage-table-metadata
+        (is (>= (count response) 1))
+        (is (contains? (set (map :name response)) "editable_table"))))))
+
+;;; ---------------------------------------- /data endpoint permission tests ----------------------------------------
+
+(deftest get-table-data-endpoint-denies-when-cannot-query-test
+  (testing "GET /api/table/:id/data returns 403 when user cannot query the table"
+    (mt/dataset test-data
+      (let [table-id (mt/id :orders)]
+        (mt/with-no-data-perms-for-all-users!
+          ;; Grant view-data but NOT create-queries (so can-query is false)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "table/%d/data" table-id)))))))))
+
+(deftest get-table-data-endpoint-allows-when-can-query-test
+  (testing "GET /api/table/:id/data returns 202 when user can query the table"
+    (mt/dataset test-data
+      (let [table-id (mt/id :orders)]
+        (mt/with-no-data-perms-for-all-users!
+          ;; Grant both view-data and create-queries (so can-query is true)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (data-perms/set-table-permission! (perms-group/all-users) table-id :perms/create-queries :query-builder)
+          (let [response (mt/user-http-request :rasta :get 202 (format "table/%d/data" table-id))]
+            (is (map? response))))))))

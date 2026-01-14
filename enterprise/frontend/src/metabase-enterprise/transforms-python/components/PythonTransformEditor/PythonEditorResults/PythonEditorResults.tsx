@@ -104,7 +104,7 @@ function EmptyState() {
         <Box maw="3rem" mb="0.75rem">
           <img src={EmptyCodeResult} alt="Code prompt icon" />
         </Box>
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {c("{0} refers to the keyboard shortcut")
             .jt`To run your code, click on the Run button or type ${(
             <b key="shortcut">({keyboardShortcut})</b>
@@ -159,11 +159,15 @@ function ExecutionOutputLogs({
   executionResult: TestPythonTransformResponse | null;
 }) {
   return (
-    <Box fz="sm" p="md" bg="bg-light" h="100%" className={S.logs}>
+    <Box fz="sm" p="md" bg="background-secondary" h="100%" className={S.logs}>
       {executionResult?.logs ? (
         <AnsiLogs>{executionResult.logs}</AnsiLogs>
       ) : (
-        <Text c="text-light" fz="sm" fs="italic">{t`No logs to display`}</Text>
+        <Text
+          c="text-tertiary"
+          fz="sm"
+          fs="italic"
+        >{t`No logs to display`}</Text>
       )}
     </Box>
   );
