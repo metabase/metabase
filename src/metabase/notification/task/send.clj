@@ -119,7 +119,7 @@
 
       (cond
         (:active notification)
-        (task-history/with-task-run (notification->task-run-info notification)
+        (task-history/with-task-run (some-> (notification->task-run-info notification) (assoc :auto-complete false))
           (try
             (log/info "Submitting to the notification queue")
             (task-history/with-task-history {:task         "notification-trigger"

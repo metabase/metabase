@@ -362,7 +362,12 @@
                                                (try
                                                  (when-let [notification (take-notification-with-timeout! queue 1000)]
                                                    (log/with-restored-context-from-meta notification
-                                                     (send-notification-sync! notification)))
+                                                     (task-history/with-restored-run-id notification
+                                                       (try
+                                                         (send-notification-sync! notification)
+                                                         (finally
+                                                           (when task-history/*run-id*
+                                                             (task-history/complete-task-run! task-history/*run-id*)))))))
                                                  (catch InterruptedException _
                                                    (log/warn "Notification worker interrupted, shutting down")
                                                    (throw (InterruptedException.)))
@@ -378,7 +383,9 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue (log/with-context-meta notification))
+                          (put-notification! queue (-> notification
+                                                       log/with-context-meta
+                                                       task-history/with-run-id-meta))
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
