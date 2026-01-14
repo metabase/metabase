@@ -539,12 +539,12 @@
         [first second]
         [second first]))
     ;; For regular cards, check funnel.dimension/funnel.metric settings first (#28568)
-    (let [funnel-dimension (get-in #p card [:visualization_settings :funnel.dimension])
-          cols             (:cols #p data)]
+    (let [funnel-dimension (get-in card [:visualization_settings :funnel.dimension])
+          cols             (:cols data)]
       (cond
         ;; If funnel.dimension is explicitly set, use it
         funnel-dimension
-        (let [x-axis-is-first (= (:name (first #p cols)) funnel-dimension)]
+        (let [x-axis-is-first (= (:name (first cols)) funnel-dimension)]
           (if x-axis-is-first
             [first second]
             [second first]))
