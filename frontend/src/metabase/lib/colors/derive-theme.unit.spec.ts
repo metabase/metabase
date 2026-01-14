@@ -18,7 +18,7 @@ describe("deriveFullMetabaseTheme", () => {
     );
   });
 
-  it("applies user theme overrides over whitelabel colors", () => {
+  it("applies embedding theme overrides over whitelabel colors", () => {
     const derived = deriveFullMetabaseTheme({
       baseTheme: METABASE_LIGHT_THEME,
       whitelabelColors: { brand: "#ff0000" },
@@ -29,21 +29,21 @@ describe("deriveFullMetabaseTheme", () => {
     expect(derived.colors["brand"]).toBe("#00ff00");
   });
 
-  it("filters out all internal colors from user overrides", () => {
+  it("filters out all internal colors from embedding overrides", () => {
     const derivedBaseLightTheme = deriveFullMetabaseTheme({
       baseTheme: METABASE_LIGHT_THEME,
     });
 
-    const userColors: Record<string, string> = {};
+    const embeddingColors: Record<string, string> = {};
 
-    // Modular embedding user tries to override the protected colors
+    // modular embedding user tries to override the protected colors
     for (const protectedColorKey of PROTECTED_COLORS) {
-      userColors[protectedColorKey] = "#ff0000";
+      embeddingColors[protectedColorKey] = "#ff0000";
     }
 
     const derived = deriveFullMetabaseTheme({
       baseTheme: METABASE_LIGHT_THEME,
-      embeddingThemeOverride: { version: 2, colors: userColors },
+      embeddingThemeOverride: { version: 2, colors: embeddingColors },
     });
 
     // All protected colors must remain unchanged
@@ -54,7 +54,7 @@ describe("deriveFullMetabaseTheme", () => {
     }
   });
 
-  it("transforms chartColors to accent colors", () => {
+  it("maps chartColors to accent colors", () => {
     const derived = deriveFullMetabaseTheme({
       baseTheme: METABASE_LIGHT_THEME,
       embeddingThemeOverride: {
