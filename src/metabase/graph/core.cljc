@@ -64,18 +64,16 @@
   - Makes no guarantee about the order of keys at the same \"level\".
     - That is, if two keys `k1` and `k2` are reachable in no fewer than `n` steps from the starters, then `k1` might
       precede or follow `k2` in the output seq."
-  ([graph key-seq]
-   (transitive graph key-seq (constantly true)))
-  ([graph key-seq filter]
-   (let [{:keys [insert-many! seen? ->iterable]} (stable-iteration-set)]
-     (insert-many! key-seq)
-     (loop [new-keys key-seq]
-       (if (seq new-keys)
-         (let [k->children  (children-of graph new-keys)
-               new-children (into #{} (comp cat (remove seen?)) (vals k->children))]
-           (insert-many! new-children)
-           (recur new-children))
-         (drop (count key-seq) (->iterable)))))))
+  [graph key-seq]
+  (let [{:keys [insert-many! seen? ->iterable]} (stable-iteration-set)]
+    (insert-many! key-seq)
+    (loop [new-keys key-seq]
+      (if (seq new-keys)
+        (let [k->children  (children-of graph new-keys)
+              new-children (into #{} (comp cat (remove seen?)) (vals k->children))]
+          (insert-many! new-children)
+          (recur new-children))
+        (drop (count key-seq) (->iterable))))))
 
 (defn transitive-children-of
   "Given a graph and `key-seq`, finds all transitive children and returns a map of `{parent #{child}}`.
@@ -100,6 +98,8 @@
 
 (defn keep-children
   "Iterates through a child map, calls `f` for each node, and returns the non-nil results as a list.
+
+  Nodes are guaranteed to be in a consistent order, and parents are guaranteed to be before their children.
 
   If `f` ever returns `:metabase.graph.core/stop`, `keep-children` does not include that in the results and does not
   recurse down the current node's children."
