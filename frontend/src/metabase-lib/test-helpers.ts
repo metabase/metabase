@@ -667,6 +667,16 @@ function findColumn(
   if (candidates.length === 0) {
     throw new Error(`Could not find column named "${column.name}"`);
   } else if (candidates.length > 1 && column.table == null) {
+    // If there is only one candidate that is not from an (implicit) join, return that one
+    const filteredCandidates = candidates.filter((candidate) => {
+      const displayInfo = Lib.displayInfo(query, stageIndex, candidate);
+      return !displayInfo.isFromJoin && !displayInfo.isImplicitlyJoinable;
+    });
+
+    if (filteredCandidates.length === 1) {
+      return filteredCandidates[0];
+    }
+
     throw new Error(
       `More than one column named "${column.name}", please disambiguate using table name`,
     );

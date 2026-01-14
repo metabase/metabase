@@ -25,7 +25,7 @@ describe("createTestQuery", () => {
             fields: [
               {
                 type: "column",
-                table: "ORDERS",
+                table: "PEOPLE",
                 name: "ID",
               },
             ],
@@ -68,7 +68,6 @@ describe("createTestQuery", () => {
                 args: [
                   {
                     type: "column",
-                    table: "ORDERS", // TODO: get rid of this
                     name: "TOTAL",
                   },
                   {
@@ -87,7 +86,6 @@ describe("createTestQuery", () => {
                   args: [
                     {
                       type: "column",
-                      table: "ORDERS", // TODO: get rid of this?
                       name: "TOTAL",
                     },
                   ],
@@ -96,7 +94,6 @@ describe("createTestQuery", () => {
             ],
             breakouts: [
               {
-                table: "ORDERS",
                 name: "TOTAL",
                 binningCount: 10,
               },
@@ -117,7 +114,6 @@ describe("createTestQuery", () => {
             orderBy: [
               {
                 name: "TOTAL",
-                table: "ORDERS",
                 direction: "desc",
               },
             ],
