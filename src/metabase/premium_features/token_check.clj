@@ -103,6 +103,12 @@
    :enabled-embedding-sdk         false
    :enabled-embedding-simple      false})
 
+(defn- yesterday []
+  (-> (t/offset-date-time (t/zone-offset "+00"))
+      (t/minus (t/days 1))
+      t/local-date
+      str))
+
 (defenterprise metabot-stats
   "Stats for Metabot"
   metabase-enterprise.metabot-v3.core
@@ -110,10 +116,15 @@
   {:metabot-tokens     0
    :metabot-queries    0
    :metabot-users      0
-   :metabot-usage-date (-> (t/offset-date-time (t/zone-offset "+00"))
-                           (t/minus (t/days 1))
-                           t/local-date
-                           str)})
+   :metabot-usage-date (yesterday)})
+
+(defenterprise transform-stats
+  "Stats for Transforms"
+  metabase-enterprise.transforms.core
+  []
+  {:transform-native-runs    0
+   :transform-python-runs    0
+   :transform-usage-date     (yesterday)})
 
 (defn- stats-for-token-request
   []
@@ -126,6 +137,7 @@
         stats                     (merge (internal-stats/query-execution-last-utc-day)
                                          (embedding-settings embedding-dashboard-count embedding-question-count)
                                          (metabot-stats)
+                                         (transform-stats)
                                          {:users                     users
                                           :embedding-dashboard-count embedding-dashboard-count
                                           :embedding-question-count  embedding-question-count
