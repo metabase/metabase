@@ -163,8 +163,16 @@
     [:values [:sequential [:or :int :double]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
+(mr/def ::segment-filter
+  "Filter using a pre-defined segment."
+  [:and
+   [:map
+    [:segment_id :int]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
 (mr/def ::filter
   [:or
+   ::segment-filter
    ::existence-filter
    ::temporal-extraction-filter ::disjunctive-temporal-extraction-filter
    ::temporal-filter ::disjunctive-temporal-filter
@@ -180,7 +188,8 @@
               "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
 
-(mr/def ::aggregation
+(mr/def ::field-aggregation
+  "Aggregation using a field and function."
   [:and
    [:map
     [:field_id :string]
@@ -189,6 +198,18 @@
     [:function [:enum {:encode/tool-api-request keyword}
                 "avg" "count" "count-distinct" "max" "min" "sum"]]]
    [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::measure-aggregation
+  "Aggregation using a pre-defined measure."
+  [:and
+   [:map
+    [:measure_id :int]
+    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
+   [:map {:encode/tool-api-request #(update-keys % metabot-v3.u/safe->kebab-case-en)}]])
+
+(mr/def ::aggregation
+  "Aggregation - either field-based or measure-based."
+  [:or ::field-aggregation ::measure-aggregation])
 
 (mr/def ::field
   [:and
@@ -282,7 +303,24 @@
    ::basic-metric
    [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
     [:queryable_dimensions {:optional true} ::columns]
+    [:segments {:optional true} [:sequential ::segment]]
     [:verified {:optional true} :boolean]]])
+
+(mr/def ::measure
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:definition {:optional true} [:maybe :map]]])
+
+(mr/def ::segment
+  [:map {:decode/tool-api-response #(update-keys % metabot-v3.u/safe->snake_case_en)}
+   [:id :int]
+   [:name :string]
+   [:display_name {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:definition {:optional true} [:maybe :map]]])
 
 (mr/def ::table-result
   [:map
@@ -297,7 +335,9 @@
    [:related_tables {:optional true} [:sequential [:ref ::table-result]]]
    [:related_by {:optional true} [:maybe :string]]
    [:description {:optional true} [:maybe :string]]
-   [:metrics {:optional true} [:sequential ::basic-metric]]])
+   [:metrics {:optional true} [:sequential ::basic-metric]]
+   [:measures {:optional true} [:sequential ::measure]]
+   [:segments {:optional true} [:sequential ::segment]]])
 
 (mr/def ::basic-transform
   [:map
@@ -590,12 +630,14 @@
     [:metric_id                                                      :int]
     [:with_default_temporal_breakout {:optional true, :default true} :boolean]
     [:with_field_values              {:optional true, :default true} :boolean]
-    [:with_queryable_dimensions      {:optional true, :default true} :boolean]]
+    [:with_queryable_dimensions      {:optional true, :default true} :boolean]
+    [:with_segments                  {:optional true, :default false} :boolean]]
    [:map {:encode/tool-api-request
           #(set/rename-keys % {:metric_id                      :metric-id
                                :with_default_temporal_breakout :with-default-temporal-breakout?
                                :with_field_values              :with-field-values?
-                               :with_queryable_dimensions      :with-queryable-dimensions?})}]])
+                               :with_queryable_dimensions      :with-queryable-dimensions?
+                               :with_segments                  :with-segments?})}]])
 
 (mr/def ::get-metric-details-result
   [:or
@@ -694,7 +736,9 @@
     [:with_field_values                     {:optional true, :default true} :boolean]
     [:with_related_tables                   {:optional true, :default true} :boolean]
     [:with_metrics                          {:optional true, :default true} :boolean]
-    [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]]
+    [:with_metric_default_temporal_breakout {:optional true, :default true} :boolean]
+    [:with_measures                         {:optional true, :default false} :boolean]
+    [:with_segments                         {:optional true, :default false} :boolean]]
    [:fn {:error/message "Exactly one of model_id and table_id required"}
     #(= (count (select-keys % [:model_id :table_id])) 1)]
    [:map {:encode/tool-api-request
@@ -704,7 +748,9 @@
                                :with_field_values                     :with-field-values?
                                :with_related_tables                   :with-related-tables?
                                :with_metrics                          :with-metrics?
-                               :with_metric_default_temporal_breakout :with-default-temporal-breakout?})}]])
+                               :with_metric_default_temporal_breakout :with-default-temporal-breakout?
+                               :with_measures                         :with-measures?
+                               :with_segments                         :with-segments?})}]])
 
 (mr/def ::get-table-details-result
   [:or
