@@ -165,7 +165,6 @@ function NewTransformPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
-              isDirty={isDirty}
               onChangeSource={setSourceAndRejectProposed}
               onAcceptProposed={acceptProposed}
               onRejectProposed={rejectProposed}
