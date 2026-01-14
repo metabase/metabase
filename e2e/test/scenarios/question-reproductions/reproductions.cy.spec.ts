@@ -1,5 +1,6 @@
 const { H } = cy;
 
+import * as Lib from "metabase-lib";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
@@ -1475,5 +1476,16 @@ describe("issue 66210", () => {
     H.miniPickerBrowseAll().click();
     H.entityPickerModalTab("Data").click();
     H.entityPickerModalLevel(1).findByText(METRIC_NAME).should("not.exist");
+  });
+});
+
+describe("Question helpers", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it.only("should be possible to create a question from a saved question", () => {
+    H.getMetadataProvider().then((metadataProvider) => {});
   });
 });
