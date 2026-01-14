@@ -361,6 +361,7 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.findByRole("radio", { name: /Use default/ }).should("be.checked");
       cy.findByRole("radio", { name: /Duration/ }).click();
       cy.findByRole("button", { name: "Save" }).click();
+      cy.findByRole("button", { name: /Saved/ }).should("exist");
 
       cy.log("Navigate away and come back to verify the change is persisted");
       H.DataStudio.Metrics.overviewTab().click();
