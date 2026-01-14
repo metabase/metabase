@@ -3,25 +3,12 @@ import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
-import {
-  ActionIcon,
-  Button,
-  Flex,
-  Group,
-  Icon,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
-import { SHARED_LIB_IMPORT_PATH } from "metabase-enterprise/transforms-python/constants";
+import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 
 import { PythonEditor } from "../../PythonEditor";
 
-import S from "./PythonEditorBody.module.css";
 import { ResizableBoxHandle } from "./ResizableBoxHandle";
-import { hasImport, insertImport, removeImport } from "./utils";
 
 type PythonEditorBodyProps = {
   source: string;
@@ -119,13 +106,6 @@ export function PythonEditorBody({
             />
           </Stack>
         )}
-        {!readOnly && (
-          <SharedLibraryActions
-            source={source}
-            onChange={onChange}
-            readOnly={readOnly}
-          />
-        )}
       </Flex>
     </ResizableBox>
   );
@@ -147,75 +127,4 @@ function useInitialEditorHeight(readOnly?: boolean) {
   );
 
   return Math.min(availableHeight - previewInitialHeight, EDITOR_HEIGHT);
-}
-
-function SharedLibraryActions({
-  source,
-  onChange,
-  readOnly,
-}: {
-  source: string;
-  onChange: (source: string) => void;
-  readOnly?: boolean;
-}) {
-  return (
-    <Group className={S.libraryActions} p="md" gap="sm">
-      <SharedLibraryImportButton
-        source={source}
-        onChange={onChange}
-        disabled={readOnly}
-      />
-      <SharedLibraryEditLink disabled={readOnly} />
-    </Group>
-  );
-}
-
-function SharedLibraryImportButton({
-  source,
-  onChange,
-  disabled,
-}: {
-  source: string;
-  onChange: (source: string) => void;
-  disabled?: boolean;
-}) {
-  const label = t`Import common library`;
-
-  const handleToggleSharedLib = () => {
-    if (hasImport(source, SHARED_LIB_IMPORT_PATH)) {
-      onChange(removeImport(source, SHARED_LIB_IMPORT_PATH));
-    } else {
-      onChange(insertImport(source, SHARED_LIB_IMPORT_PATH));
-    }
-  };
-
-  return (
-    <Tooltip label={label}>
-      <ActionIcon
-        aria-label={label}
-        onClick={handleToggleSharedLib}
-        disabled={disabled}
-      >
-        <Icon name="reference" c="text-primary" />
-      </ActionIcon>
-    </Tooltip>
-  );
-}
-
-function SharedLibraryEditLink({ disabled }: { disabled?: boolean }) {
-  const label = t`Edit common library`;
-
-  return (
-    <Tooltip label={label}>
-      <ActionIcon
-        component={ForwardRefLink}
-        target="_blank"
-        aria-label={label}
-        to={Urls.transformPythonLibrary({ path: SHARED_LIB_IMPORT_PATH })}
-        disabled={disabled}
-      >
-        <Icon name="pencil" c="text-primary" />
-      </ActionIcon>
-    </Tooltip>
-  );
 }
