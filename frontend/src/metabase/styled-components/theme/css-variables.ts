@@ -12,6 +12,7 @@ import {
 import {
   deriveFullMetabaseTheme,
   getThemeFromColorScheme,
+  getWhitelabelColors,
 } from "metabase/lib/colors";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { MantineTheme } from "metabase/ui";
@@ -19,6 +20,7 @@ import type { MantineTheme } from "metabase/ui";
 const createColorVars = (colorScheme: "light" | "dark"): string => {
   const theme = deriveFullMetabaseTheme({
     baseTheme: getThemeFromColorScheme(colorScheme),
+    whitelabelColors: getWhitelabelColors(),
   });
 
   return Object.entries(theme.colors)
