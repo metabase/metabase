@@ -1,4 +1,4 @@
-import { generateSchemaId, parseSchemaId, getSchemaName } from "./schema";
+import { generateSchemaId, getSchemaName, parseSchemaId } from "./schema";
 
 describe("schema utils", () => {
   describe("generateSchemaId", () => {
@@ -27,12 +27,6 @@ describe("schema utils", () => {
     it("should handle undefined schema name", () => {
       expect(generateSchemaId(1, undefined)).toBe("1:");
     });
-
-    it("should include payload when provided", () => {
-      expect(generateSchemaId(1, "public", { isDatasets: true })).toBe(
-        "1:public:%7B%22isDatasets%22%3Atrue%7D",
-      );
-    });
   });
 
   describe("parseSchemaId", () => {
@@ -49,12 +43,6 @@ describe("schema utils", () => {
         1,
         "my:special:schema",
       ]);
-    });
-
-    it("should parse schema ID with payload", () => {
-      expect(
-        parseSchemaId("1:public:%7B%22isDatasets%22%3Atrue%7D"),
-      ).toEqual([1, "public", { isDatasets: true }]);
     });
 
     it("should handle empty schema name", () => {

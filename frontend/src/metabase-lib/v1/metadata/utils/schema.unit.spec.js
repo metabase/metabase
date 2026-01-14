@@ -19,15 +19,6 @@ describe("generateSchemaId", () => {
       expect(generateSchemaId(dbId, schemaName)).toBe(schema);
     });
   });
-
-  it("encodes extra payload", () => {
-    const payload = { isDataset: true };
-    const expectedPayload = getEncodedPayload(payload);
-
-    const schema = generateSchemaId(1, 2, payload);
-
-    expect(schema).toBe(`1:2:${expectedPayload}`);
-  });
 });
 
 describe("parseSchemaId", () => {
@@ -49,32 +40,17 @@ describe("parseSchemaId", () => {
     });
   });
 
-  it("decodes extra payload", () => {
-    const payload = { isDataset: true };
-    const [dbId, schemaName, decodedPayload] = parseSchemaId(
-      `1:2:${getEncodedPayload(payload)}`,
-    );
-    expect({ dbId, schemaName, payload: decodedPayload }).toEqual({
-      dbId: 1,
-      schemaName: "2",
-      payload,
-    });
-  });
-
   it("handles colons inside schema name", () => {
     const databaseId = -1337;
     const collectionName = "test:collection";
-    const payload = { foo: "bar" };
 
-    const schemaId = generateSchemaId(databaseId, collectionName, payload);
-    const [decodedDatabaseId, decodedCollectionName, decodedPayload] =
-      parseSchemaId(schemaId);
+    const schemaId = generateSchemaId(databaseId, collectionName);
+    const [decodedDatabaseId, decodedCollectionName] = parseSchemaId(schemaId);
 
     expect({
       databaseId: decodedDatabaseId,
       collectionName: decodedCollectionName,
-      payload: decodedPayload,
-    }).toEqual({ databaseId, collectionName, payload });
+    }).toEqual({ databaseId, collectionName });
   });
 });
 
@@ -88,8 +64,3 @@ describe("getSchemaName", () => {
     });
   });
 });
-
-function getEncodedPayload(object) {
-  const json = JSON.stringify(object);
-  return encodeURIComponent(json);
-}
