@@ -47,4 +47,50 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
       H.assertTableRowsCount(4);
     });
   });
+
+  it("should be able to edit a native question with the QueryEditor", () => {
+    cy.get("@sqlQuestionId").then((sqlQuestionId) => {
+      mountSdkContent(
+        <InteractiveQuestion questionId={sqlQuestionId} withParameters />,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByText("SQL Orders").should("be.visible");
+      H.assertTableRowsCount(5);
+
+      cy.findByTestId("notebook-button").click();
+      cy.findByTestId("native-query-editor").should("be.visible");
+
+      cy.realPress(["Meta", "ArrowRight"]);
+      cy.realPress("Backspace");
+      cy.realType("10");
+
+      cy.realPress(["Meta", "Enter"]);
+
+      cy.button("Visualize").click();
+
+      H.assertTableRowsCount(10);
+    });
+  });
+
+  it("should be able to create a native question with the QueryEditor", () => {
+    mountSdkContent(
+      <InteractiveQuestion questionId="new-native" withParameters />,
+    );
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("native-query-editor").should("be.visible");
+
+      cy.realPress(["Meta", "ArrowRight"]);
+      cy.realPress("Backspace");
+      cy.realType("SELECT * from ORDERS LIMIT 10");
+
+      cy.realPress(["Meta", "Enter"]);
+
+      cy.button("Visualize").click();
+
+      H.assertTableRowsCount(10);
+    });
+  });
 });
