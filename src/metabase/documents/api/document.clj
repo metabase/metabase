@@ -8,6 +8,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as card]
@@ -298,11 +299,7 @@
             {}
             cards-to-copy)))
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:from-document-id/copy"
+(api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
   "Copy a Document."
   [{:keys [from-document-id]} :- [:map
                                   [:from-document-id ms/PositiveInt]]

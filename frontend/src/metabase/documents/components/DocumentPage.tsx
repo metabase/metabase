@@ -30,12 +30,12 @@ import {
   useUpdateDocumentMutation,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   LeaveConfirmModal,
   LeaveRouteConfirmModal,
 } from "metabase/common/components/LeaveConfirmModal";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
-import { SaveConfirmModal } from "metabase/common/components/SaveConfirmModal/SaveConfirmModal";
 import { useToast } from "metabase/common/hooks";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
@@ -606,9 +606,14 @@ export const DocumentPage = ({
           onClose={() => forceUpdate()}
         />
 
-        <SaveConfirmModal
+        <ConfirmModal
           // only applies when trying to duplicate a document that has unsaved changes
           opened={duplicateModalMode === "leave"}
+          confirmButtonText={t`Save changes`}
+          discardButtonText={t`Discard changes`}
+          data-testid="save-confirmation"
+          message={t`Your changes haven't been saved, you'll lose them if you navigate away.`}
+          title={t`Save your changes?`}
           onConfirm={async () => {
             if ((await handleSave())?.error) {
               throw new Error("Failed to save document");

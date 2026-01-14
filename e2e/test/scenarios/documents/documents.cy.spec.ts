@@ -112,7 +112,7 @@ describe("documents", () => {
 
       // duplicate modal is open
       cy.findByRole("heading", { name: /Duplicate "/ }).should("be.visible");
-      cy.findByRole("button", { name: "Copy" }).should("be.visible");
+      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
     });
 
     it("should save changes when duplicating, then copy and redirect to the new document", () => {
@@ -161,14 +161,14 @@ describe("documents", () => {
       );
 
       // duplicate modal
-      cy.findByRole("button", { name: "Copy" }).should("be.visible");
+      cy.findByRole("button", { name: "Duplicate" }).should("be.visible");
       cy.findByRole("textbox", { name: "Name" }).then(($input) => {
         // Snapshot the value now; aliasing a command chain here can become flaky after navigation.
         const copyName = ($input.val() ?? "").toString();
         cy.wrap(copyName).as("copyName");
       });
 
-      cy.findByRole("button", { name: "Copy" }).click();
+      cy.findByRole("button", { name: "Duplicate" }).click();
 
       cy.wait("@copyDoc").then(({ response }) => {
         const copiedId = response?.body?.id;
@@ -231,7 +231,7 @@ describe("documents", () => {
         const copyName = ($input.val() ?? "").toString();
         cy.wrap(copyName).as("copyName");
       });
-      cy.findByRole("button", { name: "Copy" }).click();
+      cy.findByRole("button", { name: "Duplicate" }).click();
 
       cy.wait("@copyDoc").then(({ response }) => {
         const copiedId = response?.body?.id;
@@ -355,7 +355,7 @@ describe("documents", () => {
     H.entityPickerModalTab("Collections").click();
     H.entityPickerModalItem(0, /Personal Collection/).click();
     H.entityPickerModal().findByRole("button", { name: "Select" }).click();
-    H.modal().findByRole("button", { name: "Copy" }).click();
+    H.modal().findByRole("button", { name: "Duplicate" }).click();
     H.openNavigationSidebar();
     H.navigationSidebar().findByText("Your personal collection").click();
 

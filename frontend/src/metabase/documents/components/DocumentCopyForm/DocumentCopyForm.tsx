@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
@@ -62,7 +62,7 @@ export const DocumentCopyForm = ({
             <div>
               <FormCollectionPicker
                 name="collection_id"
-                title={t`Folder this document should be copied to`}
+                title={t`Where do you want to save this?`}
                 entityType="document"
               />
             </div>
@@ -71,7 +71,10 @@ export const DocumentCopyForm = ({
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
-            <FormSubmitButton label={t`Copy`} variant="primary" />
+            <FormSubmitButton
+              label={c(`A verb, not a noun`).t`Duplicate`}
+              variant="primary"
+            />
           </FormFooter>
         </Form>
       )}
