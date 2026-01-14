@@ -97,8 +97,11 @@
     (log/infof "Deleting trigger for subscription %d" notification-subscription-id)
     (task/delete-trigger! (-> trigger :key triggers/key))))
 
-(defn- notification->task-run-info
-  "Extract task run info from a notification."
+(defn notification->task-run-info
+  "Extract task run info from a notification for use with [[metabase.task-history.core/with-task-run]].
+   - Card notifications (alerts): run_type :alert, entity_type :card
+   - Dashboard notifications (subscriptions): run_type :subscription, entity_type :dashboard
+   - Returns nil for other notification types (system-event, testing)."
   [{:keys [payload_type payload]}]
   (case payload_type
     :notification/card      {:run_type    :alert
