@@ -82,9 +82,13 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     getSdkRoot().within(() => {
       cy.findByTestId("native-query-editor").should("be.visible");
 
+      cy.wait(1000);
+
       cy.realType("SELECT * from ORDERS LIMIT 10");
 
+      cy.wait(1000);
       cy.realPress(["Meta", "Enter"]);
+      cy.wait(1000);
 
       cy.button("Visualize").click();
 
