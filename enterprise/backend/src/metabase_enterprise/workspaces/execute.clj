@@ -8,10 +8,12 @@
   For now, it uses AppDB as a side-channel with the transforms module, but in future this module should be COMPLETELY
   decoupled from AppDb."
   (:require
+   [java-time.api :as t]
    [macaw.core :as macaw]
    [metabase-enterprise.transforms.core :as transforms]
    [metabase-enterprise.transforms.execute :as transforms.execute]
    [metabase.api.common :as api]
+   [metabase.query-processor :as qp]
    [metabase.util :as u]
    [toucan2.core :as t2]))
 
@@ -95,6 +97,57 @@
   (let [table-mapping   (:tables remapping no-mapping)
         target-fallback (:target-fallback remapping no-mapping)]
     (remap-target table-mapping target-fallback target)))
+
+(def ^:private preview-row-limit
+  "Maximum number of rows to return in dry-run/preview mode."
+  2000)
+
+(defn- run-sql-preview
+  "Run SQL transform query and return first 2000 rows without persisting.
+   Returns a ::ws.t/dry-run-result map with rows and cols."
+  [{:keys [source target]} remapping]
+  (let [s-type          (transforms/transform-source-type source)
+        table-mapping   (:tables remapping no-mapping)
+        field-mapping   (:fields remapping no-mapping)
+        remapped-source (remap-source table-mapping field-mapping s-type source)
+        query           (:query remapped-source)
+        start-time      (t/offset-date-time)]
+    (try
+      (let [result (qp/process-query
+                    (assoc query :constraints {:max-results           preview-row-limit
+                                               :max-results-bare-rows preview-row-limit}))]
+        (if (= :completed (:status result))
+          {:status     :succeeded
+           :start_time start-time
+           :end_time   (t/offset-date-time)
+           :table      {:name   (:name target)
+                        :schema (:schema target)}
+           :rows       (vec (get-in result [:data :rows]))
+           :cols       (vec (get-in result [:data :cols]))}
+          {:status     :failed
+           :start_time start-time
+           :end_time   (t/offset-date-time)
+           :message    (or (:error result) "Query execution failed")
+           :table      {:name   (:name target)
+                        :schema (:schema target)}}))
+      (catch Exception e
+        {:status     :failed
+         :start_time start-time
+         :end_time   (t/offset-date-time)
+         :message    (ex-message e)
+         :ex-data    (ex-data e)
+         :table      {:name   (:name target)
+                      :schema (:schema target)}}))))
+
+(defn run-transform-preview
+  "Execute transform and return first 2000 rows without persisting.
+   Returns a ::ws.t/dry-run-result map with status, rows, and cols."
+  [{:keys [source] :as transform} remapping]
+  (let [s-type (transforms/transform-source-type source)]
+    (case s-type
+      (:native :mbql) (run-sql-preview transform remapping)
+      :python         (throw (ex-info "Dry-run is not yet supported for Python transforms"
+                                      {:transform-type :python})))))
 
 (defn run-transform-with-remapping
   "Execute a given collection with the given table and field re-mappings.

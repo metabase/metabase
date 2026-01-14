@@ -771,19 +771,32 @@
   (ws.impl/mark-workspace-stale! id)
   nil)
 
-(api.macros/defendpoint :post "/:id/transform/:tx-id/run"
+(api.macros/defendpoint :post "/:ws-id/transform/:tx-id/run"
   :- ::ws.t/execution-result
   "Run a transform in a workspace.
 
   App DB changes are rolled back. Warehouse DB changes persist."
-  [{:keys [id tx-id]} :- [:map [:id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
-  (let [workspace  (api/check-404 (t2/select-one :model/Workspace id))
-        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id id))]
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  (let [workspace  (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
     (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
     (check-transforms-enabled! (:database_id workspace))
     ;; Ensure analysis is up-to-date, as we may need grants to external input tables.
     (ws.impl/analyze-transform-if-stale! workspace transform)
     (ws.impl/run-transform! workspace transform)))
+
+(api.macros/defendpoint :post "/:ws-id/transform/:tx-id/dry-run"
+  :- ::ws.t/dry-run-result
+  "Dry-run a transform in a workspace without persisting to the target table.
+
+  Returns the first 2000 rows of transform output for preview purposes.
+  Does not update last_run_at or create any database tables."
+  [{:keys [ws-id tx-id]} :- [:map [:ws-id ::ws.t/appdb-id] [:tx-id ::ws.t/ref-id]]]
+  (let [workspace  (api/check-404 (t2/select-one :model/Workspace ws-id))
+        transform  (api/check-404 (t2/select-one :model/WorkspaceTransform :ref_id tx-id :workspace_id ws-id))]
+    (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+    (check-transforms-enabled! (:database_id workspace))
+    (ws.impl/dry-run-transform workspace transform)))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case]}
 (api.macros/defendpoint :get "/checkout"
