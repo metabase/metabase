@@ -81,7 +81,7 @@ interface ViewNativeQueryEditorProps {
 }
 
 export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
-  const { question, height, isNativeEditorOpen, onSetDatabaseId } = props;
+  const { question, isNativeEditorOpen, onSetDatabaseId } = props;
 
   const legacyNativeQuery = question.legacyNativeQuery();
   const highlightedLineNumbers = useSelector(
@@ -107,7 +107,6 @@ export const ViewNativeQueryEditor = (props: ViewNativeQueryEditorProps) => {
       <NativeQueryEditor
         {...props}
         query={legacyNativeQuery}
-        availableHeight={height}
         highlightedLineNumbers={highlightedLineNumbers}
         isInitiallyOpen={isNativeEditorOpen}
         onSetDatabaseId={onSetDatabaseId}
