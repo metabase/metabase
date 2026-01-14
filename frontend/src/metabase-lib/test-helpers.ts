@@ -577,7 +577,11 @@ export function createTestQuery({
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
 
   const queryWithStages = stages.reduce(
-    (query: Lib.Query | null, stage, stageIndex): Lib.Query => {
+    (
+      query: Lib.Query | null,
+      stage: TestQueryStage,
+      stageIndex: number,
+    ): Lib.Query => {
       const { source, joins = [] } = stage;
 
       const sourceMetadata = getSourceMetadata(
