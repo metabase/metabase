@@ -79,8 +79,14 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
           <Group gap="sm">
             <Group gap="xs">
               <Icon c="text-secondary" name="folder" />
-              {schemaChanged && <s>{oldTarget.schema}</s>}
-              <Text c="text-primary" fw={schemaChanged ? "bold" : "normal"}>
+
+              {schemaChanged && (
+                <Text c="danger" component="s" td="line-through">
+                  {oldTarget.schema}
+                </Text>
+              )}
+
+              <Text c={schemaChanged ? "success" : undefined}>
                 {newTarget.schema}
               </Text>
             </Group>
@@ -89,8 +95,14 @@ export const DiffView = ({ transform, workspaceId }: DiffViewProps) => {
 
             <Group gap="xs">
               <Icon c="text-secondary" name="table2" />
-              {tableChanged && <s>{oldTarget.name}</s>}
-              <Text c="text-primary" fw={tableChanged ? "bold" : "normal"}>
+
+              {tableChanged && (
+                <Text c="danger" component="s" td="line-through">
+                  {oldTarget.name}
+                </Text>
+              )}
+
+              <Text c={tableChanged ? "success" : undefined}>
                 {newTarget.name}
               </Text>
             </Group>
