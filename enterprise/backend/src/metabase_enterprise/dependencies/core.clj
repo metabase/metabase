@@ -40,7 +40,10 @@
    ;; Reusing the cache with different overrides breaks the caching of [[lib.metadata/card]] calls.
    (lib.metadata.protocols/clear-cache! base-provider)
    (let [dependents (or dependents (deps.graph/transitive-dependents graph updated-entities))]
-     (deps.provider/override-metadata-provider base-provider updated-entities dependents))))
+     (deps.provider/override-metadata-provider
+      {:metadata-provider base-provider
+       :updated-entities updated-entities
+       :dependent-ids dependents}))))
 
 (mu/defn- check-query-soundness :- [:map-of ::entity-type [:map-of :int [:set [:ref ::lib.schema.validate/error]]]]
   "Given a `MetadataProvider` as returned by [[metadata-provider]], scan all its updated entities and their dependents

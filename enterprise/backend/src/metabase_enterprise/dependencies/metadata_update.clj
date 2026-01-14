@@ -55,11 +55,13 @@
           (recur new-traverse new-child-map)
           new-child-map)))))
 
-(mu/defn- do-for-card-children
-  [thunk
-   children   :- ::child-map
-   start-type :- ::deps.dependency-types/dependency-types
-   start-id   :- ::deps.dependency-types/entity-id]
+(mu/defn- keep-children :- [:sequential :any]
+  "Iterates through the `children` graph, calls `f` for each node, and returns the non-nil results as a list.
+
+  If `f` ever returns `::stop`, `keep-children` does not include that in the results and does not recurse down the
+  current node's children."
+  [f
+   children :- ::child-map]
   (let [all-nodes (-> (into #{}
                             (mapcat (fn [[parent current-children]]
                                       (conj current-children parent)))
@@ -70,34 +72,42 @@
                                        (map (fn [child]
                                               {child #{parent}})
                                             current-children)))
-                             (apply merge-with into))
-        start [start-type start-id]]
+                             (apply merge-with into))]
     (loop [nodes-remaining all-nodes
            parent-map full-parent-map
-           ignored #{}]
-      (when-let [[node-type node-id :as next-node] (some #(when-not (or (seq (parent-map %))
-                                                                        (ignored %))
-                                                            %)
-                                                         nodes-remaining)]
-        (let [result (or (not= node-type :card)
-                         (= next-node start)
-                         (thunk node-id))
+           ignored #{}
+           result []]
+      (if-let [next-node (some #(when-not (or (seq (parent-map %))
+                                              (ignored %))
+                                  %)
+                               nodes-remaining)]
+        (let [new-value (f next-node)
               new-nodes-remaining (remove #(= % next-node) nodes-remaining)]
-          (if result
+          (case new-value
+            nil (recur new-nodes-remaining
+                       (m/map-vals #(disj % next-node) parent-map)
+                       ignored
+                       result)
+            ::stop (recur new-nodes-remaining
+                          parent-map
+                          (conj ignored next-node)
+                          result)
             (recur new-nodes-remaining
                    (m/map-vals #(disj % next-node) parent-map)
-                   ignored)
-            (recur new-nodes-remaining
-                   parent-map
-                   (conj ignored next-node))))))))
+                   ignored
+                   (conj result new-value))))
+        result))))
 
 (mu/defn- dependent-mbql-cards :- [:sequential ::lib.schema.id/card]
   [children   :- ::child-map
    start-type :- ::deps.dependency-types/dependency-types
    start-id   :- ::deps.dependency-types/entity-id]
-  (let [nodes (atom [])]
-    (do-for-card-children #(swap! nodes conj %) children start-type start-id)
-    @nodes))
+  (let [start [start-type start-id]]
+    (keep-children (fn [[node-type node-id :as node]]
+                     (when (and (= node-type :card)
+                                (not= node start))
+                       node-id))
+                   children)))
 
 (mr/def ::column-metadata-edits [:map-of :keyword :any])
 (mr/def ::card-metadata-edits [:map-of :string ::column-metadata-edits])
@@ -150,8 +160,8 @@
 (mu/defn- updated-metadata
   "Given a metadata provider, card, and metadata edit map, calculate new metadata with the appropriate metadata edits.
 
-  Takes a metadata provider because the queries' existing metadata provider may have an out of date cache.  The parent
-  function should be ensuring that the passed-in metadata provider is fully up to date."
+  Takes a metadata provider because the queries' existing metadata provider may not be the one we want to use.  The
+  parent function should be ensuring that the passed-in metadata provider is correct."
   [mp             :- ::lib.schema.metadata/metadata-providerable
    card           :- ::lib.schema.metadata/card
    metadata-edits :- ::card-list-metadata-edits]
@@ -162,9 +172,9 @@
         (merge column (when card-edits (card-edits name))))
       new-metadata)))
 
-(defn- fresh-mp
+(mu/defn- fresh-mp :- ::lib.schema.metadata/metadata-provider
   "Creates a 'fresh' metadata provider for the given database id with no existing cache."
-  [db-id]
+  [db-id :- ::lib.schema.id/database]
   (lib-be/with-existing-metadata-provider-cache (atom (cache/basic-cache-factory {}))
     (lib-be/application-database-metadata-provider db-id)))
 
@@ -190,39 +200,52 @@
   ;; really, metadata-providerable -- a query is fine here).  This doesn't have any special overrides and is used to
   ;; fetch the current state of the world before any updates that happen in this function.
   ;;
-  ;; Second, we have a "pre-update" metadata provider.  This is an override metadata provider based on a "fresh" metadata provider with no cached data.  This is intended to match the state of the world before whatever update triggered this function call.
+  ;; Second, we have a "pre-update" metadata provider.  This is an override metadata provider based on a "fresh"
+  ;; metadata provider with no cached data.  This is intended to match the state of the world before whatever update
+  ;; triggered this function call.
   ;;
-  ;; Third, we have a "updated" metadata provider.  This a fresh metadata provider with no cached data that is only
-  ;; ever used to fetch metadata for cards after they have been updated by this function.  Because of caching, if you
-  ;; ever ask it to fetch a card before it was updated, this function will get confused and likely break.
+  ;; Third, we have a "updated" metadata provider.  This another override metadata provider based on a fresh metadata
+  ;; provider, but this one has no initial overrides.  Instead, it is set to use our returned-columns logic and asked
+  ;; to re-calculate all of the child cards' result metadata.  In this case, caching actually works in our favor --
+  ;; the override metadata provider does ask its base provider for the original card, and this would cache the old
+  ;; version of the card.  However, the override metadata provider does this during a call lib.metadata/card.  When
+  ;; that "parent" call finishes, it stores the updated version of the card in the cache, and that overwrites the old
+  ;; version that was previously cached.
   ;;
   ;; If we ever move to a world where model metadata edits are stored separately, we could and should use those
-  ;; calculated edits instead of computing them from scratch.  However, that would probably involve a backfill job and
-  ;; so we'd need to keep the existing code around to handle cases where the backfill job hasn't updated a card yet.
+  ;; calculated edits instead of computing them from scratch.  However, existing models still wouldn't have edits, so
+  ;; we'd need to keep the existing code around for those existing cards.  A backfill job could help here, but we'd
+  ;; still need to account for cases where we just upgraded an instance and the backfill job hasn't finished yet.
   (let [db-id (-> (lib.metadata/database original-mp)
                   :id)
         children (all-mbql-children original-mp start-type start-id)
         cards (dependent-mbql-cards children start-type start-id)
         previous-metadata (lib-be/instance->metadata previous-object metadata-type)
         pre-update-mp (deps.metadata-provider/override-metadata-provider
-                       (fresh-mp db-id)
-                       {start-type [previous-metadata]}
-                       nil)
-        ;; compute metadata edits based on the pre-update state of the world
+                       {:base-provider (fresh-mp db-id)
+                        :updated-entities {start-type [previous-metadata]}})
         edits (card-list-metadata-edits pre-update-mp cards)
-        updated-mp (fresh-mp db-id)]
-    (do-for-card-children
-     (fn [card-id]
-       ;; use original-mp to fetch the current card here because we haven't updated it
-       (let [card (lib.metadata/card original-mp card-id)
-             ;; when computing new metadata, pass in updated-mp so that the qp uses the new versions of updated cards.
-             new-metadata (updated-metadata updated-mp card edits)]
-         (when-not (= new-metadata (:result-metadata card))
-           (t2/update! :model/Card card-id {:result_metadata new-metadata})
-           true)))
-     children
-     start-type
-     start-id)))
+        updated-mp (deps.metadata-provider/override-metadata-provider
+                    {:base-provider (fresh-mp db-id)
+                     :returned-columns-fn (fn [mp card]
+                                            (updated-metadata mp card edits))
+                     :dependent-ids {:card cards}})
+        start [start-type start-id]
+        updates (keep-children (fn [[node-type node-id :as node]]
+                                 (if (or (not= node-type :card)
+                                         (= node start))
+                                   nil
+                                   (let [new-metadata (-> (lib.metadata/card updated-mp node-id)
+                                                          :result-metadata)
+                                         old-metadata (-> (lib.metadata/card original-mp node-id)
+                                                          :result-metadata)]
+                                     (if (= new-metadata old-metadata)
+                                       ::stop
+                                       [node-id new-metadata]))))
+                               children)]
+
+    (doseq [[card-id new-metadata] updates]
+      (t2/update! :model/Card card-id {:result_metadata new-metadata}))))
 
 (derive ::update-card-dependents-metadata :metabase/event)
 (derive :event/card-update ::update-card-dependents-metadata)

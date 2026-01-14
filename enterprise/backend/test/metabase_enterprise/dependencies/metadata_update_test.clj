@@ -10,72 +10,59 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(defn- assert-do-for-card-children-order
+(defn- assert-keep-children-order
   ([expected input]
-   (assert-do-for-card-children-order expected input (constantly true)))
+   (assert-keep-children-order expected input identity))
   ([expected input recur?]
-   (let [nodes (atom [])
-         thunk (fn [node]
-                 (when (recur? node)
-                   (swap! nodes conj node)
-                   true))]
-     (#'deps.metadata-update/do-for-card-children thunk input :card 1)
-     (is (= expected @nodes)))))
+   (is (= expected
+          (#'deps.metadata-update/keep-children recur? input)))))
 
-(deftest ^:parallel do-for-card-children-handles-simple-parents-test
-  (testing "do-for-card-children puts parents before children"
-    (assert-do-for-card-children-order
-     [4 3 2]
+(deftest ^:parallel keep-children-handles-simple-parents-test
+  (testing "keep-children puts parents before children"
+    (assert-keep-children-order
+     [[:card 4] [:card 3] [:card 2]]
      {[:card 4] [[:card 3]]
       [:card 3] [[:card 2]]})))
 
-(deftest ^:parallel do-for-card-children-sorts-nodes-at-same-level-test
-  (testing "do-for-card-children sorts sibling nodes"
-    (assert-do-for-card-children-order
-     [6 2 4 7 3 5]
+(deftest ^:parallel keep-children-sorts-nodes-at-same-level-test
+  (testing "keep-children sorts sibling nodes"
+    (assert-keep-children-order
+     [[:card 6] [:card 2] [:card 4] [:card 7] [:card 3] [:card 5]]
      {[:card 6] [[:card 2]
                  [:card 4]]
       [:card 7] [[:card 3]
                  [:card 5]]})))
 
-(deftest ^:parallel do-for-card-children-handles-multiple-parents-test
-  (testing "do-for-card-children handles children with multiple parents"
-    (assert-do-for-card-children-order
-     [2 4 3]
+(deftest ^:parallel keep-children-handles-multiple-parents-test
+  (testing "keep-children handles children with multiple parents"
+    (assert-keep-children-order
+     [[:card 2] [:card 4] [:card 3]]
      {[:card 2] [[:card 3]
                  [:card 4]]
       [:card 4] [[:card 3]]})))
 
-(deftest ^:parallel do-for-card-children-ignores-children-when-asked-test
-  (testing "do-for-card-children ignores children when asked"
-    (assert-do-for-card-children-order
-     [2 3 4]
+(deftest ^:parallel keep-children-ignores-children-when-asked-test
+  (testing "keep-children ignores children when asked"
+    (assert-keep-children-order
+     [[:card 2] [:card 3] [:card 4]]
      {[:card 2] [[:card 3]
                  [:card 4]]
       [:card 5] [[:card 6]
                  [:card 7]]}
-     (fn [node] (not= node 5)))))
+     (fn [node]
+       (if (= node [:card 5])
+         ::deps.metadata-update/stop
+         node)))))
 
-(deftest ^:parallel do-for-card-children-recurses-through-noncards-test
-  (testing "do-for-card-children automatically recurses through non-cards without asking"
-    (let [node-ids (atom #{})]
-      (assert-do-for-card-children-order
-       [3 4]
-       {[:segment 2] [[:card 3]
-                      [:card 4]]}
-       (fn [node-id]
-         (swap! node-ids conj node-id)
-         true))
-      (is (= #{3 4}
-             @node-ids)))))
-
-(deftest ^:parallel do-for-card-children-ignores-starting-card-test
-  (testing "do-for-card-children ignores the start node"
-    ;; assert-do-for-card-children-order automatically uses :card 1 as the start
-    (assert-do-for-card-children-order
-     [2 3]
-     {[:card 1] [[:card 2]]
-      [:card 2] [[:card 3]]})))
+(deftest ^:parallel keep-children-recurses-through-nodes-test
+  (testing "keep-children ignores nil values while recursing through the node"
+    (assert-keep-children-order
+     [[:card 3] [:card 4]]
+     {[:segment 2] [[:card 3]
+                    [:card 4]]}
+     (fn [[node-type _node-id :as node]]
+       (when (= node-type :card)
+         node)))))
 
 (defn assert-traverses-grandchild [{:keys [grandchild-dependency-type grandchild-data should-traverse? should-include?]}]
   (let [mp (mt/metadata-provider)
@@ -106,8 +93,8 @@
                    (#'deps.metadata-update/all-mbql-children mp :card parent-id)
                    :card parent-id)))))))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-traverses-cards-test
-  (testing "do-for-dependent-mbql-cards looks through card dependencies"
+(deftest ^:parallel dependent-mbql-cards-traverses-cards-test
+  (testing "dependent-mbql-cards looks through card dependencies"
     (let [mp (mt/metadata-provider)
           query (->> (mt/id :products)
                      (lib.metadata/table mp)
@@ -118,48 +105,48 @@
         :should-traverse? true
         :should-include? true}))))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-stops-on-native-cards-test
-  (testing "do-for-dependent-mbql-cards stops when it reaches a native card"
+(deftest ^:parallel dependent-mbql-cards-stops-on-native-cards-test
+  (testing "dependent-mbql-cards stops when it reaches a native card"
     (let [mp (mt/metadata-provider)
           native-query (lib/native-query mp "select * from orders")]
       (assert-traverses-grandchild
        {:grandchild-dependency-type :card
         :grandchild-data {:dataset_query native-query}}))))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-stops-on-snippets-test
-  (testing "do-for-dependent-mbql-cards stops when it reaches a snippet"
+(deftest ^:parallel dependent-mbql-cards-stops-on-snippets-test
+  (testing "dependent-mbql-cards stops when it reaches a snippet"
     (assert-traverses-grandchild
      {:grandchild-dependency-type :snippet
       :grandchild-data {:name "test snippet"
                         :content "SELECT 1"}})))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-stops-on-transforms-test
-  (testing "do-for-dependent-mbql-cards stops when it reaches a transform"
+(deftest ^:parallel dependent-mbql-cards-stops-on-transforms-test
+  (testing "dependent-mbql-cards stops when it reaches a transform"
     (assert-traverses-grandchild
      {:grandchild-dependency-type :transform
       :grandchild-data {}})))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-stops-on-dashboards-test
-  (testing "do-for-dependent-mbql-cards stops when it reaches a dashboard"
+(deftest ^:parallel dependent-mbql-cards-stops-on-dashboards-test
+  (testing "dependent-mbql-cards stops when it reaches a dashboard"
     (assert-traverses-grandchild
      {:grandchild-dependency-type :dashboard
       :grandchild-data {}})))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-stops-on-documents-test
-  (testing "do-for-dependent-mbql-cards stops when it reaches a document"
+(deftest ^:parallel dependent-mbql-cards-stops-on-documents-test
+  (testing "dependent-mbql-cards stops when it reaches a document"
     (assert-traverses-grandchild
      {:grandchild-dependency-type :document
       :grandchild-data {}})))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-traverses-through-segments-test
-  (testing "do-for-dependent-mbql-cards traverses through segments"
+(deftest ^:parallel dependent-mbql-cards-traverses-through-segments-test
+  (testing "dependent-mbql-cards traverses through segments"
     (assert-traverses-grandchild
      {:grandchild-dependency-type :segment
       :grandchild-data {}
       :should-traverse? true})))
 
-(deftest ^:parallel do-for-dependent-mbql-cards-traverses-through-measures-test
-  (testing "do-for-dependent-mbql-cards traverses through measures"
+(deftest ^:parallel dependent-mbql-cards-traverses-through-measures-test
+  (testing "dependent-mbql-cards traverses through measures"
     (assert-traverses-grandchild
      {:grandchild-dependency-type :measure
       :grandchild-data {}
