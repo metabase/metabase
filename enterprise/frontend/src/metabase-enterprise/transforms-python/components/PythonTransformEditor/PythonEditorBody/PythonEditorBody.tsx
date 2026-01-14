@@ -63,6 +63,7 @@ export function PythonEditorBody({
           proposedValue={proposedSource}
           onChange={onChange}
           withPandasCompletions
+          readOnly={readOnly}
           data-testid="python-editor"
         />
 
