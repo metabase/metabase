@@ -25,7 +25,7 @@ describe("createTestQuery", () => {
             fields: [
               {
                 type: "column",
-                table: "PEOPLE",
+                groupName: "People",
                 name: "ID",
               },
             ],

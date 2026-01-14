@@ -470,7 +470,7 @@ type TestQueryLiteralExpression = {
 
 type TestQueryColumnExpression = {
   type: "column";
-  table?: string;
+  groupName?: string;
   name: string;
 };
 
@@ -482,14 +482,14 @@ type TestQueryOperatorExpression = {
 
 type TestQueryBreakout = {
   name: string;
-  table?: string;
+  groupName?: string;
   unit?: string;
   binningCount?: number | "auto";
 };
 
 type TestQueryOrderBy = {
   name: string;
-  table?: string;
+  groupName?: string;
   direction: Lib.OrderByDirection;
 };
 
@@ -624,7 +624,7 @@ function appendTestQueryStage(
     const column = findColumn(query, stageIndex, columns, {
       type: "column",
       name: orderBy.name,
-      table: orderBy.table,
+      groupName: orderBy.groupName,
     });
     return Lib.orderBy(query, stageIndex, column, orderBy.direction);
   }, queryWithBreakouts);
@@ -645,24 +645,41 @@ function findSource(
   return metadata;
 }
 
+function getGroupColumns(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+  column: TestQueryColumnExpression,
+) {
+  if (column.groupName) {
+    const groups = Lib.groupColumns(columns);
+    const group = groups.find((group) => {
+      const info = Lib.displayInfo(query, stageIndex, group);
+      return info.name === column.groupName;
+    });
+    if (!group) {
+      throw new Error(`Could not find group named ${column.groupName}`);
+    }
+    return Lib.getColumnsFromColumnGroup(group);
+  }
+  return columns;
+}
+
 function findColumn(
   query: Lib.Query,
   stageIndex: number,
   columns: Lib.ColumnMetadata[],
   column: TestQueryColumnExpression,
 ) {
-  const candidates = columns.filter((candidate) => {
+  const columnsFromGroup = getGroupColumns(query, stageIndex, columns, column);
+  const candidates = columnsFromGroup.filter((candidate) => {
     const displayInfo = Lib.displayInfo(query, stageIndex, candidate);
-    const matchesName = column.name === displayInfo.name;
-    const matchesTableName =
-      column.table == null || column.table === displayInfo.table?.name;
-
-    return matchesName && matchesTableName;
+    return column.name === displayInfo.name;
   });
 
   if (candidates.length === 0) {
     throw new Error(`Could not find column named "${column.name}"`);
-  } else if (candidates.length > 1 && column.table == null) {
+  } else if (candidates.length > 1 && column.groupName == null) {
     // If there is only one candidate that is not from an (implicit) join, return that one
     const filteredCandidates = candidates.filter((candidate) => {
       const displayInfo = Lib.displayInfo(query, stageIndex, candidate);
@@ -674,7 +691,7 @@ function findColumn(
     }
 
     throw new Error(
-      `More than one column named "${column.name}", please disambiguate using table name`,
+      `More than one column named "${column.name}", please disambiguate using groupName`,
     );
   } else {
     // Just one candidate found, or they are all from the same table,
@@ -847,7 +864,7 @@ function createTestBreakoutClause(
   const column = findColumn(query, stageIndex, columns, {
     type: "column",
     name: breakout.name,
-    table: breakout.table,
+    groupName: breakout.groupName,
   });
 
   if (breakout.unit) {
