@@ -12,7 +12,15 @@ import { createMockState } from "metabase-types/store/mocks/state";
 
 import { CreateMenu } from "./CreateMenu";
 
-const setup = ({ user }: { user?: Partial<User> } = {}) => {
+interface SetupOptions {
+  user?: Partial<User>;
+  canWriteToMetricCollection?: boolean;
+}
+
+const setup = ({
+  user,
+  canWriteToMetricCollection = true,
+}: SetupOptions = {}) => {
   const state = createMockState({
     settings: mockSettings({
       "token-features": createMockTokenFeatures({
@@ -22,9 +30,15 @@ const setup = ({ user }: { user?: Partial<User> } = {}) => {
     currentUser: createMockUser(user),
   });
   setupEnterprisePlugins();
-  return renderWithProviders(<CreateMenu metricCollectionId={1} />, {
-    storeInitialState: state,
-  });
+  return renderWithProviders(
+    <CreateMenu
+      metricCollectionId={1}
+      canWriteToMetricCollection={canWriteToMetricCollection}
+    />,
+    {
+      storeInitialState: state,
+    },
+  );
 };
 
 describe("CreateMenu", () => {
@@ -43,6 +57,25 @@ describe("CreateMenu", () => {
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
     ).toEqual(["Metric"]);
+  });
+
+  it("does not render Metric option when canWriteToMetricCollection is false", async () => {
+    setup({
+      user: {
+        is_superuser: true,
+        permissions: {
+          can_create_queries: true,
+          can_create_native_queries: true,
+        },
+      },
+      canWriteToMetricCollection: false,
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: /New/ }));
+
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Publish a table", "New snippet", "New snippet folder"]);
   });
 
   it("renders all options when user has full permissions", async () => {

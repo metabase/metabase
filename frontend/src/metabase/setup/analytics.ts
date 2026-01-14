@@ -5,7 +5,7 @@ import type { UsageReason } from "metabase-types/api";
 import type { SetupStep } from "./types";
 
 /**
- * The internal "versioning" tracker that needs to be bumbed for every significant
+ * The internal "versioning" tracker that needs to be bumped for every significant
  * change to the setup flow. If you update the version here, make sure to add an
  * entry to the corresponding Notion doc:
  * {@link https://www.notion.so/metabase/Set-up-step-seen-19f39925938d401da2111f8a3d0dc36c}.

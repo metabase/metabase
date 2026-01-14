@@ -37,6 +37,24 @@ export interface TreeTableColumnSizingDef {
   minWidth?: number | "auto";
   /** Maximum width in pixels. Only applies to stretching columns. */
   maxWidth?: number;
+  /**
+   * Maximum width for auto-measured content. Caps the measured content width,
+   * not the final rendered width. Only applies when `width` or `minWidth` is 'auto'.
+   *
+   * Use this to prevent extremely long content from creating oversized columns,
+   * while still allowing the column to stretch if the table has extra space.
+   *
+   * @example
+   * // Stretchable column with capped minimum (recommended pattern)
+   * { minWidth: "auto", maxAutoWidth: 480 }
+   * // → Minimum is min(content, 480px), stretches to fill available space
+   *
+   * @example
+   * // With absolute maximum
+   * { minWidth: "auto", maxAutoWidth: 480, maxWidth: 800 }
+   * // → Stretches between min(content, 480px) and 800px
+   */
+  maxAutoWidth?: number;
   /** Extra pixels added to measured width. Only applies when width or minWidth is 'auto'. */
   widthPadding?: number;
 }

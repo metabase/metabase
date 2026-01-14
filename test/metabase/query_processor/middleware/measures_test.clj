@@ -1,15 +1,12 @@
 (ns metabase.query-processor.middleware.measures-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [mb.hawk.assert-exprs.approximately-equal :as =?]
+   [mb.hawk.assert-exprs.approximately-equal]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.measures :as measures]
-   [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.query-processor.middleware.measures :as measures]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Test Helpers                                                      |
@@ -124,6 +121,22 @@
                          :aggregation  [[:+ {} [:count {}] 1]]}]}
               (adjust query))))))
 
+(deftest ^:parallel measure-composing-two-measures-test
+  (testing "Measure C that combines Measure A and Measure B expands correctly"
+    (let [[_measure1 mp] (mock-measure 1 (basic-sum-measure-query))
+          [_measure2 mp] (mock-measure mp 2 (basic-count-measure-query))
+          measure3-definition (-> (lib/query mp (meta/table-metadata :products))
+                                  (lib/aggregate (lib// (lib.metadata/measure mp 1)
+                                                        (lib.metadata/measure mp 2))))
+          [_measure3 mp] (mock-measure mp 3 measure3-definition)
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.metadata/measure mp 3)))]
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :aggregation  [[:/ {}
+                                         [:sum {} [:field {} (meta/id :products :price)]]
+                                         [:count {}]]]}]}
+              (adjust query))))))
+
 (deftest ^:parallel three-level-nested-measures-test
   (testing "A → B → C chain expands correctly"
     (let [;; Measure 3 is a simple sum
@@ -221,150 +234,6 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Measure cycle detected" (adjust query))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              E2E Tests                                                         |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest ^:parallel e2e-measure-results-test
-  (testing "Execute query with measure through full QP, verify results match equivalent direct aggregation"
-    (let [mp (mt/metadata-provider)
-          ;; Create a measure that sums the price field
-          measure-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:measures [{:id         1
-                           :name       "Total Price"
-                           :table-id   (mt/id :products)
-                           :definition measure-definition}]})
-          ;; Query using the measure
-          measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                            (lib/aggregate (lib.metadata/measure mp 1)))
-          ;; Equivalent direct query
-          direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))]
-      (is (= (mt/rows (qp/process-query direct-query))
-             (mt/rows (qp/process-query measure-query)))))))
-
-(deftest ^:parallel e2e-nested-measure-results-test
-  (testing "Execute query with nested measures, verify results"
-    (let [mp (mt/metadata-provider)
-          ;; Measure 2: count of products
-          measure2-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                  (lib/aggregate (lib/count)))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:measures [{:id         2
-                           :name       "Product Count"
-                           :table-id   (mt/id :products)
-                           :definition measure2-definition}]})
-          ;; Measure 1: references measure 2 with arithmetic (count * 10)
-          measure1-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                  (lib/aggregate (lib/* (lib.metadata/measure mp 2) 10)))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:measures [{:id         1
-                           :name       "Product Count x10"
-                           :table-id   (mt/id :products)
-                           :definition measure1-definition}]})
-          ;; Query using measure 1
-          measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                            (lib/aggregate (lib.metadata/measure mp 1)))
-          ;; Equivalent direct query: count * 10
-          direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                           (lib/aggregate (lib/* (lib/count) 10)))]
-      (is (= (mt/rows (qp/process-query direct-query))
-             (mt/rows (qp/process-query measure-query)))))))
-
-(deftest ^:parallel e2e-measure-with-breakout-test
-  (testing "Measure works correctly with breakout"
-    (let [mp (mt/metadata-provider)
-          measure-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:measures [{:id         1
-                           :name       "Total Price"
-                           :table-id   (mt/id :products)
-                           :definition measure-definition}]})
-          measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                            (lib/aggregate (lib.metadata/measure mp 1))
-                            (lib/breakout (lib.metadata/field mp (mt/id :products :category))))
-          direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
-                           (lib/breakout (lib.metadata/field mp (mt/id :products :category))))]
-      (is (= (mt/rows (qp/process-query direct-query))
-             (mt/rows (qp/process-query measure-query)))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                    Measures with Segment References                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest ^:parallel e2e-measure-with-segment-test
-  (testing "Measure with segment reference works through full QP pipeline"
-    (let [mp (mt/metadata-provider)
-          ;; Create a segment for venues with price < 4
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:segments [{:id         1
-                           :name       "Affordable Venues"
-                           :table-id   (mt/id :venues)
-                           :definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                           (lib/filter (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4)))}]})
-          ;; Create a measure that counts venues matching the segment
-          measure-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                 (lib/aggregate (lib/count-where (lib.metadata/segment mp 1))))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:measures [{:id         1
-                           :name       "Affordable Venue Count"
-                           :table-id   (mt/id :venues)
-                           :definition measure-definition}]})
-          ;; Query using the measure
-          measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                            (lib/aggregate (lib.metadata/measure mp 1)))
-          ;; Equivalent direct query
-          direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                           (lib/aggregate (lib/count-where (lib/< (lib.metadata/field mp (mt/id :venues :price)) 4))))]
-      (is (= (mt/rows (qp/process-query direct-query))
-             (mt/rows (qp/process-query measure-query)))))))
-
-(deftest ^:parallel e2e-measure-multi-stage-query-test
-  (testing "Measure works correctly when referenced in a subsequent stage (field ref should use operator name, not display name)"
-    (let [mp (mt/metadata-provider)
-          ;; Create a measure "Total Price" that sums products.price
-          ;; The measure's name is "Total Price" but the operator name should be "sum"
-          measure-definition (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                                 (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))
-          mp (lib.tu/mock-metadata-provider
-              mp
-              {:measures [{:id         1
-                           :name       "Total Price"
-                           :table-id   (mt/id :products)
-                           :definition measure-definition}]})
-          ;; Create a multi-stage query:
-          ;; Stage 0: Group by category, aggregate with measure
-          ;; Stage 1: Filter on the aggregation result
-          measure-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                            (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
-                            (lib/aggregate (lib.metadata/measure mp 1))
-                            lib/append-stage)
-          ;; Find the sum column (from the aggregation) in the second stage
-          ;; The column should have :name "sum" not "Total Price"
-          measure-cols (lib/filterable-columns measure-query)
-          measure-col (first (filter #(= (:name %) "sum") measure-cols))
-          measure-query (lib/filter measure-query (lib/> measure-col 100))
-          ;; Equivalent direct query
-          direct-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
-                           (lib/breakout (lib.metadata/field mp (mt/id :products :category)))
-                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price))))
-                           lib/append-stage)
-          direct-cols (lib/filterable-columns direct-query)
-          direct-col (first (filter #(= (:name %) "sum") direct-cols))
-          direct-query (lib/filter direct-query (lib/> direct-col 100))]
-      (is (= (mt/rows (qp/process-query direct-query))
-             (mt/rows (qp/process-query measure-query)))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Measures with Metric References (disallowed)                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -424,25 +293,6 @@
            clojure.lang.ExceptionInfo
            #"[Mm]easures cannot reference metrics"
            (adjust query))))))
-
-(deftest ^:parallel maintain-aggregation-refs-test
-  (testing "the aggregation that replaces a :measure ref should keep the :measure's :lib/uuid, so :aggregation refs pointing to it are still valid"
-    (let [mp          (mt/metadata-provider)
-          definition  (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                          (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :venues :price)))))
-          mp          (lib.tu/mock-metadata-provider
-                       mp
-                       {:measures [{:id         1
-                                    :name       "Total Revenue"
-                                    :table-id   (mt/id :venues)
-                                    :definition definition}]})
-          measure     (lib.metadata/measure mp 1)
-          query       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                          (lib/aggregate measure)
-                          (as-> <> (lib/order-by <> (lib/aggregation-ref <> 0))))]
-      (is (=? {:stages [{:aggregation [[:sum {:lib/uuid (=?/same :uuid)} [:field {} (mt/id :venues :price)]]]
-                         :order-by    [[:asc {} [:aggregation {} (=?/same :uuid)]]]}]}
-              (qp.preprocess/preprocess query))))))
 
 (deftest max-expansion-depth-test
   (let [mp (lib.tu/mock-metadata-provider

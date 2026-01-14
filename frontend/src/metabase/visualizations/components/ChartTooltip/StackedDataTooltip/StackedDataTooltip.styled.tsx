@@ -1,9 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
-import { type Theme, css } from "@emotion/react";
+import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
-
-import { darken } from "metabase/lib/colors";
 
 // Should be applied to :before or :after pseudo-elements to add a spacing between table sections such as header, body or footer
 export const tableRowSpacingStyle = css`
@@ -34,13 +32,12 @@ export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
   }
 `;
 
-export const getTooltipSeparatorStyle = (theme: Theme) => css`
-  border-top: 1px solid
-    ${darken(theme.fn.themeColor("background-tertiary-inverse"), 0.55)};
+export const getTooltipSeparatorStyle = () => css`
+  border-top: 1px solid var(--mb-color-background-secondary-inverse);
 `;
 
 export const DataPointTableBody = styled.tbody`
-  ${({ theme }) => getTooltipSeparatorStyle(theme)}
+  ${() => getTooltipSeparatorStyle()}
 
   &:before {
     ${tableRowSpacingStyle}

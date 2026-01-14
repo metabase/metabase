@@ -300,3 +300,15 @@ export function newDataStudioSnippet() {
 export function dataStudioSettings() {
   return `${dataStudio()}/settings`;
 }
+
+export function dataStudioSegment(segmentId: SegmentId) {
+  return `${dataStudioLibrary()}/segments/${segmentId}`;
+}
+
+export function newDataStudioSegment(tableId: TableId) {
+  return `${dataStudioLibrary()}/segments/new?tableId=${tableId}`;
+}
+
+export function dataStudioSegmentDependencies(segmentId: SegmentId) {
+  return `${dataStudioSegment(segmentId)}/dependencies`;
+}

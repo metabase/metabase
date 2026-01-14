@@ -143,6 +143,7 @@ export type ListUsersRequest = {
   tenancy?: UserTenancy;
   is_data_analyst?: boolean;
   can_access_data_studio?: boolean;
+  tenant_id?: number;
 } & PaginationRequest;
 
 export type ListUsersResponse = {

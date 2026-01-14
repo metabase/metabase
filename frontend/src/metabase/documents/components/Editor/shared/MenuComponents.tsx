@@ -87,7 +87,7 @@ export const SearchResultsFooter = ({
     {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name="search" size={16} color="inherit" />
+      <Icon name="search" size={16} c="inherit" />
       <Text size="md" lh="lg" c="inherit">{t`Browse all`}</Text>
     </Group>
   </UnstyledButton>
@@ -106,7 +106,7 @@ export const CreateNewQuestionFooter = ({
     {...rest}
   >
     <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name="add" size={16} color="inherit" />
+      <Icon name="add" size={16} c="inherit" />
       <Text size="md" lh="lg" c="inherit">{t`New chart`}</Text>
     </Group>
   </UnstyledButton>
@@ -120,7 +120,7 @@ export const MetabotFooter = ({ isSelected, onClick }: ExtraItemProps) => (
     aria-selected={isSelected}
   >
     <Group gap="sm" wrap="nowrap" align="center">
-      <Icon name="metabot" size={16} color="inherit" />
+      <Icon name="metabot" size={16} c="inherit" />
       <Stack gap={2}>
         <Text size="md" lh="lg" c="inherit">{t`Ask Metabot`}</Text>
         <Text size="sm" c="text-tertiary" lh="md">

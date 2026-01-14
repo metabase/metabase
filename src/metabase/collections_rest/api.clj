@@ -13,6 +13,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as mdb]
+   [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config]
@@ -30,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -297,7 +299,8 @@
     "snippet"
     "no_models"
     "timeline"
-    "table"})
+    "table"
+    "transform"})
 
 (def ^:private ModelString
   (into [:enum] valid-model-param-values))
@@ -487,7 +490,11 @@
    :from   [[:transform :transform]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
-            [:= :collection_id (:id collection)]]})
+            [:= :collection_id (:id collection)]
+            (when-not api/*is-superuser?*
+              [:=
+               [:inline 0]
+               [:inline 1]])]})
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -547,7 +554,7 @@
                    (when-not show-dashboard-questions?
                      [:= :c.dashboard_id nil])
                    [:= :c.document_id nil]
-                   [:= :archived (boolean archived?)]
+                   [:= :c.archived (boolean archived?)]
                    (case card-type
                      :model
                      [:= :c.type (h2x/literal "model")]
@@ -587,18 +594,28 @@
 
 (defn- post-process-card-like
   [{:keys [include-can-run-adhoc-query hydrate-based-on-upload]} rows]
-  (let [hydration (cond-> [:can_write
-                           :can_restore
-                           :can_delete
-                           :dashboard_count
-                           :is_remote_synced
-                           :collection_namespace
-                           [:dashboard :moderation_status]]
-                    include-can-run-adhoc-query (conj :can_run_adhoc_query))]
+  (let [threshold              (collections-rest.settings/can-run-adhoc-query-check-threshold)
+        card-count             (count rows)
+        skip-adhoc-hydration?  (u/prog1 (and include-can-run-adhoc-query
+                                             (pos? threshold)
+                                             (> card-count threshold))
+                                 (when <>
+                                   (log/warnf "Skipping can_run_adhoc_query hydration for %d cards (threshold: %d)"
+                                              card-count threshold)))
+        hydration              (cond-> [:can_write
+                                        :can_restore
+                                        :can_delete
+                                        :dashboard_count
+                                        :is_remote_synced
+                                        :collection_namespace
+                                        [:dashboard :moderation_status]]
+                                 (and include-can-run-adhoc-query
+                                      (not skip-adhoc-hydration?)) (conj :can_run_adhoc_query))]
     (as-> (map post-process-card-row rows) $
       (apply t2/hydrate $ hydration)
       (cond-> $
-        hydrate-based-on-upload upload/model-hydrate-based-on-upload)
+        hydrate-based-on-upload upload/model-hydrate-based-on-upload
+        skip-adhoc-hydration?   (->> (map #(assoc % :can_run_adhoc_query true))))
       (map post-process-card-row-after-hydrate $))))
 
 (defmethod post-process-collection-children :card
@@ -620,7 +637,7 @@
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
                    [:u.id :last_edit_user]
-                   :archived
+                   :d.archived
                    [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name]
                    [:u.last_name :last_edit_last_name]
@@ -643,7 +660,7 @@
                      [:and
                       [:= :d.collection_id (:id collection)]
                       [:not= :d.archived_directly true]])
-                   [:= :archived (boolean archived?)]]}
+                   [:= :d.archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dashboard
@@ -1087,7 +1104,7 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document  :transform]
+  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :transform]
                                       ;; Tables in collections are an EE feature (data-studio)
                                       (premium-features/has-feature? :data-studio) (conj :table))
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty

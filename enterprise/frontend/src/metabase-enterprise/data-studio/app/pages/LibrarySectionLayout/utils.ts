@@ -90,3 +90,25 @@ export function getWritableCollection(
   const collection = getCollection(rootCollection, type);
   return collection?.can_write ? collection : undefined;
 }
+
+export function getAccessibleCollection(
+  rootCollection: Collection,
+  type: CollectionType,
+  isInstanceRemoteSyncEnabled: boolean,
+) {
+  const collection = rootCollection.children?.find(
+    (collection) => collection.type === type,
+  );
+  if (!collection) {
+    return undefined;
+  }
+
+  // If instance remote-sync is enabled AND this collection has remote-sync enabled,
+  // show it even if read-only. Otherwise, only show writable collections.
+  const isCollectionRemoteSynced =
+    isInstanceRemoteSyncEnabled && collection.is_remote_synced;
+  if (isCollectionRemoteSynced) {
+    return collection;
+  }
+  return collection.can_write ? collection : undefined;
+}
