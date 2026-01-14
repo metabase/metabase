@@ -46,6 +46,10 @@ jobs:
         with:
           sparse-checkout: release
 
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && bun install && bun run build
 
@@ -178,6 +182,10 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Prepare build scripts
         run: bun install --cwd release --frozen-lockfile && bun run --cwd release build
 

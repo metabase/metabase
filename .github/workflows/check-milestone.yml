@@ -29,6 +29,10 @@ jobs:
           sparse-checkout: release
           fetch-depth: ${{ env.isNewReleaseBranch == 'false' && 3 || 0 }} # we need the full history to get all the commit messages
           ref: master # we want the logic from master, even though we're triggering on a release branch
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Prepare build scripts
         run: cd ${{ github.workspace }}/release && bun install && bun run build
       - uses: actions/github-script@v7

@@ -36,6 +36,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: "release"
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: prepare dependencies in release directory
         run: bun install --cwd release --frozen-lockfile
       - name: Run frontend type-check
@@ -50,6 +54,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: "release"
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: prepare dependencies in release directory
         run: bun install --cwd release --frozen-lockfile
       - name: Run release unit tests
@@ -64,6 +72,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           sparse-checkout: "release"
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: prepare dependencies in release directory
         run: bun install --cwd release --frozen-lockfile
       - name: Build release bundle

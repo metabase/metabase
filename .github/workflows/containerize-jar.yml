@@ -49,7 +49,11 @@ jobs:
       uses: ./.github/actions/fetch-artifact
       with:
         name: ${{ inputs.artifact-name }}
-    - name: Prepare build scripts
+    - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Prepare build scripts
       run: cd ${{ github.workspace }}/release && bun install && bun run build
     - name: Get platforms
       id: platforms
