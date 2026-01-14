@@ -14,6 +14,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.system.core :as system]
    [metabase.test :as mt]
+   [metabase.test.data.impl.get-or-create :as test.get-or-create]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.redshift :as redshift.tx]
    [metabase.test.data.sql :as sql.tx]
@@ -404,9 +405,9 @@
                 conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
                 get-privileges               (fn []
                                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                                [spec [:redshift (assoc (:details database) :user username)]]
+                                                [spec [:redshift (assoc (:details database) :user username)]
                                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))]))]
             (try
               (execute! (format
                          (str
@@ -598,3 +599,85 @@
               (is (= :type/PK (:semantic_type (first fields))) "PK should have :type/PK semantic type")
               (is (= :type/Text (:base_type (second fields))) "text_col should be :type/Text")
               (is (= :type/Integer (:base_type (nth fields 2))) "int_col should be :type/Integer"))))))))
+
+;;; ---------------------------------------- Fake Sync Transformation Test ----------------------------------------
+;; Tests the pure transformation functions that convert dbdefs to Table/Field row maps.
+;; These are the "debuggable" pure functions separated from the stateful insertion code.
+
+(deftest ^:parallel fake-sync-transformation-test
+  (mt/test-driver :redshift
+    (testing "dbdef->fake-sync-rows produces correct Table and Field row maps"
+      (let [dbdef {:database-name "transform-test"
+                   :table-definitions
+                   [{:table-name "users"
+                     :table-comment "User accounts"
+                     :field-definitions
+                     [{:field-name "name" :base-type :type/Text :field-comment "User name"}
+                      {:field-name "age" :base-type :type/Integer}
+                      {:field-name "org_id" :base-type :type/Integer :fk :organizations}]}
+                    {:table-name "organizations"
+                     :field-definitions
+                     [{:field-name "org_name" :base-type :type/Text}]}]}
+            rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 123 dbdef)]
+        (testing "returns one entry per table"
+          (is (= 2 (count rows)))
+          (is (= ["users" "organizations"] (mapv :table-name rows))))
+
+        (testing "table rows have correct structure"
+          (let [users-table (:table-row (first rows))]
+            (is (= 123 (:db_id users-table)))
+            (is (= "transform_test_users" (:name users-table)))
+            (is (= (redshift.tx/unique-session-schema) (:schema users-table)))
+            (is (= "Users" (:display_name users-table)))
+            (is (= "User accounts" (:description users-table)))
+            (is (= "complete" (:initial_sync_status users-table)))))
+
+        (testing "auto PK field is injected at position 0"
+          (let [users-fields (:field-rows (first rows))
+                pk-field     (first users-fields)]
+            (is (= 4 (count users-fields)) "Should have 4 fields: auto PK + 3 defined")
+            (is (= "id" (:name pk-field)))
+            (is (= :type/PK (:semantic_type pk-field)))
+            (is (= 0 (:position pk-field)))))
+
+        (testing "user-defined fields have correct positions and types"
+          (let [users-fields (:field-rows (first rows))
+                name-field   (second users-fields)
+                age-field    (nth users-fields 2)
+                fk-field     (nth users-fields 3)]
+            (is (= "name" (:name name-field)))
+            (is (= 1 (:position name-field)))
+            (is (= :type/Text (:base_type name-field)))
+            (is (= "User name" (:description name-field)))
+
+            (is (= "age" (:name age-field)))
+            (is (= 2 (:position age-field)))
+            (is (= :type/Integer (:base_type age-field)))
+
+            (is (= "org_id" (:name fk-field)))
+            (is (= 3 (:position fk-field)))
+            (is (= :type/FK (:semantic_type fk-field)) "FK fields get :type/FK semantic type"))))))
+
+  (testing "native type maps are handled correctly"
+    (let [dbdef {:database-name "native-types"
+                 :table-definitions
+                 [{:table-name "binary_data"
+                   :field-definitions
+                   [{:field-name "raw_bytes"
+                     :base-type {:native "VARBYTE"}
+                     :effective-type :type/Text}
+                    {:field-name "multi_driver"
+                     :base-type {:natives {:redshift "SUPER" :postgres "JSONB"}}
+                     :effective-type :type/JSON}]}]}
+          rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 456 dbdef)
+          fields (:field-rows (first rows))]
+      (testing "{:native ...} form"
+        (let [raw-field (second fields)] ; first is auto PK
+          (is (= "VARBYTE" (:database_type raw-field)))
+          (is (= :type/Text (:effective_type raw-field)))
+          (is (= :type/* (:base_type raw-field)) "Native types use :type/* as base_type")))
+
+      (testing "{:natives ...} form picks driver-specific type"
+        (let [multi-field (nth fields 2)]
+          (is (= "SUPER" (:database_type multi-field)))
+          (is (= :type/JSON (:effective_type multi-field))))))))
