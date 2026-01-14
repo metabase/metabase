@@ -61,6 +61,18 @@
   "The ID of the current task run. Set by [[with-task-run]]."
   nil)
 
+(defn with-run-id-meta
+  "Given a map, returns the map with `*run-id*` attached to metadata.
+   Used for propagation of run context across threads (e.g., async notification dispatch)."
+  [m]
+  (vary-meta m assoc ::run-id *run-id*))
+
+(defmacro with-restored-run-id
+  "Given a map presumably containing metadata from [[with-run-id-meta]], restores `*run-id*` and executes body."
+  [m & body]
+  `(binding [*run-id* (::run-id (meta ~m))]
+     ~@body))
+
 (mr/def ::TaskRunInfo
   [:map {:closed true}
    [:run_type                       (into [:enum] run-types)]
