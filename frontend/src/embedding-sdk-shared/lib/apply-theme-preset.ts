@@ -7,8 +7,7 @@ import {
   type MappableSdkColor,
   SDK_TO_MAIN_APP_COLORS_MAPPING,
 } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { getColors, getDarkColors } from "metabase/lib/colors/colors";
-import type { ColorPalette } from "metabase/lib/colors/types";
+import { getThemeFromColorScheme } from "metabase/lib/colors";
 
 const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "background",
@@ -23,13 +22,8 @@ const PRESET_SDK_COLORS: MappableSdkColor[] = [
   "brand-hover-light",
 ];
 
-const COLOR_GETTERS: Record<MetabaseThemePreset, () => ColorPalette> = {
-  light: getColors,
-  dark: getDarkColors,
-};
-
 const getPresetColors = (preset: MetabaseThemePreset): MetabaseColors => {
-  const palette = COLOR_GETTERS[preset]?.();
+  const palette = getThemeFromColorScheme(preset);
 
   if (!palette) {
     return {};
@@ -38,7 +32,7 @@ const getPresetColors = (preset: MetabaseThemePreset): MetabaseColors => {
   return Object.fromEntries(
     PRESET_SDK_COLORS.map((sdkColor) => {
       const mainAppColor = SDK_TO_MAIN_APP_COLORS_MAPPING[sdkColor][0];
-      return [sdkColor, palette[mainAppColor]];
+      return [sdkColor, palette.colors[mainAppColor]];
     }),
   );
 };

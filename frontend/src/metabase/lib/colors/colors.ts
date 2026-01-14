@@ -3,7 +3,6 @@
 
 import type { ColorSettings } from "metabase-types/api/settings";
 
-import { METABASE_DARK_THEME } from "./constants/dark";
 import { METABASE_LIGHT_THEME } from "./constants/light";
 import type { MetabaseColorKey } from "./types/color-keys";
 
@@ -242,12 +241,6 @@ const baseColors = {
 export const getColors = (settings?: ColorSettings) =>
   ({
     ...METABASE_LIGHT_THEME.colors,
-    ...settings,
-  }) as Record<MetabaseColorKey, string>;
-
-export const getDarkColors = (settings?: ColorSettings) =>
-  ({
-    ...METABASE_DARK_THEME.colors,
     ...settings,
   }) as Record<MetabaseColorKey, string>;
 
