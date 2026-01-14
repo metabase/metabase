@@ -599,108 +599,107 @@ export function createTestQuery({
 }: CreateTestQueryOpts): Lib.Query {
   const metadataProvider = Lib.metadataProvider(databaseId, metadata);
 
-  const queryWithStages = stages.reduce(
-    (
-      query: Lib.Query | null,
-      stage: TestQueryStage,
-      stageIndex: number,
-    ): Lib.Query => {
-      const { source, joins = [] } = stage;
-
-      const sourceMetadata = getSourceMetadata(
-        `[stage ${stageIndex}]`,
-        metadataProvider,
-        source,
-      );
-
-      const queryWithStage =
-        query == null
-          ? // The first stage is created by creating the query
-            Lib.queryFromTableOrCardMetadata(metadataProvider, sourceMetadata)
-          : // Further stages are appended to the query
-            Lib.appendStage(query);
-
-      // Add joins to stage
-      const queryWithJoins = joins.reduce((query, join, joinIndex) => {
-        const targetMetadata = getSourceMetadata(
-          `[stage ${stageIndex}, join ${joinIndex}]`,
-          metadataProvider,
-          join.source,
-        );
-
-        // Pick join strategy
-        const joinStrategy = findJoinStrategy(
-          query,
-          stageIndex,
-          joinIndex,
-          join.strategy,
-        );
-
-        // Build join conditions
-        const conditions =
-          join.conditions == null
-            ? // If no conditions are specified, use the suggested conditions
-              Lib.suggestedJoinConditions(query, stageIndex, sourceMetadata)
-            : // If conditions are specified, use them
-              join.conditions.map((condition) => {
-                const lhs = expressionToJoinConditionExpression(
-                  query,
-                  stageIndex,
-                  Lib.joinConditionLHSColumns(query, stageIndex),
-                  condition.left,
-                );
-                const rhs = expressionToJoinConditionExpression(
-                  query,
-                  stageIndex,
-                  // TODO: why does this return an empty array?
-                  //   Lib.joinConditionRHSColumns(query, stageIndex),
-                  Lib.joinableColumns(query, stageIndex, targetMetadata),
-                  condition.right,
-                );
-
-                return Lib.joinConditionClause(condition.operator, lhs, rhs);
-              });
-
-        const joinClause = Lib.joinClause(
-          sourceMetadata,
-          conditions,
-          joinStrategy,
-        );
-        return Lib.join(query, stageIndex, joinClause);
-      }, queryWithStage);
-
-      // Limit query fields
-      const visibleColumns = Lib.visibleColumns(queryWithJoins, stageIndex);
-      const queryWithFields =
-        stage.fields == null || stage.fields === "all"
-          ? // If no fields are specified, we use all the visible fields
-            queryWithJoins
-          : // If fields are specified, we use only those fields
-            Lib.withFields(
-              queryWithJoins,
-              stageIndex,
-              stage.fields.map((field) =>
-                findColumn(
-                  queryWithJoins,
-                  stageIndex,
-                  visibleColumns,
-                  field.name,
-                ),
-              ),
-            );
-
-      return queryWithFields;
-    },
-    null,
-  );
-
-  if (queryWithStages == null) {
+  if (stages.length === 0) {
     throw new Error("query must have at least one stage");
   }
 
-  return queryWithStages;
+  const sourceMetadata = getSourceMetadata(
+    `[stage 0]`,
+    metadataProvider,
+    stages[0].source,
+  );
+
+  const query = Lib.queryFromTableOrCardMetadata(
+    metadataProvider,
+    sourceMetadata,
+  );
+
+  return stages.reduce(
+    (query: Lib.Query, stage, stageIndex) =>
+      appendTestQueryStage(metadataProvider, stage, query, stageIndex),
+    query,
+  );
 }
 
 export function createTestJsQuery(opts: CreateTestQueryOpts) {
   return Lib.toJsQuery(createTestQuery(opts));
+}
+
+function appendTestQueryStage(
+  metadataProvider: Lib.MetadataProvider,
+  stage: TestQueryStage,
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const { source, joins = [] } = stage;
+
+  const sourceMetadata = getSourceMetadata(
+    `[stage ${stageIndex}]`,
+    metadataProvider,
+    source,
+  );
+
+  const queryWithStage = Lib.appendStage(query);
+
+  // Add joins to stage
+  const queryWithJoins = joins.reduce((query, join, joinIndex) => {
+    const targetMetadata = getSourceMetadata(
+      `[stage ${stageIndex}, join ${joinIndex}]`,
+      metadataProvider,
+      join.source,
+    );
+
+    // Pick join strategy
+    const joinStrategy = findJoinStrategy(
+      query,
+      stageIndex,
+      joinIndex,
+      join.strategy,
+    );
+
+    // Build join conditions
+    const conditions =
+      join.conditions == null
+        ? // If no conditions are specified, use the suggested conditions
+          Lib.suggestedJoinConditions(query, stageIndex, sourceMetadata)
+        : // If conditions are specified, use them
+          join.conditions.map((condition) => {
+            const lhs = expressionToJoinConditionExpression(
+              query,
+              stageIndex,
+              Lib.joinConditionLHSColumns(query, stageIndex),
+              condition.left,
+            );
+            const rhs = expressionToJoinConditionExpression(
+              query,
+              stageIndex,
+              // TODO: why does this return an empty array?
+              //   Lib.joinConditionRHSColumns(query, stageIndex),
+              Lib.joinableColumns(query, stageIndex, targetMetadata),
+              condition.right,
+            );
+
+            return Lib.joinConditionClause(condition.operator, lhs, rhs);
+          });
+
+    const joinClause = Lib.joinClause(sourceMetadata, conditions, joinStrategy);
+    return Lib.join(query, stageIndex, joinClause);
+  }, queryWithStage);
+
+  // Limit query fields
+  const visibleColumns = Lib.visibleColumns(queryWithJoins, stageIndex);
+  const queryWithFields =
+    stage.fields == null || stage.fields === "all"
+      ? // If no fields are specified, we use all the visible fields
+        queryWithJoins
+      : // If fields are specified, we use only those fields
+        Lib.withFields(
+          queryWithJoins,
+          stageIndex,
+          stage.fields.map((field) =>
+            findColumn(queryWithJoins, stageIndex, visibleColumns, field.name),
+          ),
+        );
+
+  return queryWithFields;
 }
