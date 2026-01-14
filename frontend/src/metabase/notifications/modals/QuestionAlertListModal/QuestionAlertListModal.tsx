@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePreviousDistinct } from "react-use";
 import { t } from "ttag";
 
@@ -43,11 +43,15 @@ export const QuestionAlertListModal = ({
   const [updateNotification] = useUpdateNotificationMutation();
   const [unsubscribe] = useUnsubscribeFromNotificationMutation();
 
-  const [activeModal, setActiveModal] = useState<AlertModalMode>(
-    !questionNotifications || questionNotifications.length === 0
-      ? "create-modal"
-      : "list-modal",
+  const [activeModal, setActiveModal] = useState<AlertModalMode | null>(
+    questionNotifications ? getDefaultActiveModal(questionNotifications) : null,
   );
+
+  useEffect(() => {
+    if (questionNotifications) {
+      setActiveModal(getDefaultActiveModal(questionNotifications));
+    }
+  }, [questionNotifications]);
 
   const previousActiveModal = usePreviousDistinct(activeModal);
 
@@ -163,3 +167,9 @@ export const QuestionAlertListModal = ({
     </>
   );
 };
+
+function getDefaultActiveModal(
+  questionNotifications: Notification[],
+): AlertModalMode | (() => AlertModalMode) {
+  return questionNotifications.length === 0 ? "create-modal" : "list-modal";
+}
