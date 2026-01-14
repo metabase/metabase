@@ -52,6 +52,15 @@ describe("parseSchemaId", () => {
       collectionName: decodedCollectionName,
     }).toEqual({ databaseId, collectionName });
   });
+
+  it("handles colons when the schema id is already decoded", () => {
+    const schemaId = "1:database:name";
+    const [decodedDatabaseId, decodedSchemaName] = parseSchemaId(schemaId);
+    expect({
+      databaseId: decodedDatabaseId,
+      schemaName: decodedSchemaName,
+    }).toEqual({ databaseId: 1, schemaName: "database:name" });
+  });
 });
 
 describe("getSchemaName", () => {
