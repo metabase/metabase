@@ -1,5 +1,5 @@
 export const SCROLL_MARGIN = 8;
 export const MIN_HEIGHT_LINES = 15;
 export const MIN_EDITOR_HEIGHT_AFTER_DRAGGING = 40;
-export const RESIZE_CONSTRAINT_OFFSET = 1 + 30; // 1px for the resize border, 30px to avoid completelhy losing the results
+export const RESIZE_CONSTRAINT_OFFSET = 80;
 export const THRESHOLD_FOR_AUTO_CLOSE = 50;
