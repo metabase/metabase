@@ -47,6 +47,10 @@ const getDefaultPluginTenants = () => ({
   TenantSpecificCollectionsItemList: (_props: CollectionItemListProps) =>
     null as React.ReactElement | null,
   TenantCollectionList: PluginPlaceholder,
+  TenantUsersList: PluginPlaceholder,
+  TenantUsersPersonalCollectionList: PluginPlaceholder as React.ComponentType<{
+    params: { tenantId: string };
+  }>,
   GroupDescription: (_props: { group: Group }) =>
     null as React.ReactElement | null,
   EditUserStrategyModal: PluginPlaceholder,
@@ -112,6 +116,10 @@ export const PLUGIN_TENANTS: {
     props: CollectionItemListProps,
   ) => React.ReactElement | null;
   TenantCollectionList: React.ComponentType;
+  TenantUsersList: React.ComponentType;
+  TenantUsersPersonalCollectionList: React.ComponentType<{
+    params: { tenantId: string };
+  }>;
   GroupDescription: (props: { group: Group }) => React.ReactElement | null;
   EditUserStrategyModal: (props: {
     onClose: () => void;

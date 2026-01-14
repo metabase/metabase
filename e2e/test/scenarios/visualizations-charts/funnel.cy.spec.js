@@ -38,7 +38,8 @@ describe("scenarios > visualizations > funnel chart", () => {
           .first()
           .should("have.text", name);
 
-        H.moveDnDKitElement(H.getDraggableElements().first(), {
+        H.getDraggableElements().first().as("dragElement");
+        H.moveDnDKitElementByAlias("@dragElement", {
           vertical: 100,
         });
 
@@ -66,7 +67,8 @@ describe("scenarios > visualizations > funnel chart", () => {
   });
 
   it("should handle row items being filterd out and returned gracefully", () => {
-    H.moveDnDKitElement(H.getDraggableElements().first(), { vertical: 100 });
+    H.getDraggableElements().first().as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
 
     H.getDraggableElements()
       .eq(1)

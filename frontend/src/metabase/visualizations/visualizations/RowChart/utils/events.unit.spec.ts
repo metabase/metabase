@@ -89,6 +89,24 @@ const barData: BarData<GroupedDatum> = {
 
 describe("events utils", () => {
   describe("getHoverData", () => {
+    it("returns dimension key based on axis title setting when set", () => {
+      const keyValueData = getHoverData(
+        barData,
+        {
+          "graph.x_axis.title_text": "My Custom Dimension Label",
+        },
+        {
+          dimension: chartColumns.dimension,
+          metrics: [chartColumns.metrics[0]],
+        },
+        datasetColumns,
+        [series1],
+        seriesColors,
+      ).data;
+
+      expect(keyValueData?.[0].key).toBe("My Custom Dimension Label");
+    });
+
     it("returns key-value pairs based on series_settings for charts without a breakout", () => {
       const keyValueData = getHoverData(
         barData,
