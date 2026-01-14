@@ -31,6 +31,19 @@ export type UnsavedTransform = {
   };
 };
 
+export type WorkspaceTransform = Omit<Transform, "id"> & {
+  type: "workspace-transform";
+  ref_id: WorkspaceTransformId;
+  workspace_id: WorkspaceId;
+  global_id: TransformId | null;
+  target_stale: boolean;
+  archived_at: string | null;
+  last_run_at: string | null;
+  last_run_message: string | null;
+  last_run_status: WorkspaceRunStatus | null;
+};
+
+
 export function isTaggedTransform(
   transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
 ): transform is TaggedTransform {
@@ -118,18 +131,6 @@ export type WorkspaceTransformId = string;
 
 export type WorkspaceRunStatus = "started" | "succeeded" | "failed" | "timeout";
 
-export type WorkspaceTransform = Omit<Transform, "id"> & {
-  type: "workspace-transform";
-  ref_id: WorkspaceTransformId;
-  workspace_id: WorkspaceId;
-  global_id: TransformId | null;
-  target_stale: boolean;
-  archived_at: string | null;
-  last_run_at: string | null;
-  last_run_message: string | null;
-  last_run_status: WorkspaceRunStatus | null;
-};
-
 export type WorkspaceCheckoutItem = {
   id: string;
   name: string;
@@ -174,7 +175,7 @@ export type CreateWorkspaceTransformRequest = {
   global_id?: TransformId;
   name: string;
   description?: string | null;
-  source: TransformSource;
+  source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
 };

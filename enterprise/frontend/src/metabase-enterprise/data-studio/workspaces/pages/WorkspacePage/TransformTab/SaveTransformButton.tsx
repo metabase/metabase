@@ -78,9 +78,6 @@ export const SaveTransformButton = ({
     isWorkspaceTransform(transform) &&
     workspaceTransforms.some((t) => t.ref_id === transform.ref_id);
   const isNewTransform = isUnsavedTransform(transform);
-  const isCheckoutDisabled =
-    isExternalTransformWithCheckoutInfo(transform) &&
-    typeof transform.checkout_disabled === "string";
 
   // Check for changes
   const hasSourceChanged = !isSameSource(
@@ -255,7 +252,7 @@ export const SaveTransformButton = ({
 
     // External transform
     return {
-      disabled: isDisabled || isCheckoutDisabled,
+      disabled: isDisabled,
       variant: (hasChanges ? "filled" : "default") as "filled" | "default",
       onClick: handleSaveExternalTransform,
     };
@@ -283,9 +280,3 @@ export const SaveTransformButton = ({
     </>
   );
 };
-
-function isExternalTransformWithCheckoutInfo(
-  transform: AnyWorkspaceTransform,
-): transform is AnyWorkspaceTransform & { checkout_disabled?: string } {
-  return "checkout_disabled" in transform;
-}

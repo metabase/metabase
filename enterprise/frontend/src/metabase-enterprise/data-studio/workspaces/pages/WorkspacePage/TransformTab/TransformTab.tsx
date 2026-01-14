@@ -28,8 +28,16 @@ import { isWorkspaceTransform } from "metabase-types/api";
 
 import { WorkspaceRunButton } from "../../../components/WorkspaceRunButton/WorkspaceRunButton";
 import { TransformEditor } from "../TransformEditor";
-import type { AnyWorkspaceTransform, EditedTransform, TableTab } from "../WorkspaceProvider";
-import { getNumericTransformId, getTransformId, useWorkspace } from "../WorkspaceProvider";
+import type {
+  AnyWorkspaceTransform,
+  EditedTransform,
+  TableTab,
+} from "../WorkspaceProvider";
+import {
+  getNumericTransformId,
+  getTransformId,
+  useWorkspace,
+} from "../WorkspaceProvider";
 
 import { SaveTransformButton } from "./SaveTransformButton";
 import { UpdateTargetModal } from "./UpdateTargetModal/UpdateTargetModal";
@@ -81,6 +89,8 @@ export const TransformTab = ({
 
   const handleRunQueryStart = useCallback(
     async (query: DatasetQuery) => {
+      // Preview doesn't have a real table ID, but we need to provide a unique identifier
+      // to open preview tab correctly.
       const tableTabId = `table-${transformId}`;
 
       const tableTab: TableTab = {
@@ -88,7 +98,7 @@ export const TransformTab = ({
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: null, // Preview doesn't have a real table ID
+          tableId: transformId,
           name: t`Preview (${transform.name})`,
           query,
         },
@@ -107,7 +117,7 @@ export const TransformTab = ({
         name: t`Preview (${transform.name})`,
         type: "table",
         table: {
-          tableId: null, // Preview doesn't have a real table ID
+          tableId: null,
           name: t`Preview (${transform.name})`,
           transformId: String(transformId),
           pythonPreviewResult: result,

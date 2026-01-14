@@ -25,8 +25,9 @@ import { TransformListItemMenu } from "./TransformListItemMenu";
 /** Item that can be displayed in the workspace transforms list */
 type WorkspaceTransformItem = UnsavedTransform | WorkspaceTransformListItem;
 
-/** Get the unique identifier for a workspace transform list item */
-function getItemId(item: WorkspaceTransformItem): string | number {
+function getWorkspaceTransformItemId(
+  item: WorkspaceTransformItem,
+): string | number {
   if (isUnsavedTransform(item)) {
     return item.id;
   }
@@ -93,8 +94,8 @@ export const CodeTab = ({
 
   const handleWorkspaceTransformItemClick = useCallback(
     async (item: WorkspaceTransformItem) => {
-      // Unsaved transforms are handled by fetching from local state
-      // They should open directly without API fetch
+      // Unsaved transforms are stored locally.
+      // They should open directly without API fetch.
       if (isUnsavedTransform(item)) {
         // Unsaved transforms should already be opened via the provider
         // This path shouldn't normally be hit, but if it is, we can't
@@ -130,9 +131,10 @@ export const CodeTab = ({
         <Stack gap={0}>
           <Text fw={600}>{t`Workspace transforms`}</Text>
           {workspaceTransforms.map((item) => {
-            const itemId = getItemId(item);
+            const itemId = getWorkspaceTransformItemId(item);
             const isUnsaved = isUnsavedTransform(item);
             const globalId = isUnsaved ? null : item.global_id;
+            const isEdited = isUnsaved || editedTransforms.has(itemId);
             const isActive =
               activeTransformId === itemId || activeTransformId === globalId;
 
@@ -143,7 +145,7 @@ export const CodeTab = ({
                 icon="pivot_table"
                 fw={600}
                 isActive={isActive}
-                isEdited={isUnsaved}
+                isEdited={isEdited}
                 menu={
                   readOnly ? null : (
                     <TransformListItemMenu

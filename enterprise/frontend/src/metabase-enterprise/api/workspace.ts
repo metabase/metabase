@@ -81,13 +81,19 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         invalidateTags(error, [idTag("workspace", id)]),
     }),
     createWorkspaceTransform: builder.mutation<
-      CreateWorkspaceTransformResponse,
+      WorkspaceTransform,
       CreateWorkspaceTransformRequest
     >({
       query: ({ id, ...body }) => ({
         method: "POST",
         url: `/api/ee/workspace/${id}/transform`,
         body,
+      }),
+      transformResponse: (
+        response: CreateWorkspaceTransformResponse,
+      ): WorkspaceTransform => ({
+        ...response,
+        type: "workspace-transform",
       }),
       invalidatesTags: (_, error, { id, global_id }) =>
         invalidateTags(error, [
@@ -243,6 +249,12 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
       }),
+      transformResponse: (
+        response: Omit<WorkspaceTransform, "type">,
+      ): WorkspaceTransform => ({
+        ...response,
+        type: "workspace-transform",
+      }),
       providesTags: (_, __, { transformId }) => [
         idTag("workspace-transform", transformId),
       ],
@@ -293,6 +305,12 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
         method: "PUT",
         url: `/api/ee/workspace/${workspaceId}/transform/${transformId}`,
         body,
+      }),
+      transformResponse: (
+        response: Omit<WorkspaceTransform, "type">,
+      ): WorkspaceTransform => ({
+        ...response,
+        type: "workspace-transform",
       }),
       invalidatesTags: (_, error, { workspaceId, transformId }) =>
         invalidateTags(error, [

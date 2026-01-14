@@ -652,7 +652,7 @@ describe("scenarios > data studio > workspaces", () => {
 
       cy.log("Make additional changes to the saved transform");
       Workspaces.getWorkspaceContent().within(() => {
-        H.NativeEditor.type(" LIMIT 1");
+        H.NativeEditor.type(";");
       });
 
       cy.log("Check that transform has yellow dot status again");
