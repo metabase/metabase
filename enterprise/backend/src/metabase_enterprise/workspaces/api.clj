@@ -881,8 +881,8 @@
    {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (api/check-superuser)
   (let [transform          (api/check-404
-                             (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
-                                            :id transform-id))
+                            (t2/select-one [:model/Transform :id :target_db_id :source_type :source]
+                                           :id transform-id))
         db-id              (:target_db_id transform)
         workspaces         (t2/select [:model/Workspace :id :name :base_status :db_status]
                                       :database_id db-id

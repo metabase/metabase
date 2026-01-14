@@ -1729,3 +1729,77 @@
         (is (nil?
              (m/find-first (comp #{audit/audit-db-id} :id)
                            (:databases (mt/user-http-request :crowberto :get 200 "ee/workspace/database")))))))))
+
+(deftest checkout-endpoint-test
+  (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
+    (mt/with-temp [:model/Transform tx {:name   "Native Transform"
+                                        :source {:type  :query
+                                                 :query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1"}}}
+                                        :target {:type     "table"
+                                                 :database (mt/id)
+                                                 :schema   "public"
+                                                 :name     "checkout_test_table"}}]
+      (ws.tu/with-workspaces! [ws1 {:name "Workspace One" :database_id (mt/id)}
+                               ws2 {:name "Workspace Two" :database_id (mt/id)}]
+        (testing "initially all workspaces for the database are returned, none checked out"
+          (is (=? {:checkout_disabled nil
+                   :workspaces        [{:id (:id ws1) :name "Workspace One" :status string? :existing nil}
+                                       {:id (:id ws2) :name "Workspace Two" :status string? :existing nil}]
+                   :transforms        []}
+                  (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
+                                        :transform-id (:id tx)))))
+
+        (testing "after checkout, the workspace shows the existing checkout info"
+          (mt/user-http-request :crowberto :post 200 (ws-url (:id ws1) "/transform")
+                                (merge {:global_id (:id tx)}
+                                       (select-keys tx [:name :source :target])))
+          (is (=? {:checkout_disabled nil
+                   :workspaces        [{:id (:id ws1) :name "Workspace One" :status string?
+                                        :existing {:ref_id string? :name "Native Transform"}}
+                                       {:id (:id ws2) :name "Workspace Two" :status string? :existing nil}]
+                   :transforms        [{:id string? :name "Native Transform"
+                                        :workspace {:id (:id ws1) :name "Workspace One"}}]}
+                  (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
+                                        :transform-id (:id tx)))))
+
+        (testing "requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "ee/workspace/checkout"
+                                       :transform-id (:id tx)))))
+
+        (testing "returns 404 for non-existent transform"
+          (is (= "Not found."
+                 (mt/user-http-request :crowberto :get 404 "ee/workspace/checkout"
+                                       :transform-id 999999))))))))
+
+(deftest checkout-disabled-reason-test
+  (testing "GET /api/ee/workspace/checkout returns correct checkout_disabled reasons"
+    (testing "MBQL transforms cannot be checked out"
+      (mt/with-temp [:model/Transform tx {:name   "MBQL Transform"
+                                          :source {:type  :query
+                                                   :query (mt/mbql-query venues)}
+                                          :target {:type     "table"
+                                                   :database (mt/id)
+                                                   :schema   "public"
+                                                   :name     "mbql_checkout_test"}}]
+        (is (=? {:checkout_disabled "mbql"
+                 :workspaces        []
+                 :transforms        []}
+                (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
+                                      :transform-id (:id tx))))))
+
+    (testing "Python transforms can be checked out"
+      (mt/with-temp [:model/Transform tx {:name        "Python Transform"
+                                          :source      {:type :python :code "print(1)"}
+                                          :source_type :python
+                                          :target      {:type     "table"
+                                                        :database (mt/id)
+                                                        :schema   "public"
+                                                        :name     "python_checkout_test"}}]
+        (is (=? {:checkout_disabled nil
+                 :workspaces        []
+                 :transforms        []}
+                (mt/user-http-request :crowberto :get 200 "ee/workspace/checkout"
+                                      :transform-id (:id tx))))))))
