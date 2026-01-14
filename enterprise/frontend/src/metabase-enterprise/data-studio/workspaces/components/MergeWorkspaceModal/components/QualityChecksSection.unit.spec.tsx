@@ -1,5 +1,3 @@
-import fetchMock from "fetch-mock";
-
 import { setupWorkspaceProblemsEndpoint } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { WorkspaceId, WorkspaceProblem } from "metabase-types/api";
@@ -24,26 +22,26 @@ describe("QualityChecksSection", () => {
 
   it("should show loading state while fetching problems", async () => {
     // Use a delayed promise to simulate loading
-    let resolvePromise: (value: WorkspaceProblem[]) => void;
+    let resolvePromise: (value: WorkspaceProblem[]) => void = () => {};
     const delayedPromise = new Promise<WorkspaceProblem[]>((resolve) => {
       resolvePromise = resolve;
     });
 
-    fetchMock.get(
-      `path:/api/ee/workspace/${MOCK_WORKSPACE_ID}/problem`,
-      delayedPromise,
-    );
+    setupWorkspaceProblemsEndpoint(MOCK_WORKSPACE_ID, delayedPromise);
 
     renderWithProviders(
       <QualityChecksSection workspaceId={MOCK_WORKSPACE_ID} />,
     );
 
-    // Check for loader elements (Mantine Loader renders as span with class)
-    // We can't use querySelector directly, so we check that "Passed" is not yet visible
+    // Verify loaders are rendered (one for each of the 4 categories)
+    const loaders = screen.getAllByLabelText("Loading");
+    expect(loaders).toHaveLength(4);
+
+    // Verify "Passed" status is not shown while loading
     expect(screen.queryByText("Passed")).not.toBeInTheDocument();
 
     // Resolve the promise to clean up
-    resolvePromise!([]);
+    resolvePromise([]);
   });
 
   it("should show 'Passed' status when there are no problems", async () => {

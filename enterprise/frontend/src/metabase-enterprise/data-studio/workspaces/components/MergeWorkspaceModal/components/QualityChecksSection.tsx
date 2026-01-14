@@ -69,7 +69,7 @@ export const QualityChecksSection = ({
               >
                 <Text>{getCheckTitle(category)}</Text>
                 {isLoading ? (
-                  <Loader size="xs" />
+                  <Loader size="xs" aria-label={t`Loading`} />
                 ) : (
                   <Group gap="xs">
                     {checkStatus.status === "passed" && (

@@ -4,7 +4,7 @@ import type { WorkspaceId, WorkspaceProblem } from "metabase-types/api";
 
 export function setupWorkspaceProblemsEndpoint(
   workspaceId: WorkspaceId,
-  problems: WorkspaceProblem[] = [],
+  problems: WorkspaceProblem[] | Promise<WorkspaceProblem[]> = [],
 ) {
   fetchMock.get(`path:/api/ee/workspace/${workspaceId}/problem`, problems);
 }
