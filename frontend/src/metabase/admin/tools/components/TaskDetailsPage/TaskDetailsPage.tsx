@@ -75,6 +75,10 @@ export const TaskDetailsPage = ({ params }: TaskDetailsPageProps) => {
           <Text fw="bold" w={120}>{t`ID`}</Text>
           <Text>{task.id}</Text>
         </Flex>
+        <Flex gap="md">
+          <Text fw="bold" w={120}>{t`Task`}</Text>
+          <Text>{task.task}</Text>
+        </Flex>
         <Flex gap="md" align="center">
           <Text fw="bold" w={120}>{t`Status`}</Text>
           <Badge color={getTaskStatusColor(task.status)}>
