@@ -6,8 +6,8 @@ import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import {
   type MetabaseEmbeddingTheme,
-  isThemeV1,
-  isThemeV2,
+  isEmbeddingThemeV1,
+  isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
@@ -29,7 +29,7 @@ export function useEmbeddingThemeOverride(
   const appColors = useSetting("application-colors");
 
   return useMemo(() => {
-    if (isThemeV1(theme)) {
+    if (isEmbeddingThemeV1(theme)) {
       const themeWithPreset = applyThemePreset(theme);
 
       // !! Mutate the global colors object to apply the new colors.
@@ -39,7 +39,7 @@ export function useEmbeddingThemeOverride(
       return getEmbeddingThemeOverride(themeWithPreset || {}, font);
     }
 
-    if (isThemeV2(theme)) {
+    if (isEmbeddingThemeV2(theme)) {
       const derivedTheme = deriveFullMetabaseTheme({
         baseTheme: getThemeFromColorScheme("light"),
         whitelabelColors: appColors ?? {},
