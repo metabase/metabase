@@ -174,7 +174,7 @@
         offset       (request/offset)
         runs         (t2/select :model/TaskRun (merge where-clause
                                                       (when limit {:limit limit})
-                                                      (when offset {:limit offset})
+                                                      (when offset {:offset offset})
                                                       {:order-by [[:started_at :desc]]}))]
     {:total  (t2/count :model/TaskRun where-clause)
      :limit  limit
