@@ -18,8 +18,10 @@ import { PublishTableModal } from "./PublishTableModal";
 
 export const CreateMenu = ({
   metricCollectionId,
+  canWriteToMetricCollection,
 }: {
   metricCollectionId?: CollectionId;
+  canWriteToMetricCollection?: boolean;
 }) => {
   const dispatch = useDispatch();
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
@@ -29,7 +31,8 @@ export const CreateMenu = ({
   const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const hasDataAccess = useSelector(canUserCreateQueries);
 
-  const canCreateMetric = hasDataAccess && metricCollectionId;
+  const canCreateMetric =
+    hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
   const menuItems = [
     isAdmin && (

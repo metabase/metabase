@@ -7,6 +7,7 @@ import type { Card, CardType } from "./card";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
+import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { Segment } from "./segment";
 import type { NativeQuerySnippet } from "./snippets";
 import type { Table, TableId } from "./table";
@@ -279,16 +280,24 @@ export type CheckSnippetDependenciesRequest = Pick<NativeQuerySnippet, "id"> &
 export type CheckTransformDependenciesRequest = Pick<Transform, "id"> &
   Partial<Pick<Transform, "source">>;
 
-export type ListBrokenGraphNodesRequest = {
+export type ListBrokenGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
   include_personal_collections?: boolean;
 };
 
-export type ListUnreferencedGraphNodesRequest = {
+export type ListBrokenGraphNodesResponse = PaginationResponse & {
+  data: DependencyNode[];
+};
+
+export type ListUnreferencedGraphNodesRequest = PaginationRequest & {
   types?: DependencyType[];
   card_types?: CardType[];
   query?: string;
   include_personal_collections?: boolean;
+};
+
+export type ListUnreferencedGraphNodesResponse = PaginationResponse & {
+  data: DependencyNode[];
 };

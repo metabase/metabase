@@ -10,6 +10,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.spec :as search.spec]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -297,10 +298,13 @@
    (mi/can-query? (t2/select-one :model/Table pk))))
 
 (defenterprise current-user-can-write-table?
-  "OSS implementation. Returns a boolean whether the current user can write the given field."
+  "OSS implementation. Returns a boolean whether the current user can write the given table.
+   Checks both that the user is a superuser and that the table is editable (not in a remote-synced
+   collection in read-only mode)."
   metabase-enterprise.advanced-permissions.common
-  [_instance]
-  (mi/superuser?))
+  [instance]
+  (and (remote-sync/table-editable? instance)
+       (mi/superuser?)))
 
 (defmethod mi/can-write? :model/Table
   ;; Check if user can modify this table's metadata.
@@ -309,6 +313,32 @@
    (current-user-can-write-table? instance))
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Table :can_write]
+  "Batched hydration for :can_write on tables. Pre-fetches collection is_remote_synced values
+   to avoid N+1 queries when checking remote-sync permissions for multiple tables."
+  [_model k tables]
+  (let [;; Get all unique collection IDs (excluding nil)
+        collection-ids (->> tables
+                            (keep :collection_id)
+                            distinct)
+        ;; Batch fetch is_remote_synced for all collections
+        collection-synced-map (if (seq collection-ids)
+                                (into {}
+                                      (map (juxt :id :is_remote_synced))
+                                      (t2/select :model/Collection :id [:in collection-ids]))
+                                {})
+        ;; Associate collection info with each table so table-editable? doesn't need to query
+        tables-with-collection (for [table tables]
+                                 (if-let [coll-id (:collection_id table)]
+                                   (assoc table :collection {:id coll-id
+                                                             :is_remote_synced (get collection-synced-map coll-id false)})
+                                   table))]
+    (mi/instances-with-hydrated-data
+     tables k
+     #(u/index-by :id mi/can-write? tables-with-collection)
+     :id
+     {:default false})))
 
 ;;; ------------------------------------------------ SQL Permissions ------------------------------------------------
 
@@ -486,6 +516,16 @@
 (defmethod serdes/dependencies "Table" [{:keys [db_id collection_id]}]
   (cond-> [[{:model "Database" :id db_id}]]
     collection_id (conj [{:model "Collection" :id collection_id}])))
+
+(defmethod serdes/descendants "Table" [_model-name id {:keys [skip-archived]}]
+  (let [fields   (into {} (for [field-id (t2/select-pks-set :model/Field {:where [:= :table_id id]})]
+                            {["Field" field-id] {"Table" id}}))
+        segments (into {} (for [segment-id (t2/select-pks-set :model/Segment
+                                                              {:where [:and
+                                                                       [:= :table_id id]
+                                                                       (when skip-archived [:not :archived])]})]
+                            {["Segment" segment-id] {"Table" id}}))]
+    (merge fields segments)))
 
 (defmethod serdes/generate-path "Table" [_ table]
   (let [db-name (t2/select-one-fn :name :model/Database :id (:db_id table))]

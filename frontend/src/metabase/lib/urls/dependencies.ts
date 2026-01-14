@@ -27,17 +27,22 @@ export function dependencyTasks() {
 }
 
 export type DependencyListParams = {
+  page?: number;
   query?: string;
   groupTypes?: DependencyGroupType[];
   includePersonalCollections?: boolean;
 };
 
 function dependencyListQueryString({
+  page,
   query,
   groupTypes,
   includePersonalCollections,
 }: DependencyListParams = {}) {
   const searchParams = new URLSearchParams();
+  if (page != null) {
+    searchParams.set("page", String(page));
+  }
   if (query != null) {
     searchParams.set("query", query);
   }
