@@ -281,7 +281,7 @@
                         "User with granular access to all source tables should have source_readable=true"))))))
 
           (testing "Python transforms - granular access but missing some tables"
-            (let [transform {:source {:type :python
+            (let [transform {:source {:type          :python
                                       :source-tables {"t1" table1-id
                                                       "t2" table2-id}}}]
               (mt/with-user-in-groups [group {:name "Limited Granular Group"}
@@ -289,8 +289,9 @@
                 ;; Block all-users from viewing data at database level, then grant specific access via test group
                 (mt/with-no-data-perms-for-all-users!
                   (mt/with-db-perm-for-group! group db-id :perms/view-data :unrestricted
-                    ;; Block table2 for the test group only
-                    (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
-                    (binding [api/*current-user-id* (:id user)]
-                      (is (false? (transforms.util/source-tables-readable? transform))
-                          "User who cannot read all source tables should have source_readable=false"))))))))))))
+                    (mt/with-db-perm-for-group! group db-id :perms/create-queries :query-builder-and-native
+                      ;; Block table2 for the test group only
+                      (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
+                      (binding [api/*current-user-id* (:id user)]
+                        (is (false? (transforms.util/source-tables-readable? transform))
+                            "User who cannot read all source tables should have source_readable=false")))))))))))))
