@@ -64,7 +64,9 @@ export const IncrementalTransformSettings = ({
           ? t`Incremental transforms are only supported for single data source transforms.`
           : t`Only process new and changed data`
       }
-      data-testid="incremental-switch"
+      wrapperProps={{
+        "data-testid": "incremental-switch",
+      }}
       onChange={(e) => onIncrementalChange(e.target.checked)}
     />
   );

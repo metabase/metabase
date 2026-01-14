@@ -1537,65 +1537,83 @@ LIMIT
       H.assertQueryBuilderRowCount(1);
     });
 
-    it("should show complexity warning modal when saving a complex SQL query and allow saving anyway", () => {
-      cy.log("create a simple SQL transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        visitTransform: true,
-        sourceCheckpointStrategy: { type: "checkpoint" },
+    describe("query complexity warning", () => {
+      it("should show complexity warning modal when saving a complex SQL query and allow saving anyway", () => {
+        cy.log("create a simple SQL transform");
+        createSqlTransform({
+          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+          visitTransform: true,
+          sourceCheckpointStrategy: { type: "checkpoint" },
+        });
+
+        cy.log("visit edit mode and change to a complex query with LIMIT");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
+
+        H.NativeEditor.type(" LIMIT 10");
+        getQueryEditor().button("Save").click();
+
+        queryComplexityWarningModal("save");
+
+        cy.wait("@updateTransform");
+        cy.url().should("not.include", "/edit");
       });
 
-      cy.log("visit edit mode and change to a complex query with LIMIT");
-      H.DataStudio.Transforms.editDefinition().click();
-      cy.url().should("include", "/edit");
+      it("should allow canceling the complexity warning modal without saving", () => {
+        cy.log("create a simple SQL transform");
+        createSqlTransform({
+          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
+          visitTransform: true,
+          sourceCheckpointStrategy: { type: "checkpoint" },
+        });
 
-      H.NativeEditor.type(" LIMIT 10");
-      getQueryEditor().button("Save").click();
+        cy.log("visit edit mode and change to a complex query with LIMIT");
+        H.DataStudio.Transforms.editDefinition().click();
+        cy.url().should("include", "/edit");
 
-      cy.log("verify complexity warning modal appears");
-      H.modal().within(() => {
-        cy.findByText("Query complexity warning").should("be.visible");
-        cy.findByText(/too complex to allow automatic checkpoint/).should(
-          "be.visible",
+        H.NativeEditor.type(" LIMIT 10");
+        getQueryEditor().button("Save").click();
+
+        queryComplexityWarningModal("cancel");
+
+        cy.log("verify modal is closed and still in edit mode");
+        H.modal().should("not.exist");
+        cy.url().should("include", "/edit");
+
+        cy.log(
+          "verify query was not saved by checking updateTransform was not called",
         );
-        cy.findByText(/WHERE id > \{\{checkpoint}}/).should("be.visible");
-        cy.findByText("Contains a LIMIT").should("be.visible");
-        cy.button("Save anyway").click();
+        cy.get("@updateTransform.all").should("have.length", 0);
       });
 
-      cy.wait("@updateTransform");
-      cy.url().should("not.include", "/edit");
-    });
+      it("should confirm incremental settings change if query is complex", () => {
+        createSqlTransform({
+          sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}" LIMIT 10`,
+          sourceCheckpointStrategy: { type: "checkpoint" },
+          visitTransform: true,
+        });
+        H.DataStudio.Transforms.settingsTab().click();
 
-    it("should allow canceling the complexity warning modal without saving", () => {
-      cy.log("create a simple SQL transform");
-      createSqlTransform({
-        sourceQuery: `SELECT * FROM "${TARGET_SCHEMA}"."${SOURCE_TABLE}"`,
-        visitTransform: true,
-        sourceCheckpointStrategy: { type: "checkpoint" },
+        cy.log("Toggle incremental on");
+        isIncrementalSwitchDisabled();
+        getIncrementalSwitch().click();
+
+        queryComplexityWarningModal("cancel");
+
+        cy.log("Verify that the switch is still off");
+        isIncrementalSwitchDisabled();
+
+        cy.log("Toggle incremental on");
+        getIncrementalSwitch().click();
+        queryComplexityWarningModal("save");
+
+        cy.wait("@updateTransform");
+        isIncrementalSwitchEnabled();
+        H.undoToast().should(
+          "contain.text",
+          "Incremental transformation settings updated",
+        );
       });
-
-      cy.log("visit edit mode and change to a complex query with LIMIT");
-      H.DataStudio.Transforms.editDefinition().click();
-      cy.url().should("include", "/edit");
-
-      H.NativeEditor.type(" LIMIT 10");
-      getQueryEditor().button("Save").click();
-
-      cy.log("verify complexity warning modal appears and cancel it");
-      H.modal().within(() => {
-        cy.findByText("Query complexity warning").should("be.visible");
-        cy.button("Cancel").click();
-      });
-
-      cy.log("verify modal is closed and still in edit mode");
-      H.modal().should("not.exist");
-      cy.url().should("include", "/edit");
-
-      cy.log(
-        "verify query was not saved by checking updateTransform was not called",
-      );
-      cy.get("@updateTransform.all").should("have.length", 0);
     });
   });
 
@@ -3319,6 +3337,20 @@ function isIncrementalSwitchEnabled() {
 }
 function isIncrementalSwitchDisabled() {
   return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
+}
+
+function queryComplexityWarningModal(action: "cancel" | "save") {
+  cy.log(`Verify complexity warning modal appears and ${action} it`);
+  return H.modal().within(() => {
+    cy.findByText(
+      "Can't automatically run this transform incrementally",
+    ).should("be.visible");
+    if (action === "save") {
+      cy.button("Save anyway").click();
+    } else {
+      cy.button("Cancel").click();
+    }
+  });
 }
 
 function getContentTable() {
