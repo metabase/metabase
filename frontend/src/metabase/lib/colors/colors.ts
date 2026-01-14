@@ -4,6 +4,7 @@
 import type { ColorSettings } from "metabase-types/api/settings";
 
 import { METABASE_LIGHT_THEME } from "./constants/light";
+import { deriveFullMetabaseTheme } from "./derive-theme";
 import type { MetabaseColorKey } from "./types/color-keys";
 
 const win = typeof window !== "undefined" ? window : ({} as Window);
@@ -238,13 +239,12 @@ const baseColors = {
   },
 };
 
-export const getColors = (settings?: ColorSettings) =>
-  ({
-    ...METABASE_LIGHT_THEME.colors,
-    ...settings,
-  }) as Record<MetabaseColorKey, string>;
+export const getColors = (whitelabelColors?: ColorSettings) =>
+  deriveFullMetabaseTheme({
+    baseTheme: METABASE_LIGHT_THEME,
+    whitelabelColors,
+  }).colors;
 
-// This is a mutable object that can be modified by setGlobalEmbeddingColors for legacy code.
 export const colors: Record<MetabaseColorKey, string> = {
   ...getColors(whitelabelColors),
 };
