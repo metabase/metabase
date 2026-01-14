@@ -35,6 +35,7 @@ jest.mock("react-use", () => ({
 jest.mock("./hooks", () => ({
   useTestPythonTransform: () => ({
     isRunning: false,
+    isDirty: true,
     cancel: jest.fn(),
     run: jest.fn(),
     executionResult: null,
@@ -104,14 +105,12 @@ const mockPythonSource: PythonTransformSourceDraft = {
 type SetupOpts = {
   source?: PythonTransformSourceDraft;
   readOnly?: boolean;
-  isDirty?: boolean;
   transformId?: number;
 };
 
 function setup({
   source = mockPythonSource,
   readOnly = false,
-  isDirty = false,
   transformId = 1,
 }: SetupOpts = {}) {
   const onChangeSource = jest.fn();
@@ -128,7 +127,6 @@ function setup({
     <PythonTransformEditor
       source={source}
       readOnly={readOnly}
-      isDirty={isDirty}
       transformId={transformId}
       onChangeSource={onChangeSource}
       onAcceptProposed={onAcceptProposed}

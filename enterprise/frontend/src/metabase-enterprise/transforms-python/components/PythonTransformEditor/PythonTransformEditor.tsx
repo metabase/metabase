@@ -20,15 +20,19 @@ import { updateTransformSignature } from "./utils";
 export function PythonTransformEditor({
   source,
   proposedSource,
-  isDirty,
   readOnly,
   transformId,
   onChangeSource,
   onAcceptProposed,
   onRejectProposed,
 }: PythonTransformEditorProps) {
-  const { isRunning, cancel, run, executionResult } =
-    useTestPythonTransform(source);
+  const {
+    isRunning,
+    cancel,
+    run,
+    executionResult,
+    isDirty: isTestDirty,
+  } = useTestPythonTransform(source);
 
   const handleScriptChange = (body: string) => {
     const newSource = {
@@ -104,7 +108,7 @@ export function PythonTransformEditor({
           <PythonEditorBody
             isRunnable={isPythonTransformSource(source)}
             isRunning={isRunning}
-            isDirty={isDirty}
+            isDirty={isTestDirty}
             readOnly={readOnly}
             onRun={run}
             onCancel={cancel}
