@@ -61,7 +61,7 @@
                          constraint-name table-name)
               (reduced nil))))
       [[] nil nil]
-      (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity, :transaction? false})))))
+      (jdbc/reducible-query jdbc-spec sql-args {:transaction? false})))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 driver-api/violate-not-null-constraint]
   [_driver error-type _database _action-type error-message]
