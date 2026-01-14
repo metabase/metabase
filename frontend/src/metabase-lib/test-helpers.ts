@@ -420,6 +420,7 @@ type CreateTestQueryOpts = {
 
 type TestQueryStage = {
   source: TestQuerySource;
+  limit?: Lib.Limit;
   fields?: TestQueryColumnExpression[] | "all";
   joins?: TestQueryJoin[];
   filters?: TestQueryFilter[];
@@ -527,6 +528,7 @@ function appendTestQueryStage(
 ): Lib.Query {
   const {
     source,
+    limit,
     joins = [],
     expressions = [],
     filters = [],
@@ -539,6 +541,11 @@ function appendTestQueryStage(
 
   const sourceMetadata = findSource(metadataProvider, source);
 
+  const queryWithLimit =
+    limit == null
+      ? queryWithStage
+      : Lib.limit(queryWithStage, stageIndex, limit);
+
   // Add joins to stage
   const queryWithJoins = joins.reduce((query, join) => {
     const joinClause = createTestJoinClause(
@@ -549,7 +556,7 @@ function appendTestQueryStage(
       join,
     );
     return Lib.join(query, stageIndex, joinClause);
-  }, queryWithStage);
+  }, queryWithLimit);
 
   // Add expressions
   const queryWithExpressions = expressions.reduce((query, expression) => {
