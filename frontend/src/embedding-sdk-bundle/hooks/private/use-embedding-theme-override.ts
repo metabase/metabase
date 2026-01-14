@@ -10,6 +10,10 @@ import {
   isThemeV1,
   isThemeV2,
 } from "metabase/embedding-sdk/theme/theme-version";
+import {
+  deriveFullMetabaseTheme,
+  getThemeFromColorScheme,
+} from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
@@ -47,7 +51,7 @@ export function useEmbeddingThemeOverride(
         embeddingThemeOverride: theme,
       });
 
-      // Convert resolved colors to Mantine color tuples
+      // Convert derived colors to Mantine color tuples
       const colors = Object.fromEntries(
         Object.entries(derivedTheme.colors).map(([key, value]) => [
           key,

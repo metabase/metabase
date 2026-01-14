@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type { MetabaseEmbeddingThemeV2 } from "metabase/embedding-sdk/theme";
 import type { ColorSettings } from "metabase-types/api";
 
