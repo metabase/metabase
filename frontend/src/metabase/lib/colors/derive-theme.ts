@@ -17,6 +17,8 @@ import type {
  *
  * Priority: base theme colors < appearance settings whitelabel colors < modular embedding theme overrides
  *
+ * TODO(EMB-984): generate lightness stops based on a single color
+ * TODO(EMB-1013): generate square and octagonal color harmonies
  * TODO(EMB-1016): derive full color palette based on the given color object
  */
 export function deriveFullMetabaseTheme({
