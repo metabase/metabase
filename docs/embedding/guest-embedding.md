@@ -17,8 +17,8 @@ To restrict data in guest embeds for specific people or groups, use [locked para
 
 The path to embedding settings depends on your Metabase version:
 
-- **OSS/Starter**: **Admin settings** > **Embedding**
-- **Pro/Enterprise**: **Admin settings** > **Embedding** > **Guest embeds**
+- **OSS/Starter**: **Admin settings > Embedding**
+- **Pro/Enterprise**: **Admin settings > Embedding > Guest embeds**
 
 Toggle **Enable guest embeds**.
 
@@ -127,7 +127,7 @@ If you change the [parameters](./static-embedding-parameters.md) of your embedde
 4. Select **Guest embedding**
 5. Click **Unpublish**.
 
-Admins can also find a list of embedded items in **Admin settings > **Embedding** (if you're on Enterprise edition, the list is under the **Guest embeds** tab).
+Admins can also find a list of embedded items in **Admin settings > Embedding** (if you're on Enterprise Edition, the list is under the **Guest embeds** tab).
 
 ## Removing the "Powered by Metabase" banner
 
