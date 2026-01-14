@@ -1,11 +1,11 @@
 import type { MetabaseTheme } from "./MetabaseTheme";
-import type { MetabaseEmbedThemeV2 } from "./MetabaseThemeV2";
+import type { MetabaseEmbeddingThemeV2 } from "./MetabaseThemeV2";
 import { isThemeV1, isThemeV2 } from "./theme-version";
 
 describe("theme-version", () => {
   describe("isThemeV2", () => {
     it("should return true for V2 theme with version: 2", () => {
-      const theme: MetabaseEmbedThemeV2 = {
+      const theme: MetabaseEmbeddingThemeV2 = {
         version: 2,
         colors: {
           brand: "#ff0000",
@@ -15,7 +15,7 @@ describe("theme-version", () => {
     });
 
     it("should return true for V2 theme with only version", () => {
-      const theme: MetabaseEmbedThemeV2 = {
+      const theme: MetabaseEmbeddingThemeV2 = {
         version: 2,
       };
       expect(isThemeV2(theme)).toBe(true);
@@ -56,7 +56,7 @@ describe("theme-version", () => {
     });
 
     it("should return false for V2 theme", () => {
-      const theme: MetabaseEmbedThemeV2 = {
+      const theme: MetabaseEmbeddingThemeV2 = {
         version: 2,
         colors: {
           brand: "#ff0000",

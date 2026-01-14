@@ -5,9 +5,6 @@ import type { ChartColorV2, MetabaseColorKey } from "./theme";
 export type ColorPalette = Partial<Record<MetabaseColorKey, string>>;
 export type ColorName = MetabaseColorKey;
 
-/** @deprecated Use MetabaseColorKey instead */
-export type MetabaseColorV2 = MetabaseColorKey;
-
 export interface AccentColorOptions {
   main?: boolean;
   light?: boolean;

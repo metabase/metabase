@@ -9,7 +9,7 @@ import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
 import {
-  type MetabaseSdkTheme,
+  type MetabaseEmbeddingTheme,
   isThemeV2,
 } from "metabase/embedding-sdk/theme/theme-version";
 import {
@@ -24,7 +24,7 @@ import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider
 import { getColorShades } from "metabase/ui/utils/colors";
 
 interface Props {
-  theme?: MetabaseSdkTheme;
+  theme?: MetabaseEmbeddingTheme;
   children: React.ReactNode;
 }
 
