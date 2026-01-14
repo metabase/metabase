@@ -25,11 +25,9 @@
    - `:source-entity-id` - int or nil"
   [entity-type entity-id errors]
   (t2/with-transaction [_conn]
-    ;; Delete existing errors for this entity
     (t2/delete! :model/AnalysisFindingError
                 :analyzed_entity_type entity-type
                 :analyzed_entity_id entity-id)
-    ;; Insert new errors
     (when (seq errors)
       (t2/insert! :model/AnalysisFindingError
                   (mapv (fn [{:keys [error-type error-detail source-entity-type source-entity-id]}]

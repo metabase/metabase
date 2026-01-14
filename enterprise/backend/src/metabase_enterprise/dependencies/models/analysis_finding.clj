@@ -57,7 +57,6 @@
                   (assoc update
                          :analyzed_entity_type type
                          :analyzed_entity_id instance-id)))
-    ;; Also write individual errors to the new analysis_finding_error table
     (deps.analysis-finding-error/replace-errors-for-entity!
      type
      instance-id
