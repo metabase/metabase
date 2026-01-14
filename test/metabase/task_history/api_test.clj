@@ -676,10 +676,10 @@
       (testing "sync entities"
         (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities" :run-type "sync")]
           (is (= 2 (count response)))
-          (is (every? #(= :database (:entity_type %)) response))
+          (is (every? #(= "database" (:entity_type %)) response))
           (is (= #{"DB1" "DB2"} (set (map :entity_name response))))))
       (testing "subscription entities"
         (let [response (mt/user-http-request :crowberto :get 200 "task/runs/entities" :run-type "subscription")]
           (is (= 1 (count response)))
-          (is (= :dashboard (-> response first :entity_type)))
+          (is (= "dashboard" (-> response first :entity_type)))
           (is (= "My Dashboard" (-> response first :entity_name))))))))
