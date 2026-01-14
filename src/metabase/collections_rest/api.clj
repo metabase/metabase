@@ -491,7 +491,7 @@
    :where  [:and
             (poison-when-pinned-clause pinned-state)
             [:= :collection_id (:id collection)]
-            (when-not api/*is-superuser?*
+            (when-not (perms/has-any-transforms-permission? api/*current-user-id*)
               [:=
                [:inline 0]
                [:inline 1]])]})
