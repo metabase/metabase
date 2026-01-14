@@ -1,12 +1,66 @@
 import type { CollectionId } from "./collection";
 import type { DatabaseId } from "./database";
 import type {
+  DraftTransformSource,
   Transform,
   TransformId,
   TransformSource,
   TransformTagId,
   TransformTarget,
+  TransformTargetType,
 } from "./transform";
+
+/**
+ * A Transform from the global transforms module, tagged for discrimination.
+ * Used in workspace context to distinguish from WorkspaceTransform.
+ */
+export type TaggedTransform = Transform & { type: "transform" };
+
+/**
+ * An unsaved transform that exists only in the UI state.
+ * Uses a numeric id (negative) for temporary identification.
+ */
+export type UnsavedTransform = {
+  type: "unsaved-transform";
+  id: number;
+  name: string;
+  source: DraftTransformSource;
+  target: {
+    name: string;
+    type: TransformTargetType;
+  };
+};
+
+export type WorkspaceTransform = Omit<Transform, "id"> & {
+  type: "workspace-transform";
+  ref_id: WorkspaceTransformId;
+  workspace_id: WorkspaceId;
+  global_id: TransformId | null;
+  target_stale: boolean;
+  archived_at: string | null;
+  last_run_at: string | null;
+  last_run_message: string | null;
+  last_run_status: WorkspaceRunStatus | null;
+};
+
+
+export function isTaggedTransform(
+  transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
+): transform is TaggedTransform {
+  return 'type' in transform && transform.type === "transform";
+}
+
+export function isWorkspaceTransform(
+  transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
+): transform is WorkspaceTransform {
+  return 'type' in transform && transform.type === "workspace-transform";
+}
+
+export function isUnsavedTransform(
+  transform: TaggedTransform | WorkspaceTransform | UnsavedTransform | WorkspaceTransformListItem,
+): transform is UnsavedTransform {
+  return 'type' in transform && transform.type === "unsaved-transform";
+}
 
 export type WorkspaceId = number;
 
@@ -39,15 +93,15 @@ export type CreateWorkspaceRequest = {
   database_id?: DatabaseId;
 };
 
-export type WorkspaceTransformItem = {
+export type WorkspaceTransformListItem = {
   ref_id: string;
   global_id: TransformId | null;
   name: string;
   source_type: Transform["source_type"] | null;
 };
 
-export type WorkspaceTransformsResponse = {
-  transforms: WorkspaceTransformItem[];
+export type WorkspaceTransformListResponse = {
+  transforms: WorkspaceTransformListItem[];
 };
 
 export type ExternalTransform = {
@@ -57,12 +111,12 @@ export type ExternalTransform = {
   checkout_disabled: string | null;
 };
 
-export type ExternalTransformsRequest = {
+export type ExternalTransformRequest = {
   workspaceId: WorkspaceId;
   databaseId?: DatabaseId | null;
 };
 
-export type ExternalTransformsResponse = {
+export type ExternalTransformResponse = {
   transforms: ExternalTransform[];
 };
 
@@ -76,19 +130,6 @@ export type WorkspaceOutputTableRef = {
 export type WorkspaceTransformId = string;
 
 export type WorkspaceRunStatus = "started" | "succeeded" | "failed" | "timeout";
-
-export type WorkspaceTransform = Omit<Transform, "id"> & {
-  // Local identifier used by the UI; equal to `ref_id`
-  id: WorkspaceTransformId;
-  ref_id: WorkspaceTransformId;
-  workspace_id: WorkspaceId;
-  global_id: TransformId | null;
-  target_stale: boolean;
-  archived_at: string | null;
-  last_run_at: string | null;
-  last_run_message: string | null;
-  last_run_status: WorkspaceRunStatus | null;
-};
 
 export type WorkspaceCheckoutItem = {
   id: string;
@@ -134,7 +175,7 @@ export type CreateWorkspaceTransformRequest = {
   global_id?: TransformId;
   name: string;
   description?: string | null;
-  source: TransformSource;
+  source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
 };

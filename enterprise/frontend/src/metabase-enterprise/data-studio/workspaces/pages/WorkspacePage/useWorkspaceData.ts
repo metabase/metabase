@@ -9,11 +9,14 @@ import {
   useGetWorkspaceTransformsQuery,
   useListTransformsQuery,
 } from "metabase-enterprise/api";
-import type { Transform, WorkspaceTransformItem } from "metabase-types/api";
+import type {
+  UnsavedTransform,
+  WorkspaceTransformListItem,
+} from "metabase-types/api";
 
 type UseWorkspaceDataParams = {
   workspaceId: number;
-  unsavedTransforms: Transform[];
+  unsavedTransforms: UnsavedTransform[];
 };
 
 export function useWorkspaceData({
@@ -72,10 +75,11 @@ export function useWorkspaceData({
     [allDbTransforms, sourceDb],
   );
 
-  const allTransforms: (Transform | WorkspaceTransformItem)[] = useMemo(
-    () => [...unsavedTransforms, ...workspaceTransforms],
-    [unsavedTransforms, workspaceTransforms],
-  );
+  const allTransforms: (UnsavedTransform | WorkspaceTransformListItem)[] =
+    useMemo(
+      () => [...unsavedTransforms, ...workspaceTransforms],
+      [unsavedTransforms, workspaceTransforms],
+    );
 
   const isArchived = workspace?.status === "archived";
 

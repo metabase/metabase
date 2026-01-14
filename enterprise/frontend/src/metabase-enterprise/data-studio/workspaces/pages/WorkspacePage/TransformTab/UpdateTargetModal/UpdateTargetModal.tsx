@@ -175,13 +175,13 @@ function getInitialValues({ target }: WorkspaceTransform): EditTransformValues {
 }
 
 function getUpdateTargetRequest(
-  { id, workspace_id }: WorkspaceTransform,
+  { ref_id, workspace_id }: WorkspaceTransform,
   { targetName: name, targetSchema: schema }: EditTransformValues,
   databaseId: number,
 ): UpdateWorkspaceTransformRequest {
   return {
     workspaceId: workspace_id,
-    transformId: id,
+    transformId: ref_id,
     target: {
       type: "table",
       name,

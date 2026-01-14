@@ -53,6 +53,8 @@ import {
   type EditedTransform,
   WorkspaceProvider,
   type WorkspaceTab,
+  getTransformId,
+  getTransformTabId,
   useWorkspace,
 } from "./WorkspaceProvider";
 import { useWorkspaceActions } from "./useWorkspaceActions";
@@ -173,7 +175,10 @@ function WorkspacePageContent({
 
   const handleTransformChange = useCallback(
     (patch: Partial<EditedTransform>) => {
-      patchEditedTransform(checkNotNull(activeTransform).id, patch);
+      patchEditedTransform(
+        getTransformId(checkNotNull(activeTransform)),
+        patch,
+      );
     },
     [activeTransform, patchEditedTransform],
   );
@@ -184,7 +189,8 @@ function WorkspacePageContent({
 
       const isActive =
         (tab.type === "transform" &&
-          activeTransform?.id === tab.transform.id) ||
+          activeTransform &&
+          getTransformId(activeTransform) === getTransformId(tab.transform)) ||
         (tab.type === "table" && activeTable?.tableId === tab.table.tableId);
       const remaining = openedTabs.filter((item) => item.id !== tab.id);
 
@@ -469,8 +475,8 @@ function WorkspacePageContent({
                 </Tabs.Panel>
               )}
 
-              <Tabs.Panel value={`table-${activeTable?.tableId}`} h="100%">
-                {!activeTable ? null : (
+              {activeTable && activeTable.tableId != null && (
+                <Tabs.Panel value={`table-${activeTable.tableId}`} h="100%">
                   <DataTab
                     workspaceId={workspace?.id}
                     databaseId={workspace?.database_id ?? null}
@@ -479,42 +485,42 @@ function WorkspacePageContent({
                     query={activeTable.query}
                     pythonPreviewResult={activeTable.pythonPreviewResult}
                   />
-                )}
-              </Tabs.Panel>
+                </Tabs.Panel>
+              )}
 
-              <Tabs.Panel
-                value={`transform-${activeTransform?.id}`}
-                h="100%"
-                style={{ overflow: "auto" }}
-              >
-                {openedTabs.length === 0 ||
-                !activeTransform ||
-                !activeEditedTransform ? (
-                  <Text c="text-medium">
-                    {t`Select a transform on the right.`}
-                  </Text>
-                ) : (
-                  <TransformTab
-                    databaseId={checkNotNull(workspace.database_id)}
-                    transform={activeTransform}
-                    editedTransform={activeEditedTransform}
-                    workspaceId={workspaceId}
-                    workspaceTransforms={workspaceTransforms}
-                    isDisabled={isArchived}
-                    onChange={handleTransformChange}
-                    onSaveTransform={(transform) => {
-                      // After adding first transform to a workspace,
-                      // show 'Setup' tab with initialization status log.
-                      if (isWorkspaceUninitialized(workspace)) {
+              {activeTransform && (
+                <Tabs.Panel
+                  value={getTransformTabId(activeTransform)}
+                  h="100%"
+                  style={{ overflow: "auto" }}
+                >
+                  {!activeEditedTransform ? (
+                    <Text c="text-medium">
+                      {t`Select a transform on the right.`}
+                    </Text>
+                  ) : (
+                    <TransformTab
+                      databaseId={checkNotNull(workspace.database_id)}
+                      transform={activeTransform}
+                      editedTransform={activeEditedTransform}
+                      workspaceId={workspaceId}
+                      workspaceTransforms={workspaceTransforms}
+                      isDisabled={isArchived}
+                      onChange={handleTransformChange}
+                      onSaveTransform={(transform) => {
+                        // After adding first transform to a workspace,
+                        // show 'Setup' tab with initialization status log.
+                        if (isWorkspaceUninitialized(workspace)) {
+                          setActiveTransform(transform);
+                          return setTab("setup");
+                        }
                         setActiveTransform(transform);
-                        return setTab("setup");
-                      }
-                      setActiveTransform(transform);
-                      setTab(String(transform.id));
-                    }}
-                  />
-                )}
-              </Tabs.Panel>
+                        setTab(getTransformTabId(transform));
+                      }}
+                    />
+                  )}
+                </Tabs.Panel>
+              )}
             </Box>
           </Tabs>
         </Box>
@@ -545,7 +551,6 @@ function WorkspacePageContent({
                 {sourceDb && (
                   <AddTransformMenu
                     databaseId={sourceDb.id}
-                    workspaceId={workspaceId}
                     disabled={isArchived}
                   />
                 )}
@@ -553,13 +558,17 @@ function WorkspacePageContent({
               <Tabs.Panel value="code" p="md">
                 <CodeTab
                   readOnly={isArchived}
-                  activeTransformId={activeTransform?.id}
+                  activeTransformId={
+                    activeTransform
+                      ? getTransformId(activeTransform)
+                      : undefined
+                  }
                   availableTransforms={availableTransforms}
                   workspaceId={workspace.id}
                   workspaceTransforms={allTransforms}
                   onTransformClick={(transform) => {
                     addOpenedTransform(transform);
-                    setTab(String(transform.id));
+                    setTab(getTransformTabId(transform));
                     if (activeTable) {
                       setActiveTable(undefined);
                     }

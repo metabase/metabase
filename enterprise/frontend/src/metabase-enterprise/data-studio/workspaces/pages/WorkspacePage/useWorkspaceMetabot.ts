@@ -18,11 +18,12 @@ import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {
   DatabaseId,
   DraftTransformSource,
-  Transform,
-  WorkspaceTransformItem,
+  UnsavedTransform,
+  WorkspaceTransformListItem,
 } from "metabase-types/api";
+import { isUnsavedTransform } from "metabase-types/api";
 
-import { useWorkspace } from "./WorkspaceProvider";
+import { type AnyWorkspaceTransform, getTransformId, useWorkspace } from "./WorkspaceProvider";
 
 type MetabotConversationSnapshot = Pick<
   MetabotConverstationState,
@@ -39,30 +40,32 @@ type UseWorkspaceMetabotParams = {
   databaseId: DatabaseId | null | undefined;
   transformId: string | undefined;
   isLoading: boolean;
-  allTransforms: (Transform | WorkspaceTransformItem)[];
+  allTransforms: (UnsavedTransform | WorkspaceTransformListItem)[];
   setTab: (tab: string) => void;
   handleNavigateToTransform: (transformId: number) => void;
 };
 
 type UseWorkspaceMetabotReturn = {
   isMetabotAvailable: boolean;
-  metabotContextTransform: Transform | undefined;
+  metabotContextTransform: AnyWorkspaceTransform | undefined;
   metabotContextSource: DraftTransformSource | undefined;
-  setMetabotContextTransform: (transform: Transform | undefined) => void;
+  setMetabotContextTransform: (
+    transform: AnyWorkspaceTransform | undefined,
+  ) => void;
   setMetabotContextSource: (source: DraftTransformSource | undefined) => void;
 };
 
 export function useWorkspaceMetabot({
   workspaceId,
   databaseId,
-  transformId,
-  isLoading,
+  transformId: _transformId,
+  isLoading: _isLoading,
   allTransforms,
   setTab,
   handleNavigateToTransform,
 }: UseWorkspaceMetabotParams): UseWorkspaceMetabotReturn {
   const dispatch = useDispatch();
-  const { addOpenedTransform, openedTabs, setActiveTab, setActiveTransform } = useWorkspace();
+  const { openedTabs, setActiveTab } = useWorkspace();
 
   const isMetabotAvailable = PLUGIN_METABOT.isEnabled();
   const { navigateToPath, setNavigateToPath } = useMetabotReactions();
@@ -78,7 +81,7 @@ export function useWorkspaceMetabot({
   );
 
   const [metabotContextTransform, setMetabotContextTransform] = useState<
-    Transform | undefined
+    AnyWorkspaceTransform | undefined
   >();
   const [metabotContextSource, setMetabotContextSource] = useState<
     DraftTransformSource | undefined
@@ -112,7 +115,8 @@ export function useWorkspaceMetabot({
       !openedTabs.some(
         (tab) =>
           tab.type === "transform" &&
-          tab.transform.id === metabotContextTransform.id,
+          getTransformId(tab.transform) ===
+            getTransformId(metabotContextTransform),
       )
     ) {
       setMetabotContextTransform(undefined);
@@ -165,14 +169,32 @@ export function useWorkspaceMetabot({
     if (transformIdFromPath != null) {
       // Check if transform exists in local workspace state first (already opened/unsaved)
       const localTransform = allTransforms.find(
-        (t: Transform | WorkspaceTransformItem) =>
-          ("id" in t && t.id === transformIdFromPath) ||
-          ("ref_id" in t && t.ref_id === String(transformIdFromPath)),
+        (t: UnsavedTransform | WorkspaceTransformListItem) => {
+          if (isUnsavedTransform(t)) {
+            return t.id === transformIdFromPath;
+          }
+          return t.ref_id === String(transformIdFromPath);
+        },
       );
 
-      if (localTransform) {
-        addOpenedTransform(localTransform);
-        setActiveTransform(localTransform);
+      if (localTransform && !isUnsavedTransform(localTransform)) {
+        // For WorkspaceTransformListItem, we need to navigate to fetch full data
+        handleNavigateToTransform(transformIdFromPath);
+        setNavigateToPath(null);
+        return;
+      }
+
+      // Unsaved transforms are already opened when created, so just activate the tab
+      if (localTransform && isUnsavedTransform(localTransform)) {
+        // Find the existing tab and activate it
+        const existingTab = openedTabs.find(
+          (tab) =>
+            tab.type === "transform" &&
+            getTransformId(tab.transform) === localTransform.id,
+        );
+        if (existingTab) {
+          setActiveTab(existingTab);
+        }
         setNavigateToPath(null);
         return;
       }
@@ -188,8 +210,8 @@ export function useWorkspaceMetabot({
   }, [
     navigateToPath,
     allTransforms,
-    addOpenedTransform,
-    setActiveTransform,
+    openedTabs,
+    setActiveTab,
     setNavigateToPath,
     handleNavigateToTransform,
     dispatch,

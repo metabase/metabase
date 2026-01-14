@@ -19,7 +19,11 @@ import {
 } from "metabase/forms";
 import { Box, Button, Group, Modal, Stack } from "metabase/ui";
 import { IncrementalTransformSettings } from "metabase-enterprise/transforms/components/IncrementalTransform/IncrementalTransformSettings";
-import type { Transform, TransformSource } from "metabase-types/api";
+import type {
+  Transform,
+  TransformSource,
+  WorkspaceTransform,
+} from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
 
@@ -37,7 +41,9 @@ type CreateTransformModalProps = {
   schemas?: string[] | null;
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
+  handleSubmit?: (
+    values: NewTransformValues,
+  ) => Promise<Transform | WorkspaceTransform>;
   targetDescription?: string;
   validateOnMount?: boolean;
 };
@@ -80,7 +86,9 @@ type CreateTransformFormProps = {
   schemas?: string[] | null;
   showIncrementalSettings?: boolean;
   validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
+  handleSubmit?: (
+    values: NewTransformValues,
+  ) => Promise<Transform | WorkspaceTransform>;
   targetDescription?: string;
   validateOnMount?: boolean;
 };

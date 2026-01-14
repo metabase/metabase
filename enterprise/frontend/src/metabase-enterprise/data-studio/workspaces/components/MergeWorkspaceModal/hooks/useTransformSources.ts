@@ -6,7 +6,7 @@ import {
   useGetTransformQuery,
   useGetWorkspaceTransformQuery,
 } from "metabase-enterprise/api";
-import type { WorkspaceId, WorkspaceTransformItem } from "metabase-types/api";
+import type { WorkspaceId, WorkspaceTransformListItem } from "metabase-types/api";
 
 import { computeDiffStats, getSourceCode } from "../utils";
 
@@ -20,7 +20,7 @@ type UseTransformSourcesResult = {
 
 export function useTransformSources(
   workspaceId: WorkspaceId,
-  transform: WorkspaceTransformItem,
+  transform: WorkspaceTransformListItem,
 ): UseTransformSourcesResult {
   const metadata = useSelector(getMetadata);
   const isNewTransform = transform.global_id == null;

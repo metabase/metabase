@@ -146,7 +146,7 @@ export type TransformJob = {
 export type CreateTransformRequest = {
   name: string;
   description?: string | null;
-  source: TransformSource;
+  source: DraftTransformSource;
   target: TransformTarget;
   tag_ids?: TransformTagId[];
   collection_id?: number | null;
